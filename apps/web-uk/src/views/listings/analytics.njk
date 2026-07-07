@@ -1,0 +1,162 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/listings/{{ listing.id }}">Back to listing</a>
+
+  <span class="govuk-caption-xl">{{ listingTitle }}</span>
+  <h1 class="govuk-heading-xl">Listing analytics</h1>
+  <p class="govuk-body-l">See how members are finding and responding to this listing.</p>
+
+  <ul class="govuk-list nexus-alpha-actions govuk-!-margin-bottom-6">
+    <li><a class="govuk-link" href="/listings/{{ listing.id }}">View listing</a></li>
+    <li><a class="govuk-link" href="/listings/{{ listing.id }}/edit">Edit listing</a></li>
+  </ul>
+
+  <form method="get" action="/listings/{{ listing.id }}/analytics" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset" aria-describedby="days-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Time period</legend>
+        <div id="days-hint" class="govuk-hint">Choose how many recent days to include.</div>
+        <div class="govuk-radios govuk-radios--small govuk-radios--inline" data-module="govuk-radios">
+          {% for option in dayOptions %}
+            <div class="govuk-radios__item">
+              <input class="govuk-radios__input" id="{{ 'days' if loop.first else 'days-' + option }}" name="days" type="radio" value="{{ option }}"{% if days == option %} checked{% endif %}>
+              <label class="govuk-label govuk-radios__label" for="{{ 'days' if loop.first else 'days-' + option }}">Last {{ option }} days</label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </div>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Update period</button>
+  </form>
+
+  {% if not analytics.hasData %}
+    <div class="govuk-inset-text">There is no analytics data for this listing yet. Check back once members start viewing it.</div>
+  {% else %}
+    <h2 class="govuk-heading-m">Key metrics</h2>
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Total views</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.totalViews }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Unique viewers</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.uniqueViewers }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Total contacts</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.totalContacts }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Times saved</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.totalSaves }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Contact rate</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.contactRate }}%</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Save rate</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.saveRate }}%</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">7-day views trend</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.summary.trendLabel }}</dd>
+      </div>
+      {% if analytics.createdAtLabel %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Listing created</dt>
+          <dd class="govuk-summary-list__value">{{ analytics.createdAtLabel }}</dd>
+        </div>
+      {% endif %}
+      {% if analytics.expiresAtLabel %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Listing expires</dt>
+          <dd class="govuk-summary-list__value">{{ analytics.expiresAtLabel }}</dd>
+        </div>
+      {% endif %}
+    </dl>
+
+    <h2 class="govuk-heading-m">Views over time</h2>
+    {% if analytics.viewsOverTime.length %}
+      <table class="govuk-table govuk-!-margin-bottom-6">
+        <caption class="govuk-table__caption govuk-visually-hidden">Views over time</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Views over time</th>
+            <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">Count</span></th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Count</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in analytics.viewsOverTime %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header govuk-!-font-weight-regular">{{ row.dateLabel }}</th>
+              <td class="govuk-table__cell">
+                <progress value="{{ row.count }}" max="{{ row.max }}" aria-label="Views on {{ row.dateLabel }}">{{ row.count }}</progress>
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.countLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No views recorded in this period yet.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Contacts over time</h2>
+    {% if analytics.contactsOverTime.length %}
+      <table class="govuk-table govuk-!-margin-bottom-6">
+        <caption class="govuk-table__caption govuk-visually-hidden">Contacts over time</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Contacts over time</th>
+            <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">Count</span></th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Count</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in analytics.contactsOverTime %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header govuk-!-font-weight-regular">{{ row.dateLabel }}</th>
+              <td class="govuk-table__cell">
+                <progress value="{{ row.count }}" max="{{ row.max }}" aria-label="Contacts on {{ row.dateLabel }}">{{ row.count }}</progress>
+              </td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.countLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No contacts recorded in this period yet.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">How members got in touch</h2>
+    {% if analytics.contactTypes.length %}
+      <table class="govuk-table govuk-!-margin-bottom-6">
+        <caption class="govuk-table__caption govuk-visually-hidden">How members got in touch</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Method</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Count</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in analytics.contactTypes %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">{{ row.label }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.countLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No contacts have been made yet.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

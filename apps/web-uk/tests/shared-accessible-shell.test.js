@@ -13362,6 +13362,69 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed owner listing analytics page', async () => {
+    const api = require('../src/lib/api');
+    api.callListingApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Bike trailer loan'
+      }
+    }).mockResolvedValueOnce({
+      data: {
+        title: 'Bike trailer loan',
+        created_at: '2099-01-01',
+        expires_at: '2099-02-01',
+        summary: {
+          total_views: 1234,
+          unique_viewers: 98,
+          total_contacts: 7,
+          total_saves: 12,
+          contact_rate: 5.7,
+          save_rate: 9.8,
+          views_trend_percent: -14.5
+        },
+        views_over_time: [{ date: '2099-07-01', count: 6 }],
+        contacts_over_time: [{ date: '2099-07-02', count: 2 }],
+        contact_types: [{ contact_type: 'exchange_request', count: 3 }]
+      }
+    });
+
+    const unsigned = await request(app).get('/listings/42/analytics?days=14');
+    const signed = await request(app)
+      .get('/listings/42/analytics?days=14')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(api.callListingApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42');
+    expect(api.callListingApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/analytics?days=14');
+    expect(signed.text).toContain('href="/listings/42"');
+    expect(signed.text).toContain('href="/listings/42/edit"');
+    expect(signed.text).toContain('Bike trailer loan');
+    expect(signed.text).toContain('Listing analytics');
+    expect(signed.text).toContain('See how members are finding and responding to this listing.');
+    expect(signed.text).toContain('Time period');
+    expect(signed.text).toContain('value="14" checked');
+    expect(signed.text).toContain('Key metrics');
+    expect(signed.text).toContain('Total views');
+    expect(signed.text).toContain('1,234');
+    expect(signed.text).toContain('Unique viewers');
+    expect(signed.text).toContain('98');
+    expect(signed.text).toContain('Contact rate');
+    expect(signed.text).toContain('5.7%');
+    expect(signed.text).toContain('Down 14.5% on the previous 7 days');
+    expect(signed.text).toContain('Listing created');
+    expect(signed.text).toContain('1 January 2099');
+    expect(signed.text).toContain('Views over time');
+    expect(signed.text).toContain('1 Jul');
+    expect(signed.text).toContain('Contacts over time');
+    expect(signed.text).toContain('2 Jul');
+    expect(signed.text).toContain('How members got in touch');
+    expect(signed.text).toContain('Exchange request');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits Laravel settings action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

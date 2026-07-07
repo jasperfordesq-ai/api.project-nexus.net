@@ -309,12 +309,14 @@ partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
 generation, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
-The `/listings/{id}/report` and `/listings/{id}/exchange-request` GET pages are
-now partial Laravel-backed Blade candidates: they redirect unsigned visitors with
-Laravel's `auth-required` status, load the listing from `/api/v2/listings/{id}`,
-block owner self-actions, and render the Blade-style report and exchange request
-forms. The exchange request form also reads the Laravel wallet balance endpoint
-for balance context. Other listing GET pages remain local/protected pages or
+The `/listings/{id}/report`, `/listings/{id}/exchange-request`, and
+`/listings/{id}/analytics` GET pages are now partial Laravel-backed Blade
+candidates: they redirect unsigned visitors with Laravel's `auth-required`
+status, load the listing from `/api/v2/listings/{id}`, and render Blade-style
+report, exchange request, and owner analytics pages. The exchange request form
+also reads the Laravel wallet balance endpoint for balance context; the
+analytics page reads `/api/v2/listings/{id}/analytics` with Laravel's allowed
+period selector. Other listing GET pages remain local/protected pages or
 generated preparation pages, but the Laravel accessible POST aliases under
 `/listings` are local route declarations backed by Laravel v2 listing, comment,
 feed-like, and exchange APIs. The aliases cover save/unsave, renew, report,

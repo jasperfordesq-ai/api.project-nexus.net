@@ -176,6 +176,108 @@ function listingAuthorName(listing) {
     || '';
 }
 
+function listingAnalyticsDays(value) {
+  const allowed = new Set([7, 14, 30, 60, 90]);
+  const days = Number(value);
+  return allowed.has(days) ? days : 30;
+}
+
+function integerLabel(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.trunc(number).toLocaleString('en-GB') : '0';
+}
+
+function decimalLabel(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return number.toLocaleString('en-GB', { maximumFractionDigits: 1 });
+}
+
+function dateParts(value) {
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]) - 1,
+    day: Number(match[3])
+  };
+}
+
+function dateLabel(value, month = 'long') {
+  const parts = dateParts(value);
+  if (!parts) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month,
+    year: month === 'long' ? 'numeric' : undefined,
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(parts.year, parts.month, parts.day)));
+}
+
+function contactTypeLabel(value) {
+  const labels = {
+    message: 'Message',
+    phone: 'Phone',
+    email: 'Email',
+    exchange_request: 'Exchange request'
+  };
+  const type = trimmed(value);
+  if (labels[type]) return labels[type];
+  return type
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function analyticsSeries(rows) {
+  const series = Array.isArray(rows) ? rows : [];
+  const max = series.reduce((highest, row) => Math.max(highest, Number(row && row.count) || 0), 1);
+  return series.map((row) => {
+    const count = Math.max(0, Number(row && row.count) || 0);
+    return {
+      dateLabel: dateLabel(row && row.date, 'short'),
+      count,
+      countLabel: integerLabel(count),
+      max
+    };
+  });
+}
+
+function decorateListingAnalytics(result) {
+  const data = dataFrom(result) || {};
+  const summary = data && typeof data.summary === 'object' && data.summary !== null ? data.summary : {};
+  const viewsOverTime = analyticsSeries(data.views_over_time || data.viewsOverTime);
+  const contactsOverTime = analyticsSeries(data.contacts_over_time || data.contactsOverTime);
+  const contactTypes = (Array.isArray(data.contact_types || data.contactTypes) ? (data.contact_types || data.contactTypes) : [])
+    .map((row) => ({
+      label: contactTypeLabel(row && (row.contact_type || row.contactType)),
+      countLabel: integerLabel(row && row.count)
+    }));
+  const trend = Number(summary.views_trend_percent ?? summary.viewsTrendPercent ?? 0);
+
+  return {
+    hasData: Object.keys(summary).length > 0 || viewsOverTime.length > 0 || contactsOverTime.length > 0,
+    summary: {
+      totalViews: integerLabel(summary.total_views ?? summary.totalViews),
+      uniqueViewers: integerLabel(summary.unique_viewers ?? summary.uniqueViewers),
+      totalContacts: integerLabel(summary.total_contacts ?? summary.totalContacts),
+      totalSaves: integerLabel(summary.total_saves ?? summary.totalSaves),
+      contactRate: decimalLabel(summary.contact_rate ?? summary.contactRate),
+      saveRate: decimalLabel(summary.save_rate ?? summary.saveRate),
+      trendLabel: trend > 0
+        ? `Up ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
+        : trend < 0
+          ? `Down ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
+          : 'No change on the previous 7 days'
+    },
+    createdAtLabel: dateLabel(data.created_at || data.createdAt),
+    expiresAtLabel: dateLabel(data.expires_at || data.expiresAt),
+    viewsOverTime,
+    contactsOverTime,
+    contactTypes
+  };
+}
+
 async function walletBalanceForExchange(token) {
   try {
     const result = await callWalletApi(token, 'GET', '/balance');
@@ -382,6 +484,48 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
     walletBalanceLabel: walletBalance === null ? '' : oneDecimal(walletBalance),
     status: exchangeRequestStatus(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const days = listingAnalyticsDays(req.query.days);
+  let listingResult;
+  let analyticsResult;
+
+  try {
+    [listingResult, analyticsResult] = await Promise.all([
+      callListing(token, 'GET', `/${id}`),
+      callListing(token, 'GET', `/${id}/analytics?days=${days}`)
+    ]);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Listing not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+    throw error;
+  }
+
+  const listing = dataFrom(listingResult) || {};
+  const analyticsData = dataFrom(analyticsResult) || {};
+  const listingTitle = trimmed(listing.title || listing.name || analyticsData.title) || 'Listing analytics';
+
+  return res.render('listings/analytics', {
+    title: 'Listing analytics',
+    listing: { ...listing, id },
+    listingTitle,
+    days,
+    dayOptions: [7, 14, 30, 60, 90],
+    analytics: decorateListingAnalytics(analyticsResult)
   });
 }, { notFoundTitle: 'Listing not found' }));
 
