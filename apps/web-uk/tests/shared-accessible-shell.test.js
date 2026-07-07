@@ -48,6 +48,7 @@ jest.mock('../src/lib/api', () => ({
   getGroups: jest.fn().mockResolvedValue({ data: [] }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   getGroup: jest.fn().mockResolvedValue({ data: { id: 42, name: 'Group' } }),
+  getGroupMembers: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
@@ -14979,6 +14980,55 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('/uploads/events/garden.webp');
     expect(response.text).toContain('Photo for Community garden day');
+  });
+
+  it('renders Laravel v2 event detail payloads on the event detail page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        attendee_count: 3,
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('Planting and tea');
+  });
+
+  it('renders Laravel v2 group detail payloads on the group detail page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        description: 'Hub for Dunmanway neighbours',
+        member_count: 12,
+        created_at: '2026-06-01T09:00:00'
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Dunmanway');
+    expect(response.text).toContain('Hub for Dunmanway neighbours');
   });
 
   it('renders the signed listing index when Laravel omits flat owner IDs', async () => {

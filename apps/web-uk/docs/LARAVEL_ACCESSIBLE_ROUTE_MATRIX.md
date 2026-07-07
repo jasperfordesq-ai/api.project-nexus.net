@@ -119,6 +119,21 @@ All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 checks across the default sweep. Each shard also reran the auth/API setup,
 unsigned auth-required redirects, gated status checks, and signed redirect
 checks.
+A targeted real-fixture parameterised live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
+2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18
+module-page checks. The smoke covered event detail/depth (`/events/6`,
+`/events/6/map`, `/events/6/polls`, `/events/6/translate`), volunteering
+opportunity detail (`/volunteering/opportunities/307`), organisation
+detail/jobs/apply (`/organisations/636`, `/organisations/636/jobs`,
+`/organisations/opportunities/307/apply`), job detail (`/jobs/90764`), group
+detail/depth (`/groups/484`, `/groups/484/invite`,
+`/groups/484/notifications`, `/groups/484/image`,
+`/groups/484/announcements`, `/groups/484/discussions`, `/groups/484/files`,
+`/groups/484/manage`), and resource comments (`/resources/10/comments`). This
+run also proves the current event and group detail handlers use Laravel v2
+detail payloads from `/api/v2/events/{id}` and `/api/v2/groups/{id}` without
+leaking the `{ data: ... }` wrapper into templates.
 
 ## Header And Footer Contract
 

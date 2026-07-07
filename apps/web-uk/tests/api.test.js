@@ -849,6 +849,25 @@ describe('API Request Functions', () => {
   });
 
   describe('callEventApi', () => {
+    it('should fetch event details through the Laravel v2 event endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42, title: 'Community meetup' } })
+      });
+
+      await api.getEvent('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should call Laravel v2 event action endpoints with auth, method, and payload', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -1092,6 +1111,25 @@ describe('API Request Functions', () => {
   });
 
   describe('callGroupApi', () => {
+    it('should fetch group details through the Laravel v2 group endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 484, name: 'Dunmanway' } })
+      });
+
+      await api.getGroup('test-token', 484);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/groups/484',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should call Laravel v2 group depth endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

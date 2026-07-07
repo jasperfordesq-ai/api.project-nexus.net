@@ -126,6 +126,17 @@ All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 checks across the default sweep. Each shard also reran the auth/API setup,
 unsigned auth-required redirects, gated status checks, and signed redirect
 checks.
+A targeted live Laravel-backed run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
+2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18
+real-fixture parameterised module pages. The checked pages were `/events/6`,
+`/events/6/map`, `/events/6/polls`, `/events/6/translate`,
+`/volunteering/opportunities/307`, `/organisations/636`,
+`/organisations/636/jobs`, `/organisations/opportunities/307/apply`,
+`/jobs/90764`, `/groups/484`, `/groups/484/invite`,
+`/groups/484/notifications`, `/groups/484/image`,
+`/groups/484/announcements`, `/groups/484/discussions`, `/groups/484/files`,
+`/groups/484/manage`, and `/resources/10/comments`.
 
 ## Stack
 

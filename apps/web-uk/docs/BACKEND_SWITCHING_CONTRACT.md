@@ -127,6 +127,13 @@ All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 checks across the default sweep. Each shard also reran the auth/API setup,
 unsigned auth-required redirects, gated status checks, and signed redirect
 checks.
+A targeted real-fixture parameterised run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
+2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18
+module-page checks across event detail/depth, volunteering opportunity detail,
+organisation detail/jobs/apply, job detail, group detail/depth, and resource
+comments. This specifically verifies Laravel v2 event/group detail payload
+unwrapping for `/events/6` and `/groups/484`; it does not certify ASP.NET mode.
 
 ## Current Page Candidates
 

@@ -59,8 +59,8 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `935/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, and chunked runtime-smoke fallback evidence, assuming agents rerun the refresh protocol |
+| Working estimate | about `940/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and targeted real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -168,6 +168,19 @@ against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with `TENANT_ID=2` and
 checks, `0` failures, and `161` collective module-page checks across the
 default sweep. Each shard also reran the auth/API setup, unsigned
 auth-required redirects, gated status checks, and signed redirect checks.
+Event and group detail helpers now use Laravel v2 detail endpoints
+(`/api/v2/events/{id}` and `/api/v2/groups/{id}`) and unwrap Laravel
+`{ data: ... }` payloads before rendering Nunjucks templates. A targeted live
+Laravel-backed run against `WEB_UK_BASE_URL=http://127.0.0.1:5325`, started
+with `TENANT_ID=2`, passed on 2026-07-07: `24/24` checks, `0` failures, with 6
+auth/health checks and 18 real-fixture parameterised module pages:
+`/events/6`, `/events/6/map`, `/events/6/polls`, `/events/6/translate`,
+`/volunteering/opportunities/307`, `/organisations/636`,
+`/organisations/636/jobs`, `/organisations/opportunities/307/apply`,
+`/jobs/90764`, `/groups/484`, `/groups/484/invite`,
+`/groups/484/notifications`, `/groups/484/image`,
+`/groups/484/announcements`, `/groups/484/discussions`, `/groups/484/files`,
+`/groups/484/manage`, and `/resources/10/comments`.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without
@@ -284,7 +297,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `935/1000`.
+Current working estimate at this handoff: `940/1000`.
 
 ## Final Handoff Checklist
 

@@ -1973,7 +1973,7 @@ async function getMyGroups(token) {
 }
 
 async function getGroup(token, id) {
-  return request(`/api/groups/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/groups/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -2076,7 +2076,7 @@ async function getMyEvents(token) {
 }
 
 async function getEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }

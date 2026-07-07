@@ -727,7 +727,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     getEventRsvps(req.token, id).catch(() => ({ data: [] }))
   ]);
 
-  const event = eventResult.event || eventResult;
+  const event = eventFrom(eventResult);
   const myRsvp = eventResult.myRsvp || eventResult.my_rsvp;
   const rsvps = rsvpsResult.data || [];
 
@@ -758,7 +758,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     getEventCategories(req.token)
   ]);
 
-  const event = eventResult.event || eventResult;
+  const event = eventFrom(eventResult);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
   const categories = categoriesResult.items || categoriesResult.data || [];
 

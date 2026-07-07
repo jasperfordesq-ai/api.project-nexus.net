@@ -734,7 +734,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     getEvents(req.token, { group_id: id, upcoming_only: true, limit: 5 }).catch(() => ({ data: [] }))
   ]);
 
-  const group = groupResult.group || groupResult;
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const members = membersResult.data || membersResult.items || [];
   const events = eventsResult.data || eventsResult.items || [];
   const myMembership = groupResult.myMembership || groupResult.my_membership;
@@ -755,7 +755,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const groupResult = await getGroup(req.token, id);
-  const group = groupResult.group || groupResult;
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const myMembership = groupResult.myMembership || groupResult.my_membership;
 
   // Check permission
@@ -1434,7 +1434,7 @@ router.get('/:id/members', asyncRoute(async (req, res) => {
     getUsers(req.token).catch(() => ({ data: [] }))
   ]);
 
-  const group = groupResult.group || groupResult;
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const members = membersResult.data || [];
   const myMembership = groupResult.myMembership || groupResult.my_membership;
   const rawUsers = usersResult.items || usersResult.data || usersResult.users || usersResult;
