@@ -5,6 +5,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -509,20 +510,31 @@ public record MarketplaceListingInput(
     string? Description,
     string? Tagline,
     decimal? Price,
+    [property: JsonPropertyName("price_currency")]
     string? PriceCurrency,
+    [property: JsonPropertyName("price_type")]
     string? PriceType,
+    [property: JsonPropertyName("time_credit_price")]
     decimal? TimeCreditPrice,
+    [property: JsonPropertyName("category_id")]
     int? CategoryId,
+    [property: JsonPropertyName("group_id")]
     int? GroupId,
     string? Condition,
     int? Quantity,
+    [property: JsonPropertyName("template_data")]
     Dictionary<string, object>? TemplateData,
     string? Location,
     double? Latitude,
     double? Longitude,
+    [property: JsonPropertyName("shipping_available")]
     bool? ShippingAvailable,
+    [property: JsonPropertyName("local_pickup")]
     bool? LocalPickup,
+    [property: JsonPropertyName("delivery_method")]
     string? DeliveryMethod,
+    [property: JsonPropertyName("seller_type")]
     string? SellerType,
     string? Status,
+    [property: JsonPropertyName("duration_days")]
     int? DurationDays);

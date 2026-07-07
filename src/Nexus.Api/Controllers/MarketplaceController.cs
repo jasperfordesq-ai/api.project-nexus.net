@@ -180,11 +180,22 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("listings/{id:int}/images")]
     [Authorize]
-    public async Task<IActionResult> AddImage(int id, [FromBody] ImageRequest request)
+    public async Task<IActionResult> AddImage(int id)
     {
-        if (string.IsNullOrWhiteSpace(request.Url)) return BadRequest(new { error = "Image URL is required" });
-        var image = await _marketplace.AddImageAsync(id, RequireUserId(), User.IsAdmin(), request.Url, request.AltText);
-        return image == null ? NotFound(new { error = "Listing not found" }) : Created($"/api/marketplace/listings/{id}/images/{image.Id}", new { data = image });
+        var userId = RequireUserId();
+        var uploads = await ReadMarketplaceImageUploadsAsync();
+        if (uploads.Count == 0)
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "Image URL or image file is required" });
+
+        var images = new List<MarketplaceImage>();
+        foreach (var upload in uploads)
+        {
+            var image = await _marketplace.AddImageAsync(id, userId, User.IsAdmin(), upload.Url, upload.AltText);
+            if (image == null) return NotFound(new { success = false, error = "Listing not found" });
+            images.Add(image);
+        }
+
+        return Created($"/api/marketplace/listings/{id}/images", new { success = true, data = images.Select(MapMarketplaceImage) });
     }
 
     [HttpPut("listings/{id:int}/images/reorder")]
@@ -199,16 +210,22 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> DeleteImage(int id, int imageId)
         => await _marketplace.DeleteImageAsync(id, imageId, RequireUserId(), User.IsAdmin())
             ? NoContent()
-            : NotFound(new { error = "Image not found" });
+            : NotFound(new { success = false, error = "Image not found" });
 
     [HttpPost("listings/{id:int}/video")]
     [Authorize]
-    public async Task<IActionResult> SetVideo(int id, [FromBody] VideoRequest request)
+    public async Task<IActionResult> SetVideo(int id)
     {
-        var (listing, error) = await _marketplace.UpdateListingAsync(id, RequireUserId(), User.IsAdmin(), new MarketplaceListingInput(null, null, null, null, null, null, null, null, null, null, null, new() { ["video_url"] = request.Url ?? string.Empty }, null, null, null, null, null, null, null, null, null));
-        if (listing != null) listing.VideoUrl = request.Url;
+        var url = await ReadMarketplaceVideoUploadAsync();
+        if (string.IsNullOrWhiteSpace(url))
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "Video URL or video file is required" });
+
+        var (listing, error) = await _marketplace.UpdateListingAsync(id, RequireUserId(), User.IsAdmin(), new MarketplaceListingInput(null, null, null, null, null, null, null, null, null, null, null, new() { ["video_url"] = url }, null, null, null, null, null, null, null, null, null));
+        if (listing != null) listing.VideoUrl = url;
         await _db.SaveChangesAsync();
-        return error == null ? Ok(new { data = MapListing(listing!, true) }) : NotFound(new { error });
+        return error == null
+            ? StatusCode(201, new { success = true, data = new { video_url = url } })
+            : NotFound(new { success = false, error });
     }
 
     [HttpDelete("listings/{id:int}/video")]
@@ -255,7 +272,7 @@ public class MarketplaceController : ControllerBase
     [HttpPost("listings/generate-description")]
     [Authorize]
     public IActionResult GenerateDescription([FromBody] GenerateDescriptionRequest request)
-        => Ok(new { data = new { description = $"A clear community marketplace listing for {request.Title ?? "this item"}. Include condition, pickup details, and what makes it useful." } });
+        => Ok(new { success = true, data = new { description = $"A clear community marketplace listing for {request.Title ?? "this item"}. Include condition, pickup details, and what makes it useful." } });
 
     [HttpPost("listings/{id:int}/save")]
     [Authorize]
@@ -1952,6 +1969,79 @@ public class MarketplaceController : ControllerBase
         created_at = report.CreatedAt
     };
 
+    private async Task<List<ImageUploadValue>> ReadMarketplaceImageUploadsAsync()
+    {
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync();
+            return form.Files
+                .Where(file => file.Length > 0)
+                .Select(file =>
+                {
+                    var fileName = SafeUploadName(file.FileName, "image");
+                    return new ImageUploadValue($"/uploads/marketplace/images/{fileName}", fileName);
+                })
+                .ToList();
+        }
+
+        try
+        {
+            var request = await JsonSerializer.DeserializeAsync<ImageRequest>(
+                Request.Body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return string.IsNullOrWhiteSpace(request?.Url)
+                ? new List<ImageUploadValue>()
+                : new List<ImageUploadValue> { new(request.Url, request.AltText) };
+        }
+        catch (JsonException)
+        {
+            return new List<ImageUploadValue>();
+        }
+    }
+
+    private async Task<string?> ReadMarketplaceVideoUploadAsync()
+    {
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync();
+            var file = form.Files.FirstOrDefault(f => f.Name == "video") ?? form.Files.FirstOrDefault();
+            return file == null || file.Length == 0
+                ? null
+                : $"/uploads/marketplace/videos/{SafeUploadName(file.FileName, "video")}";
+        }
+
+        try
+        {
+            var request = await JsonSerializer.DeserializeAsync<VideoRequest>(
+                Request.Body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return request?.Url;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string SafeUploadName(string? fileName, string fallback)
+    {
+        var safe = System.IO.Path.GetFileName(fileName ?? string.Empty)
+            .Replace('\\', '-')
+            .Replace('/', '-')
+            .Trim();
+        return string.IsNullOrWhiteSpace(safe) ? $"{fallback}-{Guid.NewGuid():N}" : safe;
+    }
+
+    private static object MapMarketplaceImage(MarketplaceImage image) => new
+    {
+        id = image.Id,
+        url = image.Url,
+        thumbnail_url = image.Url,
+        alt_text = image.AltText,
+        is_primary = image.SortOrder == 0,
+        sort_order = image.SortOrder
+    };
+
     private static double DistanceKm(double lat1, double lon1, double lat2, double lon2)
     {
         const double earth = 6371;
@@ -1965,6 +2055,7 @@ public class MarketplaceController : ControllerBase
 }
 
 public record ImageRequest(string? Url, string? AltText);
+public record ImageUploadValue(string Url, string? AltText);
 public record ReorderImagesRequest(int[]? ImageIds);
 public record VideoRequest(string? Url);
 public record GenerateDescriptionRequest(string? Title, string? Keywords);

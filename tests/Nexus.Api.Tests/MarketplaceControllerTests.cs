@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
@@ -700,6 +701,101 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceCreateEditMediaV2_AcceptsLaravelReactPayloadsAndMultipartUploads()
+    {
+        var categoryId = await CreateMarketplaceCategoryAsync();
+
+        await AuthenticateAsMemberAsync();
+        var generate = await Client.PostAsJsonAsync("/api/v2/marketplace/listings/generate-description", new
+        {
+            title = "Restored coffee table",
+            category = "Furniture",
+            condition = "good"
+        });
+
+        generate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var generateJson = await generate.Content.ReadFromJsonAsync<JsonElement>();
+        generateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        generateJson.GetProperty("data").GetProperty("description").GetString().Should().Contain("Restored coffee table");
+
+        var create = await Client.PostAsJsonAsync("/api/v2/marketplace/listings", new
+        {
+            title = "Restored coffee table",
+            description = "Solid table with light wear and easy pickup",
+            condition = "good",
+            price_type = "fixed",
+            price = 18.5m,
+            price_currency = "EUR",
+            category_id = categoryId,
+            delivery_method = "pickup",
+            quantity = 2,
+            status = "active",
+            template_data = new { material = "wood", dimensions = "90x60" }
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var listingId = created.GetProperty("id").GetInt32();
+        created.GetProperty("template_data").GetProperty("material").GetString().Should().Be("wood");
+
+        using var imagesForm = new MultipartFormDataContent();
+        var imageContent = new ByteArrayContent(new byte[] { 0x89, 0x50, 0x4e, 0x47 });
+        imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        imagesForm.Add(imageContent, "images[0]", "table.png");
+
+        var uploadImages = await Client.PostAsync($"/api/v2/marketplace/listings/{listingId}/images", imagesForm);
+
+        uploadImages.StatusCode.Should().Be(HttpStatusCode.Created);
+        var uploadImagesJson = await uploadImages.Content.ReadFromJsonAsync<JsonElement>();
+        uploadImagesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var uploadedImage = uploadImagesJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        var imageId = uploadedImage.GetProperty("id").GetInt32();
+        uploadedImage.GetProperty("url").GetString().Should().Contain("table.png");
+        uploadedImage.GetProperty("thumbnail_url").GetString().Should().Contain("table.png");
+        uploadedImage.GetProperty("alt_text").GetString().Should().Be("table.png");
+        uploadedImage.GetProperty("is_primary").GetBoolean().Should().BeTrue();
+
+        using var videoForm = new MultipartFormDataContent();
+        var videoContent = new ByteArrayContent(new byte[] { 0, 0, 0, 24 });
+        videoContent.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
+        videoForm.Add(videoContent, "video", "table.mp4");
+
+        var uploadVideo = await Client.PostAsync($"/api/v2/marketplace/listings/{listingId}/video", videoForm);
+
+        uploadVideo.StatusCode.Should().Be(HttpStatusCode.Created);
+        var uploadVideoJson = await uploadVideo.Content.ReadFromJsonAsync<JsonElement>();
+        uploadVideoJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        uploadVideoJson.GetProperty("data").GetProperty("video_url").GetString().Should().Contain("table.mp4");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/marketplace/listings/{listingId}", new
+        {
+            title = "Updated coffee table",
+            description = "Updated listing description",
+            condition = "like_new",
+            price_type = "fixed",
+            price = 20m,
+            price_currency = "EUR",
+            delivery_method = "pickup",
+            quantity = 3,
+            template_data = new { material = "oak" }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        updateJson.GetProperty("data").GetProperty("title").GetString().Should().Be("Updated coffee table");
+        updateJson.GetProperty("data").GetProperty("template_data").GetProperty("material").GetString().Should().Be("oak");
+
+        var deleteImage = await Client.DeleteAsync($"/api/v2/marketplace/listings/{listingId}/images/{imageId}");
+        deleteImage.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteVideo = await Client.DeleteAsync($"/api/v2/marketplace/listings/{listingId}/video");
+        deleteVideo.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
     public async Task MarketplaceOrderHistoryV2_ReturnsLaravelReactShapeAndShipmentActions()
     {
         var (orderId, listingId) = await CreateShippableOrderForMemberAsync();
@@ -1068,6 +1164,24 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return (active.Id, draft.Id, sold.Id, expired.Id);
+    }
+
+    private async Task<int> CreateMarketplaceCategoryAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var category = new MarketplaceCategory
+        {
+            TenantId = TestData.Tenant1.Id,
+            Name = "React Create",
+            Slug = $"react-create-{Guid.NewGuid():N}",
+            Icon = "chair",
+            IsActive = true
+        };
+        db.MarketplaceCategories.Add(category);
+        await db.SaveChangesAsync();
+        return category.Id;
     }
 
     private MarketplaceListing SellerListing(string title, string status, int views, int saves) => new()
