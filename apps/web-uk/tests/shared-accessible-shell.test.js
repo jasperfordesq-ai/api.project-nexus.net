@@ -438,6 +438,7 @@ describe('shared accessible frontend shell', () => {
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
     api.uploadPodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
+    api.login.mockReset();
     api.verify2fa.mockReset();
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4329,6 +4330,35 @@ describe('shared accessible frontend shell', () => {
 
     expect(postResponse.status).toBe(302);
     expect(postResponse.headers.location).toBe('/login?status=two-factor-expired');
+  });
+
+  it('redirects Laravel 2FA-required logins to the two-factor page with the pending session token', async () => {
+    const api = require('../src/lib/api');
+    api.login.mockReset().mockResolvedValue({
+      requires_2fa: true,
+      two_factor_token: 'pending-2fa-token'
+    });
+    const agent = request.agent(app);
+    const first = await agent.get('/login');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/login')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        email: 'ada@example.org',
+        password: 'correct horse battery staple',
+        tenant_slug: 'acme'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login/two-factor');
+    expect(api.login).toHaveBeenCalledWith('ada@example.org', 'correct horse battery staple', 'acme');
+
+    const twoFactorPage = await agent.get('/login/two-factor');
+    expect(twoFactorPage.status).toBe(200);
+    expect(twoFactorPage.text).toContain('name="code"');
   });
 
   it('submits the Laravel resend-verification route through the email verification API helper', async () => {

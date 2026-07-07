@@ -214,7 +214,10 @@ The auth router also exposes Laravel accessible aliases for
 `/login/forgot-password`, `/password/reset`, `/login/two-factor`, and
 `/login/resend-verification`. These map to the existing local forgot-password,
 reset-password, 2FA, and verification-resend handlers, with the reset API helper
-using Laravel's `password`/`password_confirmation` payload.
+using Laravel's `password`/`password_confirmation` payload. Login responses with
+`requires_2fa` use Laravel's `two_factor_token`, store it in the web session,
+and redirect to `/login/two-factor`; missing challenge tokens redirect back to
+`/login?status=two-factor-required`.
 
 ## Local Environment Shape
 

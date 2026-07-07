@@ -155,8 +155,11 @@ the default Laravel runtime smoke.
 
 The public auth and email aliases include Laravel-style forgot-password,
 reset-password, two-factor, email verification, and newsletter unsubscribe
-pages. `/verify-email` renders the Blade missing, invalid, and confirmation
-states and calls Laravel `/api/auth/verify-email` when a token is present.
+pages. Login responses with `requires_2fa` now store Laravel's
+`two_factor_token` in the Express session and redirect to `/login/two-factor`,
+matching the Blade controller's session-backed challenge hand-off.
+`/verify-email` renders the Blade missing, invalid, and confirmation states and
+calls Laravel `/api/auth/verify-email` when a token is present.
 `/newsletter/unsubscribe` renders the Blade missing, invalid, and confirmation
 states; when a token is present it calls Laravel `/api/v2/newsletter/unsubscribe`
 before rendering the confirmation or invalid state. Tenant-domain routing,

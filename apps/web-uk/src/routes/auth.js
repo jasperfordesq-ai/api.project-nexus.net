@@ -42,15 +42,13 @@ router.post('/login', asyncRoute(async (req, res) => {
 
     // Handle 2FA requirement — store pending token in session for verification
     if (result.requires_2fa) {
-      if (req.session) {
-        req.session.pending2faToken = result.temp_token || result.access_token;
+      const pendingToken = result.two_factor_token || result.temp_token || result.access_token;
+      if (!pendingToken || !req.session) {
+        return res.redirect('/login?status=two-factor-required');
       }
-      return res.render('login', {
-        title: 'Sign in',
-        show2fa: true,
-        values: { email, tenant_slug },
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+
+      req.session.pending2faToken = pendingToken;
+      return res.redirect('/login/two-factor');
     }
 
     if (!result.access_token) {
