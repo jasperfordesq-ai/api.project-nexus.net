@@ -139,6 +139,7 @@ jest.mock('../src/lib/api', () => ({
   getExchangeRatings: jest.fn().mockResolvedValue({ data: { ratings: [], has_rated: false } }),
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
+  callMatchesApi: jest.fn().mockResolvedValue({ data: { matches: [] } }),
   getSkillCategories: jest.fn().mockResolvedValue({ data: [] }),
   getSkillCategory: jest.fn().mockResolvedValue({ data: { id: 7, name: 'Practical help', skills: [] } }),
   getSkillMembers: jest.fn().mockResolvedValue({ data: [] }),
@@ -295,6 +296,7 @@ describe('shared accessible frontend shell', () => {
     api.getExchangeRatings.mockReset().mockResolvedValue({ data: { ratings: [], has_rated: false } });
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
+    api.callMatchesApi.mockReset().mockResolvedValue({ data: { matches: [] } });
     api.getSkillCategories.mockReset().mockResolvedValue({ data: [] });
     api.getSkillCategory.mockReset().mockResolvedValue({ data: { id: 7, name: 'Practical help', skills: [] } });
     api.getSkillMembers.mockReset().mockResolvedValue({ data: [] });
@@ -5059,6 +5061,104 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/matches/board?source=listing&status=match-dismissed#matches-top');
     expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'too_far');
+  });
+
+  it('renders the Laravel matches index with source filters and dismiss forms', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callMatchesApi.mockResolvedValueOnce({
+      data: {
+        matches: [{
+          id: 77,
+          listing_id: 77,
+          module: 'listing',
+          title: 'Repair a bicycle',
+          description: 'A practical repair request',
+          type: 'request',
+          category_name: 'Transport',
+          user_name: 'Avery Morgan',
+          match_score: 0.87,
+          match_reasons: ['Shared repair skills', 'Nearby']
+        }]
+      }
+    });
+
+    const response = await request(app)
+      .get('/matches?source=listing&status=match-dismissed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=30&modules=listings');
+    expect(response.text).toContain('Your matches');
+    expect(response.text).toContain('This match has been hidden.');
+    expect(response.text).toContain('Open the matches board');
+    expect(response.text).toContain('Total matches');
+    expect(response.text).toContain('Average score');
+    expect(response.text).toContain('Listings');
+    expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).toContain('87% match');
+    expect(response.text).toContain('Shared repair skills');
+    expect(response.text).toContain('action="/matches/77/dismiss"');
+  });
+
+  it('renders the Laravel matches board with full-set stats and filtered cards', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callMatchesApi.mockResolvedValueOnce({
+      data: {
+        matches: [
+          {
+            id: 77,
+            listing_id: 77,
+            module: 'listing',
+            title: 'Repair a bicycle',
+            description: 'A practical repair request',
+            type: 'request',
+            category_name: 'Transport',
+            user_name: 'Avery Morgan',
+            match_score: 0.87,
+            match_reasons: ['Shared repair skills', 'Nearby', 'Same town', 'Recently active'],
+            created_at: '2026-07-05T10:00:00Z'
+          },
+          {
+            id: 33,
+            group_id: 33,
+            module: 'group',
+            title: 'Garden helpers',
+            description: 'A group for garden jobs',
+            category_name: 'Outdoors',
+            user_name: 'Casey Quinn',
+            match_score: 0.61,
+            match_reasons: ['Shared interests']
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/matches/board?source=listing&status=match-dismissed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=50&modules=listings%2Cgroups%2Cvolunteering%2Cevents');
+    expect(response.text).toContain('Your matches');
+    expect(response.text).toContain('Match hidden. We will show you fewer like it.');
+    expect(response.text).toContain('Total matches');
+    expect(response.text).toContain('Average match score');
+    expect(response.text).toContain('Strong matches');
+    expect(response.text).toContain('Match sources');
+    expect(response.text).toContain('Listings (1)');
+    expect(response.text).toContain('Groups (1)');
+    expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).toContain('87% match');
+    expect(response.text).toContain('+1 more');
+    expect(response.text).toContain('action="/matches/board/77/dismiss"');
+    expect(response.text).toContain('name="source" value="listing"');
+    expect(response.text).not.toContain('Garden helpers');
   });
 
   it('renders the Laravel-backed exchanges list page with tabs and exchange cards', async () => {

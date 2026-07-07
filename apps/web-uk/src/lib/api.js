@@ -1378,6 +1378,20 @@ async function rankPoll(token, id, data) {
   });
 }
 
+async function callMatchesApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/matches${normalizedPath}`, options);
+}
+
 async function dismissMatch(token, id, reason) {
   return request(`/api/v2/matches/${encodeURIComponent(id)}/dismiss`, {
     method: 'POST',
@@ -2943,6 +2957,7 @@ module.exports = {
   deletePoll,
   votePoll,
   rankPoll,
+  callMatchesApi,
   dismissMatch,
   getExchangeConfig,
   getExchanges,

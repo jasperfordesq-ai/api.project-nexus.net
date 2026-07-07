@@ -149,9 +149,14 @@ read Laravel `/api/v2/users/{id}/public-collections` and
 cards, thank-you form, appreciation cards, reaction forms, status messages, and
 pagination. Tenant routing, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
-Match-dismiss POST aliases are wired to Laravel `/api/v2/matches/{id}/dismiss`
-for both `/matches/{id}/dismiss` and `/matches/board/{listingId}/dismiss`,
-including the board `source` redirect and `#matches-top` fragment.
+Matches GET pages now redirect unsigned visitors to `/login?status=auth-required`,
+call Laravel-compatible `/api/v2/matches/all`, and render the Blade-style
+`/matches` summary plus the `/matches/board` stats/filter board. Match-dismiss
+POST aliases are wired to Laravel `/api/v2/matches/{id}/dismiss` for both
+`/matches/{id}/dismiss` and `/matches/board/{listingId}/dismiss`, including the
+board `source` redirect and `#matches-top` fragment. Tenant module gates,
+event-source API filtering, localization, runtime smoke tests, and ASP.NET
+backend compatibility are not certified.
 Exchange action and rating POST aliases are wired to Laravel `/api/v2/exchanges`
 for accept/decline/start/complete/confirm/cancel actions and
 `/api/v2/exchanges/{id}/rate` for no-JS ratings.

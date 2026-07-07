@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T06:22:42.173Z",
+    "generatedAt": "2026-07-07T06:29:39.879Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -9267,8 +9267,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:CrossModuleMatchingService",
       "webUkPath": "/matches",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "matches/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\matches.js"
     },
     {
       "method": "GET",
@@ -9286,8 +9286,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:CrossModuleMatchingService",
       "webUkPath": "/matches/board",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "matches/board",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\matches.js"
     },
     {
       "method": "POST",
