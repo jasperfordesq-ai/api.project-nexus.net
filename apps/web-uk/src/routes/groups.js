@@ -112,6 +112,17 @@ const GROUP_FILE_ERROR_MESSAGES = {
   'file-forbidden': 'You do not have permission to perform this action.',
   'file-not-found': 'That file could not be found.'
 };
+const GROUP_MANAGE_SUCCESS_MESSAGES = {
+  'member-promoted': 'The member is now an admin.',
+  'member-demoted': 'The member is no longer an admin.',
+  'member-removed': 'The member has been removed from the group.',
+  'request-approved': 'The join request has been approved.',
+  'request-rejected': 'The join request has been rejected.'
+};
+const GROUP_MANAGE_ERROR_MESSAGES = {
+  'member-failed': 'The member could not be updated. Please try again.',
+  'request-failed': 'The join request could not be updated. Please try again.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -308,6 +319,40 @@ function normalizeGroupFile(item) {
   };
 }
 
+function normalizeGroupMember(item, ownerId = null) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const user = raw.user && typeof raw.user === 'object' ? raw.user : {};
+  const id = positiveInteger(raw.id) || positiveInteger(raw.user_id) || positiveInteger(raw.userId) || positiveInteger(user.id);
+  const role = ['owner', 'admin', 'member'].includes(trimmed(raw.role)) ? trimmed(raw.role) : 'member';
+  const isOwner = (id !== null && id === ownerId) || role === 'owner';
+  const normalizedRole = isOwner ? 'owner' : role;
+
+  return {
+    id,
+    name: trimmed(raw.name || raw.display_name || raw.displayName || user.name || user.display_name || user.displayName || '') || (id ? `#${id}` : 'Member'),
+    role: normalizedRole,
+    roleLabel: normalizedRole === 'owner' ? 'Owner' : normalizedRole === 'admin' ? 'Admin' : 'Member',
+    roleClass: normalizedRole === 'owner' || normalizedRole === 'admin' ? 'govuk-tag--blue' : 'govuk-tag--grey',
+    isOwner
+  };
+}
+
+function normalizeJoinRequest(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const user = raw.user && typeof raw.user === 'object' ? raw.user : {};
+  const id = positiveInteger(raw.id)
+    || positiveInteger(raw.user_id)
+    || positiveInteger(raw.userId)
+    || positiveInteger(raw.requester_id)
+    || positiveInteger(raw.requesterId)
+    || positiveInteger(user.id);
+
+  return {
+    id,
+    name: trimmed(raw.name || raw.display_name || raw.displayName || user.name || user.display_name || user.displayName || '') || (id ? `#${id}` : 'Member')
+  };
+}
+
 function isGroupAdmin(group) {
   const role = trimmed(group?.my_membership?.role || group?.myMembership?.role || group?.membership?.role || '');
   return ['admin', 'owner'].includes(role);
@@ -478,6 +523,31 @@ function fileStatus(status) {
         href: ['file-missing', 'file-too-large', 'file-type-invalid', 'file-upload-failed'].includes(value)
           ? '#file-input'
           : null
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function manageStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_MANAGE_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_MANAGE_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_MANAGE_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_MANAGE_ERROR_MESSAGES[value]
       }
     };
   }
@@ -922,6 +992,43 @@ router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
     files,
     isAdmin: isGroupAdmin(group),
     ...fileStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const groupResult = await getGroup(req.token, id);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const ownerId = positiveInteger(group.owner_id || group.ownerId);
+  const visibility = trimmed(group.visibility || 'public') || 'public';
+  const isPrivate = checked(group.is_private ?? group.isPrivate) || visibility !== 'public';
+
+  const [membersResult, requestsResult] = await Promise.all([
+    callGroup(req.token, 'GET', `/${id}/members?limit=100`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [] } };
+    }),
+    callGroup(req.token, 'GET', `/${id}/requests`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
+  ]);
+
+  const members = collectionFrom(membersResult)
+    .map((member) => normalizeGroupMember(member, ownerId))
+    .filter((member) => member.id !== null);
+  const pendingRequests = collectionFrom(requestsResult)
+    .map(normalizeJoinRequest)
+    .filter((requestItem) => requestItem.id !== null);
+
+  return res.render('groups/manage', {
+    title: 'Manage group',
+    activeNav: 'explore',
+    group,
+    members,
+    pendingRequests,
+    isPrivate,
+    ...manageStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 

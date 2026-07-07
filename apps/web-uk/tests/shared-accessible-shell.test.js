@@ -13633,6 +13633,64 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions/33/messages');
   });
 
+  it('renders the Laravel group manage page for signed-in group admins', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Neighbourhood Repairs',
+        visibility: 'private',
+        owner_id: 10,
+        my_membership: {
+          role: 'owner',
+          status: 'active'
+        }
+      }
+    });
+    api.callGroupApi.mockReset()
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            { id: 10, name: 'Pat Owner', role: 'owner' },
+            { id: 55, name: 'Avery Admin', role: 'admin' },
+            { user_id: 66, name: 'Morgan Member', role: 'member' }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 77, name: 'Riley Requester' }
+        ]
+      });
+
+    const unsigned = await request(app).get('/groups/42/manage');
+    const signed = await request(app)
+      .get('/groups/42/manage?status=member-promoted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Manage group');
+    expect(signed.text).toContain('Neighbourhood Repairs');
+    expect(signed.text).toContain('The member is now an admin.');
+    expect(signed.text).toContain('Membership requests');
+    expect(signed.text).toContain('Riley Requester');
+    expect(signed.text).toContain('method="post" action="/groups/42/requests/77"');
+    expect(signed.text).toContain('Avery Admin');
+    expect(signed.text).toContain('Admin');
+    expect(signed.text).toContain('method="post" action="/groups/42/members/55"');
+    expect(signed.text).toContain('Morgan Member');
+    expect(signed.text).toContain('Member');
+    expect(signed.text).toContain('value="promote"');
+    expect(signed.text).toContain('value="remove"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/members?limit=100');
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/requests');
+  });
+
   it('renders the Laravel group files page for signed-in group members', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({

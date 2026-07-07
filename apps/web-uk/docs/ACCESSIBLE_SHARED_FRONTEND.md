@@ -289,8 +289,10 @@ status states. `/groups/{id}/files` now reads Laravel-compatible group detail
 and file listing data, then renders the Blade-style file table, download/delete
 actions, upload form, empty state, and file status banners.
 `/groups/{id}/files/{fileId}/download` now proxies the Laravel-compatible
-binary download response and preserves safe download headers. Other group depth
-GET pages, owner/admin authorization depth, tenant/feature gates, localization,
+binary download response and preserves safe download headers. `/groups/{id}/manage`
+now reads Laravel-compatible member and pending-request data, then renders the
+Blade-style management page with request decisions and member role/removal
+forms. Owner/admin authorization depth, tenant/feature gates, localization,
 runtime behavior, and ASP.NET backend compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
