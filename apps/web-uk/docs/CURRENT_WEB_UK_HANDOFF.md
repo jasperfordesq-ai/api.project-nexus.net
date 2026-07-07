@@ -58,9 +58,9 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Latest focused edits add unsigned auth-required parameterised smoke coverage and `/organisations/{id}` signed-out parity. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `925/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, and unsigned auth-required parameterised redirect smoke scope, assuming agents rerun the refresh protocol |
+| Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `935/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, and chunked runtime-smoke fallback evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -146,20 +146,22 @@ challenge hand-off by storing `two_factor_token` in the session and redirecting
 to `/login/two-factor` when the API returns `requires_2fa`. The default smoke
 scope now checks all eight matched unsigned auth-required parameterised routes
 across federation, ideation, organisations, podcasts, resources, and public
-user collections, bringing the harness scope to `181` checks before the next
-live Laravel-backed run. For targeted CLI runs, `SMOKE_MODULE_PAGE_PATHS`,
+user collections. A full default Laravel-backed run against a temporary web-uk
+process at `WEB_UK_BASE_URL=http://127.0.0.1:5322`, started with `TENANT_ID=2`,
+passed on 2026-07-07: `181/181` checks, `0` failures, `161` module-page
+checks, 8 unsigned auth-required redirect checks, 3 gated-status checks, and 3
+signed redirect checks in 352.8 seconds. For targeted CLI runs,
+`SMOKE_MODULE_PAGE_PATHS`,
 `SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS`, `SMOKE_GATED_PAGE_PATHS`, and
 `SMOKE_REDIRECT_PAGE_PATHS` accept comma/newline-separated lists, and the
 portable sentinel `none` disables that
 group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised
-redirects. A full default `181`-check live run needs a longer outer command
-timeout on this machine; one local attempt timed out while still progressing
-through slower signed module pages. `SMOKE_MODULE_PAGE_CHUNK=N/M` now splits
-only the module-page sweep into deterministic one-based chunks, for example
-`SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can prove the default page set through
-repeatable smaller Laravel-backed runs while leaving auth, unsigned
+redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` now splits only
+the module-page sweep into deterministic one-based chunks, for example
+`SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can recertify the default page set
+through repeatable smaller Laravel-backed runs while leaving auth, unsigned
 auth-required, gated, and redirect checks enabled. All 16 chunked live runs
 against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with `TENANT_ID=2` and
 `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07: `481` total repeated
@@ -282,7 +284,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `925/1000`.
+Current working estimate at this handoff: `935/1000`.
 
 ## Final Handoff Checklist
 

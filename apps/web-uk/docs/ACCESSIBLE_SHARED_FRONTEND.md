@@ -104,17 +104,18 @@ session-backed 2FA token is absent; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
 161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
 The default smoke scope now covers all eight matched unsigned auth-required
-parameterised route redirects, bringing the harness scope to `181` checks
-before the next live Laravel-backed run.
+parameterised route redirects. A full default Laravel-backed run against a
+temporary web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:5322`, started
+with `TENANT_ID=2`, passed on 2026-07-07: `181/181` checks, `0` failures,
+`161` module-page checks, 8 unsigned auth-required redirect checks, 3
+gated-status checks, and 3 signed redirect checks in 352.8 seconds.
 For targeted CLI runs, `SMOKE_MODULE_PAGE_PATHS`,
 `SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS`, `SMOKE_GATED_PAGE_PATHS`, and
 `SMOKE_REDIRECT_PAGE_PATHS` accept comma/newline-separated lists, and the
 portable sentinel `none` disables that group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised redirect
-checks. A full default `181`-check live run should be rerun with a longer outer
-timeout; one local attempt timed out while still progressing through slower
-signed module pages. For repeatable live proof without relaxing the default
+checks. For repeatable live proof on slower shells without relaxing the default
 scope, set `SMOKE_MODULE_PAGE_CHUNK=N/M` to run a deterministic one-based slice
 of only the module-page sweep, for example `SMOKE_MODULE_PAGE_CHUNK=1/4`; the
 auth, unsigned auth-required, gated, and redirect groups still run unless each
