@@ -332,6 +332,72 @@ function normalizeHistoryEvent(item) {
   };
 }
 
+function pluralStreak(count) {
+  if (count === 0) return 'No check-ins yet';
+  if (count === 1) return '1 check-in in a row';
+  return `${count} check-ins in a row`;
+}
+
+function pluralCheckins(count) {
+  if (count === 0) return 'None recorded';
+  if (count === 1) return '1 recorded';
+  return `${count} recorded`;
+}
+
+function normalizeMilestone(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const percent = Math.round(Number(raw.target_percent ?? raw.targetPercent ?? 0)) || 0;
+  const done = Boolean(raw.completed_at || raw.completedAt);
+  return {
+    title: trimmed(raw.title || ''),
+    done,
+    tagClass: done ? 'govuk-tag--green' : 'govuk-tag--grey',
+    statusLabel: done ? 'Reached' : `Target: ${percent}%`
+  };
+}
+
+function normalizeBuddyNote(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const type = allowedValue(raw.type, GOAL_BUDDY_ACTION_TYPES, 'encouragement');
+  return {
+    typeLabel: GOAL_BUDDY_TYPE_LABELS[type],
+    message: trimmed(raw.message || ''),
+    buddyName: trimmed(raw.buddy_name || raw.buddyName || '') || 'A member',
+    createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
+  };
+}
+
+function normalizeInsights(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const keys = Object.keys(raw);
+  const streak = Math.max(0, Number(raw.streak_count ?? raw.streakCount ?? 0) || 0);
+  const best = Math.max(0, Number(raw.best_streak_count ?? raw.bestStreakCount ?? 0) || 0);
+  const checkinCount = Math.max(0, Number(raw.checkin_count ?? raw.checkinCount ?? 0) || 0);
+  const completedMilestones = Math.max(0, Number(raw.completed_milestones ?? raw.completedMilestones ?? 0) || 0);
+  const milestoneCount = Math.max(0, Number(raw.milestone_count ?? raw.milestoneCount ?? 0) || 0);
+  const milestonePercent = milestoneCount > 0 ? Math.round((completedMilestones / milestoneCount) * 100) : 0;
+  const frequency = allowedValue(raw.checkin_frequency || raw.checkinFrequency, GOAL_REMINDER_FREQUENCIES, 'none');
+  const nextDue = dateTimeLabel(raw.next_checkin_due_at || raw.nextCheckinDueAt);
+  const lastCheckin = dateTimeLabel(raw.last_checkin_at || raw.lastCheckinAt);
+
+  return {
+    hasInsights: keys.length > 0,
+    streakText: pluralStreak(streak),
+    bestStreakText: `Best streak: ${best}`,
+    checkinDue: checked(raw.is_checkin_due || raw.isCheckinDue),
+    nextCheckinText: checked(raw.is_checkin_due || raw.isCheckinDue)
+      ? ''
+      : (nextDue || 'No cadence set'),
+    frequencyHelper: frequency === 'none' ? 'Set a check-in cadence when you edit this goal.' : `${GOAL_REMINDER_LABELS[frequency]} cadence`,
+    checkinsText: pluralCheckins(checkinCount),
+    lastCheckinText: lastCheckin ? `Last check-in: ${lastCheckin}` : 'No check-ins yet',
+    milestonesText: `${completedMilestones} of ${milestoneCount} reached`,
+    milestonePercent,
+    milestones: collectionFrom({ data: raw.milestones || [] }).map(normalizeMilestone),
+    buddyNotes: collectionFrom({ data: raw.buddy_notes || raw.buddyNotes || [] }).map(normalizeBuddyNote)
+  };
+}
+
 function normalizeReminder(item) {
   const raw = item && typeof item === 'object' ? item : {};
   const hasReminder = Object.keys(raw).length > 0;
@@ -667,6 +733,32 @@ router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
       hint: GOAL_BUDDY_TYPE_HINTS[value]
     })),
     ...buddyActionStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const [goalResult, insightsResult] = await Promise.all([
+    getGoal(token, id),
+    callGoal(token, 'GET', `/${id}/insights`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: {} };
+    })
+  ]);
+
+  const goal = normalizeGoal(dataFrom(goalResult));
+  goal.id = goal.id || Number(id);
+
+  return res.render('goals/insights', {
+    title: 'Goal insights',
+    activeNav: 'explore',
+    goal,
+    insights: normalizeInsights(dataFrom(insightsResult)),
+    isOwner: checked(goal.is_owner || goal.isOwner || goal.can_edit || goal.canEdit),
+    isBuddy: checked(goal.is_buddy || goal.isBuddy)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

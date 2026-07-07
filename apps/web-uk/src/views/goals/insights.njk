@@ -1,0 +1,98 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+
+  <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
+  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Goal insights</h1>
+  <p class="govuk-body-l">A summary of your check-in cadence, streaks, milestones and recent buddy support.</p>
+
+  {% if not insights.hasInsights %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">We could not load the insights for this goal.</p>
+    </div>
+  {% else %}
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Current streak</dt>
+        <dd class="govuk-summary-list__value">
+          {{ insights.streakText }}
+          <span class="govuk-!-display-block govuk-body-s nexus-alpha-meta">{{ insights.bestStreakText }}</span>
+        </dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Next check-in</dt>
+        <dd class="govuk-summary-list__value">
+          {% if insights.checkinDue %}
+            <strong class="govuk-tag govuk-tag--orange">A check-in is due</strong>
+          {% else %}
+            {{ insights.nextCheckinText }}
+          {% endif %}
+          <span class="govuk-!-display-block govuk-body-s nexus-alpha-meta">{{ insights.frequencyHelper }}</span>
+        </dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Check-ins</dt>
+        <dd class="govuk-summary-list__value">
+          {{ insights.checkinsText }}
+          <span class="govuk-!-display-block govuk-body-s nexus-alpha-meta">{{ insights.lastCheckinText }}</span>
+        </dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Milestones</dt>
+        <dd class="govuk-summary-list__value">
+          {{ insights.milestonesText }}
+          <progress class="govuk-!-display-block" max="100" value="{{ insights.milestonePercent }}" aria-label="Milestone progress: {{ insights.milestonePercent }} percent">{{ insights.milestonePercent }}%</progress>
+        </dd>
+      </div>
+    </dl>
+
+    {% if insights.milestones.length %}
+      <h2 class="govuk-heading-l">Milestone plan</h2>
+      <ul class="govuk-list govuk-list--spaced nexus-alpha-card-list govuk-!-margin-bottom-6">
+        {% for milestone in insights.milestones %}
+          <li class="nexus-alpha-card">
+            <div class="nexus-alpha-module-row">
+              <span class="govuk-body govuk-!-margin-bottom-0">{{ milestone.title }}</span>
+              <strong class="govuk-tag {{ milestone.tagClass }}">{{ milestone.statusLabel }}</strong>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if insights.buddyNotes.length %}
+      <h2 class="govuk-heading-l">Recent buddy support</h2>
+      <ul class="govuk-list nexus-alpha-card-list govuk-!-margin-bottom-6">
+        {% for note in insights.buddyNotes %}
+          <li class="nexus-alpha-card">
+            <p class="govuk-body govuk-!-margin-bottom-1"><strong>{{ note.typeLabel }}</strong></p>
+            {% if note.message %}
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ note.message }}</p>
+            {% endif %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
+              {{ note.buddyName }}{% if note.createdAtLabel %} &middot; {{ note.createdAtLabel }}{% endif %}
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+
+  <nav class="govuk-!-margin-top-4" aria-label="Goal insights">
+    <ul class="govuk-list">
+      {% if isOwner %}
+        <li><a class="govuk-link" href="/goals/{{ goal.id }}/checkin">Log a check-in</a></li>
+        <li><a class="govuk-link" href="/goals/{{ goal.id }}/reminder">Reminder settings</a></li>
+      {% endif %}
+      {% if isBuddy %}
+        <li><a class="govuk-link" href="/goals/{{ goal.id }}/buddy-actions">Send buddy support</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endblock %}

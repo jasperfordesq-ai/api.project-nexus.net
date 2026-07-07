@@ -5811,6 +5811,81 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/history?limit=30&cursor=abc');
   });
 
+  it('renders the Laravel goal insights summary for signed-in viewers', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        is_owner: true,
+        is_buddy: true
+      }
+    });
+    api.callGoalApi.mockReset().mockResolvedValueOnce({
+      data: {
+        streak_count: 3,
+        best_streak_count: 5,
+        checkin_count: 8,
+        checkin_frequency: 'weekly',
+        is_checkin_due: true,
+        last_checkin_at: '2026-07-05T08:00:00Z',
+        completed_milestones: 1,
+        milestone_count: 2,
+        milestones: [
+          { title: 'Prepare the first bed', target_percent: 50, completed_at: '2026-07-03T09:00:00Z' },
+          { title: 'Plant autumn bulbs', target_percent: 100 }
+        ],
+        buddy_notes: [
+          {
+            type: 'encouragement',
+            message: 'You are making brilliant progress.',
+            buddy_name: 'Alex Morgan',
+            created_at: '2026-07-06T10:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/insights');
+    const signed = await request(app)
+      .get('/goals/42/insights')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Goal: Restore the community garden');
+    expect(signed.text).toContain('Goal insights');
+    expect(signed.text).toContain('A summary of your check-in cadence, streaks, milestones and recent buddy support.');
+    expect(signed.text).toContain('Current streak');
+    expect(signed.text).toContain('3 check-ins in a row');
+    expect(signed.text).toContain('Best streak: 5');
+    expect(signed.text).toContain('A check-in is due');
+    expect(signed.text).toContain('Weekly cadence');
+    expect(signed.text).toContain('8 recorded');
+    expect(signed.text).toContain('Last check-in:');
+    expect(signed.text).toContain('1 of 2 reached');
+    expect(signed.text).toContain('aria-label="Milestone progress: 50 percent"');
+    expect(signed.text).toContain('Milestone plan');
+    expect(signed.text).toContain('Prepare the first bed');
+    expect(signed.text).toContain('Reached');
+    expect(signed.text).toContain('Plant autumn bulbs');
+    expect(signed.text).toContain('Target: 100%');
+    expect(signed.text).toContain('Recent buddy support');
+    expect(signed.text).toContain('Encouragement');
+    expect(signed.text).toContain('You are making brilliant progress.');
+    expect(signed.text).toContain('Alex Morgan');
+    expect(signed.text).toContain('/goals/42/checkin');
+    expect(signed.text).toContain('/goals/42/reminder');
+    expect(signed.text).toContain('/goals/42/buddy-actions');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
+    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/insights');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
