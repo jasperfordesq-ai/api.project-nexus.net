@@ -479,6 +479,11 @@ visitors to `/login?status=auth-required`, reads the member's certificates from
 Laravel `/api/v2/volunteering/certificates`, and renders the Blade-style
 generate form, status banners, empty state, certificate cards, organisation
 hour breakdown, verification code, and download link. Its
+`/volunteering/certificates/{code}/download` route first proves the requested
+verification code belongs to the signed-in member by reading
+`/api/v2/volunteering/certificates`, then streams Laravel's printable certificate
+HTML from `/api/v2/volunteering/certificates/{code}/html` with the Blade-style
+inline filename. Its
 `/volunteering/credentials` page redirects unsigned visitors to
 `/login?status=auth-required`, reads the member's credentials from Laravel
 `/api/v2/volunteering/credentials`, and renders the Blade-style upload form,
@@ -534,6 +539,12 @@ pages redirect unsigned visitors to `/login?status=auth-required`, read Laravel
 Blade-style role filter, organisation status cards, dashboard links,
 pagination, recommended-shift cards, match-score progress, applied tags, and
 opportunity links.
+Its `/volunteering/opportunities/create` page redirects unsigned visitors to
+`/login?status=auth-required`, reads manageable organisations from
+`/api/v2/volunteering/my-organisations?per_page=50`, reads volunteering
+categories from `/api/v2/categories?type=volunteering`, filters the form to
+approved/active owner-admin organisations, and renders the Blade-style
+opportunity creation form and validation status states.
 Its organisation-owner pages
 (`/volunteering/organisations/{id}/dashboard`, `/manage`, `/settings`,
 `/volunteers`, and `/wallet`) redirect unsigned visitors to
@@ -549,10 +560,9 @@ accessibility needs, certificate generation, waitlists, swaps, emergency alert
 responses, credential delete plus safe upload proxying, wellbeing check-ins,
 donations, group reservations, expenses, training, incidents, opportunity
 creation, and organisation owner application/hour, settings, and wallet actions
-through Laravel v2 volunteering APIs. This remains partial: certificate
-download, opportunity create GET depth, feature gates, tenant-prefixed routes,
-localization, runtime smoke tests, and ASP.NET backend compatibility are not
-certified.
+through Laravel v2 volunteering APIs. This remains partial: credential download,
+feature gates, tenant-prefixed routes, localization, runtime smoke tests, and
+ASP.NET backend compatibility are not certified.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,

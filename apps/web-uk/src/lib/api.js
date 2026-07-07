@@ -717,6 +717,12 @@ async function getEventCategories(token) {
   });
 }
 
+async function getVolunteeringCategories(token) {
+  return request('/api/v2/categories?type=volunteering', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getGoals(token, params = {}) {
   const query = new URLSearchParams();
   if (params.user_id) query.set('user_id', params.user_id);
@@ -2839,6 +2845,7 @@ module.exports = {
   callGroupExchangeApi,
   callEventApi,
   getEventCategories,
+  getVolunteeringCategories,
   uploadEventImage,
   getGoals,
   getGoal,

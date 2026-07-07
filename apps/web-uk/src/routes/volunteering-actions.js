@@ -5,7 +5,12 @@
 
 const express = require('express');
 const fs = require('fs/promises');
-const { ApiError, callVolunteeringApi, uploadVolunteerCredential } = require('../lib/api');
+const {
+  ApiError,
+  callVolunteeringApi,
+  getVolunteeringCategories,
+  uploadVolunteerCredential
+} = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -1554,6 +1559,59 @@ function normalizeCertificate(row) {
   };
 }
 
+function normalizeManageableOrganization(row) {
+  const organization = row && typeof row === 'object' ? row : {};
+  const id = positiveInteger(organization.id);
+  const role = trimmed(organization.member_role ?? organization.memberRole ?? organization.role).toLowerCase();
+  const status = trimmed(organization.status ?? organization.membership_status ?? organization.membershipStatus).toLowerCase();
+  if (
+    id === null
+    || !['owner', 'admin'].includes(role)
+    || !['approved', 'active'].includes(status)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    name: trimmed(organization.name) || `#${id}`
+  };
+}
+
+function normalizeCategory(row) {
+  const category = row && typeof row === 'object' ? row : {};
+  const id = positiveInteger(category.id);
+  if (id === null) return null;
+
+  return {
+    id,
+    name: trimmed(category.name) || `#${id}`
+  };
+}
+
+function createOpportunityStatus(status) {
+  if (status === 'opp-validation') {
+    return {
+      type: 'validation',
+      errors: [
+        { href: '#organization_id', text: 'Select an organisation.' },
+        { href: '#title', text: 'Enter an opportunity title.' },
+        { href: '#description', text: 'Enter an opportunity description.' }
+      ]
+    };
+  }
+
+  const messages = {
+    'opp-forbidden': 'You do not have permission to create an opportunity for that organisation.',
+    'opp-org-not-found': 'We could not find that organisation.',
+    'opp-create-failed': 'We could not create the opportunity. Try again.'
+  };
+
+  return messages[status]
+    ? { type: 'error', message: messages[status] }
+    : null;
+}
+
 function normalizeCredential(row) {
   const credential = row && typeof row === 'object' ? row : {};
   const type = trimmed(credential.credential_type ?? credential.type);
@@ -1636,6 +1694,29 @@ router.get('/certificates', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/certificates/:code([A-Za-z0-9]+)/download', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const code = trimmed(req.params.code);
+  const certificates = collectionFrom(await callApi(token, 'GET', '/certificates'));
+  const ownsCertificate = certificates.some((certificate) => (
+    trimmed(certificate?.verification_code ?? certificate?.verificationCode) === code
+  ));
+
+  if (!ownsCertificate) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const html = await callApi(token, 'GET', `/certificates/${encodeURIComponent(code)}/html`);
+  const safeCode = code.replace(/[^A-Za-z0-9_-]/g, '');
+  res.set('Content-Type', 'text/html; charset=UTF-8');
+  res.set('Content-Disposition', `inline; filename="volunteer-certificate-${safeCode}.html"`);
+  return res.send(String(html));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Certificate not found' }));
 
 router.get('/accessibility', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
@@ -2181,6 +2262,38 @@ router.get('/expenses', asyncRoute(async (req, res) => {
     dashboard,
     loadError,
     status: expenseStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/opportunities/create', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let organizations = [];
+  let categories = [];
+  let loadError = null;
+  try {
+    organizations = collectionFrom(await callApi(token, 'GET', '/my-organisations?per_page=50'))
+      .map(normalizeManageableOrganization)
+      .filter(Boolean);
+    categories = collectionFrom(await getVolunteeringCategories(token))
+      .map(normalizeCategory)
+      .filter(Boolean);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the create opportunity form. Please try again.';
+  }
+
+  return res.render('volunteering/create-opportunity', {
+    title: 'Create volunteering opportunity',
+    activeNav: 'volunteering',
+    organizations,
+    categories,
+    loadError,
+    status: createOpportunityStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

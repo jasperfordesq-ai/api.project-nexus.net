@@ -199,6 +199,7 @@ jest.mock('../src/lib/api', () => ({
   getVolunteerOrganisation: jest.fn(),
   getMyVolunteerOrganisations: jest.fn(),
   createVolunteerOrganisation: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  getVolunteeringCategories: jest.fn().mockResolvedValue({ data: [] }),
   callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -356,6 +357,7 @@ describe('shared accessible frontend shell', () => {
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.getVolunteeringCategories.mockReset().mockResolvedValue({ data: [] });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.uploadMarketplaceListingImages.mockReset().mockResolvedValue({ data: [{ id: 9 }] });
@@ -15732,6 +15734,90 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Independent volunteering (4.5 hours)');
     expect(response.text).toContain('href="/volunteering/certificates/ABC123/download"');
     expect(response.text).toContain('Download certificate');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('downloads a Laravel volunteering certificate after proving signed-in ownership', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              verification_code: 'ABC123',
+              total_hours: 12.5
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce('<!DOCTYPE html><html><body><h1>Volunteer impact certificate</h1><code>ABC123</code></body></html>');
+
+    const response = await request(app)
+      .get('/volunteering/certificates/ABC123/download')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.headers['content-disposition']).toBe('inline; filename="volunteer-certificate-ABC123.html"');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/certificates');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/certificates/ABC123/html');
+    expect(response.text).toContain('Volunteer impact certificate');
+    expect(response.text).toContain('ABC123');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel volunteering create-opportunity page for signed-in organisation managers', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 42, name: 'Community Kitchen', member_role: 'owner', status: 'approved' },
+          { id: 43, name: 'Pending Garden', member_role: 'admin', status: 'pending' },
+          { id: 44, name: 'Member Pantry', member_role: 'member', status: 'approved' }
+        ]
+      }
+    });
+    api.getVolunteeringCategories.mockResolvedValueOnce({
+      data: [
+        { id: 3, name: 'Food support' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/volunteering/opportunities/create?status=opp-validation')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/my-organisations?per_page=50');
+    expect(api.getVolunteeringCategories).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('href="/volunteering/my-organisations"');
+    expect(response.text).toContain('Back to my organisations');
+    expect(response.text).toContain('There is a problem');
+    expect(response.text).toContain('Select an organisation.');
+    expect(response.text).toContain('Enter an opportunity title.');
+    expect(response.text).toContain('Enter an opportunity description.');
+    expect(response.text).toContain('Create volunteering opportunity');
+    expect(response.text).toContain('Add a role that volunteers can discover and apply for.');
+    expect(response.text).toContain('method="post" action="/volunteering/opportunities/create"');
+    expect(response.text).toContain('id="organization_id" name="organization_id"');
+    expect(response.text).toContain('<option value="42">Community Kitchen</option>');
+    expect(response.text).not.toContain('Pending Garden');
+    expect(response.text).not.toContain('Member Pantry');
+    expect(response.text).toContain('id="title" name="title" type="text" maxlength="200"');
+    expect(response.text).toContain('id="description" name="description" rows="6"');
+    expect(response.text).toContain('id="location" name="location" type="text" maxlength="255"');
+    expect(response.text).toContain('id="skills_needed" name="skills_needed" type="text" maxlength="255"');
+    expect(response.text).toContain('id="category_id" name="category_id"');
+    expect(response.text).toContain('<option value="3">Food support</option>');
+    expect(response.text).toContain('id="start_date" name="start_date" type="date"');
+    expect(response.text).toContain('id="end_date" name="end_date" type="date"');
+    expect(response.text).toContain('id="is_remote" name="is_remote" type="checkbox" value="1"');
+    expect(response.text).toContain('id="federated_visibility" name="federated_visibility" type="checkbox" value="1"');
+    expect(response.text).toContain('Create opportunity');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
