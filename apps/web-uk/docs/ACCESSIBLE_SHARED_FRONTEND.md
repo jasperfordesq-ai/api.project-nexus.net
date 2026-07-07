@@ -483,7 +483,13 @@ hour breakdown, verification code, and download link. Its
 `/login?status=auth-required`, reads the member's credentials from Laravel
 `/api/v2/volunteering/credentials`, and renders the Blade-style upload form,
 status banners, type options, credential table, status tags, expiry/uploaded
-dates, and delete controls. Laravel POST aliases now
+dates, and delete controls. Its `/volunteering/hours` page redirects unsigned
+visitors to `/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/hours/summary`, `/api/v2/volunteering/hours`,
+`/api/v2/volunteering/applications`, and
+`/api/v2/volunteering/my-organisations`, and renders the Blade-style summary
+stats, by-organisation/by-month tables, log-hours form, and recent hour-log
+cards. Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
 responses, credential delete plus safe upload proxying, wellbeing check-ins,

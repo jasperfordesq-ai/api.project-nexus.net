@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T04:18:26.663Z",
+    "generatedAt": "2026-07-07T04:25:06.295Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12611,8 +12611,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/hours",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "volunteering/hours",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\volunteering-actions.js"
     },
     {
       "method": "GET",

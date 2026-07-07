@@ -15798,6 +15798,110 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering hours page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          total_approved_hours: 12.5,
+          pending_hours: 3,
+          this_month_hours: 4.25,
+          by_organization: [{ name: 'Community Kitchen', hours: 8.5 }],
+          by_month: [{ month: '2026-07', hours: 4.25 }]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 91,
+              date: '2026-07-03',
+              hours: 2.5,
+              status: 'pending',
+              description: 'Prepared meals for neighbours',
+              organization: { id: 8, name: 'Community Kitchen' }
+            },
+            {
+              id: 90,
+              date_logged: '2026-06-22',
+              hours: 1.75,
+              status: 'approved',
+              description: 'Sorted donated supplies',
+              organization: { id: 9, name: 'Mutual Aid Store' }
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 31,
+              status: 'approved',
+              opportunity: { id: 77, title: 'Cook lunch' },
+              organization: { id: 8, name: 'Community Kitchen' }
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 9, name: 'Mutual Aid Store' },
+            { id: 8, name: 'Community Kitchen' }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/volunteering/hours?status=hours-created')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/hours/summary');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/hours?per_page=10');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/applications?status=approved&per_page=50');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/my-organisations?per_page=50');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your hours have been submitted for review.');
+    expect(response.text).toContain('Volunteering hours');
+    expect(response.text).toContain('When an organisation approves your hours, the time credits are added to your wallet automatically');
+    expect(response.text).toContain('Approved hours');
+    expect(response.text).toContain('12.5');
+    expect(response.text).toContain('Pending hours');
+    expect(response.text).toContain('3.0');
+    expect(response.text).toContain('This month');
+    expect(response.text).toContain('4.3');
+    expect(response.text).toContain('Hours by organisation');
+    expect(response.text).toContain('Community Kitchen');
+    expect(response.text).toContain('Hours by month');
+    expect(response.text).toContain('July 2026');
+    expect(response.text).toContain('method="post" action="/volunteering/hours"');
+    expect(response.text).toContain('Log volunteering hours');
+    expect(response.text).toContain('id="organization_id" name="organization_id"');
+    expect(response.text).toContain('value="8"');
+    expect(response.text).toContain('value="9"');
+    expect(response.text).toContain('id="opportunity_id" name="opportunity_id"');
+    expect(response.text).toContain('value="77"');
+    expect(response.text).toContain('Cook lunch');
+    expect(response.text).toContain('id="date" name="date" type="date"');
+    expect(response.text).toContain('id="hours" name="hours" type="number"');
+    expect(response.text).toContain('id="description" name="description"');
+    expect(response.text).toContain('Recent hour logs');
+    expect(response.text).toContain('3 July 2026');
+    expect(response.text).toContain('Submitted');
+    expect(response.text).toContain('Waiting for the organisation to review and approve these hours.');
+    expect(response.text).toContain('Prepared meals for neighbours');
+    expect(response.text).toContain('22 June 2026');
+    expect(response.text).toContain('Approved');
+    expect(response.text).toContain('Approved. The time credits for these hours have been added to your wallet automatically.');
+    expect(response.text).toContain('Sorted donated supplies');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

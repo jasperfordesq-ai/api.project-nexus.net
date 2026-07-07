@@ -195,12 +195,36 @@ function hoursLabel(value) {
   return Number.isFinite(number) ? number.toFixed(1) : '0.0';
 }
 
+function monthLabel(value) {
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return text;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  if (Number.isNaN(date.getTime())) return text;
+
+  return new Intl.DateTimeFormat('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
 function certificateStatus(status) {
   if (status === 'certificate-generated') {
     return { type: 'success', message: 'Your certificate has been generated.' };
   }
   if (status === 'certificate-no-hours') {
     return { type: 'error', message: 'You do not have any approved volunteering hours to certify yet.' };
+  }
+  return null;
+}
+
+function hoursStatus(status) {
+  if (status === 'hours-created') {
+    return { type: 'success', message: 'Your hours have been submitted for review.' };
+  }
+  if (status === 'hours-failed') {
+    return { type: 'error', message: 'Your hours could not be logged. Check the details and try again.' };
   }
   return null;
 }
@@ -267,6 +291,121 @@ function credentialStatusPresentation(status) {
     value,
     label: CREDENTIAL_STATUS_LABELS[value] || headline(value) || 'Awaiting review',
     className: CREDENTIAL_STATUS_CLASSES[value] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeHourSummary(result) {
+  const summary = dataFrom(result);
+  const data = summary && typeof summary === 'object' ? summary : {};
+  return {
+    approvedHoursLabel: hoursLabel(data.total_approved_hours ?? data.approved_hours ?? data.total_verified),
+    pendingHoursLabel: hoursLabel(data.pending_hours ?? data.total_pending),
+    thisMonthHoursLabel: hoursLabel(data.this_month_hours),
+    approvedTotal: Number(data.total_approved_hours ?? data.approved_hours ?? data.total_verified) || 0,
+    byOrganization: Array.isArray(data.by_organization)
+      ? data.by_organization.map((row) => ({
+        name: trimmed(row?.name),
+        hoursLabel: hoursLabel(row?.hours)
+      })).filter((row) => row.name)
+      : [],
+    byMonth: Array.isArray(data.by_month)
+      ? data.by_month.map((row) => ({
+        monthLabel: monthLabel(row?.month),
+        hoursLabel: hoursLabel(row?.hours)
+      })).filter((row) => row.monthLabel)
+      : []
+  };
+}
+
+function normalizeOrganization(row) {
+  const organization = row && typeof row === 'object' ? row : {};
+  const id = positiveInteger(organization.id);
+  return id === null ? null : {
+    id,
+    name: trimmed(organization.name) || `Organisation ${id}`
+  };
+}
+
+function normalizeApplication(row) {
+  const application = row && typeof row === 'object' ? row : {};
+  const opportunity = application.opportunity && typeof application.opportunity === 'object'
+    ? application.opportunity
+    : {};
+  const organization = application.organization && typeof application.organization === 'object'
+    ? application.organization
+    : {};
+  return {
+    id: positiveInteger(application.id),
+    status: trimmed(application.status),
+    opportunity: {
+      id: positiveInteger(opportunity.id ?? application.opportunity_id ?? application.opportunityId),
+      title: trimmed(opportunity.title ?? application.opportunity_title ?? application.opportunityTitle)
+    },
+    organization: normalizeOrganization({
+      id: organization.id ?? application.organization_id ?? application.organizationId,
+      name: organization.name ?? application.organization_name ?? application.organizationName
+    })
+  };
+}
+
+function hoursOrganizations(organizations, applications) {
+  const byId = new Map();
+  for (const organization of organizations.map(normalizeOrganization).filter(Boolean)) {
+    byId.set(organization.id, organization);
+  }
+  for (const application of applications) {
+    if (application.organization) {
+      byId.set(application.organization.id, application.organization);
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+}
+
+function hourStatusPresentation(status) {
+  const value = trimmed(status) || 'pending';
+  if (value === 'pending') {
+    return {
+      value,
+      label: 'Submitted',
+      className: 'govuk-tag--yellow',
+      note: 'Waiting for the organisation to review and approve these hours.'
+    };
+  }
+  if (value === 'approved') {
+    return {
+      value,
+      label: 'Approved',
+      className: 'govuk-tag--green',
+      note: 'Approved. The time credits for these hours have been added to your wallet automatically.'
+    };
+  }
+  if (value === 'declined' || value === 'rejected') {
+    return {
+      value,
+      label: 'Declined',
+      className: 'govuk-tag--red',
+      note: ''
+    };
+  }
+  return {
+    value,
+    label: headline(value),
+    className: 'govuk-tag--grey',
+    note: ''
+  };
+}
+
+function normalizeHourLog(row) {
+  const log = row && typeof row === 'object' ? row : {};
+  const organization = log.organization && typeof log.organization === 'object' ? log.organization : {};
+  const status = hourStatusPresentation(log.status);
+  return {
+    id: positiveInteger(log.id),
+    dateLabel: dateLabel(log.date ?? log.date_logged ?? log.dateLogged ?? log.logged_at ?? log.loggedAt ?? log.created_at),
+    hoursLabel: hoursLabel(log.hours),
+    status,
+    organizationName: trimmed(organization.name ?? log.organization_name ?? log.organizationName),
+    description: trimmed(log.description)
   };
 }
 
@@ -417,6 +556,49 @@ router.get('/credentials', asyncRoute(async (req, res) => {
     credentials,
     loadError,
     status: credentialStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/hours', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let summary = normalizeHourSummary({});
+  let logs = [];
+  let applications = [];
+  let organizations = [];
+  let loadError = null;
+  try {
+    summary = normalizeHourSummary(await callApi(token, 'GET', '/hours/summary'));
+    logs = collectionFrom(await callApi(token, 'GET', '/hours?per_page=10')).map(normalizeHourLog);
+    applications = collectionFrom(
+      await callApi(token, 'GET', '/applications?status=approved&per_page=50')
+    ).map(normalizeApplication);
+    organizations = hoursOrganizations(
+      collectionFrom(await callApi(token, 'GET', '/my-organisations?per_page=50')),
+      applications
+    );
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your volunteering hours. Please try again.';
+  }
+
+  const nextGoal = summary.approvedTotal > 0 ? Math.ceil(summary.approvedTotal / 50) * 50 : 0;
+
+  return res.render('volunteering/hours', {
+    title: 'Volunteering hours',
+    activeNav: 'volunteering',
+    summary,
+    nextGoal,
+    logs,
+    applications,
+    organizations,
+    loadError,
+    today: new Date().toISOString().slice(0, 10),
+    status: hoursStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
