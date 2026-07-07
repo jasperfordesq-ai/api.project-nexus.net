@@ -2187,6 +2187,48 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel member profile action helpers', () => {
+    it('should list member connections through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [], meta: { has_more: false } })
+      });
+
+      await api.getConnectionsV2('test-token', {
+        status: 'pending_received',
+        per_page: 20,
+        cursor: 'next-page'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/connections?status=pending_received&per_page=20&cursor=next-page',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch pending connection counts through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { received: 1, sent: 2, total_friends: 3 } })
+      });
+
+      await api.getConnectionPendingCountsV2('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/connections/pending',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should fetch member connection status through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

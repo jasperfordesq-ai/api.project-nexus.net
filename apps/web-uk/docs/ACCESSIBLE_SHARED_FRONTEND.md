@@ -154,6 +154,16 @@ groups. Saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
 `POST /api/v2/search/saved/{id}/run` before redirecting to `/search/advanced`.
 The saved-search delete confirmation GET reads the owner-scoped saved-search
 list from `/api/v2/search/saved` and renders the Blade-style warning form.
+`/connections/network` now redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel `/api/v2/connections` for the
+accepted, pending-received, and pending-sent sections plus
+`/api/v2/connections/pending` for counts, and renders the Blade-style network
+tabs, status banners, search form, member cards, connected-since metadata, and
+connection action forms. The `/connections/{id}/accept`,
+`/connections/{id}/decline`, and `/connections/{id}/remove` POST handlers now
+call Laravel v2 connection helpers and preserve Laravel status redirects.
+Tenant feature gates, localization, runtime behavior, and ASP.NET backend
+compatibility are not certified.
 `/achievements` now redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel-compatible gamification profile,
 badge, progress, daily reward, and challenge endpoints, and renders the

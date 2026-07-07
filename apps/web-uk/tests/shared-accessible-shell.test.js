@@ -165,6 +165,8 @@ jest.mock('../src/lib/api', () => ({
   callGamificationApi: jest.fn().mockResolvedValue({ data: {} }),
   purchaseGamificationShopItem: jest.fn().mockResolvedValue({ data: { success: true } }),
   updateGamificationShowcase: jest.fn().mockResolvedValue({ data: { message: 'updated' } }),
+  getConnectionsV2: jest.fn().mockResolvedValue({ data: [], meta: { has_more: false } }),
+  getConnectionPendingCountsV2: jest.fn().mockResolvedValue({ data: { received: 0, sent: 0, total_friends: 0 } }),
   getMemberConnectionStatus: jest.fn().mockResolvedValue({ data: { status: 'none' } }),
   sendMemberConnectionRequest: jest.fn().mockResolvedValue({ data: { id: 22 } }),
   acceptMemberConnection: jest.fn().mockResolvedValue({ data: { status: 'connected' } }),
@@ -337,6 +339,8 @@ describe('shared accessible frontend shell', () => {
     api.callGamificationApi.mockReset().mockResolvedValue({ data: {} });
     api.purchaseGamificationShopItem.mockReset().mockResolvedValue({ data: { success: true } });
     api.updateGamificationShowcase.mockReset().mockResolvedValue({ data: { message: 'updated' } });
+    api.getConnectionsV2.mockReset().mockResolvedValue({ data: [], meta: { has_more: false } });
+    api.getConnectionPendingCountsV2.mockReset().mockResolvedValue({ data: { received: 0, sent: 0, total_friends: 0 } });
     api.getMemberConnectionStatus.mockReset().mockResolvedValue({ data: { status: 'none' } });
     api.sendMemberConnectionRequest.mockReset().mockResolvedValue({ data: { id: 22 } });
     api.acceptMemberConnection.mockReset().mockResolvedValue({ data: { status: 'connected' } });
@@ -5773,6 +5777,180 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/search/advanced?q=gardening&type=users&sort=oldest&skills=repair%2Cteaching');
     expect(api.runSavedSearch).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('renders the Laravel-backed connections network page', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getConnectionPendingCountsV2.mockResolvedValueOnce({
+      data: { received: 1, sent: 1, total_friends: 2 }
+    });
+    api.getConnectionsV2
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 30,
+            connection_id: 30,
+            created_at: '2026-02-14T12:00:00Z',
+            partner: {
+              id: 77,
+              name: 'Avery Stone',
+              location: 'Town allotments',
+              bio: '<p>Gardening mentor and compost lead.</p>'
+            }
+          }
+        ],
+        meta: { has_more: true, cursor: 'accepted-next' }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 31,
+            partner: {
+              id: 78,
+              first_name: 'Morgan',
+              last_name: 'Lee',
+              location: 'Town library',
+              bio: 'Tool library helper'
+            }
+          }
+        ],
+        meta: { has_more: true, cursor: 'received-next' }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 32,
+            partner: {
+              id: 79,
+              profile_type: 'organisation',
+              organization_name: 'Town Mutual Aid',
+              location: 'Town centre',
+              bio: 'Local support network'
+            }
+          }
+        ],
+        meta: { has_more: false }
+      });
+
+    const unsigned = await request(app).get('/connections/network');
+    const signed = await request(app)
+      .get('/connections/network?tab=pending_received&q=Town&cursor=received-cursor&status=connection-accepted')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.getConnectionPendingCountsV2).toHaveBeenCalledWith('test-token');
+    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(1, 'test-token', {
+      status: 'accepted',
+      per_page: 20
+    });
+    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(2, 'test-token', {
+      status: 'pending_received',
+      per_page: 20,
+      cursor: 'received-cursor'
+    });
+    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(3, 'test-token', {
+      status: 'pending_sent',
+      per_page: 20
+    });
+    expect(signed.text).toContain('Connection request accepted.');
+    expect(signed.text).toContain('Connections - Project NEXUS Accessible');
+    expect(signed.text).toContain('Your connections at Project NEXUS Accessible');
+    expect(signed.text).toContain('My network');
+    expect(signed.text).toContain('Manage the people you are connected with, requests waiting for your reply, and requests you have sent.');
+    expect(signed.text).toContain('You have 2 connections, 1 requests waiting for your reply and 1 requests you have sent.');
+    expect(signed.text).toContain('Search your network');
+    expect(signed.text).toContain('Filter the people shown below by name or location.');
+    expect(signed.text).toContain('value="Town"');
+    expect(signed.text).toContain('href="/connections/network?tab=accepted&amp;q=Town"');
+    expect(signed.text).toContain('href="/connections/network?tab=pending_received&amp;q=Town"');
+    expect(signed.text).toContain('My connections (2)');
+    expect(signed.text).toContain('Pending requests (1)');
+    expect(signed.text).toContain('Sent requests (1)');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('Town allotments');
+    expect(signed.text).toContain('Gardening mentor and compost lead.');
+    expect(signed.text).toContain('Connected since February 2026');
+    expect(signed.text).toContain('href="/messages/new/77"');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('action="/connections/30/remove"');
+    expect(signed.text).toContain('Disconnect');
+    expect(signed.text).not.toContain('accepted-next');
+    expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).toContain('Wants to connect with you');
+    expect(signed.text).toContain('action="/connections/31/accept"');
+    expect(signed.text).toContain('action="/connections/31/decline"');
+    expect(signed.text).not.toContain('received-next');
+    expect(signed.text).toContain('Town Mutual Aid');
+    expect(signed.text).toContain('Request pending');
+    expect(signed.text).toContain('Cancel request');
+    expect(signed.text).toContain('Back to connections');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders empty Laravel connection network sections when the connection API fails', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getConnectionPendingCountsV2.mockRejectedValueOnce(new Error('service unavailable'));
+
+    const response = await request(app)
+      .get('/connections/network')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have 0 connections, 0 requests waiting for your reply and 0 requests you have sent.');
+    expect(response.text).toContain('No connections yet');
+    expect(response.text).toContain('No pending requests');
+    expect(response.text).toContain('No sent requests');
+  });
+
+  it('submits Laravel connection actions through the v2 connection helpers', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const acceptResponse = await agent
+      .post('/connections/31/accept')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    const declineResponse = await agent
+      .post('/connections/32/decline')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    const removeResponse = await agent
+      .post('/connections/33/remove')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(acceptResponse.status).toBe(302);
+    expect(acceptResponse.headers.location).toBe('/connections?status=connection-accepted#connections-top');
+    expect(api.acceptMemberConnection).toHaveBeenCalledWith('test-token', '31');
+
+    expect(declineResponse.status).toBe(302);
+    expect(declineResponse.headers.location).toBe('/connections?status=connection-declined#connections-top');
+    expect(api.declineMemberConnection).toHaveBeenCalledWith('test-token', '32');
+
+    expect(removeResponse.status).toBe(302);
+    expect(removeResponse.headers.location).toBe('/connections?status=connection-removed#connections-top');
+    expect(api.removeMemberConnection).toHaveBeenCalledWith('test-token', '33');
   });
 
   it('redirects signed-out Laravel saved search submissions to the auth-required status', async () => {

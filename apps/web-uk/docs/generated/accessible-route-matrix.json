@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T02:16:42.821Z",
+    "generatedAt": "2026-07-07T02:26:11.033Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -2598,8 +2598,8 @@
       "gates": "feature:connections",
       "apiNeeds": "",
       "webUkPath": "/connections/network",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "connections/network",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\connections.js"
     },
     {
       "method": "POST",

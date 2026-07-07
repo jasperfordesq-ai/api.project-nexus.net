@@ -1670,6 +1670,24 @@ async function getPendingConnections(token) {
   });
 }
 
+async function getConnectionsV2(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+
+  return request(`/api/v2/connections${suffix}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getConnectionPendingCountsV2(token) {
+  return request('/api/v2/connections/pending', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function sendConnectionRequest(token, userId) {
   return request('/api/connections', {
     method: 'POST',
@@ -2902,6 +2920,8 @@ module.exports = {
   // Connections
   getConnections,
   getPendingConnections,
+  getConnectionsV2,
+  getConnectionPendingCountsV2,
   sendConnectionRequest,
   getMemberConnectionStatus,
   sendMemberConnectionRequest,
