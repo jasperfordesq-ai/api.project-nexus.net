@@ -55,6 +55,8 @@ jest.mock('../src/lib/api', () => ({
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getUser: jest.fn(),
+  getUserV2: jest.fn(),
+  getMemberVerificationBadges: jest.fn(),
   searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
   getMembersV2: jest.fn(),
   getMembersNearby: jest.fn(),
@@ -277,6 +279,8 @@ describe('shared accessible frontend shell', () => {
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
+    api.getUserV2.mockReset();
+    api.getMemberVerificationBadges.mockReset();
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
@@ -6629,6 +6633,95 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('View profile');
     expect(signed.text).toContain('href="/members/nearby?q=repair&amp;radius=50&amp;offset=48"');
     expect(signed.text).toContain('More nearby members');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel member reputation insights page for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.getUserV2.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        name: 'Ada Lovelace',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        total_hours_given: 42.5,
+        total_hours_received: 11.25,
+        rating: 4.8,
+        level: 5,
+        xp: 1470,
+        groups_count: 3,
+        events_attended: 8,
+        nexus_score: {
+          total_score: 812.4,
+          tier: 'advanced',
+          percentile: 12
+        },
+        stats: {
+          listings_count: 4,
+          connections_count: 15,
+          reviews_count: 6
+        },
+        badges: [
+          { badge_key: 'community-builder', name: 'Community builder', icon: 'star' },
+          { badge_key: 'mentor', name: 'Mentor', icon: 'spark' }
+        ]
+      }
+    });
+    api.getMemberVerificationBadges.mockResolvedValueOnce({
+      data: [
+        { badge_type: 'email_verified', label: 'Email verified', granted_at: '2026-05-01T10:00:00Z' },
+        { badge_type: 'id_verified', label: 'ID verified', granted_at: '2026-05-03T10:00:00Z' }
+      ]
+    });
+
+    const unsigned = await request(app).get('/members/77/insights');
+    const signed = await request(app)
+      .get('/members/77/insights')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getUserV2).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getMemberVerificationBadges).toHaveBeenCalledWith('test-token', 77);
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('Ada Lovelace');
+    expect(signed.text).toContain('Reputation and recognition');
+    expect(signed.text).toContain('A summary of Ada Lovelace');
+    expect(signed.text).toContain('NEXUS score');
+    expect(signed.text).toContain('812.4');
+    expect(signed.text).toContain('out of 1,000');
+    expect(signed.text).toContain('Advanced');
+    expect(signed.text).toContain('Top 12% of members in this community.');
+    expect(signed.text).toContain('value="12"');
+    expect(signed.text).toContain('Activity');
+    expect(signed.text).toContain('Hours given');
+    expect(signed.text).toContain('42.5');
+    expect(signed.text).toContain('Hours received');
+    expect(signed.text).toContain('11.3');
+    expect(signed.text).toContain('Active listings');
+    expect(signed.text).toContain('Groups joined');
+    expect(signed.text).toContain('Events attended');
+    expect(signed.text).toContain('Connections');
+    expect(signed.text).toContain('Reviews received');
+    expect(signed.text).toContain('Average rating');
+    expect(signed.text).toContain('4.8');
+    expect(signed.text).toContain('Level');
+    expect(signed.text).toContain('5');
+    expect(signed.text).toContain('Experience points');
+    expect(signed.text).toContain('1470');
+    expect(signed.text).toContain('Verifications');
+    expect(signed.text).toContain('Email verified');
+    expect(signed.text).toContain('ID verified');
+    expect(signed.text).toContain('Earned badges');
+    expect(signed.text).toContain('Community builder');
+    expect(signed.text).toContain('Mentor');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

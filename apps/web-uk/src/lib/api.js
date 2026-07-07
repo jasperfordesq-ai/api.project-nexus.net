@@ -379,6 +379,18 @@ async function getUser(token, id) {
   });
 }
 
+async function getUserV2(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMemberVerificationBadges(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/verification-badges`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Listings
 async function getListings(token, params = {}) {
   const query = new URLSearchParams();
@@ -2925,6 +2937,8 @@ module.exports = {
   getUsers,
   searchUsers,
   getUser,
+  getUserV2,
+  getMemberVerificationBadges,
   // Listings
   getListings,
   getListing,

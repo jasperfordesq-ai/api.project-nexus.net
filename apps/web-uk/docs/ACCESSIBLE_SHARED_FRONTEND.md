@@ -158,10 +158,14 @@ member cards, profile links, and load-more navigation. Member proximity GET
 `/login?status=auth-required`, reads the signed-in profile location, calls
 Laravel-compatible `/api/v2/members/nearby`, and renders the Blade-style
 radius/search page with no-location guidance, member distance cards, profile
-links, and load-more navigation. `/members/{id}/insights` remains a generated
-preparation page; base directory and
-profile visual parity, feature gates, localization, runtime smoke tests, and
-ASP.NET backend compatibility are not certified.
+links, and load-more navigation. Member reputation GET
+`/members/{id}/insights` now redirects unsigned visitors to
+`/login?status=auth-required`, reads the signed-in profile plus Laravel
+`/api/v2/users/{id}` and `/api/v2/users/{id}/verification-badges`, and renders
+the Blade-style NEXUS score, activity stats, verification badges, and earned
+badges page. Base directory and profile visual parity, feature gates,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 Matches GET pages now redirect unsigned visitors to `/login?status=auth-required`,
 call Laravel-compatible `/api/v2/matches/all`, and render the Blade-style
 `/matches` summary plus the `/matches/board` stats/filter board. Match-dismiss

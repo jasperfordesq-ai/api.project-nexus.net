@@ -7,6 +7,8 @@ const express = require('express');
 const {
   getUsers,
   getUser,
+  getUserV2,
+  getMemberVerificationBadges,
   getMembersV2,
   getMembersNearby,
   getConnections,
@@ -138,6 +140,78 @@ function normalizeNearbyMember(member) {
     ...normalized,
     distanceLabel: Number.isFinite(distance) ? `${distance.toFixed(1)} km away` : ''
   };
+}
+
+function decimalLabel(value, fallback = '0.0') {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : fallback;
+}
+
+function integerLabel(value, fallback = '0') {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(Math.trunc(number)) : fallback;
+}
+
+function titleLabel(value) {
+  const raw = String(value || '').replace(/_/g, ' ').trim();
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+function dateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function normalizeInsightsProfile(profile) {
+  const stats = profile && typeof profile.stats === 'object' && profile.stats !== null ? profile.stats : {};
+  const nexusScore = profile && typeof profile.nexus_score === 'object' && profile.nexus_score !== null
+    ? profile.nexus_score
+    : null;
+  const badges = Array.isArray(profile.badges)
+    ? profile.badges
+    : (Array.isArray(profile.showcased_badges) ? profile.showcased_badges : []);
+
+  return {
+    displayName: memberName(profile || {}),
+    nexusScore: nexusScore
+      ? {
+          scoreLabel: decimalLabel(nexusScore.total_score, ''),
+          tierLabel: titleLabel(nexusScore.tier),
+          percentile: boundedInteger(nexusScore.percentile, 0, 0, 100)
+        }
+      : null,
+    stats: {
+      hoursGiven: decimalLabel(profile.total_hours_given ?? stats.total_hours_given),
+      hoursReceived: decimalLabel(profile.total_hours_received ?? stats.total_hours_received),
+      listingsCount: integerLabel(stats.listings_count),
+      groupsCount: integerLabel(profile.groups_count ?? stats.groups_count),
+      eventsAttended: integerLabel(profile.events_attended ?? stats.events_attended),
+      connectionsCount: integerLabel(stats.connections_count),
+      reviewsCount: integerLabel(stats.reviews_count),
+      rating: profile.rating ?? stats.average_rating,
+      ratingLabel: Number.isFinite(Number(profile.rating ?? stats.average_rating))
+        ? decimalLabel(profile.rating ?? stats.average_rating)
+        : '',
+      level: integerLabel(profile.level, '1'),
+      xp: integerLabel(profile.xp)
+    },
+    badges: badges.slice(0, 12).map((badge) => ({
+      name: String(badge.name || badge.badge_name || badge.badge_key || '').trim(),
+      icon: String(badge.icon || '').trim()
+    })).filter((badge) => badge.name)
+  };
+}
+
+function normalizeVerificationBadges(result) {
+  return rowsFrom(result).map((badge) => {
+    const type = String(badge.badge_type || badge.type || '').trim();
+    return {
+      label: String(badge.label || titleLabel(type) || 'Verified').trim(),
+      grantedLabel: dateLabel(badge.granted_at || badge.created_at || badge.verified_at)
+    };
+  }).filter((badge) => badge.label);
 }
 
 function redirectAuthIfNeeded(error, res) {
@@ -435,6 +509,42 @@ router.get('/nearby', asyncRoute(async (req, res) => {
     nextHref: hasMore ? `/members/nearby${search ? `?q=${encodeURIComponent(search)}&` : '?'}radius=${radius}&offset=${offset + limit}` : '',
     errorMessage
   });
+}));
+
+router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  try {
+    const [viewerResult, profileResult, verificationResult] = await Promise.all([
+      getProfile(token),
+      getUserV2(token, id),
+      getMemberVerificationBadges(token, id).catch(() => ({ data: [] }))
+    ]);
+    const viewer = dataFrom(viewerResult) || {};
+    const profile = dataFrom(profileResult) || {};
+    const normalized = normalizeInsightsProfile(profile);
+    const isOwnProfile = Number(viewer.id) === id;
+
+    res.render('members/insights', {
+      title: `Reputation and recognition - ${normalized.displayName}`,
+      activeNav: isOwnProfile ? 'profile' : 'members',
+      alphaActiveNav: isOwnProfile ? 'profile' : 'members',
+      memberId: id,
+      isOwnProfile,
+      displayName: normalized.displayName,
+      nexusScore: normalized.nexusScore,
+      insightsStats: normalized.stats,
+      verificationBadges: normalizeVerificationBadges(verificationResult),
+      earnedBadges: normalized.badges
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    throw error;
+  }
 }));
 
 router.use(requireAuth);
