@@ -888,19 +888,116 @@ public class MarketplaceController : ControllerBase
     }
 
     [HttpGet("groups/{groupId:int}/listings")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GroupListings(int groupId)
+    [Authorize]
+    public async Task<IActionResult> GroupListings(
+        int groupId,
+        [FromQuery] int? category_id = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? condition = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? cursor = null)
     {
-        var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, null, groupId, false, false, 1, 100);
-        return Ok(new { data = items.Select(l => MapListing(l)), meta = new { total } });
+        var userId = RequireUserId();
+        var access = await LoadGroupMarketplaceMemberIdsAsync(groupId, userId);
+        if (access.Result != null)
+            return access.Result;
+
+        var memberIds = access.MemberIds;
+        var pageSize = Math.Clamp(limit, 1, 100);
+        var query = _db.MarketplaceListings
+            .Include(l => l.User)
+            .Include(l => l.Category)
+            .Include(l => l.Images)
+            .Where(l =>
+                memberIds.Contains(l.UserId) &&
+                l.Status == "active" &&
+                l.ModerationStatus == "approved");
+
+        if (category_id.HasValue)
+            query = query.Where(l => l.CategoryId == category_id.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(l => l.Title.ToLower().Contains(term) || l.Description.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(condition))
+        {
+            var conditions = condition.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            query = query.Where(l => conditions.Contains(l.Condition));
+        }
+
+        var total = await query.CountAsync();
+        var cursorId = DecodeListingCursor(cursor);
+        if (cursorId.HasValue)
+            query = query.Where(l => l.Id < cursorId.Value);
+
+        query = sort switch
+        {
+            "price_asc" => query.OrderBy(l => l.Price ?? 0).ThenByDescending(l => l.Id),
+            "price_desc" => query.OrderByDescending(l => l.Price ?? 0).ThenByDescending(l => l.Id),
+            "popular" => query.OrderByDescending(l => l.ViewsCount).ThenByDescending(l => l.Id),
+            _ => query.OrderByDescending(l => l.Id)
+        };
+
+        var items = await query.Take(pageSize + 1).ToListAsync();
+        var hasMore = items.Count > pageSize;
+        if (hasMore) items.RemoveAt(items.Count - 1);
+        var nextCursor = hasMore && items.Count > 0 ? EncodeListingCursor(items[^1].Id) : null;
+        var savedIds = await LoadSavedListingIdsAsync(userId, items.Select(l => l.Id));
+
+        return Ok(new
+        {
+            success = true,
+            data = items.Select(l => MapListing(l, currentUserId: userId, savedListingIds: savedIds)),
+            meta = new { per_page = pageSize, has_more = hasMore, cursor = nextCursor, next_cursor = nextCursor, total }
+        });
     }
 
     [HttpGet("groups/{groupId:int}/stats")]
-    [AllowAnonymous]
+    [Authorize]
     public async Task<IActionResult> GroupStats(int groupId)
     {
-        var total = await _db.MarketplaceListings.CountAsync(l => l.GroupId == groupId);
-        return Ok(new { data = new { group_id = groupId, listings = total } });
+        var userId = RequireUserId();
+        var access = await LoadGroupMarketplaceMemberIdsAsync(groupId, userId);
+        if (access.Result != null)
+            return access.Result;
+
+        var memberIds = access.MemberIds;
+        var listings = await _db.MarketplaceListings
+            .Include(l => l.Category)
+            .Where(l => memberIds.Contains(l.UserId))
+            .ToListAsync();
+        var activeListings = listings
+            .Where(l => l.Status == "active" && l.ModerationStatus == "approved")
+            .ToList();
+        var categories = activeListings
+            .Where(l => l.Category != null)
+            .GroupBy(l => l.Category!)
+            .OrderByDescending(g => g.Count())
+            .Take(10)
+            .Select(g => new
+            {
+                id = g.Key.Id,
+                name = g.Key.Name,
+                slug = g.Key.Slug,
+                icon = g.Key.Icon,
+                listing_count = g.Count()
+            });
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                active_listings = activeListings.Count,
+                total_listed = listings.Count,
+                total_sellers = listings.Select(l => l.UserId).Distinct().Count(),
+                categories
+            }
+        });
     }
 
     [HttpPost("orders/{orderId:int}/delivery-offers")]
@@ -938,8 +1035,21 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("listings/{id:int}/auto-reply")]
     [Authorize]
-    public IActionResult AutoReply(int id, [FromBody] AutoReplyRequest request)
-        => Ok(new { data = new { listing_id = id, reply = $"Thanks for your message about this listing. {request.Question}".Trim() } });
+    public async Task<IActionResult> AutoReply(int id, [FromBody] AutoReplyRequest request)
+    {
+        var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
+        if (listing == null)
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found." });
+
+        if (listing.UserId != RequireUserId())
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, code = "FORBIDDEN", error = "Only the listing owner can generate auto-replies." });
+
+        var message = request.Message ?? request.Question;
+        if (string.IsNullOrWhiteSpace(message) || message.Trim().Length < 5)
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "message is required" });
+
+        return Ok(new { success = true, data = new { reply = $"Thanks for your message about this listing. {message.Trim()}".Trim() } });
+    }
 
     [HttpPost("listings/{id:int}/report")]
     [Authorize]
@@ -1231,7 +1341,15 @@ public class MarketplaceController : ControllerBase
     {
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
         if (listing == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found" });
-        var rows = await _db.MarketplacePickupSlots.Where(s => s.UserId == listing.UserId && s.IsActive).ToListAsync();
+        var rows = await _db.MarketplacePickupSlots
+            .Where(s =>
+                s.UserId == listing.UserId &&
+                s.IsActive &&
+                s.StartsAt >= DateTime.UtcNow &&
+                s.BookedCount < s.Capacity)
+            .OrderBy(s => s.StartsAt)
+            .Take(50)
+            .ToListAsync();
         return Ok(new { success = true, data = rows.Select(MapPickupSlot), meta = new { total = rows.Count } });
     }
 
@@ -1388,18 +1506,55 @@ public class MarketplaceController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Seller(int id)
     {
-        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.Id == id || p.UserId == id);
-        return profile == null ? NotFound(new { error = "Seller not found" }) : Ok(new { data = profile });
+        var profile = await _db.MarketplaceSellerProfiles
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == id)
+            ?? await _db.MarketplaceSellerProfiles
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        if (profile == null)
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Seller profile not found." });
+
+        var activeListingCount = await _db.MarketplaceListings.CountAsync(l =>
+            l.UserId == profile.UserId &&
+            l.Status == "active" &&
+            l.ModerationStatus == "approved");
+
+        return Ok(new { success = true, data = MapPublicSellerProfile(profile, activeListingCount) });
     }
 
     [HttpGet("sellers/{id:int}/listings")]
     [AllowAnonymous]
-    public async Task<IActionResult> SellerListings(int id)
+    public async Task<IActionResult> SellerListings(int id, [FromQuery] int limit = 20, [FromQuery] int? per_page = null)
     {
-        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.Id == id || p.UserId == id);
-        if (profile == null) return NotFound(new { error = "Seller not found" });
-        var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, profile.UserId, null, false, false, 1, 100);
-        return Ok(new { data = items.Select(l => MapListing(l)), meta = new { total } });
+        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.UserId == id)
+            ?? await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.Id == id);
+        if (profile == null)
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Seller profile not found." });
+
+        var pageSize = Math.Clamp(per_page ?? limit, 1, 100);
+        var query = _db.MarketplaceListings
+            .Include(l => l.User)
+            .Include(l => l.Category)
+            .Include(l => l.Images)
+            .Where(l =>
+                l.UserId == profile.UserId &&
+                l.Status == "active" &&
+                l.ModerationStatus == "approved");
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(l => l.PromotedUntil != null && l.PromotedUntil > DateTime.UtcNow)
+            .ThenByDescending(l => l.CreatedAt)
+            .Take(pageSize)
+            .ToListAsync();
+        var currentUserId = User.GetUserId();
+        var savedIds = await LoadSavedListingIdsAsync(currentUserId, items.Select(l => l.Id));
+        return Ok(new
+        {
+            success = true,
+            data = items.Select(l => MapListing(l, currentUserId: currentUserId, savedListingIds: savedIds)),
+            meta = new { total, per_page = pageSize, has_more = false, cursor = (string?)null, next_cursor = (string?)null }
+        });
     }
 
     [HttpPost("webhooks/stripe")]
@@ -1901,6 +2056,39 @@ public class MarketplaceController : ControllerBase
             }
     };
 
+    private static object MapPublicSellerProfile(MarketplaceSellerProfile profile, int activeListingCount)
+    {
+        var displayName = string.IsNullOrWhiteSpace(profile.DisplayName)
+            ? profile.User == null ? $"User {profile.UserId}" : DisplayName(profile.User)
+            : profile.DisplayName;
+
+        return new
+        {
+            id = profile.Id,
+            user_id = profile.UserId,
+            display_name = displayName,
+            bio = profile.Bio,
+            avatar_url = profile.User?.AvatarUrl,
+            cover_image_url = (string?)null,
+            location = (string?)null,
+            seller_type = profile.SellerType,
+            business_name = profile.SellerType == "business" ? displayName : null,
+            business_verified = profile.IsVerified,
+            is_verified = profile.IsVerified,
+            is_community_endorsed = false,
+            community_trust_score = profile.RatingAverage == 0 ? (decimal?)null : profile.RatingAverage,
+            avg_rating = profile.RatingAverage == 0 ? (decimal?)null : profile.RatingAverage,
+            total_ratings = profile.RatingCount,
+            total_sales = profile.SalesCount,
+            response_time_avg = (string?)null,
+            response_rate = (decimal?)null,
+            active_listings = activeListingCount,
+            member_since = profile.User?.CreatedAt ?? profile.CreatedAt,
+            joined_marketplace_at = profile.CreatedAt,
+            marketplace_partner_badge_at = (DateTime?)null
+        };
+    }
+
     private static object MapPickupSlot(MarketplacePickupSlot slot) => new
     {
         id = slot.Id,
@@ -2084,6 +2272,24 @@ public class MarketplaceController : ControllerBase
         };
     }
 
+    private async Task<(IActionResult? Result, int[] MemberIds)> LoadGroupMarketplaceMemberIdsAsync(int groupId, int currentUserId)
+    {
+        var groupExists = await _db.Groups.AnyAsync(g => g.Id == groupId);
+        if (!groupExists)
+            return (NotFound(new { success = false, code = "NOT_FOUND", error = "Group not found." }), Array.Empty<int>());
+
+        var memberIds = await _db.GroupMembers
+            .Where(m => m.GroupId == groupId)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToArrayAsync();
+
+        if (!memberIds.Contains(currentUserId))
+            return (StatusCode(StatusCodes.Status403Forbidden, new { success = false, code = "FORBIDDEN", error = "You must be a group member to view group marketplace data." }), memberIds);
+
+        return (null, memberIds);
+    }
+
     private static object? ParseJsonObject(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -2253,7 +2459,7 @@ public sealed class DeliveryOfferRequest
 
     public decimal TimeCreditAmount { get; set; }
 }
-public record AutoReplyRequest(string? Question);
+public record AutoReplyRequest([property: JsonPropertyName("message")] string? Message, string? Question);
 public record ShippingOptionRequest(
     string? Name,
     [property: JsonPropertyName("courier_name")] string? CourierName,

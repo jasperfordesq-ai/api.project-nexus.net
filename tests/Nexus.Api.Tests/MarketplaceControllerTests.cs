@@ -648,6 +648,126 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceSellerProfileV2_ReturnsLaravelReactPublicProfileAndListings()
+    {
+        var (sellerUserId, profileId, listingId) = await CreateSellerProfilePageDataAsync();
+
+        await AuthenticateAsMemberAsync();
+        var profileResponse = await Client.GetAsync($"/api/v2/marketplace/sellers/{sellerUserId}");
+
+        profileResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profileJson = await profileResponse.Content.ReadFromJsonAsync<JsonElement>();
+        profileJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var seller = profileJson.GetProperty("data");
+        seller.GetProperty("id").GetInt32().Should().Be(profileId);
+        seller.GetProperty("user_id").GetInt32().Should().Be(sellerUserId);
+        seller.GetProperty("display_name").GetString().Should().Be("Repair Circle Basel");
+        seller.GetProperty("bio").GetString().Should().Be("Community repair seller profile");
+        seller.GetProperty("seller_type").GetString().Should().Be("business");
+        seller.GetProperty("is_verified").GetBoolean().Should().BeTrue();
+        seller.GetProperty("business_verified").GetBoolean().Should().BeTrue();
+        seller.GetProperty("is_community_endorsed").GetBoolean().Should().BeFalse();
+        seller.GetProperty("community_trust_score").GetDecimal().Should().Be(4.6m);
+        seller.GetProperty("avg_rating").GetDecimal().Should().Be(4.6m);
+        seller.GetProperty("total_ratings").GetInt32().Should().Be(8);
+        seller.GetProperty("total_sales").GetInt32().Should().Be(14);
+        seller.GetProperty("active_listings").GetInt32().Should().Be(1);
+        seller.GetProperty("member_since").GetString().Should().NotBeNullOrWhiteSpace();
+        seller.GetProperty("marketplace_partner_badge_at").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var profileByProfileId = await Client.GetAsync($"/api/v2/marketplace/sellers/{profileId}");
+        profileByProfileId.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profileByProfileIdJson = await profileByProfileId.Content.ReadFromJsonAsync<JsonElement>();
+        profileByProfileIdJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        profileByProfileIdJson.GetProperty("data").GetProperty("user_id").GetInt32().Should().Be(sellerUserId);
+
+        var listingsResponse = await Client.GetAsync($"/api/v2/marketplace/sellers/{sellerUserId}/listings?limit=50");
+
+        listingsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listingsJson = await listingsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        listingsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listingsJson.GetProperty("meta").GetProperty("total").GetInt32().Should().Be(1);
+        var listing = listingsJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        listing.GetProperty("id").GetInt32().Should().Be(listingId);
+        listing.GetProperty("title").GetString().Should().Be("Seller profile listing");
+        listing.GetProperty("user").GetProperty("id").GetInt32().Should().Be(sellerUserId);
+        listing.GetProperty("image").GetProperty("url").GetString().Should().Be("/uploads/marketplace/seller-profile.jpg");
+        listing.GetProperty("is_saved").GetBoolean().Should().BeFalse();
+        listing.GetProperty("is_own").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MarketplaceGroupV2_RequiresMembershipAndReturnsLaravelReactListingsAndStats()
+    {
+        var (groupId, firstListingId, categoryId) = await CreateGroupMarketplaceDataAsync();
+
+        ClearAuthToken();
+        Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var unauthenticated = await Client.GetAsync($"/api/v2/marketplace/groups/{groupId}/listings");
+        Client.DefaultRequestHeaders.Remove("X-Tenant-ID");
+        unauthenticated.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        await AuthenticateAsAdminAsync();
+        var nonMember = await Client.GetAsync($"/api/v2/marketplace/groups/{groupId}/listings");
+        nonMember.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsMemberAsync();
+        var listings = await Client.GetAsync($"/api/v2/marketplace/groups/{groupId}/listings?limit=1&category_id={categoryId}");
+
+        listings.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listingsJson = await listings.Content.ReadFromJsonAsync<JsonElement>();
+        listingsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listingsJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(1);
+        listingsJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeTrue();
+        listingsJson.GetProperty("meta").GetProperty("cursor").GetString().Should().NotBeNullOrWhiteSpace();
+        var listing = listingsJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        listing.GetProperty("id").GetInt32().Should().Be(firstListingId);
+        listing.GetProperty("title").GetString().Should().Be("Group marketplace newest");
+        listing.GetProperty("category").GetProperty("id").GetInt32().Should().Be(categoryId);
+        listing.GetProperty("user").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listing.GetProperty("is_own").GetBoolean().Should().BeTrue();
+        listing.GetProperty("is_saved").GetBoolean().Should().BeTrue();
+
+        var statsResponse = await Client.GetAsync($"/api/v2/marketplace/groups/{groupId}/stats");
+
+        statsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsJson = await statsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        statsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var stats = statsJson.GetProperty("data");
+        stats.GetProperty("active_listings").GetInt32().Should().Be(2);
+        stats.GetProperty("total_listed").GetInt32().Should().Be(3);
+        stats.GetProperty("total_sellers").GetInt32().Should().Be(1);
+        var category = stats.GetProperty("categories").EnumerateArray().Should().ContainSingle().Subject;
+        category.GetProperty("id").GetInt32().Should().Be(categoryId);
+        category.GetProperty("name").GetString().Should().Be("Group Marketplace");
+        category.GetProperty("listing_count").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task MarketplaceAutoReplyV2_RequiresListingOwnerAndUsesReactMessagePayload()
+    {
+        var listingId = await CreateMarketplaceListingAsync();
+
+        await AuthenticateAsMemberAsync();
+        var forbidden = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/auto-reply", new
+        {
+            message = "Is pickup available Saturday?"
+        });
+
+        forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsAdminAsync();
+        var response = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/auto-reply", new
+        {
+            message = "Is pickup available Saturday?"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("data").GetProperty("reply").GetString().Should().Contain("Is pickup available Saturday?");
+    }
+
+    [Fact]
     public async Task MarketplaceSellerManagementV2_ReturnsLaravelReactDashboardRenewAndDeleteContract()
     {
         var ids = await CreateSellerManagementListingsForMemberAsync();
@@ -1076,6 +1196,30 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceListingPickupSlotsV2_ReturnsOnlyFutureSlotsWithRemainingCapacity()
+    {
+        var (listingId, visibleSlotId) = await CreateListingPickupSlotVisibilityDataAsync();
+
+        ClearAuthToken();
+        Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var response = await Client.GetAsync($"/api/v2/marketplace/listings/{listingId}/pickup-slots");
+        Client.DefaultRequestHeaders.Remove("X-Tenant-ID");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        json.GetProperty("meta").GetProperty("total").GetInt32().Should().Be(1);
+        var slot = json.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        slot.GetProperty("id").GetInt32().Should().Be(visibleSlotId);
+        slot.GetProperty("slot_start").GetString().Should().NotBeNullOrWhiteSpace();
+        slot.GetProperty("slot_end").GetString().Should().NotBeNullOrWhiteSpace();
+        slot.GetProperty("capacity").GetInt32().Should().Be(3);
+        slot.GetProperty("booked_count").GetInt32().Should().Be(1);
+        slot.GetProperty("remaining").GetInt32().Should().Be(2);
+        slot.GetProperty("is_active").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task MarketplacePickupReservationV2_MatchesLaravelReactBuyerAndSellerContract()
     {
         var (orderId, listingId) = await CreatePickupOrderForMemberAsync();
@@ -1364,6 +1508,227 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return (active.Id, draft.Id, sold.Id, expired.Id);
+    }
+
+    private async Task<(int SellerUserId, int ProfileId, int ListingId)> CreateSellerProfilePageDataAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var seller = new User
+        {
+            TenantId = TestData.Tenant1.Id,
+            Email = $"seller-profile-{Guid.NewGuid():N}@example.test",
+            PasswordHash = "test",
+            FirstName = "Repair",
+            LastName = "Circle",
+            Role = "member",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow.AddDays(-365)
+        };
+        db.Users.Add(seller);
+        await db.SaveChangesAsync();
+
+        var profile = new MarketplaceSellerProfile
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = seller.Id,
+            DisplayName = "Repair Circle Basel",
+            Bio = "Community repair seller profile",
+            SellerType = "business",
+            IsVerified = true,
+            RatingAverage = 4.6m,
+            RatingCount = 8,
+            SalesCount = 14,
+            ListingsCount = 99,
+            CreatedAt = DateTime.UtcNow.AddDays(-45)
+        };
+        db.MarketplaceSellerProfiles.Add(profile);
+
+        var inactive = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = seller.Id,
+            Title = "Inactive seller profile listing",
+            Description = "Should not count as active public inventory",
+            Price = 10m,
+            PriceCurrency = "EUR",
+            Status = "draft",
+            MarketplaceStatus = "available",
+            ModerationStatus = "pending"
+        };
+        var active = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = seller.Id,
+            Title = "Seller profile listing",
+            Description = "Public listing for seller profile page",
+            Price = 15m,
+            PriceCurrency = "EUR",
+            PriceType = "fixed",
+            Condition = "good",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved",
+            CreatedAt = DateTime.UtcNow
+        };
+        active.Images.Add(new MarketplaceImage
+        {
+            TenantId = TestData.Tenant1.Id,
+            Url = "/uploads/marketplace/seller-profile.jpg",
+            AltText = "seller-profile.jpg",
+            SortOrder = 0
+        });
+
+        db.MarketplaceListings.AddRange(inactive, active);
+        await db.SaveChangesAsync();
+
+        return (seller.Id, profile.Id, active.Id);
+    }
+
+    private async Task<(int GroupId, int FirstListingId, int CategoryId)> CreateGroupMarketplaceDataAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var group = new Group
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.AdminUser.Id,
+            Name = $"Group marketplace {Guid.NewGuid():N}",
+            Description = "Marketplace group contract fixture"
+        };
+        var category = new MarketplaceCategory
+        {
+            TenantId = TestData.Tenant1.Id,
+            Name = "Group Marketplace",
+            Slug = $"group-marketplace-{Guid.NewGuid():N}",
+            Icon = "shopping-bag",
+            IsActive = true
+        };
+        db.Groups.Add(group);
+        db.MarketplaceCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        db.GroupMembers.Add(new GroupMember
+        {
+            TenantId = TestData.Tenant1.Id,
+            GroupId = group.Id,
+            UserId = TestData.MemberUser.Id,
+            Role = Group.Roles.Member
+        });
+
+        var older = GroupMarketplaceListing("Group marketplace older", TestData.MemberUser.Id, category.Id, "active", DateTime.UtcNow.AddMinutes(-10));
+        var newest = GroupMarketplaceListing("Group marketplace newest", TestData.MemberUser.Id, category.Id, "active", DateTime.UtcNow);
+        var draft = GroupMarketplaceListing("Group marketplace draft", TestData.MemberUser.Id, category.Id, "draft", DateTime.UtcNow.AddMinutes(-5));
+        draft.ModerationStatus = "pending";
+        var nonMember = GroupMarketplaceListing("Non-member listing", TestData.AdminUser.Id, category.Id, "active", DateTime.UtcNow.AddMinutes(5));
+
+        newest.Images.Add(new MarketplaceImage
+        {
+            TenantId = TestData.Tenant1.Id,
+            Url = "/uploads/marketplace/group-newest.jpg",
+            AltText = "group-newest.jpg",
+            SortOrder = 0
+        });
+
+        db.MarketplaceListings.AddRange(older, newest, draft, nonMember);
+        await db.SaveChangesAsync();
+
+        db.MarketplaceSavedListings.Add(new MarketplaceSavedListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.MemberUser.Id,
+            MarketplaceListingId = newest.Id
+        });
+        await db.SaveChangesAsync();
+
+        return (group.Id, newest.Id, category.Id);
+    }
+
+    private MarketplaceListing GroupMarketplaceListing(string title, int userId, int categoryId, string status, DateTime createdAt) => new()
+    {
+        TenantId = TestData.Tenant1.Id,
+        UserId = userId,
+        CategoryId = categoryId,
+        Title = title,
+        Description = $"{title} description",
+        Price = 12m,
+        PriceCurrency = "EUR",
+        PriceType = "fixed",
+        Condition = "good",
+        Status = status,
+        MarketplaceStatus = "available",
+        ModerationStatus = status == "active" ? "approved" : "pending",
+        CreatedAt = createdAt
+    };
+
+    private async Task<(int ListingId, int VisibleSlotId)> CreateListingPickupSlotVisibilityDataAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Title = "Pickup slot visibility shelf",
+            Description = "Listing used to filter buyer-visible pickup slots",
+            Price = 20m,
+            PriceCurrency = "EUR",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved"
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        var now = DateTime.UtcNow;
+        var visible = new MarketplacePickupSlot
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            StartsAt = now.AddDays(2),
+            EndsAt = now.AddDays(2).AddHours(1),
+            Capacity = 3,
+            BookedCount = 1,
+            IsActive = true
+        };
+        db.MarketplacePickupSlots.AddRange(
+            visible,
+            new MarketplacePickupSlot
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.AdminUser.Id,
+                StartsAt = now.AddDays(3),
+                EndsAt = now.AddDays(3).AddHours(1),
+                Capacity = 1,
+                BookedCount = 1,
+                IsActive = true
+            },
+            new MarketplacePickupSlot
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.AdminUser.Id,
+                StartsAt = now.AddDays(-1),
+                EndsAt = now.AddDays(-1).AddHours(1),
+                Capacity = 3,
+                BookedCount = 0,
+                IsActive = true
+            },
+            new MarketplacePickupSlot
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.AdminUser.Id,
+                StartsAt = now.AddDays(4),
+                EndsAt = now.AddDays(4).AddHours(1),
+                Capacity = 3,
+                BookedCount = 0,
+                IsActive = false
+            });
+        await db.SaveChangesAsync();
+
+        return (listing.Id, visible.Id);
     }
 
     private async Task<int> CreateMarketplaceCategoryAsync()

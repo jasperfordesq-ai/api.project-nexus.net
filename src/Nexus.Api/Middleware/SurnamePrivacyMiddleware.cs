@@ -202,6 +202,11 @@ public sealed class SurnamePrivacyMiddleware
         var hasUserSignal = UserShapeSignalKeys.Any(k => obj.ContainsKey(k));
         var hasComposite = CompositeNameKeys.Any(k => obj.ContainsKey(k));
 
+        if (IsPublicSellerProfile(obj))
+        {
+            return;
+        }
+
         // An object is "user-shaped" if it carries any of: an explicit
         // first/last name, or a composite name field alongside a user-signal
         // (avatar/email/handle/user_id). Plain composite names without any
@@ -275,6 +280,12 @@ public sealed class SurnamePrivacyMiddleware
             obj[k] = JsonValue.Create(replacement);
         }
     }
+
+    private static bool IsPublicSellerProfile(JsonObject obj)
+        => obj.ContainsKey("display_name")
+            && obj.ContainsKey("seller_type")
+            && obj.ContainsKey("active_listings")
+            && obj.ContainsKey("marketplace_partner_badge_at");
 
     private static bool IsSelf(JsonObject obj, int? currentUserId)
     {
