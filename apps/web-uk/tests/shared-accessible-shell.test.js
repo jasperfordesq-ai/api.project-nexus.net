@@ -942,6 +942,60 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style insurance settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callUserSettingsApi.mockImplementation(async (token, method, pathValue) => {
+      if (method === 'GET' && pathValue === '/insurance') {
+        return {
+          data: [
+            {
+              insurance_type: 'public_liability',
+              provider_name: 'Acme Cover Ltd',
+              expiry_date: '2027-03-27',
+              status: 'verified'
+            }
+          ]
+        };
+      }
+      return { data: { id: 42 } };
+    });
+
+    const unsigned = await request(app).get('/settings/insurance');
+    const signed = await request(app)
+      .get('/settings/insurance?status=insurance-uploaded')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your certificate has been uploaded and is awaiting review.');
+    expect(signed.text).toContain('Account settings');
+    expect(signed.text).toContain('Insurance certificates');
+    expect(signed.text).toContain('Upload proof of insurance so the team can verify your cover.');
+    expect(signed.text).toContain('Your certificates');
+    expect(signed.text).toContain('Public liability');
+    expect(signed.text).toContain('Verified');
+    expect(signed.text).toContain('Provider');
+    expect(signed.text).toContain('Acme Cover Ltd');
+    expect(signed.text).toContain('Expires');
+    expect(signed.text).toContain('27 March 2027');
+    expect(signed.text).toContain('Upload a certificate');
+    expect(signed.text).toContain('Type of insurance');
+    expect(signed.text).toContain('Professional indemnity');
+    expect(signed.text).toContain('Insurance provider (optional)');
+    expect(signed.text).toContain('Policy number (optional)');
+    expect(signed.text).toContain('Expiry date (optional)');
+    expect(signed.text).toContain('Certificate file');
+    expect(signed.text).toContain('Upload certificate');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 

@@ -162,9 +162,14 @@ renders the Blade-style request form, GDPR status banners, empty request-history
 state, and submits through the existing Laravel-compatible POST alias.
 `/settings/availability` renders the Blade-style weekly availability grid with
 status states and submits through the existing Laravel-compatible POST alias.
+`/settings/insurance` redirects unsigned visitors to `/login?status=auth-required`,
+loads the Laravel-compatible certificate list when available, renders the
+Blade-style certificate cards, empty state, status banners, and multipart
+certificate upload form, and submits through the existing Laravel-compatible
+POST alias.
 Other settings GET pages remain generated preparation pages or local legacy
 settings pages, and live linked-account runtime behavior, data-rights history loading,
-tenant feature gates, localization, insurance upload runtime smoke tests, and
+tenant feature gates, localization, insurance upload/list runtime smoke tests, and
 ASP.NET backend compatibility are not certified.
 Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for
 post comments, comment-thread replies, post likes/reactions, and comment

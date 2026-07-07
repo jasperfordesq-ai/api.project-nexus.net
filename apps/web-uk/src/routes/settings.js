@@ -71,7 +71,13 @@ const SETTINGS_STATUS_MESSAGES = {
   'gdpr-requested': 'Your request has been submitted. We will be in touch.',
   'gdpr-duplicate': 'You already have a request of this type being looked into.',
   'gdpr-invalid': 'Choose the type of request you want to make.',
-  'gdpr-failed': 'Sorry, we could not submit your request. Please try again.'
+  'gdpr-failed': 'Sorry, we could not submit your request. Please try again.',
+  'insurance-uploaded': 'Your certificate has been uploaded and is awaiting review.',
+  'insurance-type-invalid': 'Choose the type of insurance.',
+  'insurance-file-required': 'Choose a certificate file to upload.',
+  'insurance-file-type': 'The certificate must be a PDF, JPG or PNG file.',
+  'insurance-file-large': 'The certificate file must be smaller than 10MB.',
+  'insurance-failed': 'Sorry, we could not upload your certificate. Please try again.'
 };
 const SETTINGS_THEME_LABELS = {
   light: 'Light',
@@ -97,6 +103,30 @@ const SETTINGS_LINK_PERMISSION_LABELS = {
   can_manage_listings: 'Manage their listings',
   can_transact: 'Send and receive time credits',
   can_view_messages: 'View their messages'
+};
+const SETTINGS_INSURANCE_TYPE_LABELS = {
+  public_liability: 'Public liability',
+  professional_indemnity: 'Professional indemnity',
+  employers_liability: 'Employers liability',
+  product_liability: 'Product liability',
+  personal_accident: 'Personal accident',
+  other: 'Other'
+};
+const SETTINGS_INSURANCE_STATUS_LABELS = {
+  pending: 'Pending',
+  submitted: 'Submitted',
+  verified: 'Verified',
+  expired: 'Expired',
+  rejected: 'Rejected',
+  revoked: 'Revoked'
+};
+const SETTINGS_INSURANCE_STATUS_TAGS = {
+  verified: 'govuk-tag--green',
+  submitted: 'govuk-tag--yellow',
+  pending: 'govuk-tag--yellow',
+  rejected: 'govuk-tag--red',
+  revoked: 'govuk-tag--red',
+  expired: 'govuk-tag--red'
 };
 
 function tokenFrom(req) {
@@ -234,6 +264,60 @@ function normalizeRelationship(row) {
 
 function normalizeRelationships(payload, keys) {
   return relationshipRowsFromPayload(payload, keys).map(normalizeRelationship);
+}
+
+function humanizeStatus(value) {
+  const text = trimmed(value);
+  if (text === '') return '';
+  return text
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function formatInsuranceDate(value) {
+  const text = trimmed(value);
+  if (text === '') return '';
+  const date = new Date(text.includes('T') ? text : `${text}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return text;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
+function insuranceRowsFromPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  for (const key of ['certificates', 'insurance_certificates', 'items', 'data']) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  if (payload.data && typeof payload.data === 'object') {
+    return insuranceRowsFromPayload(payload.data);
+  }
+  return [];
+}
+
+function normalizeInsuranceCertificate(row) {
+  const type = allowedValue(row && row.insurance_type, SETTINGS_INSURANCE_TYPES, 'other');
+  const status = trimmed(row && row.status) || 'pending';
+
+  return {
+    insuranceType: type,
+    insuranceTypeLabel: SETTINGS_INSURANCE_TYPE_LABELS[type],
+    providerName: trimmed(row && row.provider_name),
+    expiryLabel: formatInsuranceDate(row && row.expiry_date),
+    status,
+    statusLabel: SETTINGS_INSURANCE_STATUS_LABELS[status] || humanizeStatus(status) || SETTINGS_INSURANCE_STATUS_LABELS.pending,
+    statusTagClass: SETTINGS_INSURANCE_STATUS_TAGS[status] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeInsuranceCertificates(payload) {
+  return insuranceRowsFromPayload(payload).map(normalizeInsuranceCertificate);
 }
 
 function themeFromSettingsData(data) {
@@ -532,6 +616,41 @@ router.get('/data-rights', (req, res) => {
     requests
   });
 });
+
+router.get('/insurance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let certificates = [];
+  try {
+    certificates = normalizeInsuranceCertificates(payloadFrom(await callSettings(token, 'GET', '/insurance')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/insurance', {
+    title: 'Insurance certificates',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'insurance-uploaded',
+    errorStatus: [
+      'insurance-type-invalid',
+      'insurance-file-required',
+      'insurance-file-type',
+      'insurance-file-large',
+      'insurance-failed'
+    ].includes(status),
+    errorAnchor: status === 'insurance-type-invalid' ? 'insurance_type' : 'certificate_file',
+    certificates,
+    insuranceTypes: SETTINGS_INSURANCE_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_INSURANCE_TYPE_LABELS[type]
+    }))
+  });
+}));
 
 router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
