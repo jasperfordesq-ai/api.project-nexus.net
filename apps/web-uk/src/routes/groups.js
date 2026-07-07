@@ -36,6 +36,19 @@ const router = express.Router();
 router.use(requireAuth);
 
 const GROUP_NOTIFICATION_FREQUENCIES = ['instant', 'digest', 'muted'];
+const GROUP_INVITE_SUCCESS_MESSAGES = {
+  'invite-link-created': 'A new invite link was generated.',
+  'invite-emails-sent': 'The invitations have been sent.',
+  'invite-revoked': 'The invitation has been revoked.'
+};
+const GROUP_INVITE_ERROR_MESSAGES = {
+  'invite-link-failed': 'The invite link could not be generated. Please try again.',
+  'invite-emails-required': 'Enter at least one email address.',
+  'invite-emails-too-many': 'You can invite up to 50 email addresses at a time.',
+  'invite-email-failed': 'The invitations could not be sent. Please try again.',
+  'invite-revoke-failed': 'The invitation could not be revoked.',
+  'invite-forbidden': 'You do not have permission to invite members to this group.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -59,6 +72,19 @@ function checked(value) {
 function allowed(value, choices, fallback) {
   const text = trimmed(value);
   return choices.includes(text) ? text : fallback;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
 }
 
 function statusRedirect(path, status, fragment = '') {
@@ -117,6 +143,69 @@ function resultId(result) {
   return positiveInteger(result?.data?.id)
     || positiveInteger(result?.discussion?.id)
     || positiveInteger(result?.id);
+}
+
+function dateLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function normalizeGroup(item, fallbackId = null) {
+  const raw = item && typeof item === 'object' ? item : {};
+  return {
+    ...raw,
+    id: positiveInteger(raw.id) || fallbackId,
+    name: trimmed(raw.name || raw.title) || 'Group'
+  };
+}
+
+function normalizeInvite(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const type = trimmed(raw.invite_type || raw.inviteType || raw.type) === 'email' ? 'email' : 'link';
+  return {
+    id: positiveInteger(raw.id),
+    type,
+    email: trimmed(raw.email || ''),
+    inviterName: trimmed(raw.inviter_name || raw.inviterName || raw.created_by_name || raw.createdByName || '') || '-',
+    expiresAtLabel: dateLabel(raw.expires_at || raw.expiresAt) || '-'
+  };
+}
+
+function inviteGeneratedLink(result) {
+  const data = dataFrom(result) || {};
+  return trimmed(data.generated_link || data.generatedLink || data.invite_url || data.inviteUrl || '');
+}
+
+function inviteStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_INVITE_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_INVITE_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_INVITE_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_INVITE_ERROR_MESSAGES[value]
+      }
+    };
+  }
+
+  return { statusBanner: null };
 }
 
 function parseInviteEmails(value) {
@@ -319,6 +408,31 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/invite', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const [groupResult, invitesResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/invites`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [] } };
+    })
+  ]);
+
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const pendingInvites = collectionFrom(invitesResult)
+    .map(normalizeInvite)
+    .filter((invite) => invite.id !== null);
+
+  return res.render('groups/invite', {
+    title: 'Invite members',
+    activeNav: 'explore',
+    group,
+    generatedLink: inviteGeneratedLink(invitesResult),
+    pendingInvites,
+    ...inviteStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
 // Update group
 router.post('/:id/edit', audit.groupUpdate(), asyncRoute(async (req, res) => {

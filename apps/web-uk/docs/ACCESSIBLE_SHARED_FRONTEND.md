@@ -266,6 +266,14 @@ message edit/delete/translate, group create/reply, member add/remove, and group
 reactions while preserving Laravel status redirects and anchors. Voice-message
 upload proxies multipart audio to `/api/v2/messages/voice` with
 Laravel-compatible status redirects.
+The group invite GET page now renders the Blade-style signed group-admin invite
+surface. `/groups/{id}/invite` reads Laravel-compatible group detail and invite
+listing data, then renders the back link, generated invite-link inset, link
+expiry form, email invitation form, pending invitation table, revoke forms, and
+Laravel status banners. Group invite link/email/revoke POST aliases already call
+Laravel-compatible group invite endpoints. Other group depth GET pages,
+owner/admin authorization depth, tenant/feature gates, localization, runtime
+behavior, and ASP.NET backend compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.

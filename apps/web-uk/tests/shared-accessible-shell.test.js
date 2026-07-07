@@ -45,7 +45,9 @@ jest.mock('../src/lib/api', () => ({
   getFeedHashtagPosts: jest.fn().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } }),
   getFeedPostV2: jest.fn(),
   getFeedItemV2: jest.fn(),
+  getGroups: jest.fn().mockResolvedValue({ data: [] }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
+  getGroup: jest.fn().mockResolvedValue({ data: { id: 42, name: 'Group' } }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
@@ -13195,6 +13197,73 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login');
     expect(api.callGroupApi).not.toHaveBeenCalled();
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel group invite page for signed-in group admins', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers'
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        generated_link: 'https://example.test/invite/garden-helpers',
+        items: [
+          {
+            id: 12,
+            invite_type: 'email',
+            email: 'new.member@example.test',
+            inviter_name: 'Avery Green',
+            expires_at: '2026-08-05T00:00:00Z'
+          },
+          {
+            id: 13,
+            invite_type: 'link',
+            inviter_name: 'Sam Lee',
+            expires_at: '2026-08-12T00:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/invite');
+    const signed = await request(app)
+      .get('/groups/42/invite?status=invite-link-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Invite people to Garden Helpers');
+    expect(signed.text).toContain('Invite members');
+    expect(signed.text).toContain('A new invite link was generated.');
+    expect(signed.text).toContain('Invite people to join this group by sharing a link or sending email invitations.');
+    expect(signed.text).toContain('Share an invite link');
+    expect(signed.text).toContain('Your invite link');
+    expect(signed.text).toContain('https://example.test/invite/garden-helpers');
+    expect(signed.text).toContain('name="expiry_days"');
+    expect(signed.text).toContain('Generate invite link');
+    expect(signed.text).toContain('method="post" action="/groups/42/invite/link"');
+    expect(signed.text).toContain('Invite by email');
+    expect(signed.text).toContain('Email addresses');
+    expect(signed.text).toContain('Personal message (optional)');
+    expect(signed.text).toContain('Send invitations');
+    expect(signed.text).toContain('method="post" action="/groups/42/invite/email"');
+    expect(signed.text).toContain('Pending invitations');
+    expect(signed.text).toContain('new.member@example.test');
+    expect(signed.text).toContain('Avery Green');
+    expect(signed.text).toContain('Invite link');
+    expect(signed.text).toContain('Sam Lee');
+    expect(signed.text).toContain('method="post" action="/groups/42/invite/12/revoke"');
+    expect(signed.text).toContain('Revoke');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/invites');
   });
 
   it('submits Laravel group image and file uploads with multipart file data', async () => {
