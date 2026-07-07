@@ -415,9 +415,12 @@ radios, enabled checkbox, save form, and remove-warning form.
 `/goals/{id}/buddy-actions` redirects unsigned visitors to
 `/login?status=auth-required`, loads Laravel-compatible goal detail data, and
 renders the Blade-style buddy support type radios, hint text, optional message,
-status, and send form. Existing goal POST aliases continue to call Laravel v2
-goals, comment, and like APIs. This remains partial: detail, insights, history,
-and social GET pages, exact
+status, and send form. `/goals/{id}/history` redirects unsigned visitors to
+`/login?status=auth-required`, loads Laravel-compatible goal detail and progress
+history data, and renders the Blade-style chronological timeline, event type
+tags, empty state, and cursor pagination link. Existing goal POST aliases
+continue to call Laravel v2 goals, comment, and like APIs. This remains partial:
+detail, insights, and social GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 

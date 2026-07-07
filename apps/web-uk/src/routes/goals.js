@@ -49,6 +49,24 @@ const GOAL_MOOD_LABELS = {
   motivated: 'Motivated',
   grateful: 'Grateful'
 };
+const GOAL_HISTORY_LABELS = {
+  created: 'Created',
+  progress_update: 'Progress update',
+  checkin: 'Check-in',
+  milestone: 'Milestone',
+  buddy_joined: 'Buddy joined',
+  buddy_action: 'Buddy action',
+  completed: 'Completed'
+};
+const GOAL_HISTORY_TAG_CLASSES = {
+  created: 'govuk-tag--grey',
+  progress_update: 'govuk-tag--blue',
+  checkin: 'govuk-tag--blue',
+  milestone: 'govuk-tag--purple',
+  buddy_joined: 'govuk-tag--turquoise',
+  buddy_action: 'govuk-tag--turquoise',
+  completed: 'govuk-tag--green'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -295,6 +313,22 @@ function normalizeCheckin(item) {
     moodLabel: mood ? GOAL_MOOD_LABELS[mood] : '',
     note: trimmed(raw.note || ''),
     createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
+  };
+}
+
+function normalizeHistoryEvent(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const type = allowedValue(raw.type || raw.event_type || raw.eventType, Object.keys(GOAL_HISTORY_LABELS), 'progress_update');
+  const createdAt = raw.created_at || raw.createdAt || '';
+
+  return {
+    id: positiveInteger(raw.id),
+    type,
+    label: GOAL_HISTORY_LABELS[type],
+    tagClass: GOAL_HISTORY_TAG_CLASSES[type],
+    description: trimmed(raw.description || ''),
+    createdAt,
+    createdAtLabel: dateTimeLabel(createdAt)
   };
 }
 
@@ -633,6 +667,39 @@ router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
       hint: GOAL_BUDDY_TYPE_HINTS[value]
     })),
     ...buddyActionStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/history', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const params = new URLSearchParams({ limit: '30' });
+  const cursor = trimmed(req.query.cursor);
+  if (cursor) params.set('cursor', cursor);
+
+  const [goalResult, historyResult] = await Promise.all([
+    getGoal(token, id),
+    callGoal(token, 'GET', `/${id}/history?${params.toString()}`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [], has_more: false } };
+    })
+  ]);
+
+  const goal = normalizeGoal(dataFrom(goalResult));
+  goal.id = goal.id || Number(id);
+  const meta = metaFrom(historyResult);
+  const nextParams = new URLSearchParams();
+  if (meta.cursor) nextParams.set('cursor', meta.cursor);
+
+  return res.render('goals/history', {
+    title: 'Progress history',
+    activeNav: 'explore',
+    goal,
+    items: collectionFrom(historyResult).map(normalizeHistoryEvent),
+    hasMore: meta.hasMore,
+    nextHref: meta.hasMore && meta.cursor ? `/goals/${goal.id}/history?${nextParams.toString()}` : ''
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

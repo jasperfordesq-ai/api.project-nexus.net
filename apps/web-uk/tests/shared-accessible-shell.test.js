@@ -5755,6 +5755,62 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel goal progress history timeline for signed-in viewers', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        is_public: true
+      }
+    });
+    api.callGoalApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 10,
+            type: 'created',
+            description: 'Goal created with a 20 bed target.',
+            created_at: '2026-07-01T09:30:00Z'
+          },
+          {
+            id: 11,
+            event_type: 'buddy_action',
+            description: 'Alex sent encouragement.',
+            created_at: '2026-07-02T10:00:00Z'
+          }
+        ],
+        has_more: true,
+        cursor: 'older-page'
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/history');
+    const signed = await request(app)
+      .get('/goals/42/history?cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Goal: Restore the community garden');
+    expect(signed.text).toContain('Progress history');
+    expect(signed.text).toContain('A chronological record of every event for this goal');
+    expect(signed.text).toContain('aria-label="Goal progress history"');
+    expect(signed.text).toContain('Created');
+    expect(signed.text).toContain('Goal created with a 20 bed target.');
+    expect(signed.text).toContain('Buddy action');
+    expect(signed.text).toContain('Alex sent encouragement.');
+    expect(signed.text).toContain('/goals/42/history?cursor=older-page');
+    expect(signed.text).toContain('Load older events');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
+    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/history?limit=30&cursor=abc');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
