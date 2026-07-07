@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T00:49:55.040Z",
+    "generatedAt": "2026-07-07T00:54:32.331Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -2256,8 +2256,8 @@
       "gates": "",
       "apiNeeds": "service:MemberActivityService",
       "webUkPath": "/activity/insights",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "activity/insights",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\activity.js"
     },
     {
       "method": "POST",

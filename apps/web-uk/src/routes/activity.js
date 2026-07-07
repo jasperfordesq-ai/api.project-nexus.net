@@ -9,6 +9,34 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+const ACTIVITY_TYPE_LABELS = {
+  post: 'Post',
+  gave_hours: 'Gave hours',
+  received_hours: 'Received hours',
+  comment: 'Comment',
+  connection: 'Connection',
+  event_rsvp: 'Event',
+  event: 'Event',
+  listing: 'Listing',
+  message: 'Message',
+  review: 'Review',
+  activity: 'Activity'
+};
+const ACTIVITY_TYPE_TAGS = {
+  gave_hours: 'govuk-tag--green',
+  received_hours: 'govuk-tag--turquoise',
+  exchange: 'govuk-tag--green',
+  post: 'govuk-tag--pink',
+  comment: 'govuk-tag--blue',
+  connection: 'govuk-tag--light-blue',
+  event_rsvp: 'govuk-tag--purple',
+  event: 'govuk-tag--purple',
+  listing: 'govuk-tag--blue',
+  message: 'govuk-tag--turquoise',
+  review: 'govuk-tag--yellow',
+  activity: 'govuk-tag--grey'
+};
+
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
 }
@@ -118,23 +146,55 @@ function normalizeMonthly(monthly) {
       givenLabel: formatNumber(given),
       receivedLabel: formatNumber(received),
       totalLabel: formatNumber(given + received),
-      percent: 0
+      percent: 0,
+      givenPercent: 0,
+      receivedPercent: 0
     };
   }).filter((row) => row.label);
 
   const maxTotal = rows.reduce((max, row) => Math.max(max, row.total), 0);
+  const maxBar = rows.reduce((max, row) => Math.max(max, row.given, row.received), 0);
   return rows.map((row) => ({
     ...row,
-    percent: maxTotal > 0 ? Math.round((row.total / maxTotal) * 100) : 0
+    percent: maxTotal > 0 ? Math.round((row.total / maxTotal) * 100) : 0,
+    givenPercent: maxBar > 0 ? Math.round((row.given / maxBar) * 100) : 0,
+    receivedPercent: maxBar > 0 ? Math.round((row.received / maxBar) * 100) : 0
   }));
 }
 
 function normalizeTimelineItem(item) {
+  const type = textFrom(item.activity_type, 'activity') || 'activity';
   const text = truncate(item.description ?? item.title ?? item.message ?? item.content);
   const dateLabel = formatDate(item.created_at ?? item.date);
   return {
+    type,
+    typeLabel: ACTIVITY_TYPE_LABELS[type] || ACTIVITY_TYPE_LABELS.activity,
+    tagClass: ACTIVITY_TYPE_TAGS[type] || ACTIVITY_TYPE_TAGS.activity,
     text,
     dateLabel
+  };
+}
+
+function netBalanceInsight(netBalance) {
+  const absolute = formatNumber(Math.abs(netBalance));
+  if (netBalance > 0) {
+    return {
+      label: `+${absolute} hours`,
+      tagClass: 'govuk-tag--green',
+      meaning: 'You have received more help than you have given.'
+    };
+  }
+  if (netBalance < 0) {
+    return {
+      label: `-${absolute} hours`,
+      tagClass: 'govuk-tag--red',
+      meaning: 'You have given more help than you have received.'
+    };
+  }
+  return {
+    label: `${absolute} hours`,
+    tagClass: 'govuk-tag--grey',
+    meaning: 'Your hours given and received are balanced.'
   };
 }
 
@@ -145,12 +205,19 @@ function normalizeActivity(payload) {
   const engagement = data.engagement && typeof data.engagement === 'object' ? data.engagement : {};
   const skillsBreakdown = data.skills_breakdown && typeof data.skills_breakdown === 'object' ? data.skills_breakdown : {};
   const netBalance = Object.prototype.hasOwnProperty.call(hours, 'net_balance') ? numberFrom(hours.net_balance) : null;
+  const monthly = normalizeMonthly(data.monthly_hours);
+  const skills = arrayFrom(skillsBreakdown.skills)
+    .map(normalizeSkill)
+    .filter((skill) => skill.name);
+  const offeringCount = intFrom(skillsBreakdown.offering_count);
+  const requestingCount = intFrom(skillsBreakdown.requesting_count);
 
   return {
     hoursGivenLabel: formatNumber(hours.hours_given),
     hoursReceivedLabel: formatNumber(hours.hours_received),
     connectionsLabel: formatInteger(connections.total_connections),
     groupsJoinedLabel: formatInteger(connections.groups_joined),
+    exchangesLabel: formatInteger(intFrom(hours.transactions_given) + intFrom(hours.transactions_received)),
     engagement: {
       postsLabel: formatInteger(engagement.posts_count),
       commentsLabel: formatInteger(engagement.comments_count),
@@ -159,20 +226,23 @@ function normalizeActivity(payload) {
     },
     hasEngagement: Object.keys(engagement).length > 0,
     netBalanceLabel: netBalance === null ? '' : `${formatNumber(netBalance)} hrs`,
-    skills: arrayFrom(skillsBreakdown.skills)
-      .map(normalizeSkill)
-      .filter((skill) => skill.name),
-    monthly: normalizeMonthly(data.monthly_hours),
+    netBalanceInsight: netBalanceInsight(netBalance || 0),
+    skills,
+    skillsSummaryLabel: `${formatInteger(offeringCount)} offered, ${formatInteger(requestingCount)} requested.`,
+    monthly,
+    chartMonths: monthly.filter((row) => row.given > 0 || row.received > 0),
+    hasChart: monthly.some((row) => row.given > 0 || row.received > 0),
     timeline: arrayFrom(data.timeline)
       .map(normalizeTimelineItem)
       .filter((item) => item.text || item.dateLabel)
   };
 }
 
-router.get('/', asyncRoute(async (req, res) => {
+async function activityContext(req, res, title) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    res.redirect(loginRedirect());
+    return null;
   }
 
   let payload = {};
@@ -180,17 +250,34 @@ router.get('/', asyncRoute(async (req, res) => {
     payload = await callProfileApi(token, 'GET', '/activity/dashboard');
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      return res.redirect(loginRedirect());
+      res.redirect(loginRedirect());
+      return null;
     }
     payload = {};
   }
 
-  return res.render('activity/index', {
-    title: 'My activity',
+  return {
+    title,
     activeNav: 'activity',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     activity: normalizeActivity(payload)
-  });
+  };
+}
+
+router.get('/insights', asyncRoute(async (req, res) => {
+  const context = await activityContext(req, res, 'Activity insights');
+  if (!context) {
+    return null;
+  }
+  return res.render('activity/insights', context);
+}));
+
+router.get('/', asyncRoute(async (req, res) => {
+  const context = await activityContext(req, res, 'My activity');
+  if (!context) {
+    return null;
+  }
+  return res.render('activity/index', context);
 }));
 
 module.exports = router;
