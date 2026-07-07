@@ -1,0 +1,65 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/events/{{ event.id }}">Back to event</a>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ event.title }}</span>
+      <h1 class="govuk-heading-xl">Translate event description</h1>
+
+      {% if status == "translate-failed" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <p>The description could not be translated. Please try again later.</p>
+            </div>
+          </div>
+        </div>
+      {% elif status == "translate-unavailable" %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">Automatic translation is not available for this community at the moment.</p>
+        </div>
+      {% elif status == "translate-empty" %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">This event has no description to translate.</p>
+        </div>
+      {% elif status == "translate-same" %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">The description is already in the language you chose.</p>
+        </div>
+      {% endif %}
+
+      <p class="govuk-body-l">Translate this event description into another language. Translations are provided automatically and may not be perfect.</p>
+
+      {% if not sourceText %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">This event has no description to translate.</p>
+        </div>
+      {% else %}
+        <form method="post" action="/events/{{ event.id }}/translate">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="source_text" value="{{ sourceText }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="target_locale">Translate into</label>
+            <div id="target-locale-hint" class="govuk-hint">Choose the language you want to read the description in.</div>
+            <select class="govuk-select" id="target_locale" name="target_locale" aria-describedby="target-locale-hint">
+              {% for language in languages %}
+                <option value="{{ language.code }}"{% if language.selected %} selected{% endif %}>{{ language.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="govuk-button" data-module="govuk-button" type="submit">Translate description</button>
+        </form>
+
+        <h2 class="govuk-heading-l govuk-!-margin-top-6">Original description</h2>
+        <div class="govuk-body">{{ sourceText }}</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

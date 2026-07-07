@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T03:41:31.797Z",
+    "generatedAt": "2026-07-07T03:45:30.824Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -3415,8 +3415,8 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/translate",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/translate",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",

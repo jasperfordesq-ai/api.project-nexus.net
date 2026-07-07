@@ -28,6 +28,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { localeOptions } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
@@ -259,6 +260,29 @@ router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
       title: trimmed(event.title) || 'Polls'
     },
     polls,
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const event = eventFrom(await callApi(token, 'GET', `/${id}`));
+  const sourceText = trimmed(event.description, 8000);
+  const targetLocale = trimmed(req.query.target_locale || req.query.locale) || '';
+
+  res.render('events/translate', {
+    title: 'Translate event description',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title) || 'Translate'
+    },
+    sourceText,
+    languages: localeOptions.map(([code, name]) => ({ code, name, selected: code === targetLocale })),
     status: trimmed(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });

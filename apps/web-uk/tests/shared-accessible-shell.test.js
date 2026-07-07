@@ -12019,6 +12019,40 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel event translation page for signed-in visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Repair cafe planning',
+        description: 'Bring small appliances and repair notes.'
+      }
+    });
+
+    const response = await request(app)
+      .get('/events/7/translate?status=translate-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+    expect(response.text).toContain('href="/events/7"');
+    expect(response.text).toContain('Back to event');
+    expect(response.text).toContain('Repair cafe planning');
+    expect(response.text).toContain('Translate event description');
+    expect(response.text).toContain('The description could not be translated. Please try again later.');
+    expect(response.text).toContain('Translate this event description into another language.');
+    expect(response.text).toContain('method="post" action="/events/7/translate"');
+    expect(response.text).toContain('id="target_locale" name="target_locale"');
+    expect(response.text).toContain('value="ga"');
+    expect(response.text).toContain('Gaeilge');
+    expect(response.text).toContain('Translate description');
+    expect(response.text).toContain('Original description');
+    expect(response.text).toContain('Bring small appliances and repair notes.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel event map page and no-location state', async () => {
     const api = require('../src/lib/api');
 

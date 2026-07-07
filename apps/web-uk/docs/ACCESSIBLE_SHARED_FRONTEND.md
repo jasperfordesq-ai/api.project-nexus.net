@@ -431,7 +431,10 @@ through `/api/v2/events/{id}`, including the event back link, address,
 coordinates, no-JS OpenStreetMap embed/links, and no-map states for online or
 coordinate-less events, and `/events/{id}/polls` now renders the signed
 Blade-style organiser poll attachment page from `/api/v2/events/{id}` plus
-`/api/v2/polls?mine=1&per_page=100`. The Laravel accessible POST aliases under
+`/api/v2/polls?mine=1&per_page=100`. `/events/{id}/translate` now renders the
+signed Blade-style translation chooser through `/api/v2/events/{id}`, including
+status states, the 11 Laravel locale options, the original description, and the
+existing no-JS translate POST target. The Laravel accessible POST aliases under
 `/events` are now local route declarations backed by Laravel v2 event, poll, and UGC
 translation APIs. The
 aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
@@ -447,9 +450,9 @@ and sends recurring creates through `/api/v2/events/recurring`, following the
 Laravel template response shape for redirects. Redirects preserve Laravel status
 keys and `#poll-*` fragments. This remains partial: cover image removal is still
 blocked by the absence of a Laravel v2 clear/delete event-image API contract,
-and recurring edit, translation GET depth, full Blade list/detail rendering,
-owner/participant authorization depth, rendered translation result display,
-event notification/XP/waitlist promotion side effects, tenant/feature gates,
+and recurring edit GET depth, translated result display after POST, full Blade
+list/detail rendering, owner/participant authorization depth, event
+notification/XP/waitlist promotion side effects, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
