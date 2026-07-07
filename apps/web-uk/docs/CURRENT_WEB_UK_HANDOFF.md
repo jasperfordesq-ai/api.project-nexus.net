@@ -373,11 +373,14 @@ Laravel `/api/v2/listings/{id}` contract, and the E2E-owned fixture
 `/polls/1/export` returned `/login?status=auth-required` when unsigned against
 `WEB_UK_BASE_URL=http://127.0.0.1:5350`; `/ideation/campaigns/1` returned the
 same unsigned auth-required redirect against
-`WEB_UK_BASE_URL=http://127.0.0.1:5351`. The default scope now contains `342`
-checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 22
-gated-status checks, and 21 signed redirect checks, plus the 6 auth/health
-checks. Parameterised matched GET route shapes without default runtime smoke
-coverage fell from 28 to 3.
+`WEB_UK_BASE_URL=http://127.0.0.1:5351`. The plain-login unsigned routes
+`/exchanges/1`, `/jobs/applications/1/cv`, and
+`/jobs/applications/1/history` returned `/login` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5352`. The default scope now contains `345`
+checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
+unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
+checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
+without default runtime smoke coverage fell from 28 to 0.
 
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to

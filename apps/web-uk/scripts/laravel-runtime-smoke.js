@@ -140,6 +140,11 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/search/saved/1/delete',
   '/volunteering/certificates/ABC123/download'
 ];
+const DEFAULT_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = [
+  '/exchanges/1',
+  '/jobs/applications/1/cv',
+  '/jobs/applications/1/history'
+];
 const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/coupons', status: 403 },
   { path: '/jobs/bias-audit', status: 403 },
@@ -530,6 +535,14 @@ function authRequiredPageCheckName(path, location) {
   return `auth-required-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
 }
 
+function unsignedLoginRedirectPageCheckName(path) {
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `unsigned-login-page-${pathSlug || 'home'}-redirects-login`;
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
@@ -625,6 +638,13 @@ function resolveOptions(options = {}, env = process.env) {
       'SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS',
       DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS
     ),
+    unsignedLoginRedirectPagePaths: resolvePathList(
+      options,
+      'unsignedLoginRedirectPagePaths',
+      env,
+      'SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS',
+      DEFAULT_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS
+    ),
     gatedPagePaths: resolveGatedPages(options, env),
     redirectPagePaths: resolveRedirectPages(options, env),
     fetchImpl: options.fetchImpl || globalThis.fetch
@@ -701,6 +721,28 @@ async function runLaravelRuntimeSmoke(options = {}) {
       );
     } catch (error) {
       addCheck(checks, authRequiredPageCheckName(path, expectedLocation), false, error.message, { path });
+    }
+  }
+
+  for (const path of config.unsignedLoginRedirectPagePaths) {
+    const expectedLocation = '/login';
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      const ok = isRedirectTo(response, expectedLocation);
+      addCheck(
+        checks,
+        unsignedLoginRedirectPageCheckName(path),
+        ok,
+        ok ? `${path} redirected to ${expectedLocation}.` : `expected redirect to ${expectedLocation} from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, unsignedLoginRedirectPageCheckName(path), false, error.message, { path });
     }
   }
 

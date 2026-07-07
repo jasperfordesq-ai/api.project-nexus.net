@@ -509,6 +509,17 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const unsignedLoginRedirectPages = new Set([
+      '/exchanges/1',
+      '/jobs/applications/1/cv',
+      '/jobs/applications/1/history'
+    ]);
+    if (req.method === 'GET' && unsignedLoginRedirectPages.has(req.url)) {
+      res.writeHead(302, { location: '/login' });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -531,12 +542,14 @@ describe('Laravel runtime smoke harness', () => {
     const options = resolveOptions({}, {
       SMOKE_MODULE_PAGE_PATHS: '/login, /register',
       SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: "/federation/partners/1\n/podcasts/1",
+      SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: "/exchanges/1\n/jobs/applications/1/cv",
       SMOKE_GATED_PAGE_PATHS: '',
       SMOKE_REDIRECT_PAGE_PATHS: ''
     });
 
     expect(options.modulePagePaths).toEqual(['/login', '/register']);
     expect(options.unsignedAuthRequiredPagePaths).toEqual(['/federation/partners/1', '/podcasts/1']);
+    expect(options.unsignedLoginRedirectPagePaths).toEqual(['/exchanges/1', '/jobs/applications/1/cv']);
     expect(options.gatedPagePaths).toEqual([]);
     expect(options.redirectPagePaths).toEqual([]);
   });
@@ -545,12 +558,14 @@ describe('Laravel runtime smoke harness', () => {
     const options = resolveOptions({}, {
       SMOKE_MODULE_PAGE_PATHS: 'none',
       SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: 'none',
+      SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: 'none',
       SMOKE_GATED_PAGE_PATHS: 'none',
       SMOKE_REDIRECT_PAGE_PATHS: 'none'
     });
 
     expect(options.modulePagePaths).toEqual([]);
     expect(options.unsignedAuthRequiredPagePaths).toEqual([]);
+    expect(options.unsignedLoginRedirectPagePaths).toEqual([]);
     expect(options.gatedPagePaths).toEqual([]);
     expect(options.redirectPagePaths).toEqual([]);
   });
@@ -844,6 +859,16 @@ describe('Laravel runtime smoke harness', () => {
       '/me/collections/1',
       '/search/saved/1/delete',
       '/volunteering/certificates/ABC123/download'
+    ]));
+  });
+
+  it('includes stable unsigned login redirect route outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.unsignedLoginRedirectPagePaths).toEqual(expect.arrayContaining([
+      '/exchanges/1',
+      '/jobs/applications/1/cv',
+      '/jobs/applications/1/history'
     ]));
   });
 
@@ -1306,6 +1331,27 @@ describe('Laravel runtime smoke harness', () => {
     }));
     expect(checkByName['auth-required-page-federation-partners-1-redirects-login-status-auth-required'].location).toBe('/login?status=auth-required');
     expect(requests.find((request) => request.method === 'GET' && request.url === '/federation/partners/1').cookie).not.toContain('token=signed-token');
+  });
+
+  it('smokes unsigned redirects for login-only parameterised Laravel routes', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+    const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
+
+    expect(checks).toEqual(expect.objectContaining({
+      'unsigned-login-page-exchanges-1-redirects-login': true,
+      'unsigned-login-page-jobs-applications-1-cv-redirects-login': true,
+      'unsigned-login-page-jobs-applications-1-history-redirects-login': true
+    }));
+    expect(checkByName['unsigned-login-page-exchanges-1-redirects-login'].location).toBe('/login');
+    expect(requests.find((request) => request.method === 'GET' && request.url === '/exchanges/1').cookie).not.toContain('token=signed-token');
   });
 
   it('refreshes the signed session before gated checks after long module-page batches', async () => {
