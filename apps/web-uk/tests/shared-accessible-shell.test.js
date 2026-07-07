@@ -2178,6 +2178,61 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style NEXUS tier ladder page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/nexus-score') {
+        return {
+          data: {
+            total_score: 645,
+            max_score: 1000,
+            tier: { name: 'Advanced' }
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/nexus-score/tiers');
+    const signed = await request(app)
+      .get('/nexus-score/tiers')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/nexus-score');
+    expect(signed.text).toContain('href="/nexus-score"');
+    expect(signed.text).toContain('Back to NEXUS score');
+    expect(signed.text).toContain('NEXUS score at Project NEXUS Accessible');
+    expect(signed.text).toContain('NEXUS tier ladder');
+    expect(signed.text).toContain('There are 9 tiers. Your tier rises as your NEXUS score grows.');
+    expect(signed.text).toContain('Your score: 645 of 1,000');
+    expect(signed.text).toContain('Current tier: Advanced');
+    expect(signed.text).toContain('55 points to Expert');
+    expect(signed.text).toContain('Tier');
+    expect(signed.text).toContain('Score needed');
+    expect(signed.text).toContain('Status');
+    expect(signed.text).toContain('Novice');
+    expect(signed.text).toContain('Beginner');
+    expect(signed.text).toContain('Developing');
+    expect(signed.text).toContain('Intermediate');
+    expect(signed.text).toContain('Proficient');
+    expect(signed.text).toContain('Advanced');
+    expect(signed.text).toContain('Expert');
+    expect(signed.text).toContain('Elite');
+    expect(signed.text).toContain('Legendary');
+    expect(signed.text).toContain('Current');
+    expect(signed.text).toContain('Reached');
+    expect(signed.text).toContain('Locked');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
