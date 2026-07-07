@@ -493,7 +493,13 @@ cards. Its `/volunteering/wellbeing` page redirects unsigned visitors to
 `/login?status=auth-required`, reads Laravel
 `/api/v2/volunteering/wellbeing`, and renders the Blade-style wellbeing score,
 burnout-risk tag, hours/streak stats, warnings, mood check-in form, status
-banners, and recent check-ins table. Laravel POST aliases now
+banners, and recent check-ins table. Its `/volunteering/donations` page
+redirects unsigned visitors to `/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/giving-days` and
+`/api/v2/volunteering/donations?per_page=20`, and renders the Blade-style
+money-donation explanation, fundraising stats, giving-day campaign cards,
+donation history table, status banners, and offline bank transfer/PayPal form.
+Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
 responses, credential delete plus safe upload proxying, wellbeing check-ins,

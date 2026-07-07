@@ -242,6 +242,28 @@ function wellbeingStatus(status) {
   return null;
 }
 
+function donationStatus(status, donateError = '') {
+  if (status === 'donate-recorded') {
+    return {
+      type: 'success',
+      message: 'Thank you. Your donation has been recorded and is awaiting confirmation of payment.'
+    };
+  }
+  if (status === 'donate-failed') {
+    const messages = {
+      amount: 'Enter a donation amount greater than zero',
+      'amount-max': 'Enter a donation amount within the allowed limit',
+      validation: 'Check your answers and try again'
+    };
+    return {
+      type: 'error',
+      message: messages[donateError] || 'Your donation could not be recorded. Please try again.',
+      field: 'donate-amount'
+    };
+  }
+  return null;
+}
+
 function credentialStatus(status) {
   const messages = {
     'credential-uploaded': { type: 'success', message: 'Your credential has been uploaded and is awaiting review.' },
@@ -410,6 +432,134 @@ function normalizeWellbeingDashboard(result) {
       checked: value === 3
     })),
     recentCheckins: checkins.map(normalizeCheckin)
+  };
+}
+
+function moneyLabel(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(2) : '0.00';
+}
+
+function percentageLabel(value, total) {
+  const amount = Number(value);
+  const goal = Number(total);
+  if (!Number.isFinite(amount) || !Number.isFinite(goal) || goal <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((amount / goal) * 100)));
+}
+
+function donationMethodLabel(value) {
+  const labels = {
+    bank_transfer: 'Bank transfer',
+    paypal: 'PayPal',
+    card: 'Card',
+    stripe: 'Card'
+  };
+  const method = trimmed(value);
+  return labels[method] || method || '-';
+}
+
+function donationStatusPresentation(value) {
+  const status = trimmed(value) || 'pending';
+  const labels = {
+    pending: 'Pending',
+    completed: 'Completed',
+    failed: 'Failed',
+    refunded: 'Refunded'
+  };
+  const classNames = {
+    pending: 'govuk-tag--yellow',
+    completed: 'govuk-tag--green',
+    failed: 'govuk-tag--red',
+    refunded: 'govuk-tag--grey'
+  };
+  return {
+    value: status,
+    label: labels[status] || headline(status) || 'Pending',
+    className: classNames[status] || 'govuk-tag--grey'
+  };
+}
+
+function givingDayStatusPresentation(value, isActive = false) {
+  const status = trimmed(value) || (isActive ? 'active' : 'ended');
+  const labels = {
+    active: 'Active',
+    upcoming: 'Upcoming',
+    ended: 'Ended'
+  };
+  const classNames = {
+    active: 'govuk-tag--green',
+    upcoming: 'govuk-tag--blue',
+    ended: 'govuk-tag--grey'
+  };
+  return {
+    value: status,
+    label: labels[status] || headline(status) || 'Ended',
+    className: classNames[status] || 'govuk-tag--grey'
+  };
+}
+
+function donorsLabel(count) {
+  const number = Number(count);
+  if (!Number.isFinite(number) || number <= 0) return 'No donors yet';
+  return number === 1 ? '1 donor' : `${number} donors`;
+}
+
+function normalizeGivingDay(row) {
+  const day = row && typeof row === 'object' ? row : {};
+  const goal = Number(day.goal_amount ?? day.target_amount);
+  const raised = Number(day.raised_amount);
+  const status = givingDayStatusPresentation(day.status, checked(day.is_active));
+  const donorCount = Number(day.donor_count);
+  const percent = percentageLabel(raised, goal);
+  return {
+    id: positiveInteger(day.id),
+    title: trimmed(day.title ?? day.name),
+    description: trimmed(day.description),
+    status,
+    goalLabel: moneyLabel(goal),
+    raisedLabel: moneyLabel(raised),
+    donorCount: Number.isFinite(donorCount) ? donorCount : 0,
+    donorsLabel: donorsLabel(donorCount),
+    endDateLabel: dateLabel(day.end_date ?? day.ends_at ?? day.endsAt),
+    percent
+  };
+}
+
+function normalizeDonation(row) {
+  const donation = row && typeof row === 'object' ? row : {};
+  return {
+    id: positiveInteger(donation.id),
+    amountLabel: moneyLabel(donation.amount),
+    currency: trimmed(donation.currency),
+    status: donationStatusPresentation(donation.status),
+    methodLabel: donationMethodLabel(donation.payment_method ?? donation.paymentMethod),
+    createdAtLabel: dateLabel(donation.created_at ?? donation.createdAt),
+    message: trimmed(donation.message),
+    isAnonymous: checked(donation.is_anonymous ?? donation.isAnonymous)
+  };
+}
+
+function normalizeDonationDashboard(givingDaysResult, donationsResult) {
+  const givingDays = collectionFrom(givingDaysResult).map(normalizeGivingDay);
+  const donations = collectionFrom(donationsResult).map(normalizeDonation);
+  const stats = givingDays.reduce((totals, day) => ({
+    totalRaised: totals.totalRaised + Number(day.raisedLabel),
+    totalDonors: totals.totalDonors + day.donorCount,
+    activeCampaigns: totals.activeCampaigns + (day.status.value === 'active' ? 1 : 0)
+  }), { totalRaised: 0, totalDonors: 0, activeCampaigns: 0 });
+
+  return {
+    givingDays,
+    donations,
+    paymentMethods: [
+      { value: 'bank_transfer', label: 'Bank transfer', checked: true },
+      { value: 'paypal', label: 'PayPal', checked: false }
+    ],
+    stats: {
+      totalRaisedLabel: moneyLabel(stats.totalRaised),
+      totalDonors: stats.totalDonors,
+      activeCampaigns: stats.activeCampaigns
+    }
   };
 }
 
@@ -720,6 +870,33 @@ router.get('/wellbeing', asyncRoute(async (req, res) => {
     wellbeing,
     loadError,
     status: wellbeingStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/donations', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let dashboard = normalizeDonationDashboard({}, {});
+  let loadError = null;
+  try {
+    const givingDays = await callApi(token, 'GET', '/giving-days');
+    const donations = await callApi(token, 'GET', '/donations?per_page=20');
+    dashboard = normalizeDonationDashboard(givingDays, donations);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your donations. Please try again.';
+  }
+
+  return res.render('volunteering/donations', {
+    title: 'Donations and giving',
+    activeNav: 'volunteering',
+    dashboard,
+    loadError,
+    status: donationStatus(trimmed(req.query.status), trimmed(req.query.donate_error)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

@@ -15975,6 +15975,115 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering donations page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 7,
+            title: 'Winter essentials',
+            description: 'Warm packs for neighbours',
+            status: 'active',
+            goal_amount: 500,
+            raised_amount: 125.5,
+            donor_count: 4,
+            end_date: '2026-12-20'
+          },
+          {
+            id: 8,
+            title: 'Spring repairs',
+            status: 'upcoming',
+            target_amount: 300,
+            raised_amount: 0,
+            donor_count: 0,
+            ends_at: '2027-03-01'
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 21,
+              amount: 25,
+              currency: 'EUR',
+              status: 'completed',
+              payment_method: 'paypal',
+              is_anonymous: true,
+              message: 'For supplies',
+              created_at: '2026-07-05T14:30:00Z'
+            },
+            {
+              id: 20,
+              amount: 10.5,
+              currency: 'EUR',
+              status: 'pending',
+              payment_method: 'bank_transfer',
+              message: '',
+              created_at: '2026-07-01T08:00:00Z'
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/volunteering/donations?status=donate-recorded')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/giving-days');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/donations?per_page=20');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Thank you. Your donation has been recorded and is awaiting confirmation of payment.');
+    expect(response.text).toContain('Donations and giving');
+    expect(response.text).toContain('Support your community with a money donation');
+    expect(response.text).toContain('About donations');
+    expect(response.text).toContain('Donations are money gifts to support the community. They are not time credits.');
+    expect(response.text).toContain('Fundraising so far');
+    expect(response.text).toContain('Total raised');
+    expect(response.text).toContain('125.50');
+    expect(response.text).toContain('Donors');
+    expect(response.text).toContain('4');
+    expect(response.text).toContain('Active campaigns');
+    expect(response.text).toContain('1');
+    expect(response.text).toContain('Active giving days');
+    expect(response.text).toContain('Winter essentials');
+    expect(response.text).toContain('Warm packs for neighbours');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('Raised 125.50 of 500.00');
+    expect(response.text).toContain('25%');
+    expect(response.text).toContain('4 donors');
+    expect(response.text).toContain('Campaign ends: 20 December 2026');
+    expect(response.text).toContain('href="#donate-form"');
+    expect(response.text).toContain('Spring repairs');
+    expect(response.text).toContain('Upcoming');
+    expect(response.text).toContain('My donations');
+    expect(response.text).toContain('25.00 EUR');
+    expect(response.text).toContain('Completed');
+    expect(response.text).toContain('Anonymous');
+    expect(response.text).toContain('PayPal');
+    expect(response.text).toContain('5 July 2026');
+    expect(response.text).toContain('For supplies');
+    expect(response.text).toContain('10.50 EUR');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('Bank transfer');
+    expect(response.text).toContain('Make a donation');
+    expect(response.text).toContain('method="post" action="/volunteering/donations#donate"');
+    expect(response.text).toContain('id="donate-amount" name="amount" type="text"');
+    expect(response.text).toContain('id="donate-giving-day" name="giving_day_id"');
+    expect(response.text).toContain('value="7"');
+    expect(response.text).toContain('id="donate-method-bank_transfer" name="payment_method" type="radio" value="bank_transfer" checked');
+    expect(response.text).toContain('id="donate-method-paypal" name="payment_method" type="radio" value="paypal"');
+    expect(response.text).toContain('id="donate-message" name="message" rows="3" maxlength="500"');
+    expect(response.text).toContain('id="donate-anonymous" name="is_anonymous" type="checkbox" value="1"');
+    expect(response.text).toContain('Record donation');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
