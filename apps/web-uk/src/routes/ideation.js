@@ -286,6 +286,19 @@ function normalizeIdea(item) {
   };
 }
 
+function normalizeDraft(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  return {
+    ...row,
+    id,
+    title: trimmed(row.title),
+    description: trimmed(row.description),
+    updatedAt: trimmed(row.updated_at ?? row.updatedAt),
+    createdAt: trimmed(row.created_at ?? row.createdAt)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'idea-submitted': 'Thank you - your idea has been submitted.',
@@ -298,6 +311,21 @@ function errorMessage(status) {
   const messages = {
     'idea-invalid': 'Enter your idea.',
     'idea-failed': 'Something went wrong. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function draftStatusMessage(status) {
+  const messages = {
+    'draft-saved': 'Your draft has been saved.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function draftErrorMessage(status) {
+  const messages = {
+    'draft-invalid': 'Enter a title for your draft.',
+    'draft-failed': 'Sorry, your draft could not be saved. Please try again.'
   };
   return messages[trimmed(status)] || '';
 }
@@ -500,6 +528,30 @@ router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
     status,
     successMessage: manageStatusMessage(status),
     errorMessage: manageErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
+
+router.get('/:id(\\d+)/drafts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
+  const draftsResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}/ideas/drafts`);
+  const challenge = normalizeChallenge({ id, ...itemFrom(challengeResult) });
+  const drafts = collectionFrom(draftsResult)
+    .map(normalizeDraft)
+    .filter((draft) => draft.id !== null);
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/drafts', {
+    title: 'Your draft ideas',
+    activeNav: 'explore',
+    challenge,
+    drafts,
+    status,
+    successMessage: draftStatusMessage(status),
+    errorMessage: draftErrorMessage(status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 

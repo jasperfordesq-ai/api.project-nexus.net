@@ -10414,6 +10414,7 @@ describe('shared accessible frontend shell', () => {
     const create = await request(app).get('/ideation/new');
     const edit = await request(app).get('/ideation/7/edit');
     const manage = await request(app).get('/ideation/7/manage');
+    const drafts = await request(app).get('/ideation/7/drafts');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10433,6 +10434,8 @@ describe('shared accessible frontend shell', () => {
     expect(edit.headers.location).toBe('/login?status=auth-required');
     expect(manage.status).toBe(302);
     expect(manage.headers.location).toBe('/login?status=auth-required');
+    expect(drafts.status).toBe(302);
+    expect(drafts.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10830,6 +10833,61 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges/7');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-campaigns?per_page=100');
+  });
+
+  it('renders the Laravel-backed ideation draft ideas page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 7,
+            title: 'Improve park lighting',
+            status: 'open'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 12,
+              title: 'Solar path lights',
+              description: 'Install low-glare solar lights near the main path.',
+              updated_at: '2026-07-01'
+            },
+            {
+              id: 13,
+              description: 'Add wayfinding signs near entrances.',
+              created_at: '2026-07-02'
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/7/drafts?status=draft-saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Improve park lighting');
+    expect(response.text).toContain('Your draft ideas');
+    expect(response.text).toContain('Drafts are only visible to you.');
+    expect(response.text).toContain('Your draft has been saved.');
+    expect(response.text).toContain('Solar path lights');
+    expect(response.text).toContain('Install low-glare solar lights near the main path.');
+    expect(response.text).toContain('Saved 2026-07-01');
+    expect(response.text).toContain('Untitled draft');
+    expect(response.text).toContain('Started 2026-07-02');
+    expect(response.text).toContain('action="/ideation/7/drafts/12"');
+    expect(response.text).toContain('name="draft_title"');
+    expect(response.text).toContain('name="draft_description"');
+    expect(response.text).toContain('name="draft_action" value="save"');
+    expect(response.text).toContain('name="draft_action" value="publish"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges/7');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7/ideas/drafts');
   });
 
   it('renders the Laravel-backed ideation outcomes page', async () => {
