@@ -208,6 +208,9 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/listings/42/report',
       '/listings/42/exchange-request',
       '/listings/42/comments',
+      '/listings/90967/report',
+      '/listings/90967/exchange-request',
+      '/listings/90967/comments',
       '/feed/hashtag/timebank',
       '/feed/item/listing/42',
       '/messages/77',
@@ -245,6 +248,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/ideation/23/manage',
       '/ideation/23/drafts',
       '/ideation/23/outcome',
+      '/polls/20',
+      '/polls/20/rank',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -357,6 +362,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/jobs/90764/pipeline',
       '/jobs/90764/applications',
       '/listings/42/analytics',
+      '/listings/90967/analytics',
+      '/jobs/talent-search/77',
       '/group-exchanges/1',
       '/messages/groups/33',
       '/resources/10/delete',
@@ -384,10 +391,13 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/events/6/recurring-edit', '/events/6/edit'],
       ['/groups/484/edit', '/groups/484'],
       ['/courses/42/certificate', '/courses/42?status=certificate-failed'],
+      ['/courses/1/certificate', '/courses/1?status=certificate-failed'],
       ['/federation/messages/conversation/77', '/federation/messages'],
+      ['/jobs/90764/applications/export.csv', '/jobs/90764/applications?status=export-failed'],
       ['/courses/1/learn', '/courses/1?status=enrol-required'],
       ['/courses/2/learn', '/courses/2?status=enrol-required'],
       ['/federation/messages/conversation/353', '/federation/messages'],
+      ['/onboarding/profile', '/dashboard'],
       ['/premium/manage', '/premium?status=no-subscription']
     ]);
     if (req.method === 'GET' && signedRedirectPages.has(req.url)) {
@@ -606,6 +616,28 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/password/reset', location: '/login/forgot-password' }
+    ]));
+  });
+
+  it('includes stable account, poll, listing, course certificate, job export, and onboarding outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/account',
+      '/polls/20',
+      '/polls/20/rank',
+      '/listings/90967/comments',
+      '/listings/90967/report',
+      '/listings/90967/exchange-request'
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/listings/90967/analytics', status: 403 },
+      { path: '/jobs/talent-search/77', status: 403 }
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/courses/1/certificate', location: '/courses/1?status=certificate-failed' },
+      { path: '/jobs/90764/applications/export.csv', location: '/jobs/90764/applications?status=export-failed' },
+      { path: '/onboarding/profile', location: '/dashboard' }
     ]));
   });
 

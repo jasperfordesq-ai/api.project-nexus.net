@@ -183,6 +183,23 @@ redirect checks, 15 gated-status checks, and 11 signed redirect checks, plus the
 wrapper timeout, so the scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
 against the same temporary process: all four chunks passed on 2026-07-07 with
 `375` repeated checks, `0` failures, and `215` collective module-page checks.
+The default scope now additionally covers `/account`, `/polls/20`,
+`/polls/20/rank`, `/listings/90967/comments`, `/listings/90967/report`, and
+`/listings/90967/exchange-request` as signed 2xx routes;
+`/listings/90967/analytics` and `/jobs/talent-search/77` as signed `403`
+responses; and redirects from `/courses/1/certificate` to
+`/courses/1?status=certificate-failed`,
+`/jobs/90764/applications/export.csv` to
+`/jobs/90764/applications?status=export-failed`, and `/onboarding/profile` to
+`/dashboard`. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5337`, started with `TENANT_ID=2`, passed on
+2026-07-07: `17/17` checks, `0` failures. The expanded default scope now
+contains `266` checks: `221` module-page checks, 8 unsigned auth-required
+redirect checks, 17 gated-status checks, and 14 signed redirect checks, plus the
+6 auth/health checks. The expanded default scope was recertified with
+`SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary process: all four
+chunks passed on 2026-07-07 with `401` repeated checks, `0` failures, and `221`
+collective module-page checks.
 
 ## Stack
 

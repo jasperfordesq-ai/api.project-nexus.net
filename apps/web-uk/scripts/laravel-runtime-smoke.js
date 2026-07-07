@@ -23,6 +23,9 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/listings/42/report',
   '/listings/42/exchange-request',
   '/listings/42/comments',
+  '/listings/90967/report',
+  '/listings/90967/exchange-request',
+  '/listings/90967/comments',
   '/feed/hashtag/timebank',
   '/feed/item/listing/42',
   '/messages/77',
@@ -59,7 +62,9 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/ideation/23/edit',
   '/ideation/23/manage',
   '/ideation/23/drafts',
-  '/ideation/23/outcome'
+  '/ideation/23/outcome',
+  '/polls/20',
+  '/polls/20/rank'
 ];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
@@ -80,6 +85,8 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/90764/pipeline', status: 403 },
   { path: '/jobs/90764/applications', status: 403 },
   { path: '/listings/42/analytics', status: 403 },
+  { path: '/listings/90967/analytics', status: 403 },
+  { path: '/jobs/talent-search/77', status: 403 },
   { path: '/group-exchanges/1', status: 403 },
   { path: '/messages/groups/33', status: 403 },
   { path: '/resources/10/delete', status: 403 },
@@ -95,14 +102,18 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/events/6/recurring-edit', location: '/events/6/edit' },
   { path: '/groups/484/edit', location: '/groups/484' },
   { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' },
+  { path: '/courses/1/certificate', location: '/courses/1?status=certificate-failed' },
   { path: '/federation/messages/conversation/77', location: '/federation/messages' },
+  { path: '/jobs/90764/applications/export.csv', location: '/jobs/90764/applications?status=export-failed' },
   { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
   { path: '/courses/2/learn', location: '/courses/2?status=enrol-required' },
   { path: '/federation/messages/conversation/353', location: '/federation/messages' },
+  { path: '/onboarding/profile', location: '/dashboard' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',
+  '/account',
   '/login',
   '/login/forgot-password',
   '/password/reset?token=reset-token',
