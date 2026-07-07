@@ -15,6 +15,10 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/talent-search', status: 403 },
   { path: '/marketplace/coupons', status: 403 }
 ];
+const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
+  { path: '/onboarding', location: '/dashboard' },
+  { path: '/premium/manage', location: '/premium?status=no-subscription' }
+];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/explore',
   '/saved',
@@ -288,6 +292,18 @@ function gatedPageCheckName(path, status) {
   return `gated-page-${slug || 'home'}-returns-${status}`;
 }
 
+function redirectPageCheckName(path, location) {
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  const locationSlug = String(location || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `redirect-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
+}
+
 function resolveOptions(options = {}, env = process.env) {
   return {
     webBaseUrl: stripTrailingSlash(options.webBaseUrl || env.WEB_UK_BASE_URL || DEFAULT_WEB_BASE_URL),
@@ -298,6 +314,7 @@ function resolveOptions(options = {}, env = process.env) {
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
     modulePagePaths: options.modulePagePaths || [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS],
     gatedPagePaths: options.gatedPagePaths || DEFAULT_SIGNED_GATED_PAGE_PATHS,
+    redirectPagePaths: options.redirectPagePaths || DEFAULT_SIGNED_REDIRECT_PAGE_PATHS,
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -462,6 +479,29 @@ async function runLaravelRuntimeSmoke(options = {}) {
       );
     } catch (error) {
       addCheck(checks, gatedPageCheckName(path, expectedStatus), false, error.message, { path });
+    }
+  }
+
+  for (const redirectPage of config.redirectPagePaths) {
+    const path = redirectPage.path;
+    const expectedLocation = redirectPage.location;
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      const ok = isRedirectTo(response, expectedLocation);
+      addCheck(
+        checks,
+        redirectPageCheckName(path, expectedLocation),
+        ok,
+        ok ? `${path} redirected to ${expectedLocation}.` : `expected redirect to ${expectedLocation} from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, redirectPageCheckName(path, expectedLocation), false, error.message, { path });
     }
   }
 

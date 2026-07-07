@@ -300,6 +300,22 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const signedRedirectPages = new Map([
+      ['/onboarding', '/dashboard'],
+      ['/premium/manage', '/premium?status=no-subscription']
+    ]);
+    if (req.method === 'GET' && signedRedirectPages.has(req.url)) {
+      if ((req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(302, { location: signedRedirectPages.get(req.url) });
+        res.end();
+        return;
+      }
+
+      res.writeHead(302, { location: '/login?status=auth-required' });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -575,6 +591,8 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-premium-return-renders': true,
       'module-page-profile-renders': true,
       'module-page-report-a-problem-renders': true,
+      'redirect-page-onboarding-redirects-dashboard': true,
+      'redirect-page-premium-manage-redirects-premium-status-no-subscription': true,
       'module-page-resources-library-renders': true,
       'module-page-resources-upload-renders': true,
       'module-page-reviews-renders': true,

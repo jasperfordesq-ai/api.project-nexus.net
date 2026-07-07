@@ -88,9 +88,11 @@ unavailable; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed
 `163/163`. The feature/role-gated pages `/jobs/bias-audit`,
 `/jobs/talent-search`, and `/marketplace/coupons` are now covered as expected
 signed-session `403` checks; a later run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`. Local probing left
-signed-in auth, onboarding, and premium-management redirect pages outside
-because they do not render a 2xx page in the signed E2E session.
+`/onboarding` and `/premium/manage` are now covered as expected signed-session
+redirect checks; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307`
+passed `168/168`. Local probing left signed-in auth redirect pages outside
+because Laravel renders those pages for signed sessions while web-uk currently
+redirects signed users away.
 
 ## Current Page Candidates
 

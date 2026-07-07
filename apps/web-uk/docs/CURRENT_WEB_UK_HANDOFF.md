@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Latest focused edits add expected signed-session `403` smoke checks for `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons`. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `917/1000` implementation/certification parity |
+| Dirty files seen | Latest focused edits add expected signed-session redirect smoke checks for `/onboarding` and `/premium/manage`. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `918/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -124,12 +124,16 @@ auth/health checks and 157 module page checks. The feature/role-gated pages
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` are now
 covered as expected signed-session `403` checks; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`: 6 auth/health checks,
-157 module page checks, and 3 gated-status checks. `/listings` needed a Nunjucks
+157 module page checks, and 3 gated-status checks. `/onboarding` and
+`/premium/manage` are now covered as expected signed-session redirect checks; a
+later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307` passed `168/168`: 6
+auth/health checks, 157 module page checks, 3 gated-status checks, and 2
+redirect-status checks. `/listings` needed a Nunjucks
 owner-id guard because Laravel can return nested `user.id` without a flat
 `user_id`; the default smoke timeout is now `60000` ms for slower Laravel
-fixture pages. Local probing left signed-in auth, onboarding, and
-premium-management redirect pages outside because they do not render 2xx in the
-signed E2E session. Without
+fixture pages. Local probing left signed-in auth redirect pages outside because
+Laravel renders those pages for signed sessions while web-uk currently redirects
+signed users away. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -243,7 +247,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `917/1000`.
+Current working estimate at this handoff: `918/1000`.
 
 ## Final Handoff Checklist
 

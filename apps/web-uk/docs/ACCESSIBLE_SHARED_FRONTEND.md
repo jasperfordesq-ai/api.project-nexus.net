@@ -81,14 +81,15 @@ APIs are unavailable; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed `163/163` checks. The
 feature/role-gated pages `/jobs/bias-audit`, `/jobs/talent-search`, and
 `/marketplace/coupons` are now covered as expected signed-session `403` checks;
-a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`
-checks. The
+`/onboarding` and `/premium/manage` are now covered as expected signed-session
+redirect checks; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307`
+passed `168/168` checks. The
 harness default timeout is now `60000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves signed-in auth, onboarding, and premium-management redirect pages
-outside because they do not render 2xx in the signed E2E session.
+still leaves signed-in auth redirect pages outside because Laravel renders those
+pages for signed sessions while web-uk currently redirects signed users away.
 
 ## Stack
 
