@@ -344,6 +344,70 @@ public class MarketplaceControllerTests : IntegrationTestBase
         data.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
+    [Fact]
+    public async Task MarketplaceMyOffersV2_ReturnsReactListShapeAndActionEnvelopes()
+    {
+        var listingId = await CreateMarketplaceListingAsync();
+        await AuthenticateAsMemberAsync();
+        var create = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/offers", new
+        {
+            amount = 40m,
+            currency = "EUR",
+            message = "Could pick up tomorrow"
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var offerId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var sent = await Client.GetAsync("/api/v2/marketplace/my-offers/sent?limit=20");
+
+        sent.StatusCode.Should().Be(HttpStatusCode.OK);
+        var sentJson = await sent.Content.ReadFromJsonAsync<JsonElement>();
+        sentJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        sentJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+        sentJson.GetProperty("meta").GetProperty("cursor").ValueKind.Should().Be(JsonValueKind.Null);
+        var sentOffer = sentJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        sentOffer.GetProperty("id").GetInt32().Should().Be(offerId);
+        sentOffer.GetProperty("listing").GetProperty("id").GetInt32().Should().Be(listingId);
+        sentOffer.GetProperty("listing").GetProperty("title").GetString().Should().Be("Offer-ready marketplace listing");
+        sentOffer.GetProperty("seller").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        sentOffer.GetProperty("seller").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+
+        await AuthenticateAsAdminAsync();
+        var received = await Client.GetAsync("/api/v2/marketplace/my-offers/received?limit=20");
+
+        received.StatusCode.Should().Be(HttpStatusCode.OK);
+        var receivedJson = await received.Content.ReadFromJsonAsync<JsonElement>();
+        receivedJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var receivedOffer = receivedJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        receivedOffer.GetProperty("buyer").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        receivedOffer.GetProperty("buyer").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var counter = await Client.PutAsJsonAsync($"/api/v2/marketplace/offers/{offerId}/counter", new
+        {
+            amount = 45m,
+            message = "Meet halfway?"
+        });
+
+        counter.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counterJson = await counter.Content.ReadFromJsonAsync<JsonElement>();
+        counterJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var counterData = counterJson.GetProperty("data");
+        counterData.GetProperty("status").GetString().Should().Be("countered");
+        counterData.GetProperty("counter_amount").GetDecimal().Should().Be(45m);
+        counterData.GetProperty("counter_message").GetString().Should().Be("Meet halfway?");
+
+        await AuthenticateAsMemberAsync();
+        var acceptCounter = await Client.PutAsJsonAsync($"/api/v2/marketplace/offers/{offerId}/accept-counter", new { });
+
+        acceptCounter.StatusCode.Should().Be(HttpStatusCode.OK);
+        var acceptCounterJson = await acceptCounter.Content.ReadFromJsonAsync<JsonElement>();
+        acceptCounterJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var acceptedOffer = acceptCounterJson.GetProperty("data");
+        acceptedOffer.GetProperty("status").GetString().Should().Be("accepted");
+        acceptedOffer.GetProperty("amount").GetDecimal().Should().Be(45m);
+    }
+
     private async Task<int> CreateMarketplaceListingAsync()
     {
         using var scope = Factory.Services.CreateScope();

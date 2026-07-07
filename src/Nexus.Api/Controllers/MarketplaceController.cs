@@ -264,7 +264,8 @@ public class MarketplaceController : ControllerBase
         if (listing == null) return NotFound(new { error = "Listing not found" });
         if (listing.UserId != userId && !User.IsAdmin()) return StatusCode(403, new { error = "Forbidden" });
         var offers = await _db.MarketplaceOffers.Where(o => o.MarketplaceListingId == id).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        return Ok(new { data = offers, meta = new { total = offers.Count } });
+        var buyers = await LoadUsersAsync(offers.Select(o => o.BuyerUserId));
+        return Ok(new { success = true, data = offers.Select(o => MapMarketplaceOffer(o, listing, buyers.GetValueOrDefault(o.BuyerUserId), null)), meta = new { total = offers.Count } });
     }
 
     [HttpPut("offers/{id:int}/accept")]
@@ -280,42 +281,71 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> CounterOffer(int id, [FromBody] OfferRequest request)
     {
         var offer = await _marketplace.SetOfferStatusAsync(id, RequireUserId(), User.IsAdmin(), "countered", request.Amount, request.Message);
-        return offer == null ? NotFound(new { error = "Offer not found" }) : Ok(new { data = offer });
+        return offer == null ? NotFound(new { success = false, code = "NOT_FOUND", error = "Offer not found" }) : Ok(new { success = true, data = MapMarketplaceOffer(offer) });
     }
 
     [HttpPut("offers/{id:int}/accept-counter")]
     [Authorize]
-    public Task<IActionResult> AcceptCounterOffer(int id) => OfferStatus(id, "counter_accepted");
+    public Task<IActionResult> AcceptCounterOffer(int id) => OfferStatus(id, "accepted", useCounterAmount: true);
 
     [HttpDelete("offers/{id:int}")]
     [Authorize]
     public async Task<IActionResult> DeleteOffer(int id)
     {
-        var userId = RequireUserId();
-        var offer = await _db.MarketplaceOffers.FirstOrDefaultAsync(o => o.Id == id);
-        if (offer == null) return NotFound(new { error = "Offer not found" });
-        if (offer.BuyerUserId != userId && offer.SellerUserId != userId && !User.IsAdmin()) return StatusCode(403, new { error = "Forbidden" });
-        _db.MarketplaceOffers.Remove(offer);
-        await _db.SaveChangesAsync();
-        return NoContent();
+        var offer = await _marketplace.SetOfferStatusAsync(id, RequireUserId(), User.IsAdmin(), "withdrawn");
+        return offer == null
+            ? NotFound(new { success = false, code = "NOT_FOUND", error = "Offer not found" })
+            : Ok(new { success = true, data = new { message = "Offer withdrawn", offer = MapMarketplaceOffer(offer) } });
     }
 
     [HttpGet("my-offers/sent")]
     [Authorize]
-    public async Task<IActionResult> SentOffers()
+    public async Task<IActionResult> SentOffers([FromQuery] int? limit = null, [FromQuery(Name = "per_page")] int? perPage = null, [FromQuery] string? cursor = null)
     {
         var userId = RequireUserId();
-        var offers = await _db.MarketplaceOffers.Where(o => o.BuyerUserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        return Ok(new { data = offers, meta = new { total = offers.Count } });
+        var pageSize = ResolveOfferLimit(limit, perPage);
+        var cursorId = DecodeListingCursor(cursor);
+        var query = _db.MarketplaceOffers.Where(o => o.BuyerUserId == userId);
+        if (cursorId.HasValue) query = query.Where(o => o.Id < cursorId.Value);
+        var offers = await query.OrderByDescending(o => o.Id).Take(pageSize + 1).ToListAsync();
+        var hasMore = offers.Count > pageSize;
+        if (hasMore) offers.RemoveAt(offers.Count - 1);
+
+        var listings = await LoadListingsAsync(offers.Select(o => o.MarketplaceListingId));
+        var sellers = await LoadUsersAsync(offers.Select(o => o.SellerUserId));
+        var nextCursor = hasMore && offers.Count > 0 ? EncodeCursor(offers[^1].Id) : null;
+
+        return Ok(new
+        {
+            success = true,
+            data = offers.Select(o => MapMarketplaceOffer(o, listings.GetValueOrDefault(o.MarketplaceListingId), null, sellers.GetValueOrDefault(o.SellerUserId))),
+            meta = new { per_page = pageSize, cursor = nextCursor, next_cursor = nextCursor, has_more = hasMore }
+        });
     }
 
     [HttpGet("my-offers/received")]
     [Authorize]
-    public async Task<IActionResult> ReceivedOffers()
+    public async Task<IActionResult> ReceivedOffers([FromQuery] int? limit = null, [FromQuery(Name = "per_page")] int? perPage = null, [FromQuery] string? cursor = null)
     {
         var userId = RequireUserId();
-        var offers = await _db.MarketplaceOffers.Where(o => o.SellerUserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        return Ok(new { data = offers, meta = new { total = offers.Count } });
+        var pageSize = ResolveOfferLimit(limit, perPage);
+        var cursorId = DecodeListingCursor(cursor);
+        var query = _db.MarketplaceOffers.Where(o => o.SellerUserId == userId);
+        if (cursorId.HasValue) query = query.Where(o => o.Id < cursorId.Value);
+        var offers = await query.OrderByDescending(o => o.Id).Take(pageSize + 1).ToListAsync();
+        var hasMore = offers.Count > pageSize;
+        if (hasMore) offers.RemoveAt(offers.Count - 1);
+
+        var listings = await LoadListingsAsync(offers.Select(o => o.MarketplaceListingId));
+        var buyers = await LoadUsersAsync(offers.Select(o => o.BuyerUserId));
+        var nextCursor = hasMore && offers.Count > 0 ? EncodeCursor(offers[^1].Id) : null;
+
+        return Ok(new
+        {
+            success = true,
+            data = offers.Select(o => MapMarketplaceOffer(o, listings.GetValueOrDefault(o.MarketplaceListingId), buyers.GetValueOrDefault(o.BuyerUserId), null)),
+            meta = new { per_page = pageSize, cursor = nextCursor, next_cursor = nextCursor, has_more = hasMore }
+        });
     }
 
     [HttpPost("seller/profile")]
@@ -1031,13 +1061,23 @@ public class MarketplaceController : ControllerBase
         };
     }
 
-    private async Task<IActionResult> OfferStatus(int id, string status)
+    private async Task<IActionResult> OfferStatus(int id, string status, bool useCounterAmount = false)
     {
         var offer = await _marketplace.SetOfferStatusAsync(id, RequireUserId(), User.IsAdmin(), status);
-        return offer == null ? NotFound(new { error = "Offer not found" }) : Ok(new { data = offer });
+        if (offer == null)
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Offer not found" });
+
+        if (useCounterAmount && offer.CounterAmount.HasValue)
+        {
+            offer.Amount = offer.CounterAmount;
+            offer.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new { success = true, data = MapMarketplaceOffer(offer) });
     }
 
-    private static object MapMarketplaceOffer(MarketplaceOffer offer) => new
+    private static object MapMarketplaceOffer(MarketplaceOffer offer, MarketplaceListing? listing = null, User? buyer = null, User? seller = null) => new
     {
         id = offer.Id,
         marketplace_listing_id = offer.MarketplaceListingId,
@@ -1051,8 +1091,66 @@ public class MarketplaceController : ControllerBase
         counter_amount = offer.CounterAmount,
         counter_message = offer.CounterMessage,
         created_at = offer.CreatedAt,
-        updated_at = offer.UpdatedAt
+        updated_at = offer.UpdatedAt,
+        listing = listing == null
+            ? null
+            : new
+            {
+                id = listing.Id,
+                title = listing.Title,
+                price = listing.Price,
+                price_currency = listing.PriceCurrency,
+                status = listing.Status,
+                image = listing.Images.OrderBy(i => i.SortOrder).Select(i => new
+                {
+                    url = i.Url,
+                    thumbnail_url = i.Url
+                }).FirstOrDefault()
+            },
+        buyer = buyer == null
+            ? null
+            : new
+            {
+                id = buyer.Id,
+                name = DisplayName(buyer),
+                avatar_url = buyer.AvatarUrl
+            },
+        seller = seller == null
+            ? null
+            : new
+            {
+                id = seller.Id,
+                name = DisplayName(seller),
+                avatar_url = seller.AvatarUrl
+            }
     };
+
+    private async Task<Dictionary<int, MarketplaceListing>> LoadListingsAsync(IEnumerable<int> listingIds)
+    {
+        var ids = listingIds.Distinct().ToArray();
+        return ids.Length == 0
+            ? new Dictionary<int, MarketplaceListing>()
+            : await _db.MarketplaceListings
+                .Include(l => l.Images)
+                .Where(l => ids.Contains(l.Id))
+                .ToDictionaryAsync(l => l.Id);
+    }
+
+    private async Task<Dictionary<int, User>> LoadUsersAsync(IEnumerable<int> userIds)
+    {
+        var ids = userIds.Distinct().ToArray();
+        return ids.Length == 0
+            ? new Dictionary<int, User>()
+            : await _db.Users
+                .Where(u => ids.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+    }
+
+    private static int ResolveOfferLimit(int? limit, int? perPage)
+        => Math.Clamp(limit ?? perPage ?? 20, 1, 100);
+
+    private static string EncodeCursor(int id)
+        => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
 
     private async Task<IActionResult> OrderStatus(int id, string status, string? trackingNumber = null)
     {
