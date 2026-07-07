@@ -242,6 +242,19 @@ The expanded default scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
 against the same temporary process: all four chunks passed on 2026-07-07 with
 `458` repeated checks, `0` failures, and `254` collective module-page checks.
 
+The default Laravel runtime smoke scope now additionally covers
+`/blog/test-sitemap-blog-post`, `/blog/test-sitemap-blog-post/comments`,
+`/blog/timebank-ireland`, `/blog/timebank-ireland/comments`, and `/kb/90001`
+as signed 2xx routes. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5341`, started with `TENANT_ID=2`, passed on
+2026-07-07: `11/11` checks, `0` failures. The expanded default scope now
+contains `310` checks: `259` module-page checks, 8 unsigned auth-required
+redirect checks, 17 gated-status checks, and 20 signed redirect checks, plus the
+6 auth/health checks.
+The expanded default scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
+against the same temporary process: all four chunks passed on 2026-07-07 with
+`463` repeated checks, `0` failures, and `259` collective module-page checks.
+
 ## Header And Footer Contract
 
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |

@@ -278,6 +278,11 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/polls/4',
       '/feed/item/listing/90967',
       '/blog/64/likers/1',
+      '/blog/test-sitemap-blog-post',
+      '/blog/test-sitemap-blog-post/comments',
+      '/blog/timebank-ireland',
+      '/blog/timebank-ireland/comments',
+      '/kb/90001',
       '/marketplace/category/electronics',
       '/marketplace/category/home-garden',
       '/marketplace/category/free-items',
@@ -739,6 +744,18 @@ describe('Laravel runtime smoke harness', () => {
       '/marketplace/category/free-items',
       '/marketplace/category/services',
       '/marketplace/seller/1'
+    ]));
+  });
+
+  it('includes stable blog and knowledge-base fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/blog/test-sitemap-blog-post',
+      '/blog/test-sitemap-blog-post/comments',
+      '/blog/timebank-ireland',
+      '/blog/timebank-ireland/comments',
+      '/kb/90001'
     ]));
   });
 
