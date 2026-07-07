@@ -405,9 +405,12 @@ nudge and become-buddy forms, status success/error states, and empty states.
 `/goals/{id}/edit` redirects unsigned visitors to `/login?status=auth-required`,
 loads the goal from Laravel-compatible goal detail data, and renders the
 Blade-style owner edit form, prefilled date/check-in/public fields, error state,
-and delete warning/form. Existing goal POST aliases continue to call Laravel v2
-goals, comment, and like APIs. This remains partial: detail, insights, check-in,
-reminder, history, and social GET pages, exact
+and delete warning/form. `/goals/{id}/checkin` redirects unsigned visitors to
+`/login?status=auth-required`, loads Laravel-compatible goal detail and recent
+check-in data, and renders the Blade-style progress, mood, note, status, and
+recent check-in history page. Existing goal POST aliases continue to call Laravel v2
+goals, comment, and like APIs. This remains partial: detail, insights, reminder,
+history, and social GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 

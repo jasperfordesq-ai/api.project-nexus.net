@@ -5614,6 +5614,60 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
   });
 
+  it('renders the Laravel goal check-in form and recent history for signed-in owners', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        current_value: 3,
+        target_value: 10
+      }
+    });
+    api.callGoalApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 9,
+            progress_percent: 30,
+            mood: 'motivated',
+            note: 'Cleared the first raised bed.',
+            created_at: '2026-07-05T09:15:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/checkin');
+    const signed = await request(app)
+      .get('/goals/42/checkin?status=checkin-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Goal: Restore the community garden');
+    expect(signed.text).toContain('Log a check-in');
+    expect(signed.text).toContain('Record your real progress, how you are feeling and an optional note.');
+    expect(signed.text).toContain('We could not record your check-in. Please try again.');
+    expect(signed.text).toContain('method="post" action="/goals/42/checkin"');
+    expect(signed.text).toContain('id="progress_percent" name="progress_percent" type="number" min="0" max="100" step="1" inputmode="numeric" value="30"');
+    expect(signed.text).toContain('How are you feeling?');
+    expect(signed.text).toContain('id="mood-motivated" name="mood" type="radio" value="motivated"');
+    expect(signed.text).toContain('Note (optional)');
+    expect(signed.text).toContain('Record check-in');
+    expect(signed.text).toContain('Recent check-ins');
+    expect(signed.text).toContain('Progress: 30%');
+    expect(signed.text).toContain('Mood: Motivated');
+    expect(signed.text).toContain('Cleared the first raised bed.');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
+    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/checkins?limit=20');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 

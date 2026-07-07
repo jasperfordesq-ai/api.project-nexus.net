@@ -23,6 +23,16 @@ const GOAL_CHECKIN_MOODS = ['great', 'good', 'neutral', 'okay', 'struggling', 's
 const GOAL_CHECKIN_FREQUENCIES = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_REMINDER_FREQUENCIES = ['daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_BUDDY_ACTION_TYPES = ['nudge', 'encouragement', 'offer_help'];
+const GOAL_MOOD_LABELS = {
+  great: 'Great',
+  good: 'Good',
+  neutral: 'Neutral',
+  okay: 'Okay',
+  struggling: 'Struggling',
+  stuck: 'Stuck',
+  motivated: 'Motivated',
+  grateful: 'Grateful'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -227,6 +237,21 @@ function dateInputValue(value) {
   return '';
 }
 
+function dateTimeLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).replace(',', '');
+}
+
 function normalizeEditableGoal(item) {
   const goal = normalizeGoal(item);
   const raw = item && typeof item === 'object' ? item : {};
@@ -238,6 +263,22 @@ function normalizeEditableGoal(item) {
     deadlineValue: dateInputValue(raw.deadline || raw.target_date || raw.targetDate),
     checkinFrequency: allowedValue(raw.checkin_frequency || raw.checkinFrequency, GOAL_CHECKIN_FREQUENCIES, 'none'),
     isPublic: checked(raw.is_public)
+  };
+}
+
+function normalizeCheckin(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const progress = raw.progress_value ?? raw.progress_percent ?? raw.progressValue ?? raw.progressPercent ?? null;
+  const mood = allowedValue(raw.mood, GOAL_CHECKIN_MOODS, '');
+
+  return {
+    id: positiveInteger(raw.id),
+    progressText: progress === null || progress === undefined || progress === ''
+      ? 'Progress not recorded'
+      : `Progress: ${Math.round(Number(progress))}%`,
+    moodLabel: mood ? GOAL_MOOD_LABELS[mood] : '',
+    note: trimmed(raw.note || ''),
+    createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
   };
 }
 
@@ -256,6 +297,23 @@ function errorMessage(status) {
     'goal-invalid': 'Enter a title and target value.'
   };
   return messages[trimmed(status)] || '';
+}
+
+function checkinStatus(status) {
+  const value = trimmed(status);
+  if (value === 'checkin-recorded') {
+    return {
+      successMessage: 'Your check-in has been recorded.',
+      errorMessage: ''
+    };
+  }
+  if (value === 'checkin-failed') {
+    return {
+      successMessage: '',
+      errorMessage: 'We could not record your check-in. Please try again.'
+    };
+  }
+  return { successMessage: '', errorMessage: '' };
 }
 
 function editErrorMessage(status) {
@@ -438,6 +496,35 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
       { value: 'biweekly', label: 'Every two weeks' },
       { value: 'monthly', label: 'Monthly' }
     ]
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const [goalResult, checkinResult] = await Promise.all([
+    getGoal(token, id),
+    callGoal(token, 'GET', `/${id}/checkins?limit=20`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
+  ]);
+
+  const goal = normalizeGoal(dataFrom(goalResult));
+  goal.id = goal.id || Number(id);
+  const currentPercent = progressPercent(goal);
+  const status = checkinStatus(req.query.status);
+
+  return res.render('goals/checkin', {
+    title: 'Log a check-in',
+    activeNav: 'explore',
+    goal,
+    currentPercent,
+    moods: GOAL_CHECKIN_MOODS.map((value) => ({ value, label: GOAL_MOOD_LABELS[value] })),
+    checkins: collectionFrom(checkinResult).map(normalizeCheckin),
+    ...status
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
