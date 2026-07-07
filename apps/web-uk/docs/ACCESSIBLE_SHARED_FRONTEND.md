@@ -235,8 +235,12 @@ wallet transfers while preserving Laravel profile status redirects.
 dashboard endpoint, and render the Blade-style contribution summary, engagement
 stats, skills breakdown, monthly hours, detailed-insights navigation, timeline,
 dual-bar insights chart, quick stats, and typed activity badges.
-Message group GET pages now render the Laravel Blade group-conversation list,
-create/search form, and conversation detail in Nunjucks. Signed-in requests call
+Message GET pages now render Laravel Blade direct and group conversations in
+Nunjucks. Signed-in `/messages/new/{userId}` requests call Laravel-compatible
+`/api/v2/messages/{userId}`, `/api/v2/messages/restriction-status`,
+`/api/v2/messages/{userId}/read`, and optional listing context before rendering
+the direct conversation title, listing inset, search, older-message link,
+message list, reply, voice, and archive controls. Group requests call
 Laravel-compatible `/api/v2/conversations/groups`,
 `/api/v2/conversations/{id}/messages`, `/api/v2/conversations/{id}/participants`,
 and `/api/v2/users/search` for the no-JS member picker. Message POST aliases

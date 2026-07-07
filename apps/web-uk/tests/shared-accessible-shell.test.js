@@ -13704,6 +13704,84 @@ describe('shared accessible frontend shell', () => {
     expect(api.replyToConversation).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed direct conversation alias for a recipient', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'Bike repair kit' }
+    });
+    api.callMessageApi.mockImplementation((token, method, path) => {
+      if (method === 'GET' && path === '/77?per_page=50&direction=older&cursor=older-page') {
+        return Promise.resolve({
+          data: [
+            {
+              id: 12,
+              sender_id: 77,
+              body: 'I can bring the spare tools.',
+              created_at: '2026-02-03T10:15:00Z',
+              sender: { name: 'Morgan Lee' },
+              attachments: [{ url: '/uploads/guide.pdf', name: 'guide.pdf' }]
+            },
+            {
+              id: 13,
+              sender_id: 101,
+              body: 'Thanks, that would help.',
+              created_at: '2026-02-03T10:20:00Z'
+            }
+          ],
+          meta: {
+            conversation: {
+              id: 77,
+              other_user: { id: 77, name: 'Morgan Lee' }
+            },
+            cursor: 'next-page',
+            has_more: true
+          }
+        });
+      }
+      if (method === 'GET' && path === '/restriction-status') {
+        return Promise.resolve({
+          data: {
+            direct_messaging_enabled: true,
+            restricted: false
+          }
+        });
+      }
+      if (method === 'PUT' && path === '/77/read') {
+        return Promise.resolve({ data: { marked_read: 2 } });
+      }
+      return Promise.reject(new Error(`Unexpected message API call: ${method} ${path}`));
+    });
+
+    const response = await request(app)
+      .get('/messages/new/77?cursor=older-page&listing=42&status=message-sent&q=tools')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/77?per_page=50&direction=older&cursor=older-page');
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/restriction-status');
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'PUT', '/77/read');
+    expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
+    expect(response.text).toContain('Conversation with Morgan Lee');
+    expect(response.text).toContain('Your message has been sent.');
+    expect(response.text).toContain('About:');
+    expect(response.text).toContain('Bike repair kit');
+    expect(response.text).toContain('I can bring the spare tools.');
+    expect(response.text).toContain('Thanks, that would help.');
+    expect(response.text).toContain('guide.pdf');
+    expect(response.text).toContain('Search messages');
+    expect(response.text).toContain('value="tools"');
+    expect(response.text).toContain('href="/messages/new/77?listing=42&amp;q=tools&amp;cursor=next-page"');
+    expect(response.text).toContain('action="/messages/77"');
+    expect(response.text).toContain('name="context_type" value="listing"');
+    expect(response.text).toContain('name="context_id" value="42"');
+    expect(response.text).toContain('name="attachments[]"');
+    expect(response.text).toContain('action="/messages/77/voice"');
+    expect(response.text).toContain('action="/messages/77/archive"');
+    expect(response.text).toContain('Back to messages');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits the Laravel voice message route with multipart audio data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

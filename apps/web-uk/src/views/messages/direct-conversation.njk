@@ -1,0 +1,198 @@
+{# Copyright © 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Messages", href: "/messages" },
+      { text: conversation.otherUser.name }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <p class="govuk-body">
+        <a href="/messages" class="govuk-back-link">Back to messages</a>
+      </p>
+
+      {% if statusMessage %}
+        {% set notificationMessage = statusMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: errorMessage, href: "#body" }]
+        }) }}
+      {% endif %}
+
+      <span class="govuk-caption-xl">Messages</span>
+      <h1 class="govuk-heading-xl">Conversation with {{ conversation.otherUser.name }}</h1>
+
+      {% if listing %}
+        <div class="govuk-inset-text">
+          About:
+          <a class="govuk-link" href="/listings/{{ listing.id }}">{{ listing.title or listing.name or "Listing" }}</a>
+        </div>
+      {% endif %}
+
+      {% if not directMessagingEnabled %}
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            Direct messaging is currently turned off.
+          </strong>
+        </div>
+      {% elseif restricted %}
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            This conversation may need staff support before messages can be exchanged directly.
+          </strong>
+        </div>
+      {% endif %}
+
+      <form method="get" action="/messages/new/{{ conversation.id }}" class="govuk-!-margin-bottom-6">
+        {% if listingId %}
+          <input type="hidden" name="listing" value="{{ listingId }}">
+        {% endif %}
+        {{ govukInput({
+          label: { text: "Search messages", classes: "govuk-label--s" },
+          hint: { text: "Filter messages in this conversation by keyword." },
+          id: "q",
+          name: "q",
+          value: query
+        }) }}
+        {{ govukButton({
+          text: "Search",
+          classes: "govuk-button--secondary"
+        }) }}
+      </form>
+
+      {% if meta.hasMore and olderHref %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ olderHref }}">Show older messages</a>
+        </p>
+      {% endif %}
+
+      {% if messages and messages.length %}
+        <ol class="app-messages-container govuk-list" role="log" aria-label="Conversation messages">
+          {% for message in messages %}
+            <li id="m-{{ message.id }}" class="app-message{% if message.isOwn or message.is_own %} app-message--own{% endif %}">
+              <div class="app-message-header">
+                <strong class="govuk-body-s govuk-!-font-weight-bold">{{ message.displaySenderName }}</strong>
+                {% if message.created_at or message.createdAt %}
+                  <span class="govuk-body-s">{{ (message.created_at or message.createdAt) | formatDate }}</span>
+                {% endif %}
+              </div>
+              <div class="app-message-body">
+                {% if message.body %}
+                  <p class="govuk-body">{{ message.body }}</p>
+                {% else %}
+                  <p class="govuk-body govuk-hint">No text content.</p>
+                {% endif %}
+
+                {% set attachments = message.attachments or [] %}
+                {% if attachments.length %}
+                  <ul class="govuk-list govuk-list--bullet">
+                    {% for attachment in attachments %}
+                      <li>
+                        <a class="govuk-link" href="{{ attachment.url or attachment.download_url or attachment.path }}">
+                          {{ attachment.name or attachment.filename or "Attachment" }}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if message.isOwn or message.is_own %}
+                  <details class="govuk-details govuk-!-margin-top-2">
+                    <summary class="govuk-details__summary">
+                      <span class="govuk-details__summary-text">Message actions</span>
+                    </summary>
+                    <div class="govuk-details__text">
+                      <form method="post" action="/messages/{{ conversation.id }}/m/{{ message.id }}/edit" class="govuk-!-margin-bottom-3">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        {{ govukTextarea({
+                          label: { text: "Edit message", classes: "govuk-label--s" },
+                          id: "edit-body-{{ message.id }}",
+                          name: "body",
+                          rows: 3,
+                          value: message.body
+                        }) }}
+                        {{ govukButton({ text: "Save message", classes: "govuk-button--secondary" }) }}
+                      </form>
+                      <form method="post" action="/messages/{{ conversation.id }}/m/{{ message.id }}/delete">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <input type="hidden" name="scope" value="everyone">
+                        {{ govukButton({ text: "Delete message", classes: "govuk-button--warning" }) }}
+                      </form>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="govuk-body">No messages yet.</p>
+      {% endif %}
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <h2 class="govuk-heading-m">Reply</h2>
+      <form method="post" action="/messages/{{ conversation.id }}" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {% if listingId %}
+          <input type="hidden" name="context_type" value="listing">
+          <input type="hidden" name="context_id" value="{{ listingId }}">
+        {% endif %}
+        {{ govukTextarea({
+          label: { text: "Message", classes: "govuk-label--s" },
+          id: "body",
+          name: "body",
+          rows: 5
+        }) }}
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="attachments">Attachments</label>
+          <div id="attachments-hint" class="govuk-hint">Upload images or documents. You can send a message with only attachments.</div>
+          <input class="govuk-file-upload" id="attachments" name="attachments[]" type="file" multiple aria-describedby="attachments-hint">
+        </div>
+        {{ govukButton({ text: "Reply" }) }}
+      </form>
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-6">Voice note</h2>
+      <form method="post" action="/messages/{{ conversation.id }}/voice" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="voice">Upload a voice note</label>
+          <input class="govuk-file-upload" id="voice" name="voice" type="file" accept="audio/*">
+        </div>
+        {{ govukButton({ text: "Send voice note", classes: "govuk-button--secondary" }) }}
+      </form>
+
+      <form method="post" action="/messages/{{ conversation.id }}/archive" class="govuk-!-margin-top-6">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {{ govukButton({ text: "Archive conversation", classes: "govuk-button--warning" }) }}
+      </form>
+    </div>
+  </div>
+{% endblock %}

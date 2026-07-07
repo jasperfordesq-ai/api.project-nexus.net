@@ -21,6 +21,7 @@ const {
   uploadVoiceMessage,
   uploadMessageAttachments,
   callConversationApi,
+  callListingApi,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -180,6 +181,35 @@ function groupStatusMessage(status) {
   return messages[trimmed(status)] || '';
 }
 
+function directStatusMessage(status) {
+  const messages = {
+    'message-sent': 'Your message has been sent.',
+    'message-edited': 'Your message has been updated.',
+    'message-deleted': 'Your message has been deleted.',
+    'translate-done': 'The message has been translated.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function directErrorMessage(status) {
+  const messages = {
+    'message-empty': 'Enter a message before sending.',
+    'message-disabled': 'Direct messaging is currently turned off.',
+    'message-failed': 'We could not send your message.',
+    'message-edit-failed': 'We could not update your message.',
+    'message-edit-forbidden': 'You cannot update that message.',
+    'message-edit-expired': 'That message can no longer be edited.',
+    'message-delete-failed': 'We could not delete your message.',
+    'translate-unavailable': 'Translation is not available for this message.',
+    'translate-empty': 'There is no text to translate.',
+    'translate-failed': 'We could not translate the message.',
+    'attachment-failed': 'We could not upload the attachment.',
+    'voice-required': 'Choose a voice note before sending.',
+    'voice-failed': 'We could not upload the voice note.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
 function groupName(group) {
   return trimmed(group && (group.group_name || group.groupName || group.name)) || 'Group conversation';
 }
@@ -197,12 +227,58 @@ function senderName(message, currentUserId) {
     || 'Unknown member';
 }
 
+function conversationOtherUser(conversation, fallbackId) {
+  const otherUser = conversation && typeof conversation.other_user === 'object'
+    ? conversation.other_user
+    : (conversation && typeof conversation.otherUser === 'object' ? conversation.otherUser : {});
+  return {
+    id: positiveInteger(otherUser.id) || positiveInteger(conversation && conversation.other_user_id) || fallbackId,
+    name: trimmed(otherUser.name || otherUser.full_name || otherUser.fullName)
+      || trimmed(conversation && (conversation.other_user_name || conversation.otherUserName))
+      || `Member ${fallbackId}`
+  };
+}
+
 function conversationApiPath(conversationId, query) {
   const search = new URLSearchParams();
   search.set('per_page', '50');
   search.set('direction', 'older');
   if (query.cursor) search.set('cursor', String(query.cursor));
   return `/${conversationId}/messages?${search.toString()}`;
+}
+
+function directConversationApiPath(userId, query) {
+  const search = new URLSearchParams();
+  search.set('per_page', '50');
+  search.set('direction', 'older');
+  if (query.cursor) search.set('cursor', String(query.cursor));
+  return `/${userId}?${search.toString()}`;
+}
+
+function directConversationFrom(result, userId, currentUserId) {
+  const data = dataFrom(result);
+  const meta = (result && result.meta) || (data && data.meta) || {};
+  const rawConversation = meta.conversation || (data && data.conversation) || {};
+  const otherUser = conversationOtherUser(rawConversation, userId);
+  const messages = listFrom(data).map(message => ({
+    ...message,
+    body: trimmed(message.body || message.content, 10000),
+    displaySenderName: senderName(message, currentUserId),
+    isOwn: positiveInteger(message.sender_id) !== null && positiveInteger(message.sender_id) === currentUserId
+  }));
+
+  return {
+    conversation: {
+      ...rawConversation,
+      id: userId,
+      otherUser
+    },
+    messages,
+    meta: {
+      hasMore: Boolean(meta.has_more),
+      cursor: trimmed(meta.cursor)
+    }
+  };
 }
 
 function editFailureStatus(error) {
@@ -576,6 +652,50 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
+router.get('/new/:userId(\\d+)', asyncRoute(async (req, res) => {
+  const userId = Number(req.params.userId);
+  const listingId = positiveInteger(req.query.listing);
+  const [messagesResult, profileResult, restrictionResult, listingResult] = await Promise.all([
+    callMessage(req.token, 'GET', directConversationApiPath(userId, req.query)),
+    getProfile(req.token).catch(() => null),
+    callMessage(req.token, 'GET', '/restriction-status').catch(() => ({ data: {} })),
+    listingId === null ? Promise.resolve(null) : callListingApi(req.token, 'GET', `/${listingId}`).catch(() => null)
+  ]);
+
+  await callMessage(req.token, 'PUT', `/${userId}/read`).catch(() => {});
+
+  const profile = dataFrom(profileResult);
+  const currentUserId = positiveInteger(profile && profile.id);
+  const normalized = directConversationFrom(messagesResult, userId, currentUserId);
+  const restriction = dataFrom(restrictionResult) || {};
+  const listing = listingResult ? dataFrom(listingResult) : null;
+  const query = trimmed(req.query.q);
+  const olderParams = new URLSearchParams();
+  if (listingId !== null) olderParams.set('listing', String(listingId));
+  if (query !== '') olderParams.set('q', query);
+  if (normalized.meta.cursor) olderParams.set('cursor', normalized.meta.cursor);
+  const olderHref = normalized.meta.hasMore && normalized.meta.cursor
+    ? `/messages/new/${userId}?${olderParams.toString()}`
+    : '';
+
+  res.render('messages/direct-conversation', {
+    title: `Conversation with ${normalized.conversation.otherUser.name}`,
+    conversation: normalized.conversation,
+    messages: normalized.messages,
+    meta: normalized.meta,
+    olderHref,
+    listing,
+    listingId,
+    query,
+    statusMessage: directStatusMessage(req.query.status),
+    errorMessage: directErrorMessage(req.query.status),
+    currentUserId,
+    directMessagingEnabled: restriction.direct_messaging_enabled !== false && restriction.messaging_disabled !== true,
+    restricted: Boolean(restriction.restricted || restriction.is_restricted || restriction.broker_messaging_only),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Conversation not found' }));
+
 // New conversation form
 router.get('/new', asyncRoute(async (req, res) => {
   const { user_id } = req.query;
@@ -590,7 +710,7 @@ router.get('/new', asyncRoute(async (req, res) => {
   if (user_id) {
     try {
       selectedUser = await getUser(req.token, user_id);
-    } catch (e) {
+    } catch {
       // Ignore - user may not exist or not be connected
     }
   }
@@ -606,7 +726,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 }));
 
 // Start new conversation
-router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next) => {
+router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res) => {
   const { recipient_id, content } = req.body;
 
   const errors = [];
