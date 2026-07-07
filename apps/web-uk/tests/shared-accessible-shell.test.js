@@ -152,6 +152,7 @@ jest.mock('../src/lib/api', () => ({
   createMemberPremiumPortal: jest.fn().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } }),
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
   callCouponApi: jest.fn().mockResolvedValue({ data: { items: [] } }),
+  callReviewApi: jest.fn().mockResolvedValue({ data: [] }),
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   updateComment: jest.fn().mockResolvedValue({ data: { id: 12, content: 'Updated' } }),
@@ -307,6 +308,7 @@ describe('shared accessible frontend shell', () => {
     api.createMemberPremiumPortal.mockReset().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } });
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
     api.callCouponApi.mockReset().mockResolvedValue({ data: { items: [] } });
+    api.callReviewApi.mockReset().mockResolvedValue({ data: [] });
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.updateComment.mockReset().mockResolvedValue({ data: { id: 12, content: 'Updated' } });
@@ -8388,6 +8390,157 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('renders the Laravel reviews summary for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callReviewApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/user/101?per_page=20') {
+        return {
+          data: [{
+            id: 91,
+            rating: 5,
+            comment: 'Reliable and kind',
+            reviewer: { name: 'Casey Quinn' },
+            created_at: '2026-07-01T10:00:00Z'
+          }],
+          meta: { has_more: false }
+        };
+      }
+      if (pathValue === '/given?per_page=20') {
+        return {
+          data: [{
+            id: 92,
+            rating: 4,
+            comment: 'Thoughtful exchange',
+            receiver: { name: 'Morgan Lee' },
+            created_at: '2026-07-02T10:00:00Z'
+          }],
+          meta: { has_more: false }
+        };
+      }
+      if (pathValue === '/pending?per_page=20') {
+        return {
+          data: [{
+            receiver_id: 77,
+            receiver_name: 'Taylor Green',
+            transaction_id: 88,
+            exchange_title: 'Garden swap'
+          }]
+        };
+      }
+      if (pathValue === '/user/101/stats') {
+        return { data: { average: 4.8, total: 12 } };
+      }
+      return { data: [] };
+    });
+
+    const response = await request(app)
+      .get('/reviews?status=review-submitted')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/user/101?per_page=20');
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/given?per_page=20');
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/pending?per_page=20');
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/user/101/stats');
+    expect(response.text).toContain('Reviews');
+    expect(response.text).toContain('Your review has been submitted.');
+    expect(response.text).toContain('View all reviews');
+    expect(response.text).toContain('4.8 / 5');
+    expect(response.text).toContain('12');
+    expect(response.text).toContain('By Casey Quinn');
+    expect(response.text).toContain('For Morgan Lee');
+    expect(response.text).toContain('Taylor Green');
+    expect(response.text).toContain('Garden swap');
+    expect(response.text).toContain('action="/reviews"');
+    expect(response.text).toContain('name="receiver_id" value="77"');
+    expect(response.text).toContain('name="transaction_id" value="88"');
+  });
+
+  it('renders the Laravel paginated reviews list tab', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callReviewApi.mockResolvedValueOnce({
+      data: [{
+        id: 93,
+        rating: 4,
+        comment: 'Careful and friendly',
+        receiver: { name: 'Morgan Lee' },
+        created_at: '2026-07-03T10:00:00Z'
+      }],
+      meta: { cursor: 'next-page', has_more: true }
+    });
+
+    const response = await request(app)
+      .get('/reviews/list?tab=given&cursor=abc')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/given?per_page=20&cursor=abc');
+    expect(response.text).toContain('All reviews');
+    expect(response.text).toContain('Back to reviews summary');
+    expect(response.text).toContain('Given');
+    expect(response.text).toContain('For Morgan Lee');
+    expect(response.text).toContain('Careful and friendly');
+    expect(response.text).toContain('/reviews/93/comments');
+    expect(response.text).toContain('Load more reviews');
+    expect(response.text).toContain('/reviews/list?tab=given&amp;cursor=next-page');
+  });
+
+  it('renders the Laravel review comments panel', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callReviewApi.mockResolvedValueOnce({
+      data: {
+        id: 91,
+        rating: 5,
+        comment: 'Thoughtful exchange',
+        reviewer: { name: 'Casey Quinn' },
+        created_at: '2026-07-04T10:00:00Z'
+      }
+    });
+    api.getComments.mockResolvedValueOnce({
+      data: {
+        comments: [{
+          id: 12,
+          content: 'Thanks for adding context',
+          user: { name: 'Avery Stone' },
+          user_id: 101,
+          created_at: '2026-07-05T10:00:00Z'
+        }],
+        count: 1
+      }
+    });
+    api.getReactionSummary.mockResolvedValueOnce({
+      data: { counts: { like: 2, love: 1 }, total: 3, user_reaction: 'love' }
+    });
+
+    const response = await request(app)
+      .get('/reviews/91/comments?status=comment-added')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/91');
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'review', target_id: 91 });
+    expect(api.getReactionSummary).toHaveBeenCalledWith('test-token', 'review', 91);
+    expect(response.text).toContain('Comments on this review');
+    expect(response.text).toContain('Your comment has been posted.');
+    expect(response.text).toContain('Thoughtful exchange');
+    expect(response.text).toContain('Casey Quinn');
+    expect(response.text).toContain('Thanks for adding context');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('action="/reviews/91/comments"');
+    expect(response.text).toContain('action="/reviews/91/react#review-reactions"');
+    expect(response.text).toContain('Like');
+    expect(response.text).toContain('Love');
   });
 
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {

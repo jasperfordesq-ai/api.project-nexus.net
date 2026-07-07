@@ -626,6 +626,15 @@ Laravel Blade views. This remains partial: tenant-domain routing, localization,
 legal acceptance prompts, version history/compare links, live runtime behavior,
 and ASP.NET backend compatibility are not certified.
 
+The signed reviews pages now replace the generated review GET preparation
+fallbacks. `/reviews` reads Laravel-compatible received, given, pending, and
+stats review endpoints and renders the Blade-style summary with pending-review
+forms. `/reviews/list` renders the received/given cursor list, and
+`/reviews/{id}/comments` renders the Blade-style discussion page from Laravel
+review, comment, and reaction APIs. This remains partial: feature gates,
+moderation/deletion display, threaded reply depth, localization, live runtime
+behavior, and ASP.NET backend compatibility are not certified.
+
 The public about and guide pages now replace the static About, Guide, Features,
 and FAQ placeholders. `/about` renders the Blade-style community intro,
 four-step how-it-works list, values, contributor credits, open-source links, and

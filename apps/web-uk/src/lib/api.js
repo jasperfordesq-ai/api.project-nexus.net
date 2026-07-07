@@ -2551,6 +2551,20 @@ async function deleteReview(token, reviewId) {
   });
 }
 
+async function callReviewApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/reviews${normalizedPath}`, options);
+}
+
 async function createReview(token, data) {
   return request('/api/v2/reviews', {
     method: 'POST',
@@ -3067,6 +3081,7 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
+  callReviewApi,
   createReview,
   createComment,
   updateComment,

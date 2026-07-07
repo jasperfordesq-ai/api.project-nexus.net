@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T06:12:28.248Z",
+    "generatedAt": "2026-07-07T06:22:42.173Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -11794,8 +11794,8 @@
       "gates": "feature:reviews",
       "apiNeeds": "service:ReviewService",
       "webUkPath": "/reviews",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "reviews/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\reviews.js"
     },
     {
       "method": "GET",
@@ -11813,8 +11813,8 @@
       "gates": "feature:reviews",
       "apiNeeds": "",
       "webUkPath": "/reviews/{param}/comments",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "reviews/comments",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\reviews.js"
     },
     {
       "method": "GET",
@@ -11832,8 +11832,8 @@
       "gates": "feature:reviews",
       "apiNeeds": "",
       "webUkPath": "/reviews/list",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "reviews/list",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\reviews.js"
     },
     {
       "method": "POST",

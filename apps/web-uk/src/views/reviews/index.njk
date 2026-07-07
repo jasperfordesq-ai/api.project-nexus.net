@@ -1,0 +1,114 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% macro reviewItem(review) %}
+  <li class="nexus-alpha-card">
+    <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ review.otherLabel }} {{ review.otherName }}</h3>
+    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Rating: {{ review.ratingLabel }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
+    {% if review.comment %}
+      <p class="govuk-body govuk-!-margin-bottom-2">{{ review.comment }}</p>
+    {% endif %}
+    {% if review.id %}
+      <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="/reviews/{{ review.id }}/comments">Comment on this review</a></p>
+    {% endif %}
+  </li>
+{% endmacro %}
+
+{% block mainContent %}
+  {% if statusMessage %}
+    <div class="govuk-notification-banner{% if statusMessage.type == 'success' %} govuk-notification-banner--success{% endif %}" role="region" aria-labelledby="reviews-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="reviews-status-title">{{ "Success" if statusMessage.type == "success" else "Important" }}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-xl">Your reviews</span>
+      <h1 class="govuk-heading-xl">Reviews</h1>
+      <p class="govuk-body-l">Read the reviews you have received, check reviews you have given, and leave pending reviews after completed exchanges.</p>
+      <p class="govuk-body"><a class="govuk-link" href="/reviews/list">View all reviews</a></p>
+    </div>
+    <div class="govuk-grid-column-one-third">
+      <div class="nexus-alpha-card">
+        <h2 class="govuk-heading-m">Review score</h2>
+        <p class="govuk-heading-l govuk-!-margin-bottom-1">{{ reviewStats.average or "Not rated" }}{% if reviewStats.average %} / 5{% endif %}</p>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ reviewStats.total }} reviews</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="govuk-grid-row govuk-!-margin-top-6">
+    <div class="govuk-grid-column-one-half">
+      <h2 class="govuk-heading-l">Received</h2>
+      {% if reviewsReceived.length %}
+        <ul class="nexus-alpha-card-list">
+          {% for review in reviewsReceived %}
+            {{ reviewItem(review) }}
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">You have not received any reviews yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="govuk-grid-column-one-half">
+      <h2 class="govuk-heading-l">Given</h2>
+      {% if reviewsGiven.length %}
+        <ul class="nexus-alpha-card-list">
+          {% for review in reviewsGiven %}
+            {{ reviewItem(review) }}
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">You have not given any reviews yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="govuk-grid-row govuk-!-margin-top-6">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-heading-l">Pending</h2>
+      {% if reviewsPending.length %}
+        <ul class="nexus-alpha-card-list">
+          {% for pending in reviewsPending %}
+            <li class="nexus-alpha-card">
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ pending.receiverName }}</h3>
+              <p class="govuk-body-s nexus-alpha-meta">{{ pending.title }}</p>
+              <form method="post" action="/reviews" novalidate>
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <input type="hidden" name="receiver_id" value="{{ pending.receiverId }}">
+                <input type="hidden" name="transaction_id" value="{{ pending.transactionId }}">
+                <div class="govuk-form-group">
+                  <label class="govuk-label govuk-label--s" for="rating-{{ loop.index }}">Rating</label>
+                  <select class="govuk-select" id="rating-{{ loop.index }}" name="rating">
+                    <option value="5">5 - Excellent</option>
+                    <option value="4">4 - Good</option>
+                    <option value="3">3 - OK</option>
+                    <option value="2">2 - Poor</option>
+                    <option value="1">1 - Very poor</option>
+                  </select>
+                </div>
+                <div class="govuk-form-group">
+                  <label class="govuk-label govuk-label--s" for="comment-{{ loop.index }}">Your review</label>
+                  <textarea class="govuk-textarea" id="comment-{{ loop.index }}" name="comment" rows="3" maxlength="2000"></textarea>
+                </div>
+                <button class="govuk-button" data-module="govuk-button" type="submit">Submit review</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">There are no pending reviews.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
