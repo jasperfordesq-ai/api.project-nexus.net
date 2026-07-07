@@ -93,9 +93,11 @@ are now covered as signed-session 2xx checks; a later run against
 harness default timeout is now `60000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
-web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-keeps `/login/two-factor` outside the general signed-page scope because Laravel
-redirects it without the session-backed 2FA token.
+web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`.
+`/login/two-factor` is now covered as a signed-session redirect check when the
+session-backed 2FA token is absent; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
+161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
 
 ## Stack
 

@@ -127,7 +127,11 @@ async function handleTwoFactorPost(req, res) {
   }
 }
 
-router.get('/login/two-factor', redirectIfAuthenticated, (req, res) => {
+router.get('/login/two-factor', (req, res) => {
+  if (!req.session?.pending2faToken) {
+    return res.redirect('/login?status=two-factor-expired');
+  }
+
   res.render('login', {
     title: 'Two-factor authentication',
     show2fa: true,

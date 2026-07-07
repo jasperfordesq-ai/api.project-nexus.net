@@ -16,6 +16,7 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/marketplace/coupons', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
+  { path: '/login/two-factor', location: '/login?status=two-factor-expired' },
   { path: '/onboarding', location: '/dashboard' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];

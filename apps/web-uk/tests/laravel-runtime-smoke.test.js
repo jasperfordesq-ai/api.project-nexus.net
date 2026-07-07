@@ -312,6 +312,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const signedRedirectPages = new Map([
+      ['/login/two-factor', '/login?status=two-factor-expired'],
       ['/onboarding', '/dashboard'],
       ['/premium/manage', '/premium?status=no-subscription']
     ]);
@@ -606,6 +607,7 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-premium-return-renders': true,
       'module-page-profile-renders': true,
       'module-page-report-a-problem-renders': true,
+      'redirect-page-login-two-factor-redirects-login-status-two-factor-expired': true,
       'redirect-page-onboarding-redirects-dashboard': true,
       'redirect-page-premium-manage-redirects-premium-status-no-subscription': true,
       'module-page-resources-library-renders': true,

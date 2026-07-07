@@ -59,7 +59,7 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits add signed-session public auth alias parity and smoke coverage. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `920/1000` implementation/certification parity |
+| Working estimate | about `921/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -137,8 +137,11 @@ now remain renderable like Laravel and are part of the default 2xx smoke scope;
 the latest live run against `WEB_UK_BASE_URL=http://127.0.0.1:5308` passed
 `172/172`: 6 auth/health checks, 161 module/page checks, 3 gated-status checks,
 and 2 redirect-status checks.
-`/login/two-factor` remains outside that generic scope because Laravel redirects
-it when the session-backed 2FA token is absent. Without
+`/login/two-factor` now redirects to `/login?status=two-factor-expired` when the
+session-backed 2FA token is absent and is covered by the default redirect-status
+scope; a later live run against `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed
+`173/173`: 6 auth/health checks, 161 module/page checks, 3 gated-status checks,
+and 3 redirect-status checks. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -252,7 +255,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `920/1000`.
+Current working estimate at this handoff: `921/1000`.
 
 ## Final Handoff Checklist
 

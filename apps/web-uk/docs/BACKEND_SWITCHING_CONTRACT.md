@@ -96,8 +96,10 @@ Signed public auth aliases `/login`,
 are now covered by the default 2xx smoke scope; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5308` passed `172/172`: 6 auth/health checks,
 161 module/page checks, 3 gated-status checks, and 2 redirect-status checks.
-`/login/two-factor` remains outside the generic signed-page scope because
-Laravel redirects it without the session-backed 2FA token.
+`/login/two-factor` is now covered as a signed-session redirect when the
+session-backed 2FA token is absent; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
+161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
 
 ## Current Page Candidates
 

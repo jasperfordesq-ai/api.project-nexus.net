@@ -4310,14 +4310,15 @@ describe('shared accessible frontend shell', () => {
     );
   });
 
-  it('serves the Laravel two-factor alias and preserves expired-session redirects', async () => {
+  it('redirects the Laravel two-factor alias when the pending 2FA session is missing', async () => {
     const agent = request.agent(app);
     const getResponse = await agent.get('/login/two-factor');
 
-    expect(getResponse.status).toBe(200);
-    expect(getResponse.text).toContain('name="code"');
+    expect(getResponse.status).toBe(302);
+    expect(getResponse.headers.location).toBe('/login?status=two-factor-expired');
 
-    const csrfMatch = getResponse.text.match(/name="_csrf" value="([^"]+)"/);
+    const first = await agent.get('/login');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
     const postResponse = await agent
       .post('/login/two-factor')
       .type('form')
