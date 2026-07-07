@@ -699,10 +699,11 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CreateDeliveryOffer(int orderId, [FromBody] DeliveryOfferRequest request)
     {
-        var offer = new MarketplaceDeliveryOffer { MarketplaceOrderId = orderId, DelivererUserId = RequireUserId(), TimeCreditAmount = request.TimeCreditAmount };
+        var timeCredits = request.TimeCredits ?? request.TimeCreditAmount;
+        var offer = new MarketplaceDeliveryOffer { MarketplaceOrderId = orderId, DelivererUserId = RequireUserId(), TimeCreditAmount = timeCredits };
         _db.MarketplaceDeliveryOffers.Add(offer);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/orders/{orderId}/delivery-offers", new { data = offer });
+        return Created($"/api/marketplace/orders/{orderId}/delivery-offers", new { data = MapDeliveryOffer(offer) });
     }
 
     [HttpGet("orders/{orderId:int}/delivery-offers")]
@@ -710,16 +711,22 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> DeliveryOffers(int orderId)
     {
         var rows = await _db.MarketplaceDeliveryOffers.Where(o => o.MarketplaceOrderId == orderId).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var delivererIds = rows.Select(o => o.DelivererUserId).Distinct().ToArray();
+        var deliverers = await _db.Users
+            .Where(u => delivererIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+        return Ok(new { data = rows.Select(o => MapDeliveryOffer(o, deliverers.GetValueOrDefault(o.DelivererUserId))), meta = new { total = rows.Count } });
     }
 
     [HttpPut("orders/{orderId:int}/delivery-offers/{delivererId:int}/accept")]
     [Authorize]
-    public Task<IActionResult> AcceptDeliveryOffer(int orderId, int delivererId) => DeliveryOfferStatus(orderId, delivererId, "accepted");
+    public Task<IActionResult> AcceptDeliveryOffer(int orderId, int delivererId)
+        => DeliveryOfferStatus(orderId, delivererId, "accepted", "Delivery offer accepted");
 
     [HttpPut("orders/{orderId:int}/delivery-offers/{delivererId:int}/confirm")]
     [Authorize]
-    public Task<IActionResult> ConfirmDeliveryOffer(int orderId, int delivererId) => DeliveryOfferStatus(orderId, delivererId, "confirmed");
+    public Task<IActionResult> ConfirmDeliveryOffer(int orderId, int delivererId)
+        => DeliveryOfferStatus(orderId, delivererId, "completed", "Delivery confirmed");
 
     [HttpPost("listings/{id:int}/auto-reply")]
     [Authorize]
@@ -1034,14 +1041,43 @@ public class MarketplaceController : ControllerBase
         return order == null ? NotFound(new { error = "Order not found" }) : Ok(new { data = order });
     }
 
-    private async Task<IActionResult> DeliveryOfferStatus(int orderId, int delivererId, string status)
+    private async Task<IActionResult> DeliveryOfferStatus(int orderId, int delivererId, string status, string message)
     {
         var offer = await _db.MarketplaceDeliveryOffers.FirstOrDefaultAsync(o => o.MarketplaceOrderId == orderId && o.DelivererUserId == delivererId);
         if (offer == null) return NotFound(new { error = "Delivery offer not found" });
         offer.Status = status;
         offer.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = offer });
+        return Ok(new { data = new { message } });
+    }
+
+    private static object MapDeliveryOffer(MarketplaceDeliveryOffer offer, User? deliverer = null) => new
+    {
+        id = offer.Id,
+        order_id = offer.MarketplaceOrderId,
+        deliverer_id = offer.DelivererUserId,
+        time_credits = offer.TimeCreditAmount,
+        estimated_minutes = (int?)null,
+        notes = (string?)null,
+        status = offer.Status,
+        accepted_at = (DateTime?)null,
+        completed_at = (DateTime?)null,
+        created_at = offer.CreatedAt,
+        deliverer = deliverer == null
+            ? null
+            : new
+            {
+                id = deliverer.Id,
+                name = DisplayName(deliverer),
+                avatar_url = deliverer.AvatarUrl,
+                is_verified = deliverer.EmailVerified || deliverer.EmailVerifiedAt != null
+            }
+    };
+
+    private static string DisplayName(User user)
+    {
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
     }
 
     private int RequireUserId()
@@ -1145,7 +1181,13 @@ public record PromotionRequest(
     [property: JsonPropertyName("product_code")] string? ProductCode,
     [property: JsonPropertyName("promotion_type")] string? PromotionType);
 public sealed record PromotionProduct(string Type, decimal Price, string Currency, int DurationHours);
-public record DeliveryOfferRequest(decimal TimeCreditAmount);
+public sealed class DeliveryOfferRequest
+{
+    [JsonPropertyName("time_credits")]
+    public decimal? TimeCredits { get; set; }
+
+    public decimal TimeCreditAmount { get; set; }
+}
 public record AutoReplyRequest(string? Question);
 public record CouponRequest(string? Code, string? Description, decimal DiscountAmount, string? DiscountType, DateTime? ExpiresAt);
 public record ShippingOptionRequest(string? Name, decimal Price, string? Currency, string? Region, bool? IsActive);
