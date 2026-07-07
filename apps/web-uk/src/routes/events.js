@@ -17,6 +17,7 @@ const {
   rsvpToEvent,
   removeEventRsvp,
   votePoll,
+  getPolls,
   callEventApi,
   getEventCategories,
   uploadEventImage,
@@ -177,6 +178,19 @@ function eventMapState(event) {
   };
 }
 
+function eventPollFrom(item, eventId) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  if (id === null) return null;
+  const question = trimmed(row.question || row.title) || `#${id}`;
+  const attached = checked(row.attached) || positiveInteger(row.event_id ?? row.eventId) === eventId;
+  return {
+    id,
+    question,
+    attached
+  };
+}
+
 async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
@@ -220,6 +234,33 @@ router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
     title: 'Event location',
     activeNav: 'events',
     map
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const [eventResult, pollsResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    getPolls(token, { mine: true, limit: 100 })
+  ]);
+  const event = eventFrom(eventResult);
+  const polls = collectionFrom(pollsResult)
+    .map((poll) => eventPollFrom(poll, id))
+    .filter(Boolean);
+
+  res.render('events/polls', {
+    title: 'Polls for this event',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title) || 'Polls'
+    },
+    polls,
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Event not found' }));
 

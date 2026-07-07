@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T03:35:23.973Z",
+    "generatedAt": "2026-07-07T03:41:31.797Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -3377,8 +3377,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/polls",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/polls",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",

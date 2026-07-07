@@ -11979,6 +11979,46 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel event poll attachment page for signed-in organisers', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Repair cafe planning'
+      }
+    });
+    api.getPolls.mockResolvedValueOnce({
+      data: [
+        { id: 12, question: 'Which day works?', event_id: 7 },
+        { id: 13, question: 'Do you need transport?', event_id: null }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/events/7/polls?status=polls-updated')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+    expect(api.getPolls).toHaveBeenCalledWith('test-token', { mine: true, limit: 100 });
+    expect(response.text).toContain('href="/events/7"');
+    expect(response.text).toContain('Back to event');
+    expect(response.text).toContain('Repair cafe planning');
+    expect(response.text).toContain('Polls for this event');
+    expect(response.text).toContain('Attach polls you have created to this event, or remove them.');
+    expect(response.text).toContain('Your poll selection has been saved.');
+    expect(response.text).toContain('method="post" action="/events/7/polls"');
+    expect(response.text).toContain('name="poll_ids[]" type="checkbox" value="12" checked');
+    expect(response.text).toContain('Which day works?');
+    expect(response.text).toContain('Attached');
+    expect(response.text).toContain('value="13"');
+    expect(response.text).toContain('Do you need transport?');
+    expect(response.text).toContain('Save poll selection');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel event map page and no-location state', async () => {
     const api = require('../src/lib/api');
 

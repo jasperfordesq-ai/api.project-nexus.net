@@ -425,12 +425,14 @@ smoke tests, and ASP.NET backend compatibility are not certified.
 
 Event GET pages remain mostly existing local/protected pages or preparation
 pages, but `/events/browse` now renders the Blade-style category chooser with
-Laravel event categories from `/api/v2/categories?type=event`, and
+Laravel event categories from `/api/v2/categories?type=event`,
 `/events/{id}/map` now renders a Laravel-backed Blade-style location page
 through `/api/v2/events/{id}`, including the event back link, address,
 coordinates, no-JS OpenStreetMap embed/links, and no-map states for online or
-coordinate-less events. The Laravel accessible POST aliases under `/events` are
-now local route declarations backed by Laravel v2 event, poll, and UGC
+coordinate-less events, and `/events/{id}/polls` now renders the signed
+Blade-style organiser poll attachment page from `/api/v2/events/{id}` plus
+`/api/v2/polls?mine=1&per_page=100`. The Laravel accessible POST aliases under
+`/events` are now local route declarations backed by Laravel v2 event, poll, and UGC
 translation APIs. The
 aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
 vote, recurring event update, translation request redirects, and cover image
@@ -445,11 +447,11 @@ and sends recurring creates through `/api/v2/events/recurring`, following the
 Laravel template response shape for redirects. Redirects preserve Laravel status
 keys and `#poll-*` fragments. This remains partial: cover image removal is still
 blocked by the absence of a Laravel v2 clear/delete event-image API contract,
-and event polls, recurring edit, translation GET depth, full Blade list/detail
-rendering, owner/participant authorization depth, rendered
-translation result display, event notification/XP/waitlist promotion side
-effects, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
-backend compatibility are not certified.
+and recurring edit, translation GET depth, full Blade list/detail rendering,
+owner/participant authorization depth, rendered translation result display,
+event notification/XP/waitlist promotion side effects, tenant/feature gates,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
