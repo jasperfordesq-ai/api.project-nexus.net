@@ -117,6 +117,12 @@ smoke coverage remain gaps until a configured Pusher app is available. Runtime
 test execution is currently blocked in this Windows environment by Application
 Control on copied test dependencies.
 
+The Laravel React typing-indicator slice now has focused ASP.NET regression
+coverage for `POST /api/v2/messages/typing` with the `PusherContext.tsx`
+payload `{ to_user_id, is_typing }`. The .NET compatibility path also accepts
+Laravel's `recipient_id`, returns `success/data.sent`, and preserves the older
+`conversation_id` typing route behavior for existing .NET clients.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

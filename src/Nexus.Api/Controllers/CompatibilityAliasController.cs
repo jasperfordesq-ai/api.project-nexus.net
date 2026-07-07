@@ -434,13 +434,54 @@ public class CompatibilityAliasController : ControllerBase
     /// POST /api/messages/typing — Broadcast typing indicator via SignalR.
     /// </summary>
     [HttpPost("api/messages/typing")]
+    [HttpPost("api/v2/messages/typing")]
     public async Task<IActionResult> SendTypingIndicator([FromBody] TypingIndicatorRequest? request = null)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        if (request?.RecipientId is > 0)
+        {
+            var recipientExists = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Id == request.RecipientId.Value && u.TenantId == _tenantContext.GetTenantIdOrThrow());
+
+            if (!recipientExists)
+            {
+                return NotFound(new { success = false, code = "NOT_FOUND", message = "Recipient not found." });
+            }
+
+            var conversationId = await _db.Conversations
+                .AsNoTracking()
+                .Where(c =>
+                    (c.Participant1Id == userId.Value && c.Participant2Id == request.RecipientId.Value) ||
+                    (c.Participant1Id == request.RecipientId.Value && c.Participant2Id == userId.Value))
+                .Select(c => (int?)c.Id)
+                .FirstOrDefaultAsync();
+
+            var recipientPayload = new
+            {
+                sent = true,
+                recipient_id = request.RecipientId.Value,
+                user_id = userId.Value,
+                is_typing = request.IsTyping ?? true,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                conversation_id = conversationId
+            };
+
+            if (conversationId.HasValue)
+            {
+                await _realTimeMessaging.BroadcastToConversationAsync(
+                    conversationId.Value,
+                    "TypingIndicator",
+                    recipientPayload);
+            }
+
+            return Ok(new { success = true, data = recipientPayload });
+        }
+
         if (request?.ConversationId is not > 0)
-            return BadRequest(new { error = "conversation_id is required" });
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", message = "recipient_id is required.", field = "recipient_id" });
 
         var isParticipant = await _db.Conversations
             .AsNoTracking()
@@ -3000,6 +3041,16 @@ public class TypingIndicatorRequest
 {
     [JsonPropertyName("conversation_id")]
     public int? ConversationId { get; set; }
+
+    [JsonPropertyName("recipient_id")]
+    public int? RecipientId { get; set; }
+
+    [JsonPropertyName("to_user_id")]
+    public int? ToUserId
+    {
+        get => RecipientId;
+        set => RecipientId = value;
+    }
 
     [JsonPropertyName("is_typing")]
     public bool? IsTyping { get; set; }
