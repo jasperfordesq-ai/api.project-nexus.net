@@ -494,7 +494,11 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/podcasts/1',
       '/podcasts/1/episodes/1',
       '/resources/1/download',
-      '/users/1/collections'
+      '/users/1/collections',
+      '/marketplace/slots/1/edit',
+      '/me/collections/1',
+      '/search/saved/1/delete',
+      '/volunteering/certificates/ABC123/download'
     ]);
     if (req.method === 'GET' && unsignedAuthRequiredPages.has(req.url)) {
       res.writeHead(302, { location: '/login?status=auth-required' });
@@ -823,6 +827,17 @@ describe('Laravel runtime smoke harness', () => {
       '/goals/162/history',
       '/goals/162/social',
       '/reviews/18/comments'
+    ]));
+  });
+
+  it('includes stable unsigned auth-required owner route outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.unsignedAuthRequiredPagePaths).toEqual(expect.arrayContaining([
+      '/marketplace/slots/1/edit',
+      '/me/collections/1',
+      '/search/saved/1/delete',
+      '/volunteering/certificates/ABC123/download'
     ]));
   });
 

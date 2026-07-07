@@ -148,9 +148,10 @@ scope; a later live run against `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed
 and 3 redirect-status checks. POST `/login` now also follows the Laravel 2FA
 challenge hand-off by storing `two_factor_token` in the session and redirecting
 to `/login/two-factor` when the API returns `requires_2fa`. The default smoke
-scope now checks all eight matched unsigned auth-required parameterised routes
-across federation, ideation, organisations, podcasts, resources, and public
-user collections. A full default Laravel-backed run against a temporary web-uk
+scope now checks 12 matched unsigned auth-required parameterised routes across
+federation, ideation, organisations, podcasts, resources, public user
+collections, marketplace slot edit, saved collections, saved-search delete, and
+volunteering certificate download. A full default Laravel-backed run against a temporary web-uk
 process at `WEB_UK_BASE_URL=http://127.0.0.1:5322`, started with `TENANT_ID=2`,
 passed on 2026-07-07: `181/181` checks, `0` failures, `161` module-page
 checks, 8 unsigned auth-required redirect checks, 3 gated-status checks, and 3
@@ -361,11 +362,15 @@ route is now covered by the live post fixture `/feed/posts/796`, which returned
 now covers the goal detail, edit, check-in, reminder, buddy actions, insights,
 history, and social page shapes, and `/reviews/18/comments` covers the review
 comments page; targeted Laravel-backed smoke probes against
-`WEB_UK_BASE_URL=http://127.0.0.1:5347` returned `200` for each. The default
-scope now contains `335` checks: `278` module-page checks, 8 unsigned auth-required redirect
-checks, 22 gated-status checks, and 21 signed redirect checks, plus the 6
-auth/health checks. Parameterised matched GET route shapes without default
-runtime smoke coverage fell from 28 to 9.
+`WEB_UK_BASE_URL=http://127.0.0.1:5347` returned `200` for each. Unsigned owner
+route probes for `/marketplace/slots/1/edit`, `/me/collections/1`,
+`/search/saved/1/delete`, and `/volunteering/certificates/ABC123/download`
+returned `/login?status=auth-required` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5348`. The default scope now contains `339`
+checks: `278` module-page checks, 12 unsigned auth-required redirect checks, 22
+gated-status checks, and 21 signed redirect checks, plus the 6 auth/health
+checks. Parameterised matched GET route shapes without default runtime smoke
+coverage fell from 28 to 6.
 
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to

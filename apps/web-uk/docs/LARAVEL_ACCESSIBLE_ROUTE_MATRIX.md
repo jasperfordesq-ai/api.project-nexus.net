@@ -70,9 +70,10 @@ checks signed public auth aliases (`/login`, `/login/forgot-password`,
 `/password/reset?token=reset-token`, `/register`) plus the broad signed module
 set across explore, saved items, notifications, members, resources, goals,
 marketplace, volunteering, and other Laravel accessible families. Before login,
-it also checks all eight matched auth-required parameterised pages across
-federation, ideation, organisations, podcasts, resources, and public user
-collections redirect to `/login?status=auth-required`. A Jest regression test
+it also checks 12 matched auth-required parameterised pages across federation,
+ideation, organisations, podcasts, resources, public user collections,
+marketplace slot edit, saved collections, saved-search delete, and volunteering
+certificate download redirect to `/login?status=auth-required`. A Jest regression test
 covers the harness with fake Laravel/web-uk servers:
 
 ```bash
@@ -96,8 +97,8 @@ The `/login/two-factor` expired-session redirect is now in scope too; a later
 run against `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6
 auth/health checks, 161 module/page checks, 3 gated-status checks, and 3
 redirect-status checks.
-The default smoke scope now covers all eight matched unsigned auth-required
-parameterised redirects. A full default Laravel-backed run against a temporary
+The default smoke scope now covers 12 matched unsigned auth-required
+parameterised redirects. An earlier full default Laravel-backed run against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:5322`, started with
 `TENANT_ID=2`, passed on 2026-07-07: `181/181` checks, `0` failures, `161`
 module-page checks, 8 unsigned auth-required redirect checks, 3 gated-status
@@ -309,11 +310,15 @@ route is now covered by the live post fixture `/feed/posts/796`, which returned
 now covers the goal detail, edit, check-in, reminder, buddy actions, insights,
 history, and social page shapes, and `/reviews/18/comments` covers the review
 comments page; targeted Laravel-backed smoke probes against
-`WEB_UK_BASE_URL=http://127.0.0.1:5347` returned `200` for each. The default
-scope now contains `335` checks: `278` module-page checks, 8 unsigned auth-required redirect
-checks, 22 gated-status checks, and 21 signed redirect checks, plus the 6
-auth/health checks. Parameterised matched GET route shapes without default
-runtime smoke coverage fell from 28 to 9.
+`WEB_UK_BASE_URL=http://127.0.0.1:5347` returned `200` for each. Unsigned owner
+route probes for `/marketplace/slots/1/edit`, `/me/collections/1`,
+`/search/saved/1/delete`, and `/volunteering/certificates/ABC123/download`
+returned `/login?status=auth-required` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5348`. The default scope now contains `339`
+checks: `278` module-page checks, 12 unsigned auth-required redirect checks, 22
+gated-status checks, and 21 signed redirect checks, plus the 6 auth/health
+checks. Parameterised matched GET route shapes without default runtime smoke
+coverage fell from 28 to 6.
 
 ## Header And Footer Contract
 

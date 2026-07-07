@@ -131,7 +131,11 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/podcasts/1',
   '/podcasts/1/episodes/1',
   '/resources/1/download',
-  '/users/1/collections'
+  '/users/1/collections',
+  '/marketplace/slots/1/edit',
+  '/me/collections/1',
+  '/search/saved/1/delete',
+  '/volunteering/certificates/ABC123/download'
 ];
 const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/coupons', status: 403 },
