@@ -63,6 +63,20 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         data.GetProperty("is_typing").GetBoolean().Should().BeTrue();
     }
 
+    [Fact]
+    public async Task MessageRestrictionStatus_ReturnsLaravelReactShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/messages/restriction-status");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await ReadDataAsync(response);
+        data.GetProperty("messaging_disabled").GetBoolean().Should().BeFalse();
+        data.GetProperty("under_monitoring").GetBoolean().Should().BeFalse();
+        data.GetProperty("restriction_reason").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();

@@ -480,7 +480,18 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize]
     public IActionResult MessageRestrictionStatus()
     {
-        return Ok(new { data = new { restricted = false, reason = (string?)null } });
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                messaging_disabled = false,
+                under_monitoring = false,
+                restriction_reason = (string?)null,
+                restricted = false,
+                reason = (string?)null
+            }
+        });
     }
 
     [HttpGet("api/messages/voice")]

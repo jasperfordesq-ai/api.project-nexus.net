@@ -123,6 +123,13 @@ payload `{ to_user_id, is_typing }`. The .NET compatibility path also accepts
 Laravel's `recipient_id`, returns `success/data.sent`, and preserves the older
 `conversation_id` typing route behavior for existing .NET clients.
 
+The Laravel React messaging restriction slice now has focused ASP.NET
+regression coverage for `GET /api/v2/messages/restriction-status`. The .NET
+compatibility path returns the composer-gating fields read by
+`MessagesPage.tsx` and `ConversationPage.tsx`: `messaging_disabled`,
+`under_monitoring`, and `restriction_reason`, wrapped in the Laravel
+`success/data` envelope.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin
