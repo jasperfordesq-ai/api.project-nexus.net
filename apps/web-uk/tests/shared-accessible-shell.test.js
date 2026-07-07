@@ -5499,6 +5499,74 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/discover?per_page=30');
   });
 
+  it('renders the Laravel goal buddying page for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.callGoalApi
+      .mockReset()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 42,
+            title: 'Support repairs training',
+            current_value: 3,
+            target_value: 6,
+            status: 'active',
+            user: {
+              first_name: 'Avery',
+              last_name: 'Morgan'
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 77,
+            title: 'Share weekly cycling miles',
+            current_value: 2,
+            target_value: 5,
+            user: {
+              first_name: 'Sam',
+              last_name: 'Taylor'
+            }
+          }
+        ]
+      });
+
+    const unsigned = await request(app).get('/goals/buddying');
+    const signed = await request(app)
+      .get('/goals/buddying?status=buddy-nudge-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(staticPageRoutes.pages['/goals/buddying']).toBeUndefined();
+    expect(signed.text).toContain('Back to goals');
+    expect(signed.text).toContain('Goals you support and public goals you can offer to buddy.');
+    expect(signed.text).toContain('Goals you buddy');
+    expect(signed.text).toContain('Unable to send encouragement. Please try again.');
+    expect(signed.text).toContain('href="#your-buddied-goals"');
+    expect(signed.text).toContain('Goals you are buddying');
+    expect(signed.text).toContain('Support repairs training');
+    expect(signed.text).toContain('Owned by Avery Morgan');
+    expect(signed.text).toContain('Active');
+    expect(signed.text).toContain('50%');
+    expect(signed.text).toContain('method="post" action="/goals/42/buddy-nudge"');
+    expect(signed.text).toContain('Send encouragement');
+    expect(signed.text).toContain('Public goals looking for a buddy');
+    expect(signed.text).toContain('Share weekly cycling miles');
+    expect(signed.text).toContain('Owned by Sam Taylor');
+    expect(signed.text).toContain('40%');
+    expect(signed.text).toContain('method="post" action="/goals/77/buddy"');
+    expect(signed.text).toContain('Become a buddy');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callGoalApi).toHaveBeenCalledTimes(2);
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/mentoring?per_page=30');
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/discover?per_page=30');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 

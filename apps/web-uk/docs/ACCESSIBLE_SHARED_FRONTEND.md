@@ -397,10 +397,14 @@ template cards, target hints, title override form, public checkbox, status
 error, and load-more link. `/goals/discover` redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel `/api/v2/goals/discover`, and
 renders the Blade-style public buddy-goal list, owner names, progress display,
-buddy status errors, empty state, and no-JS buddy form. Existing goal POST
-aliases continue to call Laravel v2 goals, comment, and like APIs. This remains
-partial: detail, edit, buddying, insights, check-in, reminder, history, and
-social GET pages, exact
+buddy status errors, empty state, and no-JS buddy form. `/goals/buddying`
+redirects unsigned visitors to `/login?status=auth-required`, calls Laravel
+`/api/v2/goals/mentoring` and `/api/v2/goals/discover`, and renders the
+Blade-style buddying/available-goals sections, owner names, progress display,
+nudge and become-buddy forms, status success/error states, and empty states.
+Existing goal POST aliases continue to call Laravel v2 goals, comment, and like
+APIs. This remains partial: detail, edit, insights, check-in, reminder, history,
+and social GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 

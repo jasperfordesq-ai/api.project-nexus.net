@@ -236,6 +236,23 @@ function errorMessage(status) {
   return messages[trimmed(status)] || '';
 }
 
+function buddyingStatus(status) {
+  const value = trimmed(status);
+  if (value === 'buddy-nudge-sent') {
+    return { successMessage: 'Encouragement sent!', errorMessage: '', errorHref: '' };
+  }
+  if (value === 'buddy-joined') {
+    return { successMessage: 'You are now a buddy for this goal.', errorMessage: '', errorHref: '' };
+  }
+  if (value === 'buddy-nudge-failed') {
+    return { successMessage: '', errorMessage: 'Unable to send encouragement. Please try again.', errorHref: '#your-buddied-goals' };
+  }
+  if (value === 'buddy-failed') {
+    return { successMessage: '', errorMessage: 'We could not add you as a buddy. The goal may already have one.', errorHref: '#available-goals' };
+  }
+  return { successMessage: '', errorMessage: '', errorHref: '' };
+}
+
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
@@ -315,6 +332,33 @@ router.get('/templates', asyncRoute(async (req, res) => {
     meta,
     nextHref: meta.hasMore && meta.cursor ? `/goals/templates?${nextParams.toString()}` : '',
     errorMessage: status === 'goal-failed' ? 'Something went wrong. Please try again.' : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/buddying', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const params = new URLSearchParams({ per_page: '30' });
+  const [buddyingResult, availableResult] = await Promise.all([
+    callGoal(token, 'GET', `/mentoring?${params.toString()}`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    }),
+    callGoal(token, 'GET', `/discover?${params.toString()}`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
+  ]);
+
+  const status = buddyingStatus(req.query.status);
+
+  return res.render('goals/buddying', {
+    title: 'Goals you buddy',
+    activeNav: 'explore',
+    buddying: collectionFrom(buddyingResult).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null),
+    available: collectionFrom(availableResult).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null),
+    ...status
   });
 }, { redirectOn401: loginRedirect() }));
 
