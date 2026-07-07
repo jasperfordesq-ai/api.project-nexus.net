@@ -119,10 +119,12 @@ scope, set `SMOKE_MODULE_PAGE_CHUNK=N/M` to run a deterministic one-based slice
 of only the module-page sweep, for example `SMOKE_MODULE_PAGE_CHUNK=1/4`; the
 auth, unsigned auth-required, gated, and redirect groups still run unless each
 is explicitly disabled with `none`.
-A chunked live run against `WEB_UK_BASE_URL=http://127.0.0.1:5320` with
-`TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=1/16` passed `31/31`: 14 auth/API
-setup and unsigned redirect checks, 11 module-page shard checks, 3 gated
-status checks, and 3 redirect checks.
+All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
+`TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07:
+`481` total repeated checks, `0` failures, and `161` collective module-page
+checks across the default sweep. Each shard also reran the auth/API setup,
+unsigned auth-required redirects, gated status checks, and signed redirect
+checks.
 
 ## Stack
 

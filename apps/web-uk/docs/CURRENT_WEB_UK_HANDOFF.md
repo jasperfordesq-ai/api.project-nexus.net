@@ -160,11 +160,13 @@ through slower signed module pages. `SMOKE_MODULE_PAGE_CHUNK=N/M` now splits
 only the module-page sweep into deterministic one-based chunks, for example
 `SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can prove the default page set through
 repeatable smaller Laravel-backed runs while leaving auth, unsigned
-auth-required, gated, and redirect checks enabled. A chunked live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5320` with `TENANT_ID=2` and
-`SMOKE_MODULE_PAGE_CHUNK=1/16` passed `31/31`: 14 auth/API setup and unsigned
-redirect checks, 11 module-page shard checks, 3 gated status checks, and 3
-redirect checks. `/organisations/{id}` now
+auth-required, gated, and redirect checks enabled. All 16 chunked live runs
+against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with `TENANT_ID=2` and
+`SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07: `481` total repeated
+checks, `0` failures, and `161` collective module-page checks across the
+default sweep. Each shard also reran the auth/API setup, unsigned
+auth-required redirects, gated status checks, and signed redirect checks.
+`/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
