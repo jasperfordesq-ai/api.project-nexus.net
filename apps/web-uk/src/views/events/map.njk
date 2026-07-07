@@ -1,0 +1,62 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/events/{{ map.id }}">Back to event</a>
+
+  <span class="govuk-caption-l">{{ map.title }}</span>
+  <h1 class="govuk-heading-xl">Event location</h1>
+  <p class="govuk-body-l">Where this event is taking place.</p>
+
+  {% if map.hasCoordinates %}
+    {% if map.location %}
+      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Address</dt>
+          <dd class="govuk-summary-list__value">{{ map.location }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Map reference</dt>
+          <dd class="govuk-summary-list__value">{{ map.latText }}, {{ map.lngText }}</dd>
+        </div>
+      </dl>
+    {% endif %}
+
+    <figure class="nexus-alpha-detail-hero govuk-!-margin-bottom-4">
+      <iframe
+        title="Map showing the location of {{ map.title }}"
+        src="{{ map.embedUrl }}"
+        width="100%"
+        height="360"
+        style="border:1px solid #b1b4b6;max-width:100%;"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </figure>
+
+    <div class="govuk-button-group">
+      <a class="govuk-link" href="{{ map.viewUrl }}" rel="noopener noreferrer" target="_blank">View this location on OpenStreetMap<span class="govuk-visually-hidden"> (opens in new tab)</span></a>
+      <a class="govuk-link" href="{{ map.directionsUrl }}" rel="noopener noreferrer" target="_blank">Get directions on OpenStreetMap<span class="govuk-visually-hidden"> (opens in new tab)</span></a>
+    </div>
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No map available</h2>
+      {% if map.isOnline %}
+        <p class="govuk-body">This is an online event, so it has no physical location to map.</p>
+      {% else %}
+        <p class="govuk-body">This event does not have map coordinates set.</p>
+        {% if map.location %}
+          <p class="govuk-body">A written address is shown on the event page.</p>
+          <dl class="govuk-summary-list">
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Address</dt>
+              <dd class="govuk-summary-list__value">{{ map.location }}</dd>
+            </div>
+          </dl>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

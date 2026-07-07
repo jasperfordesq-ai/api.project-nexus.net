@@ -11353,6 +11353,75 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel event map page and no-location state', async () => {
+    const api = require('../src/lib/api');
+
+    api.callEventApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          title: 'Community garden day',
+          location: 'Village hall, Main Street',
+          latitude: 53.349805,
+          longitude: -6.26031,
+          is_online: false
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 43,
+          title: 'Remote planning',
+          is_online: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 44,
+          title: 'Equator meetup',
+          location: 'Null Island',
+          latitude: 0,
+          longitude: 0,
+          is_online: false
+        }
+      });
+
+    const mapped = await request(app).get('/events/42/map');
+    const online = await request(app).get('/events/43/map');
+    const zeroCoordinate = await request(app).get('/events/44/map');
+
+    expect(mapped.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, '', 'GET', '/42');
+    expect(mapped.text).toContain('href="/events/42"');
+    expect(mapped.text).toContain('Back to event');
+    expect(mapped.text).toContain('Community garden day');
+    expect(mapped.text).toContain('Event location');
+    expect(mapped.text).toContain('Where this event is taking place.');
+    expect(mapped.text).toContain('Address');
+    expect(mapped.text).toContain('Village hall, Main Street');
+    expect(mapped.text).toContain('Map reference');
+    expect(mapped.text).toContain('53.349805, -6.26031');
+    expect(mapped.text).toContain('https://www.openstreetmap.org/export/embed.html');
+    expect(mapped.text).toContain('marker=53.349805%2C-6.26031');
+    expect(mapped.text).toContain('View this location on OpenStreetMap');
+    expect(mapped.text).toContain('Get directions on OpenStreetMap');
+    expect(mapped.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(online.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, '', 'GET', '/43');
+    expect(online.text).toContain('Remote planning');
+    expect(online.text).toContain('No map available');
+    expect(online.text).toContain('This is an online event, so it has no physical location to map.');
+    expect(online.text).not.toContain('https://www.openstreetmap.org/export/embed.html');
+    expect(online.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(zeroCoordinate.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, '', 'GET', '/44');
+    expect(zeroCoordinate.text).toContain('Equator meetup');
+    expect(zeroCoordinate.text).toContain('0, 0');
+    expect(zeroCoordinate.text).toContain('marker=0%2C0');
+    expect(zeroCoordinate.text).not.toContain('No map available');
+  });
+
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

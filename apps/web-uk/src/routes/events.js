@@ -109,6 +109,57 @@ async function callApi(token, method, path, data = undefined) {
   return callEventApi(token, method, path, data);
 }
 
+function dataFrom(result) {
+  return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
+    ? result.data
+    : result;
+}
+
+function eventFrom(result) {
+  const data = dataFrom(result);
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data.event || data;
+  }
+  return {};
+}
+
+function coordinate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatCoordinate(value) {
+  return Number(value).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function eventMapState(event) {
+  const lat = coordinate(event.latitude ?? event.lat);
+  const lng = coordinate(event.longitude ?? event.lng);
+  const location = trimmed(event.location);
+  const isOnline = checked(event.is_online ?? event.isOnline);
+  const hasCoordinates = lat !== null && lng !== null && !isOnline;
+  const latText = hasCoordinates ? formatCoordinate(lat) : '';
+  const lngText = hasCoordinates ? formatCoordinate(lng) : '';
+  const delta = 0.01;
+  const bbox = hasCoordinates
+    ? `${lng - delta}%2C${lat - delta}%2C${lng + delta}%2C${lat + delta}`
+    : '';
+
+  return {
+    id: event.id,
+    title: trimmed(event.title) || 'Location',
+    location,
+    isOnline,
+    hasCoordinates,
+    latText,
+    lngText,
+    embedUrl: hasCoordinates ? `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latText}%2C${lngText}` : '',
+    viewUrl: hasCoordinates ? `https://www.openstreetmap.org/?mlat=${latText}&mlon=${lngText}#map=15/${latText}/${lngText}` : '',
+    directionsUrl: hasCoordinates ? `https://www.openstreetmap.org/directions?to=${latText}%2C${lngText}` : ''
+  };
+}
+
 async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
@@ -127,6 +178,18 @@ async function runEventAction(req, res, method, path, data, successRedirect, fai
 function eventRedirect(id, status, fragment = '') {
   return `/events/${id}?status=${encodeURIComponent(status)}${fragment}`;
 }
+
+router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const result = await callApi(tokenFrom(req), 'GET', `/${id}`);
+  const map = eventMapState(eventFrom(result));
+
+  res.render('events/map', {
+    title: 'Event location',
+    activeNav: 'events',
+    map
+  });
+}, { notFoundTitle: 'Event not found' }));
 
 function eventScopedPayload(body) {
   const categoryId = positiveInteger(body.category_id);
