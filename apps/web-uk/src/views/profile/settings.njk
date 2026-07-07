@@ -1,0 +1,456 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <a class="govuk-back-link" href="/profile">Back to profile</a>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {% if statusConfig and successStatus %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="profile-settings-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="profile-settings-status-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ statusConfig.message }}</p>
+          </div>
+        </div>
+      {% elif statusConfig and infoStatus %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="status" aria-labelledby="profile-settings-info-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="profile-settings-info-title">Information</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ statusConfig.message }}</p>
+          </div>
+        </div>
+      {% elif statusConfig and errorStatus %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li><a href="#{{ errorAnchor }}">{{ statusConfig.message }}</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Edit your profile</h1>
+      <p class="govuk-body-l">Update the details people see in the accessible member directory.</p>
+
+      <nav class="govuk-!-margin-bottom-8" aria-label="Account settings">
+        <ul class="nexus-alpha-card-list">
+          {% for item in settingsLinks %}
+            <li class="nexus-alpha-card">
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a></h2>
+              <p class="govuk-body govuk-!-margin-bottom-0">{{ item.text }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      </nav>
+
+      <form method="post" action="/profile/settings" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        <section id="avatar" aria-labelledby="profile-photo-heading">
+          <h2 class="govuk-heading-l" id="profile-photo-heading">Profile photo</h2>
+          <p class="govuk-body">Upload a JPG, PNG, GIF or WEBP image. We will crop it to a 400 by 400 pixel square.</p>
+          {% if profile.avatar_url %}
+            <img class="govuk-!-margin-bottom-3" src="{{ profile.avatar_url }}" alt="Your current profile photo" width="120" height="120">
+          {% else %}
+            <p class="govuk-inset-text">You have not added a profile photo yet.</p>
+          {% endif %}
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="avatar_file">Upload a new photo</label>
+            <input class="govuk-file-upload" id="avatar_file" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp">
+          </div>
+
+          {% if profile.avatar_url %}
+            <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="remove_avatar" name="remove_avatar" type="checkbox" value="1">
+                <label class="govuk-label govuk-checkboxes__label" for="remove_avatar">Remove my current photo</label>
+              </div>
+            </div>
+          {% endif %}
+        </section>
+
+        <section aria-labelledby="personal-details-heading">
+          <h2 class="govuk-heading-l" id="personal-details-heading">Personal details</h2>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="first_name">First name</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="first_name" name="first_name" type="text" value="{{ profile.first_name }}" autocomplete="given-name">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="last_name">Last name</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="last_name" name="last_name" type="text" value="{{ profile.last_name }}" autocomplete="family-name">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="phone">Phone number</label>
+            <div id="phone-hint" class="govuk-hint">Use an international format, for example +1 555 123 4567.</div>
+            <input class="govuk-input govuk-!-width-two-thirds" id="phone" name="phone" type="tel" value="{{ profile.phone }}" autocomplete="tel" aria-describedby="phone-hint">
+          </div>
+        </section>
+
+        <section aria-labelledby="public-profile-heading">
+          <h2 class="govuk-heading-l" id="public-profile-heading">Public profile</h2>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="profile_type">Profile type</label>
+            <select class="govuk-select" id="profile_type" name="profile_type">
+              {% for option in profileTypeOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="organization_name">Organisation name</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="organization_name" name="organization_name" type="text" value="{{ profile.organization_name }}">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="tagline">Short introduction</label>
+            <input class="govuk-input" id="tagline" name="tagline" type="text" value="{{ profile.tagline }}" maxlength="160">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="bio">Profile description</label>
+            <textarea class="govuk-textarea" id="bio" name="bio" rows="5">{{ profile.bio }}</textarea>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="location">Town, city or area</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="location" name="location" type="text" value="{{ profile.location }}">
+          </div>
+        </section>
+
+        <section aria-labelledby="privacy-heading">
+          <h2 class="govuk-heading-l" id="privacy-heading">Privacy</h2>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="privacy_profile">Who can see your full profile</label>
+            <div id="privacy-profile-hint" class="govuk-hint">Member directory searches remain limited to signed-in members.</div>
+            <select class="govuk-select" id="privacy_profile" name="privacy_profile" aria-describedby="privacy-profile-hint">
+              {% for option in privacyOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+            <p class="govuk-body govuk-!-margin-top-2">{{ privacyProfileLabel }}</p>
+          </div>
+          <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="privacy_search" name="privacy_search" type="checkbox" value="1"{% if profile.privacy_search %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="privacy_search">Show my profile in member search results</label>
+            </div>
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="privacy_contact" name="privacy_contact" type="checkbox" value="1"{% if profile.privacy_contact %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="privacy_contact">Let other members contact me</label>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="marketing-heading">
+          <h2 class="govuk-heading-l" id="marketing-heading">Email preferences</h2>
+          <p class="govuk-body">We will only use this to email you about this community.</p>
+          <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="newsletter_opt_in" name="newsletter_opt_in" type="checkbox" value="1"{% if profile.newsletter_opt_in %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="newsletter_opt_in">Send me occasional newsletters and updates</label>
+            </div>
+          </div>
+        </section>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Save changes</button>
+      </form>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="skills" aria-labelledby="skills-heading">
+        <h2 class="govuk-heading-l" id="skills-heading">Your skills</h2>
+        {% if mySkills.length %}
+          <ul class="govuk-list">
+            {% for skill in mySkills %}
+              <li class="nexus-alpha-card govuk-!-margin-bottom-3">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ skill.skill_name }}</h3>
+                {% if skill.is_offering %}<strong class="govuk-tag govuk-tag--green">I can offer this</strong>{% endif %}
+                {% if skill.is_requesting %}<strong class="govuk-tag govuk-tag--blue">I am looking for this</strong>{% endif %}
+                <p class="govuk-body govuk-!-margin-top-2">{{ skill.endorsement_count }} endorsements</p>
+                <form method="post" action="/profile/skills/remove">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="user_skill_id" value="{{ skill.id }}">
+                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Remove skill</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body">You have not added any skills yet.</p>
+        {% endif %}
+
+        <form method="post" action="/profile/skills/add" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="skill_name">Add a skill</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="skill_name" name="skill_name" type="text">
+          </div>
+          <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="is_offering" name="is_offering" type="checkbox" value="1" checked>
+              <label class="govuk-label govuk-checkboxes__label" for="is_offering">I can offer this</label>
+            </div>
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="is_requesting" name="is_requesting" type="checkbox" value="1">
+              <label class="govuk-label govuk-checkboxes__label" for="is_requesting">I am looking for this</label>
+            </div>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Add skill</button>
+        </form>
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="security" aria-labelledby="security-heading">
+        <h2 class="govuk-heading-l" id="security-heading">Security</h2>
+        <h3 class="govuk-heading-m">Two-step verification</h3>
+        <p class="govuk-body">Add an authenticator app as a second step when you sign in.</p>
+        <p class="govuk-body"><a class="govuk-link" href="/profile/two-factor">Set up or manage two-step verification</a></p>
+        <p class="govuk-body"><a class="govuk-link" href="/profile/blocked-members">Manage blocked members</a></p>
+
+        <h3 class="govuk-heading-m">Email address</h3>
+        <form method="post" action="/profile/email" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="email">Email address</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="email" name="email" type="email" value="{{ profile.email }}" autocomplete="email">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="current_password">Current password</label>
+            <input class="govuk-input govuk-input--width-20" id="current_password" name="current_password" type="password" autocomplete="current-password">
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Update email address</button>
+        </form>
+
+        <h3 class="govuk-heading-m">Password</h3>
+        <form method="post" action="/profile/password" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="current_password_for_password">Current password</label>
+            <input class="govuk-input govuk-input--width-20" id="current_password_for_password" name="current_password" type="password" autocomplete="current-password">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="new_password">New password</label>
+            <input class="govuk-input govuk-input--width-20" id="new_password" name="new_password" type="password" autocomplete="new-password">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="new_password_confirmation">Confirm new password</label>
+            <input class="govuk-input govuk-input--width-20" id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password">
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Change password</button>
+        </form>
+
+        <h3 class="govuk-heading-m" id="passkeys">Passkeys</h3>
+        {% if passkeys.length %}
+          <ul class="govuk-list">
+            {% for passkey in passkeys %}
+              <li class="nexus-alpha-card govuk-!-margin-bottom-3">
+                <h4 class="govuk-heading-s govuk-!-margin-bottom-1">{{ passkey.device_name }}</h4>
+                <p class="govuk-body">{{ passkey.authenticator_type }}{% if passkey.last_used_label %}, last used {{ passkey.last_used_label }}{% endif %}</p>
+                <form method="post" action="/profile/passkeys/rename" class="govuk-!-margin-bottom-2">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
+                  <label class="govuk-label" for="passkey-name-{{ loop.index }}">Rename passkey</label>
+                  <input class="govuk-input govuk-!-width-two-thirds" id="passkey-name-{{ loop.index }}" name="device_name" type="text" value="{{ passkey.device_name }}">
+                  <button class="govuk-button govuk-button--secondary govuk-!-margin-top-2" data-module="govuk-button">Save passkey name</button>
+                </form>
+                <form method="post" action="/profile/passkeys/remove">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
+                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">Remove passkey</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body">You have not added any passkeys yet.</p>
+        {% endif %}
+
+        <h3 class="govuk-heading-m">Where you are signed in</h3>
+        {% if sessions.length %}
+          <table class="govuk-table">
+            <caption class="govuk-table__caption govuk-table__caption--s">Active sessions</caption>
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th class="govuk-table__header" scope="col">Device</th>
+                <th class="govuk-table__header" scope="col">IP address</th>
+                <th class="govuk-table__header" scope="col">Last active</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for session in sessions %}
+                <tr class="govuk-table__row">
+                  <td class="govuk-table__cell">{{ session.device_label }}</td>
+                  <td class="govuk-table__cell">{{ session.ip_address }}</td>
+                  <td class="govuk-table__cell">{{ session.last_active_label }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="govuk-body">No active sessions were returned.</p>
+        {% endif %}
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="language" aria-labelledby="language-heading">
+        <h2 class="govuk-heading-l" id="language-heading">Language</h2>
+        <p class="govuk-body">Current language: {{ currentLanguageLabel }}</p>
+        <form method="post" action="/profile/language">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="language_select">Choose a language</label>
+            <select class="govuk-select" id="language_select" name="language">
+              {% for option in localeOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Save language</button>
+        </form>
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="notifications" aria-labelledby="notifications-heading">
+        <h2 class="govuk-heading-l" id="notifications-heading">Email and notifications</h2>
+        <form method="post" action="/profile/notifications">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          {% for group in notificationGroups %}
+            <fieldset class="govuk-fieldset govuk-!-margin-bottom-5">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ group.title }}</legend>
+              <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+                {% for item in group.items %}
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="{{ item.key }}" name="{{ item.key }}" type="checkbox" value="1"{% if notificationPrefs[item.key] %} checked{% endif %}>
+                    <label class="govuk-label govuk-checkboxes__label" for="{{ item.key }}">{{ item.label }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          {% endfor %}
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="digest_frequency">Digest frequency</label>
+            <select class="govuk-select" id="digest_frequency" name="digest_frequency">
+              {% for option in digestOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+            <p class="govuk-body govuk-!-margin-top-2">{{ digestFrequencyLabel }}</p>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Save notification preferences</button>
+        </form>
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="match-preferences" aria-labelledby="match-preferences-heading">
+        <h2 class="govuk-heading-l" id="match-preferences-heading">Match notifications</h2>
+        <form method="post" action="/profile/match-preferences">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="notification_frequency">How often should we send match notifications?</label>
+            <select class="govuk-select" id="notification_frequency" name="notification_frequency">
+              {% for option in matchFrequencyOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+            <p class="govuk-body govuk-!-margin-top-2">{{ matchFrequencyLabel }}</p>
+          </div>
+          <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="notify_hot_matches" name="notify_hot_matches" type="checkbox" value="1"{% if matchPrefs.notify_hot_matches %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="notify_hot_matches">Tell me about high priority matches</label>
+            </div>
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="notify_mutual_matches" name="notify_mutual_matches" type="checkbox" value="1"{% if matchPrefs.notify_mutual_matches %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="notify_mutual_matches">Tell me about mutual matches</label>
+            </div>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Save match preferences</button>
+        </form>
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="personalisation" aria-labelledby="personalisation-heading">
+        <h2 class="govuk-heading-l" id="personalisation-heading">Personalisation and translation</h2>
+        <form method="post" action="/profile/personalisation">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="prefers_chronological_feed" name="prefers_chronological_feed" type="checkbox" value="1"{% if profile.prefers_chronological_feed %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="prefers_chronological_feed">Show my feed in chronological order</label>
+            </div>
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="auto_translate_ugc" name="auto_translate_ugc" type="checkbox" value="1"{% if profile.auto_translate_ugc %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="auto_translate_ugc">Automatically translate community posts</label>
+            </div>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="auto_translate_target_locale">Preferred translation language</label>
+            <select class="govuk-select" id="auto_translate_target_locale" name="auto_translate_target_locale">
+              {% for option in autoTranslateLocaleOptions %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Save personalisation preferences</button>
+        </form>
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="safeguarding" aria-labelledby="safeguarding-heading">
+        <h2 class="govuk-heading-l" id="safeguarding-heading">Safeguarding</h2>
+        {% if safeguarding.length %}
+          <ul class="govuk-list">
+            {% for option in safeguarding %}
+              <li class="nexus-alpha-card govuk-!-margin-bottom-3">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ option.label }}</h3>
+                <p class="govuk-body">{{ option.description }}</p>
+                <strong class="govuk-tag">{{ option.activation_label }}</strong>
+                <form method="post" action="/profile/safeguarding/revoke" class="govuk-!-margin-top-3">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="option_id" value="{{ option.option_id }}">
+                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Remove safeguarding preference</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body">You have not added any safeguarding preferences yet.</p>
+        {% endif %}
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section id="data-export" aria-labelledby="data-heading">
+        <h2 class="govuk-heading-l" id="data-heading">Your data and privacy</h2>
+        <p class="govuk-body">Under data protection law you can ask for a copy of the personal information we hold about you, or ask us to delete your account.</p>
+        <h3 class="govuk-heading-m">Get a copy of your data</h3>
+        <p class="govuk-body">Request a downloadable copy of your personal information. We will prepare it and contact you when it is ready.</p>
+        <form method="post" action="/profile/data-export">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Request your data</button>
+        </form>
+        <h3 class="govuk-heading-m">Delete your account</h3>
+        <p class="govuk-body">Deleting your account removes your profile and personal information from this community. This cannot be undone.</p>
+        <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/profile/delete-account">Delete your account</a>
+      </section>
+    </div>
+  </div>
+{% endblock %}

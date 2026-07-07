@@ -22,6 +22,147 @@ const PROFILE_DIGEST_FREQUENCIES = ['off', 'instant', 'daily', 'monthly'];
 const PROFILE_PRIVACY_OPTIONS = ['public', 'members', 'connections'];
 const PROFILE_TYPES = ['individual', 'organisation'];
 const PROFILE_MATCH_FREQUENCIES = ['daily', 'weekly', 'monthly', 'fortnightly', 'never'];
+const PROFILE_LOCALE_LABELS = {
+  en: 'English',
+  ga: 'Irish',
+  cy: 'Welsh',
+  fr: 'French',
+  de: 'German',
+  es: 'Spanish',
+  it: 'Italian',
+  pt: 'Portuguese',
+  pl: 'Polish',
+  ar: 'Arabic',
+  ur: 'Urdu'
+};
+const PROFILE_PRIVACY_LABELS = {
+  public: 'Anyone signed in to the community',
+  members: 'Members only',
+  connections: 'Connections only'
+};
+const PROFILE_TYPE_LABELS = {
+  individual: 'Individual',
+  organisation: 'Organisation'
+};
+const PROFILE_DIGEST_LABELS = {
+  off: 'Off',
+  instant: 'Immediately',
+  daily: 'Daily',
+  monthly: 'Monthly'
+};
+const PROFILE_MATCH_FREQUENCY_LABELS = {
+  daily: 'Every day',
+  weekly: 'Every week',
+  fortnightly: 'Every fortnight',
+  monthly: 'Every month',
+  never: 'Never'
+};
+const PROFILE_STATUS_MESSAGES = {
+  'profile-updated': { type: 'success', message: 'Your profile has been updated.' },
+  'profile-update-failed': {
+    type: 'error',
+    message: 'Your profile could not be updated. Check the details and try again.',
+    anchor: 'first_name'
+  },
+  'data-export-requested': {
+    type: 'success',
+    message: 'Your data export request has been received. We will email you when it is ready.'
+  },
+  'data-export-exists': {
+    type: 'info',
+    message: 'A data export request is already being prepared.'
+  },
+  'data-export-failed': {
+    type: 'error',
+    message: 'We could not request your data export. Please try again.',
+    anchor: 'data-export'
+  },
+  'avatar-invalid': {
+    type: 'error',
+    message: 'Upload a JPG, PNG, GIF or WEBP image smaller than 10MB.',
+    anchor: 'avatar'
+  },
+  'email-changed': { type: 'success', message: 'Your email address has been updated.' },
+  'email-unchanged': { type: 'info', message: 'That is already your email address.' },
+  'email-invalid': { type: 'error', message: 'Enter a valid email address', anchor: 'email' },
+  'email-password-incorrect': {
+    type: 'error',
+    message: 'Your current password was incorrect. Your email was not changed.',
+    anchor: 'current_password'
+  },
+  'email-failed': {
+    type: 'error',
+    message: 'Your email address could not be updated. It may already be in use.',
+    anchor: 'email'
+  },
+  'password-changed': { type: 'success', message: 'Your password has been changed.' },
+  'password-current-required': {
+    type: 'error',
+    message: 'Enter your current password',
+    anchor: 'current_password_for_password'
+  },
+  'password-current-incorrect': {
+    type: 'error',
+    message: 'Your current password was incorrect',
+    anchor: 'current_password_for_password'
+  },
+  'password-weak': {
+    type: 'error',
+    message: 'Your new password must be at least 12 characters',
+    anchor: 'new_password'
+  },
+  'password-mismatch': {
+    type: 'error',
+    message: 'The new passwords you entered do not match',
+    anchor: 'new_password_confirmation'
+  },
+  'password-reused': {
+    type: 'error',
+    message: 'You cannot reuse a recent password. Choose a different one.',
+    anchor: 'new_password'
+  },
+  'password-failed': {
+    type: 'error',
+    message: 'Your password could not be changed. Try again.',
+    anchor: 'current_password_for_password'
+  },
+  'language-changed': { type: 'success', message: 'Your language has been updated.' },
+  'language-invalid': { type: 'error', message: 'Choose a language from the list', anchor: 'language' },
+  'language-failed': { type: 'error', message: 'Your language could not be updated.', anchor: 'language' },
+  'notifications-saved': { type: 'success', message: 'Your notification preferences have been saved.' },
+  'notifications-failed': {
+    type: 'error',
+    message: 'Your notification preferences could not be saved.',
+    anchor: 'notifications'
+  },
+  'passkey-renamed': { type: 'success', message: 'Your passkey has been renamed.' },
+  'passkey-removed': { type: 'success', message: 'Your passkey has been removed.' },
+  'passkey-name-required': { type: 'error', message: 'Enter a passkey name.', anchor: 'passkeys' },
+  'passkey-not-found': { type: 'error', message: 'We could not find that passkey.', anchor: 'passkeys' },
+  'passkey-failed': { type: 'error', message: 'Your passkey could not be updated.', anchor: 'passkeys' },
+  'personalisation-saved': { type: 'success', message: 'Your personalisation preferences have been saved.' },
+  'personalisation-failed': {
+    type: 'error',
+    message: 'Your personalisation preferences could not be saved.',
+    anchor: 'personalisation'
+  },
+  'match-prefs-saved': { type: 'success', message: 'Your match notification preferences have been saved.' },
+  'match-prefs-failed': {
+    type: 'error',
+    message: 'Your match notification preferences could not be saved.',
+    anchor: 'match-preferences'
+  },
+  'skill-added': { type: 'success', message: 'Your skill has been added.' },
+  'skill-removed': { type: 'success', message: 'Your skill has been removed.' },
+  'skill-name-required': { type: 'error', message: 'Enter a skill name.', anchor: 'skill_name' },
+  'skill-failed': { type: 'error', message: 'Your skill could not be saved.', anchor: 'skills' },
+  'safeguarding-revoked': { type: 'success', message: 'The safeguarding preference has been removed.' },
+  'safeguarding-failed': {
+    type: 'error',
+    message: 'The safeguarding preference could not be updated.',
+    anchor: 'safeguarding'
+  }
+};
 const PROFILE_NOTIFICATION_KEYS = [
   'email_messages',
   'email_connections',
@@ -145,6 +286,357 @@ function notificationPayload(body) {
 
   return payload;
 }
+
+function payloadFrom(result) {
+  if (!result || typeof result !== 'object') return result || {};
+  if (Object.prototype.hasOwnProperty.call(result, 'data')) return result.data || {};
+  return result;
+}
+
+function arrayFromPayload(payload, keys = []) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+
+  return [];
+}
+
+function normalizeProfilePayload(result) {
+  const payload = payloadFrom(result);
+  const profile = payload && typeof payload === 'object' ? payload : {};
+  const nested = profile.profile && typeof profile.profile === 'object' ? profile.profile : {};
+  return { ...profile, ...nested };
+}
+
+function profileValue(profile, key, fallback = '') {
+  const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+  return profile[key] ?? profile[camelKey] ?? fallback;
+}
+
+function boolValue(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null) return checked(value);
+  }
+  return false;
+}
+
+function optionsWithSelected(values, labels, selectedValue) {
+  return values.map((value) => ({
+    value,
+    label: labels[value] || value,
+    selected: value === selectedValue
+  }));
+}
+
+function formatProfileDate(value, includeTime = false) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const options = includeTime
+    ? { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+    : { day: 'numeric', month: 'long', year: 'numeric' };
+  return date.toLocaleString('en-GB', options);
+}
+
+function humanizeProfileLabel(value, fallback = 'Not specified') {
+  const text = trimmed(value);
+  if (text === '') return fallback;
+  return text
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function profileStatusConfig(status) {
+  return PROFILE_STATUS_MESSAGES[status] || null;
+}
+
+function normalizeNotificationPrefs(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  return {
+    email_messages: boolValue(source.email_messages),
+    email_connections: boolValue(source.email_connections),
+    caring_smart_nudges: boolValue(source.caring_smart_nudges),
+    email_listings: boolValue(source.email_listings),
+    email_transactions: boolValue(source.email_transactions),
+    email_reviews: boolValue(source.email_reviews),
+    email_gamification_digest: boolValue(source.email_gamification_digest),
+    email_gamification_milestones: boolValue(source.email_gamification_milestones),
+    email_digest: boolValue(source.email_digest),
+    email_org_payments: boolValue(source.email_org_payments),
+    email_org_transfers: boolValue(source.email_org_transfers),
+    email_org_membership: boolValue(source.email_org_membership),
+    email_org_admin: boolValue(source.email_org_admin),
+    push_enabled: boolValue(source.push_enabled),
+    push_campaigns_opted_in: boolValue(source.push_campaigns_opted_in),
+    federation_notifications_enabled: boolValue(source.federation_notifications_enabled),
+    digest_frequency: allowedValue(source.digest_frequency, PROFILE_DIGEST_FREQUENCIES, 'monthly')
+  };
+}
+
+function normalizeMatchPrefs(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  return {
+    notification_frequency: allowedValue(source.notification_frequency, PROFILE_MATCH_FREQUENCIES, 'monthly'),
+    notify_hot_matches: boolValue(source.notify_hot_matches, true),
+    notify_mutual_matches: boolValue(source.notify_mutual_matches, true)
+  };
+}
+
+function normalizeSkills(payload) {
+  return arrayFromPayload(payload, ['skills', 'items']).map((skill) => ({
+    id: skill.id || skill.user_skill_id || '',
+    skill_name: skill.skill_name || skill.name || '',
+    is_offering: boolValue(skill.is_offering),
+    is_requesting: boolValue(skill.is_requesting),
+    endorsement_count: Number(skill.endorsement_count || skill.endorsements_count || 0)
+  })).filter((skill) => skill.skill_name !== '');
+}
+
+function normalizePasskeys(payload) {
+  return arrayFromPayload(payload, ['credentials', 'passkeys', 'items']).map((passkey) => ({
+    credential_id: passkey.credential_id || passkey.id || '',
+    device_name: passkey.device_name || passkey.name || 'Passkey',
+    authenticator_type: humanizeProfileLabel(passkey.authenticator_type || passkey.type || ''),
+    created_label: formatProfileDate(passkey.created_at || passkey.createdAt),
+    last_used_label: formatProfileDate(passkey.last_used_at || passkey.lastUsedAt)
+  }));
+}
+
+function normalizeSessions(payload) {
+  return arrayFromPayload(payload, ['sessions', 'items']).map((session) => ({
+    id: session.id || '',
+    device_label: humanizeProfileLabel(session.device_type || session.device || session.user_agent, 'Unknown device'),
+    ip_address: session.ip_address || session.ip || '',
+    last_active_label: formatProfileDate(session.last_active || session.last_active_at || session.updated_at, true)
+  }));
+}
+
+function normalizeSafeguarding(payload) {
+  return arrayFromPayload(payload, ['preferences', 'items']).map((option) => ({
+    option_id: option.option_id || option.id || '',
+    label: option.label || option.name || 'Safeguarding preference',
+    description: option.description || '',
+    activation_label: option.requires_broker_approval
+      ? 'Exchanges need broker approval'
+      : option.requires_guardian_approval
+        ? 'Exchanges need guardian approval'
+        : 'Active'
+  }));
+}
+
+function buildProfileSettingsViewModel(req, data) {
+  const profile = data.profile || {};
+  const account = data.account || {};
+  const preferredLanguage = allowedValue(
+    account.preferred_language || profileValue(profile, 'preferred_language'),
+    PROFILE_LOCALES,
+    'en'
+  );
+  const privacyProfile = allowedValue(
+    profileValue(profile, 'privacy_profile', account.privacy_profile),
+    PROFILE_PRIVACY_OPTIONS,
+    'public'
+  );
+  const profileType = allowedValue(profileValue(profile, 'profile_type'), PROFILE_TYPES, 'individual');
+  const autoTranslateLocale = allowedValue(
+    account.auto_translate_target_locale || profileValue(profile, 'auto_translate_target_locale'),
+    PROFILE_LOCALES,
+    preferredLanguage
+  );
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const statusConfig = profileStatusConfig(status);
+
+  return {
+    title: 'Edit your profile',
+    activeNav: 'profile',
+    status,
+    statusConfig,
+    successStatus: statusConfig && statusConfig.type === 'success',
+    infoStatus: statusConfig && statusConfig.type === 'info',
+    errorStatus: statusConfig && statusConfig.type === 'error',
+    errorAnchor: statusConfig ? statusConfig.anchor || 'profile-settings' : '',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    profile: {
+      id: profileValue(profile, 'id'),
+      first_name: profileValue(profile, 'first_name'),
+      last_name: profileValue(profile, 'last_name'),
+      email: account.email || profileValue(profile, 'email'),
+      phone: profileValue(profile, 'phone'),
+      profile_type: profileType,
+      organization_name: profileValue(profile, 'organization_name'),
+      tagline: profileValue(profile, 'tagline'),
+      bio: profileValue(profile, 'bio'),
+      location: profileValue(profile, 'location'),
+      avatar_url: profileValue(profile, 'avatar_url'),
+      privacy_profile: privacyProfile,
+      privacy_search: boolValue(profileValue(profile, 'privacy_search'), true),
+      privacy_contact: boolValue(account.privacy_contact, profileValue(profile, 'privacy_contact'), true),
+      newsletter_opt_in: boolValue(account.newsletter_opt_in, profileValue(profile, 'newsletter_opt_in')),
+      prefers_chronological_feed: boolValue(
+        account.prefers_chronological_feed,
+        profileValue(profile, 'prefers_chronological_feed')
+      ),
+      auto_translate_ugc: boolValue(account.auto_translate_ugc, profileValue(profile, 'auto_translate_ugc')),
+      auto_translate_target_locale: autoTranslateLocale
+    },
+    currentLanguageLabel: PROFILE_LOCALE_LABELS[preferredLanguage] || preferredLanguage,
+    privacyProfileLabel: PROFILE_PRIVACY_LABELS[privacyProfile] || privacyProfile,
+    profileTypeOptions: optionsWithSelected(PROFILE_TYPES, PROFILE_TYPE_LABELS, profileType),
+    privacyOptions: optionsWithSelected(PROFILE_PRIVACY_OPTIONS, PROFILE_PRIVACY_LABELS, privacyProfile),
+    localeOptions: optionsWithSelected(PROFILE_LOCALES, PROFILE_LOCALE_LABELS, preferredLanguage),
+    autoTranslateLocaleOptions: optionsWithSelected(PROFILE_LOCALES, PROFILE_LOCALE_LABELS, autoTranslateLocale),
+    digestOptions: optionsWithSelected(
+      PROFILE_DIGEST_FREQUENCIES,
+      PROFILE_DIGEST_LABELS,
+      data.notificationPrefs.digest_frequency
+    ),
+    matchFrequencyOptions: optionsWithSelected(
+      PROFILE_MATCH_FREQUENCIES,
+      PROFILE_MATCH_FREQUENCY_LABELS,
+      data.matchPrefs.notification_frequency
+    ),
+    notificationPrefs: data.notificationPrefs,
+    digestFrequencyLabel: PROFILE_DIGEST_LABELS[data.notificationPrefs.digest_frequency],
+    matchPrefs: data.matchPrefs,
+    matchFrequencyLabel: PROFILE_MATCH_FREQUENCY_LABELS[data.matchPrefs.notification_frequency],
+    mySkills: data.skills,
+    passkeys: data.passkeys,
+    sessions: data.sessions,
+    safeguarding: data.safeguarding,
+    settingsLinks: [
+      {
+        href: '/settings/linked-accounts',
+        title: 'Linked accounts',
+        text: 'Manage social sign-in providers connected to your account.'
+      },
+      {
+        href: '/settings/appearance',
+        title: 'Appearance',
+        text: 'Choose display, colour and accessibility preferences.'
+      },
+      {
+        href: '/settings/data-rights',
+        title: 'Your data rights',
+        text: 'Review privacy controls and data protection requests.'
+      },
+      {
+        href: '/settings/insurance',
+        title: 'Insurance certificates',
+        text: 'Upload or review proof of insurance for verified activity.'
+      },
+      {
+        href: '/settings/availability',
+        title: 'Your availability',
+        text: 'Keep times and preferred ways to help up to date.'
+      }
+    ],
+    notificationGroups: [
+      {
+        title: 'Messages and connections',
+        items: [
+          { key: 'email_messages', label: 'Messages from other members' },
+          { key: 'email_connections', label: 'Connection requests and updates' }
+        ]
+      },
+      {
+        title: 'Marketplace and organisations',
+        items: [
+          { key: 'email_listings', label: 'Listing updates' },
+          { key: 'email_transactions', label: 'Transaction updates' },
+          { key: 'email_reviews', label: 'Review reminders' },
+          { key: 'email_org_payments', label: 'Organisation payment updates' },
+          { key: 'email_org_transfers', label: 'Organisation transfer updates' },
+          { key: 'email_org_membership', label: 'Organisation membership updates' },
+          { key: 'email_org_admin', label: 'Organisation admin updates' }
+        ]
+      },
+      {
+        title: 'Community updates',
+        items: [
+          { key: 'caring_smart_nudges', label: 'Caring community nudges' },
+          { key: 'email_gamification_digest', label: 'Gamification digest emails' },
+          { key: 'email_gamification_milestones', label: 'Milestone emails' },
+          { key: 'email_digest', label: 'Activity digest emails' },
+          { key: 'push_enabled', label: 'Push notifications' },
+          { key: 'push_campaigns_opted_in', label: 'Campaign notifications' },
+          { key: 'federation_notifications_enabled', label: 'Federation notifications' }
+        ]
+      }
+    ]
+  };
+}
+
+router.get('/settings', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const data = {
+    profile: {},
+    account: {},
+    notificationPrefs: normalizeNotificationPrefs({}),
+    matchPrefs: normalizeMatchPrefs({}),
+    skills: [],
+    passkeys: [],
+    sessions: [],
+    safeguarding: []
+  };
+
+  try {
+    data.profile = normalizeProfilePayload(await getProfile(token));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.account = payloadFrom(await callUserSettings(token, 'GET', ''));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.notificationPrefs = normalizeNotificationPrefs(
+      payloadFrom(await callUserSettings(token, 'GET', '/notifications'))
+    );
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.matchPrefs = normalizeMatchPrefs(payloadFrom(await callUserSettings(token, 'GET', '/match-preferences')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.skills = normalizeSkills(payloadFrom(await callUserSettings(token, 'GET', '/skills')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.passkeys = normalizePasskeys(payloadFrom(await callWebAuthn(token, 'GET', '/credentials')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.sessions = normalizeSessions(payloadFrom(await callProfile(token, 'GET', '/sessions')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.safeguarding = normalizeSafeguarding(payloadFrom(await callProfile(token, 'GET', '/safeguarding/preferences')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.render('profile/settings', buildProfileSettingsViewModel(req, data));
+}));
 
 router.post('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

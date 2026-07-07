@@ -115,8 +115,14 @@ Laravel status redirects such as `collection-created`, `collection-updated`,
 unsigned visitors to `/login?status=auth-required` and renders the Blade-style
 warning, password confirmation, optional reason, confirmation checkbox, and
 status error states before its existing Laravel-compatible delete POST alias
-runs. Public collection and appreciation
-wall GET pages now redirect unsigned visitors to `/login?status=auth-required`,
+runs. `/profile/settings` now redirects unsigned visitors to
+`/login?status=auth-required`, loads Laravel-compatible profile, account,
+notification, match, skill, passkey, session, and safeguarding payloads where
+available, and renders the Blade-style settings links, profile photo, personal
+details, public profile, privacy, newsletter, skills, security, language,
+notifications, match, personalisation, safeguarding, and data/privacy sections.
+Public collection and appreciation wall GET pages now redirect unsigned visitors
+to `/login?status=auth-required`,
 read Laravel `/api/v2/users/{id}/public-collections` and
 `/api/v2/users/{id}/appreciations`, and render the Blade-style public collection
 cards, thank-you form, appreciation cards, reaction forms, status messages, and

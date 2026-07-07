@@ -807,6 +807,176 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style profile settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getProfile.mockResolvedValue({
+      id: 77,
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      email: 'ada@example.org',
+      phone: '+44 20 0000 0000',
+      profile_type: 'individual',
+      organization_name: '',
+      tagline: 'Community computing',
+      bio: 'Helps neighbours with maths',
+      location: 'London',
+      avatar_url: '/avatars/ada.jpg',
+      privacy_profile: 'members',
+      privacy_search: true,
+      privacy_contact: true,
+      newsletter_opt_in: true,
+      preferred_language: 'ga',
+      prefers_chronological_feed: true,
+      auto_translate_ugc: true,
+      auto_translate_target_locale: 'ga'
+    });
+    api.callUserSettingsApi.mockImplementation(async (token, method, pathValue) => {
+      if (method === 'GET' && pathValue === '') {
+        return {
+          data: {
+            email: 'ada@example.org',
+            preferred_language: 'ga',
+            newsletter_opt_in: true,
+            privacy_contact: true,
+            prefers_chronological_feed: true,
+            auto_translate_ugc: true,
+            auto_translate_target_locale: 'ga'
+          }
+        };
+      }
+      if (method === 'GET' && pathValue === '/notifications') {
+        return {
+          data: {
+            email_messages: true,
+            email_connections: true,
+            email_digest: true,
+            digest_frequency: 'daily'
+          }
+        };
+      }
+      if (method === 'GET' && pathValue === '/match-preferences') {
+        return {
+          data: {
+            notification_frequency: 'weekly',
+            notify_hot_matches: true,
+            notify_mutual_matches: false
+          }
+        };
+      }
+      if (method === 'GET' && pathValue === '/skills') {
+        return {
+          data: [
+            {
+              id: 88,
+              skill_name: 'Analytical engines',
+              is_offering: true,
+              is_requesting: false,
+              endorsement_count: 2
+            }
+          ]
+        };
+      }
+      return { data: { id: 42 } };
+    });
+    api.callProfileApi.mockImplementation(async (token, method, pathValue) => {
+      if (method === 'GET' && pathValue === '/sessions') {
+        return {
+          data: [
+            {
+              device_type: 'desktop',
+              ip_address: '127.0.0.1',
+              last_active: '2026-03-27T10:00:00Z'
+            }
+          ]
+        };
+      }
+      if (method === 'GET' && pathValue === '/safeguarding/preferences') {
+        return {
+          data: [
+            {
+              option_id: 9,
+              label: 'Broker approval',
+              description: 'A broker reviews new exchanges.',
+              requires_broker_approval: true
+            }
+          ]
+        };
+      }
+      return { data: { id: 42 } };
+    });
+    api.callWebAuthnApi.mockResolvedValue({
+      data: [
+        {
+          credential_id: 'cred-1',
+          device_name: 'Work laptop',
+          authenticator_type: 'platform',
+          created_at: '2026-02-01T00:00:00Z',
+          last_used_at: '2026-03-01T00:00:00Z'
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/profile/settings');
+    const signed = await request(app)
+      .get('/profile/settings?status=data-export-requested')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to profile');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your data export request has been received. We will email you when it is ready.');
+    expect(signed.text).toContain('Edit your profile');
+    expect(signed.text).toContain('Update the details people see in the accessible member directory.');
+    expect(signed.text).toContain('Linked accounts');
+    expect(signed.text).toContain('Appearance');
+    expect(signed.text).toContain('Your data rights');
+    expect(signed.text).toContain('Insurance certificates');
+    expect(signed.text).toContain('Your availability');
+    expect(signed.text).toContain('Profile photo');
+    expect(signed.text).toContain('Upload a new photo');
+    expect(signed.text).toContain('Personal details');
+    expect(signed.text).toContain('First name');
+    expect(signed.text).toContain('Ada');
+    expect(signed.text).toContain('Public profile');
+    expect(signed.text).toContain('Short introduction');
+    expect(signed.text).toContain('Community computing');
+    expect(signed.text).toContain('Privacy');
+    expect(signed.text).toContain('Who can see your full profile');
+    expect(signed.text).toContain('Members only');
+    expect(signed.text).toContain('Email preferences');
+    expect(signed.text).toContain('Send me occasional newsletters and updates');
+    expect(signed.text).toContain('Your skills');
+    expect(signed.text).toContain('Analytical engines');
+    expect(signed.text).toContain('I can offer this');
+    expect(signed.text).toContain('Security');
+    expect(signed.text).toContain('Two-step verification');
+    expect(signed.text).toContain('Passkeys');
+    expect(signed.text).toContain('Work laptop');
+    expect(signed.text).toContain('Where you are signed in');
+    expect(signed.text).toContain('Desktop');
+    expect(signed.text).toContain('Language');
+    expect(signed.text).toContain('Irish');
+    expect(signed.text).toContain('Email and notifications');
+    expect(signed.text).toContain('Activity digest emails');
+    expect(signed.text).toContain('Match notifications');
+    expect(signed.text).toContain('Every week');
+    expect(signed.text).toContain('Personalisation and translation');
+    expect(signed.text).toContain('Safeguarding');
+    expect(signed.text).toContain('Broker approval');
+    expect(signed.text).toContain('Exchanges need broker approval');
+    expect(signed.text).toContain('Your data and privacy');
+    expect(signed.text).toContain('Get a copy of your data');
+    expect(signed.text).toContain('Request your data');
+    expect(signed.text).toContain('Delete your account');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
