@@ -153,4 +153,69 @@ public class MarketplaceControllerTests : IntegrationTestBase
         finalData.GetProperty("onboarding_completed").GetBoolean().Should().BeTrue();
         finalData.GetProperty("profile").GetProperty("business_name").GetString().Should().Be("Repair Coop");
     }
+
+    [Fact]
+    public async Task PromotionProductsV2_MatchesLaravelReactSelectorContract()
+    {
+        Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var response = await Client.GetAsync("/api/v2/marketplace/promotions/products");
+        Client.DefaultRequestHeaders.Remove("X-Tenant-ID");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var products = json.GetProperty("data").EnumerateArray().ToArray();
+
+        products.Should().Contain(product =>
+            product.GetProperty("type").GetString() == "bump" &&
+            product.GetProperty("label").GetString() == "Bump to Top" &&
+            product.GetProperty("description").GetString()!.Contains("top") &&
+            product.GetProperty("price").GetDecimal() == 0m &&
+            product.GetProperty("currency").GetString() == "EUR" &&
+            product.GetProperty("duration_hours").GetInt32() == 24);
+
+        products.Should().Contain(product =>
+            product.GetProperty("type").GetString() == "featured" &&
+            product.GetProperty("label").GetString() == "Featured Listing" &&
+            product.GetProperty("price").GetDecimal() == 4.99m &&
+            product.GetProperty("duration_hours").GetInt32() == 168);
+
+        products.Should().Contain(product =>
+            product.GetProperty("type").GetString() == "homepage_carousel" &&
+            product.GetProperty("label").GetString() == "Homepage Carousel" &&
+            product.GetProperty("price").GetDecimal() == 9.99m &&
+            product.GetProperty("duration_hours").GetInt32() == 48);
+    }
+
+    [Fact]
+    public async Task PromoteListingV2_AcceptsLaravelReactPromotionTypePayload()
+    {
+        await AuthenticateAsMemberAsync();
+        var create = await Client.PostAsJsonAsync("/api/v2/marketplace/listings", new
+        {
+            title = "Promotable bicycle",
+            description = "A city bicycle ready for a new rider",
+            price = 95,
+            price_type = "fixed",
+            condition = "good",
+            status = "active"
+        });
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var listingId = created.GetProperty("data").GetProperty("id").GetInt32();
+
+        var response = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/promote", new
+        {
+            promotion_type = "homepage_carousel"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.GetProperty("promotion_type").GetString().Should().Be("homepage_carousel");
+        data.GetProperty("currency").GetString().Should().Be("EUR");
+        data.GetProperty("amount_paid").GetDecimal().Should().Be(9.99m);
+        data.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        data.GetProperty("expires_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
 }

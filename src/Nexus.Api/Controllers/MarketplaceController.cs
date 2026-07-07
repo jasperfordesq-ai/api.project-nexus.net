@@ -5,6 +5,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -580,7 +581,46 @@ public class MarketplaceController : ControllerBase
     [HttpGet("promotions/products")]
     [AllowAnonymous]
     public IActionResult PromotionProducts()
-        => Ok(new { data = new[] { new { code = "featured_7d", name = "Featured for 7 days", price = 0 }, new { code = "featured_30d", name = "Featured for 30 days", price = 0 } } });
+        => Ok(new
+        {
+            success = true,
+            data = new[]
+            {
+                new
+                {
+                    type = "bump",
+                    code = "bump",
+                    label = "Bump to Top",
+                    name = "Bump to Top",
+                    description = "Moves your listing to the top of search results.",
+                    price = 0m,
+                    currency = "EUR",
+                    duration_hours = 24
+                },
+                new
+                {
+                    type = "featured",
+                    code = "featured",
+                    label = "Featured Listing",
+                    name = "Featured Listing",
+                    description = "Gets a featured badge and higher visibility.",
+                    price = 4.99m,
+                    currency = "EUR",
+                    duration_hours = 168
+                },
+                new
+                {
+                    type = "homepage_carousel",
+                    code = "homepage_carousel",
+                    label = "Homepage Carousel",
+                    name = "Homepage Carousel",
+                    description = "Appears in the homepage carousel.",
+                    price = 9.99m,
+                    currency = "EUR",
+                    duration_hours = 48
+                }
+            }
+        });
 
     [HttpPost("listings/{id:int}/promote")]
     [Authorize]
@@ -589,13 +629,37 @@ public class MarketplaceController : ControllerBase
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
         if (listing == null) return NotFound(new { error = "Listing not found" });
         if (listing.UserId != RequireUserId() && !User.IsAdmin()) return StatusCode(403, new { error = "Forbidden" });
-        var days = request.ProductCode == "featured_30d" ? 30 : 7;
-        listing.PromotionType = request.ProductCode ?? "featured_7d";
-        listing.PromotedUntil = DateTime.UtcNow.AddDays(days);
-        var promotion = new MarketplacePromotion { MarketplaceListingId = id, UserId = listing.UserId, ProductCode = listing.PromotionType, EndsAt = listing.PromotedUntil.Value };
+        var product = ResolvePromotionProduct(request.PromotionType ?? request.ProductCode);
+        if (product == null) return UnprocessableEntity(new { success = false, error = "Unknown promotion type" });
+
+        var now = DateTime.UtcNow;
+        listing.PromotionType = product.Type;
+        listing.PromotedUntil = now.AddHours(product.DurationHours);
+        var promotion = new MarketplacePromotion
+        {
+            MarketplaceListingId = id,
+            UserId = listing.UserId,
+            ProductCode = product.Type,
+            Status = "active",
+            StartsAt = now,
+            EndsAt = listing.PromotedUntil.Value
+        };
         _db.MarketplacePromotions.Add(promotion);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/listings/{id}/promotion", new { data = promotion });
+        return Created($"/api/marketplace/listings/{id}/promotion", new
+        {
+            success = true,
+            data = new
+            {
+                id = promotion.Id,
+                promotion_type = product.Type,
+                amount_paid = product.Price,
+                currency = product.Currency,
+                started_at = promotion.StartsAt,
+                expires_at = promotion.EndsAt,
+                is_active = promotion.Status == "active"
+            }
+        });
     }
 
     [HttpGet("listings/{id:int}/promotion")]
@@ -944,6 +1008,20 @@ public class MarketplaceController : ControllerBase
     [AllowAnonymous]
     public IActionResult StripeWebhook() => Ok(new { received = true });
 
+    private static PromotionProduct? ResolvePromotionProduct(string? type)
+    {
+        var normalized = string.IsNullOrWhiteSpace(type) ? "featured" : type.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "bump" => new PromotionProduct("bump", 0m, "EUR", 24),
+            "featured" or "featured_7d" => new PromotionProduct("featured", 4.99m, "EUR", 168),
+            "top_of_category" => new PromotionProduct("top_of_category", 7.49m, "EUR", 72),
+            "homepage_carousel" => new PromotionProduct("homepage_carousel", 9.99m, "EUR", 48),
+            "featured_30d" => new PromotionProduct("featured", 19.99m, "EUR", 720),
+            _ => null
+        };
+    }
+
     private async Task<IActionResult> OfferStatus(int id, string status)
     {
         var offer = await _marketplace.SetOfferStatusAsync(id, RequireUserId(), User.IsAdmin(), status);
@@ -1063,7 +1141,10 @@ public record PaymentConfirmRequest(string PaymentId);
 public record SavedSearchRequest(string? Name, string? Query, Dictionary<string, object>? Filters, bool? AlertsEnabled);
 public record CollectionRequest(string? Name, string? Description, bool IsPublic);
 public record CollectionItemRequest(int ListingId);
-public record PromotionRequest(string? ProductCode);
+public record PromotionRequest(
+    [property: JsonPropertyName("product_code")] string? ProductCode,
+    [property: JsonPropertyName("promotion_type")] string? PromotionType);
+public sealed record PromotionProduct(string Type, decimal Price, string Currency, int DurationHours);
 public record DeliveryOfferRequest(decimal TimeCreditAmount);
 public record AutoReplyRequest(string? Question);
 public record CouponRequest(string? Code, string? Description, decimal DiscountAmount, string? DiscountType, DateTime? ExpiresAt);
