@@ -52,10 +52,23 @@ const SETTINGS_GDPR_TYPE_HINTS = {
   objection: 'Object to us processing your data for a particular purpose.'
 };
 const SETTINGS_STATUS_MESSAGES = {
+  'appearance-saved': 'Your appearance settings have been saved.',
+  'appearance-invalid': 'Choose one of the available themes.',
+  'appearance-failed': 'Sorry, we could not save your appearance settings. Please try again.',
   'gdpr-requested': 'Your request has been submitted. We will be in touch.',
   'gdpr-duplicate': 'You already have a request of this type being looked into.',
   'gdpr-invalid': 'Choose the type of request you want to make.',
   'gdpr-failed': 'Sorry, we could not submit your request. Please try again.'
+};
+const SETTINGS_THEME_LABELS = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'Match my device'
+};
+const SETTINGS_THEME_HINTS = {
+  light: 'Dark text on a light background.',
+  dark: 'Light text on a dark background.',
+  system: 'Follow the light or dark setting on your device.'
 };
 
 function tokenFrom(req) {
@@ -108,6 +121,10 @@ function apiErrorCode(error) {
   return String(data.code || data.error || '').toUpperCase();
 }
 
+function dataFrom(result) {
+  return result && result.data && typeof result.data === 'object' ? result.data : {};
+}
+
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
     res.redirect(loginRedirect());
@@ -133,6 +150,11 @@ function permissionPayload(body) {
 
 function settingsStatusRedirect(path, status, fragment = '') {
   return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function themeFromSettingsData(data) {
+  const nested = data.user && typeof data.user === 'object' ? data.user : {};
+  return allowedValue(data.preferred_theme || data.theme || nested.preferred_theme || nested.theme, SETTINGS_THEMES, 'system');
 }
 
 function availabilitySlotsFromRawBody(rawBody) {
@@ -199,6 +221,36 @@ function linkedFailureStatus(error) {
   if (code.includes('MAX') || code.includes('LIMIT')) return 'link-max';
   return 'link-failed';
 }
+
+router.get('/appearance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let currentTheme = 'system';
+  try {
+    currentTheme = themeFromSettingsData(dataFrom(await callSettings(token, 'GET', '')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/appearance', {
+    title: 'Appearance',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'appearance-saved',
+    errorStatus: ['appearance-invalid', 'appearance-failed'].includes(status),
+    currentTheme,
+    themes: SETTINGS_THEMES.map((theme) => ({
+      value: theme,
+      label: SETTINGS_THEME_LABELS[theme],
+      hint: SETTINGS_THEME_HINTS[theme],
+      checked: currentTheme === theme
+    }))
+  });
+}));
 
 router.post('/appearance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

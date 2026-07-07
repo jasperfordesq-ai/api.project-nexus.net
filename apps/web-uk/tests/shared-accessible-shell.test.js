@@ -839,6 +839,36 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style appearance settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const unsigned = await request(app).get('/settings/appearance');
+    const signed = await request(app)
+      .get('/settings/appearance?status=appearance-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your appearance settings have been saved.');
+    expect(signed.text).toContain('Account settings');
+    expect(signed.text).toContain('Appearance');
+    expect(signed.text).toContain('Choose how this service looks for you.');
+    expect(signed.text).toContain('Theme');
+    expect(signed.text).toContain('Light');
+    expect(signed.text).toContain('Dark text on a light background.');
+    expect(signed.text).toContain('Dark');
+    expect(signed.text).toContain('Light text on a dark background.');
+    expect(signed.text).toContain('Match my device');
+    expect(signed.text).toContain('Follow the light or dark setting on your device.');
+    expect(signed.text).toContain('Save appearance');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 

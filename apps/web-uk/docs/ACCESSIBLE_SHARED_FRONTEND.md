@@ -150,14 +150,16 @@ resource reactions while preserving Laravel library/comment status redirects.
 Settings POST aliases are wired to Laravel v2 user settings and sub-account
 APIs for appearance/theme, weekly availability, GDPR data-right requests,
 linked-account request/approve/permission/revoke, and multipart insurance
-uploads while preserving Laravel status redirects and anchors. `/settings/data-rights`
-now redirects unsigned visitors to `/login?status=auth-required`, renders the
-Blade-style request form, GDPR status banners, empty request-history state, and
-submits through the existing Laravel-compatible POST alias. Other settings GET
-pages remain generated preparation pages or local legacy settings pages, and
-linked-account data rendering, data-rights history loading, tenant feature gates,
-localization, insurance upload runtime smoke tests, and ASP.NET backend
-compatibility are not certified.
+uploads while preserving Laravel status redirects and anchors. `/settings/appearance`
+now redirects unsigned visitors to `/login?status=auth-required`, reads the
+current theme from the Laravel-compatible user settings payload when available,
+and renders the Blade-style theme form and status states. `/settings/data-rights`
+renders the Blade-style request form, GDPR status banners, empty request-history
+state, and submits through the existing Laravel-compatible POST alias. Other
+settings GET pages remain generated preparation pages or local legacy settings
+pages, and linked-account data rendering, data-rights history loading, tenant
+feature gates, localization, insurance upload runtime smoke tests, and ASP.NET
+backend compatibility are not certified.
 Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for
 post comments, comment-thread replies, post likes/reactions, and comment
 update/delete/reactions while preserving Laravel post and comment-thread status
