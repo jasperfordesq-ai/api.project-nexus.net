@@ -139,6 +139,27 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getListing', () => {
+    it('should call the Laravel v2 listing detail endpoint with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 90992 } })
+      });
+
+      await api.getListing('test-token', 90992);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/listings/90992',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('getVolunteerOrganisations', () => {
     it('should call the Laravel volunteering organisations endpoint with search and per_page params', async () => {
       mockFetch.mockResolvedValueOnce({

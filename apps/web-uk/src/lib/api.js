@@ -410,7 +410,7 @@ async function getListings(token, params = {}) {
 }
 
 async function getListing(token, id) {
-  return request(`/api/listings/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }

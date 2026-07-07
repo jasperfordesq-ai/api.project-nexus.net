@@ -20,6 +20,7 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/organisations/636/jobs',
   '/organisations/opportunities/307/apply',
   '/members/77/insights',
+  '/listings/90992/edit',
   '/listings/42/report',
   '/listings/42/exchange-request',
   '/listings/42/comments',

@@ -314,11 +314,14 @@ comments page; targeted Laravel-backed smoke probes against
 route probes for `/marketplace/slots/1/edit`, `/me/collections/1`,
 `/search/saved/1/delete`, and `/volunteering/certificates/ABC123/download`
 returned `/login?status=auth-required` against
-`WEB_UK_BASE_URL=http://127.0.0.1:5348`. The default scope now contains `339`
-checks: `278` module-page checks, 12 unsigned auth-required redirect checks, 22
+`WEB_UK_BASE_URL=http://127.0.0.1:5348`. Listing detail/edit now uses the
+Laravel `/api/v2/listings/{id}` contract, and the E2E-owned fixture
+`/listings/90992/edit` returned `200` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5349`. The default scope now contains `340`
+checks: `279` module-page checks, 12 unsigned auth-required redirect checks, 22
 gated-status checks, and 21 signed redirect checks, plus the 6 auth/health
 checks. Parameterised matched GET route shapes without default runtime smoke
-coverage fell from 28 to 6.
+coverage fell from 28 to 5.
 
 ## Header And Footer Contract
 
