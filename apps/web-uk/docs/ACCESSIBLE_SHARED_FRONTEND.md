@@ -309,20 +309,22 @@ partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
 generation, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
-The `/listings/{id}/report`, `/listings/{id}/exchange-request`, and
-`/listings/{id}/analytics` GET pages are now partial Laravel-backed Blade
-candidates: they redirect unsigned visitors with Laravel's `auth-required`
-status, load the listing from `/api/v2/listings/{id}`, and render Blade-style
-report, exchange request, and owner analytics pages. The exchange request form
-also reads the Laravel wallet balance endpoint for balance context; the
-analytics page reads `/api/v2/listings/{id}/analytics` with Laravel's allowed
-period selector. Other listing GET pages remain local/protected pages or
+The `/listings/{id}/report`, `/listings/{id}/exchange-request`,
+`/listings/{id}/analytics`, and `/listings/{id}/comments` GET pages are now
+partial Laravel-backed Blade candidates: they redirect unsigned visitors with
+Laravel's `auth-required` status, load the listing from `/api/v2/listings/{id}`,
+and render Blade-style report, exchange request, owner analytics, and comment
+thread pages. The exchange request form also reads the Laravel wallet balance
+endpoint for balance context; the analytics page reads
+`/api/v2/listings/{id}/analytics` with Laravel's allowed period selector; the
+comments page reads `/api/v2/comments?target_type=listing&target_id={id}`.
+Other listing GET pages remain local/protected pages or
 generated preparation pages, but the Laravel accessible POST aliases under
 `/listings` are local route declarations backed by Laravel v2 listing, comment,
 feed-like, and exchange APIs. The aliases cover save/unsave, renew, report,
 like, comment/reply, exchange request creation, and AI description generation
 redirects while preserving Laravel status keys and `#like` / `#add-comment`
-fragments. This remains partial: Blade listing/detail and comment rendering,
+fragments. This remains partial: Blade listing/detail rendering,
 generated description value repopulation, image and skill-tag form parity,
 owner/requester authorization depth, tenant/feature gates, localization, runtime
 smoke tests, and ASP.NET backend compatibility are not certified.

@@ -13425,6 +13425,63 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed listing comments page', async () => {
+    const api = require('../src/lib/api');
+    api.callListingApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Bike trailer loan'
+      }
+    });
+    api.getComments.mockResolvedValueOnce({
+      data: {
+        count: 2,
+        comments: [{
+          id: 11,
+          content: 'Is the trailer available this weekend?',
+          created_at: '2099-03-04',
+          edited: true,
+          author: { name: 'Avery Stone' },
+          replies: [{
+            id: 12,
+            content: 'Yes, Saturday morning works.',
+            created_at: '2099-03-05',
+            author: { name: 'Morgan Lee' }
+          }]
+        }]
+      }
+    });
+
+    const unsigned = await request(app).get('/listings/42/comments');
+    const signed = await request(app)
+      .get('/listings/42/comments?status=reply-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'listing', target_id: 42 });
+    expect(signed.text).toContain('href="/listings/42"');
+    expect(signed.text).toContain('Bike trailer loan');
+    expect(signed.text).toContain('Comments');
+    expect(signed.text).toContain('(2)');
+    expect(signed.text).toContain('Your reply has been posted.');
+    expect(signed.text).toContain('Is the trailer available this weekend?');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('4 March 2099');
+    expect(signed.text).toContain('Edited');
+    expect(signed.text).toContain('Yes, Saturday morning works.');
+    expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).toContain('5 March 2099');
+    expect(signed.text).toContain('id="add-comment"');
+    expect(signed.text).toContain('method="post" action="/listings/42/comments"');
+    expect(signed.text).toContain('name="body"');
+    expect(signed.text).toContain('Be kind and keep it relevant to this listing.');
+    expect(signed.text).toContain('Post comment');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits Laravel settings action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

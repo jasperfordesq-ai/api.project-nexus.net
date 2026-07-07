@@ -14,6 +14,7 @@ const {
   callListingApi,
   createExchangeRequest,
   createComment,
+  getComments,
   toggleFeedLike,
   getListingReviews,
   getProfile,
@@ -278,6 +279,50 @@ function decorateListingAnalytics(result) {
   };
 }
 
+function listingCommentsStatus(status) {
+  const states = {
+    'comment-added': { type: 'success', title: 'Success', message: 'Your comment has been posted.' },
+    'reply-added': { type: 'success', title: 'Success', message: 'Your reply has been posted.' },
+    'comment-invalid': { type: 'error', title: 'There is a problem', message: 'Enter a comment before posting.', anchor: 'body' },
+    'comment-failed': { type: 'error', title: 'There is a problem', message: 'Your comment could not be posted. Please try again.', anchor: 'body' }
+  };
+  return states[trimmed(status)] || null;
+}
+
+function normalizeListingComment(comment, depth = 0) {
+  const item = comment && typeof comment === 'object' ? comment : {};
+  const replies = Array.isArray(item.replies) && depth < 4
+    ? item.replies.map((reply) => normalizeListingComment(reply, depth + 1))
+    : [];
+  const author = item.author && typeof item.author === 'object' ? item.author : {};
+
+  return {
+    id: positiveInteger(item.id),
+    content: trimmed(item.content || item.body || item.text, 5000),
+    authorName: trimmed(author.name || item.author_name || item.authorName),
+    createdAtLabel: dateLabel(item.created_at || item.createdAt),
+    edited: Boolean(item.edited || item.is_edited || item.isEdited),
+    replies
+  };
+}
+
+function commentsPayload(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) {
+    return { comments: data.map((comment) => normalizeListingComment(comment)), count: data.length };
+  }
+
+  const object = data && typeof data === 'object' ? data : {};
+  const rows = Array.isArray(object.comments) ? object.comments : [];
+  const comments = rows.map((comment) => normalizeListingComment(comment));
+  const count = positiveInteger(object.count || object.total || object.comments_count || object.commentsCount);
+  return { comments, count: count || countListingComments(comments) };
+}
+
+function countListingComments(comments) {
+  return comments.reduce((total, comment) => total + 1 + countListingComments(comment.replies || []), 0);
+}
+
 async function walletBalanceForExchange(token) {
   try {
     const result = await callWalletApi(token, 'GET', '/balance');
@@ -526,6 +571,33 @@ router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
     days,
     dayOptions: [7, 14, 30, 60, 90],
     analytics: decorateListingAnalytics(analyticsResult)
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const listingResult = await callListing(token, 'GET', `/${id}`);
+  let commentsResult = { data: { comments: [], count: 0 } };
+
+  try {
+    commentsResult = await getComments(token, { target_type: 'listing', target_id: id });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const listing = dataFrom(listingResult) || {};
+  const commentData = commentsPayload(commentsResult);
+  return res.render('listings/comments', {
+    title: 'Comments',
+    listing: { ...listing, id },
+    listingTitle: trimmed(listing.title || listing.name) || 'Comments',
+    comments: commentData.comments,
+    commentsCount: commentData.count,
+    status: listingCommentsStatus(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));
 
