@@ -282,4 +282,54 @@ module.exports.prepPages = prepPages;
       webUkFile: expect.stringContaining('ideation-actions.js')
     }));
   });
+
+  it('labels streamed download routes without inventing a Nunjucks view', () => {
+    writeFile(path.join(sourceRoot, 'routes', 'govuk-alpha-parity', 'groups.php'), `
+<?php
+Route::get('/groups/{group}/files/{file}/download', [AlphaController::class, 'groupsDownloadFile'])
+    ->name('groups.files.download');
+`);
+
+    writeFile(path.join(sourceRoot, 'app', 'Http', 'Controllers', 'GovukAlpha', 'Concerns', 'GroupsParity.php'), `
+<?php
+trait GroupsParity
+{
+    public function groupsDownloadFile(Request $request, string $tenantSlug, int $group, int $file)
+    {
+        return Storage::disk('local')->download('group-files/example.pdf');
+    }
+}
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'server.js'), `
+const express = require('express');
+const groupsRoutes = require('./routes/groups');
+const app = express();
+
+app.use('/groups', groupsRoutes);
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'routes', 'groups.js'), `
+const express = require('express');
+const router = express.Router();
+
+router.get('/:id(\\\\d+)/files/:fileId(\\\\d+)/download', (req, res) => {
+  res.set('content-type', 'application/pdf');
+  return res.send(Buffer.from('pdf'));
+});
+
+module.exports = router;
+`);
+
+    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const route = report.matrix.find(
+      (row) => row.method === 'GET' && row.path === '/groups/{param}/files/{param}/download'
+    );
+
+    expect(route).toEqual(expect.objectContaining({
+      status: 'matched',
+      webUkView: 'streamed-download',
+      webUkFile: expect.stringContaining('groups.js')
+    }));
+  });
 });

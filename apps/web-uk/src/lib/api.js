@@ -843,6 +843,14 @@ async function uploadGroupFile(token, groupId, data) {
   });
 }
 
+async function downloadGroupFile(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return downloadRequest(`/api/v2/groups${normalizedPath}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function callJobApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2971,6 +2979,7 @@ module.exports = {
   callGroupApi,
   uploadGroupImage,
   uploadGroupFile,
+  downloadGroupFile,
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,

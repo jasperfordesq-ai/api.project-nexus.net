@@ -22,6 +22,7 @@ const {
   callGroupApi,
   uploadGroupImage,
   uploadGroupFile,
+  downloadGroupFile,
   createFeedPostV2,
   getEvents,
   getUsers,
@@ -36,6 +37,16 @@ const router = express.Router();
 router.use(requireAuth);
 
 const GROUP_NOTIFICATION_FREQUENCIES = ['instant', 'digest', 'muted'];
+const DOWNLOAD_HEADER_NAMES = [
+  'content-type',
+  'content-disposition',
+  'content-length',
+  'cache-control',
+  'pragma',
+  'expires',
+  'etag',
+  'last-modified'
+];
 const GROUP_INVITE_SUCCESS_MESSAGES = {
   'invite-link-created': 'A new invite link was generated.',
   'invite-emails-sent': 'The invitations have been sent.',
@@ -165,6 +176,14 @@ function loginRedirect() {
 
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
+}
+
+function applyDownloadHeaders(res, headers = {}) {
+  DOWNLOAD_HEADER_NAMES.forEach((name) => {
+    if (headers[name]) {
+      res.set(name, headers[name]);
+    }
+  });
 }
 
 async function callGroup(token, method, path, data = undefined) {
@@ -855,6 +874,31 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', asyncRoute(async (req, 
     ...discussionStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Discussion not found' }));
+
+router.get('/:id(\\d+)/files/:fileId(\\d+)/download', asyncRoute(async (req, res) => {
+  const { id, fileId } = req.params;
+  let download;
+
+  try {
+    download = await downloadGroupFile(req.token, `/${id}/files/${fileId}/download`);
+  } catch (error) {
+    if (isAuthError(error)) {
+      return res.redirect(loginRedirect());
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      return res.redirect(groupSubpageRedirect(id, 'files', 'file-forbidden'));
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.redirect(groupSubpageRedirect(id, 'files', 'file-not-found'));
+    }
+
+    return res.redirect(groupSubpageRedirect(id, 'files', 'file-upload-failed'));
+  }
+
+  res.status(download.status || 200);
+  applyDownloadHeaders(res, download.headers);
+  return res.send(Buffer.isBuffer(download.body) ? download.body : Buffer.from(download.body || ''));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'File not found' }));
 
 router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   const id = req.params.id;

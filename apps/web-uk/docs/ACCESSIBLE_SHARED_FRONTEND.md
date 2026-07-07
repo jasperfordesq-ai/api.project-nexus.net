@@ -287,7 +287,9 @@ discussion data, then render the Blade-style discussion cards, member-only start
 button, create form, thread article, reply list, reply form, and discussion
 status states. `/groups/{id}/files` now reads Laravel-compatible group detail
 and file listing data, then renders the Blade-style file table, download/delete
-actions, upload form, empty state, and file status banners. Other group depth
+actions, upload form, empty state, and file status banners.
+`/groups/{id}/files/{fileId}/download` now proxies the Laravel-compatible
+binary download response and preserves safe download headers. Other group depth
 GET pages, owner/admin authorization depth, tenant/feature gates, localization,
 runtime behavior, and ASP.NET backend compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,

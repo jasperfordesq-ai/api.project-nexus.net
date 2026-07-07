@@ -94,6 +94,7 @@ jest.mock('../src/lib/api', () => ({
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   uploadGroupImage: jest.fn().mockResolvedValue({ data: { image_url: '/uploads/groups/cover.png' } }),
   uploadGroupFile: jest.fn().mockResolvedValue({ data: { id: 99 } }),
+  downloadGroupFile: jest.fn(),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -13694,6 +13695,34 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/files');
+  });
+
+  it('proxies Laravel group file downloads for signed-in group members', async () => {
+    const api = require('../src/lib/api');
+    api.downloadGroupFile.mockReset().mockResolvedValueOnce({
+      status: 200,
+      body: Buffer.from('%PDF group file', 'utf8'),
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="garden-plan.pdf"',
+        'content-length': '15',
+        'cache-control': 'private'
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/files/7/download');
+    const signed = await request(app)
+      .get('/groups/42/files/7/download')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.headers['content-type']).toBe('application/pdf');
+    expect(signed.headers['content-disposition']).toBe('attachment; filename="garden-plan.pdf"');
+    expect(signed.text || signed.body.toString('utf8')).toContain('%PDF group file');
+    expect(api.downloadGroupFile).toHaveBeenCalledTimes(1);
+    expect(api.downloadGroupFile).toHaveBeenCalledWith('test-token', '/42/files/7/download');
   });
 
   it('submits Laravel group image and file uploads with multipart file data', async () => {
