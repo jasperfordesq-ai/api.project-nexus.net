@@ -10408,6 +10408,7 @@ describe('shared accessible frontend shell', () => {
     const index = await request(app).get('/ideation');
     const detail = await request(app).get('/ideation/7');
     const tags = await request(app).get('/ideation/tags');
+    const campaigns = await request(app).get('/ideation/campaigns');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10415,6 +10416,8 @@ describe('shared accessible frontend shell', () => {
     expect(detail.headers.location).toBe('/login?status=auth-required');
     expect(tags.status).toBe(302);
     expect(tags.headers.location).toBe('/login?status=auth-required');
+    expect(campaigns.status).toBe(302);
+    expect(campaigns.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10565,6 +10568,53 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-tags/popular');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges?limit=100');
+  });
+
+  it('renders the Laravel-backed ideation campaigns page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            id: 5,
+            title: 'Park renewal',
+            description: 'Coordinate challenge work for renewing the central park with accessible paths and seating.',
+            status: 'active',
+            challenge_count: 3,
+            creator: { name: 'Avery Stone' }
+          },
+          {
+            id: 6,
+            title: 'Winter support',
+            status: 'completed',
+            challenge_count: 1
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/ideation/campaigns?status=campaign-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Campaigns');
+    expect(response.text).toContain('Campaigns bring related challenges together under one theme.');
+    expect(response.text).toContain('Ideation');
+    expect(response.text).toContain('Challenges');
+    expect(response.text).toContain('Outcomes');
+    expect(response.text).toContain('The campaign has been created.');
+    expect(response.text).toContain('Park renewal');
+    expect(response.text).toContain('Coordinate challenge work for renewing the central park with accessible paths and seating.');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('3 challenges');
+    expect(response.text).toContain('Created by Avery Stone');
+    expect(response.text).toContain('href="/ideation/campaigns/5"');
+    expect(response.text).toContain('Winter support');
+    expect(response.text).toContain('Completed');
+    expect(response.text).toContain('1 challenge');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns?per_page=50');
   });
 
   it('submits Laravel ideation challenge action aliases', async () => {

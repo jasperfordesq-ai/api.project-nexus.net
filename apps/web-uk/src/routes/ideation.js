@@ -128,6 +128,38 @@ function normalizeTag(item) {
   };
 }
 
+function campaignStatusDetails(status) {
+  switch (trimmed(status).toLowerCase()) {
+    case 'active':
+      return { label: 'Active', className: 'govuk-tag--green' };
+    case 'completed':
+      return { label: 'Completed', className: 'govuk-tag--blue' };
+    case 'archived':
+      return { label: 'Archived', className: 'govuk-tag--grey' };
+    default:
+      return { label: 'Draft', className: 'govuk-tag--grey' };
+  }
+}
+
+function normalizeCampaign(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const status = campaignStatusDetails(row.status);
+  const challengeCount = Number(row.challenge_count ?? row.challengeCount ?? 0) || 0;
+  const creator = row.creator && typeof row.creator === 'object' ? row.creator : {};
+  return {
+    ...row,
+    id,
+    title: trimmed(row.title) || 'Campaigns',
+    description: limitText(row.description),
+    statusLabel: status.label,
+    statusClass: status.className,
+    challengeCount,
+    challengeCountText: plural(challengeCount, 'challenge', 'challenges'),
+    creatorName: trimmed(creator.name || row.creator_name || row.creatorName)
+  };
+}
+
 function normalizeIdea(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -160,6 +192,23 @@ function errorMessage(status) {
   return messages[trimmed(status)] || '';
 }
 
+function campaignStatusMessage(status) {
+  const messages = {
+    'campaign-created': 'The campaign has been created.',
+    'campaign-updated': 'The campaign has been updated.',
+    'campaign-deleted': 'The campaign has been deleted.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function campaignErrorMessage(status) {
+  const messages = {
+    'campaign-invalid': 'Check the campaign details and try again.',
+    'campaign-failed': 'Sorry, that action could not be completed. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
@@ -182,6 +231,26 @@ router.get('/', asyncRoute(async (req, res) => {
     challenges,
     activeStatus: status,
     activeQuery: query
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/campaigns', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const result = await callIdeationApi(token, 'GET', '/ideation-campaigns?per_page=50');
+  const campaigns = collectionFrom(result)
+    .map(normalizeCampaign)
+    .filter((campaign) => campaign.id !== null);
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/campaigns', {
+    title: 'Campaigns',
+    activeNav: 'explore',
+    campaigns,
+    status,
+    successMessage: campaignStatusMessage(status),
+    errorMessage: campaignErrorMessage(status)
   });
 }, { redirectOn401: loginRedirect() }));
 

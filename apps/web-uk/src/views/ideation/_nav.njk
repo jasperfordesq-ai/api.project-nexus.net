@@ -1,0 +1,18 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+<div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
+  <h2 class="govuk-tabs__title">Ideation</h2>
+  <ul class="govuk-tabs__list">
+    <li class="govuk-tabs__list-item{% if activeTab == 'challenges' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/ideation"{% if activeTab == 'challenges' %} aria-current="page"{% endif %}>Challenges</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if activeTab == 'campaigns' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/ideation/campaigns"{% if activeTab == 'campaigns' %} aria-current="page"{% endif %}>Campaigns</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if activeTab == 'outcomes' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/ideation/outcomes"{% if activeTab == 'outcomes' %} aria-current="page"{% endif %}>Outcomes</a>
+    </li>
+  </ul>
+</div>
