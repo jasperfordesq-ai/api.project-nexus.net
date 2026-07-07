@@ -152,6 +152,62 @@ function accessibilityStatus(status) {
   return null;
 }
 
+function dateLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const date = dateOnly
+    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
+    : new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
+function hoursLabel(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : '0.0';
+}
+
+function certificateStatus(status) {
+  if (status === 'certificate-generated') {
+    return { type: 'success', message: 'Your certificate has been generated.' };
+  }
+  if (status === 'certificate-no-hours') {
+    return { type: 'error', message: 'You do not have any approved volunteering hours to certify yet.' };
+  }
+  return null;
+}
+
+function normalizeCertificate(row) {
+  const certificate = row && typeof row === 'object' ? row : {};
+  const code = trimmed(certificate.verification_code ?? certificate.verificationCode);
+  const dateRange = certificate.date_range && typeof certificate.date_range === 'object'
+    ? certificate.date_range
+    : (certificate.dateRange && typeof certificate.dateRange === 'object' ? certificate.dateRange : {});
+  const organizations = Array.isArray(certificate.organizations)
+    ? certificate.organizations
+    : (Array.isArray(certificate.organisations) ? certificate.organisations : []);
+
+  return {
+    verificationCode: code,
+    totalHoursLabel: hoursLabel(certificate.total_hours ?? certificate.totalHours),
+    rangeStartLabel: dateLabel(dateRange.start ?? certificate.start_date ?? certificate.startDate),
+    rangeEndLabel: dateLabel(dateRange.end ?? certificate.end_date ?? certificate.endDate),
+    generatedAtLabel: dateLabel(certificate.generated_at ?? certificate.generatedAt),
+    organizations: organizations.map((organization) => ({
+      name: trimmed(organization?.name) || 'Independent volunteering',
+      hoursLabel: hoursLabel(organization?.hours)
+    })),
+    downloadPath: code ? `/volunteering/certificates/${encodeURIComponent(code)}/download` : ''
+  };
+}
+
 function accessibilityPayload(rows) {
   const selected = [];
   const shared = {
@@ -184,6 +240,31 @@ function accessibilityPayload(rows) {
     details: shared
   };
 }
+
+router.get('/certificates', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let certificates = [];
+  let loadError = null;
+  try {
+    certificates = collectionFrom(await callApi(token, 'GET', '/certificates')).map(normalizeCertificate);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your certificates. Please try again.';
+  }
+
+  return res.render('volunteering/certificates', {
+    title: 'Volunteer certificates',
+    activeNav: 'volunteering',
+    certificates,
+    loadError,
+    status: certificateStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
 
 router.get('/accessibility', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

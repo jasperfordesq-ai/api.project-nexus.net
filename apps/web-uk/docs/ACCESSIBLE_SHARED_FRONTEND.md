@@ -474,16 +474,20 @@ apply link. Its `/volunteering/accessibility` page redirects unsigned visitors
 to `/login?status=auth-required`, reads saved need rows from Laravel
 `/api/v2/volunteering/accessibility-needs`, and renders the Blade-style need
 type checkboxes, description, adjustments, emergency contact, status banners,
-and no-JS save form. Laravel POST aliases now cover applications, shift
-signup/cancel, application withdrawal, hours, accessibility needs, certificate
-generation, waitlists, swaps, emergency alert responses, credential delete plus
-safe upload proxying, wellbeing check-ins, donations, group reservations,
-expenses, training, incidents, opportunity creation, and organisation owner
-application/hour, settings, and wallet actions through Laravel v2 volunteering
-APIs. This remains partial: recommended shifts and remaining GET depth pages
-still use generated preparation pages, and feature gates, tenant-prefixed
-routes, localization, runtime smoke tests, and ASP.NET backend compatibility are
-not certified.
+and no-JS save form. Its `/volunteering/certificates` page redirects unsigned
+visitors to `/login?status=auth-required`, reads the member's certificates from
+Laravel `/api/v2/volunteering/certificates`, and renders the Blade-style
+generate form, status banners, empty state, certificate cards, organisation
+hour breakdown, verification code, and download link. Laravel POST aliases now
+cover applications, shift signup/cancel, application withdrawal, hours,
+accessibility needs, certificate generation, waitlists, swaps, emergency alert
+responses, credential delete plus safe upload proxying, wellbeing check-ins,
+donations, group reservations, expenses, training, incidents, opportunity
+creation, and organisation owner application/hour, settings, and wallet actions
+through Laravel v2 volunteering APIs. This remains partial: certificate
+download, recommended shifts, and remaining GET depth pages still use generated
+preparation pages, and feature gates, tenant-prefixed routes, localization,
+runtime smoke tests, and ASP.NET backend compatibility are not certified.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,

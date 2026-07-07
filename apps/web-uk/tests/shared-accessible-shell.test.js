@@ -15682,6 +15682,59 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering certificates page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            verification_code: 'ABC123',
+            total_hours: 12.5,
+            date_range: {
+              start: '2026-03-01',
+              end: '2026-03-31'
+            },
+            generated_at: '2026-04-02T10:00:00Z',
+            organizations: [
+              { name: 'Community Kitchen', hours: 8 },
+              { hours: 4.5 }
+            ]
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/volunteering/certificates?status=certificate-generated')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/certificates');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your certificate has been generated.');
+    expect(response.text).toContain('Volunteer certificates');
+    expect(response.text).toContain('Generate and download a certificate of your approved volunteering hours.');
+    expect(response.text).toContain('method="post" action="/volunteering/certificates/generate"');
+    expect(response.text).toContain('Generate a certificate');
+    expect(response.text).toContain('12.5 hours of approved volunteering');
+    expect(response.text).toContain('Period');
+    expect(response.text).toContain('1 March 2026');
+    expect(response.text).toContain('31 March 2026');
+    expect(response.text).toContain('Generated on');
+    expect(response.text).toContain('2 April 2026');
+    expect(response.text).toContain('Verification code');
+    expect(response.text).toContain('ABC123');
+    expect(response.text).toContain('Organisations');
+    expect(response.text).toContain('Community Kitchen (8.0 hours)');
+    expect(response.text).toContain('Independent volunteering (4.5 hours)');
+    expect(response.text).toContain('href="/volunteering/certificates/ABC123/download"');
+    expect(response.text).toContain('Download certificate');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
