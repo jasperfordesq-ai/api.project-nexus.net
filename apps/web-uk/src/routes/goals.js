@@ -29,6 +29,16 @@ const GOAL_REMINDER_LABELS = {
   biweekly: 'Every 2 weeks',
   monthly: 'Monthly'
 };
+const GOAL_BUDDY_TYPE_LABELS = {
+  nudge: 'Nudge',
+  encouragement: 'Encouragement',
+  offer_help: 'Offer to help'
+};
+const GOAL_BUDDY_TYPE_HINTS = {
+  nudge: 'A gentle reminder to keep going.',
+  encouragement: 'A few words of support and motivation.',
+  offer_help: 'Let the owner know you can help out.'
+};
 const GOAL_MOOD_LABELS = {
   great: 'Great',
   good: 'Good',
@@ -354,6 +364,17 @@ function reminderStatus(status) {
   return { successMessage: '', errorMessage: '' };
 }
 
+function buddyActionStatus(status) {
+  const value = trimmed(status);
+  if (value === 'buddy-action-sent') {
+    return { successMessage: 'Your support has been sent to the goal owner.', errorMessage: '' };
+  }
+  if (value === 'buddy-action-failed') {
+    return { successMessage: '', errorMessage: 'We could not send your support. You must be the goal buddy.' };
+  }
+  return { successMessage: '', errorMessage: '' };
+}
+
 function editErrorMessage(status) {
   const messages = {
     'goal-failed': 'Something went wrong. Please try again.',
@@ -590,6 +611,28 @@ router.get('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
     reminder,
     frequencies: GOAL_REMINDER_FREQUENCIES.map((value) => ({ value, label: GOAL_REMINDER_LABELS[value] })),
     ...reminderStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const result = await getGoal(token, id);
+  const goal = normalizeGoal(dataFrom(result));
+  goal.id = goal.id || Number(id);
+
+  return res.render('goals/buddy-actions', {
+    title: 'Send buddy support',
+    activeNav: 'explore',
+    goal,
+    buddyTypes: GOAL_BUDDY_ACTION_TYPES.map((value) => ({
+      value,
+      label: GOAL_BUDDY_TYPE_LABELS[value],
+      hint: GOAL_BUDDY_TYPE_HINTS[value]
+    })),
+    ...buddyActionStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

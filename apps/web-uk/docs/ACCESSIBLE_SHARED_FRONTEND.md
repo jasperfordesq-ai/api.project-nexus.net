@@ -411,9 +411,13 @@ check-in data, and renders the Blade-style progress, mood, note, status, and
 recent check-in history page. `/goals/{id}/reminder` redirects unsigned visitors
 to `/login?status=auth-required`, loads Laravel-compatible goal detail and
 reminder data, and renders the Blade-style active/no-reminder status, frequency
-radios, enabled checkbox, save form, and remove-warning form. Existing goal POST
-aliases continue to call Laravel v2 goals, comment, and like APIs. This remains
-partial: detail, insights, history, and social GET pages, exact
+radios, enabled checkbox, save form, and remove-warning form.
+`/goals/{id}/buddy-actions` redirects unsigned visitors to
+`/login?status=auth-required`, loads Laravel-compatible goal detail data, and
+renders the Blade-style buddy support type radios, hint text, optional message,
+status, and send form. Existing goal POST aliases continue to call Laravel v2
+goals, comment, and like APIs. This remains partial: detail, insights, history,
+and social GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 
