@@ -120,6 +120,19 @@ function normalizeChallenge(item) {
   };
 }
 
+function normalizeChallengeForm(item) {
+  const challenge = normalizeChallenge(item);
+  const row = item && typeof item === 'object' ? item : {};
+  return {
+    ...challenge,
+    description: trimmed(row.description),
+    categoryId: positiveInteger(row.category_id ?? row.categoryId),
+    prizeDescription: trimmed(row.prize_description ?? row.prizeDescription),
+    coverImage: trimmed(row.cover_image ?? row.coverImage),
+    tagsText: challenge.tags.join(', ')
+  };
+}
+
 function normalizeTag(item) {
   const row = item && typeof item === 'object' ? item : {};
   const name = trimmed(row.tag || row.name);
@@ -432,6 +445,29 @@ router.get('/tags', asyncRoute(async (req, res) => {
     matches
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
+  const categoriesResult = await callIdeationApi(token, 'GET', '/ideation-categories');
+  const challenge = normalizeChallengeForm({ id, ...itemFrom(challengeResult) });
+  const categories = compact(collectionFrom(categoriesResult).map(normalizeCategory));
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/challenge-form', {
+    title: 'Edit challenge',
+    activeNav: 'explore',
+    mode: 'edit',
+    challenge,
+    categories,
+    templates: [],
+    status,
+    errorMessage: status === 'challenge-failed' ? 'Sorry, the challenge could not be saved. Please try again.' : ''
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
