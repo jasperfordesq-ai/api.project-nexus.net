@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Current in-progress edits expand Laravel runtime smoke from the broad signed page set into deeper signed profile, settings, achievement, leaderboard, federation, course, marketplace, and volunteering subpages, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `890/1000` implementation/certification parity |
+| Dirty files seen | Current in-progress edits expand Laravel runtime smoke from the broad signed page set into deeper signed profile, settings, achievement, leaderboard, federation, course, marketplace, volunteering, static/legal/support, goals, groups, ideation, jobs, message-group, poll, resource-library, review, and wallet-management pages, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `905/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -99,13 +99,19 @@ and `/podcasts`, plus deeper signed subpages across profile, settings,
 achievements, leaderboard, federation, courses, marketplace, and volunteering.
 A later 2026-07-07 smoke run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks with that expanded
-scope. `/listings` needed a Nunjucks owner-id guard because Laravel can return
-nested `user.id` without a flat `user_id`; the default smoke timeout is now
-`30000` ms for slower Laravel fixture pages. Local probing left
-`/marketplace/onboarding` outside the default list because it returned `404`,
-and left `/marketplace/coupons` outside because it returned feature-gated
-`403`; `/marketplace/coupons/new` also stays out while its parent coupon index
-is feature-gated. Without
+scope. A follow-up 2026-07-07 probe against
+`WEB_UK_BASE_URL=http://127.0.0.1:5294` found another stable 2xx batch. The
+expanded harness passed `158/158` checks against
+`WEB_UK_BASE_URL=http://127.0.0.1:5295`: 6 auth/health checks and 152 module
+page checks. `/listings` needed a Nunjucks owner-id guard because Laravel can
+return nested `user.id` without a flat `user_id`; the default smoke timeout is
+now `30000` ms for slower Laravel fixture pages. Local probing left
+`/connections`, `/events/new`, `/feed`, `/marketplace/onboarding`, and
+`/members` outside the default list because they returned `404`, left
+`/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
+because they returned feature-gated or role-gated `403`, and left signed-in
+auth, onboarding, and premium-management redirect pages outside because they do
+not render 2xx in the signed E2E session. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -219,7 +225,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `890/1000`.
+Current working estimate at this handoff: `905/1000`.
 
 ## Final Handoff Checklist
 

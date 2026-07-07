@@ -49,10 +49,11 @@ rendering. It also checks the default public Laravel-backed module pages
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return successful responses through web-uk while Laravel is the backend target.
 After login, it checks the signed Laravel-backed base pages and deeper module
-pages across explore, saved items, notifications, member discovery, resources,
-skills, goals, clubs, wallet, messages, connections, matches, activity,
-achievements, leaderboard, NEXUS score, profile, settings, federation, courses,
-marketplace, events, listings, search, premium, podcasts, and volunteering.
+pages across about/legal/support, explore, saved items, notifications, member
+discovery, resources, skills, goals, clubs, wallet, messages, connections,
+matches, activity, achievements, leaderboard, NEXUS score, profile, settings,
+federation, courses, marketplace, events, listings, jobs, groups, ideation,
+polls, search, premium, podcasts, and volunteering.
 Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
 the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
@@ -68,11 +69,16 @@ valid E2E credentials. Later 2026-07-07 smoke runs expanded the default signed
 page list from the broader base module pages to deep profile, settings,
 achievement, leaderboard, federation, course, marketplace, and volunteering
 subpages. The latest run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks. Local probing
-left `/marketplace/onboarding` outside the default list because it currently
-returns `404`, and left `/marketplace/coupons` outside because it returns a
-feature-gated `403`; `/marketplace/coupons/new` also stays outside the default
-smoke list while its parent coupon index is feature-gated.
+`WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks. A follow-up live
+probe against `WEB_UK_BASE_URL=http://127.0.0.1:5294` identified another stable
+2xx batch, and the expanded harness passed `158/158` checks against
+`WEB_UK_BASE_URL=http://127.0.0.1:5295`. Local probing left
+`/connections`, `/events/new`, `/feed`, `/marketplace/onboarding`, and
+`/members` outside the default list because they currently return `404`; left
+`/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
+because they return feature-gated or role-gated `403`; and left signed-in auth,
+onboarding, and premium-management redirect pages outside because they do not
+render a 2xx page in the signed E2E session.
 
 ## Current Page Candidates
 
