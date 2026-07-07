@@ -10413,6 +10413,7 @@ describe('shared accessible frontend shell', () => {
     const outcomes = await request(app).get('/ideation/outcomes');
     const create = await request(app).get('/ideation/new');
     const edit = await request(app).get('/ideation/7/edit');
+    const manage = await request(app).get('/ideation/7/manage');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10430,6 +10431,8 @@ describe('shared accessible frontend shell', () => {
     expect(create.headers.location).toBe('/login?status=auth-required');
     expect(edit.status).toBe(302);
     expect(edit.headers.location).toBe('/login?status=auth-required');
+    expect(manage.status).toBe(302);
+    expect(manage.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10774,6 +10777,59 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges/7');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-categories');
+  });
+
+  it('renders the Laravel-backed ideation challenge manage page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 7,
+            title: 'Improve park lighting',
+            status: 'open',
+            is_favorited: true
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 5, title: 'Park renewal' },
+            { id: 6, title: 'Winter support' }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/7/manage?status=campaign-linked')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Improve park lighting');
+    expect(response.text).toContain('Manage challenge');
+    expect(response.text).toContain('Open');
+    expect(response.text).toContain('The challenge has been linked to the campaign.');
+    expect(response.text).toContain('href="/ideation/7/edit"');
+    expect(response.text).toContain('href="/ideation/7/outcome"');
+    expect(response.text).toContain('Remove from favourites');
+    expect(response.text).toContain('Challenge lifecycle');
+    expect(response.text).toContain('value="voting" checked');
+    expect(response.text).toContain('value="evaluating"');
+    expect(response.text).toContain('value="closed"');
+    expect(response.text).toContain('action="/ideation/7/status"');
+    expect(response.text).toContain('Link to campaign');
+    expect(response.text).toContain('Park renewal');
+    expect(response.text).toContain('Winter support');
+    expect(response.text).toContain('action="/ideation/7/link-campaign"');
+    expect(response.text).toContain('Duplicate');
+    expect(response.text).toContain('action="/ideation/7/duplicate"');
+    expect(response.text).toContain('Delete challenge');
+    expect(response.text).toContain('action="/ideation/7/delete"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges/7');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-campaigns?per_page=100');
   });
 
   it('renders the Laravel-backed ideation outcomes page', async () => {

@@ -133,6 +133,18 @@ function normalizeChallengeForm(item) {
   };
 }
 
+function challengeTransitions(status) {
+  const transitions = {
+    draft: ['open'],
+    open: ['voting', 'evaluating', 'closed'],
+    voting: ['evaluating', 'closed'],
+    evaluating: ['closed'],
+    closed: ['open', 'archived'],
+    archived: ['closed']
+  };
+  return transitions[trimmed(status).toLowerCase()] || [];
+}
+
 function normalizeTag(item) {
   const row = item && typeof item === 'object' ? item : {};
   const name = trimmed(row.tag || row.name);
@@ -286,6 +298,25 @@ function errorMessage(status) {
   const messages = {
     'idea-invalid': 'Enter your idea.',
     'idea-failed': 'Something went wrong. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function manageStatusMessage(status) {
+  const messages = {
+    'challenge-status-updated': 'The challenge status has been updated.',
+    'campaign-linked': 'The challenge has been linked to the campaign.',
+    favorited: 'The challenge has been added to your favourites.',
+    unfavorited: 'The challenge has been removed from your favourites.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function manageErrorMessage(status) {
+  const messages = {
+    'challenge-status-failed': 'The challenge status could not be updated.',
+    'challenge-failed': 'Sorry, the challenge action could not be completed.',
+    'campaign-link-failed': 'The challenge could not be linked to the campaign.'
   };
   return messages[trimmed(status)] || '';
 }
@@ -445,6 +476,32 @@ router.get('/tags', asyncRoute(async (req, res) => {
     matches
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
+  const campaignsResult = await callIdeationApi(token, 'GET', '/ideation-campaigns?per_page=100');
+  const challenge = normalizeChallenge({ id, ...itemFrom(challengeResult) });
+  const campaigns = collectionFrom(campaignsResult)
+    .map(normalizeCampaign)
+    .filter((campaign) => campaign.id !== null);
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/manage', {
+    title: 'Manage challenge',
+    activeNav: 'explore',
+    challenge,
+    campaigns,
+    transitions: challengeTransitions(challenge.status),
+    isFavorited: Boolean(challenge.is_favorited || challenge.isFavorited || challenge.has_favorited || challenge.hasFavorited),
+    status,
+    successMessage: manageStatusMessage(status),
+    errorMessage: manageErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

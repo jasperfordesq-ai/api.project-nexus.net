@@ -370,11 +370,11 @@ localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
 The `/ideation`, `/ideation/new`, `/ideation/{id}`, `/ideation/{id}/edit`,
-`/ideation/tags`, `/ideation/campaigns`, `/ideation/campaigns/{id}`, and
-`/ideation/outcomes` GET pages are now partial Laravel-backed candidates for
-the Blade ideation challenge list, create/edit challenge forms, detail,
-tag-browser, campaigns, campaign detail, and outcomes dashboard flows. Unsigned
-visitors redirect to
+`/ideation/{id}/manage`, `/ideation/tags`, `/ideation/campaigns`,
+`/ideation/campaigns/{id}`, and `/ideation/outcomes` GET pages are now partial
+Laravel-backed candidates for the Blade ideation challenge list, create/edit
+challenge forms, manage hub, detail, tag-browser, campaigns, campaign detail,
+and outcomes dashboard flows. Unsigned visitors redirect to
 `/login?status=auth-required`; signed GET requests call Laravel
 `/api/v2/ideation-challenges`, `/api/v2/ideation-categories`,
 `/api/v2/ideation-templates`, `/api/v2/ideation-challenges/{id}`,
@@ -384,16 +384,18 @@ visitors redirect to
 then render Blade-style search/status filters, challenge cards, status tags,
 idea counts, success/error banners, the create/edit challenge form with
 category and template options where Laravel provides them, challenge metadata,
-prize inset, idea cards, vote forms, the submit-idea form, popular tag links,
-selected-tag challenge matches, tag empty states, campaign tabs, campaign
-status banners, campaign cards, campaign detail metadata, linked challenge
-cards, challenge counts, creator metadata, outcome stats, and outcome tables.
+prize inset, idea cards, vote forms, the submit-idea form, challenge lifecycle
+controls, campaign-link controls, favourite/duplicate/delete management forms,
+popular tag links, selected-tag challenge matches, tag empty states, campaign
+tabs, campaign status banners, campaign cards, campaign detail metadata, linked
+challenge cards, challenge counts, creator metadata, outcome stats, and outcome
+tables.
 Existing POST aliases still call Laravel v2 ideation
 APIs for challenge create/update/status/favorite, duplicate, delete, campaign
 linking, outcome updates, idea submit/draft/comment/vote/status/media/
 convert-to-group/delete actions, and campaign create/update/delete plus
-challenge unlinking. This remains partial: manage/drafts/idea detail GET pages,
-admin authorization depth, multipart/media
+challenge unlinking. This remains partial: drafts/idea detail GET pages, admin
+authorization depth, multipart/media
 upload proxying, team conversion runtime behavior, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
