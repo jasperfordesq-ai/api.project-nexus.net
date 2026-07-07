@@ -418,11 +418,12 @@ public class UsersController : ControllerBase
             : 0;
         var onboardingCompleted = totalRequired == 0 || completedRequired >= totalRequired;
 
-        // Get preferred language from user preferences
-        var preferredLanguage = await _db.Set<UserPreference>()
-            .Where(p => p.UserId == user.Id)
-            .Select(p => p.Language)
-            .FirstOrDefaultAsync() ?? "en";
+        var preferences = await _db.Set<UserPreference>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.TenantId == user.TenantId && p.UserId == user.Id);
+        var preferredLanguage = preferences?.Language ?? "en";
+        var preferredTheme = preferences?.Theme ?? "system";
+        var themePreferences = ThemePreferencesPayload(profileBag);
 
         // Map registration status to frontend-friendly string
         var status = user.RegistrationStatus == RegistrationStatus.Active
@@ -459,6 +460,8 @@ public class UsersController : ControllerBase
             level = user.Level,
             onboarding_completed = onboardingCompleted,
             preferred_language = preferredLanguage,
+            preferred_theme = preferredTheme,
+            theme_preferences = themePreferences,
             balance = 0,
             total_earned = 0,
             total_spent = 0,
@@ -466,6 +469,22 @@ public class UsersController : ControllerBase
             rating = (double?)null,
             skills = Array.Empty<string>()
         };
+    }
+
+    private static JsonObject ThemePreferencesPayload(JsonObject bag)
+    {
+        var existing = bag.TryGetPropertyValue("theme_preferences", out var node) && node is JsonObject obj
+            ? obj
+            : new JsonObject();
+
+        existing["accent_color"] ??= "#6366f1";
+        existing["font_size"] ??= "medium";
+        existing["density"] ??= "comfortable";
+        existing["large_text"] ??= false;
+        existing["high_contrast"] ??= false;
+        existing["reduced_motion"] ??= false;
+        existing["simplified_layout"] ??= false;
+        return existing;
     }
 
     private static JsonObject ParseProfileBag(string? raw)

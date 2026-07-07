@@ -25,7 +25,62 @@ public class UsersControllerTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("email").GetString().Should().Be("member@test.com");
+        content.GetProperty("success").GetBoolean().Should().BeTrue();
+        content.GetProperty("data").GetProperty("email").GetString().Should().Be("member@test.com");
+    }
+
+    [Fact]
+    public async Task ThemeContextV2_RoundTripsThemeAndThemePreferencesForLaravelReact()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var theme = await Client.PutAsJsonAsync("/api/v2/users/me/theme", new
+        {
+            theme = "light"
+        });
+
+        theme.StatusCode.Should().Be(HttpStatusCode.OK);
+        var themeJson = await theme.Content.ReadFromJsonAsync<JsonElement>();
+        themeJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        themeJson.GetProperty("data").GetProperty("theme").GetString().Should().Be("light");
+
+        var preferences = await Client.PutAsJsonAsync("/api/v2/users/me/theme-preferences", new
+        {
+            accent_color = "#22c55e",
+            font_size = "large",
+            density = "compact",
+            large_text = true,
+            high_contrast = true,
+            reduced_motion = true,
+            simplified_layout = false
+        });
+
+        preferences.StatusCode.Should().Be(HttpStatusCode.OK);
+        var preferencesJson = await preferences.Content.ReadFromJsonAsync<JsonElement>();
+        preferencesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var saved = preferencesJson.GetProperty("data").GetProperty("theme_preferences");
+        saved.GetProperty("accent_color").GetString().Should().Be("#22c55e");
+        saved.GetProperty("font_size").GetString().Should().Be("large");
+        saved.GetProperty("density").GetString().Should().Be("compact");
+        saved.GetProperty("large_text").GetBoolean().Should().BeTrue();
+        saved.GetProperty("high_contrast").GetBoolean().Should().BeTrue();
+        saved.GetProperty("reduced_motion").GetBoolean().Should().BeTrue();
+        saved.GetProperty("simplified_layout").GetBoolean().Should().BeFalse();
+
+        var me = await Client.GetAsync("/api/v2/users/me");
+
+        me.StatusCode.Should().Be(HttpStatusCode.OK);
+        var meJson = await me.Content.ReadFromJsonAsync<JsonElement>();
+        var data = meJson.GetProperty("data");
+        data.GetProperty("preferred_theme").GetString().Should().Be("light");
+        var profilePrefs = data.GetProperty("theme_preferences");
+        profilePrefs.GetProperty("accent_color").GetString().Should().Be("#22c55e");
+        profilePrefs.GetProperty("font_size").GetString().Should().Be("large");
+        profilePrefs.GetProperty("density").GetString().Should().Be("compact");
+        profilePrefs.GetProperty("large_text").GetBoolean().Should().BeTrue();
+        profilePrefs.GetProperty("high_contrast").GetBoolean().Should().BeTrue();
+        profilePrefs.GetProperty("reduced_motion").GetBoolean().Should().BeTrue();
+        profilePrefs.GetProperty("simplified_layout").GetBoolean().Should().BeFalse();
     }
 
     [Fact]
@@ -69,7 +124,8 @@ public class UsersControllerTests : IntegrationTestBase
         r.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var user = await r.Content.ReadFromJsonAsync<JsonElement>();
-        user.GetProperty("onboarding_completed").GetBoolean().Should().BeTrue();
+        user.GetProperty("success").GetBoolean().Should().BeTrue();
+        user.GetProperty("data").GetProperty("onboarding_completed").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

@@ -258,6 +258,25 @@ public class UsersParityController : ControllerBase
     [HttpPut("me/theme-preferences")]
     public async Task<IActionResult> ThemePreferences([FromBody] JsonElement body)
     {
+        var accentColor = Str(body, "accent_color");
+        var fontSize = Str(body, "font_size");
+        var density = Str(body, "density");
+
+        if (accentColor is not null && !System.Text.RegularExpressions.Regex.IsMatch(accentColor, "^#[0-9a-fA-F]{6}$"))
+        {
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "accent_color" });
+        }
+
+        if (fontSize is not null && fontSize is not ("small" or "medium" or "large"))
+        {
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "font_size" });
+        }
+
+        if (density is not null && density is not ("compact" or "comfortable" or "spacious"))
+        {
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "density" });
+        }
+
         var pref = await _db.UserPreferences.FirstOrDefaultAsync(p => p.TenantId == TenantId() && p.UserId == UserId());
         if (pref == null)
         {
@@ -267,8 +286,24 @@ public class UsersParityController : ControllerBase
         pref.Theme = Str(body, "theme") ?? pref.Theme;
         pref.Language = Str(body, "language") ?? pref.Language;
         pref.UpdatedAt = DateTime.UtcNow;
+
+        var user = await CurrentUserAsync();
+        var bag = ParsePreferenceBag(user.NotificationPreferences);
+        var preferences = ThemePreferencesBag(bag);
+
+        if (accentColor is not null) preferences["accent_color"] = accentColor;
+        if (fontSize is not null) preferences["font_size"] = fontSize;
+        if (density is not null) preferences["density"] = density;
+        if (Bool(body, "large_text") is { } largeText) preferences["large_text"] = largeText;
+        if (Bool(body, "high_contrast") is { } highContrast) preferences["high_contrast"] = highContrast;
+        if (Bool(body, "reduced_motion") is { } reducedMotion) preferences["reduced_motion"] = reducedMotion;
+        if (Bool(body, "simplified_layout") is { } simplifiedLayout) preferences["simplified_layout"] = simplifiedLayout;
+
+        bag["theme_preferences"] = preferences;
+        user.NotificationPreferences = bag.ToJsonString(StoreJsonOptions);
+        user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = pref });
+        return Ok(new { success = true, data = new { message = "Theme preferences updated.", theme_preferences = preferences } });
     }
 
     [HttpPut("me/resume-visibility")]
@@ -330,6 +365,22 @@ public class UsersParityController : ControllerBase
         var userId = UserId();
         return await _db.Users.FirstOrDefaultAsync(u => u.TenantId == TenantId() && u.Id == userId)
             ?? throw new UnauthorizedAccessException("Invalid token");
+    }
+
+    private static JsonObject ThemePreferencesBag(JsonObject bag)
+    {
+        var existing = bag.TryGetPropertyValue("theme_preferences", out var node) && node is JsonObject obj
+            ? obj
+            : new JsonObject();
+
+        existing["accent_color"] ??= "#6366f1";
+        existing["font_size"] ??= "medium";
+        existing["density"] ??= "comfortable";
+        existing["large_text"] ??= false;
+        existing["high_contrast"] ??= false;
+        existing["reduced_motion"] ??= false;
+        existing["simplified_layout"] ??= false;
+        return existing;
     }
 
     private async Task<List<object>> BuildAvailabilityWeeklyAsync(int userId)

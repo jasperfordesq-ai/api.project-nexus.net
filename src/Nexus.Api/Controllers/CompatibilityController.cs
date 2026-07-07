@@ -243,9 +243,11 @@ public class CompatibilityController : ControllerBase
     // ──────────────────────────────────────────────
 
     /// <summary>
-    /// DELETE /api/users/me - Soft-delete the current user's account.
+    /// DELETE /api/compat/users/me - Legacy soft-delete compatibility endpoint.
+    /// The Laravel-compatible /api/users/me and /api/v2/users/me routes are
+    /// handled by UsersController.DeleteMe and require password re-authentication.
     /// </summary>
-    [HttpDelete("api/users/me")]
+    [HttpDelete("api/compat/users/me")]
     public async Task<IActionResult> DeleteAccount()
     {
         var userId = User.GetUserId();

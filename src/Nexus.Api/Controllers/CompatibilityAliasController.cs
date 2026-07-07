@@ -170,14 +170,19 @@ public class CompatibilityAliasController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var theme = request.Theme?.Trim().ToLowerInvariant();
+        if (theme is not ("light" or "dark" or "system"))
+        {
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "theme" });
+        }
 
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         var prefs = await _preferencesService.GetPreferencesAsync(tenantId, userId.Value);
-        prefs.Theme = request.Theme ?? "system";
+        prefs.Theme = theme;
         prefs.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, theme = prefs.Theme });
+        return Ok(new { success = true, data = new { message = "Theme updated.", theme = prefs.Theme } });
     }
 
     /// <summary>
