@@ -505,6 +505,11 @@ Its `/volunteering/expenses` page redirects unsigned visitors to
 `/api/v2/volunteering/my-organisations?per_page=50`, and renders the
 Blade-style expense totals, submit-claim form, status banners, and claims
 table.
+Its `/volunteering/emergency-alerts` page redirects unsigned visitors to
+`/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/emergency-alerts`, and renders the Blade-style urgent
+shift request cards, priority tags, metadata summary lists, status banners,
+accepted/declined states, and no-JS response forms.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert

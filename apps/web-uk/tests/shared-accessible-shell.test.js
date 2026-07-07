@@ -16182,6 +16182,112 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering emergency alerts page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: {
+        alerts: [
+          {
+            id: 91,
+            priority: 'critical',
+            message: 'The evening food-bank shift needs cover.',
+            my_response: 'pending',
+            required_skills: ['food handling', 'driving'],
+            expires_at: '2026-07-08T12:30:00Z',
+            shift: {
+              id: 501,
+              start_time: '2026-07-08T18:00:00Z',
+              end_time: '2026-07-08T20:00:00Z'
+            },
+            opportunity: {
+              title: 'Food bank evening support',
+              location: 'Community Hall'
+            },
+            organization: {
+              name: 'Community Kitchen'
+            },
+            coordinator: {
+              name: 'Avery Coordinator'
+            }
+          },
+          {
+            id: 90,
+            priority: 'normal',
+            message: '',
+            my_response: 'accepted',
+            required_skills: [],
+            shift: {
+              start_time: '2026-07-09T09:00:00Z'
+            },
+            opportunity: {
+              title: 'Morning sorting',
+              location: 'Donation centre'
+            },
+            organization: {
+              name: 'Mutual Aid Store'
+            },
+            coordinator: {
+              name: 'Sam Organiser'
+            }
+          },
+          {
+            id: 89,
+            priority: 'urgent',
+            my_response: 'declined',
+            opportunity: {
+              title: 'Delivery driver'
+            }
+          }
+        ],
+        cursor: 'older-alerts',
+        has_more: true
+      }
+    });
+
+    const response = await request(app)
+      .get('/volunteering/emergency-alerts?status=alert-accepted')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/emergency-alerts');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Thank you. You have accepted the shift and the coordinator has been notified.');
+    expect(response.text).toContain('Urgent shift requests');
+    expect(response.text).toContain('Coordinators send these when a shift urgently needs to be filled.');
+    expect(response.text).toContain('Food bank evening support');
+    expect(response.text).toContain('Critical');
+    expect(response.text).toContain('Organisation');
+    expect(response.text).toContain('Community Kitchen');
+    expect(response.text).toContain('Location');
+    expect(response.text).toContain('Community Hall');
+    expect(response.text).toContain('Shift');
+    expect(response.text).toContain('8 July 2026');
+    expect(response.text).toContain('Requested by');
+    expect(response.text).toContain('Avery Coordinator');
+    expect(response.text).toContain('Skills needed');
+    expect(response.text).toContain('food handling, driving');
+    expect(response.text).toContain('Responses needed by');
+    expect(response.text).toContain('Message from the coordinator');
+    expect(response.text).toContain('The evening food-bank shift needs cover.');
+    expect(response.text).toContain('Accepting commits you to covering this shift.');
+    expect(response.text).toContain('method="post" action="/volunteering/emergency-alerts/91/respond"');
+    expect(response.text).toContain('name="response" value="accepted"');
+    expect(response.text).toContain('Accept this shift');
+    expect(response.text).toContain('name="response" value="declined"');
+    expect(response.text).toContain('Decline');
+    expect(response.text).toContain('Morning sorting');
+    expect(response.text).toContain('Normal');
+    expect(response.text).toContain('You accepted this request');
+    expect(response.text).toContain('Delivery driver');
+    expect(response.text).toContain('Urgent');
+    expect(response.text).toContain('You declined this request');
+    expect(response.text).toContain('href="/volunteering/emergency-alerts?cursor=older-alerts"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

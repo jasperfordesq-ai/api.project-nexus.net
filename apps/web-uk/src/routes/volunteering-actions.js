@@ -48,6 +48,16 @@ const EXPENSE_TYPES = [
   { value: 'other', label: 'Other' }
 ];
 const EXPENSE_TYPE_LABELS = Object.fromEntries(EXPENSE_TYPES.map((type) => [type.value, type.label]));
+const ALERT_PRIORITY_LABELS = {
+  normal: 'Normal',
+  urgent: 'Urgent',
+  critical: 'Critical'
+};
+const ALERT_PRIORITY_CLASSES = {
+  normal: 'govuk-tag--blue',
+  urgent: 'govuk-tag--orange',
+  critical: 'govuk-tag--red'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -199,6 +209,22 @@ function dateLabel(value) {
   }).format(date);
 }
 
+function dateTimeLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
 function hoursLabel(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(1) : '0.0';
@@ -271,6 +297,24 @@ function donationStatus(status, donateError = '') {
     };
   }
   return null;
+}
+
+function emergencyAlertStatus(status) {
+  const messages = {
+    'alert-accepted': {
+      type: 'success',
+      message: 'Thank you. You have accepted the shift and the coordinator has been notified.'
+    },
+    'alert-declined': {
+      type: 'success',
+      message: 'You have declined the shift request.'
+    },
+    'alert-respond-failed': {
+      type: 'error',
+      message: 'Your response could not be recorded. The request may have been filled or expired.'
+    }
+  };
+  return messages[status] || null;
 }
 
 function expenseStatus(status) {
@@ -613,6 +657,60 @@ function normalizeDonationDashboard(givingDaysResult, donationsResult) {
   };
 }
 
+function alertRowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.alerts)) return data.alerts;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function alertPriorityPresentation(value) {
+  const priority = trimmed(value) || 'urgent';
+  return {
+    value: priority,
+    label: ALERT_PRIORITY_LABELS[priority] || headline(priority) || 'Urgent',
+    className: ALERT_PRIORITY_CLASSES[priority] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeEmergencyAlert(row) {
+  const alert = row && typeof row === 'object' ? row : {};
+  const shift = alert.shift && typeof alert.shift === 'object' ? alert.shift : {};
+  const opportunity = alert.opportunity && typeof alert.opportunity === 'object' ? alert.opportunity : {};
+  const organization = alert.organization && typeof alert.organization === 'object' ? alert.organization : {};
+  const coordinator = alert.coordinator && typeof alert.coordinator === 'object' ? alert.coordinator : {};
+  const startLabel = dateTimeLabel(shift.start_time ?? shift.startTime);
+  const endLabel = dateTimeLabel(shift.end_time ?? shift.endTime);
+
+  return {
+    id: positiveInteger(alert.id),
+    priority: alertPriorityPresentation(alert.priority),
+    message: trimmed(alert.message),
+    myResponse: trimmed(alert.my_response ?? alert.myResponse) || 'pending',
+    skills: stringArray(alert.required_skills ?? alert.requiredSkills).join(', '),
+    expiresAtLabel: dateTimeLabel(alert.expires_at ?? alert.expiresAt),
+    opportunityTitle: trimmed(opportunity.title) || 'Volunteering opportunity',
+    location: trimmed(opportunity.location),
+    organizationName: trimmed(organization.name),
+    coordinatorName: trimmed(coordinator.name),
+    shiftLabel: startLabel && endLabel ? `${startLabel} - ${endLabel}` : startLabel
+  };
+}
+
+function normalizeEmergencyAlertDashboard(result) {
+  const data = dataFrom(result);
+  const meta = data && typeof data === 'object' ? data : {};
+  const nextCursor = trimmed(meta.cursor ?? meta.next_cursor ?? meta.nextCursor);
+  const hasMore = Boolean(meta.has_more ?? meta.hasMore);
+
+  return {
+    alerts: alertRowsFrom(result).map(normalizeEmergencyAlert).filter((alert) => alert.id),
+    nextHref: hasMore && nextCursor ? `/volunteering/emergency-alerts?cursor=${encodeURIComponent(nextCursor)}` : ''
+  };
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -902,6 +1000,33 @@ router.get('/accessibility', asyncRoute(async (req, res) => {
     selectedTypes: accessibility.selectedTypes,
     accessibility: accessibility.details,
     status: accessibilityStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/emergency-alerts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let dashboard = normalizeEmergencyAlertDashboard({});
+  let loadError = null;
+  const cursor = trimmed(req.query.cursor, 512);
+  try {
+    const path = cursor ? `/emergency-alerts?cursor=${encodeURIComponent(cursor)}` : '/emergency-alerts';
+    dashboard = normalizeEmergencyAlertDashboard(await callApi(token, 'GET', path));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your urgent shift requests. Please try again.';
+  }
+
+  return res.render('volunteering/emergency-alerts', {
+    title: 'Urgent shift requests',
+    activeNav: 'volunteering',
+    dashboard,
+    loadError,
+    status: emergencyAlertStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
