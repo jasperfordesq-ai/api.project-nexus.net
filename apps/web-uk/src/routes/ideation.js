@@ -132,6 +132,26 @@ function normalizeTag(item) {
   };
 }
 
+function normalizeCategory(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const name = trimmed(row.name || row.title);
+  if (id === null || !name) return null;
+  return { id, name };
+}
+
+function normalizeTemplate(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const title = trimmed(row.title || row.name);
+  if (id === null || !title) return null;
+  return {
+    id,
+    title,
+    description: limitText(row.description, 120)
+  };
+}
+
 function campaignStatusDetails(status) {
   switch (trimmed(status).toLowerCase()) {
     case 'active':
@@ -297,6 +317,31 @@ router.get('/', asyncRoute(async (req, res) => {
     challenges,
     activeStatus: status,
     activeQuery: query
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/new', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const categoriesResult = await callIdeationApi(token, 'GET', '/ideation-categories');
+  const templatesResult = await callIdeationApi(token, 'GET', '/ideation-templates');
+  const categories = compact(collectionFrom(categoriesResult).map(normalizeCategory));
+  const templates = compact(collectionFrom(templatesResult).map(normalizeTemplate));
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/challenge-form', {
+    title: 'Create challenge',
+    activeNav: 'explore',
+    mode: 'create',
+    challenge: {
+      status: 'draft',
+      tagsText: ''
+    },
+    categories,
+    templates,
+    status,
+    errorMessage: status === 'challenge-failed' ? 'Sorry, the challenge could not be saved. Please try again.' : ''
   });
 }, { redirectOn401: loginRedirect() }));
 

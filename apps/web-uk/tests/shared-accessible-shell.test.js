@@ -10411,6 +10411,7 @@ describe('shared accessible frontend shell', () => {
     const campaigns = await request(app).get('/ideation/campaigns');
     const campaignDetail = await request(app).get('/ideation/campaigns/5');
     const outcomes = await request(app).get('/ideation/outcomes');
+    const create = await request(app).get('/ideation/new');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10424,6 +10425,8 @@ describe('shared accessible frontend shell', () => {
     expect(campaignDetail.headers.location).toBe('/login?status=auth-required');
     expect(outcomes.status).toBe(302);
     expect(outcomes.headers.location).toBe('/login?status=auth-required');
+    expect(create.status).toBe(302);
+    expect(create.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10662,6 +10665,56 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1 idea');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns/5');
+  });
+
+  it('renders the Laravel-backed ideation challenge create form', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 3, name: 'Public spaces' },
+            { id: 4, name: 'Transport' }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 9,
+              title: 'Community design sprint',
+              description: 'Use this template to gather practical neighbourhood ideas.'
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/new?status=challenge-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/ideation"');
+    expect(response.text).toContain('Ideation');
+    expect(response.text).toContain('Create challenge');
+    expect(response.text).toContain('Describe the challenge you want people to respond to.');
+    expect(response.text).toContain('There is a problem');
+    expect(response.text).toContain('Enter a challenge title.');
+    expect(response.text).toContain('Enter a challenge description.');
+    expect(response.text).toContain('Community design sprint');
+    expect(response.text).toContain('Use this template to gather practical neighbourhood ideas.');
+    expect(response.text).toContain('Public spaces');
+    expect(response.text).toContain('Transport');
+    expect(response.text).toContain('name="challenge_status"');
+    expect(response.text).toContain('value="draft" checked');
+    expect(response.text).toContain('name="max_ideas_per_user"');
+    expect(response.text).toContain('name="cover_image"');
+    expect(response.text).toContain('name="tags"');
+    expect(response.text).toContain('Create challenge');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-categories');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-templates');
   });
 
   it('renders the Laravel-backed ideation outcomes page', async () => {
