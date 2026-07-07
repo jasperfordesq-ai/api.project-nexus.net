@@ -118,6 +118,44 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
             .Should().Be(TestData.AdminUser.Id);
     }
 
+    [Fact]
+    public async Task MessageUnreadCount_ReturnsLaravelReactCountEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/messages/unread-count");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await ReadDataAsync(response);
+        data.GetProperty("count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task MessageReadReceipt_UsesLaravelReactOtherUserId()
+    {
+        await AuthenticateAsAdminAsync();
+        var sendResponse = await Client.PostAsJsonAsync("/api/v2/messages", new
+        {
+            recipient_id = TestData.MemberUser.Id,
+            body = "Unread contract setup"
+        });
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await AuthenticateAsMemberAsync();
+
+        var before = await ReadDataAsync(await Client.GetAsync("/api/v2/messages/unread-count"));
+        before.GetProperty("count").GetInt32().Should().BeGreaterThan(0);
+
+        var readResponse = await Client.PutAsJsonAsync($"/api/v2/messages/{TestData.AdminUser.Id}/read", new { });
+
+        readResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var readData = await ReadDataAsync(readResponse);
+        readData.GetProperty("marked_read").GetInt32().Should().BeGreaterThan(0);
+
+        var after = await ReadDataAsync(await Client.GetAsync("/api/v2/messages/unread-count"));
+        after.GetProperty("count").GetInt32().Should().Be(0);
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();

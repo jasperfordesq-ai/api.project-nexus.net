@@ -149,6 +149,15 @@ The thread response returns message rows in `data` with `meta.conversation`,
 `per_page`, `cursor`, and `has_more`; the legacy `/api/messages/{id}` path keeps
 its conversation-id response shape for existing ASP.NET callers.
 
+The Laravel React unread/read-receipt slice now has focused ASP.NET regression
+coverage for `GET /api/v2/messages/unread-count` and
+`PUT /api/v2/messages/{id}/read`. The unread-count route returns
+`success/data.count` for `NotificationsContext.tsx`; the read route treats `{id}`
+as the other user id for `ConversationPage.tsx`, marks only messages sent by
+that user as read, and returns `success/data.marked_read`. Legacy
+`/api/messages/unread-count` and `/api/messages/{conversationId}/read` retain
+their older response shapes and conversation-id semantics.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

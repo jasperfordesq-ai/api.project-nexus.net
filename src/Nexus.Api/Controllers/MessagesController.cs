@@ -447,6 +447,18 @@ public class MessagesController : ControllerBase
                 && !m.IsRead)
             .CountAsync();
 
+        if (IsLaravelV2Request())
+        {
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    count = unreadCount
+                }
+            });
+        }
+
         return Ok(new
         {
             unread_count = unreadCount
@@ -627,6 +639,11 @@ public class MessagesController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
+        if (IsLaravelV2Request())
+        {
+            return await MarkLaravelReactConversationReadAsync(id, userId.Value);
+        }
+
         // Get conversation and verify user is a participant
         var conversation = await _db.Conversations
             .FirstOrDefaultAsync(c => c.Id == id);
@@ -682,7 +699,68 @@ public class MessagesController : ControllerBase
         });
     }
 
-    /// <summary>GET /api/messages/reactions-batch — batch fetch emoji reactions for a list of message IDs</summary>
+    private async Task<IActionResult> MarkLaravelReactConversationReadAsync(int otherUserId, int currentUserId)
+    {
+        var participant1Id = Math.Min(currentUserId, otherUserId);
+        var participant2Id = Math.Max(currentUserId, otherUserId);
+        var conversation = await _db.Conversations
+            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
+
+        if (conversation == null)
+        {
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    marked_read = 0
+                }
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        var markedCount = await _db.Messages
+            .Where(m => m.ConversationId == conversation.Id
+                && m.SenderId == otherUserId
+                && !m.IsRead)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.IsRead, true)
+                .SetProperty(m => m.ReadAt, now));
+
+        _logger.LogInformation("User {UserId} marked {Count} messages as read from user {OtherUserId}",
+            currentUserId, markedCount, otherUserId);
+
+        if (markedCount > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _realTimeMessaging.NotifyMessagesReadAsync(conversation.Id, currentUserId, markedCount);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(ex, "Failed to send read notification for conversation {ConversationId}", conversation.Id);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "Failed to send read notification for conversation {ConversationId}", conversation.Id);
+                }
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                marked_read = markedCount,
+                conversation_id = conversation.Id
+            }
+        });
+    }
+
+    /// <summary>GET /api/messages/reactions-batch - batch fetch emoji reactions for a list of message IDs</summary>
     [HttpGet("reactions-batch")]
     public async Task<IActionResult> GetMessageReactionsBatch([FromQuery] string? messageIds)
     {
