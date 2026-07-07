@@ -282,6 +282,14 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/polls/8',
       '/polls/4',
       '/feed/posts/796',
+      '/goals/162',
+      '/goals/162/edit',
+      '/goals/162/checkin',
+      '/goals/162/reminder',
+      '/goals/162/buddy-actions',
+      '/goals/162/insights',
+      '/goals/162/history',
+      '/goals/162/social',
       '/feed/item/listing/90967',
       '/feed/item/listing/90966',
       '/feed/item/listing/90965',
@@ -297,6 +305,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/blog/timebank-ireland/comments',
       '/kb/90001',
       '/achievements/badges/vol_1h',
+      '/reviews/18/comments',
       '/marketplace/category/electronics',
       '/marketplace/category/home-garden',
       '/marketplace/category/free-items',
@@ -798,6 +807,22 @@ describe('Laravel runtime smoke harness', () => {
       '/feed/item/listing/90964',
       '/feed/item/listing/90963',
       '/feed/item/listing/90962'
+    ]));
+  });
+
+  it('includes stable goal detail and review comment fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/goals/162',
+      '/goals/162/edit',
+      '/goals/162/checkin',
+      '/goals/162/reminder',
+      '/goals/162/buddy-actions',
+      '/goals/162/insights',
+      '/goals/162/history',
+      '/goals/162/social',
+      '/reviews/18/comments'
     ]));
   });
 
