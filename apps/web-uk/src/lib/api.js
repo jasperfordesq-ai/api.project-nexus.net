@@ -1025,6 +1025,19 @@ async function donateCredits(token, data) {
   });
 }
 
+async function getBookmarks(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.type) query.set('type', params.type);
+  if (params.collection_id) query.set('collection_id', params.collection_id);
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/bookmarks${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function unsaveSavedItem(token, itemType, itemId) {
   const query = new URLSearchParams();
   query.set('item_type', itemType);
@@ -2848,6 +2861,7 @@ module.exports = {
   transferCredits,
   transferWalletCredits,
   donateCredits,
+  getBookmarks,
   saveSavedItem,
   checkSavedItem,
   unsaveSavedItem,

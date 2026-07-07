@@ -102,8 +102,11 @@ the Laravel accessible `/notifications/group/read` and
 `/notifications/delete-all` POST aliases against the Laravel v2 notification API.
 The protected wallet module exposes a no-JS `/wallet/donate` form and POST route
 against Laravel `/api/v2/wallet/donate` with the same donation status keys.
-Saved-item removal and appreciation send/react POST aliases are also wired to
-Laravel `/api/v2/me/saved-items` and `/api/v2/appreciations`.
+`/saved` now redirects unsigned visitors to `/login?status=auth-required`, reads
+Laravel `/api/v2/bookmarks` with the Blade type filter, and renders the
+Blade-style saved item list, empty state, status banner, item links, type tags,
+and remove forms. Saved-item removal and appreciation send/react POST aliases
+are also wired to Laravel `/api/v2/me/saved-items` and `/api/v2/appreciations`.
 Saved-collection GET list/detail pages now redirect unsigned visitors to
 `/login?status=auth-required`, read Laravel `/api/v2/me/collections` and
 `/api/v2/me/collections/{id}/items`, and render Blade-style collection cards,

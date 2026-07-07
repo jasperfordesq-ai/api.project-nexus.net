@@ -8,6 +8,7 @@ const { requireAuth } = require('../middleware/auth');
 const {
   getProfile,
   getUser,
+  getBookmarks,
   getUserPublicCollections,
   getUserAppreciations,
   unsaveSavedItem,
@@ -23,6 +24,14 @@ const APPRECIATION_REACTION_TYPES = [
   { value: 'heart', label: 'Heart' },
   { value: 'clap', label: 'Clap' },
   { value: 'star', label: 'Star' }
+];
+const SAVED_TYPES = [
+  { value: 'post', label: 'Post' },
+  { value: 'listing', label: 'Listing' },
+  { value: 'event', label: 'Event' },
+  { value: 'job', label: 'Opportunity' },
+  { value: 'blog', label: 'Blog post' },
+  { value: 'discussion', label: 'Discussion' }
 ];
 
 function tokenFrom(req) {
@@ -62,6 +71,11 @@ function metaFrom(result) {
   return {};
 }
 
+function selectedSavedType(value) {
+  const text = trimmed(value).toLowerCase();
+  return SAVED_TYPES.some((type) => type.value === text) ? text : '';
+}
+
 function safeColor(value) {
   const color = trimmed(value);
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1d70b8';
@@ -83,6 +97,42 @@ function normalizeOwner(result, fallbackId) {
   };
 }
 
+function bookmarkType(value) {
+  const raw = trimmed(value).split('\\').pop().toLowerCase();
+  return raw.replace(/[_-]*model$/, '');
+}
+
+function bookmarkHref(type, id, slug) {
+  if (type === 'listing' && id) return `/listings/${id}`;
+  if (type === 'event' && id) return `/events/${id}`;
+  if (type === 'job' && id) return `/jobs/${id}`;
+  if (type === 'blog' && slug) return `/blog/${encodeURIComponent(slug)}`;
+  if (['post', 'discussion'].includes(type)) return '/feed';
+  return '';
+}
+
+function savedTypeLabel(type) {
+  return (SAVED_TYPES.find((item) => item.value === type) || {}).label
+    || type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function normalizeBookmark(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const itemId = positiveInteger(row.bookmarkable_id ?? row.bookmarkableId ?? row.item_id ?? row.itemId);
+  const type = bookmarkType(row.bookmarkable_type ?? row.bookmarkableType ?? row.item_type ?? row.itemType);
+  const slug = trimmed(row.slug);
+  const label = savedTypeLabel(type);
+  const title = trimmed(row.title) || (itemId ? `${label} #${itemId}` : label);
+  return {
+    id: positiveInteger(row.id),
+    itemId,
+    type,
+    label,
+    title,
+    href: bookmarkHref(type, itemId, slug)
+  };
+}
+
 function normalizeCollection(item) {
   const row = item && typeof item === 'object' ? item : {};
   const count = Number.isFinite(Number(row.items_count ?? row.itemsCount))
@@ -96,6 +146,14 @@ function normalizeCollection(item) {
     itemsCount: count,
     countLabel: plural(count, 'item', 'items')
   };
+}
+
+function savedStatusMessage(status) {
+  const messages = {
+    'bookmark-removed': 'Item removed from saved items.',
+    'bookmark-failed': 'Sorry, that item could not be removed. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
 }
 
 function formatDate(value) {
@@ -154,6 +212,33 @@ function appreciationStatus(error) {
   if (/rate_limit/i.test(message)) return 'appreciation-rate-limited';
   return 'appreciation-failed';
 }
+
+router.get('/saved', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const type = selectedSavedType(req.query.type);
+  const status = trimmed(req.query.status);
+  const bookmarks = rowsFrom(await getBookmarks(token, {
+    type,
+    page: 1,
+    per_page: 50
+  }))
+    .map(normalizeBookmark)
+    .filter((item) => item.title || item.type);
+
+  return res.render('saved/index', {
+    title: 'Saved items',
+    activeNav: 'saved',
+    bookmarks,
+    savedTypes: SAVED_TYPES,
+    selectedType: type,
+    status,
+    statusMessage: savedStatusMessage(status),
+    statusIsError: status === 'bookmark-failed',
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
 
 router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

@@ -109,6 +109,7 @@ jest.mock('../src/lib/api', () => ({
   getLegalDocument: jest.fn().mockResolvedValue({ data: null }),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
+  getBookmarks: jest.fn().mockResolvedValue({ data: [] }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
   getUserPublicCollections: jest.fn().mockResolvedValue({ data: [] }),
   getUserAppreciations: jest.fn().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 } }),
@@ -4520,6 +4521,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/saved?status=bookmark-removed');
     expect(api.unsaveSavedItem).toHaveBeenCalledWith('test-token', 'listing', 42);
+  });
+
+  it('renders the Laravel-backed saved items index with type filtering', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.getBookmarks.mockResolvedValueOnce({
+      data: [
+        {
+          id: 91,
+          title: 'Repair cafe',
+          bookmarkable_type: 'event',
+          bookmarkable_id: 42,
+          slug: ''
+        },
+        {
+          id: 92,
+          title: 'Neighbourhood update',
+          bookmarkable_type: 'blog',
+          bookmarkable_id: 55,
+          slug: 'neighbourhood-update'
+        }
+      ],
+      meta: { current_page: 1, last_page: 1, total: 2, per_page: 50 }
+    });
+
+    const response = await request(app)
+      .get('/saved?type=event&status=bookmark-removed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.getBookmarks).toHaveBeenCalledWith('test-token', { type: 'event', page: 1, per_page: 50 });
+    expect(response.text).toContain('Saved items');
+    expect(response.text).toContain('Listings, posts and other items you have saved.');
+    expect(response.text).toContain('Item removed from saved items.');
+    expect(response.text).toContain('id="saved-type-filter" name="type"');
+    expect(response.text).toContain('<option value="event" selected>');
+    expect(response.text).toContain('href="/saved"');
+    expect(response.text).toContain('href="/events/42"');
+    expect(response.text).toContain('Repair cafe');
+    expect(response.text).toContain('Event');
+    expect(response.text).toContain('action="/saved/destroy"');
+    expect(response.text).toContain('name="type" value="event"');
+    expect(response.text).toContain('name="id" value="42"');
+    expect(response.text).toContain('Remove');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('redirects signed-out visitors away from Laravel saved collection GET pages before calling Laravel', async () => {
