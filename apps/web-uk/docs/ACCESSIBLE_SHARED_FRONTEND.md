@@ -301,11 +301,14 @@ edit route now checks the group admin gate before using Laravel's collection-onl
 announcements API, so `/groups/484/announcements/1/edit` is covered as a signed
 `403` response. A targeted live run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5344`, started with `TENANT_ID=2`, passed on
-2026-07-07 with `7/7` checks and `0` failures. The default scope now contains
-`324` checks: `267` module-page checks, 8 unsigned auth-required redirect
+2026-07-07 with `7/7` checks and `0` failures. The achievement badge detail
+route is now covered by the live tenant badge fixture
+`/achievements/badges/vol_1h`, which returned `200` in a targeted Laravel-backed
+smoke run against `WEB_UK_BASE_URL=http://127.0.0.1:5345`. The default scope now
+contains `325` checks: `268` module-page checks, 8 unsigned auth-required redirect
 checks, 22 gated-status checks, and 21 signed redirect checks, plus the 6
 auth/health checks. Parameterised matched GET route shapes without default
-runtime smoke coverage fell from 28 to 20.
+runtime smoke coverage fell from 28 to 19.
 
 ## Stack
 

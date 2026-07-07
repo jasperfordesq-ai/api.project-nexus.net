@@ -106,6 +106,7 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/blog/timebank-ireland',
   '/blog/timebank-ireland/comments',
   '/kb/90001',
+  '/achievements/badges/vol_1h',
   '/marketplace/category/electronics',
   '/marketplace/category/home-garden',
   '/marketplace/category/free-items',

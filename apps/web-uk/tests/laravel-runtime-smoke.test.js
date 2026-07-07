@@ -295,6 +295,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/blog/timebank-ireland',
       '/blog/timebank-ireland/comments',
       '/kb/90001',
+      '/achievements/badges/vol_1h',
       '/marketplace/category/electronics',
       '/marketplace/category/home-garden',
       '/marketplace/category/free-items',
@@ -568,6 +569,14 @@ describe('Laravel runtime smoke harness', () => {
       '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments'
+    ]));
+  });
+
+  it('includes the stable achievement badge detail fixture outcome in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/achievements/badges/vol_1h'
     ]));
   });
 
