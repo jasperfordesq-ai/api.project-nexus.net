@@ -329,10 +329,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const unsignedAuthRequiredPages = new Set([
+      '/federation/listings/1/1',
       '/federation/partners/1',
       '/ideation/1',
       '/organisations/1',
       '/podcasts/1',
+      '/podcasts/1/episodes/1',
       '/resources/1/download',
       '/users/1/collections'
     ]);
@@ -655,10 +657,12 @@ describe('Laravel runtime smoke harness', () => {
     const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
 
     expect(checks).toEqual(expect.objectContaining({
+      'auth-required-page-federation-listings-1-1-redirects-login-status-auth-required': true,
       'auth-required-page-federation-partners-1-redirects-login-status-auth-required': true,
       'auth-required-page-ideation-1-redirects-login-status-auth-required': true,
       'auth-required-page-organisations-1-redirects-login-status-auth-required': true,
       'auth-required-page-podcasts-1-redirects-login-status-auth-required': true,
+      'auth-required-page-podcasts-1-episodes-1-redirects-login-status-auth-required': true,
       'auth-required-page-resources-1-download-redirects-login-status-auth-required': true,
       'auth-required-page-users-1-collections-redirects-login-status-auth-required': true
     }));

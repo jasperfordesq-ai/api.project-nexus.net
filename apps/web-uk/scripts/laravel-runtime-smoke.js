@@ -11,10 +11,12 @@ const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
+  '/federation/listings/1/1',
   '/federation/partners/1',
   '/ideation/1',
   '/organisations/1',
   '/podcasts/1',
+  '/podcasts/1/episodes/1',
   '/resources/1/download',
   '/users/1/collections'
 ];

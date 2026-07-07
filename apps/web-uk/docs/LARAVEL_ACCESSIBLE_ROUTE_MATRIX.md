@@ -70,10 +70,10 @@ checks signed public auth aliases (`/login`, `/login/forgot-password`,
 `/password/reset?token=reset-token`, `/register`) plus the broad signed module
 set across explore, saved items, notifications, members, resources, goals,
 marketplace, volunteering, and other Laravel accessible families. Before login,
-it also checks auth-required parameterised pages across federation, ideation,
-organisations, podcasts, resources, and public user collections redirect to
-`/login?status=auth-required`. A Jest regression test covers the harness with
-fake Laravel/web-uk servers:
+it also checks all eight matched auth-required parameterised pages across
+federation, ideation, organisations, podcasts, resources, and public user
+collections redirect to `/login?status=auth-required`. A Jest regression test
+covers the harness with fake Laravel/web-uk servers:
 
 ```bash
 npm test -- --runInBand tests/laravel-runtime-smoke.test.js
@@ -96,11 +96,14 @@ The `/login/two-factor` expired-session redirect is now in scope too; a later
 run against `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6
 auth/health checks, 161 module/page checks, 3 gated-status checks, and 3
 redirect-status checks.
-The default smoke scope now also covers six unsigned auth-required
-parameterised redirects; a later live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5313` passed `179/179`: 6 auth/health checks,
-6 unsigned auth-required redirect checks, 161 module/page checks, 3
-gated-status checks, and 3 redirect-status checks.
+The default smoke scope now covers all eight matched unsigned auth-required
+parameterised redirects, bringing the harness scope to `181` checks before the
+next live Laravel-backed run.
+A targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5315` passed
+`14/14` checks with module/gated/redirect page sweeps disabled, including all
+eight auth-required parameterised redirects. A full default `181`-check live
+run should be rerun with a longer outer timeout; one local attempt timed out
+while still progressing through slower signed module pages.
 
 ## Header And Footer Contract
 

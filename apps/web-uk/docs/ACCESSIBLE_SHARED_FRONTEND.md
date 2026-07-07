@@ -58,8 +58,9 @@ across profile, settings, achievements, leaderboard, federation, courses,
 marketplace, static/legal/support, goals, groups, ideation, jobs, message
 groups, polls, resource-library, reviews, wallet management, and volunteering
 after the same login flow. Before login, it also checks auth-required
-parameterised pages (`/federation/partners/1`, `/ideation/1`,
-`/organisations/1`, `/podcasts/1`, `/resources/1/download`, and
+parameterised pages (`/federation/listings/1/1`, `/federation/partners/1`,
+`/ideation/1`, `/organisations/1`, `/podcasts/1`,
+`/podcasts/1/episodes/1`, `/resources/1/download`, and
 `/users/1/collections`) redirect to `/login?status=auth-required`. The harness
 defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
@@ -102,11 +103,14 @@ web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`.
 session-backed 2FA token is absent; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
 161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
-The default smoke scope now also covers six unsigned auth-required
-parameterised route redirects; a later live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5313` passed `179/179`: 6 auth/health checks,
-6 unsigned auth-required redirect checks, 161 module/page checks, 3
-gated-status checks, and 3 redirect-status checks.
+The default smoke scope now covers all eight matched unsigned auth-required
+parameterised route redirects, bringing the harness scope to `181` checks
+before the next live Laravel-backed run.
+A targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5315` passed
+`14/14` checks with the expensive module/gated/redirect page sweeps disabled,
+including all eight auth-required parameterised redirect checks. A full default
+`181`-check live run should be rerun with a longer outer timeout; one local
+attempt timed out while still progressing through slower signed module pages.
 
 ## Stack
 

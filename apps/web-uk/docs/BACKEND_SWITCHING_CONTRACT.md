@@ -54,10 +54,10 @@ notifications, member discovery, resources, skills, goals, clubs, wallet,
 messages, connections, matches, activity, achievements, leaderboard, NEXUS
 score, profile, settings, federation, courses, marketplace, events, listings,
 jobs, groups, ideation, polls, search, premium, podcasts, and volunteering.
-Before the login flow, it also verifies auth-required parameterised pages across
-federation, ideation, organisations, podcasts, resources, and public user
-collections redirect to `/login?status=auth-required` without requiring fixture
-records.
+Before the login flow, it also verifies all eight matched auth-required
+parameterised pages across federation, ideation, organisations, podcasts,
+resources, and public user collections redirect to
+`/login?status=auth-required` without requiring fixture records.
 Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
 the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
@@ -104,11 +104,14 @@ are now covered by the default 2xx smoke scope; a later run against
 session-backed 2FA token is absent; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
 161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
-The default smoke scope now also includes six unsigned auth-required
-parameterised redirect checks; a later live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5313` passed `179/179`: 6 auth/health checks,
-6 unsigned auth-required redirect checks, 161 module/page checks, 3
-gated-status checks, and 3 redirect-status checks.
+The default smoke scope now includes all eight matched unsigned auth-required
+parameterised redirect checks, bringing the harness scope to `181` checks
+before the next live Laravel-backed run.
+A targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5315` passed
+`14/14` checks with module/gated/redirect page sweeps disabled, including all
+eight auth-required parameterised redirects. The full default `181`-check run
+needs a longer outer command timeout on this machine; one local attempt timed
+out while the signed module-page sweep was still progressing.
 
 ## Current Page Candidates
 

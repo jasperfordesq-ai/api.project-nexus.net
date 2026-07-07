@@ -59,7 +59,7 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits add unsigned auth-required parameterised smoke coverage and `/organisations/{id}` signed-out parity. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `923/1000` implementation/certification parity |
+| Working estimate | about `924/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, and unsigned auth-required parameterised redirect smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -144,12 +144,15 @@ scope; a later live run against `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed
 and 3 redirect-status checks. POST `/login` now also follows the Laravel 2FA
 challenge hand-off by storing `two_factor_token` in the session and redirecting
 to `/login/two-factor` when the API returns `requires_2fa`. The default smoke
-scope now also checks six unsigned auth-required parameterised routes across
-federation, ideation, organisations, podcasts, resources, and public user
-collections; a later live run against `WEB_UK_BASE_URL=http://127.0.0.1:5313`
-passed `179/179`: 6 auth/health checks, 6 unsigned auth-required redirect
-checks, 161 module/page checks, 3 gated-status checks, and 3 redirect-status
-checks. `/organisations/{id}` now matches Laravel's
+scope now checks all eight matched unsigned auth-required parameterised routes
+across federation, ideation, organisations, podcasts, resources, and public
+user collections, bringing the harness scope to `181` checks before the next
+live Laravel-backed run. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5315` passed `14/14` checks with
+module/gated/redirect page sweeps disabled, including all eight auth-required
+parameterised redirects. A full default `181`-check live run needs a longer
+outer command timeout on this machine; one local attempt timed out while still
+progressing through slower signed module pages. `/organisations/{id}` now matches Laravel's
 signed-out behavior by redirecting to `/login?status=auth-required` before
 data lookup. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
@@ -265,7 +268,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `923/1000`.
+Current working estimate at this handoff: `924/1000`.
 
 ## Final Handoff Checklist
 
