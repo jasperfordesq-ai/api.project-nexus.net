@@ -219,6 +219,28 @@ function normalizeDiscoverGoal(item) {
   };
 }
 
+function dateInputValue(value) {
+  const text = trimmed(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    return text.slice(0, 10);
+  }
+  return '';
+}
+
+function normalizeEditableGoal(item) {
+  const goal = normalizeGoal(item);
+  const raw = item && typeof item === 'object' ? item : {};
+  return {
+    ...goal,
+    rawTitle: trimmed(raw.title),
+    rawDescription: trimmed(raw.description || ''),
+    targetValue: goal.targetText,
+    deadlineValue: dateInputValue(raw.deadline || raw.target_date || raw.targetDate),
+    checkinFrequency: allowedValue(raw.checkin_frequency || raw.checkinFrequency, GOAL_CHECKIN_FREQUENCIES, 'none'),
+    isPublic: checked(raw.is_public)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'goal-created': 'Goal created',
@@ -232,6 +254,14 @@ function errorMessage(status) {
   const messages = {
     'goal-failed': 'We could not update the goal. Try again.',
     'goal-invalid': 'Enter a title and target value.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function editErrorMessage(status) {
+  const messages = {
+    'goal-failed': 'Something went wrong. Please try again.',
+    'goal-invalid': 'Enter a goal and a target greater than zero.'
   };
   return messages[trimmed(status)] || '';
 }
@@ -386,6 +416,30 @@ router.get('/discover', asyncRoute(async (req, res) => {
     errorMessage: status === 'buddy-failed' ? 'We could not add you as a buddy. The goal may already have one.' : ''
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const result = await getGoal(token, id);
+  const goal = normalizeEditableGoal(dataFrom(result));
+  goal.id = goal.id || Number(id);
+
+  return res.render('goals/edit', {
+    title: 'Edit your goal',
+    activeNav: 'explore',
+    goal,
+    errorMessage: editErrorMessage(req.query.status),
+    frequencies: [
+      { value: 'none', label: 'No reminders' },
+      { value: 'daily', label: 'Daily' },
+      { value: 'weekly', label: 'Weekly' },
+      { value: 'biweekly', label: 'Every two weeks' },
+      { value: 'monthly', label: 'Monthly' }
+    ]
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
 router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

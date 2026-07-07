@@ -5567,6 +5567,53 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/discover?per_page=30');
   });
 
+  it('renders the Laravel goal edit form for signed-in owners', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Learn bicycle repair',
+        description: 'Complete the local bike maintenance course.',
+        target_value: 6,
+        deadline: '2026-08-01T12:00:00Z',
+        checkin_frequency: 'weekly',
+        is_public: true
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/edit');
+    const signed = await request(app)
+      .get('/goals/42/edit?status=goal-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(staticPageRoutes.pages['/goals/{param}/edit']).toBeUndefined();
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Update the details of your goal.');
+    expect(signed.text).toContain('Edit your goal');
+    expect(signed.text).toContain('Enter a goal and a target greater than zero.');
+    expect(signed.text).toContain('method="post" action="/goals/42/edit"');
+    expect(signed.text).toContain('id="title" name="title" type="text" maxlength="255" value="Learn bicycle repair"');
+    expect(signed.text).toContain('id="target_value" name="target_value" type="number"');
+    expect(signed.text).toContain('value="6"');
+    expect(signed.text).toContain('Complete the local bike maintenance course.');
+    expect(signed.text).toContain('id="deadline" name="deadline" type="date" value="2026-08-01"');
+    expect(signed.text).toContain('id="checkin_frequency" name="checkin_frequency"');
+    expect(signed.text).toContain('<option value="weekly" selected>Weekly</option>');
+    expect(signed.text).toContain('id="is_public" name="is_public" type="checkbox" value="1" checked');
+    expect(signed.text).toContain('Save changes');
+    expect(signed.text).toContain('Delete this goal');
+    expect(signed.text).toContain('Deleting a goal removes it and its progress history for good. This cannot be undone.');
+    expect(signed.text).toContain('method="post" action="/goals/42/delete"');
+    expect(signed.text).toContain('Delete goal');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
