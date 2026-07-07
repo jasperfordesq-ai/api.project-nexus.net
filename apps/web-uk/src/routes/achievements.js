@@ -180,6 +180,46 @@ function normalizeChallenges(result) {
   }).filter((challenge) => challenge.title);
 }
 
+function normalizeShop(result) {
+  const payload = payloadFrom(result);
+  const object = objectFrom(payload);
+  const meta = objectFrom(result && result.meta);
+  const items = Array.isArray(payload) ? payload : nestedData(result, 'items');
+  const userXp = intFrom(object.user_xp ?? object.xp ?? meta.user_xp);
+
+  return {
+    userXp,
+    userXpLabel: `${formatInteger(userXp)} XP`,
+    items: items.map((item) => {
+      const objectItem = objectFrom(item);
+      const cost = intFrom(objectItem.cost_xp ?? objectItem.xp_cost);
+      const owned = intFrom(objectItem.user_purchases) > 0 || boolFrom(objectItem.owned);
+      const canPurchase = boolFrom(objectItem.can_purchase ?? objectItem.can_buy);
+      const itemType = ['badge', 'perk', 'feature', 'cosmetic'].includes(textFrom(objectItem.item_type))
+        ? textFrom(objectItem.item_type)
+        : 'perk';
+
+      return {
+        id: positiveInteger(objectItem.id),
+        name: textFrom(objectItem.name),
+        description: textFrom(objectItem.description),
+        cost,
+        costLabel: `${formatInteger(cost)} XP`,
+        itemType,
+        typeLabel: {
+          badge: 'Badge',
+          perk: 'Perk',
+          feature: 'Feature',
+          cosmetic: 'Cosmetic'
+        }[itemType],
+        owned,
+        canPurchase: canPurchase && !owned,
+        unavailableLabel: cost > userXp ? 'Not enough XP' : 'Out of stock'
+      };
+    }).filter((item) => item.name)
+  };
+}
+
 async function safeGamificationCall(token, pathValue, fallback) {
   try {
     return await callGamificationApi(token, 'GET', pathValue);
@@ -260,6 +300,35 @@ router.get('/', asyncRoute(async (req, res) => {
         ...status,
         dailySuccessMessage: status.dailySuccess ? `${status.dailySuccess} ${dailyReward.rewardXp} XP.` : ''
       }
+    }
+  });
+}));
+
+router.get('/shop', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let shopPayload;
+  try {
+    shopPayload = await callGamificationApi(token, 'GET', '/shop');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    shopPayload = { data: { items: [], user_xp: 0 } };
+  }
+
+  const status = textFrom(req.query.status);
+  return res.render('achievements/shop', {
+    title: 'XP shop',
+    activeNav: 'achievements',
+    shop: {
+      ...normalizeShop(shopPayload),
+      status,
+      successMessage: status === 'purchased' ? 'Purchase complete. The item is now yours.' : '',
+      errorMessage: status === 'purchase-failed'
+        ? 'We could not complete that purchase. You may not have enough XP, or the item may be out of stock.'
+        : ''
     }
   });
 }));

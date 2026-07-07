@@ -1445,6 +1445,89 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style XP shop page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/shop') {
+        return {
+          data: {
+            user_xp: 500,
+            items: [
+              {
+                id: 9,
+                name: 'Golden profile frame',
+                description: 'Adds a gold accent to your profile.',
+                cost_xp: 120,
+                item_type: 'cosmetic',
+                can_purchase: true,
+                user_purchases: 0
+              },
+              {
+                id: 10,
+                name: 'Warm welcome badge',
+                description: 'A badge for community helpers.',
+                xp_cost: 75,
+                item_type: 'badge',
+                can_purchase: false,
+                user_purchases: 1
+              },
+              {
+                id: 11,
+                name: 'Pinned thank-you',
+                description: 'Pin a thank-you to your profile.',
+                cost_xp: 900,
+                item_type: 'feature',
+                can_purchase: false,
+                user_purchases: 0
+              }
+            ]
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements/shop');
+    const signed = await request(app)
+      .get('/achievements/shop?status=purchased')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/shop');
+    expect(signed.text).toContain('Back to achievements');
+    expect(signed.text).toContain('Achievements at');
+    expect(signed.text).toContain('XP shop');
+    expect(signed.text).toContain('Spend the experience points you have earned on cosmetic badges, profile perks and features.');
+    expect(signed.text).toContain('Achievements and rewards');
+    expect(signed.text).toContain('aria-current="page"');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Purchase complete. The item is now yours.');
+    expect(signed.text).toContain('Your XP balance');
+    expect(signed.text).toContain('500 XP');
+    expect(signed.text).toContain('Buying an item spends your XP. This cannot be undone.');
+    expect(signed.text).toContain('Golden profile frame');
+    expect(signed.text).toContain('Adds a gold accent to your profile.');
+    expect(signed.text).toContain('Cosmetic');
+    expect(signed.text).toContain('120 XP');
+    expect(signed.text).toContain('Buy for 120 XP');
+    expect(signed.text).toContain('/achievements/shop/purchase');
+    expect(signed.text).toContain('name="item_id" value="9"');
+    expect(signed.text).toContain('Warm welcome badge');
+    expect(signed.text).toContain('Badge');
+    expect(signed.text).toContain('Owned');
+    expect(signed.text).toContain('Pinned thank-you');
+    expect(signed.text).toContain('Feature');
+    expect(signed.text).toContain('Not enough XP');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
