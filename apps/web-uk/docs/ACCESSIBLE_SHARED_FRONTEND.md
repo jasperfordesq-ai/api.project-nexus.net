@@ -423,8 +423,8 @@ organiser/participant authorization depth, same-tenant member search parity,
 time-credit settlement runtime behavior, feature gates, localization, runtime
 smoke tests, and ASP.NET backend compatibility are not certified.
 
-Event GET pages remain mostly existing local/protected pages or preparation
-pages, but `/events/browse` now renders the Blade-style category chooser with
+Generated event GET route fallbacks are now cleared from the route matrix.
+`/events/browse` renders the Blade-style category chooser with
 Laravel event categories from `/api/v2/categories?type=event`,
 `/events/{id}/map` now renders a Laravel-backed Blade-style location page
 through `/api/v2/events/{id}`, including the event back link, address,
@@ -434,7 +434,10 @@ Blade-style organiser poll attachment page from `/api/v2/events/{id}` plus
 `/api/v2/polls?mine=1&per_page=100`. `/events/{id}/translate` now renders the
 signed Blade-style translation chooser through `/api/v2/events/{id}`, including
 status states, the 11 Laravel locale options, the original description, and the
-existing no-JS translate POST target. The Laravel accessible POST aliases under
+existing no-JS translate POST target. `/events/{id}/recurring-edit` now renders
+the signed Blade-style repeating-event scope edit page through `/api/v2/events/{id}`,
+including single/all scope radios, datetime-local fields, the update warning,
+and upcoming occurrence links. The Laravel accessible POST aliases under
 `/events` are now local route declarations backed by Laravel v2 event, poll, and UGC
 translation APIs. The
 aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
@@ -450,11 +453,10 @@ and sends recurring creates through `/api/v2/events/recurring`, following the
 Laravel template response shape for redirects. Redirects preserve Laravel status
 keys and `#poll-*` fragments. This remains partial: cover image removal is still
 blocked by the absence of a Laravel v2 clear/delete event-image API contract,
-and recurring edit GET depth, translated result display after POST, full Blade
-list/detail rendering, owner/participant authorization depth, event
-notification/XP/waitlist promotion side effects, tenant/feature gates,
-localization, runtime smoke tests, and ASP.NET backend compatibility are not
-certified.
+and translated result display after POST, full Blade list/detail rendering,
+owner/participant authorization depth, event notification/XP/waitlist promotion
+side effects, tenant/feature gates, localization, runtime smoke tests, and
+ASP.NET backend compatibility are not certified.
 
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,

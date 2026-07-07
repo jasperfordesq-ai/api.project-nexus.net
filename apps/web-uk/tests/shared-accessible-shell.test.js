@@ -12053,6 +12053,78 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel recurring event edit page for signed-in organisers', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Weekly repair cafe',
+        description: 'Bring small appliances.',
+        location: 'Community hall',
+        start_time: '2026-08-01T10:30:00Z',
+        end_time: '2026-08-01T12:00:00Z',
+        is_series: true,
+        series_occurrences: [
+          { id: 7, start_time: '2026-08-01T10:30:00Z' },
+          { id: 8, start_time: '2026-08-08T10:30:00Z' }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/events/7/recurring-edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+    expect(response.text).toContain('href="/events/7"');
+    expect(response.text).toContain('Back to event');
+    expect(response.text).toContain('Weekly repair cafe');
+    expect(response.text).toContain('Edit a repeating event');
+    expect(response.text).toContain('This event is part of a repeating series.');
+    expect(response.text).toContain('method="post" action="/events/7/recurring-edit"');
+    expect(response.text).toContain('name="title" type="text" value="Weekly repair cafe"');
+    expect(response.text).toContain('Bring small appliances.');
+    expect(response.text).toContain('name="location" type="text" value="Community hall"');
+    expect(response.text).toContain('name="start_time" type="datetime-local" value="2026-08-01T10:30"');
+    expect(response.text).toContain('name="end_time" type="datetime-local" value="2026-08-01T12:00"');
+    expect(response.text).toContain('Changing all future dates will update every later event in this series.');
+    expect(response.text).toContain('name="scope" type="radio" value="single" checked');
+    expect(response.text).toContain('Only this date');
+    expect(response.text).toContain('name="scope" type="radio" value="all"');
+    expect(response.text).toContain('This and all future dates');
+    expect(response.text).toContain('Upcoming dates in this series');
+    expect(response.text).toContain('This date');
+    expect(response.text).toContain('href="/events/8"');
+    expect(response.text).toContain('Save changes');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('redirects non-series events from Laravel recurring edit to the normal edit page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'One-off repair cafe',
+        is_series: false,
+        is_recurring_template: false,
+        parent_event_id: null
+      }
+    });
+
+    const response = await request(app)
+      .get('/events/7/recurring-edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/7/edit');
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+  });
+
   it('renders the Laravel event map page and no-location state', async () => {
     const api = require('../src/lib/api');
 

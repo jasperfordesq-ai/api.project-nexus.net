@@ -1,0 +1,109 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/events/{{ event.id }}">Back to event</a>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ event.title or "Repeating event" }}</span>
+      <h1 class="govuk-heading-xl">Edit a repeating event</h1>
+
+      <p class="govuk-body-l">This event is part of a repeating series. Choose whether your changes apply to only this date or to all future dates.</p>
+
+      <form method="post" action="/events/{{ event.id }}/recurring-edit" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">Event details</h2>
+          </legend>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="title">Title</label>
+            <input class="govuk-input" id="title" name="title" type="text" value="{{ event.title }}" maxlength="255" required>
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="description">Description</label>
+            <div id="description-hint" class="govuk-hint">Describe what is happening and what people should bring or expect.</div>
+            <textarea class="govuk-textarea" id="description" name="description" rows="6" aria-describedby="description-hint" required>{{ event.description }}</textarea>
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="location">Location</label>
+            <input class="govuk-input" id="location" name="location" type="text" value="{{ event.location }}" maxlength="255">
+          </div>
+        </fieldset>
+
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">Date and time</h2>
+          </legend>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="start_time">Start</label>
+            <div id="start-time-hint" class="govuk-hint">For example, 31 3 2026 at 19:30.</div>
+            <input class="govuk-input govuk-!-width-one-half" id="start_time" name="start_time" type="datetime-local" value="{{ event.startTime }}" aria-describedby="start-time-hint" required>
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="end_time">End (optional)</label>
+            <input class="govuk-input govuk-!-width-one-half" id="end_time" name="end_time" type="datetime-local" value="{{ event.endTime }}">
+          </div>
+        </fieldset>
+
+        <div class="govuk-warning-text govuk-!-margin-top-7">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            Changing all future dates will update every later event in this series.
+          </strong>
+        </div>
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset" aria-describedby="scope-hint">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              <h2 class="govuk-fieldset__heading">Apply your changes to</h2>
+            </legend>
+            <div id="scope-hint" class="govuk-hint">Choose how widely your changes should apply across the repeating series.</div>
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="scope-single" name="scope" type="radio" value="single" checked>
+                <label class="govuk-label govuk-radios__label" for="scope-single">Only this date</label>
+                <div class="govuk-hint govuk-radios__hint">Edit just this occurrence. It is detached from the series so future dates are not affected.</div>
+              </div>
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="scope-all" name="scope" type="radio" value="all">
+                <label class="govuk-label govuk-radios__label" for="scope-all">This and all future dates</label>
+                <div class="govuk-hint govuk-radios__hint">Apply content changes to this date and every later date in the series. Start and end times are kept per date.</div>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <button class="govuk-button govuk-!-margin-top-2" data-module="govuk-button" type="submit">Save changes</button>
+      </form>
+
+      {% if occurrences.length > 1 %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-8">Upcoming dates in this series</h2>
+        <p class="govuk-body">These are the remaining dates in the repeating series.</p>
+        <ul class="govuk-list">
+          {% for occurrence in occurrences %}
+            <li>
+              {% if occurrence.current %}
+                <span class="govuk-!-font-weight-bold">{{ occurrence.when }}</span>
+                <strong class="govuk-tag govuk-tag--blue">This date</strong>
+              {% else %}
+                <a class="govuk-link" href="/events/{{ occurrence.id }}">{{ occurrence.when or "View this date" }}</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

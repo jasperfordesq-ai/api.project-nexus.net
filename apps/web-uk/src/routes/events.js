@@ -192,6 +192,34 @@ function eventPollFrom(item, eventId) {
   };
 }
 
+function eventIsSeries(event) {
+  return checked(event.is_series ?? event.isSeries)
+    || checked(event.is_recurring_template ?? event.isRecurringTemplate)
+    || positiveInteger(event.parent_event_id ?? event.parentEventId) !== null;
+}
+
+function dateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toISOString().slice(0, 16);
+  }
+  const text = trimmed(value);
+  return text.length >= 16 ? text.slice(0, 16) : text;
+}
+
+function occurrenceFrom(item, currentEventId) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  if (id === null) return null;
+  const startTime = row.start_time ?? row.startTime ?? row.starts_at ?? row.startsAt;
+  return {
+    id,
+    when: dateTimeLocal(startTime).replace('T', ' '),
+    current: id === currentEventId
+  };
+}
+
 async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
@@ -235,6 +263,36 @@ router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
     title: 'Event location',
     activeNav: 'events',
     map
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const event = eventFrom(await callApi(token, 'GET', `/${id}`));
+  if (!eventIsSeries(event)) {
+    return res.redirect(`/events/${id}/edit`);
+  }
+
+  const occurrences = collectionFrom(event.series_occurrences ?? event.seriesOccurrences)
+    .map((occurrence) => occurrenceFrom(occurrence, id))
+    .filter(Boolean);
+
+  return res.render('events/recurring-edit', {
+    title: 'Edit a repeating event',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title),
+      description: trimmed(event.description, 8000),
+      location: trimmed(event.location),
+      startTime: dateTimeLocal(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt),
+      endTime: dateTimeLocal(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt)
+    },
+    occurrences,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Event not found' }));
 
