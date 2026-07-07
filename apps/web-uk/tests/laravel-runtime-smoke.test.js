@@ -362,6 +362,34 @@ describe('Laravel runtime smoke harness', () => {
     expect(resolveOptions({}, {}).timeoutMs).toBe(60000);
   });
 
+  it('allows CLI environment overrides for targeted smoke page groups', () => {
+    const options = resolveOptions({}, {
+      SMOKE_MODULE_PAGE_PATHS: '/login, /register',
+      SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: "/federation/partners/1\n/podcasts/1",
+      SMOKE_GATED_PAGE_PATHS: '',
+      SMOKE_REDIRECT_PAGE_PATHS: ''
+    });
+
+    expect(options.modulePagePaths).toEqual(['/login', '/register']);
+    expect(options.unsignedAuthRequiredPagePaths).toEqual(['/federation/partners/1', '/podcasts/1']);
+    expect(options.gatedPagePaths).toEqual([]);
+    expect(options.redirectPagePaths).toEqual([]);
+  });
+
+  it('treats none as a portable CLI sentinel for disabled smoke page groups', () => {
+    const options = resolveOptions({}, {
+      SMOKE_MODULE_PAGE_PATHS: 'none',
+      SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: 'none',
+      SMOKE_GATED_PAGE_PATHS: 'none',
+      SMOKE_REDIRECT_PAGE_PATHS: 'none'
+    });
+
+    expect(options.modulePagePaths).toEqual([]);
+    expect(options.unsignedAuthRequiredPagePaths).toEqual([]);
+    expect(options.gatedPagePaths).toEqual([]);
+    expect(options.redirectPagePaths).toEqual([]);
+  });
+
   it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);

@@ -331,6 +331,59 @@ function authRequiredPageCheckName(path, location) {
   return `auth-required-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
 }
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function splitSmokeList(value) {
+  const text = String(value || '').trim();
+  if (/^(none|off|false)$/i.test(text)) return [];
+  return text
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function resolvePathList(options, optionName, env, envName, fallback) {
+  if (hasOwn(options, optionName)) return options[optionName];
+  if (hasOwn(env, envName)) return splitSmokeList(env[envName]);
+  return fallback;
+}
+
+function parseGatedPages(value) {
+  return splitSmokeList(value).map((item) => {
+    const separator = item.lastIndexOf(':');
+    if (separator <= 0) return { path: item, status: 403 };
+    return {
+      path: item.slice(0, separator),
+      status: Number(item.slice(separator + 1)) || 403
+    };
+  });
+}
+
+function parseRedirectPages(value) {
+  return splitSmokeList(value).map((item) => {
+    const separator = item.indexOf('=>');
+    if (separator <= 0) return { path: item, location: '/login' };
+    return {
+      path: item.slice(0, separator).trim(),
+      location: item.slice(separator + 2).trim()
+    };
+  }).filter((item) => item.path && item.location);
+}
+
+function resolveGatedPages(options, env) {
+  if (hasOwn(options, 'gatedPagePaths')) return options.gatedPagePaths;
+  if (hasOwn(env, 'SMOKE_GATED_PAGE_PATHS')) return parseGatedPages(env.SMOKE_GATED_PAGE_PATHS);
+  return DEFAULT_SIGNED_GATED_PAGE_PATHS;
+}
+
+function resolveRedirectPages(options, env) {
+  if (hasOwn(options, 'redirectPagePaths')) return options.redirectPagePaths;
+  if (hasOwn(env, 'SMOKE_REDIRECT_PAGE_PATHS')) return parseRedirectPages(env.SMOKE_REDIRECT_PAGE_PATHS);
+  return DEFAULT_SIGNED_REDIRECT_PAGE_PATHS;
+}
+
 function resolveOptions(options = {}, env = process.env) {
   return {
     webBaseUrl: stripTrailingSlash(options.webBaseUrl || env.WEB_UK_BASE_URL || DEFAULT_WEB_BASE_URL),
@@ -339,10 +392,22 @@ function resolveOptions(options = {}, env = process.env) {
     password: options.password || env.SMOKE_PASSWORD || DEFAULT_SMOKE_PASSWORD,
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
-    modulePagePaths: options.modulePagePaths || [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS],
-    unsignedAuthRequiredPagePaths: options.unsignedAuthRequiredPagePaths || DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS,
-    gatedPagePaths: options.gatedPagePaths || DEFAULT_SIGNED_GATED_PAGE_PATHS,
-    redirectPagePaths: options.redirectPagePaths || DEFAULT_SIGNED_REDIRECT_PAGE_PATHS,
+    modulePagePaths: resolvePathList(
+      options,
+      'modulePagePaths',
+      env,
+      'SMOKE_MODULE_PAGE_PATHS',
+      [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS]
+    ),
+    unsignedAuthRequiredPagePaths: resolvePathList(
+      options,
+      'unsignedAuthRequiredPagePaths',
+      env,
+      'SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS',
+      DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS
+    ),
+    gatedPagePaths: resolveGatedPages(options, env),
+    redirectPagePaths: resolveRedirectPages(options, env),
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }

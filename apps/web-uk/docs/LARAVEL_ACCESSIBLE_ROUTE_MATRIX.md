@@ -99,11 +99,15 @@ redirect-status checks.
 The default smoke scope now covers all eight matched unsigned auth-required
 parameterised redirects, bringing the harness scope to `181` checks before the
 next live Laravel-backed run.
-A targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5315` passed
-`14/14` checks with module/gated/redirect page sweeps disabled, including all
-eight auth-required parameterised redirects. A full default `181`-check live
-run should be rerun with a longer outer timeout; one local attempt timed out
-while still progressing through slower signed module pages.
+For targeted CLI runs, `SMOKE_MODULE_PAGE_PATHS`,
+`SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS`, `SMOKE_GATED_PAGE_PATHS`, and
+`SMOKE_REDIRECT_PAGE_PATHS` accept comma/newline-separated lists, and the
+portable sentinel `none` disables that group. A targeted live CLI run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
+`none` passed `14/14`, including all eight auth-required parameterised
+redirects. A full default `181`-check live run should be rerun with a longer
+outer timeout; one local attempt timed out while still progressing through
+slower signed module pages.
 
 ## Header And Footer Contract
 
