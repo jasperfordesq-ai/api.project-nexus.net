@@ -1,0 +1,74 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+
+  <span class="govuk-caption-l">Volunteering</span>
+  <h1 class="govuk-heading-xl">Recommended for you</h1>
+  <p class="govuk-body-l">Shifts suggested for you, based on your skills, location and availability.</p>
+
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>{{ loadError }}</p>
+        </div>
+      </div>
+    </div>
+  {% elif not shifts.length %}
+    <div class="govuk-inset-text">We have no shift suggestions for you right now. Add your skills to your profile to improve recommendations.</div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for shift in shifts %}
+        <article class="nexus-alpha-card">
+          <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+            {% if shift.opportunityId %}
+              <a class="govuk-link" href="/volunteering/opportunities/{{ shift.opportunityId }}">{{ shift.title }}</a>
+            {% else %}
+              {{ shift.title }}
+            {% endif %}
+          </h2>
+          <p class="govuk-!-margin-bottom-2">
+            <strong class="govuk-tag govuk-tag--green">{{ shift.matchScore }}% match</strong>
+            {% if shift.alreadyApplied %}
+              <strong class="govuk-tag govuk-tag--blue">You have already applied</strong>
+            {% endif %}
+          </p>
+          <progress max="100" value="{{ shift.matchScore }}" aria-label="{{ shift.matchScore }}% match">{{ shift.matchScore }}%</progress>
+          <dl class="govuk-summary-list govuk-!-margin-top-3 govuk-!-margin-bottom-0">
+            {% if shift.organizationName %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Organisation</dt>
+                <dd class="govuk-summary-list__value">{{ shift.organizationName }}</dd>
+              </div>
+            {% endif %}
+            {% if shift.location %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Location</dt>
+                <dd class="govuk-summary-list__value">{{ shift.location }}</dd>
+              </div>
+            {% endif %}
+            {% if shift.startLabel %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Shift</dt>
+                <dd class="govuk-summary-list__value">{{ shift.startLabel }}</dd>
+              </div>
+            {% endif %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Spots remaining</dt>
+              <dd class="govuk-summary-list__value">{{ shift.spotsRemaining }}</dd>
+            </div>
+          </dl>
+          {% if shift.opportunityId %}
+            <a class="govuk-link govuk-link--no-visited-state govuk-!-margin-top-2 govuk-!-display-block" href="/volunteering/opportunities/{{ shift.opportunityId }}">View opportunity</a>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

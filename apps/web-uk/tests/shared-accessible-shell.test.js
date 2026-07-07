@@ -16667,6 +16667,112 @@ describe('shared accessible frontend shell', () => {
     expect(swapsResponse.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering organisation and recommended shift pages for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 42,
+              name: 'Food Share',
+              status: 'approved',
+              member_role: 'owner',
+              contact_email: 'hello@food.example',
+              website: 'https://food.example',
+              description: 'Community food support and welcoming kitchen shifts.'
+            },
+            {
+              id: 43,
+              name: 'Green Team',
+              status: 'pending',
+              member_role: 'admin',
+              contact_email: 'team@green.example',
+              website: 'green.example',
+              description: 'Garden recovery projects.'
+            }
+          ],
+          cursor: 'next-page',
+          has_more: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            shift_id: 501,
+            opportunity_id: 77,
+            title: 'Community meal prep',
+            organization_name: 'Food Share',
+            location: 'Town kitchen',
+            start_time: '2026-07-20T10:00:00Z',
+            spots_remaining: 3,
+            match_score: 91,
+            already_applied: false
+          },
+          {
+            shift_id: 502,
+            opportunity_id: 78,
+            title: 'Garden tidy',
+            organization_name: 'Green Team',
+            location: 'North allotments',
+            start_time: '2026-07-22T13:30:00Z',
+            spots_remaining: 1,
+            match_score: 76,
+            already_applied: true
+          }
+        ]
+      });
+
+    const organisationsResponse = await request(app)
+      .get('/volunteering/my-organisations?role=owner&cursor=abc')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(organisationsResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/my-organisations?per_page=20&cursor=abc');
+    expect(organisationsResponse.text).toContain('href="/volunteering?tab=organisations"');
+    expect(organisationsResponse.text).toContain('Back to volunteering');
+    expect(organisationsResponse.text).toContain('My organisations');
+    expect(organisationsResponse.text).toContain('Organisations you own or help manage.');
+    expect(organisationsResponse.text).toContain('id="role" name="role"');
+    expect(organisationsResponse.text).toContain('<option value="owner" selected>Owner</option>');
+    expect(organisationsResponse.text).toContain('Clear filter');
+    expect(organisationsResponse.text).toContain('Food Share');
+    expect(organisationsResponse.text).toContain('Approved');
+    expect(organisationsResponse.text).toContain('Your role');
+    expect(organisationsResponse.text).toContain('Owner');
+    expect(organisationsResponse.text).toContain('hello@food.example');
+    expect(organisationsResponse.text).toContain('href="https://food.example"');
+    expect(organisationsResponse.text).toContain('href="/volunteering/organisations/42/dashboard"');
+    expect(organisationsResponse.text).toContain('Open dashboard');
+    expect(organisationsResponse.text).toContain('href="/volunteering/my-organisations?role=owner&amp;cursor=next-page"');
+    expect(organisationsResponse.text).not.toContain('Green Team');
+    expect(organisationsResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const recommendedResponse = await request(app)
+      .get('/volunteering/recommended-shifts')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(recommendedResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/recommended-shifts?limit=15&min_score=20');
+    expect(recommendedResponse.text).toContain('Recommended for you');
+    expect(recommendedResponse.text).toContain('Shifts suggested for you');
+    expect(recommendedResponse.text).toContain('Community meal prep');
+    expect(recommendedResponse.text).toContain('href="/volunteering/opportunities/77"');
+    expect(recommendedResponse.text).toContain('91% match');
+    expect(recommendedResponse.text).toContain('value="91"');
+    expect(recommendedResponse.text).toContain('Food Share');
+    expect(recommendedResponse.text).toContain('Town kitchen');
+    expect(recommendedResponse.text).toContain('20 July 2026');
+    expect(recommendedResponse.text).toContain('Spots remaining');
+    expect(recommendedResponse.text).toContain('3');
+    expect(recommendedResponse.text).toContain('Garden tidy');
+    expect(recommendedResponse.text).toContain('You have already applied');
+    expect(recommendedResponse.text).toContain('View opportunity');
+    expect(recommendedResponse.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

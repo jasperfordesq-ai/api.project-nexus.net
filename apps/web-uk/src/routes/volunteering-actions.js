@@ -148,6 +148,25 @@ const SWAP_STATUS_CLASSES = {
   cancelled: 'govuk-tag--grey',
   expired: 'govuk-tag--grey'
 };
+const VOLUNTEER_ORG_STATUS_LABELS = {
+  approved: 'Approved',
+  active: 'Active',
+  pending: 'Pending',
+  declined: 'Declined',
+  suspended: 'Suspended'
+};
+const VOLUNTEER_ORG_STATUS_CLASSES = {
+  approved: 'govuk-tag--green',
+  active: 'govuk-tag--green',
+  pending: 'govuk-tag--yellow',
+  declined: 'govuk-tag--red',
+  suspended: 'govuk-tag--red'
+};
+const VOLUNTEER_ORG_ROLE_LABELS = {
+  owner: 'Owner',
+  admin: 'Administrator',
+  member: 'Member'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -223,6 +242,18 @@ function collectionFrom(result) {
   if (data && Array.isArray(data.items)) return data.items;
   if (data && Array.isArray(data.data)) return data.data;
   return [];
+}
+
+function collectionMetaFrom(result) {
+  const source = result && typeof result === 'object' ? result : {};
+  const data = dataFrom(result);
+  const nestedMeta = data && typeof data === 'object' && !Array.isArray(data) && data.meta
+    && typeof data.meta === 'object'
+    ? data.meta
+    : {};
+  const topMeta = source.meta && typeof source.meta === 'object' ? source.meta : {};
+  const dataMeta = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  return { ...dataMeta, ...nestedMeta, ...topMeta };
 }
 
 function resultId(result) {
@@ -1122,6 +1153,63 @@ function normalizeSwapRequest(row) {
   };
 }
 
+function normalizeVolunteerOrganizationCard(row) {
+  const organization = row && typeof row === 'object' ? row : {};
+  const id = positiveInteger(organization.id);
+  const statusValue = trimmed(organization.status) || 'pending';
+  const roleValue = trimmed(organization.member_role ?? organization.memberRole ?? organization.role) || 'member';
+  const website = trimmed(organization.website);
+  const websiteHref = /^https?:\/\//i.test(website) ? website : '';
+  return {
+    id,
+    name: trimmed(organization.name) || `Organisation ${id || ''}`.trim(),
+    status: statusPresentation(
+      statusValue,
+      VOLUNTEER_ORG_STATUS_LABELS,
+      VOLUNTEER_ORG_STATUS_CLASSES,
+      'pending'
+    ),
+    roleValue,
+    roleLabel: VOLUNTEER_ORG_ROLE_LABELS[roleValue] || headline(roleValue) || 'Member',
+    contactEmail: trimmed(organization.contact_email ?? organization.contactEmail ?? organization.email),
+    website,
+    websiteHref,
+    description: trimmed(String(organization.description || '').replace(/<[^>]*>/g, ''), 220),
+    canManage: ['owner', 'admin'].includes(roleValue),
+    isApproved: ['approved', 'active'].includes(statusValue)
+  };
+}
+
+function normalizeRecommendedShift(row) {
+  const shift = row && typeof row === 'object' ? row : {};
+  const matchScore = Number(shift.match_score ?? shift.matchScore);
+  const spotsRemaining = Number(shift.spots_remaining ?? shift.spotsRemaining);
+  return {
+    id: positiveInteger(shift.shift_id ?? shift.shiftId ?? shift.id),
+    opportunityId: positiveInteger(shift.opportunity_id ?? shift.opportunityId),
+    title: trimmed(shift.title ?? shift.opportunity_title ?? shift.opportunityTitle) || 'Volunteering opportunity',
+    organizationName: trimmed(shift.organization_name ?? shift.organizationName),
+    location: trimmed(shift.location),
+    startLabel: dateTimeLabel(shift.start_time ?? shift.startTime),
+    spotsRemaining: Number.isFinite(spotsRemaining) ? spotsRemaining : 0,
+    matchScore: Number.isFinite(matchScore) ? Math.max(0, Math.min(100, Math.round(matchScore))) : 0,
+    alreadyApplied: Boolean(shift.already_applied ?? shift.alreadyApplied)
+  };
+}
+
+function volunteeringMyOrganisationsNextHref(roleFilter, meta) {
+  const nextCursor = trimmed(meta.cursor ?? meta.next_cursor ?? meta.nextCursor);
+  const hasMore = Boolean(meta.has_more ?? meta.hasMore);
+  if (!hasMore || !nextCursor) {
+    return '';
+  }
+
+  const params = new URLSearchParams();
+  if (roleFilter) params.set('role', roleFilter);
+  params.set('cursor', nextCursor);
+  return `/volunteering/my-organisations?${params.toString()}`;
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -1570,6 +1658,69 @@ router.get('/swaps', asyncRoute(async (req, res) => {
     loadError,
     status: swapPageStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/my-organisations', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const roleFilter = ['owner', 'admin', 'member'].includes(trimmed(req.query.role))
+    ? trimmed(req.query.role)
+    : '';
+  const cursor = trimmed(req.query.cursor);
+  const params = new URLSearchParams({ per_page: '20' });
+  if (cursor) params.set('cursor', cursor);
+
+  let organizations = [];
+  let nextHref = '';
+  let loadError = null;
+  try {
+    const result = await callApi(token, 'GET', `/my-organisations?${params.toString()}`);
+    organizations = collectionFrom(result)
+      .map(normalizeVolunteerOrganizationCard)
+      .filter((organization) => organization.id)
+      .filter((organization) => !roleFilter || organization.roleValue === roleFilter);
+    nextHref = volunteeringMyOrganisationsNextHref(roleFilter, collectionMetaFrom(result));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your volunteering organisations. Please try again.';
+  }
+
+  return res.render('volunteering/my-organisations', {
+    title: 'My organisations',
+    activeNav: 'volunteering',
+    organizations,
+    roleFilter,
+    nextHref,
+    loadError
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/recommended-shifts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let shifts = [];
+  let loadError = null;
+  try {
+    shifts = collectionFrom(await callApi(token, 'GET', '/recommended-shifts?limit=15&min_score=20'))
+      .map(normalizeRecommendedShift)
+      .filter((shift) => shift.id || shift.opportunityId);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your recommended shifts. Please try again.';
+  }
+
+  return res.render('volunteering/recommended-shifts', {
+    title: 'Recommended for you',
+    activeNav: 'volunteering',
+    shifts,
+    loadError
   });
 }, { redirectOn401: loginRedirect() }));
 
