@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 
 namespace Nexus.Api.Controllers;
@@ -209,11 +210,107 @@ public class MiscParityController : ControllerBase
 
     [HttpPost("donations/payment-intent")]
     [Authorize]
-    public IActionResult DonationPaymentIntent([FromBody] JsonElement body) => Ok(new { data = new { client_secret = "mock_secret", amount = Decimal(body, "amount") ?? 0 } });
+    public async Task<IActionResult> DonationPaymentIntent([FromBody] JsonElement body)
+    {
+        var amount = Decimal(body, "amount");
+        if (amount is null || amount.Value < 0.5m)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "The amount must be at least 0.50.", field = "amount" } }
+            });
+        }
+
+        var currency = (Str(body, "currency") ?? "EUR").Trim().ToUpperInvariant();
+        if (currency.Length != 3)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "The currency must be a three-letter code.", field = "currency" } }
+            });
+        }
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+        var isAnonymous = Bool(body, "is_anonymous") ?? false;
+        var donation = new MoneyDonation
+        {
+            TenantId = tenantId,
+            DonorUserId = userId,
+            DonorDisplayName = isAnonymous
+                ? "Anonymous"
+                : string.Join(' ', new[] { user?.FirstName, user?.LastName }.Where(v => !string.IsNullOrWhiteSpace(v))),
+            DonorEmail = user?.Email,
+            AmountMinorUnits = ToMinorUnits(amount.Value),
+            Currency = currency,
+            Message = Str(body, "message"),
+            Status = MoneyDonationStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.MoneyDonations.Add(donation);
+        await _db.SaveChangesAsync();
+
+        donation.StripePaymentIntentId = $"pi_nexus_{donation.Id}";
+        donation.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                client_secret = $"{donation.StripePaymentIntentId}_secret_test",
+                donation_id = donation.Id
+            }
+        });
+    }
 
     [HttpGet("donations/{id:int}/receipt")]
     [Authorize]
-    public IActionResult DonationReceipt(int id) => File(Encoding.UTF8.GetBytes($"Donation receipt {id}"), "text/plain", $"donation-{id}.txt");
+    public async Task<IActionResult> DonationReceipt(int id)
+    {
+        var tenantId = TenantId();
+        var userId = UserId();
+        var donation = await _db.MoneyDonations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == id && d.TenantId == tenantId && d.DonorUserId == userId);
+
+        if (donation is null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Donation not found." });
+        }
+
+        var tenantName = await _db.Tenants
+            .AsNoTracking()
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id = donation.Id,
+                donor_name = string.IsNullOrWhiteSpace(donation.DonorDisplayName) ? "Anonymous" : donation.DonorDisplayName,
+                amount = Math.Round(donation.AmountMinorUnits / 100m, 2),
+                currency = donation.Currency,
+                date = (donation.CompletedAt ?? donation.CreatedAt).ToUniversalTime(),
+                community_name = tenantName ?? "Community",
+                message = donation.Message,
+                status = DonationStatusForReact(donation.Status),
+                payment_method = "stripe",
+                reference = donation.StripePaymentIntentId ?? donation.StripeCheckoutSessionId ?? $"DON-{donation.Id}"
+            }
+        });
+    }
 
     [HttpPost("gdpr/consent")]
     [Authorize]
@@ -685,5 +782,15 @@ public class MiscParityController : ControllerBase
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
+    private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
+    private static long ToMinorUnits(decimal amount) => decimal.ToInt64(decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero));
+    private static string DonationStatusForReact(MoneyDonationStatus status) => status switch
+    {
+        MoneyDonationStatus.Succeeded => "completed",
+        MoneyDonationStatus.Refunded => "refunded",
+        MoneyDonationStatus.Failed => "failed",
+        MoneyDonationStatus.Cancelled => "failed",
+        _ => "pending"
+    };
     private static int StableId(JsonElement body) => Math.Abs(HashCode.Combine(body.GetRawText()));
 }
