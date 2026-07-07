@@ -8,6 +8,7 @@ const { requireAuth } = require('../middleware/auth');
 const {
   getGoals,
   getGoal,
+  getComments,
   callGoalApi,
   createComment,
   deleteComment,
@@ -66,6 +67,19 @@ const GOAL_HISTORY_TAG_CLASSES = {
   buddy_joined: 'govuk-tag--turquoise',
   buddy_action: 'govuk-tag--turquoise',
   completed: 'govuk-tag--green'
+};
+const GOAL_SOCIAL_SUCCESS_MESSAGES = {
+  liked: 'You liked this goal.',
+  unliked: 'You removed your like.',
+  'comment-added': 'Your comment has been posted.',
+  'reply-added': 'Your reply has been posted.',
+  'comment-deleted': 'Your comment has been deleted.'
+};
+const GOAL_SOCIAL_ERROR_MESSAGES = {
+  'like-failed': 'We could not update your like. Please try again.',
+  'comment-invalid': 'Please enter a comment before posting.',
+  'comment-failed': 'We could not post your comment. Please try again.',
+  'comment-delete-failed': 'We could not delete that comment. You can only delete your own comments.'
 };
 
 function tokenFrom(req) {
@@ -367,6 +381,68 @@ function normalizeBuddyNote(item) {
   };
 }
 
+function commentAuthorName(raw) {
+  const author = raw && typeof raw.author === 'object' && raw.author !== null ? raw.author : {};
+  const user = raw && typeof raw.user === 'object' && raw.user !== null ? raw.user : {};
+  return trimmed(author.name || user.name || raw.author_name || raw.authorName || raw.user_name || raw.userName) || 'A member';
+}
+
+function normalizeSocialComment(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const replies = Array.isArray(raw.replies) ? raw.replies : [];
+  const createdAt = raw.created_at || raw.createdAt || '';
+  return {
+    id: positiveInteger(raw.id),
+    authorName: commentAuthorName(raw),
+    content: trimmed(raw.content || raw.body || ''),
+    createdAt,
+    createdAtLabel: dateTimeLabel(createdAt),
+    isOwn: checked(raw.is_own ?? raw.isOwn),
+    edited: checked(raw.edited ?? raw.is_edited ?? raw.isEdited),
+    replies: replies.map(normalizeSocialComment).filter((reply) => reply.id !== null)
+  };
+}
+
+function socialCommentsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data?.comments)) return data.comments;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+function socialCommentCount(comments) {
+  return comments.reduce((total, comment) => total + 1 + socialCommentCount(comment.replies || []), 0);
+}
+
+function nonNegativeCount(value, fallback = 0) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return fallback;
+  return Math.floor(number);
+}
+
+function socialCountFrom(data, keys, fallback = 0) {
+  for (const key of keys) {
+    if (data && Object.prototype.hasOwnProperty.call(data, key)) {
+      return nonNegativeCount(data[key], fallback);
+    }
+  }
+  return fallback;
+}
+
+function likesLabel(count) {
+  if (count === 0) return 'No likes yet';
+  if (count === 1) return '1 person likes this';
+  return `${count} people like this`;
+}
+
+function commentsLabel(count) {
+  if (count === 0) return 'No comments yet';
+  if (count === 1) return '1 comment';
+  return `${count} comments`;
+}
+
 function normalizeInsights(item) {
   const raw = item && typeof item === 'object' ? item : {};
   const keys = Object.keys(raw);
@@ -473,6 +549,31 @@ function buddyActionStatus(status) {
     return { successMessage: '', errorMessage: 'We could not send your support. You must be the goal buddy.' };
   }
   return { successMessage: '', errorMessage: '' };
+}
+
+function socialStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GOAL_SOCIAL_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GOAL_SOCIAL_SUCCESS_MESSAGES[value],
+        anchor: ''
+      }
+    };
+  }
+  if (Object.prototype.hasOwnProperty.call(GOAL_SOCIAL_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GOAL_SOCIAL_ERROR_MESSAGES[value],
+        anchor: 'body'
+      }
+    };
+  }
+  return { statusBanner: null };
 }
 
 function editErrorMessage(status) {
@@ -792,6 +893,68 @@ router.get('/:id(\\d+)/history', asyncRoute(async (req, res) => {
     items: collectionFrom(historyResult).map(normalizeHistoryEvent),
     hasMore: meta.hasMore,
     nextHref: meta.hasMore && meta.cursor ? `/goals/${goal.id}/history?${nextParams.toString()}` : ''
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const numericId = Number(id);
+  const [goalResult, commentsResult, socialResult] = await Promise.all([
+    getGoal(token, id),
+    getComments(token, { target_type: 'goal', target_id: numericId }).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { comments: [], count: 0 } };
+    }),
+    callGoal(token, 'GET', `/${id}/social`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: {} };
+    })
+  ]);
+
+  const goal = normalizeGoal(dataFrom(goalResult));
+  goal.id = goal.id || numericId;
+  const comments = socialCommentsFrom(commentsResult).map(normalizeSocialComment).filter((comment) => comment.id !== null);
+  const commentsData = dataFrom(commentsResult) || {};
+  const commentsFallback = socialCommentCount(comments);
+  const commentsTotal = socialCountFrom(
+    commentsData,
+    ['count', 'total', 'comments_count', 'commentsCount'],
+    commentsFallback
+  );
+  const socialData = dataFrom(socialResult) || {};
+  const likeFallback = socialCountFrom(
+    goal,
+    ['like_count', 'likes_count', 'likeCount', 'likesCount'],
+    0
+  );
+  const likeCount = socialCountFrom(
+    socialData,
+    ['like_count', 'likes_count', 'likeCount', 'likesCount'],
+    likeFallback
+  );
+  const liked = checked(
+    socialData.liked
+      ?? socialData.has_liked
+      ?? socialData.hasLiked
+      ?? goal.liked
+      ?? goal.has_liked
+      ?? goal.hasLiked
+  );
+
+  return res.render('goals/social', {
+    title: 'Likes and comments',
+    activeNav: 'explore',
+    goal,
+    likeCount,
+    liked,
+    likeCountLabel: likesLabel(likeCount),
+    comments,
+    commentsTotal,
+    commentsTotalLabel: commentsLabel(commentsTotal),
+    ...socialStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

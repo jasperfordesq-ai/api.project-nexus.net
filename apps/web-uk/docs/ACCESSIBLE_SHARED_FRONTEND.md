@@ -421,9 +421,13 @@ history data, and renders the Blade-style chronological timeline, event type
 tags, empty state, and cursor pagination link. `/goals/{id}/insights` redirects
 unsigned visitors to `/login?status=auth-required`, loads Laravel-compatible goal
 detail and insights data, and renders the Blade-style streak, cadence,
-check-in, milestone, buddy-support, and owner/buddy action sections. Existing
-goal POST aliases continue to call Laravel v2 goals, comment, and like APIs.
-This remains partial: detail and social GET pages, exact
+check-in, milestone, buddy-support, and owner/buddy action sections.
+`/goals/{id}/social` redirects unsigned visitors to
+`/login?status=auth-required`, loads Laravel-compatible goal detail, social
+summary, and threaded comments data, and renders the Blade-style support toggle,
+like/comment counts, reply/delete controls, status banners, validation error,
+and add-comment form. Existing goal POST aliases continue to call Laravel v2
+goals, comment, and like APIs. This remains partial: the detail GET page, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 

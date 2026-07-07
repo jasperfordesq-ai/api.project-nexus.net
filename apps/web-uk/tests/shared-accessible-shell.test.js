@@ -5886,6 +5886,92 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/insights');
   });
 
+  it('renders the Laravel goal social page for signed-in viewers', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        like_count: 2,
+        liked: true
+      }
+    });
+    api.getComments.mockReset().mockResolvedValueOnce({
+      data: {
+        comments: [
+          {
+            id: 12,
+            content: 'This goal is already bringing people together.',
+            created_at: '2026-07-05T09:30:00Z',
+            author: { name: 'Avery Green' },
+            is_own: true,
+            edited: true,
+            replies: [
+              {
+                id: 13,
+                content: 'We can help with the weekend planting.',
+                created_at: '2026-07-05T10:00:00Z',
+                author: { name: 'Sam Lee' },
+                is_own: false
+              }
+            ]
+          }
+        ],
+        count: 2
+      }
+    });
+    api.callGoalApi.mockReset().mockResolvedValueOnce({
+      data: {
+        like_count: 2,
+        liked: true
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/social');
+    const signed = await request(app)
+      .get('/goals/42/social?status=comment-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Goal: Restore the community garden');
+    expect(signed.text).toContain('Likes and comments');
+    expect(signed.text).toContain('Show your support for this goal and join the conversation.');
+    expect(signed.text).toContain('Support');
+    expect(signed.text).toContain('2 people like this');
+    expect(signed.text).toContain('aria-pressed="true"');
+    expect(signed.text).toContain('Remove your like');
+    expect(signed.text).toContain('method="post" action="/goals/42/like"');
+    expect(signed.text).toContain('Comments');
+    expect(signed.text).toContain('(2)');
+    expect(signed.text).toContain('2 comments');
+    expect(signed.text).toContain('Avery Green');
+    expect(signed.text).toContain('(You)');
+    expect(signed.text).toContain('(Edited)');
+    expect(signed.text).toContain('This goal is already bringing people together.');
+    expect(signed.text).toContain('Sam Lee');
+    expect(signed.text).toContain('We can help with the weekend planting.');
+    expect(signed.text).toContain('Reply');
+    expect(signed.text).toContain('Your reply');
+    expect(signed.text).toContain('Post reply');
+    expect(signed.text).toContain('Deleting a comment also removes any replies to it. This cannot be undone.');
+    expect(signed.text).toContain('method="post" action="/goals/42/comments/12/delete"');
+    expect(signed.text).toContain('Add a comment');
+    expect(signed.text).toContain('Your comment');
+    expect(signed.text).toContain('Keep it kind and supportive.');
+    expect(signed.text).toContain('Post comment');
+    expect(signed.text).toContain('Please enter a comment before posting.');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+    expect(api.getComments).toHaveBeenCalledTimes(1);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'goal', target_id: 42 });
+    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
+    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/social');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
