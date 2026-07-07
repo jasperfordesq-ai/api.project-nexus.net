@@ -63,18 +63,19 @@ npm run smoke:laravel
 
 This uses `scripts/laravel-runtime-smoke.js` to verify local Laravel API
 reachability, web-uk health, unsigned protected redirects, login CSRF handling,
-login POST redirect behavior, and a signed dashboard render. A Jest regression
+login POST redirect behavior, and signed `/account` rendering. A Jest regression
 test covers the harness with fake Laravel/web-uk servers:
 
 ```bash
 npm test -- --runInBand tests/laravel-runtime-smoke.test.js
 ```
 
-Current local evidence from 2026-07-07: the harness passes Laravel API,
-web-health, unsigned `/account` redirect, and `/login` CSRF checks. It does not
-yet certify Laravel auth because direct Laravel `/api/auth/login` calls returned
-`401` for the documented local Acme member/admin accounts, and web-uk therefore
-did not redirect to `/dashboard`.
+Current local evidence from 2026-07-07: the harness passes end-to-end when
+web-uk is started with Laravel tenant context `TENANT_ID=2`, using the local E2E
+fixture credentials (`e2e.user.a@project-nexus.local` /
+`TestPassword123!` / `hour-timebank`) and `SMOKE_TIMEOUT_MS=30000`. Without
+that tenant context, Laravel rejects the same valid credentials because the
+login request is scoped to the wrong tenant.
 
 ## Header And Footer Contract
 

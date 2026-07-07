@@ -58,6 +58,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
     }
 
     if (req.method === 'GET' && req.url === '/account') {
+      if ((req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end('<h1>My account</h1>');
+        return;
+      }
+
       res.writeHead(302, { location: '/login' });
       res.end();
       return;
@@ -73,7 +79,9 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
     }
 
     if (req.method === 'POST' && req.url === '/login') {
-      const params = new URLSearchParams(await readBody(req));
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      requests[requests.length - 1].body = body;
       const hasExpectedCsrf = params.get('_csrf') === 'csrf-token' && (req.headers.cookie || '').includes('nexus.csrf=csrf-cookie');
       if (hasExpectedCsrf && loginRedirect) {
         res.writeHead(302, {
@@ -92,18 +100,6 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
       return;
     }
 
-    if (req.method === 'GET' && req.url === '/dashboard') {
-      if ((req.headers.cookie || '').includes('token=signed-token')) {
-        res.writeHead(200, { 'content-type': 'text/html' });
-        res.end('<h1>Dashboard</h1>');
-        return;
-      }
-
-      res.writeHead(302, { location: '/login?status=auth-required' });
-      res.end();
-      return;
-    }
-
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -118,7 +114,7 @@ describe('Laravel runtime smoke harness', () => {
     })));
   });
 
-  it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed dashboard page', async () => {
+  it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);
     const web = createWebServer(requests);
@@ -141,11 +137,11 @@ describe('Laravel runtime smoke harness', () => {
       ['protected-account-redirects-to-login', true],
       ['login-form-csrf', true],
       ['login-post-redirects-dashboard', true],
-      ['signed-dashboard-renders', true]
+      ['signed-account-renders', true]
     ]);
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/groups?limit=1');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /login');
-    expect(requests.find((request) => request.method === 'GET' && request.url === '/dashboard').cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/account').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('reports a failed login as an auth smoke failure instead of certifying the run', async () => {
@@ -168,5 +164,23 @@ describe('Laravel runtime smoke harness', () => {
     expect(result.ok).toBe(false);
     expect(authCheck.ok).toBe(false);
     expect(authCheck.detail).toContain('expected 302 redirect to /dashboard');
+  });
+
+  it('defaults to the Laravel E2E tenant fixture credentials', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+
+    const loginRequest = requests.find((request) => request.method === 'POST' && request.url === '/login');
+    const body = new URLSearchParams(loginRequest.body);
+    expect(result.ok).toBe(true);
+    expect(body.get('email')).toBe('e2e.user.a@project-nexus.local');
+    expect(body.get('password')).toBe('TestPassword123!');
+    expect(body.get('tenant_slug')).toBe('hour-timebank');
   });
 });

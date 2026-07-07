@@ -40,10 +40,14 @@ npm run smoke:laravel
 
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
-dashboard render. On 2026-07-07 the command proved the unauthenticated and CSRF
-steps locally, but did not certify auth because Laravel returned `401` for the
-documented local `member@acme.test` and `admin@acme.test` credentials. Keep this
-failure visible until a valid seeded account makes the command pass.
+`/account` render. The harness defaults to Laravel's local E2E fixture
+(`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
+`hour-timebank`).
+
+On 2026-07-07 the command passed end-to-end against a temporary web-uk process
+started with `TENANT_ID=2` and `SMOKE_TIMEOUT_MS=30000`. Keep the tenant context
+visible: the same Laravel E2E credentials return `401` when web-uk does not send
+Laravel's tenant id `2` as `X-Tenant-ID`.
 
 ## Stack
 

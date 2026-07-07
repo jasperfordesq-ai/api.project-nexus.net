@@ -44,15 +44,19 @@ It runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
 (`http://127.0.0.1:5180` by default) and `LARAVEL_BASE_URL`
 (`http://127.0.0.1:8088` by default). The harness checks Laravel API
 reachability, web-uk health, unsigned `/account` redirect behavior, `/login`
-CSRF rendering, login POST redirect to `/dashboard`, and a signed dashboard
-render. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
-`SMOKE_TENANT`.
+CSRF rendering, login POST redirect to `/dashboard`, and signed `/account`
+rendering. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
+`SMOKE_TENANT`; the defaults target the Laravel local E2E fixture:
+`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
+`hour-timebank`.
 
-Current local result on 2026-07-07: unauthenticated and CSRF checks pass, but
-auth is not certified because the documented local Laravel accounts returned
-`401` from `/api/auth/login`; the web-uk login POST therefore returned `200`
-instead of redirecting to `/dashboard`. Do not mark Laravel runtime auth
-certified until this command exits successfully against the live Laravel backend.
+The local Laravel E2E users currently live under tenant id `2`, so the web-uk
+process must be started with `TENANT_ID=2` for Laravel login/API calls to carry
+the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
+`WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=30000 npm run
+smoke:laravel` passed against a temporary web-uk process started with
+`TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
+valid E2E credentials.
 
 ## Current Page Candidates
 

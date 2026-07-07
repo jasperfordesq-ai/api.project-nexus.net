@@ -57,10 +57,10 @@ Regenerate before trusting it.
 | Item | Last observed state |
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
-| Head commit | `7a124da7 feat: add Laravel group manage page` |
+| Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Generated route-matrix docs plus the in-progress Laravel runtime smoke harness files. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `790/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations and runtime-smoke blocker evidence, assuming agents rerun the refresh protocol |
+| Working estimate | about `820/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations and Laravel auth-smoke tenant-context evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -74,16 +74,18 @@ The latest generated route matrix at this handoff reported:
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Focused runtime-smoke harness test: `npm test -- --runInBand
-tests/laravel-runtime-smoke.test.js` passed with `2/2` tests after a red step
-where `scripts/laravel-runtime-smoke.js` did not exist.
+tests/laravel-runtime-smoke.test.js` passed with `3/3` tests after red steps
+for the missing harness and stale Acme defaults.
 
-Live local smoke result on 2026-07-07: `npm run smoke:laravel` reached
-Laravel `/api/v2/groups?limit=1` (`200`), web-uk `/health` (`200`), unsigned
-`/account` -> `/login`, and `/login` CSRF rendering. It did not certify auth:
-the login POST returned `200` instead of redirecting to `/dashboard`, and
-direct Laravel `/api/auth/login` calls returned `401` for the documented
-`member@acme.test`/`admin@acme.test` credentials with both `Test123!` and
-`NexusV2!Demo#2026`.
+Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
+E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
+sent. `npm run smoke:laravel` passed end-to-end against a temporary web-uk
+process started with `TENANT_ID=2`, `WEB_UK_BASE_URL=http://127.0.0.1:5181`,
+and `SMOKE_TIMEOUT_MS=30000`: Laravel API `200`, web-uk health `200`, unsigned
+`/account` -> `/login`, `/login` CSRF rendered, login POST -> `/dashboard`, and
+signed `/account` rendered `200`. Without `TENANT_ID=2`, the same Laravel E2E
+credentials fail because web-uk does not send the tenant context Laravel uses to
+scope login.
 
 ## Refresh Protocol
 
@@ -111,9 +113,9 @@ Select-String -Path docs\generated\accessible-route-matrix.csv -Pattern 'laravel
 The route matrix only proves method/path declarations. It does not certify
 Blade visual parity, auth redirects, tenant gates, feature gates, POST side
 effects, localization, runtime Laravel behavior, or ASP.NET backend switching.
-The smoke command is expected to fail until the local Laravel seed credentials
-or auth state are restored; treat that failure as runtime evidence, not a
-frontend parity pass.
+For local Laravel auth smoke, ensure the web-uk process was started with
+`TENANT_ID=2`. If Laravel is cold or slow, run the smoke with
+`SMOKE_TIMEOUT_MS=30000`.
 
 ## Documents To Trust
 
@@ -168,9 +170,10 @@ A route family is not complete until all of these are true:
 Prioritize replacing generated prep pages and certifying runtime behavior over
 adding more skeleton pages.
 
-1. Rerun the refresh protocol and confirm the current smoke/auth state.
-2. Restore or identify valid local Laravel seed credentials so
-   `npm run smoke:laravel` can certify the login/dashboard path.
+1. Rerun the refresh protocol and confirm whether the current web-uk process has
+   Laravel tenant context (`TENANT_ID=2` for the local E2E fixture).
+2. Keep expanding runtime smoke coverage from auth/account into module families
+   that are currently only mocked.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
 4. Add runtime smoke coverage against local Laravel for tenant/auth/feature-gate
@@ -194,7 +197,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `660/1000`.
+Current working estimate at this handoff: `820/1000`.
 
 ## Final Handoff Checklist
 

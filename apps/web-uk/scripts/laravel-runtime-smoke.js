@@ -5,9 +5,9 @@
 
 const DEFAULT_WEB_BASE_URL = 'http://127.0.0.1:5180';
 const DEFAULT_LARAVEL_BASE_URL = 'http://127.0.0.1:8088';
-const DEFAULT_SMOKE_EMAIL = 'member@acme.test';
-const DEFAULT_SMOKE_PASSWORD = 'Test123!';
-const DEFAULT_SMOKE_TENANT = 'acme';
+const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
+const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
+const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 8000;
 
 class CookieJar {
@@ -232,17 +232,17 @@ async function runLaravelRuntimeSmoke(options = {}) {
       fetchImpl: config.fetchImpl,
       timeoutMs: config.timeoutMs,
       cookieJar,
-      url: joinUrl(config.webBaseUrl, '/dashboard')
+      url: joinUrl(config.webBaseUrl, '/account')
     });
     addCheck(
       checks,
-      'signed-dashboard-renders',
+      'signed-account-renders',
       response.ok,
-      response.ok ? 'Signed dashboard rendered successfully.' : `expected 2xx from signed dashboard, got ${response.status} ${responseLocation(response)}`,
+      response.ok ? 'Signed account page rendered successfully.' : `expected 2xx from signed account page, got ${response.status} ${responseLocation(response)}`,
       { status: response.status, location: responseLocation(response) }
     );
   } catch (error) {
-    addCheck(checks, 'signed-dashboard-renders', false, error.message);
+    addCheck(checks, 'signed-account-renders', false, error.message);
   }
 
   return {
