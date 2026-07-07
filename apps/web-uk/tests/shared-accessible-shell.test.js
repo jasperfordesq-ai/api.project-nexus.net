@@ -780,6 +780,33 @@ describe('shared accessible frontend shell', () => {
     expect(invalid.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style delete-account confirmation page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const unsigned = await request(app).get('/profile/delete-account');
+    const signed = await request(app)
+      .get('/profile/delete-account?status=delete-confirm-required')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to profile');
+    expect(signed.text).toContain('Delete your account');
+    expect(signed.text).toContain('This will permanently remove your account and personal data');
+    expect(signed.text).toContain('What happens when you delete your account');
+    expect(signed.text).toContain('Your profile, messages and personal details will be deleted or anonymised.');
+    expect(signed.text).toContain('Confirm your password to continue');
+    expect(signed.text).toContain('Tell us why you are leaving (optional)');
+    expect(signed.text).toContain('I understand that my account and data will be permanently deleted');
+    expect(signed.text).toContain('Confirm that you understand your account will be deleted.');
+    expect(signed.text).toContain('Delete my account');
+    expect(signed.text).toContain('Cancel and keep my account');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 

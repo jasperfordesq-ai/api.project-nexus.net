@@ -39,6 +39,12 @@ const PROFILE_NOTIFICATION_KEYS = [
   'push_enabled',
   'push_campaigns_opted_in'
 ];
+const DELETE_ACCOUNT_ERRORS = {
+  'delete-password-required': 'Enter your password to confirm.',
+  'delete-confirm-required': 'Confirm that you understand your account will be deleted.',
+  'delete-password-incorrect': 'The password you entered is incorrect.',
+  'delete-failed': 'Your account could not be deleted. Try again or contact support.'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -476,6 +482,24 @@ router.post('/delete-account', asyncRoute(async (req, res) => {
 
   return res.redirect('/login?status=account-deletion-requested');
 }));
+
+router.get('/delete-account', (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const errorMessage = DELETE_ACCOUNT_ERRORS[status] || '';
+
+  return res.render('profile/delete', {
+    title: 'Delete your account',
+    activeNav: 'profile',
+    status,
+    errorMessage,
+    passwordError: ['delete-password-required', 'delete-password-incorrect'].includes(status),
+    confirmError: status === 'delete-confirm-required',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community'
+  });
+});
 
 router.post('/two-factor/verify', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

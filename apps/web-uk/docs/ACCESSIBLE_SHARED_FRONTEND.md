@@ -111,7 +111,11 @@ item cards, pagination, create/edit/delete, and remove-item controls.
 Saved-collection create/update/delete and item-remove POST aliases are wired to
 Laravel `/api/v2/me/collections` and `/api/v2/me/saved-items/{id}` while keeping
 Laravel status redirects such as `collection-created`, `collection-updated`,
-`collection-deleted`, and `item-removed`. Public collection and appreciation
+`collection-deleted`, and `item-removed`. `/profile/delete-account` now redirects
+unsigned visitors to `/login?status=auth-required` and renders the Blade-style
+warning, password confirmation, optional reason, confirmation checkbox, and
+status error states before its existing Laravel-compatible delete POST alias
+runs. Public collection and appreciation
 wall GET pages now redirect unsigned visitors to `/login?status=auth-required`,
 read Laravel `/api/v2/users/{id}/public-collections` and
 `/api/v2/users/{id}/appreciations`, and render the Blade-style public collection
