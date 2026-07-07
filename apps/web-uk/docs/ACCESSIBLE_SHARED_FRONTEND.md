@@ -155,6 +155,10 @@ and `/achievements/showcase`.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.
+`/activity` now redirects unsigned visitors to `/login?status=auth-required`,
+calls the Laravel-compatible profile activity dashboard endpoint, and renders the
+Blade-style contribution summary, engagement stats, skills breakdown, monthly
+hours, detailed-insights link, and recent activity timeline.
 Message POST aliases are wired to Laravel v2 message and group conversation
 APIs for archive/restore, message edit/delete/translate, group create/reply,
 member add/remove, and group reactions while preserving Laravel status redirects

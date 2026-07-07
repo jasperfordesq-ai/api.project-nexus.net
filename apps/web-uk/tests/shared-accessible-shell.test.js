@@ -1083,6 +1083,113 @@ describe('shared accessible frontend shell', () => {
     expect(empty.text).toContain('You have not blocked anyone.');
   });
 
+  it('renders the Laravel-style activity dashboard', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callProfileApi.mockResolvedValueOnce({
+      data: {
+        hours_summary: {
+          hours_given: 12.5,
+          hours_received: 5,
+          net_balance: 7.5
+        },
+        connection_stats: {
+          total_connections: 4,
+          groups_joined: 2
+        },
+        engagement: {
+          posts_count: 3,
+          comments_count: 6,
+          likes_given: 9,
+          likes_received: 11
+        },
+        skills_breakdown: {
+          skills: [
+            {
+              skill_name: 'Repair cafes',
+              is_offering: true,
+              is_requesting: false,
+              endorsements: 2
+            },
+            {
+              skill_name: 'Bike maintenance',
+              is_offering: false,
+              is_requesting: true,
+              endorsements: 0
+            }
+          ]
+        },
+        monthly_hours: [
+          {
+            label: 'March 2026',
+            given: 3.5,
+            received: 1
+          },
+          {
+            month: '2026-04',
+            given: 9,
+            received: 4
+          }
+        ],
+        timeline: [
+          {
+            description: 'Helped Grace with a repair cafe booking',
+            created_at: '2026-03-27T10:00:00Z'
+          },
+          {
+            title: 'Joined Community Makers',
+            date: '2026-03-20T09:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/activity');
+    const signed = await request(app)
+      .get('/activity')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/activity/dashboard');
+    expect(signed.text).toContain('My activity');
+    expect(signed.text).toContain('A summary of your contribution to the community.');
+    expect(signed.text).toContain('View detailed insights');
+    expect(signed.text).toContain('Hours given');
+    expect(signed.text).toContain('12.5');
+    expect(signed.text).toContain('Hours received');
+    expect(signed.text).toContain('5.0');
+    expect(signed.text).toContain('Connections');
+    expect(signed.text).toContain('4');
+    expect(signed.text).toContain('Groups joined');
+    expect(signed.text).toContain('2');
+    expect(signed.text).toContain('Recent engagement (last 30 days)');
+    expect(signed.text).toContain('Posts');
+    expect(signed.text).toContain('Comments');
+    expect(signed.text).toContain('Likes given');
+    expect(signed.text).toContain('Likes received');
+    expect(signed.text).toContain('Net balance');
+    expect(signed.text).toContain('7.5 hrs');
+    expect(signed.text).toContain('Skills breakdown');
+    expect(signed.text).toContain('Repair cafes');
+    expect(signed.text).toContain('Offering');
+    expect(signed.text).toContain('Endorsed 2 times');
+    expect(signed.text).toContain('Bike maintenance');
+    expect(signed.text).toContain('Requesting');
+    expect(signed.text).toContain('Hours over the last months');
+    expect(signed.text).toContain('March 2026');
+    expect(signed.text).toContain('Given 3.5');
+    expect(signed.text).toContain('Received 1.0');
+    expect(signed.text).toContain('Recent activity');
+    expect(signed.text).toContain('Helped Grace with a repair cafe booking');
+    expect(signed.text).toContain('Joined Community Makers');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

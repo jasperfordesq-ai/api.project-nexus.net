@@ -18,6 +18,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const listingsRoutes = require('./routes/listings');
 const profileRoutes = require('./routes/profile');
+const activityRoutes = require('./routes/activity');
 const walletRoutes = require('./routes/wallet');
 const messagesRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
@@ -1131,6 +1132,7 @@ function safeLocalPath(input, fallback = '/') {
 app.use('/dashboard', doubleCsrfProtection, dashboardRoutes);
 app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
 app.use('/profile', doubleCsrfProtection, profileRoutes);
+app.use('/activity', doubleCsrfProtection, activityRoutes);
 app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);
 app.use('/messages', doubleCsrfProtection, postOnly(formLimiter), messagesRoutes);
 app.use('/podcasts', doubleCsrfProtection, postOnly(formLimiter), podcastActionRoutes);
