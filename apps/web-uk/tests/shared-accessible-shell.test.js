@@ -2233,6 +2233,72 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style NEXUS score overview page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/nexus-score') {
+        return {
+          data: {
+            total_score: 645,
+            max_score: 1000,
+            percentile: 18,
+            tier: { name: 'Advanced', icon: 'Star' },
+            breakdown: {
+              engagement: { score: 120, max: 200, percentage: 60 },
+              quality: { score: 95, max: 150, percentage: 63 },
+              volunteer: { score: 180, max: 250, percentage: 72 },
+              activity: { score: 90, max: 150, percentage: 60 },
+              badges: { score: 80, max: 100, percentage: 80 },
+              impact: { score: 80, max: 150, percentage: 53 }
+            },
+            insights: [
+              { message: 'Complete another exchange this week.' },
+              'Ask a neighbour for a review.'
+            ]
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/nexus-score');
+    const signed = await request(app)
+      .get('/nexus-score')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/nexus-score');
+    expect(signed.text).toContain('href="/nexus-score/tiers"');
+    expect(signed.text).toContain('Tier ladder');
+    expect(signed.text).toContain('Project NEXUS Accessible');
+    expect(signed.text).toContain('NEXUS score');
+    expect(signed.text).toContain('Your reputation score, based on how you take part in the community.');
+    expect(signed.text).toContain('645 out of 1,000');
+    expect(signed.text).toContain('Advanced');
+    expect(signed.text).toContain('Top 18% in this community');
+    expect(signed.text).toContain('How your score breaks down');
+    expect(signed.text).toContain('Area');
+    expect(signed.text).toContain('Score');
+    expect(signed.text).toContain('Engagement');
+    expect(signed.text).toContain('Quality');
+    expect(signed.text).toContain('Volunteering');
+    expect(signed.text).toContain('Activity');
+    expect(signed.text).toContain('Badges');
+    expect(signed.text).toContain('Impact');
+    expect(signed.text).toContain('120 / 200');
+    expect(signed.text).toContain('How to improve');
+    expect(signed.text).toContain('Complete another exchange this week.');
+    expect(signed.text).toContain('Ask a neighbour for a review.');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

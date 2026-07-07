@@ -21,6 +21,15 @@ const TIERS = [
   { key: 'legendary', name: 'Legendary', min: 900 }
 ];
 
+const BREAKDOWN_CATEGORIES = [
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'quality', label: 'Quality' },
+  { key: 'volunteer', label: 'Volunteering' },
+  { key: 'activity', label: 'Activity' },
+  { key: 'badges', label: 'Badges' },
+  { key: 'impact', label: 'Impact' }
+];
+
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
 }
@@ -56,6 +65,62 @@ function textFrom(value, fallback = '') {
 
 function formatInteger(value) {
   return intFrom(value).toLocaleString('en-GB');
+}
+
+function clampPercentage(value) {
+  return Math.max(0, Math.min(100, Math.round(numberFrom(value))));
+}
+
+function labelFromInsight(value) {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  const insight = objectFrom(value);
+  return textFrom(insight.message ?? insight.text ?? insight.tip);
+}
+
+function normalizeBreakdownRows(breakdown) {
+  const object = objectFrom(breakdown);
+  return BREAKDOWN_CATEGORIES.map((category) => {
+    const row = objectFrom(object[category.key]);
+    if (!Object.keys(row).length) {
+      return null;
+    }
+
+    const score = Math.round(numberFrom(row.score));
+    const max = Math.round(numberFrom(row.max));
+    const percentage = clampPercentage(row.percentage);
+
+    return {
+      label: category.label,
+      scoreLabel: `${formatInteger(score)} / ${formatInteger(max)}`,
+      percentage,
+      progressLabel: `${category.label}: ${percentage}%`
+    };
+  }).filter(Boolean);
+}
+
+function normalizeScoreOverview(result) {
+  const payload = objectFrom(payloadFrom(result));
+  const hasScore = Object.prototype.hasOwnProperty.call(payload, 'total_score') && payload.total_score !== null;
+  const total = Math.round(numberFrom(payload.total_score));
+  const max = intFrom(payload.max_score) || 1000;
+  const tier = objectFrom(payload.tier);
+  const tierName = textFrom(tier.name) || (typeof payload.tier === 'string' ? textFrom(payload.tier) : '');
+  const tierIcon = textFrom(tier.icon);
+  const scoreLabel = `${tierIcon ? `${tierIcon} ` : ''}${formatInteger(total)} out of ${formatInteger(max)}`;
+  const hasPercentile = payload.percentile !== null && payload.percentile !== undefined && payload.percentile !== '';
+  const insights = (Array.isArray(payload.insights) ? payload.insights : []).map(labelFromInsight).filter(Boolean);
+
+  return {
+    hasScore,
+    scoreLabel,
+    tierName,
+    percentileLabel: hasPercentile ? `Top ${intFrom(payload.percentile)}% in this community` : '',
+    breakdownRows: normalizeBreakdownRows(payload.breakdown),
+    insights
+  };
 }
 
 function normalizeTierScore(result) {
@@ -125,6 +190,28 @@ router.get('/tiers', asyncRoute(async (req, res) => {
     activeNav: 'nexus_score',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     tierScore: normalizeTierScore(scorePayload)
+  });
+}));
+
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let scorePayload;
+  try {
+    scorePayload = await callGamificationApi(token, 'GET', '/nexus-score');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    scorePayload = { data: {} };
+  }
+
+  return res.render('nexus-score/index', {
+    title: 'NEXUS score',
+    activeNav: 'nexus_score',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    nexusScore: normalizeScoreOverview(scorePayload)
   });
 }));
 

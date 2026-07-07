@@ -189,11 +189,12 @@ empty states.
 `/leaderboard/spotlight` now redirects unsigned visitors, calls the
 Laravel-compatible member-spotlight endpoint, and renders the Blade-style daily
 featured-member card list and empty state.
-`/nexus-score/tiers` now redirects unsigned visitors, calls the
-Laravel-compatible gamification NEXUS score endpoint, and renders the
-Blade-style nine-tier ladder with the current tier highlighted, score panel,
-points-to-next inset, reached/current/locked status tags, and unavailable-score
-empty state.
+`/nexus-score` and `/nexus-score/tiers` now redirect unsigned visitors, call the
+Laravel-compatible gamification NEXUS score endpoint, and render the
+Blade-style NEXUS score overview, tier-ladder related link, score panel,
+breakdown progress table, insights list, nine-tier ladder with the current tier
+highlighted, points-to-next inset, reached/current/locked status tags, and
+unavailable-score empty states.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.

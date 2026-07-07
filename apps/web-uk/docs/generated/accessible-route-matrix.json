@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T01:56:55.760Z",
+    "generatedAt": "2026-07-07T02:01:00.973Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -10027,8 +10027,8 @@
       "gates": "feature:gamification",
       "apiNeeds": "service:NexusScoreCacheService",
       "webUkPath": "/nexus-score",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "nexus-score/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\nexus-score.js"
     },
     {
       "method": "GET",
