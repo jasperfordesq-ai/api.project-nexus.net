@@ -40,7 +40,10 @@ npm run smoke:laravel
 
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
-`/account` render. The harness defaults to Laravel's local E2E fixture
+`/account` render. It also verifies the default public Laravel-backed module
+pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
+`/help` return successful responses from the web-uk app while it is pointed at
+Laravel. The harness defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
@@ -98,8 +101,9 @@ candidates. They read Laravel `/api/v2/kb`, `/api/v2/kb/search`, and
 `/api/v2/kb/{id}` to render the Blade-style article search, cards, view-count
 metadata, cursor load-more link, article back link, author/update metadata,
 sanitized article body, and related-article links. Feedback, attachments, admin
-editing, tenant routing, localization, runtime smoke tests, and ASP.NET backend
-compatibility are not certified.
+editing, tenant routing, localization, article detail runtime smoke, and
+ASP.NET backend compatibility are not certified; the `/kb` index is covered by
+the default Laravel runtime smoke.
 
 The public auth and email aliases include Laravel-style forgot-password,
 reset-password, two-factor, email verification, and newsletter unsubscribe
@@ -696,8 +700,10 @@ responses, credential delete plus safe upload proxying, wellbeing check-ins,
 donations, group reservations, expenses, training, incidents, opportunity
 creation, and organisation owner application/hour, settings, and wallet actions
 through Laravel v2 volunteering APIs. This remains partial: credential download,
-feature gates, tenant-prefixed routes, localization, runtime smoke tests, and
-ASP.NET backend compatibility are not certified.
+feature gates, tenant-prefixed routes, localization, deeper volunteering
+workflow runtime smoke, and ASP.NET backend compatibility are not certified; the
+public `/volunteering` landing/search page is covered by the default Laravel
+runtime smoke.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,
@@ -725,8 +731,9 @@ openings view and, when a signed token is present, reads
 confirmation page and reads `/api/v2/volunteering/opportunities/{id}`. This
 remains partial: auth enforcement, volunteering/job feature gates,
 tenant-prefixed routes, organisation registration runtime persistence, apply
-confirmation depth, localization, runtime smoke tests, and ASP.NET backend
-compatibility are not certified.
+confirmation depth, localization, deeper organisation workflow runtime smoke,
+and ASP.NET backend compatibility are not certified; `/organisations` and
+`/organisations/browse` are covered by the default Laravel runtime smoke.
 
 The public support pages now replace the static Help centre and Trust and safety
 placeholders. `/help` is backed by Laravel `/api/v2/help/faqs`, preserving the
@@ -734,8 +741,9 @@ Blade FAQ search query, grouped GOV.UK accordion structure, empty/no-result
 states, and contact CTA. `/trust-and-safety` ports the Laravel Blade safety
 warning, exchange flow, platform responsibility, vetting, insurance, dispute,
 member responsibility, rights, contact CTA, and community-guidelines link. This
-remains partial: tenant-domain routing, localization, live FAQ runtime smoke
-behavior, and ASP.NET backend compatibility are not certified.
+remains partial: tenant-domain routing, localization, deeper FAQ behavior, and
+ASP.NET backend compatibility are not certified; `/help` is covered by the
+default Laravel runtime smoke.
 
 The public legal footer destinations now replace the static legal and
 accessibility placeholders. `/legal` renders the Blade-style legal document card

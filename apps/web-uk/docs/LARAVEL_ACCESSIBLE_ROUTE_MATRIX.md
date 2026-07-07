@@ -63,8 +63,10 @@ npm run smoke:laravel
 
 This uses `scripts/laravel-runtime-smoke.js` to verify local Laravel API
 reachability, web-uk health, unsigned protected redirects, login CSRF handling,
-login POST redirect behavior, and signed `/account` rendering. A Jest regression
-test covers the harness with fake Laravel/web-uk servers:
+login POST redirect behavior, signed `/account` rendering, and the default
+public Laravel-backed module pages `/volunteering`, `/organisations`,
+`/organisations/browse`, `/kb`, and `/help`. A Jest regression test covers the
+harness with fake Laravel/web-uk servers:
 
 ```bash
 npm test -- --runInBand tests/laravel-runtime-smoke.test.js
@@ -76,6 +78,10 @@ fixture credentials (`e2e.user.a@project-nexus.local` /
 `TestPassword123!` / `hour-timebank`) and `SMOKE_TIMEOUT_MS=30000`. Without
 that tenant context, Laravel rejects the same valid credentials because the
 login request is scoped to the wrong tenant.
+The same smoke now confirms the default public module pages above return 2xx
+from web-uk while it is pointed at Laravel; it does not certify their deeper
+POST workflows, auth-only views, tenant-domain aliases, localization, or ASP.NET
+backend switching.
 
 ## Header And Footer Contract
 

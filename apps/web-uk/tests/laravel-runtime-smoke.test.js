@@ -100,6 +100,13 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
       return;
     }
 
+    const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
+    if (req.method === 'GET' && modulePages.has(req.url)) {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<h1>${req.url}</h1>`);
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -131,14 +138,14 @@ describe('Laravel runtime smoke harness', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.checks.map((check) => [check.name, check.ok])).toEqual([
+    expect(result.checks.map((check) => [check.name, check.ok])).toEqual(expect.arrayContaining([
       ['laravel-api-reachable', true],
       ['web-health', true],
       ['protected-account-redirects-to-login', true],
       ['login-form-csrf', true],
       ['login-post-redirects-dashboard', true],
       ['signed-account-renders', true]
-    ]);
+    ]));
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/groups?limit=1');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /login');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/account').at(-1).cookie).toContain('token=signed-token');
@@ -182,5 +189,32 @@ describe('Laravel runtime smoke harness', () => {
     expect(body.get('email')).toBe('e2e.user.a@project-nexus.local');
     expect(body.get('password')).toBe('TestPassword123!');
     expect(body.get('tenant_slug')).toBe('hour-timebank');
+  });
+
+  it('smokes the default public Laravel-backed module pages', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+    const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+
+    expect(checks).toEqual(expect.objectContaining({
+      'module-page-volunteering-renders': true,
+      'module-page-organisations-renders': true,
+      'module-page-organisations-browse-renders': true,
+      'module-page-kb-renders': true,
+      'module-page-help-renders': true
+    }));
+    expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual(expect.arrayContaining([
+      'GET /volunteering',
+      'GET /organisations',
+      'GET /organisations/browse',
+      'GET /kb',
+      'GET /help'
+    ]));
   });
 });

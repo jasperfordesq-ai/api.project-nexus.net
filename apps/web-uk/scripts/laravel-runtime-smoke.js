@@ -9,6 +9,7 @@ const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
 const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
 
 class CookieJar {
   constructor() {
@@ -112,6 +113,14 @@ function addCheck(checks, name, ok, detail, meta = {}) {
   });
 }
 
+function modulePageCheckName(path) {
+  const slug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `module-page-${slug || 'home'}-renders`;
+}
+
 function resolveOptions(options = {}, env = process.env) {
   return {
     webBaseUrl: stripTrailingSlash(options.webBaseUrl || env.WEB_UK_BASE_URL || DEFAULT_WEB_BASE_URL),
@@ -120,6 +129,7 @@ function resolveOptions(options = {}, env = process.env) {
     password: options.password || env.SMOKE_PASSWORD || DEFAULT_SMOKE_PASSWORD,
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+    modulePagePaths: options.modulePagePaths || DEFAULT_PUBLIC_MODULE_PAGE_PATHS,
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -243,6 +253,26 @@ async function runLaravelRuntimeSmoke(options = {}) {
     );
   } catch (error) {
     addCheck(checks, 'signed-account-renders', false, error.message);
+  }
+
+  for (const path of config.modulePagePaths) {
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      addCheck(
+        checks,
+        modulePageCheckName(path),
+        response.ok,
+        response.ok ? `${path} rendered successfully.` : `expected 2xx from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, modulePageCheckName(path), false, error.message, { path });
+    }
   }
 
   return {

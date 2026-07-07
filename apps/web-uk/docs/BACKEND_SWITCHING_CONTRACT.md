@@ -45,8 +45,11 @@ It runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
 (`http://127.0.0.1:8088` by default). The harness checks Laravel API
 reachability, web-uk health, unsigned `/account` redirect behavior, `/login`
 CSRF rendering, login POST redirect to `/dashboard`, and signed `/account`
-rendering. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
-`SMOKE_TENANT`; the defaults target the Laravel local E2E fixture:
+rendering. It also checks the default public Laravel-backed module pages
+`/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
+return successful responses through web-uk while Laravel is the backend target.
+Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
+the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`.
 
