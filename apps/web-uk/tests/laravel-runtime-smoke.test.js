@@ -278,6 +278,11 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/polls/4',
       '/feed/item/listing/90967',
       '/blog/64/likers/1',
+      '/marketplace/category/electronics',
+      '/marketplace/category/home-garden',
+      '/marketplace/category/free-items',
+      '/marketplace/category/services',
+      '/marketplace/seller/1',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -722,6 +727,18 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/onboarding/interests', location: '/dashboard' },
       { path: '/onboarding/safeguarding', location: '/dashboard' },
       { path: '/onboarding/confirm', location: '/dashboard' }
+    ]));
+  });
+
+  it('includes stable marketplace category and seller fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/marketplace/category/electronics',
+      '/marketplace/category/home-garden',
+      '/marketplace/category/free-items',
+      '/marketplace/category/services',
+      '/marketplace/seller/1'
     ]));
   });
 

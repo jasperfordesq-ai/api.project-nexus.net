@@ -92,7 +92,12 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/polls/8',
   '/polls/4',
   '/feed/item/listing/90967',
-  '/blog/64/likers/1'
+  '/blog/64/likers/1',
+  '/marketplace/category/electronics',
+  '/marketplace/category/home-garden',
+  '/marketplace/category/free-items',
+  '/marketplace/category/services',
+  '/marketplace/seller/1'
 ];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
