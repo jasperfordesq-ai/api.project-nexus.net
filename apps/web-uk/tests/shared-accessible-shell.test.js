@@ -5402,6 +5402,56 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGoals).toHaveBeenCalledWith('test-token', { per_page: 30 });
   });
 
+  it('renders the Laravel goal template picker for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    api.callGoalApi
+      .mockResolvedValueOnce({ data: ['Health', 'Learning'] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 7,
+            title: 'Build a walking habit',
+            description: 'Walk three times each week with a neighbour.',
+            default_target_value: 12,
+            category: 'Health'
+          },
+          {
+            id: 8,
+            title: 'Learn basic repairs',
+            default_target_value: 4,
+            category: 'Learning'
+          }
+        ],
+        meta: { has_more: true, cursor: 'next-template' }
+      });
+
+    const unsigned = await request(app).get('/goals/templates');
+    const signed = await request(app)
+      .get('/goals/templates?category=Health&status=goal-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goals');
+    expect(signed.text).toContain('Start a goal from a ready-made template.');
+    expect(signed.text).toContain('Goal templates');
+    expect(signed.text).toContain('Something went wrong. Please try again.');
+    expect(signed.text).toContain('Filter by category');
+    expect(signed.text).toContain('<option value="Health" selected>Health</option>');
+    expect(signed.text).toContain('Build a walking habit');
+    expect(signed.text).toContain('Walk three times each week with a neighbour.');
+    expect(signed.text).toContain('Suggested target: 12');
+    expect(signed.text).toContain('method="post" action="/goals/templates/7"');
+    expect(signed.text).toContain('Goal name (optional)');
+    expect(signed.text).toContain('Leave blank to use the template name.');
+    expect(signed.text).toContain('Start this goal');
+    expect(signed.text).toContain('href="/goals/templates?category=Health&amp;cursor=next-template"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/templates/categories');
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/templates?per_page=50&category=Health');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 

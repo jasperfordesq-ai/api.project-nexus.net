@@ -189,6 +189,19 @@ function normalizeGoal(item) {
   };
 }
 
+function normalizeTemplate(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  return {
+    id: positiveInteger(raw.id),
+    title: trimmed(raw.title) || 'Goal',
+    description: trimmed(raw.description || ''),
+    category: trimmed(raw.category || ''),
+    targetText: positiveNumber(raw.default_target_value ?? raw.defaultTargetValue) === null
+      ? ''
+      : formatNumber(raw.default_target_value ?? raw.defaultTargetValue)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'goal-created': 'Goal created',
@@ -248,6 +261,45 @@ router.post('/templates/:templateId(\\d+)', asyncRoute(async (req, res) => {
   const goalId = goalIdFromResult(result);
   return res.redirect(goalId ? goalRedirect(goalId, 'goal-created') : '/goals/templates?status=goal-failed');
 }));
+
+router.get('/templates', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const category = trimmed(req.query.category);
+  const templateParams = new URLSearchParams({ per_page: '50' });
+  if (category) templateParams.set('category', category);
+  if (trimmed(req.query.cursor)) templateParams.set('cursor', trimmed(req.query.cursor));
+
+  const [categoryResult, templateResult] = await Promise.all([
+    callGoal(token, 'GET', '/templates/categories').catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    }),
+    callGoal(token, 'GET', `/templates?${templateParams.toString()}`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
+  ]);
+
+  const templates = collectionFrom(templateResult).map(normalizeTemplate).filter((template) => template.id !== null);
+  const meta = metaFrom(templateResult);
+  const nextParams = new URLSearchParams();
+  if (category) nextParams.set('category', category);
+  if (meta.cursor) nextParams.set('cursor', meta.cursor);
+  const status = trimmed(req.query.status);
+
+  return res.render('goals/templates', {
+    title: 'Goal templates',
+    activeNav: 'explore',
+    templates,
+    categories: collectionFrom(categoryResult).map((item) => trimmed(item)).filter(Boolean),
+    category,
+    meta,
+    nextHref: meta.hasMore && meta.cursor ? `/goals/templates?${nextParams.toString()}` : '',
+    errorMessage: status === 'goal-failed' ? 'Something went wrong. Please try again.' : ''
+  });
+}, { redirectOn401: loginRedirect() }));
 
 router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
