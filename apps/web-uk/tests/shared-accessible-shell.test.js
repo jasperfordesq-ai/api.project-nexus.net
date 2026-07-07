@@ -17318,6 +17318,29 @@ describe('shared accessible frontend shell', () => {
     expect(grading.text).toContain('Save grade');
   });
 
+  it('renders forbidden when Laravel denies course instructor analytics and grading access', async () => {
+    const api = require('../src/lib/api');
+
+    api.callCourseApi.mockRejectedValueOnce(new api.ApiError('Admin access required', 403, {}));
+    const analytics = await request(app)
+      .get('/courses/instructor/1/analytics')
+      .set('Cookie', signedCookieHeader());
+
+    expect(analytics.status).toBe(403);
+    expect(analytics.text).toContain('Forbidden');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/1/analytics');
+
+    api.callCourseApi.mockResolvedValueOnce({ data: { id: 1, title: 'Care skills' } });
+    api.callCourseApi.mockRejectedValueOnce(new api.ApiError('Admin access required', 403, {}));
+    const grading = await request(app)
+      .get('/courses/instructor/1/grading')
+      .set('Cookie', signedCookieHeader());
+
+    expect(grading.status).toBe(403);
+    expect(grading.text).toContain('Forbidden');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/1/grading');
+  });
+
   it('renders the Laravel-backed marketplace browse page', async () => {
     const api = require('../src/lib/api');
     api.callMarketplaceApi

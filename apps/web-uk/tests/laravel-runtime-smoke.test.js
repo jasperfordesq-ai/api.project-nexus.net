@@ -411,6 +411,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/jobs/90764/analytics',
       '/jobs/90764/pipeline',
       '/jobs/90764/applications',
+      '/courses/instructor/1/analytics',
+      '/courses/instructor/1/grading',
       '/listings/42/analytics',
       '/listings/90967/analytics',
       '/jobs/talent-search/77',
@@ -802,6 +804,15 @@ describe('Laravel runtime smoke harness', () => {
 
     expect(options.modulePagePaths).toEqual(expect.arrayContaining([
       '/ideation/2/ideas/1'
+    ]));
+  });
+
+  it('includes stable course instructor gated fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/courses/instructor/1/analytics', status: 403 },
+      { path: '/courses/instructor/1/grading', status: 403 }
     ]));
   });
 

@@ -709,6 +709,9 @@ router.get('/instructor/:id/analytics', asyncRoute(async (req, res) => {
       ...payload
     });
   } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
     if (handleCourseGetError(error, res)) return undefined;
     throw error;
   }
@@ -734,6 +737,9 @@ router.get('/instructor/:id/grading', asyncRoute(async (req, res) => {
       status: routeStatus(req.query, GRADING_STATUS_MESSAGES)
     });
   } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
     if (handleCourseGetError(error, res)) return undefined;
     throw error;
   }

@@ -130,6 +130,8 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/90764/analytics', status: 403 },
   { path: '/jobs/90764/pipeline', status: 403 },
   { path: '/jobs/90764/applications', status: 403 },
+  { path: '/courses/instructor/1/analytics', status: 403 },
+  { path: '/courses/instructor/1/grading', status: 403 },
   { path: '/listings/42/analytics', status: 403 },
   { path: '/listings/90967/analytics', status: 403 },
   { path: '/jobs/talent-search/77', status: 403 },

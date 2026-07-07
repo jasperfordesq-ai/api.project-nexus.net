@@ -286,10 +286,14 @@ process: all four chunks passed on 2026-07-07 with `474` repeated checks, `0`
 failures, and `266` collective module-page checks. The next fixture expansion
 adds `/ideation/2/ideas/1` as a signed 2xx ideation idea detail route; its
 targeted live run passed on 2026-07-07 with `7/7` checks and `0` failures. The
-default scope now contains `319` checks: `267` module-page checks, 8 unsigned
-auth-required redirect checks, 17 gated-status checks, and 21 signed redirect
-checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
-without default runtime smoke coverage fell from 28 to 24.
+course instructor analytics and grading routes now preserve Laravel's owner/admin
+denial as a 403 page instead of the generic service-unavailable fallback; the
+targeted live run for `/courses/instructor/1/analytics` and
+`/courses/instructor/1/grading` passed on 2026-07-07 with `8/8` checks and `0`
+failures. The default scope now contains `321` checks: `267` module-page checks,
+8 unsigned auth-required redirect checks, 19 gated-status checks, and 21 signed
+redirect checks, plus the 6 auth/health checks. Parameterised matched GET route
+shapes without default runtime smoke coverage fell from 28 to 22.
 
 ## Header And Footer Contract
 
