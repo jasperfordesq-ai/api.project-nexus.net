@@ -14,6 +14,10 @@
   <h1 class="govuk-heading-xl">Become a seller</h1>
   <p class="govuk-body-l">Tell us about your business so buyers know who they are dealing with. You can update these details later.</p>
 
+  {% if setupErrorMessage %}
+    <div class="govuk-inset-text">{{ setupErrorMessage }}</div>
+  {% endif %}
+
   {% if completed %}
     <div class="govuk-notification-banner" role="region" aria-labelledby="seller-setup-complete" data-module="govuk-notification-banner">
       <div class="govuk-notification-banner__header">

@@ -1140,8 +1140,15 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
   const token = requireToken(req, res);
   if (!token) return undefined;
 
+  let setupErrorMessage = null;
   try {
-    const result = await callMarketplace(token, 'GET', '/merchant-onboarding/status');
+    const result = await callMarketplace(token, 'GET', '/merchant-onboarding/status').catch((error) => {
+      if (isAuthError(error)) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading seller setup details.';
+      return {};
+    });
     const onboarding = onboardingProfile(result);
     return res.render('marketplace/onboarding', {
       title: 'Become a seller',
@@ -1153,6 +1160,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
         checked: onboarding.profile.seller_type === value
       })),
       ...onboarding,
+      setupErrorMessage,
       status: statusEntry(req.query.status)
     });
   } catch (error) {

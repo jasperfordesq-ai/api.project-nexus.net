@@ -565,10 +565,23 @@ router.get('/my', asyncRoute(async (req, res) => {
 // Create event form
 router.get('/new', asyncRoute(async (req, res) => {
   const groupId = req.query.group_id || null;
+  let setupErrorMessage = null;
 
   const [myGroupsResult, categoriesResult] = await Promise.all([
-    getMyGroups(req.token),
-    getEventCategories(req.token)
+    getMyGroups(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    }),
+    getEventCategories(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    })
   ]);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
   const categories = categoriesResult.items || categoriesResult.data || [];
@@ -578,6 +591,7 @@ router.get('/new', asyncRoute(async (req, res) => {
     myGroups,
     categories,
     selectedGroupId: groupId,
+    setupErrorMessage,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));

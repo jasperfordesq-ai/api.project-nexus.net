@@ -49,8 +49,9 @@ Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
 `/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
 `/nexus-score`, `/profile/settings`,
 `/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
-`/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
-`/search/advanced`, `/premium`, and `/podcasts`, plus deeper signed subpages
+`/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`,
+`/events/new`, `/listings`, `/search/advanced`, `/premium`, and `/podcasts`,
+plus deeper signed subpages
 across profile, settings, achievements, leaderboard, federation, courses,
 marketplace, static/legal/support, goals, groups, ideation, jobs, message
 groups, polls, resource-library, reviews, wallet management, and volunteering
@@ -73,13 +74,16 @@ and a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5298` passed
 `160/160` checks. Plain `/members` is now also in scope and renders the signed
 member directory with an empty/error state when Laravel's legacy members API is
 unavailable; a later run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161` checks. The
+`WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161` checks. `/events/new`
+and `/marketplace/onboarding` are now also in the default signed scope and
+render their Blade-style forms with empty/error setup state when Laravel helper
+APIs are unavailable; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5302` passed `163/163` checks. The
 harness default timeout is now `30000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves `/events/new` and `/marketplace/onboarding` outside the default
-list because they return `404`, leaves
+still leaves
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`, and leaves signed-in
 auth, onboarding, and premium-management redirect pages outside because they do

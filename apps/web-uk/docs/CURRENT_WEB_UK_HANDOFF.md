@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Latest focused edits add `/members` to the default signed Laravel runtime smoke scope and keep the signed members index renderable with an empty/error state when Laravel's legacy members API is unavailable. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `914/1000` implementation/certification parity |
+| Dirty files seen | Latest focused edits add `/events/new` and `/marketplace/onboarding` to the default signed Laravel runtime smoke scope and keep both form pages renderable with empty/error setup state when Laravel helper APIs are unavailable. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `916/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -95,8 +95,9 @@ flow, it checks the broad signed page set covering `/explore`, `/saved`,
 `/nexus-score`,
 `/profile/settings`, `/settings/appearance`, `/settings/data-rights`,
 `/federation`, `/courses`, `/courses/mine`, `/marketplace`,
-`/marketplace/mine`, `/events`, `/listings`, `/search/advanced`, `/premium`,
-and `/podcasts`, plus deeper signed subpages across profile, settings,
+`/marketplace/mine`, `/events`, `/events/new`, `/listings`,
+`/search/advanced`, `/premium`, and `/podcasts`, plus deeper signed subpages
+across profile, settings,
 achievements, leaderboard, federation, courses, marketplace, and volunteering.
 A later 2026-07-07 smoke run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks with that expanded
@@ -115,11 +116,14 @@ API is unavailable; a later run against
 and 154 module page checks. Plain `/members` is now in the default signed scope
 and renders with an empty/error state when Laravel's legacy members API is
 unavailable; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5299` passed
-`161/161`: 6 auth/health checks and 155 module page checks. `/listings` needed a Nunjucks
+`161/161`: 6 auth/health checks and 155 module page checks. `/events/new` and
+`/marketplace/onboarding` are now in the default signed scope and render form
+pages with empty/error setup state when Laravel helper APIs are unavailable; a
+later run against `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed `163/163`: 6
+auth/health checks and 157 module page checks. `/listings` needed a Nunjucks
 owner-id guard because Laravel can return nested `user.id` without a flat
 `user_id`; the default smoke timeout is now `30000` ms for slower Laravel
-fixture pages. Local probing left `/events/new` and `/marketplace/onboarding`
-outside the default list because they returned `404`, left
+fixture pages. Local probing left
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they returned feature-gated or role-gated `403`, and left signed-in
 auth, onboarding, and premium-management redirect pages outside because they do
@@ -237,7 +241,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `914/1000`.
+Current working estimate at this handoff: `916/1000`.
 
 ## Final Handoff Checklist
 

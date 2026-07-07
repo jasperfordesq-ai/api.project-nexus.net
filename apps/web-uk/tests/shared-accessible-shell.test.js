@@ -14497,6 +14497,25 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('renders the signed Laravel event create page when setup APIs are unavailable', async () => {
+    const api = require('../src/lib/api');
+
+    api.getMyGroups.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+    api.getEventCategories.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+
+    const response = await request(app)
+      .get('/events/new')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getMyGroups).toHaveBeenCalledWith('test-token');
+    expect(api.getEventCategories).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('Create an event');
+    expect(response.text).toContain('action="/events/new"');
+    expect(response.text).toContain('Sorry, there is a problem loading event setup information.');
+    expect(response.text).not.toContain('Page not found');
+  });
+
   it('renders and submits Laravel event edit cover images with multipart data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
@@ -17739,6 +17758,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Repairs and refurbished bikes');
     expect(response.text).toContain('value="1 Market Street"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the marketplace seller onboarding form when status API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+
+    const response = await request(app)
+      .get('/marketplace/onboarding')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/merchant-onboarding/status');
+    expect(response.text).toContain('Become a seller');
+    expect(response.text).toContain('action="/marketplace/onboarding"');
+    expect(response.text).toContain('Sorry, there is a problem loading seller setup details.');
+    expect(response.text).not.toContain('Page not found');
   });
 
   it('renders the Laravel-backed marketplace seller pickup slot pages', async () => {

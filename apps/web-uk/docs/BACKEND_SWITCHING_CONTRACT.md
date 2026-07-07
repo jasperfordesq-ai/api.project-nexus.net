@@ -81,9 +81,11 @@ empty/error state when Laravel's legacy connections API is unavailable; a later
 run against `WEB_UK_BASE_URL=http://127.0.0.1:5298` passed `160/160`. Plain
 `/members` is now included in the default signed smoke scope and renders with an
 empty/error state when Laravel's legacy members API is unavailable; a later run
-against `WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161`. Local probing
-left `/events/new` and `/marketplace/onboarding` outside the default list
-because they currently return `404`; left
+against `WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161`. `/events/new`
+and `/marketplace/onboarding` are now included in the default signed smoke scope
+and render form pages with empty/error setup state when Laravel helper APIs are
+unavailable; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed
+`163/163`. Local probing left
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`; and left signed-in auth,
 onboarding, and premium-management redirect pages outside because they do not
