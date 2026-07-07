@@ -59,6 +59,7 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/ideation/23',
   '/ideation/22',
   '/ideation/2',
+  '/ideation/2/ideas/1',
   '/ideation/23/edit',
   '/ideation/23/manage',
   '/ideation/23/drafts',

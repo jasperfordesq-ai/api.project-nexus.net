@@ -248,6 +248,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/ideation/23',
       '/ideation/22',
       '/ideation/2',
+      '/ideation/2/ideas/1',
       '/ideation/23/edit',
       '/ideation/23/manage',
       '/ideation/23/drafts',
@@ -793,6 +794,14 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/groups/484/files/1/download', location: '/groups/484/files?status=file-not-found' }
+    ]));
+  });
+
+  it('includes the stable ideation idea fixture outcome in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/ideation/2/ideas/1'
     ]));
   });
 

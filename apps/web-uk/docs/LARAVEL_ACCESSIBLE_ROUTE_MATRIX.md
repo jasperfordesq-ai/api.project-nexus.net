@@ -275,17 +275,21 @@ the signed missing-file redirect to `/groups/484/files?status=file-not-found`.
 This also fixes those two public member/employer pages to read Laravel
 `/api/v2/users/{id}` instead of the legacy `/api/users/{id}` helper. A targeted
 live run against `WEB_UK_BASE_URL=http://127.0.0.1:5343`, started with
-`TENANT_ID=2`, passed on 2026-07-07: `9/9` checks, `0` failures. The expanded
-default scope now contains `318` checks: `266` module-page checks, 8 unsigned
-auth-required redirect checks, 17 gated-status checks, and 21 signed redirect
-checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
-without default runtime smoke coverage fell from 28 to 25. The smoke harness
+`TENANT_ID=2`, passed on 2026-07-07: `9/9` checks, `0` failures. The smoke
+harness
 refreshes the signed session before gated-status and signed-redirect groups so
 long module-page batches do not turn expected authorization outcomes into stale
-`/login?status=auth-required` redirects. The expanded default scope was then
+`/login?status=auth-required` redirects. That `318`-check expanded default
+scope was then
 recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary
 process: all four chunks passed on 2026-07-07 with `474` repeated checks, `0`
-failures, and `266` collective module-page checks.
+failures, and `266` collective module-page checks. The next fixture expansion
+adds `/ideation/2/ideas/1` as a signed 2xx ideation idea detail route; its
+targeted live run passed on 2026-07-07 with `7/7` checks and `0` failures. The
+default scope now contains `319` checks: `267` module-page checks, 8 unsigned
+auth-required redirect checks, 17 gated-status checks, and 21 signed redirect
+checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
+without default runtime smoke coverage fell from 28 to 24.
 
 ## Header And Footer Contract
 
