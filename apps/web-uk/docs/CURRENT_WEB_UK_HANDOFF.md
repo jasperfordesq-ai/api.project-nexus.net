@@ -110,7 +110,9 @@ archive forms, group-message tabs, group create/search forms, participant
 remove/add forms, reaction forms, member-directory links, and leave-group forms
 through `urlFor()`. The latest wallet source slice now routes the wallet
 breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
-donation forms through `urlFor()`.
+donation forms through `urlFor()`. The latest public/auth/support source slice
+now routes contact, cookie settings, login, two-factor login, forgot-password,
+reset-password, register, and report-a-problem links/forms through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -167,7 +169,7 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
 
-Latest local verification after the wallet source-helper slice:
+Latest local verification after the public/auth/support source-helper slice:
 
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange tabs"` first failed on raw `/group-exchanges` links/actions, then passed after the template conversion.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"` passed `3/3` selected tests.
@@ -176,10 +178,13 @@ Latest local verification after the wallet source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"` first failed on raw `/wallet` links/actions, then passed after the template conversion.
 - `Select-String -Path apps\web-uk\src\views\wallet\*.njk -Pattern 'href="/wallet','action="/wallet','href: "/wallet'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"` passed `8/8` selected wallet tests.
-- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `16/16`.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"` first failed on raw `/contact` and `/login` controls, then passed after the template conversion.
+- `Select-String` over `contact.njk`, `cookie-settings.njk`, `forgot-password.njk`, `login.njk`, `register.njk`, `report-problem.njk`, and `reset-password.njk` for raw local public/auth/support `href` and `action` targets returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"` passed `25/25` selected tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `17/17`.
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 - `npm --prefix apps/web-uk run lint` passed.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `721/721` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `722/722` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`

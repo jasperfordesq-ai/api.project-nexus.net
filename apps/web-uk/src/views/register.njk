@@ -17,7 +17,7 @@
 
       <h1 class="govuk-heading-xl">Register</h1>
 
-      <form method="post" action="/register" novalidate data-validate-form data-loading="Creating account...">
+      <form method="post" action="{{ urlFor('/register') }}" novalidate data-validate-form data-loading="Creating account...">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {# Honeypot — hidden from real users (off-screen + aria-hidden + tabindex=-1)
@@ -154,7 +154,7 @@
       </form>
 
       <p class="govuk-body govuk-!-margin-top-6">
-        Already have an account? <a href="/login" class="govuk-link">Sign in</a>
+        Already have an account? <a href="{{ urlFor('/login') }}" class="govuk-link">Sign in</a>
       </p>
 
     </div>

@@ -22,7 +22,7 @@
             <p class="govuk-notification-banner__heading">Message Sent!</p>
             <p class="govuk-body">We'll get back to you as soon as possible.</p>
             <p class="govuk-body govuk-!-margin-bottom-0">
-              <a class="govuk-link" href="/">Back to accessible home</a>
+              <a class="govuk-link" href="{{ urlFor('/') }}">Back to accessible home</a>
             </p>
           </div>
         </div>
@@ -51,7 +51,7 @@
           </div>
         {% endif %}
 
-        <form method="post" action="/contact" novalidate>
+        <form method="post" action="{{ urlFor('/contact') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <fieldset class="govuk-fieldset">
@@ -98,7 +98,7 @@
 
           {% if not isAuthenticated %}
             <p class="govuk-body-s">
-              Already have an account? <a class="govuk-link" href="/login">Log in</a> for faster support.
+              Already have an account? <a class="govuk-link" href="{{ urlFor('/login') }}">Log in</a> for faster support.
             </p>
           {% endif %}
         </form>

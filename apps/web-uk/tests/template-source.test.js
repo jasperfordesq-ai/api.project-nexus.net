@@ -339,4 +339,31 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/wallet/);
   });
+
+  it('keeps public auth and support links and forms behind urlFor()', () => {
+    const templates = [
+      'contact.njk',
+      'cookie-settings.njk',
+      'forgot-password.njk',
+      'login.njk',
+      'register.njk',
+      'report-problem.njk',
+      'reset-password.njk'
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:contact|cookies|legal|login|password|register|report-a-problem)/);
+      expect(template).not.toMatch(/action="\/(?:contact|cookie-consent|login|password|register|report-a-problem)/);
+      expect(template).not.toContain('action="{{ formAction');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/login/);
+    expect(source).toMatch(/urlFor\(["']\/register/);
+    expect(source).toMatch(/urlFor\(["']\/contact/);
+    expect(source).toMatch(/urlFor\(["']\/report-a-problem/);
+  });
 });

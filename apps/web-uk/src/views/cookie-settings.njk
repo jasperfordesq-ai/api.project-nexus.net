@@ -27,7 +27,7 @@
       <h2 class="govuk-heading-m">Essential cookies</h2>
       <p class="govuk-body">These keep the service secure and remember your language and display choices. They are always on because the service cannot work properly without them.</p>
 
-      <form method="post" action="/cookie-consent">
+      <form method="post" action="{{ urlFor('/cookie-consent') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="cookies" value="save">
 
@@ -54,7 +54,7 @@
       </form>
 
       <p class="govuk-body">
-        <a class="govuk-link" href="/legal/cookies">Read our full cookies policy</a>
+        <a class="govuk-link" href="{{ urlFor('/legal/cookies') }}">Read our full cookies policy</a>
       </p>
     </div>
   </div>

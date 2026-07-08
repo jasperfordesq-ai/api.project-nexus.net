@@ -20,7 +20,7 @@
           {% endif %}
         </div>
         <p class="govuk-body govuk-!-margin-top-6">
-          <a class="govuk-link" href="/">Return to the page</a>
+          <a class="govuk-link" href="{{ urlFor(pageUrl or '/') }}">Return to the page</a>
         </p>
       {% else %}
         {% if hasErrors %}
@@ -49,7 +49,7 @@
 
         <p class="govuk-body-l">Use this form to tell us about a problem you found on this page. Do not include personal or financial information, like your password.</p>
 
-        <form method="post" action="/report-a-problem" novalidate>
+        <form method="post" action="{{ urlFor('/report-a-problem') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="page_url" value="{{ pageUrl }}">
 

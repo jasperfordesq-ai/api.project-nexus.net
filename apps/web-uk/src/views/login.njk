@@ -31,7 +31,7 @@
         <h1 class="govuk-heading-xl">Two-factor authentication</h1>
         <p class="govuk-body">Enter the 6-digit code from your authenticator app.</p>
 
-        <form method="post" action="/login/two-factor" novalidate>
+        <form method="post" action="{{ urlFor('/login/two-factor') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukInput({
             label: {
@@ -56,13 +56,13 @@
         </form>
 
         <p class="govuk-body govuk-!-margin-top-4">
-          <a href="/login" class="govuk-link">Cancel and return to sign in</a>
+          <a href="{{ urlFor('/login') }}" class="govuk-link">Cancel and return to sign in</a>
         </p>
 
       {% else %}
         <h1 class="govuk-heading-xl">Sign in</h1>
 
-        <form method="post" action="/login" novalidate data-validate-form data-loading="Signing in...">
+        <form method="post" action="{{ urlFor('/login') }}" novalidate data-validate-form data-loading="Signing in...">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukInput({
             label: {
@@ -97,7 +97,7 @@
           }) }}
 
           <p class="govuk-body govuk-!-margin-bottom-6">
-            <a href="/login/forgot-password" class="govuk-link">Forgot your password?</a>
+            <a href="{{ urlFor('/login/forgot-password') }}" class="govuk-link">Forgot your password?</a>
           </p>
 
           {{ govukInput({
@@ -125,7 +125,7 @@
         </form>
 
         <p class="govuk-body govuk-!-margin-top-6">
-          Don't have an account? <a href="/register" class="govuk-link">Create one</a>
+          Don't have an account? <a href="{{ urlFor('/register') }}" class="govuk-link">Create one</a>
         </p>
       {% endif %}
 

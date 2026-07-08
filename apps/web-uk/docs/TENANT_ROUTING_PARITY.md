@@ -366,9 +366,21 @@ source-level regression first failed on raw `/wallet` links and actions, then
 passed after conversion; a source scan for wallet-local raw `href`/`action`
 strings returns no matches.
 
+The twenty-fourth template-helper source slice extends direct `urlFor()`
+conversion into public auth and support pages. `contact.njk`,
+`cookie-settings.njk`, `login.njk`, `forgot-password.njk`,
+`reset-password.njk`, `register.njk`, and `report-problem.njk` now route their
+local contact, cookie, login, two-factor, forgot-password, reset-password,
+register, legal-cookie-policy, and report-a-problem links/forms through
+`urlFor()`. The source-level regression first failed on raw `/contact` and
+`/login` controls, then passed after conversion; a targeted source scan for
+public/auth/support raw `href`/`action` strings returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange tabs"

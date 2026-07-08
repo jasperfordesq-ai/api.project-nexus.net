@@ -90,6 +90,9 @@ forms, group create/search/member/reaction forms, and leave-group controls.
 Wallet index and manage source templates now also use `urlFor()` for the
 breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
 donation forms.
+Public/auth/support source templates now also use `urlFor()` for contact,
+cookie settings, login, two-factor login, forgot-password, reset-password,
+register, and report-a-problem local links/forms.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the
