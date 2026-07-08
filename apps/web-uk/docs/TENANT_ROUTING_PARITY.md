@@ -135,7 +135,11 @@ Current gaps:
   family now has source-level `urlFor()` coverage for local marketplace links
   and forms. The latest focused source conversion covers the federation member
   detail template, including the back link, federation service navigation,
-  opt-in CTA, connection/message forms, and transfer CTA.
+  opt-in CTA, connection/message forms, and transfer CTA. The latest focused
+  source conversion covers the connections index and network templates,
+  including tabs, pending-request links, member links, action forms,
+  empty-state member CTAs, pagination, search form, load-more links, and
+  route-provided card links/actions.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live

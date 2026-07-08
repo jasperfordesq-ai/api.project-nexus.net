@@ -234,4 +234,29 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).not.toMatch(/action="\/federation/);
     expect(template).toMatch(/urlFor\(["']\/federation/);
   });
+
+  it('keeps connections navigation, member links, forms, and pagination behind urlFor()', () => {
+    const templates = [
+      path.join('connections', 'index.njk'),
+      path.join('connections', 'network.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:connections|members)/);
+      expect(template).not.toMatch(/action="\/connections/);
+      expect(template).not.toContain('baseUrl: "/connections"');
+    }
+
+    expect(templates.join('\n')).not.toContain('href="{{ tabHrefs.accepted }}"');
+    expect(templates.join('\n')).not.toContain('href="{{ connection.messageHref }}"');
+    expect(templates.join('\n')).not.toContain('href="{{ connection.profileHref }}"');
+    expect(templates.join('\n')).not.toContain('action="{{ connection.removeAction }}"');
+    expect(templates.join('\n')).not.toContain('action="{{ connection.acceptAction }}"');
+    expect(templates.join('\n')).not.toContain('action="{{ connection.declineAction }}"');
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/connections/);
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
+  });
 });

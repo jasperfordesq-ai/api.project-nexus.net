@@ -94,7 +94,10 @@ tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
 domain homes send the resolved Host and Origin. The latest federation member
 source slice now routes the federation member back link, federation service
 navigation, opt-in CTA, connection/message forms, and transfer CTA through
-`urlFor()`.
+`urlFor()`. The latest connections source slice now routes the connections
+index tabs, pending-request link, member links, accept/decline/remove forms,
+empty-state member CTAs, pagination base URL, network search form, network
+tabs, load-more links, card actions, and back link through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -151,11 +154,11 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
 
-Latest local verification after the federation member source-helper slice:
+Latest local verification after the connections source-helper slice:
 
-- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `11/11`.
-- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation member"` passed `2/2` selected tests.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `716/716` tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `12/12`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "connections"` passed `5/5` selected tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `717/717` tests.
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 
@@ -230,11 +233,15 @@ scan/edit/delete forms, and shared slot form actions through `urlFor()`.
 `src/views/federation/member.njk` now routes the federation member back link,
 service-navigation links, opt-in CTA, connection/message forms, and transfer
 CTA through `urlFor()`.
+`src/views/connections/index.njk` and `network.njk` now route the connections
+tabs, pending-request link, member links, action forms, empty-state member CTAs,
+pagination, network search form, tab links, load-more links, route-provided card
+links/actions, and back link through `urlFor()`.
 Source-level regressions in `tests/template-source.test.js` guard these pages
 from drifting back to literal root-relative local links/forms.
 Verification for the account, activity, achievements, leaderboard/NEXUS,
-detail/report, marketplace, and federation member slices included deliberate
-failing source-test runs before the template fixes,
+detail/report, marketplace, federation member, and connections slices included
+deliberate failing source-test runs before the template fixes,
 then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
 passed `9/9`,
@@ -250,12 +257,13 @@ check passed `2/2` selected tests, and the focused marketplace my-listings
 render check passed `1/1` selected test. The focused marketplace browse/detail/
 buyer/search/seller/onboarding and coupon/order/pickup-slot render checks passed
 `26/26` selected marketplace tests. The focused federation member render check
-passed `2/2` selected tests. The latest source guard passed `11/11`, and
+passed `2/2` selected tests. The focused connections render check passed `5/5`
+selected tests. The latest source guard passed `12/12`, and
 a source scan for literal `href="/marketplace`, `action="/marketplace`,
 `action="{{ action }}"`, and `href="{{ tabItem.href }}"` in
 `src/views/marketplace/*.njk` returned no matches. Broad verification after
-the latest federation member template-helper slice also passed: full
-`npm --prefix apps/web-uk test -- --runInBand` reported `716/716`,
+the latest connections template-helper slice also passed: full
+`npm --prefix apps/web-uk test -- --runInBand` reported `717/717`,
 `npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` reported `608/608` matched,
 `0` missing, `0` extra Web UK routes, and `3` ignored infrastructure routes.

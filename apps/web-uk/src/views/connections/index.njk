@@ -25,17 +25,17 @@
       <nav class="govuk-tabs" data-module="govuk-tabs">
         <ul class="govuk-tabs__list">
           <li class="govuk-tabs__list-item {% if currentStatus == 'all' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="/connections">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections') }}">
               All
             </a>
           </li>
           <li class="govuk-tabs__list-item {% if currentStatus == 'accepted' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="/connections?status=accepted">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?status=accepted') }}">
               Connected
             </a>
           </li>
           <li class="govuk-tabs__list-item {% if currentStatus == 'pending' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="/connections?status=pending">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?status=pending') }}">
               Pending
             </a>
           </li>
@@ -43,7 +43,7 @@
       </nav>
 
       <p class="govuk-body govuk-!-margin-bottom-6">
-        <a href="/connections/network?tab=pending_received" class="govuk-link">View pending requests</a>
+        <a href="{{ urlFor('/connections/network?tab=pending_received') }}" class="govuk-link">View pending requests</a>
       </p>
 
       {% if connections.length > 0 %}
@@ -64,7 +64,7 @@
                   <div class="app-member-cell">
                     {% set user = (connection.otherUser or connection.other_user) %}
                     {% include "partials/avatar.njk" %}
-                    <a href="/members/{{ (connection.otherUser or connection.other_user).id }}" class="govuk-link">
+                    <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
                       {{ (connection.otherUser or connection.other_user).first_name or (connection.otherUser or connection.other_user).firstName }} {{ (connection.otherUser or connection.other_user).last_name or (connection.otherUser or connection.other_user).lastName }}
                     </a>
                   </div>
@@ -92,7 +92,7 @@
                 </td>
                 <td class="govuk-table__cell">
                   {% if connection.status == 'accepted' %}
-                    <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+                    <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       {{ govukButton({
                         text: "Remove",
@@ -104,7 +104,7 @@
                     </form>
                   {% elif connection.status == 'pending' %}
                     {% if connection.isRequester or connection.is_requester %}
-                      <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukButton({
                           text: "Cancel",
@@ -112,14 +112,14 @@
                         }) }}
                       </form>
                     {% else %}
-                      <form action="/connections/{{ connection.id }}/accept" method="post" style="display: inline;">
+                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/accept') }}" method="post" style="display: inline;">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukButton({
                           text: "Accept",
                           classes: "govuk-!-margin-bottom-0 govuk-!-margin-right-2"
                         }) }}
                       </form>
-                      <form action="/connections/{{ connection.id }}/decline" method="post" style="display: inline;">
+                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/decline') }}" method="post" style="display: inline;">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukButton({
                           text: "Decline",
@@ -141,7 +141,7 @@
             message: "Connect with other community members to start collaborating.",
             action: {
               text: "Browse community members",
-              href: "/members"
+              href: urlFor('/members')
             }
           } %}
         {% elif currentStatus == 'pending' %}
@@ -157,7 +157,7 @@
             message: "Connect with other community members to start collaborating.",
             action: {
               text: "Browse community members",
-              href: "/members"
+              href: urlFor('/members')
             }
           } %}
         {% endif %}
@@ -167,7 +167,7 @@
       {# Pagination #}
       {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
-          baseUrl: "/connections",
+          baseUrl: urlFor('/connections'),
           page: pagination.page,
           totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { status: currentStatus if currentStatus != 'all' else '' }
