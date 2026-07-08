@@ -242,8 +242,55 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/v2/feed/like")]
     public async Task<IActionResult> ToggleLike([FromBody] JsonElement body)
     {
-        var postId = ReadRequiredInt(body, "post_id", "postId", "id");
-        return await TogglePostLike(postId);
+        var targetType = ReadString(body, "target_type", "type")?.Trim().ToLowerInvariant();
+        var targetId = ReadInt(body, "target_id", "post_id", "postId", "id") ?? 0;
+
+        if (string.IsNullOrWhiteSpace(targetType))
+        {
+            targetType = "post";
+        }
+
+        if (targetType == "volunteering")
+        {
+            targetType = "volunteer";
+        }
+
+        if (targetId <= 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "Target is required.", field = "target_id" }
+                }
+            });
+        }
+
+        if (!LaravelFeedTrackingTargetTypes.Contains(targetType))
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "Invalid target type.", field = "target_type" }
+                }
+            });
+        }
+
+        if (!await FeedTrackingTargetExistsAsync(targetType, targetId))
+        {
+            return NotFound(new
+            {
+                errors = new[]
+                {
+                    new { code = "NOT_FOUND", message = "Target not found." }
+                }
+            });
+        }
+
+        return targetType == "post"
+            ? await TogglePostLike(targetId)
+            : await ToggleGenericLike(targetType, targetId);
     }
 
     [HttpPost("/api/v2/feed/posts/{id:int}/hide")]
@@ -479,12 +526,87 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/social/likers")]
     public async Task<IActionResult> Likers([FromBody] JsonElement body)
     {
-        var postId = ReadRequiredInt(body, "post_id", "postId", "id");
-        var data = await _db.PostLikes
-            .Where(l => l.PostId == postId)
-            .Select(l => new { id = l.UserId, name = l.User == null ? null : (l.User.FirstName + " " + l.User.LastName).Trim(), created_at = l.CreatedAt })
+        _ = RequireUserId();
+
+        var targetType = (ReadString(body, "target_type", "type") ?? "post").Trim().ToLowerInvariant();
+        var targetId = ReadInt(body, "target_id", "post_id", "postId", "id") ?? 0;
+        var page = Math.Max(1, ReadInt(body, "page") ?? 1);
+        var limit = Math.Clamp(ReadInt(body, "limit") ?? 20, 5, 50);
+        var offset = (page - 1) * limit;
+        var tenantId = TenantId();
+
+        if (string.IsNullOrWhiteSpace(targetType) || targetId <= 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "Invalid target."
+                    }
+                }
+            });
+        }
+
+        if (!string.Equals(targetType, "post", StringComparison.Ordinal))
+        {
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    likers = Array.Empty<object>(),
+                    total_count = 0,
+                    page,
+                    has_more = false
+                }
+            });
+        }
+
+        var query = _db.PostLikes
+            .AsNoTracking()
+            .Where(l => l.TenantId == tenantId && l.PostId == targetId)
+            .OrderByDescending(l => l.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var likerRows = await query
+            .Skip(offset)
+            .Take(limit)
+            .Select(l => new
+            {
+                id = l.UserId,
+                first_name = l.User == null ? null : l.User.FirstName,
+                last_name = l.User == null ? null : l.User.LastName,
+                avatar_url = l.User == null ? null : l.User.AvatarUrl,
+                liked_at = l.CreatedAt
+            })
             .ToListAsync();
-        return Ok(new { data });
+        var likers = likerRows
+            .Select(l => new
+            {
+                l.id,
+                name = DisplayName(l.first_name, l.last_name),
+                avatar_url = string.IsNullOrWhiteSpace(l.avatar_url)
+                    ? "/assets/img/defaults/default_avatar.png"
+                    : l.avatar_url,
+                liked_at = l.liked_at,
+                liked_at_formatted = l.liked_at.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                likers,
+                total_count = totalCount,
+                page,
+                has_more = offset + likers.Count < totalCount
+            }
+        });
     }
 
     [HttpPost("/api/v2/feed/posts/{id:int}/view")]
@@ -1538,11 +1660,12 @@ public class V15SocialCompatibilityController : ControllerBase
     private async Task<IActionResult> TogglePostLike(int postId)
     {
         var userId = RequireUserId();
-        var existing = await _db.PostLikes.FirstOrDefaultAsync(l => l.PostId == postId && l.UserId == userId);
+        var tenantId = TenantId();
+        var existing = await _db.PostLikes.FirstOrDefaultAsync(l => l.TenantId == tenantId && l.PostId == postId && l.UserId == userId);
         var liked = existing == null;
         if (existing == null)
         {
-            _db.PostLikes.Add(new PostLike { TenantId = TenantId(), PostId = postId, UserId = userId });
+            _db.PostLikes.Add(new PostLike { TenantId = tenantId, PostId = postId, UserId = userId });
         }
         else
         {
@@ -1550,7 +1673,61 @@ public class V15SocialCompatibilityController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { success = true, liked, likes_count = await _db.PostLikes.CountAsync(l => l.PostId == postId) });
+        var count = await _db.PostLikes.CountAsync(l => l.TenantId == tenantId && l.PostId == postId);
+        var action = liked ? "liked" : "unliked";
+        return LaravelLikeData(action, count, liked);
+    }
+
+    private async Task<IActionResult> ToggleGenericLike(string targetType, int targetId)
+    {
+        var userId = RequireUserId();
+        var tenantId = TenantId();
+        var existing = await _db.ContentLikes.FirstOrDefaultAsync(l =>
+            l.TenantId == tenantId &&
+            l.TargetType == targetType &&
+            l.TargetId == targetId &&
+            l.UserId == userId);
+        var liked = existing == null;
+
+        if (existing == null)
+        {
+            _db.ContentLikes.Add(new ContentLike
+            {
+                TenantId = tenantId,
+                TargetType = targetType,
+                TargetId = targetId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            _db.ContentLikes.Remove(existing);
+        }
+
+        await _db.SaveChangesAsync();
+        var count = await _db.ContentLikes.CountAsync(l =>
+            l.TenantId == tenantId &&
+            l.TargetType == targetType &&
+            l.TargetId == targetId);
+        var action = liked ? "liked" : "unliked";
+        return LaravelLikeData(action, count, liked);
+    }
+
+    private IActionResult LaravelLikeData(string action, int likesCount, bool liked)
+    {
+        return Ok(new
+        {
+            success = true,
+            liked,
+            likes_count = likesCount,
+            data = new
+            {
+                action,
+                status = action,
+                likes_count = likesCount
+            }
+        });
     }
 
     private async Task<IActionResult> MuteUserCore(int mutedUserId)
@@ -1965,6 +2142,12 @@ public class V15SocialCompatibilityController : ControllerBase
                 new { code, message }
             }
         });
+    }
+
+    private static string? DisplayName(string? firstName, string? lastName)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
     }
 
     private static string? SanitizeShareComment(string? value)

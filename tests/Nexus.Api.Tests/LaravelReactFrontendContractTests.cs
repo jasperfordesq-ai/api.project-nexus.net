@@ -5100,6 +5100,102 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MentionsSearchV2_UsesLaravelReactSuggestionShapeAndConnectionOrdering()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+            var nonConnection = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = "zara.mention@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Zara",
+                LastName = "Mention",
+                Role = "member",
+                IsActive = true,
+                AvatarUrl = "/storage/avatars/zara.png",
+                CreatedAt = DateTime.UtcNow
+            };
+            var connection = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = "zach.connection@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Zach",
+                LastName = "Connection",
+                Role = "member",
+                IsActive = true,
+                AvatarUrl = "/storage/avatars/zach.png",
+                CreatedAt = DateTime.UtcNow
+            };
+            var inactive = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = "zoe.inactive@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Zoe",
+                LastName = "Inactive",
+                Role = "member",
+                IsActive = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            var otherTenant = new User
+            {
+                TenantId = TestData.Tenant2.Id,
+                Email = "zed.other@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Zed",
+                LastName = "Other",
+                Role = "member",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.Users.AddRange(nonConnection, connection, inactive, otherTenant);
+            await db.SaveChangesAsync();
+
+            db.Connections.Add(new Connection
+            {
+                TenantId = TestData.Tenant1.Id,
+                RequesterId = TestData.MemberUser.Id,
+                AddresseeId = connection.Id,
+                Status = Connection.Statuses.Accepted,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/mentions/search?q=Z&limit=20");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = json.GetProperty("data").EnumerateArray().ToList();
+        data.Should().HaveCount(2);
+
+        var first = data[0];
+        first.GetProperty("id").GetInt32().Should().NotBe(TestData.MemberUser.Id);
+        first.GetProperty("name").GetString().Should().Be("Zach");
+        first.GetProperty("username").GetString().Should().Be("zach.connection@example.test");
+        first.GetProperty("avatar_url").GetString().Should().Be("/storage/avatars/zach.png");
+        first.GetProperty("is_connection").GetBoolean().Should().BeTrue();
+
+        var second = data[1];
+        second.GetProperty("name").GetString().Should().Be("Zara");
+        second.GetProperty("avatar_url").GetString().Should().Be("/storage/avatars/zara.png");
+        second.GetProperty("is_connection").GetBoolean().Should().BeFalse();
+
+        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zoe.inactive@example.test");
+        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zed.other@example.test");
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();

@@ -561,8 +561,55 @@ public class MemberParityController : ControllerBase
     [HttpGet("mentions/search")]
     public async Task<IActionResult> MentionSearch([FromQuery] string? q = null)
     {
-        var users = await _db.Users.Where(u => u.TenantId == TenantId() && (q == null || u.FirstName.Contains(q) || u.LastName.Contains(q) || u.Email.Contains(q))).Take(20).Select(u => new { u.Id, label = u.FirstName + " " + u.LastName, u.Email }).ToListAsync();
-        return Ok(new { data = users });
+        var query = q?.Trim() ?? string.Empty;
+        if (query.Length < 1)
+        {
+            return Ok(new { success = true, data = Array.Empty<object>() });
+        }
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var limit = Math.Clamp(IntFromQuery("limit") ?? 10, 1, 20);
+        var term = query.ToLowerInvariant();
+
+        var connectedUserIds = await _db.Connections
+            .AsNoTracking()
+            .Where(c =>
+                c.TenantId == tenantId &&
+                c.Status == Connection.Statuses.Accepted &&
+                (c.RequesterId == userId || c.AddresseeId == userId))
+            .Select(c => c.RequesterId == userId ? c.AddresseeId : c.RequesterId)
+            .ToListAsync();
+        var connected = connectedUserIds.ToHashSet();
+
+        var matchedUsers = await _db.Users
+            .AsNoTracking()
+            .Where(u =>
+                u.TenantId == tenantId &&
+                u.IsActive &&
+                u.Id != userId &&
+                (u.FirstName.ToLower().Contains(term) ||
+                 u.LastName.ToLower().Contains(term) ||
+                 u.Email.ToLower().Contains(term)))
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.AvatarUrl })
+            .ToListAsync();
+
+        var users = matchedUsers
+            .OrderByDescending(u => connected.Contains(u.Id))
+            .ThenBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Take(limit)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = DisplayName(u.FirstName, u.LastName, u.Email),
+                username = u.Email,
+                avatar_url = u.AvatarUrl,
+                is_connection = connected.Contains(u.Id)
+            })
+            .ToList();
+
+        return Ok(new { success = true, data = users });
     }
 
     [HttpGet("menus/config")]
@@ -1141,12 +1188,19 @@ public class MemberParityController : ControllerBase
         return string.IsNullOrWhiteSpace(name) ? user.Email : name;
     }
 
+    private static string DisplayName(string firstName, string lastName, string email)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? email : name;
+    }
+
     private async Task<User?> CurrentUser() => await _db.Users.FirstOrDefaultAsync(u => u.Id == UserId());
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
+    private int? IntFromQuery(string name) => int.TryParse(Request.Query[name].FirstOrDefault(), out var value) ? value : null;
     private static string Required(string? value, string name) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException($"{name} is required") : value;
     private static int StableId(JsonElement body) => Math.Abs(HashCode.Combine(body.GetRawText()));
     private static string Hex(string value) => Convert.ToHexString(Encoding.UTF8.GetBytes(value));

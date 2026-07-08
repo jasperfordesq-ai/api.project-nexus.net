@@ -78,5 +78,17 @@ public class ResourcesCommentsConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
+
+        modelBuilder.Entity<ContentLike>(entity =>
+        {
+            entity.ToTable("likes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TargetType).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.TargetType, e.TargetId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.TargetType, e.TargetId });
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
     }
 }
