@@ -23,6 +23,10 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class GroupsParityController : ControllerBase
 {
+    private const string GroupTaskKeyPrefix = "compat:group-task:";
+    private const string GroupChatroomKeyPrefix = "compat:group-chatroom:";
+    private const string GroupChatroomMessageKeyPrefix = "compat:group-chatroom-message:";
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
 
@@ -507,21 +511,88 @@ public class GroupsParityController : ControllerBase
         return file == null ? NotFound(new { error = "File not found" }) : Redirect(file.FileUrl);
     }
 
+    [HttpGet("{groupId:int}/chatrooms")]
+    public async Task<IActionResult> Chatrooms(int groupId)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can view chatrooms" });
+
+        var messages = await ReadStoredChatroomMessagesAsync();
+        var rooms = (await ReadStoredChatroomsAsync())
+            .Where(c => c.GroupId == groupId)
+            .OrderByDescending(c => c.IsDefault)
+            .ThenBy(c => c.Name)
+            .Select(c => ToLaravelChatroomDto(c, messages.Count(m => m.ChatroomId == c.Id)))
+            .ToArray();
+
+        return Ok(new { success = true, data = rooms });
+    }
+
     [HttpPost("{groupId:int}/chatrooms")]
-    public IActionResult CreateChatroom(int groupId, [FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(groupId, Str(body, "name") ?? "general")), group_id = groupId, name = Str(body, "name") ?? "general" } });
+    public async Task<IActionResult> CreateChatroom(int groupId, [FromBody] JsonElement body)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can create chatrooms" });
+
+        var name = Str(body, "name")?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest(new { success = false, errors = new[] { new { code = "VALIDATION_ERROR", message = "Chatroom name is required", field = "name" } } });
+
+        var now = DateTime.UtcNow;
+        var config = new TenantConfig
+        {
+            TenantId = TenantId(),
+            Key = $"{GroupChatroomKeyPrefix}{Guid.NewGuid():N}",
+            Value = JsonSerializer.Serialize(new
+            {
+                kind = "group_chatroom",
+                group_id = groupId,
+                name,
+                description = Str(body, "description"),
+                category = Str(body, "category"),
+                is_default = false,
+                is_private = Bool(body, "is_private") ?? false,
+                created_by = UserId(),
+                created_at = now
+            }),
+            CreatedAt = now
+        };
+
+        _db.TenantConfigs.Add(config);
+        await _db.SaveChangesAsync();
+
+        var chatroom = ParseStoredChatroom(config)!;
+        return CreatedAtAction(null, new { success = true, data = ToLaravelChatroomDto(chatroom, 0) });
+    }
 
     [HttpPost("{groupId:int}/chatrooms/{chatroomId:int}/pin/{messageId:int}")]
     public async Task<IActionResult> PinMessage(int groupId, int chatroomId, int messageId)
     {
+        if (!await IsGroupAdminOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group admins can pin messages" });
+
+        var chatroom = await FindStoredChatroomAsync(chatroomId);
+        var message = await FindStoredChatroomMessageAsync(messageId);
+        if (chatroom == null || chatroom.GroupId != groupId)
+            return NotFound(new { error = "Chatroom not found" });
+        if (message == null || message.ChatroomId != chatroomId)
+            return NotFound(new { error = "Message not found" });
+
         if (!await _db.GroupChatroomPins.AnyAsync(p => p.TenantId == TenantId() && p.GroupId == groupId && p.ChatroomId == chatroomId && p.MessageId == messageId))
+        {
             _db.GroupChatroomPins.Add(new GroupChatroomPin { TenantId = TenantId(), GroupId = groupId, ChatroomId = chatroomId, MessageId = messageId, PinnedByUserId = UserId() });
+        }
+
         await _db.SaveChangesAsync();
-        return Ok(new { success = true });
+        return CreatedAtAction(null, new { success = true, data = new { pinned = true } });
     }
 
     [HttpDelete("{groupId:int}/chatrooms/{chatroomId:int}/pin/{messageId:int}")]
     public async Task<IActionResult> UnpinMessage(int groupId, int chatroomId, int messageId)
     {
+        if (!await IsGroupAdminOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group admins can unpin messages" });
+
         var pin = await _db.GroupChatroomPins.FirstOrDefaultAsync(p => p.TenantId == TenantId() && p.GroupId == groupId && p.ChatroomId == chatroomId && p.MessageId == messageId);
         if (pin != null) _db.GroupChatroomPins.Remove(pin);
         await _db.SaveChangesAsync();
@@ -529,7 +600,140 @@ public class GroupsParityController : ControllerBase
     }
 
     [HttpGet("{groupId:int}/chatrooms/{chatroomId:int}/pinned")]
-    public async Task<IActionResult> PinnedMessages(int groupId, int chatroomId) => Ok(new { data = await _db.GroupChatroomPins.Where(p => p.TenantId == TenantId() && p.GroupId == groupId && p.ChatroomId == chatroomId).ToListAsync() });
+    public async Task<IActionResult> PinnedMessages(int groupId, int chatroomId)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can view pinned messages" });
+
+        var messages = await ReadStoredChatroomMessagesAsync();
+        var pins = await _db.GroupChatroomPins
+            .AsNoTracking()
+            .Where(p => p.TenantId == TenantId() && p.GroupId == groupId && p.ChatroomId == chatroomId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        var data = pins
+            .Select(pin => new { Pin = pin, Message = messages.FirstOrDefault(m => m.Id == pin.MessageId) })
+            .Where(item => item.Message != null)
+            .Select(item => ToLaravelPinnedMessageDto(item.Message!, item.Pin.PinnedByUserId, item.Pin.CreatedAt))
+            .ToArray();
+
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("/api/group-chatrooms/{chatroomId:int}/messages")]
+    public async Task<IActionResult> ChatroomMessages(int chatroomId)
+    {
+        var chatroom = await FindStoredChatroomAsync(chatroomId);
+        if (chatroom == null) return NotFound(new { error = "Chatroom not found" });
+        if (!await IsGroupMemberOrCreator(chatroom.GroupId))
+            return StatusCode(403, new { error = "Only group members can view messages" });
+
+        var perPage = QueryInt("per_page", 50, 1, 100);
+        var cursor = QueryInt("cursor", null, 1, int.MaxValue);
+        var messages = (await ReadStoredChatroomMessagesAsync())
+            .Where(m => m.ChatroomId == chatroomId)
+            .Where(m => cursor == null || m.Id < cursor)
+            .OrderByDescending(m => m.Id)
+            .Take(perPage + 1)
+            .ToList();
+
+        var hasMore = messages.Count > perPage;
+        if (hasMore) messages.RemoveAt(messages.Count - 1);
+
+        return Ok(new
+        {
+            success = true,
+            data = messages.Select(ToLaravelChatroomMessageDto).ToArray(),
+            meta = new
+            {
+                cursor = messages.Count > 0 ? messages[^1].Id.ToString() : null,
+                per_page = perPage,
+                has_more = hasMore
+            }
+        });
+    }
+
+    [HttpPost("/api/group-chatrooms/{chatroomId:int}/messages")]
+    public async Task<IActionResult> PostChatroomMessage(int chatroomId, [FromBody] JsonElement body)
+    {
+        var chatroom = await FindStoredChatroomAsync(chatroomId);
+        if (chatroom == null) return NotFound(new { error = "Chatroom not found" });
+        if (!await IsGroupMemberOrCreator(chatroom.GroupId))
+            return StatusCode(403, new { error = "Only group members can post messages" });
+
+        var text = Str(body, "body")?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return BadRequest(new { success = false, errors = new[] { new { code = "VALIDATION_ERROR", message = "Message body is required", field = "body" } } });
+
+        var now = DateTime.UtcNow;
+        var config = new TenantConfig
+        {
+            TenantId = TenantId(),
+            Key = $"{GroupChatroomMessageKeyPrefix}{Guid.NewGuid():N}",
+            Value = JsonSerializer.Serialize(new
+            {
+                kind = "group_chatroom_message",
+                group_id = chatroom.GroupId,
+                chatroom_id = chatroomId,
+                user_id = UserId(),
+                body = text,
+                created_at = now,
+                updated_at = (DateTime?)null
+            }),
+            CreatedAt = now
+        };
+
+        _db.TenantConfigs.Add(config);
+        await _db.SaveChangesAsync();
+
+        return CreatedAtAction(null, new { success = true, data = new { id = config.Id } });
+    }
+
+    [HttpDelete("/api/group-chatroom-messages/{messageId:int}")]
+    public async Task<IActionResult> DeleteChatroomMessage(int messageId)
+    {
+        var config = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Id == messageId && c.Key.StartsWith(GroupChatroomMessageKeyPrefix));
+        var message = config == null ? null : ParseStoredChatroomMessage(config);
+        if (config == null || message == null) return NotFound(new { error = "Message not found" });
+
+        if (message.UserId != UserId() && !await IsGroupAdminOrCreator(message.GroupId))
+            return StatusCode(403, new { error = "Only the author or group admins can delete messages" });
+
+        var pins = await _db.GroupChatroomPins.Where(p => p.TenantId == TenantId() && p.MessageId == messageId).ToListAsync();
+        _db.GroupChatroomPins.RemoveRange(pins);
+        _db.TenantConfigs.Remove(config);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("/api/group-chatrooms/{chatroomId:int}")]
+    public async Task<IActionResult> DeleteStoredChatroom(int chatroomId)
+    {
+        var config = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Id == chatroomId && c.Key.StartsWith(GroupChatroomKeyPrefix));
+        var chatroom = config == null ? null : ParseStoredChatroom(config);
+        if (config == null || chatroom == null) return NotFound(new { error = "Chatroom not found" });
+        if (chatroom.IsDefault) return StatusCode(403, new { error = "Default chatroom cannot be deleted" });
+        if (chatroom.CreatedBy != UserId() && !await IsGroupAdminOrCreator(chatroom.GroupId))
+            return StatusCode(403, new { error = "Only the creator or group admins can delete chatrooms" });
+
+        var messageRows = await _db.TenantConfigs
+            .Where(c => c.TenantId == TenantId() && c.Key.StartsWith(GroupChatroomMessageKeyPrefix))
+            .ToListAsync();
+        var deletedMessageIds = messageRows
+            .Select(ParseStoredChatroomMessage)
+            .Where(m => m?.ChatroomId == chatroomId)
+            .Select(m => m!.Id)
+            .ToHashSet();
+        var messagesToDelete = messageRows.Where(c => deletedMessageIds.Contains(c.Id)).ToList();
+        var pins = await _db.GroupChatroomPins.Where(p => p.TenantId == TenantId() && p.ChatroomId == chatroomId).ToListAsync();
+
+        _db.GroupChatroomPins.RemoveRange(pins);
+        _db.TenantConfigs.RemoveRange(messagesToDelete);
+        _db.TenantConfigs.Remove(config);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
     [HttpPost("{groupId:int}/discussions/{discussionId:int}/messages")]
     public async Task<IActionResult> DiscussionMessage(int groupId, int discussionId, [FromBody] JsonElement body)
@@ -541,13 +745,101 @@ public class GroupsParityController : ControllerBase
     }
 
     [HttpGet("{groupId:int}/documents")]
-    public async Task<IActionResult> Documents(int groupId) => Ok(new { data = await _db.GroupFiles.Where(f => f.TenantId == TenantId() && f.GroupId == groupId).ToListAsync() });
+    public async Task<IActionResult> Documents(int groupId)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can view documents" });
+
+        var perPage = QueryInt("per_page", 50, 1, 100);
+        var cursor = QueryInt("cursor", null, 1, int.MaxValue);
+
+        var documents = await _db.GroupFiles
+            .AsNoTracking()
+            .Include(f => f.UploadedBy)
+            .Where(f => f.TenantId == TenantId() && f.GroupId == groupId)
+            .Where(f => cursor == null || f.Id < cursor)
+            .OrderByDescending(f => f.Id)
+            .Take(perPage + 1)
+            .ToListAsync();
+
+        var hasMore = documents.Count > perPage;
+        if (hasMore) documents.RemoveAt(documents.Count - 1);
+
+        return Ok(new
+        {
+            success = true,
+            data = documents.Select(ToLaravelTeamDocumentDto).ToArray(),
+            meta = new
+            {
+                cursor = documents.Count > 0 ? documents[^1].Id.ToString() : null,
+                per_page = perPage,
+                has_more = hasMore
+            }
+        });
+    }
 
     [HttpGet("{groupId:int}/tasks")]
-    public IActionResult Tasks(int groupId) => Ok(new { data = Array.Empty<object>() });
+    public async Task<IActionResult> Tasks(int groupId)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can view tasks" });
+
+        var perPage = QueryInt("per_page", 50, 1, 100);
+        var status = Request.Query["status"].FirstOrDefault();
+        var assignedTo = QueryInt("assigned_to", null, 1, int.MaxValue);
+        var cursor = QueryInt("cursor", null, 1, int.MaxValue);
+
+        var tasks = await ReadStoredGroupTasksAsync();
+        var filtered = tasks
+            .Where(t => t.GroupId == groupId)
+            .Where(t => string.IsNullOrWhiteSpace(status) || t.Status == status)
+            .Where(t => assignedTo == null || t.AssignedTo == assignedTo)
+            .Where(t => cursor == null || t.Id < cursor)
+            .OrderByDescending(t => t.Id)
+            .Take(perPage + 1)
+            .ToList();
+
+        var hasMore = filtered.Count > perPage;
+        if (hasMore) filtered.RemoveAt(filtered.Count - 1);
+
+        return Ok(new
+        {
+            success = true,
+            data = filtered.Select(ToLaravelTeamTaskDto).ToArray(),
+            meta = new
+            {
+                cursor = filtered.Count > 0 ? filtered[^1].Id.ToString() : null,
+                per_page = perPage,
+                has_more = hasMore
+            }
+        });
+    }
 
     [HttpGet("{groupId:int}/task-stats")]
-    public IActionResult TaskStats(int groupId) => Ok(new { data = new { open = 0, completed = 0 } });
+    public async Task<IActionResult> TaskStats(int groupId)
+    {
+        if (!await IsGroupMemberOrCreator(groupId))
+            return StatusCode(403, new { error = "Only group members can view tasks" });
+
+        var today = DateTime.UtcNow.Date;
+        var tasks = (await ReadStoredGroupTasksAsync()).Where(t => t.GroupId == groupId).ToArray();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                total = tasks.Length,
+                todo = tasks.Count(t => t.Status == "todo"),
+                in_progress = tasks.Count(t => t.Status == "in_progress"),
+                done = tasks.Count(t => t.Status == "done"),
+                overdue = tasks.Count(t =>
+                    t.Status != "done" &&
+                    DateTime.TryParse(t.DueDate, out var dueDate) &&
+                    dueDate.Date < today)
+            }
+        });
+    }
 
     private async Task<object> AnalyticsData(int groupId)
     {
@@ -593,6 +885,278 @@ public class GroupsParityController : ControllerBase
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
 
+    private async Task<bool> IsGroupMemberOrCreator(int groupId)
+    {
+        var userId = UserId();
+        var group = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group?.CreatedById == userId) return true;
+
+        return await _db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId);
+    }
+
+    private async Task<bool> IsGroupAdminOrCreator(int groupId)
+    {
+        var userId = UserId();
+        var group = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group?.CreatedById == userId) return true;
+
+        return await _db.GroupMembers.AnyAsync(m =>
+            m.GroupId == groupId &&
+            m.UserId == userId &&
+            (m.Role == Group.Roles.Owner || m.Role == Group.Roles.Admin));
+    }
+
+    private async Task<List<StoredGroupTask>> ReadStoredGroupTasksAsync()
+    {
+        var tenantId = TenantId();
+        var configs = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(GroupTaskKeyPrefix))
+            .ToListAsync();
+
+        return configs
+            .Select(ParseStoredGroupTask)
+            .Where(task => task != null)
+            .Cast<StoredGroupTask>()
+            .ToList();
+    }
+
+    private static StoredGroupTask? ParseStoredGroupTask(TenantConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Value)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(config.Value);
+            var root = document.RootElement;
+            var groupId = Int(root, "group_id");
+            if (groupId == null) return null;
+
+            return new StoredGroupTask(
+                config.Id,
+                groupId.Value,
+                Str(root, "title") ?? "Untitled task",
+                Str(root, "description"),
+                Int(root, "assigned_to"),
+                Str(root, "status") ?? "todo",
+                Str(root, "priority") ?? "medium",
+                Str(root, "due_date"),
+                Int(root, "created_by") ?? 0,
+                Date(root, "created_at") ?? config.CreatedAt,
+                Date(root, "updated_at") ?? config.UpdatedAt,
+                Date(root, "completed_at"));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static object ToLaravelTeamTaskDto(StoredGroupTask task) => new
+    {
+        id = task.Id,
+        group_id = task.GroupId,
+        title = task.Title,
+        description = task.Description,
+        assigned_to = task.AssignedTo,
+        status = task.Status,
+        priority = task.Priority,
+        due_date = task.DueDate,
+        created_by = task.CreatedBy,
+        created_at = task.CreatedAt,
+        updated_at = task.UpdatedAt,
+        completed_at = task.CompletedAt
+    };
+
+    private static object ToLaravelTeamDocumentDto(GroupFile document) => new
+    {
+        id = document.Id,
+        group_id = document.GroupId,
+        user_id = document.UploadedById,
+        filename = Path.GetFileName(document.FileUrl),
+        original_name = document.FileName,
+        mime_type = document.ContentType,
+        size = document.FileSizeBytes,
+        url = document.FileUrl,
+        created_at = document.CreatedAt,
+        uploader = document.UploadedBy == null
+            ? null
+            : new
+            {
+                id = document.UploadedBy.Id,
+                name = $"{document.UploadedBy.FirstName} {document.UploadedBy.LastName}".Trim(),
+                avatar_url = document.UploadedBy.AvatarUrl
+            }
+    };
+
+    private async Task<StoredChatroom?> FindStoredChatroomAsync(int chatroomId)
+    {
+        var config = await _db.TenantConfigs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Id == chatroomId && c.Key.StartsWith(GroupChatroomKeyPrefix));
+        return config == null ? null : ParseStoredChatroom(config);
+    }
+
+    private async Task<StoredChatroomMessage?> FindStoredChatroomMessageAsync(int messageId)
+    {
+        var config = await _db.TenantConfigs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Id == messageId && c.Key.StartsWith(GroupChatroomMessageKeyPrefix));
+        return config == null ? null : ParseStoredChatroomMessage(config);
+    }
+
+    private async Task<List<StoredChatroom>> ReadStoredChatroomsAsync()
+    {
+        var tenantId = TenantId();
+        var configs = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(GroupChatroomKeyPrefix))
+            .ToListAsync();
+
+        return configs
+            .Select(ParseStoredChatroom)
+            .Where(chatroom => chatroom != null)
+            .Cast<StoredChatroom>()
+            .ToList();
+    }
+
+    private async Task<List<StoredChatroomMessage>> ReadStoredChatroomMessagesAsync()
+    {
+        var tenantId = TenantId();
+        var configs = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(GroupChatroomMessageKeyPrefix))
+            .ToListAsync();
+
+        return configs
+            .Select(ParseStoredChatroomMessage)
+            .Where(message => message != null)
+            .Cast<StoredChatroomMessage>()
+            .ToList();
+    }
+
+    private static StoredChatroom? ParseStoredChatroom(TenantConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Value)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(config.Value);
+            var root = document.RootElement;
+            var groupId = Int(root, "group_id");
+            if (groupId == null) return null;
+
+            return new StoredChatroom(
+                config.Id,
+                groupId.Value,
+                Str(root, "name") ?? "general",
+                Str(root, "description"),
+                Str(root, "category"),
+                Bool(root, "is_default") ?? false,
+                Bool(root, "is_private") ?? false,
+                Int(root, "created_by") ?? 0,
+                Date(root, "created_at") ?? config.CreatedAt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static StoredChatroomMessage? ParseStoredChatroomMessage(TenantConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Value)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(config.Value);
+            var root = document.RootElement;
+            var groupId = Int(root, "group_id");
+            var chatroomId = Int(root, "chatroom_id");
+            var userId = Int(root, "user_id");
+            if (groupId == null || chatroomId == null || userId == null) return null;
+
+            return new StoredChatroomMessage(
+                config.Id,
+                groupId.Value,
+                chatroomId.Value,
+                userId.Value,
+                Str(root, "body") ?? string.Empty,
+                Date(root, "created_at") ?? config.CreatedAt,
+                Date(root, "updated_at") ?? config.UpdatedAt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static object ToLaravelChatroomDto(StoredChatroom chatroom, int messagesCount) => new
+    {
+        id = chatroom.Id,
+        group_id = chatroom.GroupId,
+        name = chatroom.Name,
+        description = chatroom.Description,
+        category = chatroom.Category,
+        is_default = chatroom.IsDefault,
+        is_private = chatroom.IsPrivate,
+        messages_count = messagesCount,
+        created_by = chatroom.CreatedBy,
+        created_at = chatroom.CreatedAt
+    };
+
+    private object ToLaravelChatroomMessageDto(StoredChatroomMessage message)
+    {
+        var author = _db.Users.AsNoTracking().FirstOrDefault(u => u.Id == message.UserId);
+        return new
+        {
+            id = message.Id,
+            chatroom_id = message.ChatroomId,
+            user_id = message.UserId,
+            body = message.Body,
+            created_at = message.CreatedAt,
+            updated_at = message.UpdatedAt,
+            author = new
+            {
+                id = message.UserId,
+                name = author == null ? string.Empty : $"{author.FirstName} {author.LastName}".Trim(),
+                avatar_url = author?.AvatarUrl
+            }
+        };
+    }
+
+    private object ToLaravelPinnedMessageDto(StoredChatroomMessage message, int pinnedBy, DateTime pinnedAt)
+    {
+        var author = _db.Users.AsNoTracking().FirstOrDefault(u => u.Id == message.UserId);
+        return new
+        {
+            id = message.Id,
+            chatroom_id = message.ChatroomId,
+            user_id = message.UserId,
+            body = message.Body,
+            created_at = message.CreatedAt,
+            author = new
+            {
+                id = message.UserId,
+                name = author == null ? string.Empty : $"{author.FirstName} {author.LastName}".Trim(),
+                avatar_url = author?.AvatarUrl
+            },
+            pinned_by = pinnedBy,
+            pinned_at = pinnedAt
+        };
+    }
+
+    private int QueryInt(string name, int fallback, int min, int max) =>
+        QueryInt(name, (int?)fallback, min, max)!.Value;
+
+    private int? QueryInt(string name, int? fallback, int min, int max)
+    {
+        if (!int.TryParse(Request.Query[name].FirstOrDefault(), out var value))
+            return fallback;
+
+        return Math.Clamp(value, min, max);
+    }
+
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static string? Raw(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) ? v.GetRawText() : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
@@ -604,4 +1168,38 @@ public class GroupsParityController : ControllerBase
     private static string Csv(string? value) => "\"" + (value ?? string.Empty).Replace("\"", "\"\"") + "\"";
     private static object MapGroup(Group g) => new { g.Id, g.Name, g.Description, g.IsPrivate, g.ImageUrl, g.CreatedAt };
     private static object? MapUser(User? u) => u == null ? null : new { u.Id, u.Email, u.FirstName, u.LastName };
+
+    private sealed record StoredGroupTask(
+        int Id,
+        int GroupId,
+        string Title,
+        string? Description,
+        int? AssignedTo,
+        string Status,
+        string Priority,
+        string? DueDate,
+        int CreatedBy,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt,
+        DateTime? CompletedAt);
+
+    private sealed record StoredChatroom(
+        int Id,
+        int GroupId,
+        string Name,
+        string? Description,
+        string? Category,
+        bool IsDefault,
+        bool IsPrivate,
+        int CreatedBy,
+        DateTime CreatedAt);
+
+    private sealed record StoredChatroomMessage(
+        int Id,
+        int GroupId,
+        int ChatroomId,
+        int UserId,
+        string Body,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt);
 }

@@ -3086,13 +3086,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { data = new { member_id = memberId, tenant_id = tenantId, status = "available" } });
     }
 
-    [HttpGet("api/groups/{id:int}/chatrooms")]
-    [Authorize]
-    public IActionResult GroupChatrooms(int id)
-    {
-        return Ok(new { data = Array.Empty<object>(), chatrooms = Array.Empty<object>() });
-    }
-
     [HttpGet("api/groups/{groupId:int}/discussions/{discussionId:int}/messages")]
     [Authorize]
     public async Task<IActionResult> GroupDiscussionMessages(int groupId, int discussionId)

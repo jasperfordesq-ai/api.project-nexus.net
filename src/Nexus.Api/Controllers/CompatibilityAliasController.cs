@@ -736,6 +736,9 @@ public class CompatibilityAliasController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        if (!await IsGroupMemberOrCreator(id, userId.Value))
+            return StatusCode(403, new { error = "Only group members can upload documents" });
+
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
@@ -745,7 +748,40 @@ public class CompatibilityAliasController : ControllerBase
         if (error != null) return BadRequest(new { error });
 
         var fileUrl = BuildUploadUrl(upload);
-        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id });
+        var groupFile = new GroupFile
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            GroupId = id,
+            UploadedById = userId.Value,
+            FileName = file.FileName,
+            FileUrl = fileUrl ?? string.Empty,
+            ContentType = file.ContentType,
+            FileSizeBytes = file.Length,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.GroupFiles.Add(groupFile);
+        await _db.SaveChangesAsync();
+
+        var data = new
+        {
+            id = groupFile.Id,
+            group_id = groupFile.GroupId,
+            user_id = groupFile.UploadedById,
+            filename = Path.GetFileName(groupFile.FileUrl),
+            original_name = groupFile.FileName,
+            mime_type = groupFile.ContentType,
+            size = groupFile.FileSizeBytes,
+            url = groupFile.FileUrl,
+            created_at = groupFile.CreatedAt
+        };
+
+        if (IsV2Request())
+        {
+            return CreatedAtAction(null, new { success = true, data });
+        }
+
+        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id, id = groupFile.Id, data });
     }
 
     /// <summary>
@@ -1648,12 +1684,26 @@ public class CompatibilityAliasController : ControllerBase
         var group = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
         if (group == null) return NotFound(new { error = "Group not found" });
 
-        var isMember = group.CreatedById == userId.Value ||
-            await _db.GroupMembers.AnyAsync(m => m.GroupId == id && m.UserId == userId.Value);
-        if (!isMember) return StatusCode(403, new { error = "Only group members can create tasks" });
+        if (!await IsGroupMemberOrCreator(id, userId.Value))
+            return StatusCode(403, new { error = "Only group members can create tasks" });
+
+        var isV2 = IsV2Request();
 
         var title = ReadStringProperty(request, "title", "name") ?? "Untitled task";
-        var status = ReadStringProperty(request, "status") ?? "open";
+        if (string.IsNullOrWhiteSpace(title))
+            return BadRequest(LaravelValidationError("title", "Task title is required"));
+
+        var status = ReadStringProperty(request, "status") ?? (isV2 ? "todo" : "open");
+        if (isV2 && !IsValidTeamTaskStatus(status))
+            return BadRequest(LaravelValidationError("status", "Invalid task status"));
+
+        var priority = ReadStringProperty(request, "priority") ?? "medium";
+        if (isV2 && !IsValidTeamTaskPriority(priority))
+            return BadRequest(LaravelValidationError("priority", "Invalid task priority"));
+
+        var description = ReadStringProperty(request, "description");
+        var assignedTo = ReadIntProperty(request, "assigned_to");
+        var dueDate = ReadStringProperty(request, "due_date");
         var now = DateTime.UtcNow;
         var config = await AddTenantConfigValue(GroupTaskKeyPrefix, new
         {
@@ -1661,11 +1711,18 @@ public class CompatibilityAliasController : ControllerBase
             group_id = id,
             created_by = userId.Value,
             title,
+            description,
+            assigned_to = assignedTo,
             status,
-            payload = request ?? EmptyPayload(),
+            priority,
+            due_date = dueDate,
             created_at = now,
+            completed_at = status == "done" ? now : (DateTime?)null,
             updated_at = (DateTime?)null
         });
+
+        var task = ParseStoredGroupTask(config)!;
+        var data = ToLaravelTeamTaskDto(task);
 
         return CreatedAtAction(null, new
         {
@@ -1673,7 +1730,8 @@ public class CompatibilityAliasController : ControllerBase
             id = config.Id,
             group_id = id,
             title,
-            status
+            status,
+            data
         });
     }
 
@@ -1758,7 +1816,30 @@ public class CompatibilityAliasController : ControllerBase
         _db.GroupFiles.Remove(document);
         await _db.SaveChangesAsync();
 
+        if (IsV2Request())
+        {
+            return NoContent();
+        }
+
         return Ok(new { success = true, message = "Document deleted" });
+    }
+
+    /// <summary>
+    /// GET /api/team-tasks/{id} — Show team task.
+    /// </summary>
+    [HttpGet("api/team-tasks/{id:int}")]
+    public async Task<IActionResult> ShowTeamTask(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var config = await FindTenantConfigByIdAndPrefix(id, GroupTaskKeyPrefix);
+        var task = config == null ? null : ParseStoredGroupTask(config);
+        if (task == null) return NotFound(new { error = "Team task not found" });
+        if (!await IsGroupMemberOrCreator(task.GroupId, userId.Value))
+            return StatusCode(403, new { error = "Only group members can view tasks" });
+
+        return Ok(new { success = true, data = ToLaravelTeamTaskDto(task) });
     }
 
     /// <summary>
@@ -1778,6 +1859,11 @@ public class CompatibilityAliasController : ControllerBase
         _db.TenantConfigs.Remove(task);
         await _db.SaveChangesAsync();
 
+        if (IsV2Request())
+        {
+            return NoContent();
+        }
+
         return Ok(new { success = true, message = "Team task deleted", id });
     }
 
@@ -1795,11 +1881,31 @@ public class CompatibilityAliasController : ControllerBase
         if (!await CanManageStoredGroupTask(task, userId.Value))
             return StatusCode(403, new { error = "Only the task creator or group admins can update tasks" });
 
-        var groupId = ReadIntProperty(task.Value, "group_id");
-        var createdBy = ReadIntProperty(task.Value, "created_by") ?? userId.Value;
-        var title = ReadStringProperty(request, "title", "name") ?? ReadStringProperty(task.Value, "title") ?? "Untitled task";
-        var status = ReadStringProperty(request, "status") ?? ReadStringProperty(task.Value, "status") ?? "open";
+        var current = ParseStoredGroupTask(task);
+        if (current == null) return NotFound(new { error = "Team task not found" });
+
+        var isV2 = IsV2Request();
+        var groupId = current.GroupId;
+        var createdBy = current.CreatedBy;
+        var title = ReadStringProperty(request, "title", "name") ?? current.Title;
+        if (string.IsNullOrWhiteSpace(title))
+            return BadRequest(LaravelValidationError("title", "Task title cannot be empty"));
+
+        var status = ReadStringProperty(request, "status") ?? current.Status;
+        if (isV2 && !IsValidTeamTaskStatus(status))
+            return BadRequest(LaravelValidationError("status", "Invalid task status"));
+
+        var priority = ReadStringProperty(request, "priority") ?? current.Priority;
+        if (isV2 && !IsValidTeamTaskPriority(priority))
+            return BadRequest(LaravelValidationError("priority", "Invalid task priority"));
+
+        var description = ReadStringProperty(request, "description") ?? current.Description;
+        var assignedTo = ReadIntProperty(request, "assigned_to") ?? current.AssignedTo;
+        var dueDate = ReadStringProperty(request, "due_date") ?? current.DueDate;
         var now = DateTime.UtcNow;
+        var completedAt = status == "done"
+            ? current.CompletedAt ?? now
+            : (DateTime?)null;
 
         task.Value = JsonSerializer.Serialize(new
         {
@@ -1807,15 +1913,31 @@ public class CompatibilityAliasController : ControllerBase
             group_id = groupId,
             created_by = createdBy,
             title,
+            description,
+            assigned_to = assignedTo,
             status,
-            payload = request ?? EmptyPayload(),
+            priority,
+            due_date = dueDate,
+            created_at = current.CreatedAt,
+            completed_at = completedAt,
             updated_by = userId.Value,
             updated_at = now
         });
         task.UpdatedAt = now;
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Team task updated", id = task.Id, group_id = groupId, title, status });
+        var updated = ParseStoredGroupTask(task)!;
+
+        return Ok(new
+        {
+            success = true,
+            message = "Team task updated",
+            id = task.Id,
+            group_id = groupId,
+            title,
+            status,
+            data = ToLaravelTeamTaskDto(updated)
+        });
     }
 
     // ──────────────────────────────────────────────
@@ -2717,6 +2839,99 @@ public class CompatibilityAliasController : ControllerBase
             (m.Role == Group.Roles.Owner || m.Role == Group.Roles.Admin));
     }
 
+    private async Task<bool> IsGroupMemberOrCreator(int groupId, int userId)
+    {
+        var group = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group?.CreatedById == userId) return true;
+
+        return await _db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId);
+    }
+
+    private async Task<List<StoredGroupTask>> ReadStoredGroupTasksAsync()
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var configs = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(GroupTaskKeyPrefix))
+            .ToListAsync();
+
+        return configs
+            .Select(ParseStoredGroupTask)
+            .Where(task => task != null)
+            .Cast<StoredGroupTask>()
+            .ToList();
+    }
+
+    private static StoredGroupTask? ParseStoredGroupTask(TenantConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Value)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(config.Value);
+            var root = document.RootElement;
+            var groupId = ReadIntProperty(root, "group_id");
+            if (groupId == null) return null;
+
+            return new StoredGroupTask(
+                config.Id,
+                groupId.Value,
+                ReadStringProperty(root, "title") ?? "Untitled task",
+                ReadStringProperty(root, "description"),
+                ReadIntProperty(root, "assigned_to"),
+                ReadStringProperty(root, "status") ?? "todo",
+                ReadStringProperty(root, "priority") ?? "medium",
+                ReadStringProperty(root, "due_date"),
+                ReadIntProperty(root, "created_by") ?? 0,
+                ReadDateTimeProperty(root, "created_at") ?? config.CreatedAt,
+                ReadDateTimeProperty(root, "updated_at") ?? config.UpdatedAt,
+                ReadDateTimeProperty(root, "completed_at"));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static object ToLaravelTeamTaskDto(StoredGroupTask task) => new
+    {
+        id = task.Id,
+        group_id = task.GroupId,
+        title = task.Title,
+        description = task.Description,
+        assigned_to = task.AssignedTo,
+        status = task.Status,
+        priority = task.Priority,
+        due_date = task.DueDate,
+        created_by = task.CreatedBy,
+        created_at = task.CreatedAt,
+        updated_at = task.UpdatedAt,
+        completed_at = task.CompletedAt
+    };
+
+    private bool IsV2Request() =>
+        Request.Path.Value?.StartsWith("/api/v2/", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static bool IsValidTeamTaskStatus(string status) =>
+        status is "todo" or "in_progress" or "done";
+
+    private static bool IsValidTeamTaskPriority(string priority) =>
+        priority is "low" or "medium" or "high" or "urgent";
+
+    private static object LaravelValidationError(string field, string message) => new
+    {
+        success = false,
+        errors = new[]
+        {
+            new
+            {
+                code = "VALIDATION_ERROR",
+                message,
+                field
+            }
+        }
+    };
+
     private IFormFile? ResolveUploadedFile(params IFormFile?[] candidates)
     {
         foreach (var candidate in candidates)
@@ -2840,10 +3055,82 @@ public class CompatibilityAliasController : ControllerBase
         return null;
     }
 
+    private static int? ReadIntProperty(object? source, string propertyName)
+    {
+        if (source == null) return null;
+
+        try
+        {
+            if (source is JsonElement element)
+                return ReadIntProperty(element, propertyName);
+
+            if (source is string json && !string.IsNullOrWhiteSpace(json))
+            {
+                using var document = JsonDocument.Parse(json);
+                return ReadIntProperty(document.RootElement, propertyName);
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static int? ReadIntProperty(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object ||
+            !element.TryGetProperty(propertyName, out var value))
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+            return number;
+
+        if (value.ValueKind == JsonValueKind.String &&
+            int.TryParse(value.GetString(), out var parsed))
+            return parsed;
+
+        return null;
+    }
+
+    private static DateTime? ReadDateTimeProperty(JsonElement element, string propertyName)
+    {
+        var value = ReadStringProperty(element, propertyName);
+        return DateTime.TryParse(value, out var parsed) ? parsed.ToUniversalTime() : null;
+    }
+
+    private int ReadQueryInt(string name, int fallback, int min, int max) =>
+        ReadQueryInt(name, (int?)fallback, min, max)!.Value;
+
+    private int? ReadQueryInt(string name, int? fallback, int min, int max)
+    {
+        if (!int.TryParse(Request.Query[name].FirstOrDefault(), out var value))
+            return fallback;
+
+        return Math.Clamp(value, min, max);
+    }
+
     private static string AppendNote(string? current, string note)
     {
         return string.IsNullOrWhiteSpace(current) ? note : $"{current}; {note}";
     }
+
+    private sealed record StoredGroupTask(
+        int Id,
+        int GroupId,
+        string Title,
+        string? Description,
+        int? AssignedTo,
+        string Status,
+        string Priority,
+        string? DueDate,
+        int CreatedBy,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt,
+        DateTime? CompletedAt);
 
     private async Task<IActionResult> SetJobAlertNotification(int id, bool notify)
     {

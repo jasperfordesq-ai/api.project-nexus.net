@@ -380,22 +380,6 @@ public class MiscParityController : ControllerBase
     [Authorize]
     public IActionResult GoalTemplates([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), created = true } });
 
-    [HttpGet("group-chatrooms/{id:int}/messages")]
-    [Authorize]
-    public IActionResult GroupChatroomMessages(int id) => Ok(new { data = Array.Empty<object>() });
-
-    [HttpPost("group-chatrooms/{id:int}/messages")]
-    [Authorize]
-    public IActionResult CreateGroupChatroomMessage(int id, [FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), chatroom_id = id, content = Str(body, "content") } });
-
-    [HttpDelete("group-chatrooms/{id:int}")]
-    [Authorize]
-    public IActionResult DeleteGroupChatroom(int id) => NoContent();
-
-    [HttpDelete("group-chatroom-messages/{id:int}")]
-    [Authorize]
-    public IActionResult DeleteGroupChatroomMessage(int id) => NoContent();
-
     [HttpGet("group-collections")]
     [Authorize]
     public async Task<IActionResult> GroupCollections() => Ok(new { data = await _db.Groups.Where(g => g.TenantId == TenantId()).Take(20).ToListAsync() });
@@ -787,10 +771,6 @@ public class MiscParityController : ControllerBase
     [HttpGet("streaks")]
     [Authorize]
     public IActionResult Streaks() => Ok(new { data = new { current = 0 } });
-
-    [HttpGet("team-tasks/{id:int}")]
-    [Authorize]
-    public IActionResult TeamTask(int id) => Ok(new { data = new { id, status = "open" } });
 
     [HttpGet("totp/status")]
     [Authorize]

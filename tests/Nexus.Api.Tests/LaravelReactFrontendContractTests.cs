@@ -4492,6 +4492,223 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IdeationTeamTasksV2_UseLaravelReactListCreateStatsUpdateAndDeleteShape()
+    {
+        var groupId = await SeedVolunteerGroupAsync($"Laravel React task team {Guid.NewGuid():N}");
+        await AuthenticateAsMemberAsync();
+
+        var create = await Client.PostAsJsonAsync($"/api/v2/groups/{groupId}/tasks", new
+        {
+            title = "Draft team prototype",
+            description = "Coordinate the next ideation milestone.",
+            status = "todo",
+            priority = "high",
+            assigned_to = TestData.MemberUser.Id,
+            due_date = "2026-09-15"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var taskId = created.GetProperty("id").GetInt32();
+        taskId.Should().BeGreaterThan(0);
+        created.GetProperty("group_id").GetInt32().Should().Be(groupId);
+        created.GetProperty("title").GetString().Should().Be("Draft team prototype");
+        created.GetProperty("description").GetString().Should().Be("Coordinate the next ideation milestone.");
+        created.GetProperty("status").GetString().Should().Be("todo");
+        created.GetProperty("priority").GetString().Should().Be("high");
+        created.GetProperty("assigned_to").GetInt32().Should().Be(TestData.MemberUser.Id);
+        created.GetProperty("created_by").GetInt32().Should().Be(TestData.MemberUser.Id);
+        created.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var detail = await Client.GetAsync($"/api/v2/team-tasks/{taskId}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(taskId);
+        detailData.GetProperty("group_id").GetInt32().Should().Be(groupId);
+        detailData.GetProperty("priority").GetString().Should().Be("high");
+
+        var list = await Client.GetAsync($"/api/v2/groups/{groupId}/tasks?status=todo&per_page=10");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == taskId &&
+            item.GetProperty("title").GetString() == "Draft team prototype" &&
+            item.GetProperty("status").GetString() == "todo");
+        var meta = listJson.GetProperty("meta");
+        meta.GetProperty("per_page").GetInt32().Should().Be(10);
+        meta.TryGetProperty("cursor", out _).Should().BeTrue();
+        meta.TryGetProperty("has_more", out _).Should().BeTrue();
+
+        var stats = await Client.GetAsync($"/api/v2/groups/{groupId}/task-stats");
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statsData.GetProperty("total").GetInt32().Should().Be(1);
+        statsData.GetProperty("todo").GetInt32().Should().Be(1);
+        statsData.GetProperty("in_progress").GetInt32().Should().Be(0);
+        statsData.GetProperty("done").GetInt32().Should().Be(0);
+        statsData.GetProperty("overdue").GetInt32().Should().Be(0);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/team-tasks/{taskId}", new
+        {
+            status = "done",
+            priority = "urgent"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(taskId);
+        updated.GetProperty("status").GetString().Should().Be("done");
+        updated.GetProperty("priority").GetString().Should().Be("urgent");
+        updated.GetProperty("completed_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var doneStats = await Client.GetAsync($"/api/v2/groups/{groupId}/task-stats");
+        doneStats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var doneStatsData = (await doneStats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        doneStatsData.GetProperty("total").GetInt32().Should().Be(1);
+        doneStatsData.GetProperty("todo").GetInt32().Should().Be(0);
+        doneStatsData.GetProperty("done").GetInt32().Should().Be(1);
+
+        var delete = await Client.DeleteAsync($"/api/v2/team-tasks/{taskId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var emptyList = await Client.GetAsync($"/api/v2/groups/{groupId}/tasks?status=done");
+        emptyList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emptyData = (await emptyList.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        emptyData.EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetInt32() == taskId);
+    }
+
+    [Fact]
+    public async Task IdeationTeamDocumentsV2_UseLaravelReactUploadListAndDeleteShape()
+    {
+        var groupId = await SeedVolunteerGroupAsync($"Laravel React document team {Guid.NewGuid():N}");
+        await AuthenticateAsMemberAsync();
+
+        using var form = CreateImageForm();
+        var upload = await Client.PostAsync($"/api/v2/groups/{groupId}/documents", form);
+
+        upload.StatusCode.Should().Be(HttpStatusCode.Created);
+        var uploadJson = await upload.Content.ReadFromJsonAsync<JsonElement>();
+        uploadJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var documentId = uploadJson.GetProperty("data").GetProperty("id").GetInt32();
+        documentId.Should().BeGreaterThan(0);
+
+        var list = await Client.GetAsync($"/api/v2/groups/{groupId}/documents?per_page=10");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == documentId &&
+            item.GetProperty("group_id").GetInt32() == groupId &&
+            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id &&
+            item.GetProperty("original_name").GetString() == "newsletter.png" &&
+            item.GetProperty("mime_type").GetString() == "image/png" &&
+            item.GetProperty("url").GetString()!.Length > 0);
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(10);
+
+        var delete = await Client.DeleteAsync($"/api/v2/team-documents/{documentId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await delete.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var empty = await Client.GetAsync($"/api/v2/groups/{groupId}/documents");
+        empty.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emptyData = (await empty.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        emptyData.EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetInt32() == documentId);
+    }
+
+    [Fact]
+    public async Task IdeationTeamChatroomsV2_UseLaravelReactChannelMessagePinAndDeleteShape()
+    {
+        var groupId = await SeedVolunteerGroupAsync($"Laravel React chat team {Guid.NewGuid():N}");
+        await AuthenticateAsMemberAsync();
+
+        var createRoom = await Client.PostAsJsonAsync($"/api/v2/groups/{groupId}/chatrooms", new
+        {
+            name = "delivery",
+            description = "Delivery coordination",
+            category = "planning",
+            is_private = false
+        });
+
+        createRoom.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createRoomJson = await createRoom.Content.ReadFromJsonAsync<JsonElement>();
+        createRoomJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var room = createRoomJson.GetProperty("data");
+        var chatroomId = room.GetProperty("id").GetInt32();
+        chatroomId.Should().BeGreaterThan(0);
+        room.GetProperty("group_id").GetInt32().Should().Be(groupId);
+        room.GetProperty("name").GetString().Should().Be("delivery");
+        room.GetProperty("description").GetString().Should().Be("Delivery coordination");
+        room.GetProperty("category").GetString().Should().Be("planning");
+        room.GetProperty("is_default").GetBoolean().Should().BeFalse();
+        room.GetProperty("is_private").GetBoolean().Should().BeFalse();
+        room.GetProperty("messages_count").GetInt32().Should().Be(0);
+
+        var rooms = await Client.GetAsync($"/api/v2/groups/{groupId}/chatrooms");
+        rooms.StatusCode.Should().Be(HttpStatusCode.OK);
+        var roomsJson = await rooms.Content.ReadFromJsonAsync<JsonElement>();
+        roomsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        roomsJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == chatroomId &&
+            item.GetProperty("name").GetString() == "delivery");
+
+        var message = await Client.PostAsJsonAsync($"/api/v2/group-chatrooms/{chatroomId}/messages", new
+        {
+            body = "We need a pilot partner."
+        });
+
+        message.StatusCode.Should().Be(HttpStatusCode.Created);
+        var messageJson = await message.Content.ReadFromJsonAsync<JsonElement>();
+        messageJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var messageId = messageJson.GetProperty("data").GetProperty("id").GetInt32();
+        messageId.Should().BeGreaterThan(0);
+
+        var messages = await Client.GetAsync($"/api/v2/group-chatrooms/{chatroomId}/messages");
+        messages.StatusCode.Should().Be(HttpStatusCode.OK);
+        var messagesJson = await messages.Content.ReadFromJsonAsync<JsonElement>();
+        messagesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        messagesJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == messageId &&
+            item.GetProperty("chatroom_id").GetInt32() == chatroomId &&
+            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id &&
+            item.GetProperty("body").GetString() == "We need a pilot partner." &&
+            item.GetProperty("author").GetProperty("id").GetInt32() == TestData.MemberUser.Id);
+
+        var pin = await Client.PostAsJsonAsync($"/api/v2/groups/{groupId}/chatrooms/{chatroomId}/pin/{messageId}", new { });
+        pin.StatusCode.Should().Be(HttpStatusCode.Created);
+        var pinJson = await pin.Content.ReadFromJsonAsync<JsonElement>();
+        pinJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        pinJson.GetProperty("data").GetProperty("pinned").GetBoolean().Should().BeTrue();
+
+        var pinned = await Client.GetAsync($"/api/v2/groups/{groupId}/chatrooms/{chatroomId}/pinned");
+        pinned.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pinnedJson = await pinned.Content.ReadFromJsonAsync<JsonElement>();
+        pinnedJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        pinnedJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == messageId &&
+            item.GetProperty("pinned_by").GetInt32() == TestData.MemberUser.Id &&
+            item.GetProperty("body").GetString() == "We need a pilot partner.");
+
+        var unpin = await Client.DeleteAsync($"/api/v2/groups/{groupId}/chatrooms/{chatroomId}/pin/{messageId}");
+        unpin.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteMessage = await Client.DeleteAsync($"/api/v2/group-chatroom-messages/{messageId}");
+        deleteMessage.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteRoom = await Client.DeleteAsync($"/api/v2/group-chatrooms/{chatroomId}");
+        deleteRoom.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var emptyRooms = await Client.GetAsync($"/api/v2/groups/{groupId}/chatrooms");
+        emptyRooms.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emptyRoomsData = (await emptyRooms.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        emptyRoomsData.EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetInt32() == chatroomId);
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();
