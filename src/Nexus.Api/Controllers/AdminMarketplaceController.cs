@@ -3,8 +3,10 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -102,61 +104,175 @@ public class AdminMarketplaceController : ControllerBase
     public async Task<IActionResult> ApproveListing(int id)
     {
         var listing = await _marketplace.ModerateListingAsync(id, User.GetUserId() ?? 0, "approved", null);
-        return listing == null ? NotFound(new { error = "Listing not found" }) : Ok(new { data = listing });
+        return listing == null
+            ? NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found." })
+            : Ok(new { success = true, data = new { message = "Listing approved." } });
     }
 
     [HttpPost("listings/{id:int}/reject")]
     public async Task<IActionResult> RejectListing(int id, [FromBody] AdminModerationRequest request)
     {
         var listing = await _marketplace.ModerateListingAsync(id, User.GetUserId() ?? 0, "rejected", request.Notes);
-        return listing == null ? NotFound(new { error = "Listing not found" }) : Ok(new { data = listing });
+        if (listing == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found." });
+
+        listing.Status = "removed";
+        listing.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { message = "Listing rejected." } });
     }
 
     [HttpDelete("listings/{id:int}")]
     public async Task<IActionResult> DeleteListing(int id)
     {
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
-        if (listing == null) return NotFound(new { error = "Listing not found" });
-        _db.MarketplaceListings.Remove(listing);
+        if (listing == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found." });
+
+        listing.Status = "removed";
+        listing.ModerationStatus = "rejected";
+        listing.ModeratedByUserId = User.GetUserId();
+        listing.ModeratedAt = DateTime.UtcNow;
+        listing.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { success = true, data = new { message = "Listing removed." } });
     }
 
     [HttpPost("bulk-reject")]
     public async Task<IActionResult> BulkReject([FromBody] AdminBulkModerationRequest request)
     {
-        var changed = 0;
-        foreach (var id in request.Ids ?? Array.Empty<int>())
+        var ids = (request.ListingIds ?? request.Ids ?? Array.Empty<int>())
+            .Where(id => id > 0)
+            .Distinct()
+            .Take(100)
+            .ToArray();
+        var reason = (request.Reason ?? request.Notes ?? string.Empty).Trim();
+        var adminUserId = User.GetUserId() ?? 0;
+
+        var listings = await _db.MarketplaceListings
+            .Where(l => ids.Contains(l.Id))
+            .ToListAsync();
+        var eligibleIds = listings.Select(l => l.Id).ToHashSet();
+        var skippedIds = ids.Where(id => !eligibleIds.Contains(id)).ToList();
+
+        foreach (var listing in listings)
         {
-            if (await _marketplace.ModerateListingAsync(id, User.GetUserId() ?? 0, "rejected", request.Notes) != null)
-                changed++;
+            listing.ModerationStatus = "rejected";
+            listing.ModerationNotes = reason;
+            listing.ModeratedByUserId = adminUserId;
+            listing.ModeratedAt = DateTime.UtcNow;
+            listing.Status = "removed";
+            listing.UpdatedAt = DateTime.UtcNow;
         }
-        return Ok(new { data = new { changed } });
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success = listings.Count,
+                failed = skippedIds.Count,
+                skipped_ids = skippedIds
+            }
+        });
     }
 
     [HttpGet("sellers")]
-    public async Task<IActionResult> Sellers([FromQuery] int page = 1, [FromQuery] int limit = 50)
+    public async Task<IActionResult> Sellers(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50,
+        [FromQuery] int? per_page = null,
+        [FromQuery] string? seller_type = null,
+        [FromQuery] string? verified = null,
+        [FromQuery] string? search = null)
     {
         page = Math.Max(1, page);
-        limit = Math.Clamp(limit, 1, 100);
+        var pageSize = Math.Clamp(per_page ?? limit, 1, 100);
         var query = _db.MarketplaceSellerProfiles.Include(p => p.User).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(seller_type))
+            query = query.Where(p => p.SellerType == seller_type);
+
+        if (verified is "1" or "true")
+        {
+            query = query.Where(p => p.IsVerified);
+        }
+        else if (verified is "0" or "false")
+        {
+            query = query.Where(p => p.SellerType == "business" && !p.IsVerified);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(p =>
+                p.DisplayName.ToLower().Contains(term) ||
+                (p.User != null && (
+                    p.User.Email.ToLower().Contains(term) ||
+                    p.User.FirstName.ToLower().Contains(term) ||
+                    p.User.LastName.ToLower().Contains(term))));
+        }
+
         var total = await query.CountAsync();
-        var rows = await query.OrderByDescending(p => p.CreatedAt).Skip((page - 1) * limit).Take(limit).ToListAsync();
-        return Ok(new { data = rows, meta = new { page, limit, total } });
+        var rows = await query.OrderByDescending(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var sellerUserIds = rows.Select(p => p.UserId).ToArray();
+        var activeListingCounts = await _db.MarketplaceListings
+            .Where(l => sellerUserIds.Contains(l.UserId) && l.Status == "active")
+            .GroupBy(l => l.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+
+        return Ok(new
+        {
+            success = true,
+            data = rows.Select(profile => MapAdminSeller(profile, activeListingCounts.GetValueOrDefault(profile.UserId))),
+            meta = new { page, per_page = pageSize, total }
+        });
     }
 
     [HttpPost("sellers/{id:int}/verify")]
     public async Task<IActionResult> VerifySeller(int id)
     {
-        var profile = await _marketplace.SetSellerStatusAsync(id, verify: true, suspend: false, reason: null);
-        return profile == null ? NotFound(new { error = "Seller not found" }) : Ok(new { data = profile });
+        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.Id == id);
+        if (profile == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Seller not found." });
+        if (profile.SellerType != "business")
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                code = "VALIDATION_ERROR",
+                error = "Only business sellers can be verified."
+            });
+        }
+
+        profile.IsVerified = true;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { message = "Seller verified." } });
     }
 
     [HttpPost("sellers/{id:int}/suspend")]
-    public async Task<IActionResult> SuspendSeller(int id, [FromBody] AdminModerationRequest request)
+    public async Task<IActionResult> SuspendSeller(
+        int id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AdminModerationRequest? request = null)
     {
-        var profile = await _marketplace.SetSellerStatusAsync(id, verify: false, suspend: true, reason: request.Notes);
-        return profile == null ? NotFound(new { error = "Seller not found" }) : Ok(new { data = profile });
+        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.Id == id);
+        if (profile == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Seller not found." });
+
+        profile.IsSuspended = true;
+        profile.SuspensionReason = request?.Notes;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        var activeListings = await _db.MarketplaceListings
+            .Where(l => l.TenantId == profile.TenantId && l.UserId == profile.UserId && l.Status == "active")
+            .ToListAsync();
+        foreach (var listing in activeListings)
+        {
+            listing.Status = "removed";
+            listing.ModerationStatus = "rejected";
+            listing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { message = "Seller suspended." } });
     }
 
     [HttpGet("reports")]
@@ -269,6 +385,38 @@ public class AdminMarketplaceController : ControllerBase
         updated_at = coupon.UpdatedAt
     };
 
+    private static object MapAdminSeller(MarketplaceSellerProfile profile, int activeListings)
+    {
+        var displayName = string.IsNullOrWhiteSpace(profile.DisplayName)
+            ? profile.User == null ? string.Empty : DisplayName(profile.User)
+            : profile.DisplayName;
+
+        return new
+        {
+            id = profile.Id,
+            user_id = profile.UserId,
+            display_name = displayName,
+            seller_type = profile.SellerType,
+            business_name = profile.SellerType == "business" ? displayName : null,
+            business_verified = profile.IsVerified,
+            is_community_endorsed = false,
+            total_sales = profile.SalesCount,
+            avg_rating = profile.RatingAverage,
+            total_ratings = profile.RatingCount,
+            active_listings = activeListings,
+            joined_marketplace_at = profile.CreatedAt,
+            user = profile.User == null
+                ? null
+                : new
+                {
+                    id = profile.User.Id,
+                    name = DisplayName(profile.User),
+                    email = profile.User.Email,
+                    avatar_url = profile.User.AvatarUrl
+                }
+        };
+    }
+
     private static object MapAdminListing(MarketplaceListing listing)
     {
         var primaryImage = listing.Images
@@ -322,4 +470,8 @@ public class AdminMarketplaceController : ControllerBase
 }
 
 public record AdminModerationRequest(string? Notes);
-public record AdminBulkModerationRequest(int[]? Ids, string? Notes);
+public record AdminBulkModerationRequest(
+    int[]? Ids,
+    string? Notes,
+    [property: JsonPropertyName("listing_ids")] int[]? ListingIds = null,
+    [property: JsonPropertyName("reason")] string? Reason = null);

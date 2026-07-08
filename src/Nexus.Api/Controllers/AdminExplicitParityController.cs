@@ -627,6 +627,8 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
+            "/api/v2/admin/users/bulk-approve" => await BulkApproveUsers(),
+            "/api/v2/admin/users/bulk-suspend" => await BulkSuspendUsers(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/approve", out var approveAdCampaignId) => await ApproveAdCampaign(approveAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/pause", out var pauseAdCampaignId) => await PauseAdCampaign(pauseAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/reject", out var rejectAdCampaignId) => await RejectAdCampaign(rejectAdCampaignId),
@@ -643,6 +645,94 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
+    }
+
+    private async Task<IActionResult> BulkApproveUsers()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var ids = JsonIntArray(payload, "user_ids").Where(id => id > 0).Distinct().Take(100).ToArray();
+        var users = await _db.Users
+            .Where(u => u.TenantId == tenantId && ids.Contains(u.Id))
+            .ToListAsync();
+        var eligibleIds = users.Select(u => u.Id).ToHashSet();
+        var skippedIds = ids.Where(id => !eligibleIds.Contains(id)).ToList();
+        var success = 0;
+
+        foreach (var user in users)
+        {
+            if (user.IsActive)
+            {
+                skippedIds.Add(user.Id);
+                continue;
+            }
+
+            user.IsActive = true;
+            user.SuspendedAt = null;
+            user.SuspensionReason = null;
+            user.SuspendedByUserId = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            success++;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success,
+                failed = skippedIds.Count,
+                skipped_ids = skippedIds
+            }
+        });
+    }
+
+    private async Task<IActionResult> BulkSuspendUsers()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var ids = JsonIntArray(payload, "user_ids").Where(id => id > 0).Distinct().Take(100).ToArray();
+        var reason = JsonString(payload, "reason") ?? "Suspended by admin";
+        var adminId = GetCurrentAdminUserId();
+        var users = await _db.Users
+            .Where(u => u.TenantId == tenantId && ids.Contains(u.Id))
+            .ToListAsync();
+        var eligibleById = users.ToDictionary(u => u.Id);
+        var skippedIds = new List<int>();
+        var success = 0;
+
+        foreach (var id in ids)
+        {
+            if (!eligibleById.TryGetValue(id, out var user) ||
+                id == adminId ||
+                user.Role is "admin" or "tenant_admin" or "super_admin" or "god")
+            {
+                skippedIds.Add(id);
+                continue;
+            }
+
+            user.IsActive = false;
+            user.SuspendedAt = DateTime.UtcNow;
+            user.SuspensionReason = reason;
+            user.SuspendedByUserId = adminId;
+            user.UpdatedAt = DateTime.UtcNow;
+            success++;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success,
+                failed = skippedIds.Count,
+                skipped_ids = skippedIds
+            }
+        });
     }
 
     [HttpPost("/api/v2/admin/moderation/{id:int}/review")]
@@ -5474,6 +5564,40 @@ public class AdminExplicitParityController : ControllerBase
         }
 
         return fallback;
+    }
+
+    private static List<int> JsonIntArray(Dictionary<string, JsonElement> payload, string key)
+    {
+        foreach (var item in payload)
+        {
+            if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (item.Value.ValueKind == JsonValueKind.Array)
+            {
+                return item.Value.EnumerateArray()
+                    .Select(element => element.ValueKind switch
+                    {
+                        JsonValueKind.Number when element.TryGetInt32(out var number) => number,
+                        JsonValueKind.String when int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) => number,
+                        _ => 0
+                    })
+                    .Where(number => number > 0)
+                    .ToList();
+            }
+
+            var single = JsonElementToString(item.Value);
+            return string.IsNullOrWhiteSpace(single)
+                ? []
+                : single.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(value => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0)
+                    .Where(number => number > 0)
+                    .ToList();
+        }
+
+        return [];
     }
 
     private static decimal JsonDecimal(Dictionary<string, JsonElement> payload, string key, decimal fallback)

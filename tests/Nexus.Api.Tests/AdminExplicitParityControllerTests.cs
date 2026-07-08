@@ -50,6 +50,124 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminUsersBulkApproveAndSuspend_ReturnLaravelReactBulkResultsAndUpdateTenantUsers()
+    {
+        int approveOneId;
+        int approveTwoId;
+        int suspendId;
+        int otherTenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var approveOne = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = $"bulk-approve-one-{Guid.NewGuid():N}@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Bulk",
+                LastName = "Approve One",
+                Role = "member",
+                IsActive = false,
+                SuspendedAt = DateTime.UtcNow.AddDays(-2),
+                SuspensionReason = "Pending approval",
+                CreatedAt = DateTime.UtcNow.AddDays(-3)
+            };
+            var approveTwo = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = $"bulk-approve-two-{Guid.NewGuid():N}@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Bulk",
+                LastName = "Approve Two",
+                Role = "member",
+                IsActive = false,
+                SuspendedAt = DateTime.UtcNow.AddDays(-2),
+                SuspensionReason = "Pending approval",
+                CreatedAt = DateTime.UtcNow.AddDays(-3)
+            };
+            var suspend = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = $"bulk-suspend-{Guid.NewGuid():N}@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Bulk",
+                LastName = "Suspend",
+                Role = "member",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-3)
+            };
+            var otherTenant = new User
+            {
+                TenantId = TestData.Tenant2.Id,
+                Email = $"bulk-other-{Guid.NewGuid():N}@example.test",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Bulk",
+                LastName = "Other",
+                Role = "member",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-3)
+            };
+
+            db.Users.AddRange(approveOne, approveTwo, suspend, otherTenant);
+            await db.SaveChangesAsync();
+            approveOneId = approveOne.Id;
+            approveTwoId = approveTwo.Id;
+            suspendId = suspend.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var approveResponse = await Client.PostAsJsonAsync("/api/v2/admin/users/bulk-approve", new
+        {
+            user_ids = new[] { approveOneId, approveTwoId, otherTenantId, 999999 }
+        });
+
+        approveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approveJson = await approveResponse.Content.ReadFromJsonAsync<JsonElement>();
+        approveJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        approveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var approveData = approveJson.GetProperty("data");
+        approveData.GetProperty("success").GetInt32().Should().Be(2);
+        approveData.GetProperty("failed").GetInt32().Should().Be(2);
+        approveData.GetProperty("skipped_ids").EnumerateArray().Select(x => x.GetInt32())
+            .Should().BeEquivalentTo(new[] { otherTenantId, 999999 });
+
+        var suspendResponse = await Client.PostAsJsonAsync("/api/v2/admin/users/bulk-suspend", new
+        {
+            user_ids = new[] { suspendId, TestData.AdminUser.Id, otherTenantId, 999998 },
+            reason = "Bulk policy violation"
+        });
+
+        suspendResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var suspendJson = await suspendResponse.Content.ReadFromJsonAsync<JsonElement>();
+        suspendJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        suspendJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var suspendData = suspendJson.GetProperty("data");
+        suspendData.GetProperty("success").GetInt32().Should().Be(1);
+        suspendData.GetProperty("failed").GetInt32().Should().Be(3);
+        suspendData.GetProperty("skipped_ids").EnumerateArray().Select(x => x.GetInt32())
+            .Should().BeEquivalentTo(new[] { TestData.AdminUser.Id, otherTenantId, 999998 });
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var approvedUsers = await verifyDb.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.Id == approveOneId || u.Id == approveTwoId)
+            .ToListAsync();
+        approvedUsers.Should().OnlyContain(u => u.IsActive && u.SuspendedAt == null && u.SuspensionReason == null);
+
+        var suspended = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == suspendId);
+        suspended.IsActive.Should().BeFalse();
+        suspended.SuspendedAt.Should().NotBeNull();
+        suspended.SuspensionReason.Should().Be("Bulk policy violation");
+
+        var otherTenantUser = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == otherTenantId);
+        otherTenantUser.IsActive.Should().BeTrue();
+        otherTenantUser.SuspensionReason.Should().BeNull();
+    }
+
+    [Fact]
     public async Task AdminListingsDeleteV2_RemovesTenantListingWithLaravelReactContract()
     {
         int listingId;
