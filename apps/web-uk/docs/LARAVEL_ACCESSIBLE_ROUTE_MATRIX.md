@@ -472,11 +472,18 @@ expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6230`. The
 targeted run passed with `14/14` checks and `0` failures. The body-text-only
 default smoke scope passed against the same port with `227/227` total checks,
 including 221 body-text contract checks, and `0` failures.
-The default scope now contains `568` checks:
+The signed poll pages `/polls`, `/polls/parity/create`,
+`/polls/parity/manage`, `/polls/20`, `/polls/20/rank`, `/polls/8`, and
+`/polls/4` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6231`. The targeted run passed with `13/13`
+checks and `0` failures. The body-text-only default smoke scope passed against
+the same port with `234/234` total checks, including 228 body-text contract
+checks, and `0` failures.
+The default scope now contains `575` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 221 body-text contract checks, and the 6
+content-type contract checks, 228 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
