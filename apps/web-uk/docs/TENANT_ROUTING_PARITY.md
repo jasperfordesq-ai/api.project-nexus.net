@@ -66,15 +66,20 @@ Current implemented slice:
   links communities to the cleaner `/{tenantSlug}/accessible` mount.
 - Tenant-mounted roots render the Laravel Blade-style tenant home instead of
   the old generic Web UK home. Shared mount `/{tenantSlug}/accessible` loads
-  tenant bootstrap and public platform stats, renders the `Accessible` page,
-  and rewrites links under the active shared mount.
+  tenant bootstrap and tenant-scoped public platform stats, renders the
+  `Accessible` page, and rewrites links under the active shared mount. Web UK
+  forwards the active tenant slug to Laravel `/api/v2/platform/stats` with
+  `X-Tenant-Slug`, matching Laravel's path-resolved `TenantContext`.
 - Non-local Host values are resolved through Laravel
   `/api/v2/tenant/bootstrap`; when Laravel returns a tenant whose
   `accessible_domain` matches the request host, Web UK treats the request as a
   slugless custom accessible-domain route.
 - Dedicated accessible-domain root `/` renders the resolved tenant home and
   keeps generated local links flat, matching Laravel's custom-domain behavior
-  without exposing either `/alpha` or `/{tenantSlug}/accessible`.
+  without exposing either `/alpha` or `/{tenantSlug}/accessible`. For this
+  mode, Web UK forwards the resolved Host to Laravel `/api/v2/platform/stats`
+  so host-resolved tenant stats use the same lookup path as Laravel's
+  accessible custom-domain runtime.
 - Parent-domain child tenant paths now resolve the first non-reserved path
   segment through Laravel `/api/v2/tenant/bootstrap?slug={slug}`. When Laravel
   returns `parent_domain` matching the request host, Web UK serves the flat
@@ -89,7 +94,10 @@ Current gaps:
   templates still need gradual conversion to `urlFor()` or equivalent helpers
   so custom-domain and flat-host modes remain easier to audit.
 - Custom accessible-domain routing is covered by Jest for a host-resolved
-  root request, but it is not yet certified by live Laravel runtime smoke.
+  root request, including host-scoped platform-stats lookup, but it is not yet
+  certified by live Laravel runtime smoke because the local Laravel fixture
+  data currently exposes no tenant with `accessible_domain`; unknown accessible
+  hosts resolve to the master tenant.
 - Parent-domain child-tenant paths are covered by Jest for a parent-host child
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
@@ -97,6 +105,11 @@ Current gaps:
 - Shared tenant-root home rendering is covered by Jest and a scoped live
   Laravel smoke against `/hour-timebank/accessible`, checking `Accessible`,
   `Connecting Communities`, and `What you can do` in the rendered page body.
+- Tenant-scoped home stats are covered by focused Jest for shared-mount slug
+  routing and custom accessible-domain host routing. A live local Laravel check
+  on 2026-07-08 for `/hour-timebank/accessible` rendered the tenant-scoped
+  stats from `X-Tenant-Slug=hour-timebank`: `946` members, `1,988` hours
+  exchanged, `129` listings, and `1` community.
 
 ## First Verified Slice
 
@@ -148,6 +161,14 @@ availability, sign-in status, and platform stats. A scoped live smoke on
 `/hour-timebank/accessible=>Accessible`,
 `/hour-timebank/accessible=>Connecting Communities`, and
 `/hour-timebank/accessible=>What you can do`.
+
+The eighth tenant-home stats slice verifies that Web UK does not fetch
+platform-wide stats for tenant home pages. Shared-mount requests now call
+Laravel `/api/v2/platform/stats` with the active `X-Tenant-Slug`, while
+custom accessible-domain requests call the same endpoint with the resolved
+request `Host`. Focused Jest covers both request shapes, and a live local
+Laravel proof on 2026-07-08 rendered `/hour-timebank/accessible` with the
+tenant-scoped stat values `946`, `1,988`, `129`, and `1`.
 
 Verification command:
 

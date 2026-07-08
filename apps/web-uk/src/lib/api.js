@@ -233,8 +233,18 @@ async function getTenantBootstrap(options = {}) {
   return request(endpoint, { headers });
 }
 
-async function getPlatformStats() {
-  return request('/api/v2/platform/stats');
+async function getPlatformStats(options = {}) {
+  const slug = options.slug ? String(options.slug).trim() : '';
+  const host = slug ? '' : normalizeTenantHost(options.host);
+  const headers = {};
+
+  if (slug) {
+    headers['X-Tenant-Slug'] = slug;
+  } else if (host) {
+    headers.Host = host;
+  }
+
+  return request('/api/v2/platform/stats', { headers });
 }
 
 async function verify2fa(token, code) {

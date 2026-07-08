@@ -60,7 +60,10 @@ Laravel smoke certification for direct custom accessible-domain fixtures still
 need work. A tenant-home parity slice now replaces the old generic Web UK home
 inside tenant contexts with the Laravel Blade-style `Accessible` home page,
 including community caption, tenant tagline, platform stats, sign-in/register
-CTAs, module availability rows, and service details.
+CTAs, module availability rows, and service details. A follow-up tenant-stats
+slice now scopes those platform stats through Laravel's tenant resolution:
+shared-mount tenant homes send `X-Tenant-Slug`, while custom accessible-domain
+homes send the resolved Host.
 
 ## Non-Negotiable Rules
 
@@ -120,11 +123,12 @@ Latest consolidation verification on 2026-07-08:
 Latest focused tenant home Blade-parity slice: tenant-mounted root pages now
 render the Laravel Blade accessible home instead of the old generic Web UK
 welcome page. Shared mount `/{tenantSlug}/accessible` fetches Laravel tenant
-bootstrap data and public platform stats, uses tenant name/tagline in the
-layout and page content, renders the `Accessible` heading/copy, guest or signed
-CTAs, the beta/accessibility panel, stat grid, module availability cards, and
-service details. Dedicated accessible-domain root `/` reuses the same tenant
-home while keeping links slugless. Verification for this slice:
+bootstrap data and tenant-scoped public platform stats, uses tenant
+name/tagline in the layout and page content, renders the `Accessible`
+heading/copy, guest or signed CTAs, the beta/accessibility panel, stat grid,
+module availability cards, and service details. Dedicated accessible-domain
+root `/` reuses the same tenant home while keeping links slugless. Verification
+for this slice:
 `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath`
 passed `33/33`, `npm --prefix apps/web-uk test -- tests/api.test.js --runInBand --runTestsByPath`
 passed `157/157`, `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath`
@@ -137,6 +141,20 @@ Scoped live Laravel smoke against temporary Web UK
 `SMOKE_BODY_TEXT_PAGE_PATHS=/hour-timebank/accessible=>Accessible;/hour-timebank/accessible=>Connecting Communities;/hour-timebank/accessible=>What you can do`.
 The smoke also reran the base Laravel API, Web UK health, cookie, login,
 account, and logout checks green.
+
+Latest focused tenant-stats slice: Web UK tenant homes now call Laravel
+`/api/v2/platform/stats` with the active tenant context instead of using the
+platform-wide default response. Shared-host tenant mounts pass
+`X-Tenant-Slug={tenantSlug}`; dedicated accessible-domain requests pass the
+normalized Host so Laravel can resolve `accessible_domain` the same way Blade
+does. Focused TDD covered `getPlatformStats({ slug })`,
+`getPlatformStats({ host })`, shared-mount tenant home calls, and custom-domain
+tenant home calls. Full Web UK Jest passed `700/700`, lint passed, and a live
+local Laravel proof against `/hour-timebank/accessible` rendered the scoped
+tenant stats: `946` members, `1,988` hours exchanged, `129` listings, and `1`
+community. Direct custom `accessible_domain` live smoke remains pending because
+the local Laravel fixture set does not expose an `accessible_domain`; unknown
+accessible hosts resolve to the master tenant.
 
 Latest focused group/course runtime-smoke slice: a clean targeted Laravel-backed
 run on 2026-07-08 against temporary Web UK `http://127.0.0.1:6350` and Laravel

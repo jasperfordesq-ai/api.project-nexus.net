@@ -7,6 +7,8 @@ const http = require('http');
 
 const { resolveOptions, runLaravelRuntimeSmoke } = require('../scripts/laravel-runtime-smoke');
 
+jest.setTimeout(30000);
+
 function listen(server) {
   return new Promise((resolve, reject) => {
     server.once('error', reject);

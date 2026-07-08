@@ -258,6 +258,46 @@ describe('API Request Functions', () => {
       );
       expect(result.data.members).toBe(10);
     });
+
+    it('should pass an explicit tenant slug when fetching tenant-scoped stats', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { scope: 'tenant', communities: 1 } })
+      });
+
+      await api.getPlatformStats({ slug: 'acme' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/platform/stats',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'X-Tenant-Slug': 'acme'
+          })
+        })
+      );
+    });
+
+    it('should pass a custom accessible host when fetching host-scoped stats', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { scope: 'tenant', communities: 1 } })
+      });
+
+      await api.getPlatformStats({ host: 'acme-accessible.test:5180' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/platform/stats',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Host: 'acme-accessible.test'
+          })
+        })
+      );
+    });
   });
 
   describe('getListings', () => {

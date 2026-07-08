@@ -137,7 +137,7 @@ describe('Public Routes', () => {
       expect(response.text).toContain('href="/acme/accessible/login?status=auth-required"');
       expect(response.text).not.toContain('Welcome to Project NEXUS Community');
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'acme' });
-      expect(api.getPlatformStats).toHaveBeenCalled();
+      expect(api.getPlatformStats).toHaveBeenCalledWith({ slug: 'acme' });
     });
 
     it('canonicalizes Laravel legacy alpha mount paths to the cleaner accessible mount', async () => {
@@ -172,12 +172,21 @@ describe('Public Routes', () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();
       api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
       api.getTenantBootstrap.mockResolvedValueOnce({
         data: {
           id: 2,
           name: 'Acme Timebank',
           slug: 'acme',
           accessible_domain: 'acme-accessible.test'
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({
+        data: {
+          members: 123,
+          hours_exchanged: 45,
+          listings: 6,
+          communities: 1
         }
       });
 
@@ -195,6 +204,7 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('/acme/accessible');
       expect(response.text).not.toContain('/acme/alpha');
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'acme-accessible.test' });
+      expect(api.getPlatformStats).toHaveBeenCalledWith({ host: 'acme-accessible.test' });
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 

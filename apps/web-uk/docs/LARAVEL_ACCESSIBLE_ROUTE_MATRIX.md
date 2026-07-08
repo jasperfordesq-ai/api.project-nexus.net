@@ -69,16 +69,20 @@ full template helper conversion, and live Laravel custom-domain smoke
 certification are still open.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
-uses Laravel tenant bootstrap and public platform stats for the community
-caption, tenant tagline, stat grid, and module availability cards, while
-dedicated accessible-domain roots reuse the same page with slugless links.
+uses Laravel tenant bootstrap and tenant-scoped public platform stats for the
+community caption, tenant tagline, stat grid, and module availability cards,
+while dedicated accessible-domain roots reuse the same page with slugless
+links. Shared-host tenant stats are requested with `X-Tenant-Slug`; custom
+accessible-domain stats are requested with the resolved Host, matching
+Laravel's path-resolved and host-resolved tenant contexts.
 Parent-domain child tenant routing now has a focused Web UK Jest slice: a
 non-local parent host plus `/{childSlug}/login` resolves `{childSlug}` through
 Laravel tenant bootstrap, requires returned `parent_domain` to match the host,
 serves the flat accessible login page below `/{childSlug}`, and rewrites local
 form/link targets under that child path without exposing `/alpha` or
-`/accessible`. Live Laravel runtime smoke for this custom-domain mode is still
-open.
+`/accessible`. Live Laravel runtime smoke for direct `accessible_domain` mode
+is still open because the local Laravel fixture set does not currently expose
+an `accessible_domain`.
 
 The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
 no longer exposed. Laravel's accessible source uses GET/POST
@@ -843,7 +847,7 @@ be shared:
 
 | Family | Exact route gaps | Examples | Current status |
 | --- | ---: | --- | --- |
-| Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Shared-host slices implemented: `/{tenantSlug}/accessible` routes through the existing flat Express app, shell/home links are prefixed under the active mount, legacy `/{tenantSlug}/alpha` redirects to `/accessible`, local redirects plus rendered HTML links/actions stay under the active mount, and shared root `/` renders the Laravel-style tenant chooser backed by `/api/v2/tenants` while excluding the master tenant. Custom accessible-domain resolution through Laravel `accessible_domain`, parent-domain child tenant routing, custom-domain root home behavior, and template-wide helper conversion remain open and uncertified. |
+| Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Shared-host slices implemented: `/{tenantSlug}/accessible` routes through the existing flat Express app, shell/home links are prefixed under the active mount, legacy `/{tenantSlug}/alpha` redirects to `/accessible`, local redirects plus rendered HTML links/actions stay under the active mount, tenant homes pass `X-Tenant-Slug` to Laravel platform stats, and shared root `/` renders the Laravel-style tenant chooser backed by `/api/v2/tenants` while excluding the master tenant. Custom accessible-domain resolution through Laravel `accessible_domain`, slugless custom-domain root home behavior, Host-scoped tenant stats, and parent-domain child tenant routing are implemented in focused slices. Remaining certification gaps are template-wide helper conversion, direct custom accessible-domain live fixture proof, full tenant visual/manual parity, and ASP.NET backend compatibility. |
 | Cookie/report POST workflows | 0 | none exact | Cookie choice POST is a partial local candidate. Contact POST and report-problem POST are Laravel-backed candidates using `/api/v2/contact` and `/api/v2/support/reports`, with status-key redirects and mocked contract tests. Cookie audit persistence, tenant scoping, production Turnstile, localization, notification side effects, and ASP.NET backend compatibility are not certified. |
 | Legal document sourcing | 0 exact route gaps | `/legal/*` tenant documents | `/legal` renders the Blade legal hub, `/accessibility` renders the Blade accessibility statement, and `/legal/*` pages call Laravel `/api/v2/legal/{type}` for tenant-managed documents with matching fallback policy sections when the API returns no published document. Tenant-domain routing, localization, legal acceptance prompts, version history/compare links, live runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Listings | 0 | none exact | GET `/listings/{id}/report` now redirects unsigned visitors to `/login?status=auth-required`, calls Laravel-compatible `/api/v2/listings/{id}`, blocks owner self-reports, and renders the Blade-style report form with listing caption, status error summary, six Laravel reason values, optional details textarea, warning submit button, and cancel link. GET `/listings/{id}/exchange-request` now redirects unsigned visitors with the Laravel status key, calls Laravel-compatible `/api/v2/listings/{id}` and `/api/v2/wallet/balance`, blocks owner self-requests, and renders the Blade-style exchange request summary, balance context, low-balance warning, proposed-hours/prep-time/message fields, and submit button. GET `/listings/{id}/analytics` now redirects unsigned visitors with the Laravel status key, calls Laravel-compatible `/api/v2/listings/{id}` and `/api/v2/listings/{id}/analytics`, preserves the Laravel day selector, and renders the Blade-style owner analytics metrics, trends, time-series, and contact-type breakdown. GET `/listings/{id}/comments` now redirects unsigned visitors with the Laravel status key, calls Laravel-compatible `/api/v2/listings/{id}` and `/api/v2/comments?target_type=listing&target_id={id}`, and renders the Blade-style comment thread, status banners, nested comments, and add-comment form. POST aliases cover `/listings/{id}/save`, `/listings/{id}/unsave`, `/listings/{id}/renew`, `/listings/{id}/report`, `/listings/{id}/like`, `/listings/{id}/comments`, `/listings/{id}/exchange-request`, and `/listings/generate-description` through Laravel v2 listing, comment, feed-like, and exchange APIs. GET listing/detail pages remain local; generated description value repopulation, image and skill-tag form parity, owner/requester authorization depth, tenant gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |

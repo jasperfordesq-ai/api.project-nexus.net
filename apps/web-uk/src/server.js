@@ -416,6 +416,16 @@ function buildHomeModules(tenant, isAuthenticated) {
   });
 }
 
+function platformStatsOptionsForRequest(req, tenant) {
+  const routing = req.accessibleRouting || {};
+  if (routing.mode === 'custom-domain') {
+    return { host: req.headers.host || tenant.accessible_domain || '' };
+  }
+
+  const slug = tenant.slug || routing.tenantSlug || '';
+  return slug ? { slug } : {};
+}
+
 async function loadTenantHomeData(req, res) {
   const { ApiOfflineError, getPlatformStats, getTenantBootstrap } = require('./lib/api');
   const routedTenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
@@ -438,7 +448,7 @@ async function loadTenantHomeData(req, res) {
 
   let stats = {};
   try {
-    stats = dataFrom(await getPlatformStats());
+    stats = dataFrom(await getPlatformStats(platformStatsOptionsForRequest(req, tenant)));
   } catch (error) {
     if (!(error instanceof ApiOfflineError)) {
       throw error;
