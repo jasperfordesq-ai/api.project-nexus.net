@@ -216,8 +216,10 @@ health, unsigned auth redirects, login CSRF, login POST to `/dashboard`, signed
 content-type contracts, 22 signed gated `403` checks, and 21 signed redirect
 checks. A full default 634-check run on port `6250` exceeded the 15-minute
 wrapper timeout after progressing through the module-page sweep and into the
-body-text checks, so future agents should use the documented chunk/targeted
-smoke strategy for full recertification.
+body-text checks. The smoke harness now supports both
+`SMOKE_MODULE_PAGE_CHUNK=N/M` and `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M`, so future
+agents can recertify the full default scope in repeatable chunks instead of
+manually splitting body-text page lists.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
@@ -325,11 +327,13 @@ portable sentinel `none` disables that
 group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised
-redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` now splits only
-the module-page sweep into deterministic one-based chunks, for example
-`SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can recertify the default page set
-through repeatable smaller Laravel-backed runs while leaving auth, unsigned
-auth-required, gated, and redirect checks enabled. All 16 chunked live runs
+redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` now splits the
+module-page sweep and `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M` splits the body-text
+sweep into deterministic one-based chunks, for example
+`SMOKE_MODULE_PAGE_CHUNK=1/4` or `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8`, so agents can
+recertify the default page set through repeatable smaller Laravel-backed runs
+while leaving auth, unsigned auth-required, gated, and redirect checks enabled.
+All 16 chunked live runs
 against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with `TENANT_ID=2` and
 `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07: `481` total repeated
 checks, `0` failures, and `161` collective module-page checks across the

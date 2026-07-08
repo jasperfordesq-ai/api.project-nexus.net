@@ -118,10 +118,11 @@ portable sentinel `none` disables that group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised redirect
 checks. For repeatable live proof on slower shells without relaxing the default
-scope, set `SMOKE_MODULE_PAGE_CHUNK=N/M` to run a deterministic one-based slice
-of only the module-page sweep, for example `SMOKE_MODULE_PAGE_CHUNK=1/4`; the
-auth, unsigned auth-required, gated, and redirect groups still run unless each
-is explicitly disabled with `none`.
+scope, set `SMOKE_MODULE_PAGE_CHUNK=N/M` for the module-page sweep or
+`SMOKE_BODY_TEXT_PAGE_CHUNK=N/M` for the body-text sweep to run deterministic
+one-based slices, for example `SMOKE_MODULE_PAGE_CHUNK=1/4` or
+`SMOKE_BODY_TEXT_PAGE_CHUNK=1/8`; the auth, unsigned auth-required, gated, and
+redirect groups still run unless each is explicitly disabled with `none`.
 All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 `TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07:
 `481` total repeated checks, `0` failures, and `161` collective module-page

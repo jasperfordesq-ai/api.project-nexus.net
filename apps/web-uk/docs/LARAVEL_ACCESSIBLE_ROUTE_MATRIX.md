@@ -236,11 +236,12 @@ For targeted CLI runs, `SMOKE_MODULE_PAGE_PATHS`,
 portable sentinel `none` disables that group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised
-redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` shards only the
-module-page portion of the default sweep using one-based deterministic chunks,
-for example
-`SMOKE_MODULE_PAGE_CHUNK=1/4`, while the auth, unsigned auth-required, gated,
-and redirect checks continue to run unless their own groups are set to `none`.
+redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` shards the
+module-page portion and `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M` shards the body-text
+portion of the default sweep using one-based deterministic chunks, for example
+`SMOKE_MODULE_PAGE_CHUNK=1/4` or `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8`, while the
+auth, unsigned auth-required, gated, and redirect checks continue to run unless
+their own groups are set to `none`.
 All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 `TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07:
 `481` total repeated checks, `0` failures, and `161` collective module-page

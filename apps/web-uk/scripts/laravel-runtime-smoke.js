@@ -986,8 +986,11 @@ function resolveContentTypePages(options, env) {
 
 function resolveBodyTextPages(options, env) {
   if (hasOwn(options, 'bodyTextPagePaths')) return options.bodyTextPagePaths;
-  if (hasOwn(env, 'SMOKE_BODY_TEXT_PAGE_PATHS')) return parseBodyTextPages(env.SMOKE_BODY_TEXT_PAGE_PATHS);
-  return DEFAULT_BODY_TEXT_PAGE_PATHS;
+  const pages = hasOwn(env, 'SMOKE_BODY_TEXT_PAGE_PATHS')
+    ? parseBodyTextPages(env.SMOKE_BODY_TEXT_PAGE_PATHS)
+    : DEFAULT_BODY_TEXT_PAGE_PATHS;
+
+  return applySmokeChunk(pages, env.SMOKE_BODY_TEXT_PAGE_CHUNK);
 }
 
 function resolveOptions(options = {}, env = process.env) {

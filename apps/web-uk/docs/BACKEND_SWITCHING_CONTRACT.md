@@ -123,11 +123,12 @@ For targeted CLI runs, `SMOKE_MODULE_PAGE_PATHS`,
 portable sentinel `none` disables that group. A targeted live CLI run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5317` with those three variables set to
 `none` passed `14/14`, including all eight auth-required parameterised
-redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` can split only the
-module-page sweep into deterministic one-based chunks, for example
-`SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can recertify the full default page
-list in repeatable smaller Laravel-backed runs without disabling the auth,
-unsigned auth-required, gated, or redirect checks.
+redirects. For slower shells, `SMOKE_MODULE_PAGE_CHUNK=N/M` splits the
+module-page sweep and `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M` splits the body-text
+sweep into deterministic one-based chunks, for example
+`SMOKE_MODULE_PAGE_CHUNK=1/4` or `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8`, so agents can
+recertify the full default page list in repeatable smaller Laravel-backed runs
+without disabling the auth, unsigned auth-required, gated, or redirect checks.
 All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 `TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=N/16` passed on 2026-07-07:
 `481` total repeated checks, `0` failures, and `161` collective module-page
@@ -599,7 +600,8 @@ signed `/account`, logout POST clearing the session, no-JS cookie POST
 workflows, content-type contracts, 22 signed gated `403` checks, and 21 signed
 redirect checks. A full default 634-check run exceeded the 15-minute command
 wrapper after progressing through module pages and into body-text checks; use
-chunked or targeted smoke scopes for full local recertification.
+`SMOKE_MODULE_PAGE_CHUNK=N/M`, `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M`, or targeted
+smoke scopes for full local recertification.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 

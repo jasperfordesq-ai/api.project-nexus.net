@@ -970,6 +970,26 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.modulePagePaths).toEqual(['/bravo', '/echo']);
   });
 
+  it('allows CLI body-text smoke runs to be split into deterministic chunks', () => {
+    const options = resolveOptions({}, {
+      SMOKE_BODY_TEXT_PAGE_PATHS: [
+        '/alpha=>Alpha',
+        '/bravo=>Bravo',
+        '/charlie=>Charlie',
+        '/delta=>Delta',
+        '/echo=>Echo',
+        '/foxtrot=>Foxtrot',
+        '/golf=>Golf'
+      ].join('\n'),
+      SMOKE_BODY_TEXT_PAGE_CHUNK: '2/3'
+    });
+
+    expect(options.bodyTextPagePaths).toEqual([
+      { path: '/bravo', text: 'Bravo' },
+      { path: '/echo', text: 'Echo' }
+    ]);
+  });
+
   it('includes stable real-fixture parameterised pages in the default module smoke scope', () => {
     const options = resolveOptions({}, {});
 
