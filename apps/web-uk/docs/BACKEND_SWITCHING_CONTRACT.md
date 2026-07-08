@@ -528,11 +528,19 @@ passed with `9/9` checks and `0` failures. The body-text-only default smoke
 scope was recertified in 8 chunks against the same port, covering all 253
 body-text contract checks with `301/301` executed checks including repeated
 auth/health setup checks and `0` failures.
-The default scope now contains `600` checks:
+The signed matches pages `/matches` and `/matches/board` returned expected body
+markers against `WEB_UK_BASE_URL=http://127.0.0.1:6238`; the list marker tracks
+the Laravel-backed `Open the matches board` link, and the board marker tracks
+the `Suggested matches` caption. The targeted run passed with `8/8` checks and
+`0` failures. The body-text-only default smoke scope was recertified in 8
+chunks against the same port, covering all 255 body-text contract checks with
+`303/303` executed checks including repeated auth/health setup checks and `0`
+failures.
+The default scope now contains `602` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 253 body-text contract checks, and the 6
+content-type contract checks, 255 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

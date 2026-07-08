@@ -210,6 +210,8 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/messages/77', text: 'Conversation' },
   { path: '/messages/new/77', text: 'Conversation with' },
   { path: '/connections', text: 'Connections' },
+  { path: '/matches', text: 'Open the matches board' },
+  { path: '/matches/board', text: 'Suggested matches' },
   { path: '/resources', text: 'Resources' },
   { path: '/resources/library', text: 'Resource library' },
   { path: '/resources/upload', text: 'Upload a resource' },
