@@ -74,6 +74,45 @@ public class AdminCompatibilityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ImpactReportV2_ReturnsLaravelReactDataEnvelopeAndPersistsConfig()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/impact-report?months=6");
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+
+        var data = initialJson.GetProperty("data");
+        var sroi = data.GetProperty("sroi");
+        sroi.GetProperty("period_months").GetInt32().Should().Be(6);
+        sroi.GetProperty("total_hours").GetDecimal().Should().BeGreaterThanOrEqualTo(0);
+        sroi.GetProperty("total_transactions").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        sroi.GetProperty("unique_givers").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        sroi.GetProperty("unique_receivers").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        sroi.GetProperty("hourly_value").GetDecimal().Should().BeGreaterThan(0);
+        sroi.GetProperty("social_multiplier").GetDecimal().Should().BeGreaterThan(0);
+        data.GetProperty("health").ValueKind.Should().Be(JsonValueKind.Object);
+        data.GetProperty("timeline").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("config").GetProperty("tenant_slug").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/impact-report/config", new
+        {
+            hourly_value = 25.5m,
+            social_multiplier = 4.25m
+        });
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var refreshed = await Client.GetAsync("/api/v2/admin/impact-report?months=3");
+        refreshed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var refreshedData = (await refreshed.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        refreshedData.GetProperty("sroi").GetProperty("period_months").GetInt32().Should().Be(3);
+        refreshedData.GetProperty("config").GetProperty("hourly_value").GetDecimal().Should().Be(25.5m);
+        refreshedData.GetProperty("config").GetProperty("social_multiplier").GetDecimal().Should().Be(4.25m);
+    }
+
+    [Fact]
     public async Task ListingFeatureEndpoints_PersistFeaturedFlag()
     {
         await AuthenticateAsAdminAsync();

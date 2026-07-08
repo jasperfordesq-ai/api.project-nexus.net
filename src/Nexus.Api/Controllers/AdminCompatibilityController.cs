@@ -2607,45 +2607,184 @@ public class AdminCompatibilityController : ControllerBase
     [HttpGet("impact-report")]
     public async Task<IActionResult> GetImpactReport()
     {
-        var since = DateTime.UtcNow.AddMonths(-12);
-        var totalHours = await _db.Transactions
+        var months = Math.Clamp(ReadIntQuery("months", 12), 1, 60);
+        var since = DateTime.UtcNow.AddMonths(-months);
+        var completedTransactions = _db.Transactions
             .Where(t => t.CreatedAt >= since && t.Status == TransactionStatus.Completed)
-            .SumAsync(t => (decimal?)t.Amount) ?? 0;
-        var senders = _db.Transactions
-            .Where(t => t.CreatedAt >= since && t.Status == TransactionStatus.Completed)
-            .Select(t => t.SenderId);
-        var receivers = _db.Transactions
-            .Where(t => t.CreatedAt >= since && t.Status == TransactionStatus.Completed)
-            .Select(t => t.ReceiverId);
+            .AsNoTracking();
+        var totalHours = await completedTransactions.SumAsync(t => (decimal?)t.Amount) ?? 0;
+        var totalTransactions = await completedTransactions.CountAsync();
+        var senders = completedTransactions.Select(t => t.SenderId);
+        var receivers = completedTransactions.Select(t => t.ReceiverId);
+        var uniqueGivers = await senders.Distinct().CountAsync();
+        var uniqueReceivers = await receivers.Distinct().CountAsync();
         var participants = await senders.Concat(receivers).Distinct().CountAsync();
         var config = await GetJsonConfigAsync("impact_report.config", new Dictionary<string, object?>
         {
-            ["hourly_social_value"] = 20m,
-            ["currency"] = "EUR",
-            ["period"] = "last_12_months"
+            ["hourly_value"] = 15m,
+            ["social_multiplier"] = 3.5m
         });
-        var hourlyValue = config.TryGetValue("hourly_social_value", out var rawHourly) && rawHourly is decimal d ? d : 20m;
+        var hourlyValue = ReadConfigDecimal(config, "hourly_value", "hourly_social_value", 15m);
+        var socialMultiplier = ReadConfigDecimal(config, "social_multiplier", "multiplier", 3.5m);
+        var monetaryValue = totalHours * hourlyValue;
+        var socialValue = monetaryValue * socialMultiplier;
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
+        var totalMembers = await _db.Users.AsNoTracking().CountAsync(u => u.TenantId == tenantId);
+        var activeMembers = await _db.Users.AsNoTracking().CountAsync(u => u.TenantId == tenantId && u.IsActive);
+        var timelineRows = await completedTransactions
+            .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                hours_exchanged = g.Sum(t => (decimal?)t.Amount) ?? 0m,
+                transactions = g.Count()
+            })
+            .ToListAsync();
+        var newUsersByMonth = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && u.CreatedAt >= since)
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, count = g.Count() })
+            .ToListAsync();
+        var timeline = Enumerable.Range(0, months)
+            .Select(offset => DateTime.UtcNow.AddMonths(-(months - 1 - offset)))
+            .Select(month =>
+            {
+                var row = timelineRows.FirstOrDefault(t => t.Year == month.Year && t.Month == month.Month);
+                var newUsers = newUsersByMonth.FirstOrDefault(u => u.Year == month.Year && u.Month == month.Month)?.count ?? 0;
+                return new
+                {
+                    month = month.ToString("yyyy-MM"),
+                    hours_exchanged = row?.hours_exchanged ?? 0m,
+                    transactions = row?.transactions ?? 0,
+                    new_users = newUsers
+                };
+            })
+            .ToList();
 
         return Ok(new
         {
-            period = config.GetValueOrDefault("period") ?? "last_12_months",
-            total_hours_exchanged = totalHours,
-            unique_participants = participants,
-            top_categories = Array.Empty<object>(),
-            social_value_estimate = totalHours * hourlyValue,
-            generated_at = DateTime.UtcNow,
-            config
+            data = new
+            {
+                sroi = new
+                {
+                    total_hours = totalHours,
+                    total_transactions = totalTransactions,
+                    unique_givers = uniqueGivers,
+                    unique_receivers = uniqueReceivers,
+                    hourly_value = hourlyValue,
+                    monetary_value = monetaryValue,
+                    social_multiplier = socialMultiplier,
+                    social_value = socialValue,
+                    sroi_ratio = monetaryValue == 0 ? 0 : socialValue / monetaryValue,
+                    period_months = months
+                },
+                health = new
+                {
+                    total_members = totalMembers,
+                    active_members = activeMembers,
+                    active_member_rate = totalMembers == 0 ? 0 : Math.Round((decimal)activeMembers / totalMembers * 100, 2),
+                    unique_participants = participants,
+                    transaction_count = totalTransactions
+                },
+                timeline,
+                config = new
+                {
+                    tenant_name = tenant?.Name ?? string.Empty,
+                    tenant_slug = tenant?.Slug ?? string.Empty,
+                    logo_url = tenant?.LogoUrl,
+                    hourly_value = hourlyValue,
+                    social_multiplier = socialMultiplier
+                }
+            }
         });
     }
 
     [HttpPut("impact-report/config")]
     public async Task<IActionResult> UpdateImpactReportConfig([FromBody] JsonElement request)
     {
-        await UpsertTenantConfigAsync("impact_report.config", SerializeConfigValue(request));
+        var hourlyValue = ReadDecimalProperty(request, "hourly_value", 15m);
+        var socialMultiplier = ReadDecimalProperty(request, "social_multiplier", 3.5m);
+
+        if (hourlyValue <= 0 || hourlyValue > 1000)
+            return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "hourly_value must be between 0 and 1000", field = "hourly_value" } } });
+        if (socialMultiplier <= 0 || socialMultiplier > 100)
+            return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "social_multiplier must be between 0 and 100", field = "social_multiplier" } } });
+
+        await UpsertTenantConfigAsync("impact_report.config", JsonSerializer.Serialize(new
+        {
+            hourly_value = hourlyValue,
+            social_multiplier = socialMultiplier
+        }));
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} updated impact report config", GetCurrentUserId());
-        return Ok(new { success = true, message = "Impact report config updated", data = await GetJsonConfigAsync("impact_report.config", new()) });
+        return Ok(new
+        {
+            data = new
+            {
+                message = "Impact report config updated",
+                hourly_value = hourlyValue,
+                social_multiplier = socialMultiplier
+            }
+        });
+    }
+
+    private int ReadIntQuery(string key, int fallback)
+        => int.TryParse(Request.Query[key].FirstOrDefault(), out var value) ? value : fallback;
+
+    private static decimal ReadConfigDecimal(
+        IReadOnlyDictionary<string, object?> config,
+        string primaryKey,
+        string legacyKey,
+        decimal fallback)
+    {
+        if (config.TryGetValue(primaryKey, out var primary) && TryConvertDecimal(primary, out var primaryValue))
+            return primaryValue;
+        if (config.TryGetValue(legacyKey, out var legacy) && TryConvertDecimal(legacy, out var legacyValue))
+            return legacyValue;
+
+        return fallback;
+    }
+
+    private static decimal ReadDecimalProperty(JsonElement root, string propertyName, decimal fallback)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return fallback;
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var parsedNumber))
+            return parsedNumber;
+        if (value.ValueKind == JsonValueKind.String && decimal.TryParse(value.GetString(), out var parsedString))
+            return parsedString;
+
+        return fallback;
+    }
+
+    private static bool TryConvertDecimal(object? raw, out decimal value)
+    {
+        switch (raw)
+        {
+            case decimal decimalValue:
+                value = decimalValue;
+                return true;
+            case int intValue:
+                value = intValue;
+                return true;
+            case long longValue:
+                value = longValue;
+                return true;
+            case double doubleValue:
+                value = (decimal)doubleValue;
+                return true;
+            case string stringValue when decimal.TryParse(stringValue, out var parsed):
+                value = parsed;
+                return true;
+            default:
+                value = 0;
+                return false;
+        }
     }
 
     // ──────────────────────────────────────────────

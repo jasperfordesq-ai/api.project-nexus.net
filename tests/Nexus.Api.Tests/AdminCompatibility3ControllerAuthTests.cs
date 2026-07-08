@@ -670,6 +670,228 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         }
     }
 
+    [Fact]
+    public async Task SuperFederationOverviewV2Alias_ReturnsLaravelReactOverviewData()
+    {
+        int adminUserId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            adminUserId = await db.Users.IgnoreQueryFilters()
+                .Where(u => u.Email == "admin@test.com")
+                .Select(u => u.Id)
+                .SingleAsync();
+
+            var tenantOne = new Tenant
+            {
+                Name = "Federation Overview One",
+                Slug = $"federation-overview-one-{Guid.NewGuid():N}",
+                Domain = "overview-one.example.test",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            var tenantTwo = new Tenant
+            {
+                Name = "Federation Overview Two",
+                Slug = $"federation-overview-two-{Guid.NewGuid():N}",
+                Domain = "overview-two.example.test",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            db.Tenants.AddRange(tenantOne, tenantTwo);
+            await db.SaveChangesAsync();
+
+            db.FederationTenantWhitelists.Add(new FederationTenantWhitelist
+            {
+                TenantId = tenantOne.Id,
+                IsEnabled = true,
+                ApprovedByUserId = adminUserId,
+                ApprovedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            var activePartnership = new FederationPartner
+            {
+                TenantId = tenantOne.Id,
+                PartnerTenantId = tenantTwo.Id,
+                Status = PartnerStatus.Active,
+                SharedListings = true,
+                SharedEvents = true,
+                SharedMembers = true,
+                CreditExchangeRate = 1.0m,
+                RequestedById = adminUserId,
+                ApprovedById = adminUserId,
+                ApprovedAt = DateTime.UtcNow.AddDays(-1),
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            var pendingPartnership = new FederationPartner
+            {
+                TenantId = tenantTwo.Id,
+                PartnerTenantId = tenantOne.Id,
+                Status = PartnerStatus.Pending,
+                CreditExchangeRate = 1.0m,
+                RequestedById = adminUserId,
+                CreatedAt = DateTime.UtcNow.AddHours(-12)
+            };
+            db.FederationPartners.AddRange(activePartnership, pendingPartnership);
+            db.AuditLogs.Add(new AuditLog
+            {
+                TenantId = tenantOne.Id,
+                UserId = adminUserId,
+                Action = "federation.whitelist.added",
+                EntityType = "tenant",
+                EntityId = tenantOne.Id,
+                Metadata = "{\"description\":\"Tenant added to federation whitelist\"}",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-10)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var overview = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation"));
+        overview.TryGetProperty("success", out _).Should().BeFalse();
+        var data = overview.GetProperty("data");
+        var controls = data.GetProperty("system_controls");
+        controls.GetProperty("federation_enabled").ValueKind.Should().Be(JsonValueKind.True);
+        controls.GetProperty("max_federation_level").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        controls.GetProperty("cross_tenant_messaging_enabled").ValueKind.Should().Be(JsonValueKind.True);
+        var stats = data.GetProperty("partnership_stats");
+        stats.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(2);
+        stats.GetProperty("active").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        stats.GetProperty("pending").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        stats.GetProperty("suspended").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        data.GetProperty("whitelisted_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        data.GetProperty("recent_audit").EnumerateArray().Should().Contain(a =>
+            a.GetProperty("target_id").GetInt32() > 0 &&
+            a.GetProperty("action_type").GetString() == "federation.whitelist.added");
+    }
+
+    [Fact]
+    public async Task SuperFederationJwtStatusV2Alias_ReturnsLaravelReactStatusWithoutSecret()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var status = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation/jwt-status"));
+
+        status.TryGetProperty("success", out _).Should().BeFalse();
+        var data = status.GetProperty("data");
+        data.GetProperty("configured").GetBoolean().Should().BeTrue();
+        data.GetProperty("issuer").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("key_bits").GetInt32().Should().BeGreaterThanOrEqualTo(256);
+        data.GetProperty("recommended_bits").GetInt32().Should().Be(256);
+        data.TryGetProperty("secret", out _).Should().BeFalse();
+        data.TryGetProperty("jwt_secret", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SuperFederationTenantFeatureV2Aliases_ReturnReactFeatureShapeAndPersistUpdates()
+    {
+        int tenantId;
+        int partnerTenantId;
+        int adminUserId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            adminUserId = await db.Users.IgnoreQueryFilters()
+                .Where(u => u.Email == "admin@test.com")
+                .Select(u => u.Id)
+                .SingleAsync();
+            var tenant = new Tenant
+            {
+                Name = "Federation Feature Tenant",
+                Slug = $"federation-feature-tenant-{Guid.NewGuid():N}",
+                Domain = "feature-tenant.example.test",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            var partnerTenant = new Tenant
+            {
+                Name = "Federation Feature Partner",
+                Slug = $"federation-feature-partner-{Guid.NewGuid():N}",
+                Domain = "feature-partner.example.test",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            db.Tenants.AddRange(tenant, partnerTenant);
+            await db.SaveChangesAsync();
+            tenantId = tenant.Id;
+            partnerTenantId = partnerTenant.Id;
+
+            db.FederationTenantWhitelists.Add(new FederationTenantWhitelist
+            {
+                TenantId = tenantId,
+                IsEnabled = true,
+                ApprovedByUserId = adminUserId,
+                ApprovedAt = DateTime.UtcNow.AddDays(-1),
+                Notes = "React tenant feature compatibility"
+            });
+            db.FederationTenantFeatures.Add(new FederationTenantFeature
+            {
+                TenantId = tenantId,
+                Feature = "tenant_messaging_enabled",
+                IsEnabled = true,
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            db.FederationPartners.Add(new FederationPartner
+            {
+                TenantId = tenantId,
+                PartnerTenantId = partnerTenantId,
+                Status = PartnerStatus.Active,
+                SharedListings = true,
+                SharedEvents = true,
+                SharedMembers = true,
+                CreditExchangeRate = 1.0m,
+                RequestedById = adminUserId,
+                ApprovedById = adminUserId,
+                ApprovedAt = DateTime.UtcNow.AddDays(-1),
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var initial = await ReadJsonAsync(await Client.GetAsync($"/api/v2/admin/super/federation/tenant/{tenantId}/features"));
+        initial.TryGetProperty("success", out _).Should().BeFalse();
+        var data = initial.GetProperty("data");
+        data.GetProperty("tenant").GetProperty("id").GetInt32().Should().Be(tenantId);
+        data.GetProperty("tenant").GetProperty("name").GetString().Should().Be("Federation Feature Tenant");
+        data.GetProperty("tenant").GetProperty("domain").GetString().Should().Be("feature-tenant.example.test");
+        data.GetProperty("is_whitelisted").GetBoolean().Should().BeTrue();
+        data.GetProperty("active_partnerships_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        var features = data.GetProperty("features");
+        features.GetProperty("cross_tenant_profiles_enabled").GetBoolean().Should().BeTrue();
+        features.GetProperty("cross_tenant_messaging_enabled").GetBoolean().Should().BeTrue();
+        features.GetProperty("cross_tenant_transactions_enabled").GetBoolean().Should().BeTrue();
+        features.GetProperty("cross_tenant_listings_enabled").GetBoolean().Should().BeTrue();
+        features.GetProperty("cross_tenant_events_enabled").GetBoolean().Should().BeTrue();
+        features.GetProperty("cross_tenant_groups_enabled").GetBoolean().Should().BeTrue();
+        data.GetProperty("partnerships").EnumerateArray().Should().Contain(p =>
+            p.GetProperty("tenant_1_id").GetInt32() == tenantId &&
+            p.GetProperty("tenant_2_id").GetInt32() == partnerTenantId);
+
+        var update = await ReadJsonAsync(await Client.PutAsJsonAsync($"/api/v2/admin/super/federation/tenant/{tenantId}/features", new
+        {
+            feature = "cross_tenant_messaging_enabled",
+            enabled = false
+        }));
+        update.GetProperty("data").GetProperty("updated").GetBoolean().Should().BeTrue();
+        update.GetProperty("data").GetProperty("tenant_id").GetInt32().Should().Be(tenantId);
+        update.GetProperty("data").GetProperty("feature").GetString().Should().Be("cross_tenant_messaging_enabled");
+        update.GetProperty("data").GetProperty("enabled").GetBoolean().Should().BeFalse();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stored = await db.FederationTenantFeatures.IgnoreQueryFilters()
+                .SingleAsync(f => f.TenantId == tenantId && f.Feature == "tenant_messaging_enabled");
+            stored.IsEnabled.Should().BeFalse();
+        }
+
+        var refreshed = await ReadJsonAsync(await Client.GetAsync($"/api/v2/admin/super/federation/tenant/{tenantId}/features"));
+        refreshed.GetProperty("data").GetProperty("features")
+            .GetProperty("cross_tenant_messaging_enabled").GetBoolean().Should().BeFalse();
+    }
+
     private static User NewSuperPanelUser(string prefix, int tenantId)
         => new()
         {

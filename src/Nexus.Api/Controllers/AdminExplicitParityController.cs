@@ -22,6 +22,7 @@ public class AdminExplicitParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly IFederationWebhookSubscriptionService _webhookService;
+    private readonly IConfiguration _configuration;
     private const string BillingInvoicesKey = "admin_explicit.billing.invoices";
     private const string FederationTopicsKey = "admin_explicit.federation.topics";
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
@@ -190,10 +191,14 @@ public class AdminExplicitParityController : ControllerBase
         PropertyNameCaseInsensitive = true
     };
 
-    public AdminExplicitParityController(NexusDbContext db, IFederationWebhookSubscriptionService webhookService)
+    public AdminExplicitParityController(
+        NexusDbContext db,
+        IFederationWebhookSubscriptionService webhookService,
+        IConfiguration configuration)
     {
         _db = db;
         _webhookService = webhookService;
+        _configuration = configuration;
     }
 
     [HttpDelete("/api/v2/admin/events/{id}")]
@@ -451,6 +456,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
             "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
             "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
+            "/api/v2/admin/super/federation/jwt-status" => GetFederationJwtStatus(),
             "/api/v2/admin/translation/glossary" => await GetTranslationGlossary(),
             "/api/v2/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
@@ -1646,6 +1652,58 @@ public class AdminExplicitParityController : ControllerBase
             }
         });
     }
+
+    private IActionResult GetFederationJwtStatus()
+    {
+        var secret = _configuration["Federation:JwtSecret"]
+            ?? _configuration["Federation:JWT_SECRET"]
+            ?? _configuration["Jwt:Secret"]
+            ?? Environment.GetEnvironmentVariable("FEDERATION_JWT_SECRET")
+            ?? Environment.GetEnvironmentVariable("JWT_SECRET")
+            ?? string.Empty;
+        var issuer = _configuration["Federation:Issuer"]
+            ?? _configuration["Federation:JwtIssuer"]
+            ?? _configuration["Jwt:Issuer"]
+            ?? $"{Request.Scheme}://{Request.Host}";
+
+        return Ok(new
+        {
+            data = new
+            {
+                configured = !string.IsNullOrWhiteSpace(secret),
+                issuer,
+                key_bits = CalculateLaravelJwtKeyBits(secret),
+                recommended_bits = 256
+            }
+        });
+    }
+
+    private static int CalculateLaravelJwtKeyBits(string secret)
+    {
+        if (string.IsNullOrEmpty(secret))
+            return 0;
+
+        var raw = secret.StartsWith("base64:", StringComparison.OrdinalIgnoreCase)
+            ? TryDecodeBase64Secret(secret[7..])
+            : secret;
+
+        return IsHex(raw) ? raw.Length * 4 : raw.Length * 8;
+    }
+
+    private static string TryDecodeBase64Secret(string encoded)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+        }
+        catch (FormatException)
+        {
+            return encoded;
+        }
+    }
+
+    private static bool IsHex(string value)
+        => value.Length > 0 && value.All(Uri.IsHexDigit);
 
     private async Task<IActionResult> GetBillingRevenue()
     {
