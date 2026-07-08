@@ -14486,6 +14486,34 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).not.toContain('href="/groups/42/members"');
   });
 
+  it('uses Laravel viewer membership when rendering group actions', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 449,
+        name: 'Munster',
+        description: 'The southern province hub.',
+        visibility: 'public',
+        member_count: 172,
+        viewer_membership: {
+          role: 'member',
+          status: 'active'
+        }
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/449')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Munster');
+    expect(response.text).toContain('Leave group');
+    expect(response.text).not.toContain('Join this group');
+  });
+
   it('renders the Laravel group files page for signed-in group members', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({
@@ -18132,6 +18160,57 @@ describe('shared accessible frontend shell', () => {
     expect(grading.text).toContain('Manual Review Learner');
     expect(grading.text).toContain('Ask for consent');
     expect(grading.text).toContain('Save grade');
+  });
+
+  it('keeps the course learner page available when Laravel progress is temporarily unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.callCourseApi.mockImplementation(async (_token, method, pathName) => {
+      if (method !== 'GET') return { data: { id: 42 } };
+      if (pathName === '/42') {
+        return {
+          data: {
+            id: 42,
+            title: 'Advanced community care',
+            description: 'Build practical skills for supporting neighbours safely.',
+            level: 'advanced',
+            visibility: 'members',
+            enrollment_type: 'self_paced',
+            is_enrolled: true,
+            sections: [
+              {
+                id: 5,
+                title: 'Safety basics',
+                lessons: [
+                  {
+                    id: 11,
+                    title: 'Risk check',
+                    content_type: 'text',
+                    body: 'Use a simple checklist before each visit.'
+                  }
+                ]
+              }
+            ]
+          }
+        };
+      }
+      if (pathName === '/42/prerequisites' || pathName === '/42/reviews') {
+        return { data: [] };
+      }
+      if (pathName === '/42/progress') {
+        throw new api.ApiError('Progress is not ready', 500, {});
+      }
+      throw new Error(`Unexpected course API call: ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/courses/42/learn?status=course-completed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Advanced community care');
+    expect(response.text).toContain('You have finished the course. Well done.');
+    expect(response.text).toContain('Risk check');
+    expect(response.text).not.toContain('Sorry, the service is unavailable');
   });
 
   it('renders forbidden when Laravel denies course instructor analytics and grading access', async () => {

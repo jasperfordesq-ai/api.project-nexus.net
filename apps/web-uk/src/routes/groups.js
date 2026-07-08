@@ -242,12 +242,15 @@ function dateInputValue(value) {
 
 function normalizeGroup(item, fallbackId = null) {
   const raw = item && typeof item === 'object' ? item : {};
+  const viewerMembership = raw.viewer_membership || raw.viewerMembership;
   return {
     ...raw,
     id: positiveInteger(raw.id) || fallbackId,
     name: trimmed(raw.name || raw.title) || 'Group',
     imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
-    coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || '')
+    coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || ''),
+    my_membership: raw.my_membership || raw.myMembership || raw.membership || viewerMembership || null,
+    myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null
   };
 }
 
@@ -718,7 +721,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const members = membersResult.data || membersResult.items || [];
   const events = eventsResult.data || eventsResult.items || [];
-  const myMembership = groupResult.myMembership || groupResult.my_membership;
+  const myMembership = group.myMembership || group.my_membership;
 
   res.render('groups/detail', {
     title: group.name,

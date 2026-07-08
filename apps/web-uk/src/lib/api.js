@@ -2160,14 +2160,14 @@ async function getGroupMembers(token, groupId) {
 }
 
 async function joinGroup(token, groupId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/join`, {
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/join`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function leaveGroup(token, groupId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/leave`, {
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/membership`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });

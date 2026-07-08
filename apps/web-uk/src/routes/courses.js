@@ -506,7 +506,7 @@ async function courseDetailPayload(token, id) {
     callCourse(token, 'GET', `/${id}/prerequisites`).catch(() => ({ data: [] })),
     callCourse(token, 'GET', `/${id}/reviews`).catch(() => ({ data: [] })),
     callCourse(token, 'GET', `/${id}/progress`).catch((error) => {
-      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) return { data: {} };
+      if (error instanceof ApiError || error instanceof ApiOfflineError) return { data: {} };
       throw error;
     })
   ]);
