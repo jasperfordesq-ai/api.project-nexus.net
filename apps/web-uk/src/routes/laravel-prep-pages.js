@@ -4,9 +4,25 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const routeMatrix = require('../../docs/generated/accessible-route-matrix.json');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
+const ROUTE_MATRIX_PATH = path.join(__dirname, '..', '..', 'docs', 'generated', 'accessible-route-matrix.json');
+
+function loadRouteMatrix() {
+  if (!fs.existsSync(ROUTE_MATRIX_PATH)) {
+    return { matrix: [] };
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(ROUTE_MATRIX_PATH, 'utf8'));
+  } catch {
+    return { matrix: [] };
+  }
+}
+
+const routeMatrix = loadRouteMatrix();
 
 function toExpressPath(laravelPath, paramConstraints = []) {
   let paramIndex = 0;
