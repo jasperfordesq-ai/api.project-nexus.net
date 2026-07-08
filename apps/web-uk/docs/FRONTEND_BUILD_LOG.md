@@ -134,11 +134,11 @@ This document tracks the implementation progress of the NEXUS UK Frontend.
 
 ### 3.6 Connections (COMPLETE - Prior)
 **Route:** `src/routes/connections.js`
-**Views:** `src/views/connections/index.njk`, `pending.njk`
+**Views:** `src/views/connections/index.njk`, `network.njk`
 
 **Endpoints Used:**
 - `GET /api/connections`
-- `GET /api/connections/pending`
+- `GET /api/v2/connections/pending`
 - `POST /api/connections`
 - `PUT /api/connections/{id}/accept`
 - `PUT /api/connections/{id}/decline`

@@ -138,7 +138,7 @@ function getNotificationLink(notification) {
 
   switch (notification.type) {
     case 'connection_request':
-      return '/connections/pending';
+      return '/connections/network?tab=pending_received';
     case 'connection_accepted':
       return (data.userId || data.user_id) ? `/members/${data.userId || data.user_id}` : '/connections';
     case 'connection_declined':

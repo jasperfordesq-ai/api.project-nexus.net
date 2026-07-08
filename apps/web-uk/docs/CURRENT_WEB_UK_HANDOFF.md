@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `682` |
+| Web UK routes | `681` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `75` |
+| Extra Web UK routes | `74` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused connections route slice: legacy local `/connections/pending`
+was removed. Links from the connections index, member directory, and
+notifications now use Laravel's accessible `/connections/network` page with the
+`pending_received` tab selected.
 
 Latest focused component-demo slice: the local `/components` route, home-page
 demo link, and unused `components.njk` template were removed. The Laravel

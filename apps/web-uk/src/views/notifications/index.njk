@@ -56,7 +56,7 @@
 
             {# Determine link based on notification type #}
             {% if notification.type == 'connection_request' %}
-              {% set notificationLink = '/connections/pending' %}
+              {% set notificationLink = '/connections/network?tab=pending_received' %}
             {% elif notification.type == 'connection_accepted' %}
               {% set notificationLink = '/members/' + (notificationData.userId or notificationData.user_id or '') if notificationData.userId or notificationData.user_id else '/connections' %}
             {% elif notification.type == 'connection_declined' %}

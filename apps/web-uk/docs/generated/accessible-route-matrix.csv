@@ -23,7 +23,6 @@ extra-web-uk,POST,/admin/roles/new,admin,,,,,,,,admin/roles/form,,,C:\Users\jasp
 extra-web-uk,POST,/admin/users/{param}/activate,admin,,,,,,,,,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\admin.js,
 extra-web-uk,POST,/admin/users/{param}/edit,admin,,,,,,,,admin/users/edit,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\admin.js,
 extra-web-uk,POST,/admin/users/{param}/suspend,admin,,,,,,,,,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\admin.js,
-extra-web-uk,GET,/connections/pending,connections,,,,,,,,connections/pending,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\connections.js,
 extra-web-uk,GET,/events/my,events,,,,,,,,events/my,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\events.js,
 extra-web-uk,POST,/events/{param}/rsvp/remove,events,,,,,,,,,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\events.js,
 extra-web-uk,GET,/feed/{param},feed,,,,,,,,feed/detail,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\feed.js,

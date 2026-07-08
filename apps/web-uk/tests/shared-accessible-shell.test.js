@@ -7031,14 +7031,21 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app)
       .get('/connections')
       .set('Cookie', signedCookieHeader());
+    const legacyPending = await request(app)
+      .get('/connections/pending')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(api.getConnections).toHaveBeenCalledWith('test-token', undefined);
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Connections');
+    expect(response.text).toContain('href="/connections/network?tab=pending_received"');
+    expect(response.text).not.toContain('href="/connections/pending"');
     expect(response.text).toContain('No connections yet');
     expect(response.text).toContain('Sorry, there is a problem loading connections.');
     expect(response.text).not.toContain('Page not found');
+    expect(legacyPending.status).toBe(404);
+    expect(legacyPending.text).toContain('Page not found');
   });
 
   it('submits Laravel connection actions through the v2 connection helpers', async () => {

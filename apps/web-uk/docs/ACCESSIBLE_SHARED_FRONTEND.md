@@ -1349,10 +1349,15 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 682 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 75 local-only routes. These
+accessible route declarations, 681 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 74 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/connections/pending` is intentionally not exposed as a separate local page.
+Laravel's accessible pending/accepted/sent connection experience lives on the
+`/connections/network` tabbed page, and local links now point to
+`/connections/network?tab=pending_received`.
 
 `/components` is intentionally not exposed as a local demo route. Laravel's
 accessible frontend keeps GOV.UK component inventory in docs/source assets, not

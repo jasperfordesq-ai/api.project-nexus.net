@@ -1,23 +1,18 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T09:57:50.338Z",
+    "generatedAt": "2026-07-08T10:03:51.102Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 682,
+    "webUkRoutes": 681,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 75,
+    "extraWebUkRoutes": 74,
     "familyCounts": {
       "admin": {
         "matched": 0,
         "missing": 0,
         "extraWebUk": 24
-      },
-      "connections": {
-        "matched": 5,
-        "missing": 0,
-        "extraWebUk": 1
       },
       "events": {
         "matched": 21,
@@ -146,6 +141,11 @@
       },
       "clubs": {
         "matched": 1,
+        "missing": 0,
+        "extraWebUk": 0
+      },
+      "connections": {
+        "matched": 5,
         "missing": 0,
         "extraWebUk": 0
       },
@@ -827,25 +827,6 @@
       "webUkPath": "/admin/users/{param}/suspend",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\admin.js"
-    },
-    {
-      "method": "GET",
-      "path": "/connections/pending",
-      "family": "connections",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/connections/pending",
-      "webUkView": "connections/pending",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\connections.js"
     },
     {
       "method": "GET",

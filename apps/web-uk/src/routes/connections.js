@@ -6,7 +6,6 @@
 const express = require('express');
 const {
   getConnections,
-  getPendingConnections,
   getConnectionsV2,
   getConnectionPendingCountsV2,
   acceptMemberConnection,
@@ -255,20 +254,6 @@ router.get('/', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: connectionErrorMessage || (req.flash ? req.flash('error')[0] : null)
-  });
-}));
-
-// Pending connection requests
-router.get('/pending', asyncRoute(async (req, res) => {
-  const result = await getPendingConnections(req.token);
-
-  const pendingData = result.data || result;
-  res.render('connections/pending', {
-    title: 'Pending requests',
-    incoming: pendingData.incoming || result.incoming || [],
-    outgoing: pendingData.outgoing || result.outgoing || [],
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }));
 

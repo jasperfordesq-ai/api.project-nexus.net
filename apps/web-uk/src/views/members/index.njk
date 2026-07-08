@@ -109,7 +109,7 @@
                       </button>
                     </form>
                   {% elif conn.status == 'pending' and not conn.is_requester %}
-                    <a href="/connections/pending" class="govuk-link">Respond</a>
+                    <a href="/connections/network?tab=pending_received" class="govuk-link">Respond</a>
                   {% endif %}
                 </td>
               </tr>
