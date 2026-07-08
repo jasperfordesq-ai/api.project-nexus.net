@@ -5,6 +5,7 @@
 
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -29,6 +30,8 @@ namespace Nexus.Api.Controllers;
 [Authorize(Policy = "AdminOnly")]
 public class AdminController : ControllerBase
 {
+    private const string AdminUserRolesKeyPrefix = "admin.user_roles.";
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly IEventPublisher _eventPublisher;
@@ -82,7 +85,7 @@ public class AdminController : ControllerBase
         return "pending";
     }
 
-    private object MapLaravelAdminUser(User user, int listingCount = 0) => new
+    private object MapLaravelAdminUser(User user, int listingCount = 0, IReadOnlyCollection<string>? assignedRoles = null) => new
     {
         id = user.Id,
         name = $"{user.FirstName} {user.LastName}".Trim(),
@@ -117,8 +120,69 @@ public class AdminController : ControllerBase
         last_login_at = user.LastLoginAt,
         onboarding_completed = true,
         badges = Array.Empty<object>(),
-        roles = Array.Empty<string>()
+        roles = assignedRoles ?? Array.Empty<string>()
     };
+
+    private async Task<Dictionary<int, string[]>> LoadAssignedRolesAsync(IEnumerable<int> userIds)
+    {
+        var ids = userIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return new Dictionary<int, string[]>();
+        }
+
+        var keys = ids.Select(id => AdminUserRolesKeyPrefix + id).ToArray();
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(config => keys.Contains(config.Key))
+            .Select(config => new { config.Key, config.Value })
+            .ToListAsync();
+
+        return rows
+            .Select(row => new
+            {
+                UserId = ParseUserRolesKey(row.Key),
+                Roles = ParseAssignedRoles(row.Value)
+            })
+            .Where(row => row.UserId > 0)
+            .ToDictionary(row => row.UserId, row => row.Roles);
+    }
+
+    private async Task<string[]> LoadAssignedRolesAsync(int userId)
+    {
+        var roles = await LoadAssignedRolesAsync(new[] { userId });
+        return roles.GetValueOrDefault(userId, Array.Empty<string>());
+    }
+
+    private static int ParseUserRolesKey(string key)
+    {
+        return key.StartsWith(AdminUserRolesKeyPrefix, StringComparison.OrdinalIgnoreCase)
+            && int.TryParse(key[AdminUserRolesKeyPrefix.Length..], out var userId)
+            ? userId
+            : 0;
+    }
+
+    private static string[] ParseAssignedRoles(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(raw)?
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => role.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(role => role, StringComparer.OrdinalIgnoreCase)
+                .ToArray() ?? Array.Empty<string>();
+        }
+        catch (JsonException)
+        {
+            return Array.Empty<string>();
+        }
+    }
 
     #region Dashboard
 
@@ -290,10 +354,14 @@ public class AdminController : ControllerBase
 
         if (IsLaravelV2Request)
         {
+            var assignedRoles = await LoadAssignedRolesAsync(userIds);
             var totalPages = total > 0 ? (int)Math.Ceiling((double)total / limit) : 0;
             return Ok(new
             {
-                data = userEntities.Select(u => MapLaravelAdminUser(u, listingCounts.GetValueOrDefault(u.Id))).ToArray(),
+                data = userEntities.Select(u => MapLaravelAdminUser(
+                    u,
+                    listingCounts.GetValueOrDefault(u.Id),
+                    assignedRoles.GetValueOrDefault(u.Id, Array.Empty<string>()))).ToArray(),
                 meta = new
                 {
                     base_url = $"{Request.Scheme}://{Request.Host}",
@@ -360,7 +428,8 @@ public class AdminController : ControllerBase
         if (IsLaravelV2Request)
         {
             var v2ListingCount = await _db.Listings.CountAsync(l => l.UserId == id && l.Status == ListingStatus.Active);
-            return LaravelData(MapLaravelAdminUser(userEntity, v2ListingCount));
+            var assignedRoles = await LoadAssignedRolesAsync(id);
+            return LaravelData(MapLaravelAdminUser(userEntity, v2ListingCount, assignedRoles));
         }
 
         var user = await _db.Users
@@ -499,7 +568,8 @@ public class AdminController : ControllerBase
 
         if (IsLaravelV2Request)
         {
-            return LaravelData(MapLaravelAdminUser(user));
+            var assignedRoles = await LoadAssignedRolesAsync(id);
+            return LaravelData(MapLaravelAdminUser(user, assignedRoles: assignedRoles));
         }
 
         return Ok(new

@@ -33,6 +33,7 @@ public class AdminExplicitParityController : ControllerBase
     private const string MemberPremiumDisputesKey = "donations.disputes";
     private const string SupportReportsKey = "admin_explicit.support_reports";
     private const string ApiPartnersKey = "admin_explicit.api_partners";
+    private const string AdminUserRolesKeyPrefix = "admin.user_roles.";
     private const string ApiPartnerCallLogPrefix = "admin_explicit.api_partner_call_log.";
     private const string ModuleConfigPrefix = "admin_explicit.module_config.";
     private const string TranslationGlossaryKey = "admin_explicit.translation_glossary";
@@ -233,6 +234,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await DeleteGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
+            _ when TryGetLastInt(path, "/api/v2/admin/feed/revoke-announcer/", out var announcerUserId) => await RevokeMunicipalityAnnouncer(announcerUserId),
             _ when TryGetLastInt(path, "/api/v2/admin/translation/glossary/", out var glossaryId) => await DeleteTranslationGlossaryEntry(glossaryId),
             _ => await PersistCompatibilityWrite("delete")
         };
@@ -634,6 +636,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
             "/api/v2/admin/users/bulk-approve" => await BulkApproveUsers(),
             "/api/v2/admin/users/bulk-suspend" => await BulkSuspendUsers(),
+            "/api/v2/admin/feed/grant-announcer" => await GrantMunicipalityAnnouncer(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/approve", out var approveAdCampaignId) => await ApproveAdCampaign(approveAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/pause", out var pauseAdCampaignId) => await PauseAdCampaign(pauseAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/reject", out var rejectAdCampaignId) => await RejectAdCampaign(rejectAdCampaignId),
@@ -737,6 +740,76 @@ public class AdminExplicitParityController : ControllerBase
                 failed = skippedIds.Count,
                 skipped_ids = skippedIds
             }
+        });
+    }
+
+    private async Task<IActionResult> GrantMunicipalityAnnouncer()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var userId = JsonInt(payload, "user_id", 0, 0, int.MaxValue);
+        if (userId <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+            {
+                success = false,
+                error = new { code = "VALIDATION", message = "user_id is required" }
+            });
+        }
+
+        var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!userExists)
+        {
+            return NotFound(new
+            {
+                success = false,
+                error = new { code = "NOT_FOUND", message = "User not found in tenant" }
+            });
+        }
+
+        var roles = await LoadAdminUserRolesAsync(userId);
+        if (!roles.Contains("municipality_announcer", StringComparer.OrdinalIgnoreCase))
+        {
+            roles.Add("municipality_announcer");
+            await SaveAdminUserRolesAsync(userId, roles);
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new { success = true, message = "Municipality announcer role granted", user_id = userId }
+        });
+    }
+
+    private async Task<IActionResult> RevokeMunicipalityAnnouncer(int userId)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!userExists)
+        {
+            return NotFound(new
+            {
+                success = false,
+                error = new { code = "NOT_FOUND", message = "User not found in tenant" }
+            });
+        }
+
+        var roles = await LoadAdminUserRolesAsync(userId);
+        var updatedRoles = roles
+            .Where(role => !string.Equals(role, "municipality_announcer", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        await SaveAdminUserRolesAsync(userId, updatedRoles);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new { success = true, message = "Municipality announcer role revoked", user_id = userId }
         });
     }
 
@@ -4977,6 +5050,39 @@ public class AdminExplicitParityController : ControllerBase
             .Where(c => c.Key == key)
             .Select(c => c.Value)
             .FirstOrDefaultAsync();
+    }
+
+    private async Task<List<string>> LoadAdminUserRolesAsync(int userId)
+    {
+        var raw = await GetTenantConfigValueAsync(AdminUserRolesKeyPrefix + userId);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(raw, StoreJsonOptions)?
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => role.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>();
+        }
+        catch (JsonException)
+        {
+            return new List<string>();
+        }
+    }
+
+    private async Task SaveAdminUserRolesAsync(int userId, IReadOnlyCollection<string> roles)
+    {
+        var normalized = roles
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Select(role => role.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(role => role, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        await UpsertTenantConfigValueAsync(AdminUserRolesKeyPrefix + userId, JsonSerializer.Serialize(normalized, StoreJsonOptions));
     }
 
     private async Task UpsertTenantConfigValueAsync(string key, string value)
