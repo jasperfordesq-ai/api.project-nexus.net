@@ -19834,7 +19834,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/organisations/42/applications?status=pending&per_page=20');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/organisations/42/hours/pending?per_page=20');
     expect(manageResponse.text).toContain('Application approved.');
-    expect(manageResponse.text).toContain('Manage volunteer organisation');
+    expect(manageResponse.text).toContain('Manage your organisation');
     expect(manageResponse.text).toContain('Alex Applicant');
     expect(manageResponse.text).toContain('Kitchen helper');
     expect(manageResponse.text).toContain('Happy to help with lunch service.');
@@ -19868,7 +19868,7 @@ describe('shared accessible frontend shell', () => {
     expect(volunteersResponse.status).toBe(200);
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(6, 'test-token', 'GET', '/organisations/42/stats');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(7, 'test-token', 'GET', '/organisations/42/volunteers?per_page=20&cursor=88');
-    expect(volunteersResponse.text).toContain('Organisation volunteers');
+    expect(volunteersResponse.text).toContain('Volunteers roster');
     expect(volunteersResponse.text).toContain('Alex Applicant');
     expect(volunteersResponse.text).toContain('alex@example.org');
     expect(volunteersResponse.text).toContain('12.5');

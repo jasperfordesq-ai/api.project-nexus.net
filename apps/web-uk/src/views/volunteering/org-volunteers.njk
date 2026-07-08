@@ -8,8 +8,8 @@
   <a class="govuk-back-link" href="/volunteering/organisations/{{ orgId }}/dashboard">Back to dashboard</a>
 
   <span class="govuk-caption-l">{{ orgName }}</span>
-  <h1 class="govuk-heading-xl">Organisation volunteers</h1>
-  <p class="govuk-body-l">Approved volunteers and their hours with this organisation.</p>
+  <h1 class="govuk-heading-xl">Volunteers roster</h1>
+  <p class="govuk-body-l">Approved volunteers who have joined your opportunities.</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -25,7 +25,7 @@
     </div>
   {% else %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Organisation volunteers</caption>
+      <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Volunteers roster</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">Name</th>

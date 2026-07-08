@@ -2007,7 +2007,7 @@ router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/org-manage', {
-    title: 'Manage volunteer organisation',
+    title: 'Manage your organisation',
     activeNav: 'volunteering',
     orgId: id,
     orgName: dashboard.orgName,
@@ -2072,7 +2072,7 @@ router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) =>
   }
 
   return res.render('volunteering/org-volunteers', {
-    title: 'Organisation volunteers',
+    title: 'Volunteers roster',
     activeNav: 'volunteering',
     orgId: id,
     orgName: dashboard.orgName,
