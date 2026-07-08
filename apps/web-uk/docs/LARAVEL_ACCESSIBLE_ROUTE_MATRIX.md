@@ -570,13 +570,14 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The module-page/body-text marker gap is now
-0: `279` module-page checks and `279` body-text contract checks.
-The default scope now contains `633` checks:
+0: `279` module-page checks and `283` body-text contract checks.
+The default scope now contains `634` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
-POST workflow checks, and the 6 auth/health checks.
+POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
+checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
@@ -585,7 +586,7 @@ fell from 28 to 0.
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/alpha` | `/` | Implemented local equivalent. |
-| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Notification group-read/delete-all, wallet donate/manage/recipients/export, saved-item removal, saved-collection CRUD/item-remove, match-dismiss, appreciation send/react, onboarding step, settings, message group GET pages, and message POST aliases call Laravel-compatible endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and runtime certification are not complete. |
+| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. The default Laravel runtime smoke now verifies POST `/logout` redirects to `/login` and clears the signed account session; a targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:6243` with `TENANT_ID=2` passed this on 2026-07-08. Notification group-read/delete-all, wallet donate/manage/recipients/export, saved-item removal, saved-collection CRUD/item-remove, match-dismiss, appreciation send/react, onboarding step, settings, message group GET pages, and message POST aliases call Laravel-compatible endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and ASP.NET backend compatibility are not complete. |
 | Home | `/` | `/` | Implemented local equivalent. |
 | Dashboard | `/dashboard` | `/dashboard` | Partial Laravel-backed candidate: signed GET redirects unsigned visitors to `/login`, calls Laravel-compatible profile, onboarding status, wallet balance, gamification profile, badges, listings, feed, member events, `/api/v2/exchanges/needs-attention-count`, and `/api/v2/members/{id}/endorsements` helpers, and renders Blade-style dashboard caption, welcome copy, onboarding banner, exchange-attention banner, create-listing CTA, time-bank stat grid, progress/badges, upcoming events, skill endorsements, quick links, and recent feed/listings. Tenant/module/feature gates, exact localization, runtime behavior against a live Laravel backend, and ASP.NET backend compatibility are not certified. |
 | Feed | `/feed`, `/feed/posts/{id}`, `/feed/item/{type}/{id}`, `/feed/hashtags`, `/feed/hashtag/{tag}` | `/feed`, `/feed/posts/:id`, `/feed/item/:type/:id`, `/feed/hashtags`, `/feed/hashtag/:tag` | Implemented local route with Laravel-compatible POST aliases for post create/update/delete, multipart post image upload, typed engagement, poll votes, moderation/report/share/save, comment mutation/reactions, and mute; the signed feed page now exposes the Blade-style multipart compose controls for image and alt text. Public GET `/feed/posts/{id}` calls Laravel-compatible `/api/v2/feed/posts/{id}` and renders the Blade-style permalink page. Public GET `/feed/item/{type}/{id}` calls Laravel-compatible `/api/v2/feed/items/{type}/{id}` and renders the Blade-style typed-item permalink with item-type tag, deep link where available, media, engagement counts, auth notice, and comments section. Public GET `/feed/hashtags` calls Laravel-compatible hashtag trending/search APIs, and public GET `/feed/hashtag/{tag}` calls `/api/v2/feed/hashtags/{tag}` for the Blade-style hashtag post list. Full Blade feed rendering, filters, exact offset pagination, signed reaction/share/save/comment UI depth, feature gates, tenant behavior, and runtime behavior are not certified. |

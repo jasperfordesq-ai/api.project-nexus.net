@@ -572,18 +572,22 @@ The no-JS cookie consent POST flows are now part of the default Laravel runtime
 smoke scope: it fetches CSRF tokens, posts banner reject, banner accept, and
 settings-save analytics choices to `/cookie-consent`, and asserts the expected
 redirects plus Laravel-compatible `nexus_alpha_cookie_consent` values.
+The protected account sign-out form is also runtime-smoked: the harness reads
+the `/account` CSRF token, posts `/logout`, checks the `/login` redirect, and
+then verifies `/account` redirects after the signed cookies are cleared.
 The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `283` body-text contract checks.
-The default scope now contains `633` checks:
+The default scope now contains `634` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
-POST workflow checks, and the 6 auth/health checks.
+POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
+checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
@@ -658,7 +662,9 @@ The `/account` page is now a local Blade-style protected account hub candidate.
 Unsigned requests redirect to `/login`, matching the Laravel accessible account
 route. Signed-in requests render the Blade-style account card list for wallet,
 messages, connections, notifications, profile, and settings, plus a
-CSRF-protected sign-out form. The protected notifications module also exposes
+CSRF-protected sign-out form. The default Laravel runtime smoke now verifies
+the POST `/logout` redirect and post-logout `/account` redirect behavior. The
+protected notifications module also exposes
 the Laravel accessible `/notifications/group/read` and
 `/notifications/delete-all` POST aliases against the Laravel v2 notification API.
 The protected wallet module exposes a no-JS `/wallet/donate` form and POST route

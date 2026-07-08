@@ -641,6 +641,12 @@ the expected `/cookies` redirects. A targeted live run on 2026-07-08 against
 `WEB_UK_BASE_URL=http://127.0.0.1:6242`, started with `TENANT_ID=2`, passed
 `9/9` checks including all three cookie POST workflows, auth, and signed
 `/account`.
+The CSRF-protected sign-out form on `/account` is now part of the default
+Laravel runtime smoke scope too: it logs in a separate session, reads the
+account-page CSRF token, posts `/logout`, and asserts both the `/login` redirect
+and that `/account` redirects after local auth cookies are cleared. A targeted
+live run on 2026-07-08 against `WEB_UK_BASE_URL=http://127.0.0.1:6243`,
+started with `TENANT_ID=2`, passed `10/10` checks including logout.
 The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
@@ -649,12 +655,13 @@ Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `283` body-text contract checks. `/dashboard`
 now carries stable body-text checks for `Welcome back`, `Your time bank`,
 `Quick links`, `Recent feed`, and `Recent listings`.
-The default scope now contains `633` checks:
+The default scope now contains `634` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
-POST workflow checks, and the 6 auth/health checks.
+POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
+checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against
 `WEB_UK_BASE_URL=http://127.0.0.1:5354`, confirming the default

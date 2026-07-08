@@ -572,12 +572,13 @@ Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `283` body-text contract checks. `/dashboard`
 now carries stable body-text checks for `Welcome back`, `Your time bank`,
 `Quick links`, `Recent feed`, and `Recent listings`.
-The default scope now contains `633` checks:
+The default scope now contains `634` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
-POST workflow checks, and the 6 auth/health checks.
+POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
+checks.
 A targeted live dashboard marker smoke on 2026-07-08 against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and
@@ -608,6 +609,12 @@ a backend adapter and does not certify Laravel tenant feature gates, full
 account-link coverage, route availability checks, per-module response contracts,
 realtime notification behavior, onboarding visual parity, or ASP.NET backend
 readiness.
+The default Laravel runtime smoke now verifies the account sign-out POST by
+reading the signed account CSRF token, posting `/logout`, and asserting the
+subsequent unsigned `/account` redirect. A targeted live Laravel-backed run
+against `WEB_UK_BASE_URL=http://127.0.0.1:6243`, started with `TENANT_ID=2`,
+passed `10/10` checks including logout on 2026-07-08. ASP.NET backend logout
+compatibility is still future/not-certified.
 
 `/cookies` GET and `/cookie-consent` POST are local Blade-style no-JS cookie
 candidates. They render the Laravel-style analytics settings form and set the

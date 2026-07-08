@@ -873,6 +873,10 @@ function cookieSettingsSaveCheckName() {
   return 'cookie-settings-post-saves-analytics-choice';
 }
 
+function logoutPostCheckName() {
+  return 'logout-post-clears-signed-session';
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
@@ -1332,6 +1336,65 @@ async function runLaravelRuntimeSmoke(options = {}) {
     );
   } catch (error) {
     addCheck(checks, 'signed-account-renders', false, error.message);
+  }
+
+  try {
+    const logoutCookieJar = new CookieJar();
+    await refreshSignedSession(config, logoutCookieJar);
+    const accountResponse = await smokeRequest({
+      fetchImpl: config.fetchImpl,
+      timeoutMs: config.timeoutMs,
+      cookieJar: logoutCookieJar,
+      url: joinUrl(config.webBaseUrl, '/account')
+    });
+    const html = await readTextSafely(accountResponse);
+    const logoutCsrfToken = extractCsrfToken(html);
+
+    if (!accountResponse.ok || !logoutCsrfToken) {
+      addCheck(
+        checks,
+        logoutPostCheckName(),
+        false,
+        `expected signed account page with logout CSRF token, got ${accountResponse.status}`,
+        { status: accountResponse.status }
+      );
+    } else {
+      const form = new URLSearchParams({ _csrf: logoutCsrfToken });
+      const logoutResponse = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar: logoutCookieJar,
+        url: joinUrl(config.webBaseUrl, '/logout'),
+        options: {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: form.toString()
+        }
+      });
+      const accountAfterLogoutResponse = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar: logoutCookieJar,
+        url: joinUrl(config.webBaseUrl, '/account')
+      });
+      const ok = isRedirectTo(logoutResponse, '/login') && isRedirectTo(accountAfterLogoutResponse, '/login');
+      addCheck(
+        checks,
+        logoutPostCheckName(),
+        ok,
+        ok
+          ? 'Logout POST redirected to login and cleared the signed account session.'
+          : `expected logout redirect and signed account to redirect to /login, got logout ${logoutResponse.status} ${responseLocation(logoutResponse)} and account ${accountAfterLogoutResponse.status} ${responseLocation(accountAfterLogoutResponse)}`,
+        {
+          status: logoutResponse.status,
+          location: responseLocation(logoutResponse),
+          accountStatus: accountAfterLogoutResponse.status,
+          accountLocation: responseLocation(accountAfterLogoutResponse)
+        }
+      );
+    }
+  } catch (error) {
+    addCheck(checks, logoutPostCheckName(), false, error.message);
   }
 
   for (const path of config.modulePagePaths) {

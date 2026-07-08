@@ -67,12 +67,35 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
 
     if (req.method === 'GET' && req.url === '/account') {
       if ((req.headers.cookie || '').includes('token=signed-token')) {
-        res.writeHead(200, { 'content-type': 'text/html' });
-        res.end('<h1>My account</h1>');
+        res.writeHead(200, {
+          'content-type': 'text/html',
+          'set-cookie': 'nexus.csrf=csrf-cookie; Path=/; HttpOnly'
+        });
+        res.end('<h1>My account</h1><form method="post" action="/logout"><input type="hidden" name="_csrf" value="csrf-token"></form>');
         return;
       }
 
       res.writeHead(302, { location: '/login' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/logout') {
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      requests[requests.length - 1].body = body;
+      const hasExpectedCsrf = params.get('_csrf') === 'csrf-token' && (req.headers.cookie || '').includes('nexus.csrf=csrf-cookie');
+      if (hasExpectedCsrf && (req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(302, {
+          location: '/login',
+          'set-cookie': [
+            'token=; Path=/; Max-Age=0',
+            'refresh_token=; Path=/; Max-Age=0'
+          ]
+        });
+      } else {
+        res.writeHead(403, { 'content-type': 'text/plain' });
+      }
       res.end();
       return;
     }
@@ -794,7 +817,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/coupons/5/edit'
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
-      const expectedToken = gatedRequiresFreshLogin ? 'token=signed-token-2' : 'token=signed-token';
+      const expectedToken = gatedRequiresFreshLogin ? `token=signed-token-${loginCount}` : 'token=signed-token';
       if ((req.headers.cookie || '').includes(expectedToken)) {
         res.writeHead(403, { 'content-type': 'text/html' });
         res.end('<h1>Forbidden</h1>');
@@ -1594,11 +1617,13 @@ describe('Laravel runtime smoke harness', () => {
       ['cookie-settings-post-saves-analytics-choice', true],
       ['login-form-csrf', true],
       ['login-post-redirects-dashboard', true],
-      ['signed-account-renders', true]
+      ['signed-account-renders', true],
+      ['logout-post-clears-signed-session', true]
     ]));
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/groups?limit=1');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /cookie-consent');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /login');
+    expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /logout');
     const cookieConsentBodies = requests
       .filter((request) => request.method === 'POST' && request.url === '/cookie-consent')
       .map((request) => request.body);
@@ -1608,7 +1633,10 @@ describe('Laravel runtime smoke harness', () => {
       expect.stringContaining('cookies=save')
     ]));
     expect(cookieConsentBodies.find((body) => body.includes('cookies=save'))).toContain('analytics=yes');
-    expect(requests.filter((request) => request.method === 'GET' && request.url === '/account').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.find((request) => request.method === 'POST' && request.url === '/logout').body).toContain('_csrf=csrf-token');
+    expect(requests
+      .filter((request) => request.method === 'GET' && request.url === '/account')
+      .some((request) => request.cookie.includes('token=signed-token'))).toBe(true);
   });
 
   it('reports a failed login as an auth smoke failure instead of certifying the run', async () => {
@@ -2358,7 +2386,7 @@ describe('Laravel runtime smoke harness', () => {
 
     const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
     expect(checkByName['gated-page-jobs-bias-audit-returns-403'].ok).toBe(true);
-    expect(requests.filter((request) => request.method === 'POST' && request.url === '/login')).toHaveLength(2);
+    expect(requests.filter((request) => request.method === 'POST' && request.url === '/login')).toHaveLength(3);
   });
 
   it('allows slower signed module pages in the default smoke timeout budget', async () => {
