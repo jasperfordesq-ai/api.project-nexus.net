@@ -59,8 +59,8 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `945/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
+| Working estimate | about `947/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, clean lint evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, targeted core runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -200,6 +200,24 @@ now returns `baseUrlSource` so Laravel defaults, future ASP.NET mode, and
 explicit `API_BASE_URL` overrides are distinguishable in tests and docs.
 `API_BASE_URL` remains an override only; it does not certify ASP.NET
 compatibility or replace Laravel as the source of truth.
+
+Latest focused local gate slice: lint warnings were cleaned from
+`src/middleware/auth.js` and `src/server.js`. `npm run lint` now exits cleanly
+with no warnings in the controlled web-uk worktree, moving the local readiness
+gate from "0 errors, known warnings" to fully clean lint.
+
+Latest focused Laravel smoke slice: after Laravel `http://127.0.0.1:8088`
+became reachable again, a controlled temporary web-uk process on
+`WEB_UK_BASE_URL=http://127.0.0.1:6251` was started with `TENANT_ID=2`.
+`npm run smoke:laravel` passed with `SMOKE_MODULE_PAGE_PATHS=none` and
+`SMOKE_BODY_TEXT_PAGE_PATHS=none`, covering Laravel API reachability, web-uk
+health, unsigned auth redirects, login CSRF, login POST to `/dashboard`, signed
+`/account`, logout POST clearing the session, no-JS cookie POST workflows,
+content-type contracts, 22 signed gated `403` checks, and 21 signed redirect
+checks. A full default 634-check run on port `6250` exceeded the 15-minute
+wrapper timeout after progressing through the module-page sweep and into the
+body-text checks, so future agents should use the documented chunk/targeted
+smoke strategy for full recertification.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
@@ -913,7 +931,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `945/1000`.
+Current working estimate at this handoff: `947/1000`.
 
 ## Final Handoff Checklist
 

@@ -590,6 +590,16 @@ web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and
 the dashboard body markers `Welcome back`, `Your time bank`, `Quick links`,
 `Recent feed`, and `Recent listings`.
+A targeted core Laravel runtime smoke on 2026-07-08 against a temporary
+web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6251`, started with
+`TENANT_ID=2`, passed with `SMOKE_MODULE_PAGE_PATHS=none` and
+`SMOKE_BODY_TEXT_PAGE_PATHS=none`. The pass covered Laravel API reachability,
+web-uk health, unsigned auth redirects, login CSRF, login POST to `/dashboard`,
+signed `/account`, logout POST clearing the session, no-JS cookie POST
+workflows, content-type contracts, 22 signed gated `403` checks, and 21 signed
+redirect checks. A full default 634-check run exceeded the 15-minute command
+wrapper after progressing through module pages and into body-text checks; use
+chunked or targeted smoke scopes for full local recertification.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
