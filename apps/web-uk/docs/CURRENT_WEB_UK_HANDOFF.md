@@ -50,9 +50,12 @@ renders the Laravel-style tenant chooser at `/`, backed by Laravel
 cleaner `/{tenantSlug}/accessible` mount. A custom accessible-domain root slice
 now asks Laravel `/api/v2/tenant/bootstrap` to resolve non-local Host values and
 renders the resolved tenant home at slugless `/` when the host matches
-`accessible_domain`. This is not full tenant-domain parity yet: parent-domain
-child tenant routing, template-helper conversion, and Laravel runtime smoke
-certification still need work.
+`accessible_domain`. A parent-domain child slice now resolves the first
+non-reserved path segment through Laravel bootstrap and serves the flat
+accessible app below `/{childSlug}` when Laravel returns a matching
+`parent_domain`. This is not full tenant-domain parity yet: template-helper
+conversion and Laravel runtime smoke certification for custom-domain and
+parent-domain modes still need work.
 
 ## Non-Negotiable Rules
 
@@ -143,6 +146,17 @@ for this slice: focused `routes.test.js` passed `31/31`, focused
 `npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
 accessible routes matched, `0` missing, `0` extra Web UK routes, and `3`
 ignored infrastructure routes.
+
+Latest focused parent-domain child tenant slice: Web UK now mirrors Laravel's
+parent custom-domain child resolution for accessible pages. On a non-local host,
+the first non-reserved path segment is resolved through
+`/api/v2/tenant/bootstrap?slug={slug}`; when Laravel returns `parent_domain`
+matching the request host, Web UK serves the existing flat route set below
+`/{childSlug}` and rewrites rendered local links/forms and redirects to stay
+inside that child path. The public Web UK route does not expose Laravel's
+legacy `/alpha` mount or add `/accessible` on that parent-domain child path.
+Verification for this slice: the new focused test first failed with `404`, then
+passed after the middleware change; full `routes.test.js` passed `32/32`.
 
 Latest focused exchange route-identity slice: the previous extra local
 `GET /exchanges/request/{param}` and `POST /exchanges/request/{param}` aliases

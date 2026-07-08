@@ -145,6 +145,33 @@ describe('Public Routes', () => {
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'acme-accessible.test' });
       expect(api.getTenants).not.toHaveBeenCalled();
     });
+
+    it('serves a direct child tenant below a parent custom domain path', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 3,
+          name: 'Dunmanway Timebank',
+          slug: 'dunmanway',
+          parent_domain: 'parent-domain.test'
+        }
+      });
+
+      const response = await request(app)
+        .get('/dunmanway/login?status=auth-required')
+        .set('Host', 'parent-domain.test');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Sign in');
+      expect(response.text).toContain('action="/dunmanway/login"');
+      expect(response.text).toContain('href="/dunmanway/register"');
+      expect(response.text).not.toContain('/dunmanway/accessible');
+      expect(response.text).not.toContain('/dunmanway/alpha');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'dunmanway' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
   });
 
   describe('GET /health', () => {

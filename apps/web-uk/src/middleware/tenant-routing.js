@@ -21,6 +21,64 @@ const UNPREFIXED_PATHS = [
   '/v2'
 ];
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+const RESERVED_CHILD_SEGMENTS = new Set([
+  'about',
+  'accessibility',
+  'account',
+  'achievements',
+  'activity',
+  'blog',
+  'chat',
+  'clubs',
+  'connections',
+  'contact',
+  'cookies',
+  'courses',
+  'dashboard',
+  'events',
+  'exchanges',
+  'explore',
+  'faq',
+  'features',
+  'federation',
+  'feed',
+  'goals',
+  'group-exchanges',
+  'groups',
+  'guide',
+  'help',
+  'ideation',
+  'jobs',
+  'kb',
+  'leaderboard',
+  'legal',
+  'listings',
+  'login',
+  'marketplace',
+  'matches',
+  'members',
+  'messages',
+  'nexus-score',
+  'notifications',
+  'onboarding',
+  'organisations',
+  'password',
+  'podcasts',
+  'polls',
+  'premium',
+  'profile',
+  'register',
+  'report-a-problem',
+  'resources',
+  'reviews',
+  'search',
+  'settings',
+  'skills',
+  'trust-and-safety',
+  'verify-email',
+  'volunteering',
+  'wallet'
+]);
 
 function withQuery(path, queryIndex, originalUrl) {
   if (queryIndex === -1) return path;
@@ -123,6 +181,72 @@ function tenantDataMatchesAccessibleHost(data, host) {
   return data?.slug && normalizeHost(data.accessible_domain) === host;
 }
 
+function tenantDataMatchesParentHost(data, host) {
+  return data?.slug && normalizeHost(data.parent_domain) === host;
+}
+
+function firstRoutableSegment(pathname) {
+  const segments = String(pathname || '')
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const first = segments[0] || '';
+
+  if (!first || RESERVED_CHILD_SEGMENTS.has(first.toLowerCase())) {
+    return '';
+  }
+
+  return first;
+}
+
+async function resolveParentDomainChildTenant(req, res, pathname, queryIndex, originalUrl) {
+  if (isUnprefixedPath(pathname)) {
+    return false;
+  }
+
+  const host = normalizeHost(req.headers.host);
+  if (!shouldResolveCustomAccessibleDomain(host)) {
+    return false;
+  }
+
+  const childSlug = firstRoutableSegment(pathname);
+  if (!childSlug) {
+    return false;
+  }
+
+  const { ApiError, ApiOfflineError, getTenantBootstrap } = require('../lib/api');
+
+  try {
+    const result = await getTenantBootstrap({ slug: childSlug });
+    const tenant = result?.data || result?.tenant || result;
+
+    if (!tenantDataMatchesParentHost(tenant, host)) {
+      return false;
+    }
+
+    const prefix = `/${childSlug}`;
+    const rest = pathname.slice(prefix.length) || '/';
+
+    req.accessibleRouting = {
+      mode: 'parent-domain-child',
+      tenantSlug: tenant.slug,
+      tenant,
+      prefix,
+      routePath: rest
+    };
+    installSharedMountResponseRewriter(res, prefix);
+    req.url = withQuery(rest, queryIndex, originalUrl);
+
+    return true;
+  } catch (error) {
+    if (error instanceof ApiOfflineError || (error instanceof ApiError && error.status === 404)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
 async function resolveCustomAccessibleDomain(req, pathname) {
   if (isUnprefixedPath(pathname)) {
     return;
@@ -164,7 +288,14 @@ function tenantRouting(req, res, next) {
   const match = pathname.match(SHARED_MOUNT_RE);
 
   if (!match) {
-    resolveCustomAccessibleDomain(req, pathname)
+    resolveParentDomainChildTenant(req, res, pathname, queryIndex, originalUrl)
+      .then((matchedParentChild) => {
+        if (matchedParentChild) {
+          return;
+        }
+
+        return resolveCustomAccessibleDomain(req, pathname);
+      })
       .then(() => next())
       .catch(next);
     return;

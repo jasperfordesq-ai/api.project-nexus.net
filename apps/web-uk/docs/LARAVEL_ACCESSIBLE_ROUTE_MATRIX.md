@@ -67,6 +67,13 @@ UK now also resolves non-local Host values through Laravel
 host matches Laravel's `accessible_domain`. Parent-domain child tenant routing,
 full template helper conversion, and live Laravel custom-domain smoke
 certification are still open.
+Parent-domain child tenant routing now has a focused Web UK Jest slice: a
+non-local parent host plus `/{childSlug}/login` resolves `{childSlug}` through
+Laravel tenant bootstrap, requires returned `parent_domain` to match the host,
+serves the flat accessible login page below `/{childSlug}`, and rewrites local
+form/link targets under that child path without exposing `/alpha` or
+`/accessible`. Live Laravel runtime smoke for this custom-domain mode is still
+open.
 
 The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
 no longer exposed. Laravel's accessible source uses GET/POST

@@ -71,6 +71,12 @@ Current implemented slice:
 - Dedicated accessible-domain root `/` renders the resolved tenant home and
   keeps generated local links flat, matching Laravel's custom-domain behavior
   without exposing either `/alpha` or `/{tenantSlug}/accessible`.
+- Parent-domain child tenant paths now resolve the first non-reserved path
+  segment through Laravel `/api/v2/tenant/bootstrap?slug={slug}`. When Laravel
+  returns `parent_domain` matching the request host, Web UK serves the flat
+  accessible app below `/{childSlug}` and rewrites local links and redirects to
+  remain under that child path. This mirrors Laravel's parent custom-domain
+  child resolution without exposing either `/alpha` or `/accessible`.
 
 Current gaps:
 
@@ -80,8 +86,8 @@ Current gaps:
   so custom-domain and flat-host modes remain easier to audit.
 - Custom accessible-domain routing is covered by Jest for a host-resolved
   root request, but it is not yet certified by live Laravel runtime smoke.
-- Parent-domain child-tenant paths are audited from Laravel but not implemented
-  in Web UK.
+- Parent-domain child-tenant paths are covered by Jest for a parent-host child
+  login page, but not yet certified by live Laravel runtime smoke.
 
 ## First Verified Slice
 
@@ -107,6 +113,12 @@ The fourth tenant-domain slice verifies that a non-local Host resolved by
 Laravel tenant bootstrap as `accessible_domain` renders the tenant home at
 slugless `/`, does not render the tenant chooser, and does not leak
 `/{tenantSlug}/accessible` or `/{tenantSlug}/alpha` into root-page links.
+
+The fifth parent-domain child slice verifies that
+`parent-domain.test/{childSlug}/login` resolves `{childSlug}` through Laravel
+tenant bootstrap, renders the child tenant's login page, keeps form and
+registration links under `/{childSlug}`, and does not leak either `/alpha` or
+`/accessible`.
 
 Verification command:
 
