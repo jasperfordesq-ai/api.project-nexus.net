@@ -38,6 +38,10 @@ class ApiOfflineError extends Error {
   }
 }
 
+function hasHostTenantContext(headers) {
+  return !!(headers.Host || headers.host || headers.Origin || headers.origin);
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const isFormData = typeof globalThis.FormData !== 'undefined' && options.body instanceof globalThis.FormData;
@@ -47,8 +51,10 @@ async function request(endpoint, options = {}) {
     ...options.headers
   };
 
-  // Include X-Tenant-ID only when there is no bearer auth or tenant slug.
-  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug']) {
+  // Include X-Tenant-ID only when there is no bearer auth, tenant slug, or
+  // host/Origin tenant context. Host-scoped custom-domain calls must let
+  // Laravel resolve the tenant from the browser domain.
+  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug'] && !hasHostTenantContext(headers)) {
     headers['X-Tenant-ID'] = TENANT_ID;
   }
 
@@ -97,7 +103,7 @@ async function downloadRequest(endpoint, options = {}) {
     ...options.headers
   };
 
-  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug']) {
+  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug'] && !hasHostTenantContext(headers)) {
     headers['X-Tenant-ID'] = TENANT_ID;
   }
 

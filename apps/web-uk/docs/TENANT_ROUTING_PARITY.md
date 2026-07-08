@@ -104,9 +104,10 @@ Current gaps:
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
   Laravel bootstrap calls and a direct Web UK middleware harness resolve
-  `timebank.global` and `project-nexus.ie` correctly. A temporary full Web UK
-  process host-root smoke still rendered the shared chooser during probing, so
-  that runtime proof remains open.
+  `timebank.global` and `project-nexus.ie` correctly. A full temporary Web UK
+  process smoke now also covers `timebank.global|/=>Exchange Skills Across
+  Borders` with `TENANT_ID=2`; host-scoped bootstrap/stats calls suppress that
+  default `X-Tenant-ID` so Laravel resolves from Host/Origin instead.
 - Parent-domain child-tenant paths are covered by Jest for a parent-host child
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
@@ -188,6 +189,17 @@ SEO h1/intro text and `tenant_switcher` communities, converts same-host
 community links to relative paths, preserves external domains, and never emits
 the legacy `/alpha` slug. API tests also prove host-scoped bootstrap/stats
 calls send `Origin: https://{host}` with the normalized Host.
+
+The tenth host-root runtime slice fixes the live-process gap that Jest did not
+cover: local Laravel runtime smokes start Web UK with `TENANT_ID=2` for auth,
+but that default tenant id was being added to host-scoped public bootstrap and
+platform stats calls. Laravel prioritizes `X-Tenant-ID`, so the full process
+received `hour-timebank` bootstrap data and fell back to the shared chooser for
+`Host: timebank.global`. Web UK now omits `X-Tenant-ID` whenever Host/Origin
+tenant context is present. A focused smoke on 2026-07-08 against temporary Web
+UK `http://127.0.0.1:6426` and Laravel `http://127.0.0.1:8088` passed
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across
+Borders`, emitting `tenant-domain-page-timebank-global-home-renders`.
 
 Verification command:
 

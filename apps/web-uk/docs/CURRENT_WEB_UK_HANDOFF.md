@@ -57,15 +57,19 @@ items. A parent-domain child slice now resolves the first non-reserved path
 segment through Laravel bootstrap and serves the flat accessible app below
 `/{childSlug}` when Laravel returns a matching `parent_domain`. A live
 runtime-smoke slice certifies that same parent-domain child path against the
-local Laravel `hour-timebank` fixture. This is not full tenant-domain parity
-yet: template-helper conversion and a full temporary Web UK process smoke for
-custom host-root pages still need work. A tenant-home parity slice now replaces
-the old generic Web UK home inside tenant contexts with the Laravel Blade-style
-`Accessible` home page, including community caption, tenant tagline, platform
-stats, sign-in/register CTAs, module availability rows, and service details. A
-follow-up tenant-stats slice now scopes those platform stats through Laravel's
-tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
-domain homes send the resolved Host and Origin.
+local Laravel `hour-timebank` fixture. A follow-up host-root smoke slice now
+certifies `timebank.global|/=>Exchange Skills Across Borders` against a full
+temporary Web UK process started with `TENANT_ID=2`; the API client suppresses
+the default `X-Tenant-ID` whenever Host/Origin tenant context is present so
+Laravel can resolve the browser domain. This is not full tenant-domain parity
+yet: template-helper conversion, visual/manual tenant checks, and ASP.NET
+backend switching certification still need work. A tenant-home parity slice now
+replaces the old generic Web UK home inside tenant contexts with the Laravel
+Blade-style `Accessible` home page, including community caption, tenant
+tagline, platform stats, sign-in/register CTAs, module availability rows, and
+service details. A follow-up tenant-stats slice now scopes those platform stats
+through Laravel's tenant resolution: shared-mount tenant homes send
+`X-Tenant-Slug`, while custom domain homes send the resolved Host and Origin.
 
 ## Non-Negotiable Rules
 
@@ -90,8 +94,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `978/1000` implementation/certification parity |
-| Green confidence estimate | about `960/1000`, mainly gated by visual/manual Laravel Blade parity, full custom host-root Web UK runtime proof, full unchunked runtime certification, and ASP.NET backend switching certification |
+| Working estimate | about `980/1000` implementation/certification parity |
+| Green confidence estimate | about `964/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -109,7 +113,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 703 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 705 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -134,14 +138,21 @@ shared chooser. `X-Forwarded-Host` is accepted before the socket host for proxy
 custom-domain routing, and host-scoped Laravel API calls send `Origin` as well
 as `Host` so Laravel's bootstrap fallback can resolve configured custom
 domains. Verification for this slice: focused route and API tests passed, full
-Web UK Jest passed `703/703`, lint passed, and the generated route matrix still
+Web UK Jest passed `705/705`, lint passed, and the generated route matrix still
 reported `608/608` Laravel accessible routes matched, `0` missing, `0` extra
 Web UK routes, and `3` ignored infrastructure routes. Direct live Laravel
 bootstrap calls and a direct Web UK tenant-routing middleware harness resolved
-`timebank.global` and `project-nexus.ie` correctly. A temporary full Web UK
-process host-root smoke still rendered the shared chooser during probing, so
-that full-app runtime proof remains unresolved and must not be reported as
-green.
+`timebank.global` and `project-nexus.ie` correctly. The first full Web UK
+process probe rendered the shared chooser because host-scoped Laravel API calls
+were still carrying the process default `X-Tenant-ID=2`, which made Laravel
+return `hour-timebank` instead of `timebank-global`. The API client now omits
+`X-Tenant-ID` when Host/Origin tenant context is present, and the focused
+Laravel smoke harness passed against temporary Web UK
+`WEB_UK_BASE_URL=http://127.0.0.1:6426`, Laravel
+`http://127.0.0.1:8088`, `TENANT_ID=2`, and
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across Borders`.
+The emitted check was `tenant-domain-page-timebank-global-home-renders`, with
+status `200` and no legacy accessible slug links.
 
 Latest focused tenant home Blade-parity slice: tenant-mounted root pages now
 render the Laravel Blade accessible home instead of the old generic Web UK
@@ -1161,10 +1172,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `965/1000`.
-Green confidence estimate: `925/1000`, because the consolidated code and static
-tests are strong but the full live Laravel runtime smoke and visual/manual
-Blade parity spot-checks still need final certification.
+Current working estimate at this handoff: `980/1000`.
+Green confidence estimate: `964/1000`, because the consolidated code, static
+tests, route matrix, and focused host-domain smoke are strong, while
+visual/manual Blade parity spot-checks, full unchunked runtime certification,
+template-helper conversion, and ASP.NET backend switching proof still need final
+certification.
 
 ## Final Handoff Checklist
 

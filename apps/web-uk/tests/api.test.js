@@ -223,6 +223,26 @@ describe('API Request Functions', () => {
       expect(result.data.slug).toBe('acme');
     });
 
+    it('should not override host-scoped bootstrap resolution with the default tenant id', async () => {
+      process.env.TENANT_ID = '2';
+      jest.resetModules();
+      api = require('../src/lib/api');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 4, slug: 'timebank-global', domain: 'timebank.global' } })
+      });
+
+      await api.getTenantBootstrap({ host: 'timebank.global' });
+
+      expect(mockFetch.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+        Host: 'timebank.global',
+        Origin: 'https://timebank.global'
+      }));
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+    });
+
     it('should ask Laravel to resolve tenant bootstrap data from an explicit slug', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -299,6 +319,26 @@ describe('API Request Functions', () => {
           })
         })
       );
+    });
+
+    it('should not override host-scoped stats resolution with the default tenant id', async () => {
+      process.env.TENANT_ID = '2';
+      jest.resetModules();
+      api = require('../src/lib/api');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { scope: 'tenant', communities: 5 } })
+      });
+
+      await api.getPlatformStats({ host: 'timebank.global' });
+
+      expect(mockFetch.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+        Host: 'timebank.global',
+        Origin: 'https://timebank.global'
+      }));
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
     });
   });
 

@@ -44,8 +44,11 @@ https://{host}` for host-scoped `/api/v2/tenant/bootstrap` and
 `/api/v2/platform/stats` requests unless an explicit tenant slug is available.
 This is required because Laravel's tenant bootstrap can fall back from the API
 server host to the browser Origin when resolving configured `domain` or
-`accessible_domain` values. Future ASP.NET mode must accept equivalent
-host/Origin tenant context before it can be certified.
+`accessible_domain` values. Host-scoped public calls must not also send the
+process default `X-Tenant-ID`, because Laravel prioritizes that header over
+Host/Origin and would resolve the local E2E tenant instead of the browser
+domain. Future ASP.NET mode must accept equivalent host/Origin tenant context
+before it can be certified.
 
 ## Laravel Runtime Smoke
 
@@ -157,9 +160,15 @@ check plus the base auth/cookie checks.
 A later host-domain slice proved Laravel bootstrap and the Web UK
 tenant-routing middleware can resolve `timebank.global` and `project-nexus.ie`
 from Host/Origin or `X-Forwarded-Host` context, and Jest covers the rendered
-network landing behavior. A temporary full Web UK process host-root probe still
-rendered the shared chooser, so full-app custom host-root runtime smoke remains
-open.
+network landing behavior. The first full Web UK process host-root probe still
+rendered the shared chooser because the process was started with `TENANT_ID=2`
+for Laravel auth smoke and host-scoped bootstrap calls inherited that
+`X-Tenant-ID`. Web UK now suppresses the default tenant id on Host/Origin
+tenant-context calls. A focused live smoke on 2026-07-08 against
+`WEB_UK_BASE_URL=http://127.0.0.1:6426` and Laravel
+`http://127.0.0.1:8088` passed
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across Borders`,
+emitting `tenant-domain-page-timebank-global-home-renders`.
 A targeted real-fixture parameterised run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
 2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18
