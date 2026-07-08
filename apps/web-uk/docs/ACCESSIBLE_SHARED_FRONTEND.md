@@ -364,11 +364,21 @@ returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6213`.
 The signed marketplace account subpages `/marketplace/saved`, `/marketplace/free`,
 `/marketplace/offers`, `/marketplace/orders`, `/marketplace/sales`,
 `/marketplace/pickups`, and `/marketplace/slots` returned expected body markers
-against `WEB_UK_BASE_URL=http://127.0.0.1:6214`. The default scope now contains
-`436` checks: `279`
+against `WEB_UK_BASE_URL=http://127.0.0.1:6214`. The signed volunteering member
+and owner subpages `/volunteering/accessibility`, `/volunteering/certificates`,
+`/volunteering/opportunities/create`, `/volunteering/credentials`,
+`/volunteering/hours`, `/volunteering/wellbeing`, `/volunteering/donations`,
+`/volunteering/expenses`, `/volunteering/emergency-alerts`,
+`/volunteering/group-signups`, `/volunteering/training`,
+`/volunteering/incidents`, `/volunteering/waitlist`, `/volunteering/swaps`,
+`/volunteering/my-organisations`, and `/volunteering/recommended-shifts`
+returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6215`;
+`/volunteering/opportunities/create` now follows the Laravel Blade title
+`Post a volunteer opportunity`. The default scope now contains `452` checks:
+`279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 89 body-text contract checks, and the 6
+content-type contract checks, 105 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

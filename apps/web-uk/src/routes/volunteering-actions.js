@@ -2288,7 +2288,7 @@ router.get('/opportunities/create', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/create-opportunity', {
-    title: 'Create volunteering opportunity',
+    title: 'Post a volunteer opportunity',
     activeNav: 'volunteering',
     organizations,
     categories,

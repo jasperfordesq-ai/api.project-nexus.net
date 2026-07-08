@@ -18624,8 +18624,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Select an organisation.');
     expect(response.text).toContain('Enter an opportunity title.');
     expect(response.text).toContain('Enter an opportunity description.');
-    expect(response.text).toContain('Create volunteering opportunity');
-    expect(response.text).toContain('Add a role that volunteers can discover and apply for.');
+    expect(response.text).toContain('Post a volunteer opportunity');
+    expect(response.text).toContain('Create a new opportunity for one of your organisations. Volunteers can then apply and log hours.');
+    expect(response.text).toContain('Post opportunity');
     expect(response.text).toContain('method="post" action="/volunteering/opportunities/create"');
     expect(response.text).toContain('id="organization_id" name="organization_id"');
     expect(response.text).toContain('<option value="42">Community Kitchen</option>');
@@ -18641,7 +18642,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('id="end_date" name="end_date" type="date"');
     expect(response.text).toContain('id="is_remote" name="is_remote" type="checkbox" value="1"');
     expect(response.text).toContain('id="federated_visibility" name="federated_visibility" type="checkbox" value="1"');
-    expect(response.text).toContain('Create opportunity');
+    expect(response.text).toContain('Post opportunity');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
