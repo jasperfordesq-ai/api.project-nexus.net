@@ -604,6 +604,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1 endorsement');
     expect(response.text).toContain('Upcoming events');
     expect(response.text).toContain('Garden morning');
+    expect(response.text.indexOf('Upcoming events')).toBeLessThan(response.text.indexOf('Your skill endorsements'));
     expect(response.text).toContain('Quick links');
     expect(response.text).toContain('View your profile');
     expect(response.text).toContain('Edit your profile');

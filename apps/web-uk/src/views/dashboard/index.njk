@@ -94,18 +94,6 @@
         <p class="govuk-body">You have not earned any badges yet. Take part in your community to start earning them.</p>
       {% endif %}
 
-      {% if endorsements and endorsements.length %}
-        <h2 class="govuk-heading-l govuk-!-margin-top-7">Your skill endorsements</h2>
-        <ul class="govuk-list nexus-alpha-skill-list">
-          {% for endorsement in endorsements %}
-            <li>
-              <span class="govuk-!-font-weight-bold">{{ endorsement.skillName }}</span>
-              <strong class="govuk-tag govuk-tag--green">{{ endorsement.countLabel }}</strong>
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-
       {% if upcomingEvents and upcomingEvents.length %}
         <h2 class="govuk-heading-l govuk-!-margin-top-7">Upcoming events</h2>
         <ul class="govuk-list govuk-list--spaced">
@@ -120,6 +108,18 @@
                   {% if event.location %}{{ event.location }}{% endif %}
                 </span>
               {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if endorsements and endorsements.length %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-7">Your skill endorsements</h2>
+        <ul class="govuk-list nexus-alpha-skill-list">
+          {% for endorsement in endorsements %}
+            <li>
+              <span class="govuk-!-font-weight-bold">{{ endorsement.skillName }}</span>
+              <strong class="govuk-tag govuk-tag--green">{{ endorsement.countLabel }}</strong>
             </li>
           {% endfor %}
         </ul>
