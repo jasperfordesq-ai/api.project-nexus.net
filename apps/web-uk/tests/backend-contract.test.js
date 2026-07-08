@@ -30,6 +30,7 @@ describe('backend contract configuration', () => {
     expect(resolveBackendContract()).toEqual({
       target: 'laravel',
       baseUrl: 'http://127.0.0.1:8088',
+      baseUrlSource: 'laravel-base-url',
       status: 'source-of-truth'
     });
   });
@@ -57,6 +58,19 @@ describe('backend contract configuration', () => {
     expect(resolveBackendContract()).toEqual({
       target: 'laravel',
       baseUrl: 'https://laravel.example.test',
+      baseUrlSource: 'laravel-base-url',
+      status: 'source-of-truth'
+    });
+  });
+
+  it('labels explicit API base URL overrides so they cannot look like certified defaults', () => {
+    process.env.API_BASE_URL = 'https://override.example.test/';
+    const { resolveBackendContract } = require('../src/lib/backend-contract');
+
+    expect(resolveBackendContract()).toEqual({
+      target: 'laravel',
+      baseUrl: 'https://override.example.test',
+      baseUrlSource: 'api-base-url',
       status: 'source-of-truth'
     });
   });
@@ -68,6 +82,7 @@ describe('backend contract configuration', () => {
     expect(resolveBackendContract()).toEqual({
       target: 'aspnet',
       baseUrl: 'http://localhost:5080',
+      baseUrlSource: 'aspnet-base-url',
       status: 'future-not-certified'
     });
   });

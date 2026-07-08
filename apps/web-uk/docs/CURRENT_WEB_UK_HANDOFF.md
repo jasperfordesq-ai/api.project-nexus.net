@@ -59,8 +59,8 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `944/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
+| Working estimate | about `945/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -194,6 +194,12 @@ Laravel routes, and `0` true extra `apps/web-uk` routes. The local-only
 `GET /health`, `GET /service-unavailable`, and `POST /session/touch` helpers
 remain available but are classified as ignored infrastructure instead of
 accessible route parity gaps.
+
+Latest focused backend-contract provenance slice: `resolveBackendContract()`
+now returns `baseUrlSource` so Laravel defaults, future ASP.NET mode, and
+explicit `API_BASE_URL` overrides are distinguishable in tests and docs.
+`API_BASE_URL` remains an override only; it does not certify ASP.NET
+compatibility or replace Laravel as the source of truth.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
@@ -880,6 +886,8 @@ adding more skeleton pages.
 
 1. Rerun the refresh protocol and confirm whether the current web-uk process has
    Laravel tenant context (`TENANT_ID=2` for the local E2E fixture).
+   If `http://127.0.0.1:8088` times out, start or repair local Laravel before
+   treating live smoke status as current evidence.
 2. Keep expanding runtime smoke coverage from auth/account into module families
    that are currently only mocked.
 3. Convert "partial Laravel-backed candidate" route families into certified
@@ -905,7 +913,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `944/1000`.
+Current working estimate at this handoff: `945/1000`.
 
 ## Final Handoff Checklist
 

@@ -12,7 +12,7 @@ const targetStatus = {
 };
 
 function stripTrailingSlash(value) {
-  return String(value || '').replace(/\/+$/, '');
+  return String(value || '').trim().replace(/\/+$/, '');
 }
 
 function resolveBackendContract(env = process.env) {
@@ -22,6 +22,10 @@ function resolveBackendContract(env = process.env) {
     throw new Error(`Unsupported accessible backend target: ${target}`);
   }
 
+  const isExplicitApiOverride = Boolean(String(env.API_BASE_URL || '').trim());
+  const baseUrlSource = isExplicitApiOverride
+    ? 'api-base-url'
+    : `${target}-base-url`;
   const targetDefaultBaseUrl = target === 'aspnet'
     ? (env.ASPNET_BASE_URL || DEFAULT_ASPNET_BASE_URL)
     : (env.LARAVEL_BASE_URL || DEFAULT_LARAVEL_BASE_URL);
@@ -29,6 +33,7 @@ function resolveBackendContract(env = process.env) {
   return {
     target,
     baseUrl: stripTrailingSlash(env.API_BASE_URL || targetDefaultBaseUrl),
+    baseUrlSource,
     status: targetStatus[target]
   };
 }

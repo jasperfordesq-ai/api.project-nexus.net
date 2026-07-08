@@ -1,6 +1,6 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-06
+Last reviewed: 2026-07-08
 
 ## Decision
 
@@ -30,7 +30,13 @@ src/lib/backend-contract.js
 | `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |
 | `LARAVEL_BASE_URL` | `http://127.0.0.1:8088` | Local Laravel staging backend URL, matching `C:\platforms\htdocs\staging\.env`. |
 | `ASPNET_BASE_URL` | `http://localhost:5080` | Future ASP.NET target when explicitly selected. Not certified. |
-| `API_BASE_URL` | unset | Explicit URL override for local testing. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
+| `API_BASE_URL` | unset | Explicit URL override for local testing. The resolver labels this as `api-base-url`; it does not certify ASP.NET compatibility or replace Laravel as the source of truth. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
+
+`resolveBackendContract()` returns `baseUrlSource` alongside the resolved
+`target`, `baseUrl`, and target `status`. Default Laravel resolution reports
+`laravel-base-url`, explicit ASP.NET mode reports `aspnet-base-url`, and
+`API_BASE_URL` reports `api-base-url` so override-driven runs cannot be mistaken
+for certified backend readiness.
 
 ## Laravel Runtime Smoke
 
