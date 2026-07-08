@@ -564,11 +564,17 @@ The public support pages `/contact`, `/cookies`, `/newsletter/unsubscribe`,
 `/verify-email`, and `/report-a-problem` now carry Laravel-backed body-text
 markers, with `/contact` and `/report-a-problem` copy realigned to the Laravel
 Blade strings before certification.
-The default scope now contains `615` checks:
+The remaining signed/detail body-marker routes `/connections/network`,
+`/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
+`/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
+`/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
+Laravel-backed body-text markers. The module-page/body-text marker gap is now
+0: `279` module-page checks and `279` body-text contract checks.
+The default scope now contains `626` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 268 body-text contract checks, and the 6
+content-type contract checks, 279 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

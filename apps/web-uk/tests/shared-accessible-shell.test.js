@@ -6345,8 +6345,9 @@ describe('shared accessible frontend shell', () => {
       .get('/premium/return?status=success')
       .set('Cookie', signedCookieHeader());
     expect(returned.status).toBe(200);
-    expect(returned.text).toContain('Your support is set up');
+    expect(returned.text).toContain('Donation support confirmed');
     expect(returned.text).toContain('Community Champion');
+    expect(returned.text).toContain('Thank you for your support.');
     expect(returned.text).toContain('href="/premium/manage"');
   });
 
