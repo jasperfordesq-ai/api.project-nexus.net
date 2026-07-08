@@ -594,6 +594,14 @@ with an empty activity list in that permission-limited state. A targeted
 Laravel runtime smoke against `WEB_UK_BASE_URL=http://127.0.0.1:6260`, started
 with `TENANT_ID=2`, passed `11/11` checks including
 `module-page-federation-renders`.
+The same 2026-07-08 temporary process then recertified the remaining chunked
+page sweeps after earlier `1/8` and post-fix `2/8` mixed chunks passed:
+`SMOKE_MODULE_PAGE_CHUNK=3/8` through `8/8` passed with `269/269` repeated
+checks and `0` failures, including `209` module-page checks, and
+`SMOKE_BODY_TEXT_PAGE_CHUNK=3/8` through `8/8` passed with `271/271` repeated
+checks and `0` failures, including `211` body-text contract checks. The `3/8`
+body slice is slow on this local Laravel/Web UK pair and needed a generous
+wrapper timeout; a fetch-logged rerun completed green in about 253 seconds.
 A targeted live dashboard marker smoke on 2026-07-08 against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and

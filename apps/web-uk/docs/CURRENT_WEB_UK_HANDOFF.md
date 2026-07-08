@@ -230,6 +230,17 @@ activity list instead of rendering `503`. A targeted Laravel runtime smoke on
 2026-07-08 passed `11/11` checks, including `module-page-federation-renders`
 with status `200`.
 
+Latest chunked live-smoke recertification on 2026-07-08 against the same
+temporary `WEB_UK_BASE_URL=http://127.0.0.1:6260` process: after earlier
+`1/8` and post-fix `2/8` mixed chunks passed, the remaining page sweeps were
+recertified as split module/body slices. `SMOKE_MODULE_PAGE_CHUNK=3/8` through
+`8/8` passed with `269/269` repeated checks and `0` failures, including `209`
+module-page checks. `SMOKE_BODY_TEXT_PAGE_CHUNK=3/8` through `8/8` passed with
+`271/271` repeated checks and `0` failures, including `211` body-text contract
+checks. The `3/8` body slice can run close to five minutes on this local
+Laravel/Web UK pair; a fetch-logged rerun completed green in about 253 seconds,
+so use generous command timeouts when recertifying the full chunk set.
+
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
 Laravel-compatible profile, onboarding status, wallet balance, gamification
