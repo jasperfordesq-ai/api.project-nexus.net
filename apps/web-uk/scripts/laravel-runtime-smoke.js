@@ -270,7 +270,15 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/nexus-score/tiers', text: 'NEXUS tier ladder' },
   { path: '/federation/partners', text: 'Federation partners' },
   { path: '/federation/members', text: 'Federated members' },
-  { path: '/federation/settings', text: 'Federation settings' }
+  { path: '/federation/settings', text: 'Federation settings' },
+  { path: '/federation/opt-in', text: 'Opt in to federation' },
+  { path: '/federation/opt-out', text: 'Opt out of federation' },
+  { path: '/federation/onboarding', text: 'Welcome to the community network' },
+  { path: '/federation/groups', text: 'Groups from partner communities' },
+  { path: '/federation/listings', text: 'Federated listings' },
+  { path: '/federation/events', text: 'Federated events' },
+  { path: '/federation/connections', text: 'Federated connections' },
+  { path: '/federation/messages', text: 'Federated messages' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',

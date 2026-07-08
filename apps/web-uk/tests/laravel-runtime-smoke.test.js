@@ -195,7 +195,15 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/nexus-score/tiers', 'NEXUS tier ladder'],
       ['/federation/partners', 'Federation partners'],
       ['/federation/members', 'Federated members'],
-      ['/federation/settings', 'Federation settings']
+      ['/federation/settings', 'Federation settings'],
+      ['/federation/opt-in', 'Opt in to federation'],
+      ['/federation/opt-out', 'Opt out of federation'],
+      ['/federation/onboarding', 'Welcome to the community network'],
+      ['/federation/groups', 'Groups from partner communities'],
+      ['/federation/listings', 'Federated listings'],
+      ['/federation/events', 'Federated events'],
+      ['/federation/connections', 'Federated connections'],
+      ['/federation/messages', 'Federated messages']
     ]);
 
     const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
@@ -1079,7 +1087,15 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/nexus-score/tiers', text: 'NEXUS tier ladder' },
       { path: '/federation/partners', text: 'Federation partners' },
       { path: '/federation/members', text: 'Federated members' },
-      { path: '/federation/settings', text: 'Federation settings' }
+      { path: '/federation/settings', text: 'Federation settings' },
+      { path: '/federation/opt-in', text: 'Opt in to federation' },
+      { path: '/federation/opt-out', text: 'Opt out of federation' },
+      { path: '/federation/onboarding', text: 'Welcome to the community network' },
+      { path: '/federation/groups', text: 'Groups from partner communities' },
+      { path: '/federation/listings', text: 'Federated listings' },
+      { path: '/federation/events', text: 'Federated events' },
+      { path: '/federation/connections', text: 'Federated connections' },
+      { path: '/federation/messages', text: 'Federated messages' }
     ]));
   });
 
@@ -1660,7 +1676,15 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-nexus-score-tiers-contains-nexus-tier-ladder': true,
       'body-text-page-federation-partners-contains-federation-partners': true,
       'body-text-page-federation-members-contains-federated-members': true,
-      'body-text-page-federation-settings-contains-federation-settings': true
+      'body-text-page-federation-settings-contains-federation-settings': true,
+      'body-text-page-federation-opt-in-contains-opt-in-to-federation': true,
+      'body-text-page-federation-opt-out-contains-opt-out-of-federation': true,
+      'body-text-page-federation-onboarding-contains-welcome-to-the-community-network': true,
+      'body-text-page-federation-groups-contains-groups-from-partner-communities': true,
+      'body-text-page-federation-listings-contains-federated-listings': true,
+      'body-text-page-federation-events-contains-federated-events': true,
+      'body-text-page-federation-connections-contains-federated-connections': true,
+      'body-text-page-federation-messages-contains-federated-messages': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');

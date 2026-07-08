@@ -352,11 +352,15 @@ subpages `/profile/settings`, `/settings/appearance`, `/settings/data-rights`,
 `/leaderboard/spotlight`, `/nexus-score/tiers`, `/federation/partners`,
 `/federation/members`, and `/federation/settings` returned expected body
 markers against `WEB_UK_BASE_URL=http://127.0.0.1:6212`; `/federation/members`
-now follows the Laravel Blade title `Federated members`. The default scope now
-contains `421` checks: `279`
+now follows the Laravel Blade title `Federated members`. The remaining signed
+federation subpages `/federation/opt-in`, `/federation/opt-out`,
+`/federation/onboarding`, `/federation/groups`, `/federation/listings`,
+`/federation/events`, `/federation/connections`, and `/federation/messages`
+returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6213`.
+The default scope now contains `429` checks: `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 74 body-text contract checks, and the 6
+content-type contract checks, 82 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
