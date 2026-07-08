@@ -139,7 +139,10 @@ Current gaps:
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,
   empty-state member CTAs, pagination, search form, load-more links, and
-  route-provided card links/actions.
+  route-provided card links/actions. The latest focused source conversion
+  covers the notifications index template, including breadcrumbs, filters,
+  read/delete form actions, redirect hidden values, pagination, and the unread
+  empty-state CTA.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -323,9 +326,24 @@ forms, pickup-slot scan/edit/delete forms, and shared slot form actions through
 that previously had literal marketplace-local links/forms, and a source scan
 for raw marketplace `href`/`action` strings returns no matches.
 
+The twentieth template-helper source slice extends direct `urlFor()` conversion
+into the notifications inbox. `src/views/notifications/index.njk` now routes
+the Home breadcrumb, all/unread filter links, read-all action, per-notification
+read/delete actions, redirect hidden values, pagination base URL, and unread
+empty-state CTA through `urlFor()`. The source-level regression first failed on
+the raw `/notifications` links/actions, then passed after conversion; a source
+scan for notification-local raw `href`/`action` strings and the old
+`notificationLink` hidden value returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk test -- laravel-runtime-smoke.test.js --runInBand
 $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'timebank.global|/hour-timebank/login=>Sign in'

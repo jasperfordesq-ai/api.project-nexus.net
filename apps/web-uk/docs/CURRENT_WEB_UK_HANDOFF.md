@@ -97,7 +97,10 @@ navigation, opt-in CTA, connection/message forms, and transfer CTA through
 `urlFor()`. The latest connections source slice now routes the connections
 index tabs, pending-request link, member links, accept/decline/remove forms,
 empty-state member CTAs, pagination base URL, network search form, network
-tabs, load-more links, card actions, and back link through `urlFor()`.
+tabs, load-more links, card actions, and back link through `urlFor()`. The
+latest notifications source slice now routes the notifications breadcrumb,
+filter links, read/delete form actions, redirect hidden values, pagination base
+URL, and unread empty-state CTA through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -154,11 +157,12 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
 
-Latest local verification after the connections source-helper slice:
+Latest local verification after the notifications source-helper slice:
 
-- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `12/12`.
-- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "connections"` passed `5/5` selected tests.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `717/717` tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"` first failed on raw `/notifications` links/actions, then passed after the template conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `13/13`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"` passed `1/1` selected test.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `718/718` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 

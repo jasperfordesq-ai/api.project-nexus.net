@@ -77,7 +77,9 @@ now also use `urlFor()` for their local links/forms, so the marketplace
 template family has source-level helper coverage for local marketplace
 `href`/`action` targets. Connections index and network source templates now
 also use `urlFor()` for local tabs, member links, pagination, search, load-more,
-and action targets.
+and action targets. Notifications index source templates now also use
+`urlFor()` for breadcrumbs, filters, read/delete actions, redirect hidden
+values, pagination, and the unread empty-state CTA.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the

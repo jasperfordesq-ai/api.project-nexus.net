@@ -259,4 +259,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/connections/);
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
   });
+
+  it('keeps notifications filters, actions, redirects, and pagination behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'notifications', 'index.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/notifications/);
+    expect(template).not.toMatch(/action="\/notifications/);
+    expect(template).not.toContain('baseUrl: "/notifications"');
+    expect(template).not.toContain('value="{{ notificationLink }}"');
+    expect(template).not.toContain('href: "/notifications"');
+    expect(template).toMatch(/urlFor\(["']\/notifications/);
+    expect(template).toContain('value="{{ urlFor(notificationLink) }}"');
+  });
 });

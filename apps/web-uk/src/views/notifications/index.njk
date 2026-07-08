@@ -8,7 +8,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
+      { text: "Home", href: urlFor('/') },
       { text: "Notifications" }
     ]
   }) }}
@@ -33,13 +33,13 @@
 
       <div class="govuk-!-margin-bottom-6">
         <div class="app-notification-filters">
-          <a href="/notifications" class="govuk-link{% if not showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">All</a>
+          <a href="{{ urlFor('/notifications') }}" class="govuk-link{% if not showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">All</a>
           <span class="govuk-!-margin-left-2 govuk-!-margin-right-2">|</span>
-          <a href="/notifications?unread_only=true" class="govuk-link{% if showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">Unread only</a>
+          <a href="{{ urlFor('/notifications?unread_only=true') }}" class="govuk-link{% if showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">Unread only</a>
         </div>
 
         {% if unreadCount > 0 %}
-          <form method="post" action="/notifications/read-all" class="govuk-!-margin-top-3" style="display: inline">
+          <form method="post" action="{{ urlFor('/notifications/read-all') }}" class="govuk-!-margin-top-3" style="display: inline">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">
               Mark all as read
@@ -100,21 +100,21 @@
 
                 <div class="app-notification-actions">
                   {% if notificationLink %}
-                    <form method="post" action="/notifications/{{ notification.id }}/read" style="display: inline">
+                    <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/read') }}" style="display: inline">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <input type="hidden" name="redirect" value="{{ notificationLink }}">
+                      <input type="hidden" name="redirect" value="{{ urlFor(notificationLink) }}">
                       <button type="submit" class="govuk-link app-link-button">
                         {% if not (notification.isRead or notification.is_read) %}View{% else %}Go to{% endif %}
                       </button>
                     </form>
                   {% elif not (notification.isRead or notification.is_read) %}
-                    <form method="post" action="/notifications/{{ notification.id }}/read" style="display: inline">
+                    <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/read') }}" style="display: inline">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <button type="submit" class="govuk-link app-link-button">Mark read</button>
                     </form>
                   {% endif %}
 
-                  <form method="post" action="/notifications/{{ notification.id }}/delete" style="display: inline" class="govuk-!-margin-left-2">
+                  <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/delete') }}" style="display: inline" class="govuk-!-margin-left-2">
                     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                     <button type="submit" class="govuk-link app-link-button app-link-button--warning">Delete</button>
                   </form>
@@ -127,7 +127,7 @@
         {# Pagination #}
         {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% set paginationConfig = {
-            baseUrl: "/notifications",
+            baseUrl: urlFor('/notifications'),
             page: pagination.page,
             totalPages: pagination.totalPages or pagination.total_pages,
             queryParams: { unread_only: 'true' if showUnreadOnly else '' }
@@ -143,7 +143,7 @@
             message: "You have no unread notifications.",
             action: {
               text: "View all notifications",
-              href: "/notifications"
+              href: urlFor('/notifications')
             }
           } %}
         {% else %}
