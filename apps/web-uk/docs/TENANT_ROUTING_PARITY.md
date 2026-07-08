@@ -99,7 +99,10 @@ Current gaps:
 - Most individual templates still contain direct root-relative paths. Shared
   tenant-mount rendering now protects those links at response time, but the
   templates still need gradual conversion to `urlFor()` or equivalent helpers
-  so custom-domain and flat-host modes remain easier to audit.
+  so custom-domain and flat-host modes remain easier to audit. The first
+  focused source conversion covers `src/views/events/detail.njk`, including
+  breadcrumbs, group/member links, RSVP/admin forms, attendee links, and the
+  report return path.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live

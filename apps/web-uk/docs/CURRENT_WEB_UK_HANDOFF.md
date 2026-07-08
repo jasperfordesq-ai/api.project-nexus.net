@@ -63,13 +63,17 @@ temporary Web UK process started with `TENANT_ID=2`; the API client suppresses
 the default `X-Tenant-ID` whenever Host/Origin tenant context is present so
 Laravel can resolve the browser domain. This is not full tenant-domain parity
 yet: template-helper conversion, visual/manual tenant checks, and ASP.NET
-backend switching certification still need work. A tenant-home parity slice now
-replaces the old generic Web UK home inside tenant contexts with the Laravel
-Blade-style `Accessible` home page, including community caption, tenant
-tagline, platform stats, sign-in/register CTAs, module availability rows, and
-service details. A follow-up tenant-stats slice now scopes those platform stats
-through Laravel's tenant resolution: shared-mount tenant homes send
-`X-Tenant-Slug`, while custom domain homes send the resolved Host and Origin.
+backend switching certification still need work. A first focused
+template-helper conversion slice now covers the event detail page's
+breadcrumbs, group/member links, RSVP/admin forms, attendee links, and report
+return path with `urlFor()`; most other templates still need the same
+source-level conversion. A tenant-home parity slice now replaces the old
+generic Web UK home inside tenant contexts with the Laravel Blade-style
+`Accessible` home page, including community caption, tenant tagline, platform
+stats, sign-in/register CTAs, module availability rows, and service details. A
+follow-up tenant-stats slice now scopes those platform stats through Laravel's
+tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
+domain homes send the resolved Host and Origin.
 
 ## Non-Negotiable Rules
 
@@ -113,7 +117,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 705 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 706 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -138,7 +142,7 @@ shared chooser. `X-Forwarded-Host` is accepted before the socket host for proxy
 custom-domain routing, and host-scoped Laravel API calls send `Origin` as well
 as `Host` so Laravel's bootstrap fallback can resolve configured custom
 domains. Verification for this slice: focused route and API tests passed, full
-Web UK Jest passed `705/705`, lint passed, and the generated route matrix still
+Web UK Jest passed `706/706`, lint passed, and the generated route matrix still
 reported `608/608` Laravel accessible routes matched, `0` missing, `0` extra
 Web UK routes, and `3` ignored infrastructure routes. Direct live Laravel
 bootstrap calls and a direct Web UK tenant-routing middleware harness resolved
@@ -153,6 +157,19 @@ Laravel smoke harness passed against temporary Web UK
 `SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across Borders`.
 The emitted check was `tenant-domain-page-timebank-global-home-renders`, with
 status `200` and no legacy accessible slug links.
+
+Latest focused template-helper conversion slice: `src/views/events/detail.njk`
+now uses `urlFor()` for local event, group, and member links/actions instead of
+literal root-relative `href`/`action` strings. This covers the event detail
+breadcrumbs, summary-list group/organiser links, report return URL, RSVP forms,
+admin edit/cancel/delete controls, and attendee links so shared-mount source is
+less dependent on response-time rewriting. A new source-level regression in
+`tests/template-source.test.js` guards this page from drifting back to literal
+`/events`, `/groups`, or `/members` paths. Verification for this slice:
+`npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
+passed, and
+`npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
+passed `23/23` selected tests.
 
 Latest focused tenant home Blade-parity slice: tenant-mounted root pages now
 render the Laravel Blade accessible home instead of the old generic Web UK
