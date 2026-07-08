@@ -1116,6 +1116,18 @@ describe('shared accessible frontend shell', () => {
     const signed = await request(app)
       .get('/profile/settings?status=data-export-requested')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacySettings = await request(app)
+      .get('/settings')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacyNotifications = await request(app)
+      .get('/settings/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacyPrivacy = await request(app)
+      .get('/settings/privacy')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacyPassword = await request(app)
+      .get('/settings/password')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
@@ -1168,6 +1180,14 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Request your data');
     expect(signed.text).toContain('Delete your account');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(legacySettings.status).toBe(404);
+    expect(legacySettings.text).toContain('Page not found');
+    expect(legacyNotifications.status).toBe(404);
+    expect(legacyNotifications.text).toContain('Page not found');
+    expect(legacyPrivacy.status).toBe(404);
+    expect(legacyPrivacy.text).toContain('Page not found');
+    expect(legacyPassword.status).toBe(404);
+    expect(legacyPassword.text).toContain('Page not found');
   });
 
   it('renders the Laravel-style two-factor setup page', async () => {
@@ -4679,7 +4699,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Accept or decline connection requests and manage your network.');
     expect(response.text).toContain('href="/notifications"');
     expect(response.text).toContain('href="/profile"');
-    expect(response.text).toContain('href="/settings"');
+    expect(response.text).toContain('href="/profile/settings"');
     expect(response.text).toContain('method="post" action="/logout"');
     expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('shared accessible frontend preparation page');

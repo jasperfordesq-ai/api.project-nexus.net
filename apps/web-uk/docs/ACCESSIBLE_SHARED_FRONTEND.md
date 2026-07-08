@@ -1349,10 +1349,18 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 681 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 74 local-only routes. These
+accessible route declarations, 674 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 67 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/settings`, `/settings/notifications`, `/settings/password`, and
+`/settings/privacy` are intentionally not exposed as separate local pages.
+Laravel's accessible settings source uses `/profile/settings` for the profile,
+security, notification, privacy, and data/privacy hub, plus the specific
+Laravel parity routes `/settings/appearance`, `/settings/data-rights`,
+`/settings/availability`, `/settings/linked-accounts`, and
+`/settings/insurance`.
 
 `/connections/pending` is intentionally not exposed as a separate local page.
 Laravel's accessible pending/accepted/sent connection experience lives on the

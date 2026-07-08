@@ -438,7 +438,7 @@ app.get('/account', (req, res) => {
       {
         title: 'Account settings',
         description: 'Email, password, two-factor sign in, language, notifications and privacy.',
-        href: '/settings'
+        href: '/profile/settings'
       }
     ]
   });

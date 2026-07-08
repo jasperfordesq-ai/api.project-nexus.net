@@ -67,11 +67,17 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `681` |
+| Web UK routes | `674` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `74` |
+| Extra Web UK routes | `67` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused settings route slice: legacy local `/settings`,
+`/settings/notifications`, `/settings/password`, and `/settings/privacy` were
+removed. The account/settings entry point now uses Laravel's accessible
+`/profile/settings` hub, while Laravel parity subpages under `/settings/*`
+remain only for the routes present in Laravel's `govuk-alpha-parity/settings.php`.
 
 Latest focused connections route slice: legacy local `/connections/pending`
 was removed. Links from the connections index, member directory, and

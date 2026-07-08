@@ -138,11 +138,11 @@ describe('Protected Routes', () => {
       expect(response.headers.location).toBe('/login');
     });
 
-    it('GET /settings should redirect to login', async () => {
+    it('GET /settings should return not found', async () => {
       const response = await request(app).get('/settings');
 
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
     });
   });
 });
