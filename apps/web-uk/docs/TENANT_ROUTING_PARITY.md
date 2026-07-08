@@ -87,7 +87,9 @@ Current gaps:
 - Custom accessible-domain routing is covered by Jest for a host-resolved
   root request, but it is not yet certified by live Laravel runtime smoke.
 - Parent-domain child-tenant paths are covered by Jest for a parent-host child
-  login page, but not yet certified by live Laravel runtime smoke.
+  login page and by live Laravel runtime smoke against the local
+  `hour-timebank` fixture, whose public bootstrap payload includes
+  `parent_domain: timebank.global`.
 
 ## First Verified Slice
 
@@ -120,8 +122,22 @@ tenant bootstrap, renders the child tenant's login page, keeps form and
 registration links under `/{childSlug}`, and does not leak either `/alpha` or
 `/accessible`.
 
+The sixth runtime-smoke slice adds `SMOKE_TENANT_DOMAIN_PAGE_PATHS` to
+`scripts/laravel-runtime-smoke.js`. Each entry uses
+`host|/path=>Expected text`, sends the request to `WEB_UK_BASE_URL` with a real
+HTTP `Host` header, asserts the expected body text, and rejects generated
+`/alpha` or `/accessible` links. On 2026-07-08, a live run against Laravel
+`http://127.0.0.1:8088` and a temporary Web UK process at
+`http://127.0.0.1:6320` passed with
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/hour-timebank/login=>Sign in`.
+The emitted check was
+`tenant-domain-page-timebank-global-hour-timebank-login-renders`.
+
 Verification command:
 
 ```powershell
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
+npm --prefix apps/web-uk test -- laravel-runtime-smoke.test.js --runInBand
+$env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'timebank.global|/hour-timebank/login=>Sign in'
+npm --prefix apps/web-uk run smoke:laravel
 ```

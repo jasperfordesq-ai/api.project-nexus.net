@@ -48,7 +48,7 @@ function createLaravelServer(requests) {
   });
 }
 
-function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {}, gatedRequiresFreshLogin = false } = {}) {
+function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {}, gatedRequiresFreshLogin = false, tenantDomainFixtures = new Map() } = {}) {
   let loginCount = 0;
 
   return http.createServer(async (req, res) => {
@@ -56,8 +56,16 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       surface: 'web',
       method: req.method,
       url: req.url,
+      host: req.headers.host || '',
       cookie: req.headers.cookie || ''
     });
+
+    const tenantDomainFixture = tenantDomainFixtures.get(`${req.headers.host || ''}|${req.url}`);
+    if (req.method === 'GET' && tenantDomainFixture) {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(tenantDomainFixture);
+      return;
+    }
 
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -923,7 +931,8 @@ describe('Laravel runtime smoke harness', () => {
       SMOKE_GATED_PAGE_PATHS: '',
       SMOKE_REDIRECT_PAGE_PATHS: '',
       SMOKE_CONTENT_TYPE_PAGE_PATHS: '/blog/feed.xml=>application/rss+xml\n/wallet/export.csv=>text/csv',
-      SMOKE_BODY_TEXT_PAGE_PATHS: '/explore=>Explore\n/chat=>AI assistant'
+      SMOKE_BODY_TEXT_PAGE_PATHS: '/explore=>Explore\n/chat=>AI assistant',
+      SMOKE_TENANT_DOMAIN_PAGE_PATHS: 'timebank.global|/hour-timebank/login=>Sign in'
     });
 
     expect(options.modulePagePaths).toEqual(['/login', '/register']);
@@ -939,6 +948,9 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/explore', text: 'Explore' },
       { path: '/chat', text: 'AI assistant' }
     ]);
+    expect(options.tenantDomainPagePaths).toEqual([
+      { host: 'timebank.global', path: '/hour-timebank/login', text: 'Sign in' }
+    ]);
   });
 
   it('treats none as a portable CLI sentinel for disabled smoke page groups', () => {
@@ -949,7 +961,8 @@ describe('Laravel runtime smoke harness', () => {
       SMOKE_GATED_PAGE_PATHS: 'none',
       SMOKE_REDIRECT_PAGE_PATHS: 'none',
       SMOKE_CONTENT_TYPE_PAGE_PATHS: 'none',
-      SMOKE_BODY_TEXT_PAGE_PATHS: 'none'
+      SMOKE_BODY_TEXT_PAGE_PATHS: 'none',
+      SMOKE_TENANT_DOMAIN_PAGE_PATHS: 'none'
     });
 
     expect(options.modulePagePaths).toEqual([]);
@@ -959,6 +972,7 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.redirectPagePaths).toEqual([]);
     expect(options.contentTypePagePaths).toEqual([]);
     expect(options.bodyTextPagePaths).toEqual([]);
+    expect(options.tenantDomainPagePaths).toEqual([]);
   });
 
   it('allows CLI module page smoke runs to be split into deterministic chunks', () => {
@@ -1723,6 +1737,54 @@ describe('Laravel runtime smoke harness', () => {
       'GET /organisations/browse',
       'GET /kb',
       'GET /help'
+    ]));
+  });
+
+  it('smokes tenant-domain pages with a Host header and rejects legacy alpha URLs', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests, {
+      tenantDomainFixtures: new Map([
+        [
+          'timebank.global|/hour-timebank/login',
+          '<h1>Sign in</h1><form action="/hour-timebank/login"><button>Continue</button></form>'
+        ]
+      ])
+    });
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({
+      laravelBaseUrl,
+      webBaseUrl,
+      modulePagePaths: [],
+      unsignedAuthRequiredPagePaths: [],
+      unsignedLoginRedirectPagePaths: [],
+      gatedPagePaths: [],
+      redirectPagePaths: [],
+      contentTypePagePaths: [],
+      bodyTextPagePaths: [],
+      tenantDomainPagePaths: [
+        { host: 'timebank.global', path: '/hour-timebank/login', text: 'Sign in' }
+      ]
+    });
+
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
+    expect(result.ok).toBe(true);
+    expect(checkByName['tenant-domain-page-timebank-global-hour-timebank-login-renders']).toEqual(expect.objectContaining({
+      ok: true,
+      host: 'timebank.global',
+      path: '/hour-timebank/login',
+      status: 200
+    }));
+    expect(requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        surface: 'web',
+        method: 'GET',
+        url: '/hour-timebank/login',
+        host: 'timebank.global'
+      })
     ]));
   });
 

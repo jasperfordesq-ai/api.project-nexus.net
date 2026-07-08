@@ -135,6 +135,16 @@ All 16 chunked live runs against `WEB_UK_BASE_URL=http://127.0.0.1:5321` with
 checks across the default sweep. Each shard also reran the auth/API setup,
 unsigned auth-required redirects, gated status checks, and signed redirect
 checks.
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS` accepts comma/newline-separated
+`host|/path=>Expected text` entries. The smoke harness sends those requests to
+`WEB_UK_BASE_URL` with a real HTTP `Host` header, verifies the expected body
+text, and fails if the generated HTML leaks `/alpha` or `/accessible` links.
+On 2026-07-08, the local Laravel `hour-timebank` fixture exposed
+`parent_domain: timebank.global`; a live targeted run against
+`WEB_UK_BASE_URL=http://127.0.0.1:6320` with
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/hour-timebank/login=>Sign in`
+passed the `tenant-domain-page-timebank-global-hour-timebank-login-renders`
+check plus the base auth/cookie checks.
 A targeted real-fixture parameterised run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
 2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18

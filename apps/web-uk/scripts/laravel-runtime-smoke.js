@@ -3,6 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+const http = require('http');
+const https = require('https');
+
 const DEFAULT_WEB_BASE_URL = 'http://127.0.0.1:5180';
 const DEFAULT_LARAVEL_BASE_URL = 'http://127.0.0.1:8088';
 const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
@@ -703,14 +706,95 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
   }
 }
 
+function createHeadersFacade(headers) {
+  const lowerHeaders = {};
+  for (const [name, value] of Object.entries(headers || {})) {
+    lowerHeaders[name.toLowerCase()] = value;
+  }
+
+  return {
+    get(name) {
+      const value = lowerHeaders[String(name || '').toLowerCase()];
+      if (Array.isArray(value)) return value.join(', ');
+      return value || null;
+    },
+    raw() {
+      return lowerHeaders;
+    },
+    getSetCookie() {
+      const value = lowerHeaders['set-cookie'];
+      if (!value) return [];
+      return Array.isArray(value) ? value : [value];
+    }
+  };
+}
+
+async function requestWithHostHeader({ url, options = {}, timeoutMs, hostHeader }) {
+  const parsedUrl = new URL(url);
+  const transport = parsedUrl.protocol === 'https:' ? https : http;
+  const headers = { ...(options.headers || {}), Host: hostHeader };
+  const body = options.body || null;
+
+  return new Promise((resolve, reject) => {
+    const request = transport.request({
+      protocol: parsedUrl.protocol,
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port,
+      path: `${parsedUrl.pathname}${parsedUrl.search}`,
+      method: options.method || 'GET',
+      headers
+    }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      response.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const status = response.statusCode || 0;
+        resolve({
+          status,
+          ok: status >= 200 && status < 300,
+          headers: createHeadersFacade(response.headers),
+          text: async () => buffer.toString('utf8')
+        });
+      });
+    });
+
+    const timer = setTimeout(() => {
+      request.destroy(new Error(`Request to ${url} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    request.on('error', reject);
+    request.on('close', () => clearTimeout(timer));
+
+    if (body) {
+      request.write(body);
+    }
+    request.end();
+  });
+}
+
 async function smokeRequest({ fetchImpl, timeoutMs, cookieJar, url, options = {} }) {
-  const headers = { ...(options.headers || {}) };
+  const { hostHeader, ...fetchOptions } = options;
+  const headers = { ...(fetchOptions.headers || {}) };
   const cookieHeader = cookieJar?.header();
   if (cookieHeader) headers.cookie = cookieHeader;
 
+  if (hostHeader) {
+    const response = await requestWithHostHeader({
+      url,
+      timeoutMs,
+      hostHeader,
+      options: {
+        ...fetchOptions,
+        headers
+      }
+    });
+    if (cookieJar) cookieJar.storeFrom(response.headers);
+    return response;
+  }
+
   const response = await fetchWithTimeout(fetchImpl, url, {
     redirect: 'manual',
-    ...options,
+    ...fetchOptions,
     headers
   }, timeoutMs);
 
@@ -841,6 +925,18 @@ function bodyTextPageCheckName(path, text) {
   return `body-text-page-${pathSlug || 'home'}-contains-${textSlug || 'text'}`;
 }
 
+function tenantDomainPageCheckName(host, path) {
+  const hostSlug = String(host || '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `tenant-domain-page-${hostSlug || 'host'}-${pathSlug || 'home'}-renders`;
+}
+
 function authRequiredPageCheckName(path, location) {
   const pathSlug = String(path || '')
     .replace(/^\/+|\/+$/g, '')
@@ -966,6 +1062,27 @@ function parseBodyTextPages(value) {
   }).filter((item) => item.path && item.text);
 }
 
+function parseTenantDomainPages(value) {
+  return splitSmokeList(value).map((item) => {
+    const textSeparator = item.indexOf('=>');
+    const target = textSeparator <= 0 ? item.trim() : item.slice(0, textSeparator).trim();
+    const hostSeparator = target.indexOf('|');
+    if (hostSeparator <= 0) {
+      return {
+        host: '',
+        path: '',
+        text: ''
+      };
+    }
+
+    return {
+      host: target.slice(0, hostSeparator).trim(),
+      path: target.slice(hostSeparator + 1).trim(),
+      text: textSeparator <= 0 ? '' : item.slice(textSeparator + 2).trim()
+    };
+  }).filter((item) => item.host && item.path && item.text);
+}
+
 function resolveGatedPages(options, env) {
   if (hasOwn(options, 'gatedPagePaths')) return options.gatedPagePaths;
   if (hasOwn(env, 'SMOKE_GATED_PAGE_PATHS')) return parseGatedPages(env.SMOKE_GATED_PAGE_PATHS);
@@ -991,6 +1108,12 @@ function resolveBodyTextPages(options, env) {
     : DEFAULT_BODY_TEXT_PAGE_PATHS;
 
   return applySmokeChunk(pages, env.SMOKE_BODY_TEXT_PAGE_CHUNK);
+}
+
+function resolveTenantDomainPages(options, env) {
+  if (hasOwn(options, 'tenantDomainPagePaths')) return options.tenantDomainPagePaths;
+  if (hasOwn(env, 'SMOKE_TENANT_DOMAIN_PAGE_PATHS')) return parseTenantDomainPages(env.SMOKE_TENANT_DOMAIN_PAGE_PATHS);
+  return [];
 }
 
 function resolveOptions(options = {}, env = process.env) {
@@ -1020,6 +1143,7 @@ function resolveOptions(options = {}, env = process.env) {
     redirectPagePaths: resolveRedirectPages(options, env),
     contentTypePagePaths: resolveContentTypePages(options, env),
     bodyTextPagePaths: resolveBodyTextPages(options, env),
+    tenantDomainPagePaths: resolveTenantDomainPages(options, env),
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -1053,6 +1177,38 @@ async function runLaravelRuntimeSmoke(options = {}) {
     addCheck(checks, 'web-health', response.ok, response.ok ? 'web-uk health endpoint returned a successful response.' : `expected 2xx from web-uk health, got ${response.status}`, { status: response.status });
   } catch (error) {
     addCheck(checks, 'web-health', false, error.message);
+  }
+
+  for (const tenantDomainPage of config.tenantDomainPagePaths) {
+    const host = tenantDomainPage.host;
+    const path = tenantDomainPage.path;
+    const expectedText = String(tenantDomainPage.text || '');
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        url: joinUrl(config.webBaseUrl, path),
+        options: {
+          hostHeader: host
+        }
+      });
+      const html = await readTextSafely(response);
+      const lowerHtml = html.toLowerCase();
+      const hasExpectedText = lowerHtml.includes(expectedText.toLowerCase());
+      const hasLegacySlug = lowerHtml.includes('/alpha') || lowerHtml.includes('/accessible');
+      const ok = response.ok && hasExpectedText && !hasLegacySlug;
+      addCheck(
+        checks,
+        tenantDomainPageCheckName(host, path),
+        ok,
+        ok
+          ? `${path} rendered for ${host} without legacy accessible slug links.`
+          : `expected 2xx body containing "${expectedText}" and no /alpha or /accessible links from ${host}${path}, got ${response.status}`,
+        { status: response.status, host, path, text: expectedText }
+      );
+    } catch (error) {
+      addCheck(checks, tenantDomainPageCheckName(host, path), false, error.message, { host, path, text: expectedText });
+    }
   }
 
   try {

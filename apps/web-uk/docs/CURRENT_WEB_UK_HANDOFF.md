@@ -53,9 +53,11 @@ renders the resolved tenant home at slugless `/` when the host matches
 `accessible_domain`. A parent-domain child slice now resolves the first
 non-reserved path segment through Laravel bootstrap and serves the flat
 accessible app below `/{childSlug}` when Laravel returns a matching
-`parent_domain`. This is not full tenant-domain parity yet: template-helper
-conversion and Laravel runtime smoke certification for custom-domain and
-parent-domain modes still need work.
+`parent_domain`. A live runtime-smoke slice now certifies that same
+parent-domain child path against the local Laravel `hour-timebank` fixture. This
+is not full tenant-domain parity yet: template-helper conversion and live
+Laravel smoke certification for direct custom accessible-domain fixtures still
+need work.
 
 ## Non-Negotiable Rules
 
@@ -80,9 +82,9 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `970/1000` implementation/certification parity |
-| Green confidence estimate | about `950/1000`, mainly gated by visual/manual Laravel Blade parity, deeper tenant/custom-domain spot checks, and ASP.NET backend switching certification |
-| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
+| Working estimate | about `972/1000` implementation/certification parity |
+| Green confidence estimate | about `952/1000`, mainly gated by visual/manual Laravel Blade parity, live direct custom accessible-domain proof, and ASP.NET backend switching certification |
+| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -157,6 +159,20 @@ inside that child path. The public Web UK route does not expose Laravel's
 legacy `/alpha` mount or add `/accessible` on that parent-domain child path.
 Verification for this slice: the new focused test first failed with `404`, then
 passed after the middleware change; full `routes.test.js` passed `32/32`.
+
+Latest focused tenant-domain runtime-smoke slice: the Laravel runtime smoke
+harness now accepts `SMOKE_TENANT_DOMAIN_PAGE_PATHS` entries in the form
+`host|/path=>Expected text`. It sends those requests to `WEB_UK_BASE_URL` with a
+real HTTP `Host` header, checks the expected body text, and fails if generated
+HTML leaks `/alpha` or `/accessible` links. Local Laravel bootstrap for
+`hour-timebank` returns `parent_domain: timebank.global`, so a targeted live run
+against temporary Web UK `http://127.0.0.1:6320` and Laravel
+`http://127.0.0.1:8088` passed with
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/hour-timebank/login=>Sign in`.
+The run emitted `tenant-domain-page-timebank-global-hour-timebank-login-renders`
+with status `200`, plus green Laravel API, web health, auth, cookie, account,
+and logout checks. Direct `accessible_domain` live smoke remains pending until a
+Laravel fixture exposes that field locally.
 
 Latest focused exchange route-identity slice: the previous extra local
 `GET /exchanges/request/{param}` and `POST /exchanges/request/{param}` aliases
@@ -971,7 +987,10 @@ Blade visual parity, auth redirects, tenant gates, feature gates, POST side
 effects, localization, runtime Laravel behavior, or ASP.NET backend switching.
 For local Laravel auth smoke, ensure the web-uk process was started with
 `TENANT_ID=2`. The harness default timeout is `60000` ms; keep
-`SMOKE_TIMEOUT_MS` available for exceptionally slow local runs.
+`SMOKE_TIMEOUT_MS` available for exceptionally slow local runs. For
+tenant-domain checks, add `SMOKE_TENANT_DOMAIN_PAGE_PATHS` entries as
+`host|/path=>Expected text`; the harness will send a real HTTP `Host` header to
+the local Web UK process.
 
 ## Documents To Trust
 
