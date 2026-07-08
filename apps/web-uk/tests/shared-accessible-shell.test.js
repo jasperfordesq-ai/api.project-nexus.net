@@ -4767,6 +4767,23 @@ describe('shared accessible frontend shell', () => {
     expect(legacyTransfer.text).toContain('Page not found');
   });
 
+  it('renders the messages hub without the legacy bare compose route', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({ data: [] });
+    api.getUnreadCount.mockResolvedValueOnce({ unread_count: 0 });
+
+    const response = await request(app)
+      .get('/messages')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Messages');
+    expect(response.text).toContain('No conversations yet');
+    expect(response.text).toContain('href="/members"');
+    expect(response.text).not.toContain('href="/messages/new"');
+    expect(response.text).not.toContain('action="/messages/new"');
+  });
+
   it('renders the Laravel wallet manage hub for signed-in members', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

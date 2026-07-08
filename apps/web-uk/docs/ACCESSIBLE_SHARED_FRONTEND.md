@@ -1349,10 +1349,16 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 665 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 58 local-only routes. These
+accessible route declarations, 663 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 56 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Bare `/messages/new` is intentionally not exposed as a separate local page.
+Laravel's accessible direct-message source uses `/messages/new/{userId}` and
+`/messages/{userId}` with numeric route constraints. The generated preparation
+pages preserve those `whereNumber(...)` constraints so dynamic message routes do
+not catch non-numeric legacy paths.
 
 `/wallet/transactions`, `/wallet/transactions/{id}`, and GET
 `/wallet/transfer` are intentionally not exposed as separate local pages.

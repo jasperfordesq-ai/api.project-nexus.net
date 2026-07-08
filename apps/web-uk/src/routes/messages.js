@@ -11,10 +11,7 @@ const {
   getConversation,
   getUnreadCount,
   replyToConversation,
-  startConversation,
-  getUser,
   searchUsers,
-  getConnections,
   markConversationRead,
   getProfile,
   callMessageApi,
@@ -530,9 +527,7 @@ router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute
   return res.redirect(groupRedirect(conversationId, status, `#m-${messageId}`));
 }));
 
-router.use(requireAuth);
-
-router.get('/groups', asyncRoute(async (req, res) => {
+router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
   let groups = [];
   let error = '';
   try {
@@ -553,7 +548,7 @@ router.get('/groups', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/groups/new', asyncRoute(async (req, res) => {
+router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
   const query = trimmed(req.query.q);
   const selectedIds = selectedGroupMemberIds(req.query);
   const selected = new Set(selectedIds);
@@ -585,7 +580,7 @@ router.get('/groups/new', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
+router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const conversationId = Number(req.params.conversationId);
   const [messagesResult, participantsResult, profileResult] = await Promise.all([
     callConversation(req.token, 'GET', conversationApiPath(conversationId, req.query)),
@@ -638,7 +633,7 @@ router.get('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Group conversation not found' }));
 
 // List conversations
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const [conversationsData, unreadData] = await Promise.all([
     getConversations(req.token),
     getUnreadCount(req.token).catch(() => ({ count: 0 }))
@@ -652,7 +647,7 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/new/:userId(\\d+)', asyncRoute(async (req, res) => {
+router.get('/new/:userId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const userId = Number(req.params.userId);
   const listingId = positiveInteger(req.query.listing);
   const [messagesResult, profileResult, restrictionResult, listingResult] = await Promise.all([
@@ -696,100 +691,8 @@ router.get('/new/:userId(\\d+)', asyncRoute(async (req, res) => {
   });
 }, { notFoundTitle: 'Conversation not found' }));
 
-// New conversation form
-router.get('/new', asyncRoute(async (req, res) => {
-  const { user_id } = req.query;
-
-  // Get connected users to populate recipient dropdown
-  const connectionsResult = await getConnections(req.token, 'accepted');
-  const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
-  const connections = Array.isArray(rawConns) ? rawConns : [];
-
-  // If user_id provided, get that user's info
-  let selectedUser = null;
-  if (user_id) {
-    try {
-      selectedUser = await getUser(req.token, user_id);
-    } catch {
-      // Ignore - user may not exist or not be connected
-    }
-  }
-
-  res.render('messages/new', {
-    title: 'New message',
-    connections,
-    selectedUser,
-    selectedUserId: user_id,
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    error: req.flash ? req.flash('error')[0] : null
-  });
-}));
-
-// Start new conversation
-router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res) => {
-  const { recipient_id, content } = req.body;
-
-  const errors = [];
-
-  if (!recipient_id) {
-    errors.push({ text: 'Select a recipient', href: '#recipient_id' });
-  }
-
-  if (!content || !content.trim()) {
-    errors.push({ text: 'Enter a message', href: '#content' });
-  }
-
-  if (errors.length > 0) {
-    const connectionsResult = await getConnections(req.token, 'accepted');
-    const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
-    const connections = Array.isArray(rawConns) ? rawConns : [];
-
-    return res.render('messages/new', {
-      title: 'New message',
-      connections,
-      selectedUserId: recipient_id,
-      values: { content },
-      errors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-  }
-
-  try {
-    const result = await startConversation(req.token, recipient_id, content.trim());
-
-    if (req.flash) {
-      req.flash('success', 'Message sent');
-    }
-
-    // Redirect to the new conversation if ID is returned
-    const conversationId = result.conversationId || result.conversation_id || result.id;
-    if (conversationId) {
-      return res.redirect(`/messages/${conversationId}`);
-    }
-
-    res.redirect('/messages');
-  } catch (error) {
-    // Handle API errors by re-rendering form with error message
-    if (error instanceof ApiError && error.status !== 401) {
-      const connectionsResult = await getConnections(req.token, 'accepted');
-      const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
-      const connections = Array.isArray(rawConns) ? rawConns : [];
-
-      return res.render('messages/new', {
-        title: 'New message',
-        connections,
-        selectedUserId: recipient_id,
-        values: { content },
-        errors: [{ text: error.message || 'Unable to send message' }],
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
-
 // View conversation
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const [conversation, profile] = await Promise.all([
     getConversation(req.token, req.params.id),
     getProfile(req.token).catch(() => null)
@@ -813,7 +716,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Conversation not found' }));
 
 // Send message
-router.post('/:id', audit.messageSend(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (req, res) => {
   const content = trimmed(req.body.body || req.body.content, 10000);
   const conversationId = req.params.id;
   const recipientId = Number(conversationId);

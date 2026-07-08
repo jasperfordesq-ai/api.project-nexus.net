@@ -67,11 +67,17 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `665` |
+| Web UK routes | `663` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `58` |
+| Extra Web UK routes | `56` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused messages route slice: legacy local GET/POST `/messages/new`
+without a member id was removed. Direct message entry points now use Laravel's
+accessible `/messages/new/{userId}` route, and generated prep pages preserve
+Laravel `whereNumber(...)` constraints so `/messages/{userId}` no longer
+overmatches `/messages/new`.
 
 Latest focused wallet route slice: legacy local GET-only `/wallet/transactions`,
 `/wallet/transactions/{id}`, and `/wallet/transfer` pages were removed. Wallet

@@ -129,6 +129,16 @@ function extractMiddleware(statement) {
     .join('; ');
 }
 
+function extractRouteParamNames(routePath) {
+  return [...String(routePath || '').matchAll(/\{([^}/]+)\}/g)]
+    .map((match) => match[1].replace(/\?$/, ''));
+}
+
+function extractWhereNumberParams(statement) {
+  return new Set([...statement.matchAll(/->whereNumber\s*\(\s*['"]([^'"]+)['"]\s*\)/g)]
+    .map((match) => match[1]));
+}
+
 function parseLaravelRoutes(sourceRoot) {
   const routeRoot = path.join(sourceRoot, 'routes');
   const routeFiles = [];
@@ -155,10 +165,13 @@ function parseLaravelRoutes(sourceRoot) {
 
       const handlerMatch = statement.match(/\[AlphaController::class\s*,\s*['"]([^'"]+)['"]\]/);
       const routeMethod = match[1].toLowerCase() === 'view' ? 'GET' : match[1].toUpperCase();
+      const paramNames = extractRouteParamNames(match[2]);
+      const whereNumberParams = extractWhereNumberParams(statement);
 
       routes.push({
         method: routeMethod,
         path: normalizeRoutePath(match[2]),
+        laravelParamConstraints: paramNames.map((paramName) => (whereNumberParams.has(paramName) ? 'number' : '')),
         laravelHandler: handlerMatch ? handlerMatch[1] : '',
         laravelRouteName: extractRouteName(statement),
         laravelRouteFile: filePath,
@@ -528,6 +541,7 @@ function buildMatrix(laravelRoutes, webUkRoutes, methodDetails) {
       laravelRouteName: route.laravelRouteName,
       laravelHandler: route.laravelHandler,
       laravelView: method.view || '',
+      laravelParamConstraints: route.laravelParamConstraints || [],
       laravelRouteFile: route.laravelRouteFile,
       laravelControllerFile: method.filePath || '',
       laravelMiddleware: route.laravelMiddleware,
@@ -555,6 +569,7 @@ function buildMatrix(laravelRoutes, webUkRoutes, methodDetails) {
       laravelRouteName: '',
       laravelHandler: '',
       laravelView: '',
+      laravelParamConstraints: [],
       laravelRouteFile: '',
       laravelControllerFile: '',
       laravelMiddleware: '',
@@ -624,6 +639,7 @@ function writeCsv(rows, filePath) {
     'laravelRouteName',
     'laravelHandler',
     'laravelView',
+    'laravelParamConstraints',
     'auth',
     'tenantScoped',
     'gates',

@@ -108,7 +108,7 @@
             }) }}
           </form>
         {% elif connection.status == 'accepted' %}
-          <a href="/messages/new?user_id={{ user.id }}" class="govuk-button">
+          <a href="/messages/new/{{ user.id }}" class="govuk-button">
             Send message
           </a>
           <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">

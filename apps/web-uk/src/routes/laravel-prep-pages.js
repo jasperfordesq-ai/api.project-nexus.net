@@ -8,11 +8,12 @@ const routeMatrix = require('../../docs/generated/accessible-route-matrix.json')
 
 const router = express.Router();
 
-function toExpressPath(laravelPath) {
+function toExpressPath(laravelPath, paramConstraints = []) {
   let paramIndex = 0;
   return laravelPath.replace(/\{param\}/g, () => {
+    const constraint = paramConstraints[paramIndex];
     paramIndex += 1;
-    return `:param${paramIndex}`;
+    return constraint === 'number' ? `:param${paramIndex}(\\d+)` : `:param${paramIndex}`;
   });
 }
 
@@ -48,7 +49,7 @@ const prepPages = routeMatrix.matrix
   .map((row) => ({
     title: humanize(row.laravelView || row.laravelHandler || row.path),
     laravelPath: row.path,
-    expressPath: toExpressPath(row.path),
+    expressPath: toExpressPath(row.path, row.laravelParamConstraints || []),
     handler: row.laravelHandler,
     bladeView: row.laravelView || '',
     auth: row.auth || '',

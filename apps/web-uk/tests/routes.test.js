@@ -167,6 +167,25 @@ describe('Protected Routes', () => {
         expect(response.text).toContain('Page not found');
       }
     });
+
+    it('bare /messages/new should return not found', async () => {
+      const getResponse = await request(app).get('/messages/new');
+      expect(getResponse.status).toBe(404);
+      expect(getResponse.text).toContain('Page not found');
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const postResponse = await agent
+        .post('/messages/new')
+        .type('form')
+        .send({ _csrf: csrfMatch[1] });
+
+      expect(postResponse.status).toBe(404);
+      expect(postResponse.text).toContain('Page not found');
+    });
   });
 });
 
