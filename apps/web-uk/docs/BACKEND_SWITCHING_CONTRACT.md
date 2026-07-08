@@ -447,11 +447,20 @@ against `WEB_UK_BASE_URL=http://127.0.0.1:6227`. The targeted run passed with
 `20/20` checks and `0` failures. The body-text-only default smoke scope passed
 against the same port with `203/203` total checks, including 194 body-text
 contract checks, and `0` failures.
-The default scope now contains `541` checks:
+The signed feed pages `/feed/hashtags`, `/feed/hashtag/timebank`,
+`/feed/item/listing/42`, `/feed/posts/796`, `/feed/item/listing/90967`,
+`/feed/item/listing/90966`, `/feed/item/listing/90965`,
+`/feed/item/listing/90964`, `/feed/item/listing/90963`, and
+`/feed/item/listing/90962` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6228`. The targeted run passed with `16/16`
+checks and `0` failures. The body-text-only default smoke scope passed against
+the same port with `210/210` total checks, including 204 body-text contract
+checks, and `0` failures.
+The default scope now contains `551` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 194 body-text contract checks, and the 6
+content-type contract checks, 204 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
