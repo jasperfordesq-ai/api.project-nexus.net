@@ -20,11 +20,11 @@
   {% if mode == 'category' %}
     <form method="get" action="/marketplace/category/{{ category.slug }}" class="govuk-!-margin-bottom-6">
       <div class="govuk-form-group">
-        <label class="govuk-label" for="q">Search this category</label>
-        <div id="q-hint" class="govuk-hint">Search by title.</div>
+        <label class="govuk-label" for="q">Search within this category</label>
+        <div id="q-hint" class="govuk-hint">Find an item by name or keyword.</div>
         <input class="govuk-input govuk-input--width-20" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
       </div>
-      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search category</button>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
     </form>
   {% endif %}
 

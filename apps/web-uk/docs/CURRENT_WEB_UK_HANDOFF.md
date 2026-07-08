@@ -469,11 +469,25 @@ returned expected body markers against
 `WEB_UK_BASE_URL=http://127.0.0.1:6224`; group detail now follows the Laravel
 Blade section heading `Group events`. The body-text-only default smoke scope
 passed against the same port with `158/158` body-text checks and `0` failures.
-The default scope now contains `499` checks:
+The signed marketplace create/search/coupon/detail/action/category/seller pages
+`/marketplace/create`, `/marketplace/search`, `/marketplace/coupons/new`,
+`/marketplace/267`, `/marketplace/267/buy`, `/marketplace/267/offer`,
+`/marketplace/267/report`, `/marketplace/267/edit`, `/marketplace/6`,
+`/marketplace/6/buy`, `/marketplace/6/offer`, `/marketplace/6/report`,
+`/marketplace/6/edit`, `/marketplace/category/electronics`,
+`/marketplace/category/home-garden`, `/marketplace/category/free-items`,
+`/marketplace/category/services`, and `/marketplace/seller/1` returned expected
+body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6225`; category search
+now follows Laravel's `Search within this category` label, `Find an item by name
+or keyword.` hint, and `Search` submit text. The targeted run passed with
+`27/27` checks and `0` failures. The body-text-only default smoke scope passed
+against the same port with `179/179` total checks, including 170 body-text
+contract checks, and `0` failures.
+The default scope now contains `517` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 152 body-text contract checks, and the 6
+content-type contract checks, 170 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against
