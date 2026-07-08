@@ -52,5 +52,31 @@ public class ResourcesCommentsConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
+
+        modelBuilder.Entity<CommentReaction>(entity =>
+        {
+            entity.ToTable("comment_reactions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ReactionType).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.CommentId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.CommentId, e.ReactionType });
+            entity.HasOne(e => e.Comment).WithMany().HasForeignKey(e => e.CommentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ContentReaction>(entity =>
+        {
+            entity.ToTable("reactions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TargetType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ReactionType).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.TargetType, e.TargetId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.TargetType, e.TargetId, e.ReactionType });
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
     }
 }

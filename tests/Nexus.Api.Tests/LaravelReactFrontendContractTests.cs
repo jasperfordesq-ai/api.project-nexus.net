@@ -4932,6 +4932,174 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task FeedCommentsV2_UsesLaravelReactThreadedCrudAndReactionShape()
+    {
+        var postId = await SeedAdminFeedPostAsync("Laravel React commentable post", TestData.AdminUser.Id);
+        await AuthenticateAsMemberAsync();
+
+        var createRoot = await Client.PostAsJsonAsync("/api/v2/comments", new
+        {
+            target_type = "post",
+            target_id = postId,
+            content = "<b>Root comment</b>"
+        });
+
+        createRoot.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createRootJson = await createRoot.Content.ReadFromJsonAsync<JsonElement>();
+        createRootJson.TryGetProperty("success", out _).Should().BeFalse();
+        createRootJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+        var rootData = createRootJson.GetProperty("data");
+        var rootCommentId = rootData.GetProperty("id").GetInt32();
+        rootData.GetProperty("content").GetString().Should().Be("Root comment");
+        rootData.GetProperty("is_own").GetBoolean().Should().BeTrue();
+        rootData.GetProperty("author").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        rootData.GetProperty("replies").GetArrayLength().Should().Be(0);
+
+        var createReply = await Client.PostAsJsonAsync("/api/v2/comments", new
+        {
+            target_type = "post",
+            target_id = postId,
+            parent_id = rootCommentId,
+            content = "Reply comment"
+        });
+
+        createReply.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createReplyJson = await createReply.Content.ReadFromJsonAsync<JsonElement>();
+        var replyCommentId = createReplyJson.GetProperty("data").GetProperty("id").GetInt32();
+
+        var list = await Client.GetAsync($"/api/v2/comments?target_type=post&target_id={postId}");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.TryGetProperty("success", out _).Should().BeFalse();
+        var listData = listJson.GetProperty("data");
+        listData.GetProperty("count").GetInt32().Should().Be(2);
+        var listedRoot = listData.GetProperty("comments").EnumerateArray()
+            .Single(row => row.GetProperty("id").GetInt32() == rootCommentId);
+        listedRoot.GetProperty("replies").EnumerateArray().Should().ContainSingle()
+            .Subject.GetProperty("id").GetInt32().Should().Be(replyCommentId);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/comments/{rootCommentId}", new
+        {
+            content = "Edited root"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("data").GetProperty("content").GetString().Should().Be("Edited root");
+        updateJson.GetProperty("data").GetProperty("edited").GetBoolean().Should().BeTrue();
+
+        var reaction = await Client.PostAsJsonAsync($"/api/v2/comments/{rootCommentId}/reactions", new
+        {
+            reaction_type = "love"
+        });
+
+        reaction.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reactionJson = await reaction.Content.ReadFromJsonAsync<JsonElement>();
+        var reactionData = reactionJson.GetProperty("data");
+        reactionData.GetProperty("action").GetString().Should().Be("added");
+        reactionData.GetProperty("reaction_type").GetString().Should().Be("love");
+        reactionData.GetProperty("reactions").GetProperty("love").GetInt32().Should().Be(1);
+
+        var delete = await Client.DeleteAsync($"/api/v2/comments/{rootCommentId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted_count").GetInt32().Should().Be(2);
+
+        var invalidTarget = await Client.GetAsync($"/api/v2/comments?target_type=level_up&target_id={postId}");
+
+        invalidTarget.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var invalidJson = await invalidTarget.Content.ReadFromJsonAsync<JsonElement>();
+        invalidJson.GetProperty("errors").EnumerateArray().Should().ContainSingle()
+            .Subject.GetProperty("code").GetString().Should().Be("RESOURCE_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task FeedReactionsV2_UsesLaravelReactPolymorphicToggleShowAndReactorsShape()
+    {
+        var postId = await SeedAdminFeedPostAsync("Laravel React reaction post", TestData.AdminUser.Id);
+        var listingId = await SeedAdminFeedListingAsync("Laravel React reaction listing", TestData.AdminUser.Id);
+        await AuthenticateAsMemberAsync();
+
+        var postReaction = await Client.PostAsJsonAsync("/api/v2/reactions", new
+        {
+            target_type = "post",
+            target_id = postId,
+            reaction_type = "celebrate"
+        });
+
+        postReaction.StatusCode.Should().Be(HttpStatusCode.OK);
+        var postReactionJson = await postReaction.Content.ReadFromJsonAsync<JsonElement>();
+        postReactionJson.TryGetProperty("success", out _).Should().BeFalse();
+        var postReactionData = postReactionJson.GetProperty("data");
+        postReactionData.GetProperty("action").GetString().Should().Be("added");
+        postReactionData.GetProperty("reaction_type").GetString().Should().Be("celebrate");
+        var postReactions = postReactionData.GetProperty("reactions");
+        postReactions.GetProperty("counts").GetProperty("celebrate").GetInt32().Should().Be(1);
+        postReactions.GetProperty("total").GetInt32().Should().Be(1);
+        postReactions.GetProperty("user_reaction").GetString().Should().Be("celebrate");
+
+        var showPost = await Client.GetAsync($"/api/v2/reactions/post/{postId}");
+
+        showPost.StatusCode.Should().Be(HttpStatusCode.OK);
+        var showPostJson = await showPost.Content.ReadFromJsonAsync<JsonElement>();
+        var showPostData = showPostJson.GetProperty("data");
+        showPostData.GetProperty("counts").GetProperty("celebrate").GetInt32().Should().Be(1);
+        showPostData.GetProperty("total").GetInt32().Should().Be(1);
+        showPostData.GetProperty("user_reaction").GetString().Should().Be("celebrate");
+        showPostData.GetProperty("top_reactors").EnumerateArray()
+            .Should().Contain(row => row.GetProperty("id").GetInt32() == TestData.MemberUser.Id);
+
+        var toggleOff = await Client.PostAsJsonAsync("/api/v2/reactions", new
+        {
+            target_type = "post",
+            target_id = postId,
+            reaction_type = "celebrate"
+        });
+
+        toggleOff.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toggleOffJson = await toggleOff.Content.ReadFromJsonAsync<JsonElement>();
+        var toggleOffData = toggleOffJson.GetProperty("data");
+        toggleOffData.GetProperty("action").GetString().Should().Be("removed");
+        toggleOffData.GetProperty("reaction_type").ValueKind.Should().Be(JsonValueKind.Null);
+        toggleOffData.GetProperty("reactions").GetProperty("total").GetInt32().Should().Be(0);
+
+        var listingReaction = await Client.PostAsJsonAsync("/api/v2/reactions", new
+        {
+            target_type = "listing",
+            target_id = listingId,
+            reaction_type = "clap"
+        });
+
+        listingReaction.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listingReactionJson = await listingReaction.Content.ReadFromJsonAsync<JsonElement>();
+        listingReactionJson.GetProperty("data").GetProperty("reactions").GetProperty("counts").GetProperty("clap").GetInt32().Should().Be(1);
+
+        var reactors = await Client.GetAsync($"/api/v2/reactions/listing/{listingId}/users/clap?page=1&per_page=20");
+
+        reactors.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reactorsJson = await reactors.Content.ReadFromJsonAsync<JsonElement>();
+        reactorsJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(row => row.GetProperty("id").GetInt32() == TestData.MemberUser.Id);
+        reactorsJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+
+        var invalidReaction = await Client.PostAsJsonAsync("/api/v2/reactions", new
+        {
+            target_type = "post",
+            target_id = postId,
+            reaction_type = "angry"
+        });
+
+        invalidReaction.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var invalidJson = await invalidReaction.Content.ReadFromJsonAsync<JsonElement>();
+        var error = invalidJson.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+        error.GetProperty("field").GetString().Should().Be("reaction_type");
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();

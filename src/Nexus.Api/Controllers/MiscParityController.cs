@@ -19,6 +19,35 @@ namespace Nexus.Api.Controllers;
 [Route("api")]
 public class MiscParityController : ControllerBase
 {
+    private static readonly HashSet<string> LaravelReactionTypes = new(StringComparer.Ordinal)
+    {
+        "love",
+        "like",
+        "laugh",
+        "wow",
+        "sad",
+        "celebrate",
+        "clap",
+        "time_credit"
+    };
+
+    private static readonly HashSet<string> LaravelReactionTargetTypes = new(StringComparer.Ordinal)
+    {
+        "post",
+        "comment",
+        "listing",
+        "event",
+        "goal",
+        "poll",
+        "review",
+        "volunteer",
+        "challenge",
+        "resource",
+        "job",
+        "blog",
+        "discussion"
+    };
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
 
@@ -700,7 +729,74 @@ public class MiscParityController : ControllerBase
 
     [HttpPost("reactions")]
     [Authorize]
-    public IActionResult CreateReaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), reaction = Str(body, "reaction") ?? "like" } });
+    public async Task<IActionResult> CreateReaction([FromBody] JsonElement body)
+    {
+        var targetType = NormalizeReactionTargetType(Str(body, "target_type") ?? Str(body, "type"));
+        var targetId = Int(body, "target_id") ?? Int(body, "id") ?? 0;
+        var reactionType = NormalizeReactionType(Str(body, "reaction_type") ?? Str(body, "emoji") ?? Str(body, "reaction"));
+
+        if (!LaravelReactionTypes.Contains(reactionType))
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid reaction type.", "reaction_type", StatusCodes.Status400BadRequest);
+        }
+
+        if (!LaravelReactionTargetTypes.Contains(targetType))
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid target type.", "target_type", StatusCodes.Status400BadRequest);
+        }
+
+        if (targetId <= 0)
+        {
+            return LaravelError("VALIDATION_ERROR", "Target id must be positive.", "target_id", StatusCodes.Status400BadRequest);
+        }
+
+        if (!await ReactionTargetExistsAsync(targetType, targetId))
+        {
+            return LaravelError("NOT_FOUND", "Target not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        var userId = UserId();
+        var existing = await _db.ContentReactions.FirstOrDefaultAsync(r =>
+            r.TargetType == targetType &&
+            r.TargetId == targetId &&
+            r.UserId == userId);
+
+        var action = "added";
+        string? resultType = reactionType;
+        if (existing != null && existing.ReactionType == reactionType)
+        {
+            _db.ContentReactions.Remove(existing);
+            action = "removed";
+            resultType = null;
+        }
+        else if (existing != null)
+        {
+            existing.ReactionType = reactionType;
+            existing.CreatedAt = DateTime.UtcNow;
+            action = "updated";
+        }
+        else
+        {
+            _db.ContentReactions.Add(new ContentReaction
+            {
+                TenantId = TenantId(),
+                TargetType = targetType,
+                TargetId = targetId,
+                UserId = userId,
+                ReactionType = reactionType,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new
+        {
+            action,
+            reaction_type = resultType,
+            reactions = await BuildReactionSummaryAsync(targetType, targetId, userId)
+        });
+    }
 
     [HttpGet("comments/{id:int}/reactions")]
     [Authorize]
@@ -720,11 +816,76 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("reactions/{type}/{id:int}")]
     [Authorize]
-    public IActionResult Reactions(string type, int id) => Ok(new { data = Array.Empty<object>(), type, id });
+    public async Task<IActionResult> Reactions(string type, int id)
+    {
+        var targetType = NormalizeReactionTargetType(type);
+        if (!LaravelReactionTargetTypes.Contains(targetType))
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid target type.", "target_type", StatusCodes.Status400BadRequest);
+        }
+
+        if (!await ReactionTargetExistsAsync(targetType, id))
+        {
+            return LaravelError("NOT_FOUND", "Target not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        return LaravelData(await BuildReactionSummaryAsync(targetType, id, User.GetUserId()));
+    }
 
     [HttpGet("reactions/{type}/{id:int}/users/{reaction}")]
     [Authorize]
-    public IActionResult ReactionUsers(string type, int id, string reaction) => Ok(new { data = Array.Empty<object>() });
+    public async Task<IActionResult> ReactionUsers(string type, int id, string reaction)
+    {
+        var targetType = NormalizeReactionTargetType(type);
+        var reactionType = NormalizeReactionType(reaction);
+        if (!LaravelReactionTargetTypes.Contains(targetType))
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid target type.", "target_type", StatusCodes.Status400BadRequest);
+        }
+
+        if (!LaravelReactionTypes.Contains(reactionType))
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid reaction type.", "type", StatusCodes.Status400BadRequest);
+        }
+
+        if (!await ReactionTargetExistsAsync(targetType, id))
+        {
+            return LaravelError("NOT_FOUND", "Target not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var perPage = QueryInt("per_page", 20, 1, 50);
+        var query = _db.ContentReactions
+            .Where(r => r.TargetType == targetType && r.TargetId == id && r.ReactionType == reactionType);
+        var total = await query.CountAsync();
+        var users = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(r => new
+            {
+                id = r.UserId,
+                name = r.User == null ? string.Empty : (r.User.FirstName + " " + r.User.LastName).Trim(),
+                avatar_url = r.User == null ? null : r.User.AvatarUrl,
+                reacted_at = r.CreatedAt
+            })
+            .ToListAsync();
+
+        var totalPages = total > 0 ? (int)Math.Ceiling(total / (double)perPage) : 0;
+        return Ok(new
+        {
+            data = users,
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}",
+                current_page = page,
+                per_page = perPage,
+                total,
+                total_pages = totalPages,
+                has_more = page < totalPages
+            }
+        });
+    }
 
     [HttpGet("resources/{id:int}/download")]
     [Authorize]
@@ -834,6 +995,118 @@ public class MiscParityController : ControllerBase
     private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static DateTime? DateTimeValue(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value.ToUniversalTime() : null;
+
+    private async Task<bool> ReactionTargetExistsAsync(string targetType, int targetId)
+    {
+        var tenantId = TenantId();
+        return targetType switch
+        {
+            "post" => await _db.FeedPosts.AnyAsync(p => p.TenantId == tenantId && p.Id == targetId && !p.IsHidden),
+            "comment" => await _db.ThreadedComments.AnyAsync(c => c.TenantId == tenantId && c.Id == targetId && !c.IsDeleted)
+                || await _db.PostComments.AnyAsync(c => c.TenantId == tenantId && c.Id == targetId),
+            "listing" => await _db.Listings.AnyAsync(l => l.TenantId == tenantId && l.Id == targetId),
+            "event" => await _db.Events.AnyAsync(e => e.TenantId == tenantId && e.Id == targetId && !e.IsCancelled),
+            "goal" => await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == targetId),
+            "poll" => await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == targetId),
+            "review" => await _db.Reviews.AnyAsync(r => r.TenantId == tenantId && r.Id == targetId),
+            "volunteer" => await _db.VolunteerOpportunities.AnyAsync(v => v.TenantId == tenantId && v.Id == targetId),
+            "challenge" => await _db.Challenges.AnyAsync(c => c.TenantId == tenantId && c.Id == targetId),
+            "resource" => await _db.Resources.AnyAsync(r => r.TenantId == tenantId && r.Id == targetId),
+            "job" => await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == targetId),
+            "blog" => await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == targetId),
+            "discussion" => await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == targetId),
+            _ => false
+        };
+    }
+
+    private async Task<object> BuildReactionSummaryAsync(string targetType, int targetId, int? userId)
+    {
+        var rows = await _db.ContentReactions
+            .Where(r => r.TargetType == targetType && r.TargetId == targetId)
+            .Include(r => r.User)
+            .ToListAsync();
+
+        var counts = rows
+            .GroupBy(r => r.ReactionType)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var topReactors = rows
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(3)
+            .Select(r => new
+            {
+                id = r.UserId,
+                name = r.User == null ? string.Empty : (r.User.FirstName + " " + r.User.LastName).Trim(),
+                avatar_url = r.User?.AvatarUrl
+            })
+            .ToList();
+
+        return new
+        {
+            counts,
+            total = rows.Count,
+            user_reaction = userId.HasValue ? rows.FirstOrDefault(r => r.UserId == userId.Value)?.ReactionType : null,
+            top_reactors = topReactors
+        };
+    }
+
+    private IActionResult LaravelData(object data, int status = StatusCodes.Status200OK)
+    {
+        return StatusCode(status, new
+        {
+            data,
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
+    private IActionResult LaravelError(string code, string message, string? field, int status)
+    {
+        object error = field == null
+            ? new { code, message }
+            : new { code, message, field };
+
+        return StatusCode(status, new
+        {
+            errors = new[] { error },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
+    private int QueryInt(string key, int fallback, int min, int max)
+    {
+        if (!Request.Query.TryGetValue(key, out var raw) || !int.TryParse(raw.ToString(), out var value))
+        {
+            value = fallback;
+        }
+
+        return Math.Clamp(value, min, max);
+    }
+
+    private static string NormalizeReactionTargetType(string? value)
+    {
+        var normalized = value?.Trim().ToLowerInvariant() ?? string.Empty;
+        return normalized switch
+        {
+            "feed_post" => "post",
+            "blog_post" => "blog",
+            "volunteering" or "volunteering_opportunity" => "volunteer",
+            "ideation_challenge" => "challenge",
+            _ => normalized
+        };
+    }
+
+    private static string NormalizeReactionType(string? value)
+    {
+        var normalized = value?.Trim().ToLowerInvariant() ?? string.Empty;
+        return normalized switch
+        {
+            "heart" => "love",
+            "thumbs_up" => "like",
+            "thumbs_down" => "sad",
+            _ => normalized
+        };
+    }
+
     private static string NormalizeIdeationStatus(string? status)
     {
         var normalized = string.IsNullOrWhiteSpace(status) ? "open" : status.Trim().ToLowerInvariant();

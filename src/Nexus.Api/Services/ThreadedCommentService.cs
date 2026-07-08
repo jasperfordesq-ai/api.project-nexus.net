@@ -21,7 +21,8 @@ public class ThreadedCommentService
 
     private static readonly HashSet<string> ValidTargetTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "listing", "resource", "event", "group", "blog_post", "page", "idea", "job"
+        "post", "listing", "event", "goal", "poll", "review", "volunteer", "challenge",
+        "resource", "job", "blog", "discussion", "group", "page", "idea"
     };
 
     public ThreadedCommentService(NexusDbContext db, TenantContext tenantContext, ILogger<ThreadedCommentService> logger)
@@ -37,7 +38,7 @@ public class ThreadedCommentService
     public async Task<(List<ThreadedComment> Data, int Total)> GetCommentsAsync(
         int tenantId, string targetType, int targetId, int page, int limit)
     {
-        var normalizedType = targetType.Trim().ToLower();
+        var normalizedType = NormalizeTargetType(targetType);
 
         var query = _db.Set<ThreadedComment>()
             .AsNoTracking()
@@ -79,7 +80,7 @@ public class ThreadedCommentService
         if (string.IsNullOrWhiteSpace(content))
             return (null, "Content is required");
 
-        var normalizedType = targetType?.Trim().ToLower() ?? string.Empty;
+        var normalizedType = NormalizeTargetType(targetType);
         if (!ValidTargetTypes.Contains(normalizedType))
             return (null, "Invalid target type");
 
@@ -175,6 +176,56 @@ public class ThreadedCommentService
     public async Task<int> GetCommentCountAsync(string targetType, int targetId)
     {
         return await _db.Set<ThreadedComment>()
-            .CountAsync(c => c.TargetType == targetType.ToLower() && c.TargetId == targetId && !c.IsDeleted);
+            .CountAsync(c => c.TargetType == NormalizeTargetType(targetType) && c.TargetId == targetId && !c.IsDeleted);
+    }
+
+    public async Task<int> DeleteCommentTreeAsync(int id, int userId, bool isAdmin = false)
+    {
+        var comment = await _db.Set<ThreadedComment>().FirstOrDefaultAsync(x => x.Id == id);
+        if (comment == null || comment.IsDeleted)
+            return 0;
+
+        if (comment.AuthorId != userId && !isAdmin)
+            return -1;
+
+        var ids = new List<int> { id };
+        var frontier = new List<int> { id };
+
+        while (frontier.Count > 0)
+        {
+            var children = await _db.Set<ThreadedComment>()
+                .Where(c => c.ParentId.HasValue && frontier.Contains(c.ParentId.Value))
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            children = children.Except(ids).ToList();
+            if (children.Count == 0) break;
+
+            ids.AddRange(children);
+            frontier = children;
+        }
+
+        var rows = await _db.Set<ThreadedComment>()
+            .Where(c => ids.Contains(c.Id))
+            .ToListAsync();
+
+        _db.Set<ThreadedComment>().RemoveRange(rows);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Comment {CommentId} hard-deleted with {DeletedCount} rows by user {UserId}", id, rows.Count, userId);
+        return rows.Count;
+    }
+
+    public static string NormalizeTargetType(string? targetType)
+    {
+        var normalized = targetType?.Trim().ToLowerInvariant() ?? string.Empty;
+        return normalized switch
+        {
+            "feed_post" => "post",
+            "blog_post" => "blog",
+            "volunteering" or "volunteering_opportunity" => "volunteer",
+            "ideation_challenge" => "challenge",
+            _ => normalized
+        };
     }
 }

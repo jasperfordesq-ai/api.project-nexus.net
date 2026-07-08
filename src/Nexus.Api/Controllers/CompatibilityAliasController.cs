@@ -1324,23 +1324,81 @@ public class CompatibilityAliasController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var commentExists = await _db.PostComments.AnyAsync(c => c.Id == id) ||
-            await _db.ThreadedComments.AnyAsync(c => c.Id == id && !c.IsDeleted);
-        if (!commentExists) return NotFound(new { error = "Comment not found" });
-
-        var reactionType = NormalizeReactionType(request?.Type);
-        var config = await UpsertTenantConfigValue(
-            $"{CommentReactionKeyPrefix}{id}:{userId.Value}",
-            new
+        var comment = await _db.ThreadedComments.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+        if (comment == null)
+        {
+            if (IsV2Request())
             {
-                kind = "comment_reaction",
-                comment_id = id,
-                user_id = userId.Value,
-                reaction_type = reactionType,
-                reacted_at = DateTime.UtcNow
-            });
+                return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Target not found." } } });
+            }
 
-        return Ok(new { success = true, id = config.Id, comment_id = id, reaction_type = reactionType });
+            var legacyCommentExists = await _db.PostComments.AnyAsync(c => c.Id == id);
+            if (!legacyCommentExists) return NotFound(new { error = "Comment not found" });
+
+            var legacyReactionType = NormalizeReactionType(request?.ReactionType ?? request?.Emoji ?? request?.Type);
+            var config = await UpsertTenantConfigValue(
+                $"{CommentReactionKeyPrefix}{id}:{userId.Value}",
+                new
+                {
+                    kind = "comment_reaction",
+                    comment_id = id,
+                    user_id = userId.Value,
+                    reaction_type = legacyReactionType,
+                    reacted_at = DateTime.UtcNow
+                });
+
+            return Ok(new { success = true, id = config.Id, comment_id = id, reaction_type = legacyReactionType });
+        }
+
+        var reactionType = NormalizeReactionType(request?.ReactionType ?? request?.Emoji ?? request?.Type);
+        var action = "added";
+        var existing = await _db.CommentReactions.FirstOrDefaultAsync(r => r.CommentId == id && r.UserId == userId.Value);
+        if (existing != null && existing.ReactionType == reactionType)
+        {
+            _db.CommentReactions.Remove(existing);
+            action = "removed";
+        }
+        else if (existing != null)
+        {
+            existing.ReactionType = reactionType;
+            existing.UpdatedAt = DateTime.UtcNow;
+            action = "updated";
+        }
+        else
+        {
+            _db.CommentReactions.Add(new CommentReaction
+            {
+                TenantId = _tenantContext.GetTenantIdOrThrow(),
+                CommentId = id,
+                UserId = userId.Value,
+                ReactionType = reactionType,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        var reactions = await _db.CommentReactions
+            .Where(r => r.CommentId == id)
+            .GroupBy(r => r.ReactionType)
+            .Select(g => new { ReactionType = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(r => r.ReactionType, r => r.Count);
+
+        if (IsV2Request())
+        {
+            return Ok(new
+            {
+                data = new
+                {
+                    action,
+                    emoji = reactionType,
+                    reaction_type = action == "removed" ? null : reactionType,
+                    reactions
+                },
+                meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+            });
+        }
+
+        return Ok(new { success = true, comment_id = id, action, reaction_type = action == "removed" ? null : reactionType, reactions });
     }
 
     // ──────────────────────────────────────────────
@@ -3407,6 +3465,12 @@ public class ReactionRequest
 {
     [JsonPropertyName("type")]
     public string? Type { get; set; }
+
+    [JsonPropertyName("reaction_type")]
+    public string? ReactionType { get; set; }
+
+    [JsonPropertyName("emoji")]
+    public string? Emoji { get; set; }
 }
 
 public class FeedLikeRequest

@@ -46,6 +46,8 @@ public class NexusDbContext : DbContext
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();
     public DbSet<PostComment> PostComments => Set<PostComment>();
+    public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
+    public DbSet<ContentReaction> ContentReactions => Set<ContentReaction>();
     public DbSet<Badge> Badges => Set<Badge>();
     public DbSet<UserBadge> UserBadges => Set<UserBadge>();
     public DbSet<XpLog> XpLogs => Set<XpLog>();
