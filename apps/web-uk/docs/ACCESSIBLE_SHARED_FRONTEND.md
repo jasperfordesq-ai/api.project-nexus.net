@@ -1349,10 +1349,17 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 651 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 44 local-only routes. These
+accessible route declarations, 645 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 38 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local group member-management routes are intentionally not exposed as
+separate pages or actions. Laravel's accessible group source uses `/groups`,
+numeric `/groups/{id}` pages, `/groups/{id}/manage`, and
+POST `/groups/{id}/members/{memberId}` for member actions. Local group list,
+detail, and feed-sidebar links now point to `/groups` or `/groups/{id}/manage`
+instead of `/groups/my` or `/groups/{id}/members`.
 
 Legacy local event RSVP routes are intentionally not exposed as separate pages
 or actions. Laravel's accessible event source uses `/events/{id}/rsvp` for RSVP

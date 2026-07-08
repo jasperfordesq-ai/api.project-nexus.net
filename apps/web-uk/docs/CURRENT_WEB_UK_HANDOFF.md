@@ -67,11 +67,20 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `651` |
+| Web UK routes | `645` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `44` |
+| Extra Web UK routes | `38` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused group route slice: legacy local GET `/groups/my`,
+GET `/groups/{id}/members`, POST `/groups/{id}/members/add`,
+POST `/groups/{id}/members/{memberId}/remove`,
+POST `/groups/{id}/members/{memberId}/role`, and
+POST `/groups/{id}/transfer-ownership` were removed. Group pages now link to
+Laravel's accessible `/groups` list and `/groups/{id}/manage` member-management
+surface, while canonical member actions remain on
+POST `/groups/{id}/members/{memberId}`.
 
 Latest focused event route slice: legacy local GET `/events/my` and POST
 `/events/{id}/rsvp/remove` were removed. The event list no longer links to a

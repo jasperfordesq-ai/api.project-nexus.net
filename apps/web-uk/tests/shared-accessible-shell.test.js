@@ -9167,6 +9167,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/feed/42');
   });
 
+  it('renders the feed sidebar without the legacy my groups route', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, total_pages: 1 }
+    });
+    api.getMyGroups.mockResolvedValueOnce({
+      data: [
+        { id: 1, name: 'Repair cafe' },
+        { id: 2, name: 'Garden team' },
+        { id: 3, name: 'Library friends' },
+        { id: 4, name: 'Food share' },
+        { id: 5, name: 'Bike hub' },
+        { id: 6, name: 'Warm space' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/feed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('View all 6 groups');
+    expect(response.text).toContain('href="/groups"');
+    expect(response.text).not.toContain('href="/groups/my"');
+  });
+
   it('submits Laravel feed typed like and comment aliases through v2 social helpers', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -14221,6 +14248,59 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/members?limit=100');
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/requests');
+  });
+
+  it('renders group navigation without legacy member-management links', async () => {
+    const api = require('../src/lib/api');
+    api.getGroups.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          name: 'Neighbourhood Repairs',
+          description: 'Fix-it sessions for neighbours',
+          member_count: 3
+        }
+      ],
+      pagination: { page: 1, totalPages: 1 }
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [{ id: 42 }] });
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Neighbourhood Repairs',
+        description: 'Fix-it sessions for neighbours',
+        member_count: 3,
+        my_membership: {
+          role: 'owner',
+          status: 'active'
+        }
+      },
+      my_membership: {
+        role: 'owner',
+        status: 'active'
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({
+      data: [
+        { id: 55, first_name: 'Avery', last_name: 'Admin', role: 'admin' }
+      ]
+    });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const index = await request(app)
+      .get('/groups')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/groups/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('href="/groups/42"');
+    expect(index.text).not.toContain('href="/groups/my"');
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('href="/groups/42/manage"');
+    expect(detail.text).not.toContain('href="/groups/42/members"');
   });
 
   it('renders the Laravel group files page for signed-in group members', async () => {

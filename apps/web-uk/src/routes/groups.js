@@ -15,17 +15,12 @@ const {
   getGroupMembers,
   joinGroup,
   leaveGroup,
-  addGroupMember,
-  removeGroupMember,
-  updateGroupMemberRole,
-  transferGroupOwnership,
   callGroupApi,
   uploadGroupImage,
   uploadGroupFile,
   downloadGroupFile,
   createFeedPostV2,
   getEvents,
-  getUsers,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
@@ -33,8 +28,6 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
-
-router.use(requireAuth);
 
 const GROUP_NOTIFICATION_FREQUENCIES = ['instant', 'digest', 'muted'];
 const DOWNLOAD_HEADER_NAMES = [
@@ -630,7 +623,7 @@ async function removeUploadedFile(file) {
 }
 
 // List all groups
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const searchQuery = req.query.search ? req.query.search.trim() : '';
@@ -656,20 +649,8 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-// My groups
-router.get('/my', asyncRoute(async (req, res) => {
-  const result = await getMyGroups(req.token);
-  const groups = result.items || result.data || [];
-
-  res.render('groups/my', {
-    title: 'My groups',
-    groups,
-    successMessage: req.flash ? req.flash('success')[0] : null
-  });
-}));
-
 // Create group form
-router.get('/new', (req, res) => {
+router.get('/new', requireAuth, (req, res) => {
   res.render('groups/new', {
     title: 'Create a group',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -677,7 +658,7 @@ router.get('/new', (req, res) => {
 });
 
 // Create group
-router.post('/new', audit.groupCreate(), asyncRoute(async (req, res) => {
+router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res) => {
   const { name, description, is_private } = req.body;
 
   const errors = [];
@@ -725,7 +706,7 @@ router.post('/new', audit.groupCreate(), asyncRoute(async (req, res) => {
 }));
 
 // View group details
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const [groupResult, membersResult, eventsResult] = await Promise.all([
@@ -751,7 +732,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Group not found' }));
 
 // Edit group form
-router.get('/:id/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const groupResult = await getGroup(req.token, id);
@@ -774,7 +755,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
   });
 }, { notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/invite', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/invite', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const [groupResult, invitesResult] = await Promise.all([
     getGroup(req.token, id),
@@ -799,7 +780,7 @@ router.get('/:id(\\d+)/invite', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const [groupResult, prefsResult] = await Promise.all([
     getGroup(req.token, id),
@@ -826,7 +807,7 @@ router.get('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/image', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
@@ -839,7 +820,7 @@ router.get('/:id(\\d+)/image', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const [groupResult, announcementsResult] = await Promise.all([
     getGroup(req.token, id),
@@ -864,7 +845,7 @@ router.get('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const { id, annId } = req.params;
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
@@ -890,7 +871,7 @@ router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, 
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Announcement not found' }));
 
-router.get('/:id(\\d+)/discussions', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/discussions', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
@@ -915,7 +896,7 @@ router.get('/:id(\\d+)/discussions', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
@@ -928,7 +909,7 @@ router.get('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id, discussionId } = req.params;
   const [groupResult, discussionResult] = await Promise.all([
     getGroup(req.token, id),
@@ -951,7 +932,7 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', asyncRoute(async (req, 
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Discussion not found' }));
 
-router.get('/:id(\\d+)/files/:fileId(\\d+)/download', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(async (req, res) => {
   const { id, fileId } = req.params;
   let download;
 
@@ -976,7 +957,7 @@ router.get('/:id(\\d+)/files/:fileId(\\d+)/download', asyncRoute(async (req, res
   return res.send(Buffer.isBuffer(download.body) ? download.body : Buffer.from(download.body || ''));
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'File not found' }));
 
-router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const [groupResult, filesResult] = await Promise.all([
     getGroup(req.token, id),
@@ -1001,7 +982,7 @@ router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
-router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
@@ -1039,7 +1020,7 @@ router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
 // Update group
-router.post('/:id/edit', audit.groupUpdate(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { name, description, is_private } = req.body;
 
@@ -1085,7 +1066,7 @@ router.post('/:id/edit', audit.groupUpdate(), asyncRoute(async (req, res) => {
 }));
 
 // Delete group
-router.post('/:id/delete', audit.groupDelete(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/delete', requireAuth, audit.groupDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -1109,7 +1090,7 @@ router.post('/:id/delete', audit.groupDelete(), asyncRoute(async (req, res) => {
 }));
 
 // Join group
-router.post('/:id/join', audit.groupJoin(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/join', requireAuth, audit.groupJoin(), asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -1133,7 +1114,7 @@ router.post('/:id/join', audit.groupJoin(), asyncRoute(async (req, res) => {
 }));
 
 // Leave group
-router.post('/:id/leave', audit.groupLeave(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/leave', requireAuth, audit.groupLeave(), asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -1156,7 +1137,7 @@ router.post('/:id/leave', audit.groupLeave(), asyncRoute(async (req, res) => {
   res.redirect(`/groups/${id}`);
 }));
 
-router.post('/:id(\\d+)/invite/link', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/invite/link', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const expiryDays = positiveInteger(req.body.expiry_days);
   const payload = {
@@ -1169,7 +1150,7 @@ router.post('/:id(\\d+)/invite/link', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/invite/email', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/invite/email', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const emails = parseInviteEmails(req.body.emails);
 
@@ -1192,7 +1173,7 @@ router.post('/:id(\\d+)/invite/email', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/invite/:inviteId(\\d+)/revoke', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/invite/:inviteId(\\d+)/revoke', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const inviteId = Number(req.params.inviteId);
 
@@ -1202,7 +1183,7 @@ router.post('/:id(\\d+)/invite/:inviteId(\\d+)/revoke', asyncRoute(async (req, r
   });
 }));
 
-router.post('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = {
     frequency: allowed(req.body.frequency, GROUP_NOTIFICATION_FREQUENCIES, 'instant'),
@@ -1216,7 +1197,7 @@ router.post('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/image', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const type = allowed(req.body.type, ['avatar', 'cover'], 'avatar');
   const file = uploadedFile(req, 'image');
@@ -1251,7 +1232,7 @@ router.post('/:id(\\d+)/image', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/files', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const file = uploadedFile(req, 'file');
 
@@ -1287,7 +1268,7 @@ router.post('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const fileId = Number(req.params.fileId);
 
@@ -1297,7 +1278,7 @@ router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', asyncRoute(async (req, res)
   });
 }));
 
-router.post('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = announcementPayload(req.body);
 
@@ -1311,7 +1292,7 @@ router.post('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const annId = Number(req.params.annId);
   const payload = announcementPayload(req.body);
@@ -1326,7 +1307,7 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req,
   });
 }));
 
-router.post('/:id(\\d+)/announcements/:annId(\\d+)/delete', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/delete', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const annId = Number(req.params.annId);
 
@@ -1336,7 +1317,7 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/delete', asyncRoute(async (re
   });
 }));
 
-router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const annId = Number(req.params.annId);
   const isPinned = checked(req.body.is_pinned);
@@ -1347,7 +1328,7 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', asyncRoute(async (req, 
   });
 }));
 
-router.post('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = discussionPayload(req.body);
 
@@ -1365,7 +1346,7 @@ router.post('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const discussionId = Number(req.params.discussionId);
   const content = trimmed(req.body.content, 20000);
@@ -1380,7 +1361,7 @@ router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', asyncRoute(async
   });
 }));
 
-router.post('/:id(\\d+)/feed', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/feed', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const content = trimmed(req.body.content, 20000);
 
@@ -1398,7 +1379,7 @@ router.post('/:id(\\d+)/feed', asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id(\\d+)/members/:memberId(\\d+)', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/members/:memberId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const memberId = Number(req.params.memberId);
   const action = trimmed(req.body.action);
@@ -1419,7 +1400,7 @@ router.post('/:id(\\d+)/members/:memberId(\\d+)', asyncRoute(async (req, res) =>
   });
 }));
 
-router.post('/:id(\\d+)/requests/:requesterId(\\d+)', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/requests/:requesterId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const requesterId = Number(req.params.requesterId);
   const action = trimmed(req.body.action) === 'reject' ? 'reject' : 'accept';
@@ -1428,136 +1409,6 @@ router.post('/:id(\\d+)/requests/:requesterId(\\d+)', asyncRoute(async (req, res
     await callGroup(token, 'POST', `/${id}/requests/${requesterId}`, { action });
     return res.redirect(groupSubpageRedirect(id, 'manage', action === 'reject' ? 'request-rejected' : 'request-approved'));
   });
-}));
-
-// Members management page
-router.get('/:id/members', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-
-  const [groupResult, membersResult, usersResult] = await Promise.all([
-    getGroup(req.token, id),
-    getGroupMembers(req.token, id).catch(() => ({ data: [] })),
-    getUsers(req.token).catch(() => ({ data: [] }))
-  ]);
-
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
-  const members = membersResult.data || [];
-  const myMembership = groupResult.myMembership || groupResult.my_membership;
-  const rawUsers = usersResult.items || usersResult.data || usersResult.users || usersResult;
-  const allUsers = Array.isArray(rawUsers) ? rawUsers : [];
-
-  // Filter out users who are already members
-  const memberIds = new Set(members.map(m => m.id));
-  const nonMembers = allUsers.filter(u => !memberIds.has(u.id));
-
-  res.render('groups/members', {
-    title: `${group.name} - Members`,
-    group,
-    members,
-    nonMembers,
-    myMembership,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
-  });
-}, { notFoundTitle: 'Group not found' }));
-
-// Add member
-router.post('/:id/members/add', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-  const { user_id } = req.body;
-
-  try {
-    await addGroupMember(req.token, id, user_id);
-
-    if (req.flash) {
-      req.flash('success', 'Member added successfully');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to add member');
-      }
-      return res.redirect(`/groups/${id}/members`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/groups/${id}/members`);
-}));
-
-// Remove member
-router.post('/:id/members/:memberId/remove', asyncRoute(async (req, res) => {
-  const { id, memberId } = req.params;
-
-  try {
-    await removeGroupMember(req.token, id, memberId);
-
-    if (req.flash) {
-      req.flash('success', 'Member removed successfully');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to remove member');
-      }
-      return res.redirect(`/groups/${id}/members`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/groups/${id}/members`);
-}));
-
-// Update member role
-router.post('/:id/members/:memberId/role', asyncRoute(async (req, res) => {
-  const { id, memberId } = req.params;
-  const { role } = req.body;
-
-  try {
-    await updateGroupMemberRole(req.token, id, memberId, role);
-
-    if (req.flash) {
-      req.flash('success', 'Member role updated');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to update role');
-      }
-      return res.redirect(`/groups/${id}/members`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/groups/${id}/members`);
-}));
-
-// Transfer ownership
-router.post('/:id/transfer-ownership', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-  const { new_owner_id } = req.body;
-
-  try {
-    await transferGroupOwnership(req.token, id, new_owner_id);
-
-    if (req.flash) {
-      req.flash('success', 'Ownership transferred successfully');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to transfer ownership');
-      }
-      return res.redirect(`/groups/${id}/members`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/groups/${id}/members`);
 }));
 
 module.exports = router;

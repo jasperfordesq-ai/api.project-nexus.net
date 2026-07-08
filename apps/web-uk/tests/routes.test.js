@@ -237,6 +237,35 @@ describe('Protected Routes', () => {
       expect(removeRsvpResponse.status).toBe(404);
       expect(removeRsvpResponse.text).toContain('Page not found');
     });
+
+    it('legacy group member-management routes should return not found', async () => {
+      for (const path of ['/groups/my', '/groups/42/members']) {
+        const response = await request(app).get(path);
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      for (const path of [
+        '/groups/42/members/add',
+        '/groups/42/members/55/remove',
+        '/groups/42/members/55/role',
+        '/groups/42/transfer-ownership'
+      ]) {
+        const response = await agent
+          .post(path)
+          .type('form')
+          .send({ _csrf: csrfMatch[1] });
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+    });
   });
 });
 

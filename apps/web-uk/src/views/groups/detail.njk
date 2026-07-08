@@ -70,7 +70,7 @@
             <a href="/groups/{{ group.id }}/edit" class="govuk-button govuk-button--secondary">
               Edit group
             </a>
-            <a href="/groups/{{ group.id }}/members" class="govuk-button govuk-button--secondary">
+            <a href="/groups/{{ group.id }}/manage" class="govuk-button govuk-button--secondary">
               Manage members
             </a>
           {% endif %}
@@ -133,7 +133,7 @@
         </ul>
         {% if members and members.length > 10 %}
           <p class="govuk-body">
-            <a href="/groups/{{ group.id }}/members" class="govuk-link">View all {{ members.length }} members</a>
+            <a href="/groups/{{ group.id }}/manage" class="govuk-link">View all {{ members.length }} members</a>
           </p>
         {% endif %}
       {% else %}
