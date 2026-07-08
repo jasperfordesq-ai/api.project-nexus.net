@@ -87,6 +87,9 @@ conversation, and group conversation source templates now also use `urlFor()`
 for breadcrumbs, direct and group message links, listing/member/connection
 links, older-message pagination, search forms, reply/edit/delete/voice/archive
 forms, group create/search/member/reaction forms, and leave-group controls.
+Wallet index and manage source templates now also use `urlFor()` for the
+breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
+donation forms.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the
@@ -181,7 +184,8 @@ The legacy local GET-only `/wallet/transactions`, `/wallet/transactions/{id}`,
 and `/wallet/transfer` routes have been removed. Laravel's accessible wallet
 source keeps transaction history and transfer UI on `/wallet` plus
 `/wallet/manage`, with POST `/wallet/transfer` remaining canonical for
-submissions.
+submissions. Wallet index/manage local links and form actions now route through
+the tenant-aware `urlFor()` helper with source regression coverage.
 
 The legacy local GET/POST `/profile/edit` routes have been removed. Laravel's
 accessible profile source uses `/profile/settings`, and local profile summary

@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/wallet">Back to wallet</a>
+  <a class="govuk-back-link" href="{{ urlFor('/wallet') }}">Back to wallet</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -70,7 +70,7 @@
     <h2 class="govuk-heading-l govuk-!-margin-top-7" id="transfer-heading">Send credits to a member</h2>
     <p class="govuk-body">Search for a member, then send a no-JS transfer request through the wallet transfer route.</p>
 
-    <form method="get" action="/wallet/manage" class="govuk-!-margin-bottom-4">
+    <form method="get" action="{{ urlFor('/wallet/manage') }}" class="govuk-!-margin-bottom-4">
       <div class="govuk-form-group">
         <label class="govuk-label" for="recipient_q">Search for a member</label>
         <div id="recipient-q-hint" class="govuk-hint">Enter at least 2 characters.</div>
@@ -91,7 +91,7 @@
           {% if recipient.location and recipient.memberSince %} - {% endif %}
           {% if recipient.memberSince %}Member since {{ recipient.memberSince }}{% endif %}
         </p>
-        <form method="post" action="/wallet/transfer">
+        <form method="post" action="{{ urlFor('/wallet/transfer') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="receiver_id" value="{{ recipient.id }}">
           <input type="hidden" name="recipient_id" value="{{ recipient.id }}">
@@ -125,7 +125,7 @@
       </div>
     </dl>
 
-    <form method="post" action="/wallet/donate">
+    <form method="post" action="{{ urlFor('/wallet/donate') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group">

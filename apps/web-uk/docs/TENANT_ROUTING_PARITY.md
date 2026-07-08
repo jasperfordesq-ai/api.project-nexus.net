@@ -358,9 +358,19 @@ group create/search/member/reaction forms, and leave-group controls through
 `/members`, and `/connections` targets, then passed after conversion; a source
 scan for message-local raw `href`/`action` strings returns no matches.
 
+The twenty-third template-helper source slice extends direct `urlFor()`
+conversion into wallet pages. `src/views/wallet/index.njk` and
+`manage.njk` now route the wallet breadcrumb, manage CTA, back link, recipient
+search form, transfer forms, and donation forms through `urlFor()`. The
+source-level regression first failed on raw `/wallet` links and actions, then
+passed after conversion; a source scan for wallet-local raw `href`/`action`
+strings returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange tabs"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath

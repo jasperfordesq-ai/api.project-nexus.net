@@ -9,7 +9,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
+      { text: "Home", href: urlFor("/") },
       { text: "Wallet" }
     ]
   }) }}
@@ -74,7 +74,7 @@
       <div class="govuk-button-group">
         {{ govukButton({
           text: "Manage credits",
-          href: "/wallet/manage"
+          href: urlFor("/wallet/manage")
         }) }}
       </div>
 
@@ -83,7 +83,7 @@
       <h2 class="govuk-heading-m" id="donate">Donate time credits</h2>
       <p class="govuk-body">Donate whole credits to the community fund or to another member.</p>
 
-      <form method="post" action="/wallet/donate" class="govuk-!-margin-bottom-8" novalidate>
+      <form method="post" action="{{ urlFor('/wallet/donate') }}" class="govuk-!-margin-bottom-8" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <div class="govuk-form-group">

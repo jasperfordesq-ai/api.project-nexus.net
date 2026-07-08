@@ -321,4 +321,22 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/connections/);
     expect(source).toMatch(/urlFor\(["']\/listings/);
   });
+
+  it('keeps wallet links and forms behind urlFor()', () => {
+    const templates = [
+      path.join('wallet', 'index.njk'),
+      path.join('wallet', 'manage.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/wallet/);
+      expect(template).not.toMatch(/action="\/wallet/);
+      expect(template).not.toContain('href: "/wallet');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/wallet/);
+  });
 });
