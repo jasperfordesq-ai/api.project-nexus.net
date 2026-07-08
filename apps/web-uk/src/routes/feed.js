@@ -13,13 +13,13 @@ const {
   getComments,
   getMyGroups
 } = require('../lib/api');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, withTokenRefresh } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
 function tokenFrom(req) {
-  return req.signedCookies && req.signedCookies.token ? req.signedCookies.token : '';
+  return req.token || (req.signedCookies && req.signedCookies.token ? req.signedCookies.token : '');
 }
 
 function trimmed(value, limit = null) {
@@ -247,7 +247,7 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
   });
 }, { notFoundTitle: 'Post not found' }));
 
-router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(async (req, res) => {
+router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (req, res) => {
   const type = trimmed(req.params.type, 40);
   const id = positiveInteger(req.params.id, 0, 1, Number.MAX_SAFE_INTEGER);
   const token = tokenFrom(req);
@@ -268,7 +268,7 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(async (req, res) => {
     statusMessage: feedStatusMessage(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-}, { notFoundTitle: 'Feed item not found' }));
+}), { notFoundTitle: 'Feed item not found' }));
 
 router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => {
   const tag = trimmed(req.params.tag, 100).replace(/^#/, '').toLowerCase();

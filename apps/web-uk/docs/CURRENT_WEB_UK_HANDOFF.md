@@ -77,9 +77,9 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `965/1000` implementation/certification parity |
-| Green confidence estimate | about `925/1000`, mainly gated by full live Laravel runtime smoke and visual/manual parity certification |
-| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, runtime-smoke harness usage, and remaining live-smoke uncertainty, assuming agents rerun the refresh protocol |
+| Working estimate | about `970/1000` implementation/certification parity |
+| Green confidence estimate | about `950/1000`, mainly gated by visual/manual Laravel Blade parity, deeper tenant/custom-domain spot checks, and ASP.NET backend switching certification |
+| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -96,12 +96,27 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 8 suites, 677 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 692 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
-- `npm --prefix apps/web-uk run smoke:laravel` was attempted but timed out
-  after 304 seconds, so live Laravel runtime smoke remains the main
-  certification gap.
+- Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
+  Laravel `http://127.0.0.1:8088` and a temporary Web UK process at
+  `WEB_UK_BASE_URL=http://127.0.0.1:6310`, started with
+  `ACCESSIBLE_BACKEND_TARGET=laravel`, `TENANT_ID=2`, and
+  `SMOKE_TIMEOUT_MS=240000`. Evidence covered the base auth/cookie/gated/
+  redirect/content checks, 279 module-page checks across
+  `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8`, and 283 body-text checks across
+  `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
+  still too slow for a single shell run.
+
+Latest focused runtime-smoke refresh slice: the chunked body-text smoke exposed
+an expired-access-token redirect on signed `/feed/item/listing/{id}` after a
+long live Laravel run. `feed.js` now uses the existing `withTokenRefresh`
+middleware for that permalink and prefers `req.token` after refresh, so a
+stale access token plus valid refresh cookie retries with the fresh token
+instead of redirecting to `/login`. The runtime smoke root body marker was also
+updated from the old generic welcome text to the current tenant chooser
+`Choose a community`, matching the shared-root tenant chooser behavior.
 
 Latest focused shared-root tenant chooser slice: the bare shared root `/` now
 renders the Laravel accessible tenant chooser instead of the tenant home page.

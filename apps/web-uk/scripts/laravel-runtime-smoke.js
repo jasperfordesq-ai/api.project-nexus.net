@@ -233,7 +233,7 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/dashboard', text: 'Quick links' },
   { path: '/dashboard', text: 'Recent feed' },
   { path: '/dashboard', text: 'Recent listings' },
-  { path: '/', text: 'Welcome to Project NEXUS Community' },
+  { path: '/', text: 'Choose a community' },
   { path: '/about', text: 'About' },
   { path: '/guide', text: 'How timebanking works' },
   { path: '/features', text: 'Features' },

@@ -31,6 +31,7 @@ jest.mock('../src/lib/api', () => ({
     }
   },
   login: jest.fn(),
+  refreshToken: jest.fn(),
   register: jest.fn(),
   forgotPassword: jest.fn().mockResolvedValue({}),
   resetPassword: jest.fn().mockResolvedValue({}),
@@ -269,12 +270,26 @@ describe('shared accessible frontend shell', () => {
     return `token=${encodeURIComponent(signedToken)}`;
   }
 
+  function signedAuthCookieHeader(token = 'test-token', refreshToken = 'test-refresh-token') {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign(token, process.env.COOKIE_SECRET)}`;
+    const signedRefreshToken = `s:${cookieSignature.sign(refreshToken, process.env.COOKIE_SECRET)}`;
+    return [
+      `token=${encodeURIComponent(signedToken)}`,
+      `refresh_token=${encodeURIComponent(signedRefreshToken)}`
+    ].join('; ');
+  }
+
   beforeAll(() => {
     app = require('../src/server');
   });
 
   beforeEach(() => {
     const api = require('../src/lib/api');
+    api.refreshToken.mockReset().mockResolvedValue({
+      access_token: 'test-token',
+      refresh_token: 'test-refresh-token'
+    });
     api.submitContact.mockReset().mockResolvedValue({});
     api.submitSupportReport.mockReset().mockResolvedValue({
       data: { report: { reference: 'NXR-260706-ABC123' } }
@@ -9171,6 +9186,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('No comments yet.');
     expect(response.text).not.toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('refreshes an expired signed token before rendering a Laravel feed item permalink', async () => {
+    const api = require('../src/lib/api');
+
+    api.getFeedItemV2
+      .mockRejectedValueOnce(new api.ApiError('Expired token', 401, {}))
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          type: 'listing',
+          title: 'Borrow a cargo bike',
+          content: '<p>Available for local errands.</p>',
+          created_at: '2026-07-05T14:15:00Z',
+          author: {
+            name: 'Grace Hopper',
+            avatar_url: '/avatars/grace.jpg'
+          },
+          likes_count: 4,
+          comments_count: 0,
+          is_liked: false,
+          image_url: '/uploads/listings/cargo-bike.jpg'
+        }
+      });
+
+    const response = await request(app)
+      .get('/feed/item/listing/42')
+      .set('Cookie', signedAuthCookieHeader('expired-token', 'refresh-me'));
+
+    expect(response.status).toBe(200);
+    expect(api.refreshToken).toHaveBeenCalledWith('refresh-me');
+    expect(api.getFeedItemV2).toHaveBeenNthCalledWith(1, 'expired-token', 'listing', 42);
+    expect(api.getFeedItemV2).toHaveBeenNthCalledWith(2, 'test-token', 'listing', 42);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'listing', target_id: 42 });
+    expect(response.text).toContain('Borrow a cargo bike');
+    expect(response.text).toContain('View listing');
   });
 
   it('submits the Laravel feed post store route through the v2 feed API helper', async () => {

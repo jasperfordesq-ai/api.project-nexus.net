@@ -227,7 +227,22 @@ covers the harness with fake Laravel/web-uk servers:
 npm test -- --runInBand tests/laravel-runtime-smoke.test.js
 ```
 
-Current local evidence from 2026-07-07: the harness passes end-to-end when
+Current local evidence from 2026-07-08: chunked Laravel runtime smoke passed
+against Laravel `http://127.0.0.1:8088` and a temporary Web UK process at
+`WEB_UK_BASE_URL=http://127.0.0.1:6310`, started with
+`ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`. The base smoke pass
+covered Laravel API reachability, Web UK health, unsigned `/account`, no-JS
+cookie consent/settings POST flows, login/logout, content-type checks, signed
+gated statuses, and signed redirects. The module sweep passed across
+`SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8`, covering 279 module-page checks.
+The body-text sweep passed across `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through
+`8/8`, covering 283 body-text checks. `SMOKE_TIMEOUT_MS=240000` was used for
+slow live Laravel pages. During that recertification, signed
+`/feed/item/listing/{id}` was fixed to refresh an expired access token via the
+existing refresh cookie, and the root body marker was updated to the tenant
+chooser text `Choose a community`.
+
+Earlier local evidence from 2026-07-07: the harness passes end-to-end when
 web-uk is started with Laravel tenant context `TENANT_ID=2`, using the local E2E
 fixture credentials (`e2e.user.a@project-nexus.local` /
 `TestPassword123!` / `hour-timebank`) and `SMOKE_TIMEOUT_MS=60000`. Without

@@ -103,7 +103,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     if (req.method === 'GET' && req.url === '/') {
       if ((req.headers.cookie || '').includes('token=signed-token')) {
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end('<h1>Welcome to Project NEXUS Community</h1>');
+        res.end('<h1>Choose a community</h1>');
         return;
       }
 
@@ -196,7 +196,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const bodyTextFixtures = new Map([
-      ['/', 'Welcome to Project NEXUS Community'],
+      ['/', 'Choose a community'],
       ['/explore', 'Explore'],
       ['/chat', 'AI assistant'],
       ['/account', 'My account'],
@@ -1339,7 +1339,7 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/members/nearby', text: 'Members near me' },
       { path: '/members/77/insights', text: 'Reputation and recognition' },
       { path: '/dashboard', text: 'Welcome back' },
-      { path: '/', text: 'Welcome to Project NEXUS Community' },
+      { path: '/', text: 'Choose a community' },
       { path: '/about', text: 'About' },
       { path: '/guide', text: 'How timebanking works' },
       { path: '/features', text: 'Features' },
@@ -2134,7 +2134,7 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-dashboard-contains-quick-links': true,
       'body-text-page-dashboard-contains-recent-feed': true,
       'body-text-page-dashboard-contains-recent-listings': true,
-      'body-text-page-home-contains-welcome-to-project-nexus-community': true,
+      'body-text-page-home-contains-choose-a-community': true,
       'body-text-page-about-contains-about': true,
       'body-text-page-guide-contains-how-timebanking-works': true,
       'body-text-page-features-contains-features': true,

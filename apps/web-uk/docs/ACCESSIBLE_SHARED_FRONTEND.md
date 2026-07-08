@@ -38,6 +38,17 @@ Runtime smoke evidence now has a dedicated command:
 npm run smoke:laravel
 ```
 
+Latest live evidence from 2026-07-08: chunked Laravel runtime smoke passed
+against Laravel `http://127.0.0.1:8088` and a temporary Web UK process at
+`WEB_UK_BASE_URL=http://127.0.0.1:6310`, started with
+`ACCESSIBLE_BACKEND_TARGET=laravel`, `TENANT_ID=2`, and
+`SMOKE_TIMEOUT_MS=240000`. The base smoke covered auth, cookie POSTs,
+login/logout, gated statuses, redirects, and content types; module chunks
+`1/8` through `8/8` covered 279 module-page checks; body-text chunks `1/8`
+through `8/8` covered 283 body-text checks. The recertification also fixed
+signed `/feed/item/listing/{id}` token refresh after long live runs and updated
+the root marker to the tenant chooser copy `Choose a community`.
+
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
 `/account` render. It also verifies the default public Laravel-backed module
