@@ -1,14 +1,14 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-08T16:22:16.306Z
+Generated: 2026-07-08T16:30:55.994Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 612 |
+| web-uk routes | 610 |
 | Matched routes | 608 |
 | Missing routes | 0 |
-| Extra web-uk routes | 2 |
+| Extra web-uk routes | 0 |
 | Ignored web-uk infrastructure routes | 3 |
 
 ## Family Counts
@@ -32,7 +32,7 @@ Generated: 2026-07-08T16:22:16.306Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | events | 21 | 0 | 0 | 0 |
-| exchanges | 4 | 0 | 2 | 0 |
+| exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
 | features | 1 | 0 | 0 | 0 |
@@ -94,8 +94,7 @@ Generated: 2026-07-08T16:22:16.306Z
 
 | Method | Path | Family | Web UK view | Web UK file |
 | --- | --- | --- | --- | --- |
-| GET | `/exchanges/request/{param}` | exchanges | exchanges/request | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\exchanges.js |
-| POST | `/exchanges/request/{param}` | exchanges |  | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\exchanges.js |
+| - | - | - | - | - |
 
 ## Ignored Web UK Infrastructure Routes
 

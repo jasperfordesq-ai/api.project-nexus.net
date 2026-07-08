@@ -15988,6 +15988,15 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('does not expose the legacy exchanges request alias outside Laravel route identity', async () => {
+    const response = await request(app)
+      .get('/exchanges/request/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('Page not found');
+  });
+
   it('renders the Laravel-backed owner listing analytics page', async () => {
     const api = require('../src/lib/api');
     api.callListingApi.mockResolvedValueOnce({

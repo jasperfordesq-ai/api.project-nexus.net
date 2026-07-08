@@ -86,10 +86,10 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `612` |
+| Web UK routes | `610` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `2` |
+| Extra Web UK routes | `0` |
 | Ignored Web UK infrastructure routes | `3` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
@@ -113,7 +113,7 @@ not expose Laravel's legacy alpha slug. Tenant-mounted
 for this slice: `npm --prefix apps/web-uk test -- --runInBand` passed with
 `683/683` tests, `npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
-accessible routes matched, `0` missing, `2` extra Web UK routes, and `3`
+accessible routes matched, `0` missing, `0` extra Web UK routes, and `3`
 ignored infrastructure routes.
 
 Latest focused custom accessible-domain root slice: Web UK now resolves
@@ -126,8 +126,16 @@ for this slice: focused `routes.test.js` passed `31/31`, focused
 `api.test.js` passed `154/154`, full Web UK Jest passed `686/686`,
 `npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
-accessible routes matched, `0` missing, `2` extra Web UK routes, and `3`
+accessible routes matched, `0` missing, `0` extra Web UK routes, and `3`
 ignored infrastructure routes.
+
+Latest focused exchange route-identity slice: the previous extra local
+`GET /exchanges/request/{param}` and `POST /exchanges/request/{param}` aliases
+were removed. Laravel's accessible source exposes the exchange-request workflow
+at `GET/POST /listings/{param}/exchange-request`, and that canonical route
+remains implemented and tested in Web UK. The generated route matrix now reports
+`608/608` Laravel accessible routes matched, `0` missing, `0` extra Web UK
+routes, and `3` ignored infrastructure routes.
 
 Latest focused login two-factor route slice: legacy local POST `/verify-2fa`
 was removed. The 2FA challenge form now submits Laravel's canonical POST
@@ -242,16 +250,12 @@ workflows remain in their canonical module pages such as `/jobs/bias-audit`.
 The jobs bias-audit back link no longer points at the removed local `/admin`
 surface.
 
-Latest consolidated route-matrix evidence slice: after merge commit
-`f7c80d32`, static route parity reports `608` matched Laravel routes, `0`
-missing Laravel routes, and `2` true extra `apps/web-uk` routes. The extras are
-the stronger consolidated exchange request workflow routes
-`GET /exchanges/request/{param}` and `POST /exchanges/request/{param}` from
-`src/routes/exchanges.js`; decide whether to keep and document them as useful
-accessible additions or remove them for literal Laravel route identity. The
-local-only `GET /health`, `GET /service-unavailable`, and `POST /session/touch`
-helpers remain available but are classified as ignored infrastructure instead
-of accessible route parity gaps.
+Latest consolidated route-matrix evidence slice: static route parity now
+reports `608` matched Laravel routes, `0` missing Laravel routes, and `0` true
+extra `apps/web-uk` routes. The local-only `GET /health`,
+`GET /service-unavailable`, and `POST /session/touch` helpers remain available
+but are classified as ignored infrastructure instead of accessible route parity
+gaps.
 
 Latest focused tenant-routing response-rewrite slice: shared-host tenant pages
 under `/{tenantSlug}/accessible` now keep local redirects plus rendered HTML

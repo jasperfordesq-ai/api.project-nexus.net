@@ -1,6 +1,4 @@
 status,method,path,family,laravelRouteName,laravelHandler,laravelView,laravelParamConstraints,auth,tenantScoped,gates,apiNeeds,webUkView,webUkRouteKind,laravelRouteFile,laravelControllerFile,webUkFile,laravelMiddleware
-extra-web-uk,GET,/exchanges/request/{param},exchanges,,,,,,,,,exchanges/request,,,,C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\exchanges.js,
-extra-web-uk,POST,/exchanges/request/{param},exchanges,,,,,,,,,,,,,C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\exchanges.js,
 ignored-web-uk-infrastructure,GET,/health,health,,,,,,,,,,infrastructure,,,C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js,
 ignored-web-uk-infrastructure,GET,/service-unavailable,service-unavailable,,,,,,,,,,infrastructure,,,C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js,
 ignored-web-uk-infrastructure,POST,/session/touch,session,,,,,,,,,,infrastructure,,,C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js,

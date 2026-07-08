@@ -7,14 +7,10 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
   getProfile,
-  getListing,
-  getPublicListing,
   getExchangeConfig,
-  checkExchangeForListing,
   getExchanges,
   getExchange,
   getExchangeRatings,
-  createExchangeRequest,
   performExchangeAction,
   rateExchange,
   ApiError,
@@ -23,7 +19,6 @@ const {
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
-const LOCAL_DEFAULT_TENANT_SLUG = 'hour-timebank';
 
 router.use(requireAuth);
 
@@ -62,39 +57,6 @@ function unwrapRatings(payload) {
   };
 }
 
-function tenantSlugForRequest(req) {
-  return String(
-    req.signedCookies?.tenant_slug ||
-    req.cookies?.tenant_slug ||
-    process.env.ACCESSIBLE_TENANT_SLUG ||
-    process.env.DEFAULT_TENANT_SLUG ||
-    process.env.TENANT_SLUG ||
-    (process.env.NODE_ENV === 'production' ? '' : LOCAL_DEFAULT_TENANT_SLUG) ||
-    ''
-  ).trim();
-}
-
-async function getListingWithTenantFallback(req, listingId) {
-  try {
-    return await getListing(req.token, listingId);
-  } catch (error) {
-    if (!(error instanceof ApiError) && !(error instanceof ApiOfflineError)) {
-      throw error;
-    }
-
-    if (error instanceof ApiError && error.status === 401) {
-      throw error;
-    }
-
-    const tenantSlug = tenantSlugForRequest(req);
-    if (!tenantSlug) {
-      throw error;
-    }
-
-    return getPublicListing(listingId, tenantSlug);
-  }
-}
-
 function toNumber(value, fallback = null) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -104,25 +66,6 @@ function clampHours(value, fallback) {
   const number = toNumber(value, fallback);
   if (number === null) return fallback;
   return Math.max(0.25, Math.min(24, number));
-}
-
-function normalizeListingForRequest(listing = {}) {
-  const user = listing.user && typeof listing.user === 'object' ? listing.user : {};
-  const type = firstPresent(listing.type, listing.listing_type, 'offer') === 'request' ? 'request' : 'offer';
-  const hours = firstPresent(listing.hours_estimate, listing.estimated_hours, listing.hoursEstimate);
-
-  return {
-    ...listing,
-    id: listing.id,
-    title: firstPresent(listing.title, listing.name, 'Untitled listing'),
-    type,
-    typeLabel: type === 'request' ? 'Request' : 'Offer',
-    categoryName: firstPresent(listing.category_name, listing.category?.name),
-    location: firstPresent(listing.location, listing.address),
-    hoursEstimate: hours,
-    authorName: firstPresent(listing.author_name, user.name, user.full_name),
-    suggestedHours: clampHours(hours, 1)
-  };
 }
 
 function labelFromKey(value, fallback = '') {
@@ -292,88 +235,6 @@ router.get('/', asyncRoute(async (req, res) => {
     statusMessage: statusMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-}));
-
-router.get('/request/:listingId', asyncRoute(async (req, res) => {
-  const listingPayload = await getListingWithTenantFallback(req, req.params.listingId);
-  const listing = normalizeListingForRequest(unwrapObject(listingPayload));
-  const activeExchange = unwrapObject(await checkExchangeForListing(req.token, req.params.listingId).catch(() => ({ data: null })));
-
-  res.render('exchanges/request', {
-    title: 'Request exchange',
-    listing,
-    activeExchange: activeExchange?.id ? activeExchange : null,
-    errors: [],
-    fieldErrors: {},
-    values: {
-      proposed_hours: listing.suggestedHours,
-      prep_time: '',
-      message: ''
-    },
-    status: req.query.status || '',
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}));
-
-router.post('/request/:listingId', asyncRoute(async (req, res) => {
-  const proposedHours = clampHours(req.body.proposed_hours, null);
-  const prepTime = req.body.prep_time === '' || req.body.prep_time === undefined ? null : clampHours(req.body.prep_time, 0);
-  const message = String(req.body.message || '').trim();
-  const errors = [];
-  const fieldErrors = {};
-
-  if (proposedHours === null) {
-    errors.push({ text: 'Enter proposed hours', href: '#proposed_hours' });
-    fieldErrors.proposed_hours = 'Enter proposed hours';
-  }
-
-  if (errors.length > 0) {
-    const listingPayload = await getListingWithTenantFallback(req, req.params.listingId);
-    return res.status(400).render('exchanges/request', {
-      title: 'Request exchange',
-      listing: normalizeListingForRequest(unwrapObject(listingPayload)),
-      activeExchange: null,
-      errors,
-      fieldErrors,
-      values: {
-        proposed_hours: req.body.proposed_hours,
-        prep_time: req.body.prep_time,
-        message
-      },
-      status: '',
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-  }
-
-  try {
-    const payload = await createExchangeRequest(req.token, req.params.listingId, {
-      proposed_hours: proposedHours,
-      prep_time: prepTime,
-      message
-    });
-    const exchange = unwrapObject(payload);
-    return res.redirect(`/exchanges/${exchange.id}?status=exchange-created`);
-  } catch (error) {
-    if (!(error instanceof ApiError) && !(error instanceof ApiOfflineError)) {
-      throw error;
-    }
-
-    const listingPayload = await getListingWithTenantFallback(req, req.params.listingId);
-    return res.status(error.status === 403 ? 403 : 400).render('exchanges/request', {
-      title: 'Request exchange',
-      listing: normalizeListingForRequest(unwrapObject(listingPayload)),
-      activeExchange: null,
-      errors: [{ text: error.message || 'Exchange request failed', href: '#proposed_hours' }],
-      fieldErrors: {},
-      values: {
-        proposed_hours: req.body.proposed_hours,
-        prep_time: req.body.prep_time,
-        message
-      },
-      status: 'exchange-failed',
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-  }
 }));
 
 router.get('/:id', asyncRoute(async (req, res) => {
