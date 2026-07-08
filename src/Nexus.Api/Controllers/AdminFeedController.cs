@@ -24,6 +24,7 @@ public class AdminFeedController : ControllerBase
 {
     private const string FeedHiddenKeyPrefix = "admin.feed.hidden.";
     private const string FeedDeletedKeyPrefix = "admin.feed.deleted.";
+    private const string FeedAuthorKeyPrefix = "admin.feed.author.";
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<AdminFeedController> _logger;
@@ -1219,17 +1220,26 @@ public class AdminFeedController : ControllerBase
     {
         var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "challenge", deleted: false);
         var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "challenge", deleted: true);
-        var author = userId.HasValue && userId.Value > 0
-            ? await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId.Value)
-            : null;
-        if (userId.HasValue && userId.Value > 0 && author == null)
+        HashSet<int>? authorChallengeIds = null;
+        if (userId.HasValue && userId.Value > 0)
         {
-            return Ok(new { success = true, data = Array.Empty<object>(), meta = BuildLaravelPaginationMeta(page, limit, 0) });
+            var authorExists = await _db.Users.AsNoTracking().AnyAsync(u => u.TenantId == tenantId && u.Id == userId.Value);
+            if (!authorExists)
+            {
+                return Ok(new { success = true, data = Array.Empty<object>(), meta = BuildLaravelPaginationMeta(page, limit, 0) });
+            }
+
+            authorChallengeIds = await LoadFeedSourceIdsForAuthorAsync(tenantId, "challenge", userId.Value);
         }
 
         var query = _db.Challenges
             .Include(c => c.Tenant)
             .Where(c => c.TenantId == tenantId && !deletedIds.Contains(c.Id));
+
+        if (authorChallengeIds != null)
+        {
+            query = query.Where(c => authorChallengeIds.Contains(c.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -1255,12 +1265,19 @@ public class AdminFeedController : ControllerBase
             .Skip((page - 1) * limit)
             .Take(limit)
             .ToListAsync();
-        var feedAuthor = author ?? await GetFeedSystemUserAsync(tenantId);
+        var authorsByChallengeId = await LoadFeedAuthorsBySourceIdAsync(tenantId, "challenge", challenges.Select(c => c.Id));
+        var fallbackAuthor = await GetFeedSystemUserAsync(tenantId);
 
         return Ok(new
         {
             success = true,
-            data = challenges.Select(challenge => MapLaravelFeedChallenge(challenge, feedAuthor, hiddenIds.Contains(challenge.Id), recentComments: null)).ToList(),
+            data = challenges
+                .Select(challenge => MapLaravelFeedChallenge(
+                    challenge,
+                    authorsByChallengeId.GetValueOrDefault(challenge.Id) ?? fallbackAuthor,
+                    hiddenIds.Contains(challenge.Id),
+                    recentComments: null))
+                .ToList(),
             meta = BuildLaravelPaginationMeta(page, limit, total)
         });
     }
@@ -1283,7 +1300,8 @@ public class AdminFeedController : ControllerBase
         }
 
         var isHidden = await IsFeedItemHiddenAsync(tenantId, "challenge", id);
-        var feedAuthor = await GetFeedSystemUserAsync(tenantId);
+        var feedAuthor = await LoadFeedAuthorAsync(tenantId, "challenge", id)
+            ?? await GetFeedSystemUserAsync(tenantId);
         return Ok(new
         {
             success = true,
@@ -1300,6 +1318,13 @@ public class AdminFeedController : ControllerBase
             return LaravelNotFound("Feed item not found");
         }
 
+        var authorId = await LoadFeedAuthorIdAsync(tenantId, "challenge", id);
+        if (authorId.HasValue)
+        {
+            var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+            if (guard != null) return guard;
+        }
+
         await SetFeedFlagAsync(tenantId, "challenge", id, deleted: false);
         await _db.SaveChangesAsync();
 
@@ -1314,6 +1339,13 @@ public class AdminFeedController : ControllerBase
         if (!challengeExists || await IsFeedItemDeletedAsync(tenantId, "challenge", id))
         {
             return LaravelNotFound("Feed item not found");
+        }
+
+        var authorId = await LoadFeedAuthorIdAsync(tenantId, "challenge", id);
+        if (authorId.HasValue)
+        {
+            var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+            if (guard != null) return guard;
         }
 
         await SetFeedFlagAsync(tenantId, "challenge", id, deleted: true);
@@ -2099,6 +2131,86 @@ public class AdminFeedController : ControllerBase
         return await _db.TenantConfigs.AnyAsync(c => c.TenantId == tenantId && c.Key == key && c.Value == "true");
     }
 
+    private async Task<HashSet<int>> LoadFeedSourceIdsForAuthorAsync(int tenantId, string type, int authorId)
+    {
+        var prefix = FeedAuthorKeyPrefixFor(type);
+        var keys = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix) && c.Value == authorId.ToString())
+            .Select(c => c.Key)
+            .ToListAsync();
+
+        return keys
+            .Select(key => int.TryParse(key[prefix.Length..], out var id) ? id : 0)
+            .Where(id => id > 0)
+            .ToHashSet();
+    }
+
+    private async Task<Dictionary<int, User?>> LoadFeedAuthorsBySourceIdAsync(int tenantId, string type, IEnumerable<int> sourceIds)
+    {
+        var sourceIdSet = sourceIds.Where(id => id > 0).ToHashSet();
+        if (sourceIdSet.Count == 0)
+        {
+            return new Dictionary<int, User?>();
+        }
+
+        var prefix = FeedAuthorKeyPrefixFor(type);
+        var authorRows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .Select(c => new { c.Key, c.Value })
+            .ToListAsync();
+
+        var authorIdsBySourceId = authorRows
+            .Select(row => new
+            {
+                SourceId = int.TryParse(row.Key[prefix.Length..], out var sourceId) ? sourceId : 0,
+                AuthorId = int.TryParse(row.Value, out var authorId) ? authorId : 0
+            })
+            .Where(row => sourceIdSet.Contains(row.SourceId) && row.AuthorId > 0)
+            .ToDictionary(row => row.SourceId, row => row.AuthorId);
+
+        if (authorIdsBySourceId.Count == 0)
+        {
+            return new Dictionary<int, User?>();
+        }
+
+        var authorIds = authorIdsBySourceId.Values.ToHashSet();
+        var usersById = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && authorIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        return authorIdsBySourceId.ToDictionary(
+            pair => pair.Key,
+            pair => usersById.GetValueOrDefault(pair.Value));
+    }
+
+    private async Task<User?> LoadFeedAuthorAsync(int tenantId, string type, int id)
+    {
+        var authorId = await LoadFeedAuthorIdAsync(tenantId, type, id);
+        if (!authorId.HasValue)
+        {
+            return null;
+        }
+
+        return await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == authorId.Value);
+    }
+
+    private async Task<int?> LoadFeedAuthorIdAsync(int tenantId, string type, int id)
+    {
+        var key = FeedAuthorKey(type, id);
+        var value = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == key)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        return int.TryParse(value, out var authorId) && authorId > 0 ? authorId : null;
+    }
+
     private async Task SetFeedFlagAsync(int tenantId, string type, int id, bool deleted)
     {
         var key = FeedFlagKey(type, id, deleted);
@@ -2128,6 +2240,16 @@ public class AdminFeedController : ControllerBase
     private static string FeedFlagKeyPrefix(string type, bool deleted)
     {
         return (deleted ? FeedDeletedKeyPrefix : FeedHiddenKeyPrefix) + type + ".";
+    }
+
+    private static string FeedAuthorKey(string type, int id)
+    {
+        return FeedAuthorKeyPrefixFor(type) + id;
+    }
+
+    private static string FeedAuthorKeyPrefixFor(string type)
+    {
+        return FeedAuthorKeyPrefix + type + ".";
     }
 
     private static object BuildLaravelPaginationMeta(int page, int limit, int total)

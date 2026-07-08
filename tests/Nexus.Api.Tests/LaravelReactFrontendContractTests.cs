@@ -2931,6 +2931,47 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminFeedModerationV2_UsesStoredChallengeAuthorAndBlocksBrokerSelfModeration()
+    {
+        var brokerEmail = "broker-self-challenge-feed@test.com";
+        var brokerToken = await SeedAndLoginUserAsync(brokerEmail, "broker");
+        var brokerId = await GetUserIdByEmailAsync(brokerEmail);
+        var challengeId = await SeedAdminFeedChallengeAsync("Laravel React broker authored feed challenge", brokerId);
+
+        await AuthenticateAsAdminAsync();
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("user_id").GetInt32().Should().Be(brokerId);
+        detailData.GetProperty("user_email").GetString().Should().Be(brokerEmail);
+
+        SetAuthToken(brokerToken);
+
+        var ownHide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{challengeId}/hide", new { type = "challenge" });
+
+        ownHide.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var ownHideJson = await ownHide.Content.ReadFromJsonAsync<JsonElement>();
+        ownHideJson.GetProperty("success").GetBoolean().Should().BeFalse();
+
+        var ownDelete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        ownDelete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var ownDeleteJson = await ownDelete.Content.ReadFromJsonAsync<JsonElement>();
+        ownDeleteJson.GetProperty("success").GetBoolean().Should().BeFalse();
+
+        await AuthenticateAsAdminAsync();
+
+        var adminHide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{challengeId}/hide", new { type = "challenge" });
+        adminHide.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var adminDelete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+        adminDelete.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task AdminFeedAnnouncerV2_GrantsAndRevokesMunicipalityAnnouncerRoleForUserEdit()
     {
         await AuthenticateAsAdminAsync();
@@ -3742,6 +3783,155 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IdeationChallengesV2_CreatePersistsChallengeAndFeedAuthorForLaravelReact()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React created ideation challenge",
+            description = "Created through the canonical Laravel React challenge form.",
+            category = "Community",
+            prize_description = "Recognition",
+            submission_deadline = DateTime.UtcNow.AddDays(7).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(14).ToString("O"),
+            max_ideas_per_user = 3,
+            cover_image = "https://example.test/challenge.png",
+            tags = new[] { "contracts", "ideation" },
+            status = "open"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var createdData = createJson.GetProperty("data");
+        var challengeId = createdData.GetProperty("id").GetInt32();
+        challengeId.Should().BeGreaterThan(0);
+        createdData.GetProperty("title").GetString().Should().Be("Laravel React created ideation challenge");
+        createdData.GetProperty("description").GetString().Should().Be("Created through the canonical Laravel React challenge form.");
+        createdData.GetProperty("status").GetString().Should().Be("open");
+        createdData.GetProperty("category").GetString().Should().Be("Community");
+        createdData.GetProperty("prize_description").GetString().Should().Be("Recognition");
+        createdData.GetProperty("max_ideas_per_user").GetInt32().Should().Be(3);
+        createdData.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString()).Should().Contain(new[] { "contracts", "ideation" });
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(challengeId);
+        detailJson.GetProperty("data").GetProperty("title").GetString().Should().Be("Laravel React created ideation challenge");
+
+        var feedDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        feedDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var feedData = (await feedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        feedData.GetProperty("user_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        feedData.GetProperty("user_email").GetString().Should().Be(TestData.AdminUser.Email);
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_UpdatePersistsLaravelReactEditPayload()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React editable ideation challenge",
+            description = "Original description from the challenge form.",
+            category = "Community",
+            prize_description = "Original prize",
+            submission_deadline = DateTime.UtcNow.AddDays(5).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(10).ToString("O"),
+            max_ideas_per_user = 2,
+            cover_image = "https://example.test/original.png",
+            tags = new[] { "original" },
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}", new
+        {
+            title = "Laravel React edited ideation challenge",
+            description = "Updated through the canonical Laravel React edit form.",
+            category = "Climate",
+            prize_description = "Updated recognition",
+            submission_deadline = DateTime.UtcNow.AddDays(8).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(16).ToString("O"),
+            max_ideas_per_user = 5,
+            cover_image = "https://example.test/updated.png",
+            tags = new[] { "updated", "ideation" }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updatedData = updateJson.GetProperty("data");
+        updatedData.GetProperty("id").GetInt32().Should().Be(challengeId);
+        updatedData.GetProperty("title").GetString().Should().Be("Laravel React edited ideation challenge");
+        updatedData.GetProperty("description").GetString().Should().Be("Updated through the canonical Laravel React edit form.");
+        updatedData.GetProperty("category").GetString().Should().Be("Climate");
+        updatedData.GetProperty("prize_description").GetString().Should().Be("Updated recognition");
+        updatedData.GetProperty("max_ideas_per_user").GetInt32().Should().Be(5);
+        updatedData.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString()).Should().Contain(new[] { "updated", "ideation" });
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("title").GetString().Should().Be("Laravel React edited ideation challenge");
+        detailData.GetProperty("category").GetString().Should().Be("Climate");
+        detailData.GetProperty("prize_description").GetString().Should().Be("Updated recognition");
+
+        var feedDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        feedDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var feedContent = (await feedDetail.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("content")
+            .GetString();
+        feedContent.Should().Contain("Laravel React edited ideation challenge");
+        feedContent.Should().Contain("Updated through the canonical Laravel React edit form.");
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_DeleteUsesLaravelNoContentAndRemovesChallenge()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React deletable ideation challenge",
+            description = "Challenge that should be removed by the Laravel delete contract.",
+            category = "Community",
+            prize_description = "Temporary",
+            submission_deadline = DateTime.UtcNow.AddDays(3).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(6).ToString("O"),
+            max_ideas_per_user = 1,
+            tags = new[] { "delete" },
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var delete = await Client.DeleteAsync($"/api/v2/ideation-challenges/{challengeId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await delete.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+        detail.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var feedDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+        feedDetail.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();
@@ -4344,6 +4534,11 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
 
     private async Task<int> SeedAdminFeedChallengeAsync(string title)
     {
+        return await SeedAdminFeedChallengeAsync(title, authorUserId: null);
+    }
+
+    private async Task<int> SeedAdminFeedChallengeAsync(string title, int? authorUserId)
+    {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var now = DateTime.UtcNow;
@@ -4364,6 +4559,19 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         };
         db.Challenges.Add(challenge);
         await db.SaveChangesAsync();
+        if (authorUserId.HasValue)
+        {
+            db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = TestData.Tenant1.Id,
+                Key = $"admin.feed.author.challenge.{challenge.Id}",
+                Value = authorUserId.Value.ToString(),
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+        }
+
         return challenge.Id;
     }
 

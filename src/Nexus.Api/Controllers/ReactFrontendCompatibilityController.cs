@@ -2173,25 +2173,42 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/ideation-challenges/{id:int}")]
+    [HttpGet("api/v2/ideation-challenges/{id:int}")]
     [HttpPut("api/ideation-challenges/{id:int}")]
+    [HttpPut("api/v2/ideation-challenges/{id:int}")]
     [HttpDelete("api/ideation-challenges/{id:int}")]
+    [HttpDelete("api/v2/ideation-challenges/{id:int}")]
     [Authorize]
-    public async Task<IActionResult> IdeationChallengeDetail(int id)
+    public async Task<IActionResult> IdeationChallengeDetail(int id, [FromBody] JsonElement? body = null)
     {
         var challenge = await _db.Challenges
             .Include(c => c.Participants)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == _tenantContext.GetTenantIdOrThrow());
         if (challenge == null) return NotFound(new { error = "Challenge not found" });
 
         if (HttpContext.Request.Method == HttpMethods.Delete)
         {
-            challenge.IsActive = false;
-            challenge.UpdatedAt = DateTime.UtcNow;
+            _db.ChallengeParticipants.RemoveRange(challenge.Participants);
+            _db.Challenges.Remove(challenge);
+            await RemoveIdeationChallengeCompatibilityStateAsync(challenge.TenantId, challenge.Id);
             await _db.SaveChangesAsync();
-            return Ok(new { success = true });
+            return NoContent();
         }
 
-        return Ok(new { data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
+        if (HttpContext.Request.Method == HttpMethods.Put && body.HasValue)
+        {
+            var validation = UpdateIdeationChallengeFromBody(challenge, body.Value);
+            if (validation != null)
+            {
+                return validation;
+            }
+
+            await SaveIdeationChallengeMetadataAsync(challenge.TenantId, challenge.Id, body.Value);
+            await _db.SaveChangesAsync();
+        }
+
+        var data = await ProjectIdeationChallengeAsync(challenge);
+        return Ok(new { success = true, data, challenge = data });
     }
 
     [HttpGet("api/ideation-campaigns/{id:int}")]
@@ -3309,6 +3326,216 @@ public class ReactFrontendCompatibilityController : ControllerBase
         _db.FederationUserSettings.Add(settings);
         await _db.SaveChangesAsync();
         return settings;
+    }
+
+    private async Task<object> ProjectIdeationChallengeAsync(Challenge challenge)
+    {
+        var metadata = await LoadIdeationChallengeMetadataAsync(challenge.TenantId, challenge.Id);
+        return new
+        {
+            id = challenge.Id,
+            title = challenge.Title,
+            description = challenge.Description,
+            category = metadata.Category,
+            prize_description = metadata.PrizeDescription,
+            submission_deadline = metadata.SubmissionDeadline ?? challenge.EndsAt,
+            voting_deadline = metadata.VotingDeadline ?? challenge.EndsAt,
+            max_ideas_per_user = metadata.MaxIdeasPerUser,
+            status = metadata.Status ?? MapAdminIdeationStatus(challenge),
+            cover_image = metadata.CoverImage,
+            tags = metadata.Tags,
+            challenge_type = challenge.ChallengeType.ToString().ToLowerInvariant(),
+            target_action = challenge.TargetAction,
+            target_count = challenge.TargetCount,
+            xp_reward = challenge.XpReward,
+            is_active = challenge.IsActive,
+            difficulty = challenge.Difficulty.ToString().ToLowerInvariant(),
+            participant_count = challenge.Participants?.Count ?? 0,
+            starts_at = challenge.StartsAt,
+            ends_at = challenge.EndsAt,
+            created_at = challenge.CreatedAt,
+            updated_at = challenge.UpdatedAt
+        };
+    }
+
+    private IActionResult? UpdateIdeationChallengeFromBody(Challenge challenge, JsonElement body)
+    {
+        if (body.TryGetProperty("title", out _))
+        {
+            var title = ReadString(body, "title")?.Trim();
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return UnprocessableEntity(new { success = false, error = new { code = "VALIDATION_ERROR", message = "Title cannot be empty", field = "title" } });
+            }
+
+            challenge.Title = title;
+        }
+
+        if (body.TryGetProperty("description", out _))
+        {
+            var description = ReadString(body, "description")?.Trim();
+            if (string.IsNullOrWhiteSpace(description))
+            {
+                return UnprocessableEntity(new { success = false, error = new { code = "VALIDATION_ERROR", message = "Description cannot be empty", field = "description" } });
+            }
+
+            challenge.Description = description;
+        }
+
+        var submissionDeadline = ReadDateTime(body, "submission_deadline");
+        var votingDeadline = ReadDateTime(body, "voting_deadline");
+        if (votingDeadline.HasValue || submissionDeadline.HasValue)
+        {
+            challenge.EndsAt = votingDeadline ?? submissionDeadline!.Value;
+        }
+
+        var maxIdeasPerUser = ReadInt(body, "max_ideas_per_user");
+        if (maxIdeasPerUser.HasValue)
+        {
+            challenge.TargetCount = Math.Max(maxIdeasPerUser.Value, 1);
+        }
+
+        challenge.UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    private async Task<IdeationChallengeMetadata> LoadIdeationChallengeMetadataAsync(int tenantId, int challengeId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == IdeationChallengeMetaKey(challengeId))
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new IdeationChallengeMetadata();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<IdeationChallengeMetadata>(raw) ?? new IdeationChallengeMetadata();
+        }
+        catch (JsonException)
+        {
+            return new IdeationChallengeMetadata();
+        }
+    }
+
+    private async Task SaveIdeationChallengeMetadataAsync(int tenantId, int challengeId, JsonElement body)
+    {
+        var metadata = await LoadIdeationChallengeMetadataAsync(tenantId, challengeId);
+        if (body.TryGetProperty("category", out _))
+        {
+            metadata.Category = ReadString(body, "category")?.Trim();
+        }
+
+        if (body.TryGetProperty("prize_description", out _))
+        {
+            metadata.PrizeDescription = ReadString(body, "prize_description")?.Trim();
+        }
+
+        if (body.TryGetProperty("submission_deadline", out _))
+        {
+            metadata.SubmissionDeadline = ReadDateTime(body, "submission_deadline");
+        }
+
+        if (body.TryGetProperty("voting_deadline", out _))
+        {
+            metadata.VotingDeadline = ReadDateTime(body, "voting_deadline");
+        }
+
+        if (body.TryGetProperty("max_ideas_per_user", out _))
+        {
+            metadata.MaxIdeasPerUser = ReadInt(body, "max_ideas_per_user");
+        }
+
+        if (body.TryGetProperty("cover_image", out _))
+        {
+            metadata.CoverImage = ReadString(body, "cover_image")?.Trim();
+        }
+
+        if (body.TryGetProperty("tags", out _))
+        {
+            metadata.Tags = ReadStringArray(body, "tags");
+        }
+
+        var now = DateTime.UtcNow;
+        var key = IdeationChallengeMetaKey(challengeId);
+        var value = JsonSerializer.Serialize(metadata);
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = now;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private async Task RemoveIdeationChallengeCompatibilityStateAsync(int tenantId, int challengeId)
+    {
+        var keys = new[]
+        {
+            IdeationChallengeMetaKey(challengeId),
+            $"admin.feed.author.challenge.{challengeId}",
+            $"admin.feed.hidden.challenge.{challengeId}",
+            $"admin.feed.deleted.challenge.{challengeId}"
+        };
+
+        var rows = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && keys.Contains(c.Key))
+            .ToListAsync();
+        _db.TenantConfigs.RemoveRange(rows);
+    }
+
+    private static DateTime? ReadDateTime(JsonElement body, string propertyName)
+    {
+        return DateTime.TryParse(ReadString(body, propertyName), out var value) ? value.ToUniversalTime() : null;
+    }
+
+    private static int? ReadInt(JsonElement body, string propertyName)
+    {
+        return int.TryParse(ReadString(body, propertyName), out var value) ? value : null;
+    }
+
+    private static string[] ReadStringArray(JsonElement body, string propertyName)
+    {
+        if (body.ValueKind != JsonValueKind.Object ||
+            !body.TryGetProperty(propertyName, out var property) ||
+            property.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return property
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()?.Trim())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item!)
+            .ToArray();
+    }
+
+    private static string IdeationChallengeMetaKey(int challengeId) => $"ideation.challenge.meta.{challengeId}";
+
+    private sealed class IdeationChallengeMetadata
+    {
+        [JsonPropertyName("category")] public string? Category { get; set; }
+        [JsonPropertyName("prize_description")] public string? PrizeDescription { get; set; }
+        [JsonPropertyName("submission_deadline")] public DateTime? SubmissionDeadline { get; set; }
+        [JsonPropertyName("voting_deadline")] public DateTime? VotingDeadline { get; set; }
+        [JsonPropertyName("max_ideas_per_user")] public int? MaxIdeasPerUser { get; set; }
+        [JsonPropertyName("status")] public string? Status { get; set; }
+        [JsonPropertyName("cover_image")] public string? CoverImage { get; set; }
+        [JsonPropertyName("tags")] public string[] Tags { get; set; } = [];
     }
 
     private static object ProjectChallenge(Challenge challenge) => new

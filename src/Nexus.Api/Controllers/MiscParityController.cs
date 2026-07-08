@@ -438,7 +438,79 @@ public class MiscParityController : ControllerBase
 
     [HttpPost("ideation-challenges")]
     [Authorize]
-    public IActionResult CreateIdeationChallenge([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), title = Str(body, "title") } });
+    public async Task<IActionResult> CreateIdeationChallenge([FromBody] JsonElement body)
+    {
+        var title = Str(body, "title")?.Trim();
+        var description = Str(body, "description")?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return UnprocessableEntity(new { success = false, error = new { code = "VALIDATION_ERROR", message = "Title is required" } });
+        }
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return UnprocessableEntity(new { success = false, error = new { code = "VALIDATION_ERROR", message = "Description is required" } });
+        }
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var now = DateTime.UtcNow;
+        var status = NormalizeIdeationStatus(Str(body, "status"));
+        var votingDeadline = DateTimeValue(body, "voting_deadline");
+        var submissionDeadline = DateTimeValue(body, "submission_deadline");
+        var maxIdeasPerUser = Int(body, "max_ideas_per_user");
+        var challenge = new Challenge
+        {
+            TenantId = tenantId,
+            Title = title,
+            Description = description,
+            ChallengeType = ChallengeType.Community,
+            TargetAction = "ideation_submission",
+            TargetCount = Math.Max(maxIdeasPerUser ?? 1, 1),
+            XpReward = 0,
+            StartsAt = now,
+            EndsAt = votingDeadline ?? submissionDeadline ?? now.AddDays(30),
+            IsActive = status is "open" or "voting" or "evaluating",
+            Difficulty = ChallengeDifficulty.Medium,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.Challenges.Add(challenge);
+        await _db.SaveChangesAsync();
+        await SetTenantConfigAsync(tenantId, $"admin.feed.author.challenge.{challenge.Id}", userId.ToString(), now);
+        await SetTenantConfigAsync(tenantId, IdeationChallengeMetaKey(challenge.Id), JsonSerializer.Serialize(new
+        {
+            category = Str(body, "category")?.Trim(),
+            prize_description = Str(body, "prize_description")?.Trim(),
+            submission_deadline = submissionDeadline,
+            voting_deadline = votingDeadline,
+            max_ideas_per_user = maxIdeasPerUser,
+            status,
+            cover_image = Str(body, "cover_image")?.Trim(),
+            tags = StringArray(body, "tags")
+        }), now);
+        await _db.SaveChangesAsync();
+
+        var data = new
+        {
+            id = challenge.Id,
+            title = challenge.Title,
+            description = challenge.Description,
+            category = Str(body, "category")?.Trim(),
+            prize_description = Str(body, "prize_description")?.Trim(),
+            submission_deadline = submissionDeadline,
+            voting_deadline = votingDeadline,
+            max_ideas_per_user = maxIdeasPerUser,
+            status,
+            cover_image = Str(body, "cover_image")?.Trim(),
+            tags = StringArray(body, "tags"),
+            created_at = challenge.CreatedAt,
+            updated_at = challenge.UpdatedAt
+        };
+
+        return Created($"/api/v2/ideation-challenges/{challenge.Id}", new { success = true, data });
+    }
 
     [HttpPost("ideation-campaigns")]
     [Authorize]
@@ -771,6 +843,53 @@ public class MiscParityController : ControllerBase
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
+    private static DateTime? DateTimeValue(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value.ToUniversalTime() : null;
+    private static string NormalizeIdeationStatus(string? status)
+    {
+        var normalized = string.IsNullOrWhiteSpace(status) ? "open" : status.Trim().ToLowerInvariant();
+        return normalized is "draft" or "open" or "voting" or "evaluating" or "closed" or "archived"
+            ? normalized
+            : "open";
+    }
+
+    private static string[] StringArray(JsonElement e, string name)
+    {
+        if (e.ValueKind != JsonValueKind.Object || !e.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return value
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()?.Trim())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item!)
+            .ToArray();
+    }
+
+    private async Task SetTenantConfigAsync(int tenantId, string key, string value, DateTime now)
+    {
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = now;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private static string IdeationChallengeMetaKey(int id) => $"ideation.challenge.meta.{id}";
+
     private static long ToMinorUnits(decimal amount) => decimal.ToInt64(decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero));
     private static string DonationStatusForReact(MoneyDonationStatus status) => status switch
     {
