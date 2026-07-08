@@ -653,25 +653,69 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize]
     public async Task<IActionResult> IdeationCampaigns()
     {
-        var campaigns = await _db.Challenges
-            .Where(c => c.IsActive)
-            .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new
-            {
-                id = c.Id,
-                title = c.Title,
-                description = c.Description,
-                type = c.ChallengeType.ToString().ToLowerInvariant(),
-                difficulty = c.Difficulty.ToString().ToLowerInvariant(),
-                starts_at = c.StartsAt,
-                ends_at = c.EndsAt,
-                xp_reward = c.XpReward,
-                target_count = c.TargetCount,
-                participant_count = c.Participants.Count
-            })
-            .ToListAsync();
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var campaigns = await LoadIdeationCampaignsAsync(tenantId);
+        var status = Request.Query["status"].ToString();
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            campaigns = campaigns
+                .Where(c => string.Equals(c.Status, status, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
-        return Ok(new { data = campaigns, campaigns });
+        var data = campaigns
+            .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
+            .Select(c => ProjectIdeationCampaign(c, includeChallenges: false))
+            .ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            campaigns = data,
+            meta = new
+            {
+                current_page = 1,
+                per_page = data.Count,
+                total = data.Count,
+                has_more = false,
+                next_cursor = (string?)null
+            }
+        });
+    }
+
+    [HttpPost("api/ideation-campaigns")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> CreateIdeationCampaign([FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var title = ReadString(body, "title")?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Title is required.", "title") } });
+        }
+
+        var now = DateTime.UtcNow;
+        var campaign = new IdeationCampaignMetadata
+        {
+            Id = await NextIdeationCampaignIdAsync(tenantId),
+            Title = title,
+            Description = NormalizeNullable(ReadString(body, "description")),
+            CoverImage = NormalizeNullable(ReadString(body, "cover_image")),
+            Status = NormalizeIdeationCampaignStatus(ReadString(body, "status")),
+            StartDate = ReadDateTime(body, "start_date"),
+            EndDate = ReadDateTime(body, "end_date"),
+            CreatedBy = User.GetUserId(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        await UpsertIdeationCampaignAsync(tenantId, campaign);
+        await _db.SaveChangesAsync();
+
+        var data = ProjectIdeationCampaign(campaign, includeChallenges: true);
+        return Created($"/api/v2/ideation-campaigns/{campaign.Id}", new { success = true, data });
     }
 
     [HttpGet("api/ideation-tags/popular")]
@@ -2292,22 +2336,156 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/ideation-campaigns/{id:int}")]
+    [HttpGet("api/v2/ideation-campaigns/{id:int}")]
     [HttpPut("api/ideation-campaigns/{id:int}")]
+    [HttpPut("api/v2/ideation-campaigns/{id:int}")]
     [HttpDelete("api/ideation-campaigns/{id:int}")]
+    [HttpDelete("api/v2/ideation-campaigns/{id:int}")]
     [Authorize]
-    public async Task<IActionResult> IdeationCampaignDetail(int id)
+    public async Task<IActionResult> IdeationCampaignDetail(int id, [FromBody] JsonElement? body = null)
     {
-        return await IdeationChallengeDetail(id);
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var campaign = await LoadIdeationCampaignAsync(tenantId, id);
+        if (campaign == null)
+        {
+            return NotFound(new { success = false, error = "Campaign not found" });
+        }
+
+        if (HttpContext.Request.Method == HttpMethods.Delete)
+        {
+            if (!User.IsInRole("admin") && !User.IsInRole("tenant_admin") && !User.IsInRole("tenant_super_admin") && !User.IsInRole("super_admin"))
+            {
+                return Forbid();
+            }
+
+            await RemoveIdeationCampaignAsync(tenantId, id);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        if (HttpContext.Request.Method == HttpMethods.Put && body.HasValue)
+        {
+            if (!User.IsInRole("admin") && !User.IsInRole("tenant_admin") && !User.IsInRole("tenant_super_admin") && !User.IsInRole("super_admin"))
+            {
+                return Forbid();
+            }
+
+            var title = ReadString(body.Value, "title")?.Trim();
+            if (body.Value.TryGetProperty("title", out _) && string.IsNullOrWhiteSpace(title))
+            {
+                return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Title cannot be empty.", "title") } });
+            }
+
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                campaign.Title = title;
+            }
+
+            if (body.Value.TryGetProperty("description", out _))
+            {
+                campaign.Description = NormalizeNullable(ReadString(body.Value, "description"));
+            }
+
+            if (body.Value.TryGetProperty("cover_image", out _))
+            {
+                campaign.CoverImage = NormalizeNullable(ReadString(body.Value, "cover_image"));
+            }
+
+            if (body.Value.TryGetProperty("status", out _))
+            {
+                campaign.Status = NormalizeIdeationCampaignStatus(ReadString(body.Value, "status"), campaign.Status);
+            }
+
+            if (body.Value.TryGetProperty("start_date", out _))
+            {
+                campaign.StartDate = ReadDateTime(body.Value, "start_date");
+            }
+
+            if (body.Value.TryGetProperty("end_date", out _))
+            {
+                campaign.EndDate = ReadDateTime(body.Value, "end_date");
+            }
+
+            campaign.UpdatedAt = DateTime.UtcNow;
+            await UpsertIdeationCampaignAsync(tenantId, campaign);
+            await _db.SaveChangesAsync();
+        }
+
+        var data = await ProjectIdeationCampaignAsync(tenantId, campaign, includeChallenges: true);
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("api/ideation-campaigns/{id:int}/challenges")]
     [Authorize]
     public async Task<IActionResult> IdeationCampaignChallenges(int id)
     {
-        var challenge = await _db.Challenges.Include(c => c.Participants).FirstOrDefaultAsync(c => c.Id == id);
-        if (challenge == null) return NotFound(new { error = "Campaign not found" });
-        var data = new[] { ProjectChallenge(challenge) };
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var campaign = await LoadIdeationCampaignAsync(tenantId, id);
+        if (campaign == null) return NotFound(new { success = false, error = "Campaign not found" });
+        var data = await ProjectIdeationCampaignChallengesAsync(tenantId, campaign);
         return Ok(new { data, challenges = data });
+    }
+
+    [HttpPost("api/ideation-campaigns/{id:int}/challenges")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> LinkIdeationCampaignChallenge(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var campaign = await LoadIdeationCampaignAsync(tenantId, id);
+        if (campaign == null) return NotFound(new { success = false, errors = new[] { IdeationStatusError("RESOURCE_NOT_FOUND", "Campaign not found.") } });
+
+        var challengeId = ReadInt(body, "challenge_id");
+        if (!challengeId.HasValue || challengeId.Value <= 0)
+        {
+            return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "challenge_id is required.", "challenge_id") } });
+        }
+
+        var exists = await _db.Challenges.AnyAsync(c => c.Id == challengeId.Value && c.TenantId == tenantId);
+        if (!exists)
+        {
+            return NotFound(new { success = false, errors = new[] { IdeationStatusError("RESOURCE_NOT_FOUND", "Challenge not found.") } });
+        }
+
+        if (campaign.Challenges.All(link => link.ChallengeId != challengeId.Value))
+        {
+            campaign.Challenges.Add(new IdeationCampaignChallengeLink
+            {
+                ChallengeId = challengeId.Value,
+                SortOrder = ReadInt(body, "sort_order") ?? 0
+            });
+        }
+        else
+        {
+            foreach (var link in campaign.Challenges.Where(link => link.ChallengeId == challengeId.Value))
+            {
+                link.SortOrder = ReadInt(body, "sort_order") ?? link.SortOrder;
+            }
+        }
+
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await UpsertIdeationCampaignAsync(tenantId, campaign);
+        await _db.SaveChangesAsync();
+
+        return Created($"/api/v2/ideation-campaigns/{id}/challenges/{challengeId.Value}", new { success = true, data = new { linked = true } });
+    }
+
+    [HttpDelete("api/ideation-campaigns/{id:int}/challenges/{challengeId:int}")]
+    [HttpDelete("api/v2/ideation-campaigns/{id:int}/challenges/{challengeId:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> UnlinkIdeationCampaignChallenge(int id, int challengeId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var campaign = await LoadIdeationCampaignAsync(tenantId, id);
+        if (campaign == null) return NotFound(new { success = false, errors = new[] { IdeationStatusError("RESOURCE_NOT_FOUND", "Campaign not found.") } });
+
+        campaign.Challenges = campaign.Challenges
+            .Where(link => link.ChallengeId != challengeId)
+            .ToList();
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await UpsertIdeationCampaignAsync(tenantId, campaign);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     [HttpGet("api/ideation-campaigns/{campaignId:int}/challenges/{challengeId:int}")]
@@ -2497,99 +2675,375 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/ideation-challenges/{id:int}/ideas/drafts")]
+    [HttpGet("api/v2/ideation-challenges/{id:int}/ideas/drafts")]
     [Authorize]
     public async Task<IActionResult> IdeationChallengeIdeaDrafts(int id)
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
         var ideas = await _db.Ideas
-            .Where(i => i.Status == "draft")
+            .Include(i => i.Author)
+            .Include(i => i.Comments)
+            .Where(i => i.TenantId == tenantId &&
+                i.Category == IdeationChallengeIdeaCategory(id) &&
+                i.Status == "draft" &&
+                (!userId.HasValue || i.AuthorId == userId.Value))
             .OrderByDescending(i => i.UpdatedAt ?? i.CreatedAt)
-            .Select(i => new { id = i.Id, title = i.Title, content = i.Content, status = i.Status, created_at = i.CreatedAt })
             .ToListAsync();
-        return Ok(new { data = ideas, ideas });
+        var data = ideas.Select(idea => ProjectIdea(idea)).ToList();
+        return Ok(new { success = true, data, ideas = data });
+    }
+
+    [HttpGet("api/v2/ideation-challenges/{id:int}/ideas")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeIdeas(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var ideas = await _db.Ideas
+            .Include(i => i.Author)
+            .Include(i => i.Comments)
+            .Where(i => i.TenantId == tenantId &&
+                i.Category == IdeationChallengeIdeaCategory(id) &&
+                i.Status != "draft")
+            .OrderByDescending(i => i.UpvoteCount)
+            .ThenByDescending(i => i.CreatedAt)
+            .ToListAsync();
+        var data = ideas.Select(idea => ProjectIdea(idea)).ToList();
+        return Ok(new
+        {
+            success = true,
+            data,
+            ideas = data,
+            meta = new { per_page = data.Count, has_more = false, next_cursor = (string?)null }
+        });
+    }
+
+    [HttpPost("api/v2/ideation-challenges/{id:int}/ideas")]
+    [Authorize]
+    public async Task<IActionResult> SubmitIdeationChallengeIdea(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var challengeExists = await _db.Challenges.AnyAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (!challengeExists)
+        {
+            return NotFound(new { success = false, errors = new[] { IdeationStatusError("RESOURCE_NOT_FOUND", "Challenge not found.") } });
+        }
+
+        var title = ReadString(body, "title")?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Title is required.", "title") } });
+        }
+
+        var description = ReadString(body, "description") ?? ReadString(body, "content") ?? string.Empty;
+        var idea = new Idea
+        {
+            TenantId = tenantId,
+            AuthorId = userId.Value,
+            Title = title,
+            Content = description.Trim(),
+            Category = IdeationChallengeIdeaCategory(id),
+            Status = ReadBool(body, "is_draft") == true ? "draft" : "submitted",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Ideas.Add(idea);
+        await _db.SaveChangesAsync();
+
+        return Created($"/api/v2/ideation-ideas/{idea.Id}", new { success = true, data = new { id = idea.Id } });
     }
 
     [HttpGet("api/ideation-ideas/{id:int}")]
+    [HttpGet("api/v2/ideation-ideas/{id:int}")]
     [HttpPut("api/ideation-ideas/{id:int}")]
+    [HttpPut("api/v2/ideation-ideas/{id:int}")]
     [HttpDelete("api/ideation-ideas/{id:int}")]
+    [HttpDelete("api/v2/ideation-ideas/{id:int}")]
     [Authorize]
-    public async Task<IActionResult> IdeationIdeaDetail(int id)
+    public async Task<IActionResult> IdeationIdeaDetail(int id, [FromBody] JsonElement? body = null)
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var idea = await _db.Ideas
             .Include(i => i.Author)
             .Include(i => i.Comments)
-            .FirstOrDefaultAsync(i => i.Id == id);
-        if (idea == null) return NotFound(new { error = "Idea not found" });
+            .FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
 
         if (HttpContext.Request.Method == HttpMethods.Delete)
         {
+            _db.IdeaComments.RemoveRange(idea.Comments);
             _db.Ideas.Remove(idea);
+            await RemoveIdeationIdeaMediaAsync(tenantId, id);
             await _db.SaveChangesAsync();
-            return Ok(new { success = true });
+            return NoContent();
         }
 
-        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+        if (HttpContext.Request.Method == HttpMethods.Put && body.HasValue)
+        {
+            var title = ReadString(body.Value, "title")?.Trim();
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                idea.Title = title;
+            }
+
+            if (body.Value.TryGetProperty("description", out _) || body.Value.TryGetProperty("content", out _))
+            {
+                idea.Content = (ReadString(body.Value, "description") ?? ReadString(body.Value, "content") ?? string.Empty).Trim();
+            }
+
+            idea.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        var currentUserId = User.GetUserId();
+        var hasVoted = currentUserId.HasValue &&
+            await _db.IdeaVotes.AnyAsync(v => v.TenantId == tenantId && v.IdeaId == id && v.UserId == currentUserId.Value);
+        var data = ProjectIdea(idea, hasVoted);
+        return Ok(new { success = true, data, idea = data });
     }
 
     [HttpPut("api/ideation-ideas/{id:int}/draft")]
     [HttpPost("api/ideation-ideas/{id:int}/draft")]
+    [HttpPut("api/v2/ideation-ideas/{id:int}/draft")]
+    [HttpPost("api/v2/ideation-ideas/{id:int}/draft")]
     [Authorize]
     public async Task<IActionResult> IdeationIdeaDraft(int id, [FromBody] JsonElement body)
     {
-        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
-        if (idea == null) return NotFound(new { error = "Idea not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
         idea.Title = ReadString(body, "title") ?? idea.Title;
-        idea.Content = ReadString(body, "content") ?? idea.Content;
-        idea.Status = "draft";
+        idea.Content = ReadString(body, "description") ?? ReadString(body, "content") ?? idea.Content;
+        idea.Status = ReadBool(body, "publish") == true ? "submitted" : "draft";
         idea.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+        var data = ProjectIdea(idea);
+        return Ok(new { success = true, data, idea = data });
     }
 
     [HttpPut("api/ideation-ideas/{id:int}/status")]
     [HttpPost("api/ideation-ideas/{id:int}/status")]
+    [HttpPut("api/v2/ideation-ideas/{id:int}/status")]
+    [HttpPost("api/v2/ideation-ideas/{id:int}/status")]
     [Authorize]
     public async Task<IActionResult> IdeationIdeaStatus(int id, [FromBody] JsonElement body)
     {
-        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
-        if (idea == null) return NotFound(new { error = "Idea not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Ideas.Include(i => i.Author).Include(i => i.Comments).FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
         idea.Status = ReadString(body, "status") ?? idea.Status;
         idea.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+        var data = ProjectIdea(idea);
+        return Ok(new { success = true, data, idea = data });
+    }
+
+    [HttpPost("api/v2/ideation-ideas/{id:int}/vote")]
+    [Authorize]
+    public async Task<IActionResult> VoteIdeationIdea(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
+
+        var existing = await _db.IdeaVotes.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.IdeaId == id && v.UserId == userId.Value);
+        var voted = existing == null;
+        if (existing == null)
+        {
+            _db.IdeaVotes.Add(new IdeaVote
+            {
+                TenantId = tenantId,
+                IdeaId = id,
+                UserId = userId.Value,
+                CreatedAt = DateTime.UtcNow
+            });
+            idea.UpvoteCount++;
+        }
+        else
+        {
+            _db.IdeaVotes.Remove(existing);
+            idea.UpvoteCount = Math.Max(0, idea.UpvoteCount - 1);
+        }
+
+        idea.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { voted, votes_count = idea.UpvoteCount } });
     }
 
     [HttpPost("api/ideation-ideas/{id:int}/convert-to-group")]
+    [HttpPost("api/v2/ideation-ideas/{id:int}/convert-to-group")]
     [Authorize]
-    public async Task<IActionResult> IdeationIdeaConvertToGroup(int id)
+    public async Task<IActionResult> IdeationIdeaConvertToGroup(int id, [FromBody] JsonElement? body = null)
     {
-        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
-        if (idea == null) return NotFound(new { error = "Idea not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
 
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var groupName = body.HasValue ? NormalizeNullable(ReadString(body.Value, "name")) : null;
+        var groupDescription = body.HasValue ? NormalizeNullable(ReadString(body.Value, "description")) : null;
+        var visibility = body.HasValue ? NormalizeNullable(ReadString(body.Value, "visibility")) : null;
         var group = new Group
         {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
-            Name = idea.Title,
-            Description = idea.Content,
+            TenantId = tenantId,
+            Name = groupName ?? idea.Title,
+            Description = groupDescription ?? idea.Content,
             CreatedById = userId.Value,
-            IsPrivate = false
+            IsPrivate = string.Equals(visibility, "private", StringComparison.OrdinalIgnoreCase)
         };
         _db.Groups.Add(group);
         await _db.SaveChangesAsync();
-        return Ok(new { data = new { group_id = group.Id, group_name = group.Name }, group_id = group.Id });
+
+        var data = new
+        {
+            id = group.Id,
+            group_id = group.Id,
+            name = group.Name,
+            group_name = group.Name,
+            description = group.Description,
+            visibility = group.IsPrivate ? "private" : "public"
+        };
+        var isV2 = HttpContext.Request.Path.Value?.Contains("/api/v2/", StringComparison.OrdinalIgnoreCase) == true;
+        return isV2
+            ? Created($"/api/v2/groups/{group.Id}", new { success = true, data })
+            : Ok(new { success = true, data, group_id = group.Id });
     }
 
     [HttpDelete("api/ideation-comments/{id:int}")]
+    [HttpDelete("api/v2/ideation-comments/{id:int}")]
     [Authorize]
     public async Task<IActionResult> DeleteIdeationComment(int id)
     {
-        var comment = await _db.IdeaComments.FirstOrDefaultAsync(c => c.Id == id);
-        if (comment == null) return NotFound(new { error = "Comment not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var comment = await _db.IdeaComments.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (comment == null) return NotFound(new { success = false, error = "Comment not found" });
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == comment.IdeaId && i.TenantId == tenantId);
+        if (idea != null)
+        {
+            idea.CommentCount = Math.Max(0, idea.CommentCount - 1);
+            idea.UpdatedAt = DateTime.UtcNow;
+        }
+
         _db.IdeaComments.Remove(comment);
         await _db.SaveChangesAsync();
-        return Ok(new { success = true });
+        return NoContent();
+    }
+
+    [HttpGet("api/v2/ideation-ideas/{id:int}/comments")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaComments(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var comments = await _db.IdeaComments
+            .Include(c => c.User)
+            .Where(c => c.TenantId == tenantId && c.IdeaId == id)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+        var data = comments.Select(ProjectIdeationComment).ToList();
+        return Ok(new { success = true, data, comments = data, meta = new { per_page = data.Count, has_more = false, next_cursor = (string?)null } });
+    }
+
+    [HttpPost("api/v2/ideation-ideas/{id:int}/comments")]
+    [Authorize]
+    public async Task<IActionResult> AddIdeationIdeaComment(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (idea == null) return NotFound(new { success = false, error = "Idea not found" });
+
+        var content = ReadString(body, "body") ?? ReadString(body, "content");
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Comment body is required.", "body") } });
+        }
+
+        var comment = new IdeaComment
+        {
+            TenantId = tenantId,
+            IdeaId = id,
+            UserId = userId.Value,
+            Content = content.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.IdeaComments.Add(comment);
+        idea.CommentCount++;
+        idea.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        comment.User = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+        var data = ProjectIdeationComment(comment);
+        return Created($"/api/v2/ideation-ideas/{id}/comments/{comment.Id}", new { success = true, data });
+    }
+
+    [HttpGet("api/v2/ideation-ideas/{id:int}/media")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaMedia(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var data = await LoadIdeationIdeaMediaAsync(tenantId, id);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("api/v2/ideation-ideas/{id:int}/media")]
+    [Authorize]
+    public async Task<IActionResult> AddIdeationIdeaMedia(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var ideaExists = await _db.Ideas.AnyAsync(i => i.Id == id && i.TenantId == tenantId);
+        if (!ideaExists) return NotFound(new { success = false, error = "Idea not found" });
+
+        var url = ReadString(body, "url")?.Trim();
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return BadRequest(new { success = false, errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Media URL is required.", "url") } });
+        }
+
+        var media = new IdeationIdeaMediaMetadata
+        {
+            Id = await NextIdeationIdeaMediaIdAsync(tenantId),
+            IdeaId = id,
+            MediaType = NormalizeNullable(ReadString(body, "media_type")) ?? "link",
+            Url = url,
+            Caption = NormalizeNullable(ReadString(body, "caption")),
+            CreatedBy = userId.Value,
+            CreatedAt = DateTime.UtcNow
+        };
+        await UpsertIdeationIdeaMediaAsync(tenantId, media);
+        await _db.SaveChangesAsync();
+
+        return Created($"/api/v2/ideation-media/{media.Id}", new { success = true, data = ProjectIdeationIdeaMedia(media) });
+    }
+
+    [HttpDelete("api/v2/ideation-media/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteIdeationIdeaMedia(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var rows = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && c.Key == IdeationIdeaMediaKey(id))
+            .ToListAsync();
+        if (rows.Count == 0)
+        {
+            return NotFound(new { success = false, error = "Media not found" });
+        }
+
+        _db.TenantConfigs.RemoveRange(rows);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpGet("api/federation/members/{id:int}")]
@@ -3803,6 +4257,323 @@ public class ReactFrontendCompatibilityController : ControllerBase
         });
     }
 
+    private async Task<List<IdeationCampaignMetadata>> LoadIdeationCampaignsAsync(int tenantId)
+    {
+        var prefix = IdeationCampaignPrefix();
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .ToListAsync();
+
+        var campaigns = new List<IdeationCampaignMetadata>();
+        foreach (var row in rows)
+        {
+            if (!TryParseIdeationCampaignId(row.Key, out _))
+            {
+                continue;
+            }
+
+            try
+            {
+                var campaign = JsonSerializer.Deserialize<IdeationCampaignMetadata>(row.Value);
+                if (campaign != null)
+                {
+                    campaigns.Add(campaign);
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore malformed bridge rows rather than breaking the React page.
+            }
+        }
+
+        return campaigns;
+    }
+
+    private async Task<IdeationCampaignMetadata?> LoadIdeationCampaignAsync(int tenantId, int id)
+    {
+        var value = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == IdeationCampaignKey(id))
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<IdeationCampaignMetadata>(value);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<int> NextIdeationCampaignIdAsync(int tenantId)
+    {
+        var prefix = IdeationCampaignPrefix();
+        var keys = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .Select(c => c.Key)
+            .ToListAsync();
+
+        var max = keys
+            .Select(key => TryParseIdeationCampaignId(key, out var id) ? id : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return max + 1;
+    }
+
+    private async Task UpsertIdeationCampaignAsync(int tenantId, IdeationCampaignMetadata campaign)
+    {
+        var now = DateTime.UtcNow;
+        campaign.UpdatedAt = campaign.UpdatedAt == default ? now : campaign.UpdatedAt;
+        if (campaign.CreatedAt == default)
+        {
+            campaign.CreatedAt = now;
+        }
+
+        var key = IdeationCampaignKey(campaign.Id);
+        var value = JsonSerializer.Serialize(campaign);
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = now;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private async Task RemoveIdeationCampaignAsync(int tenantId, int id)
+    {
+        var rows = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && c.Key == IdeationCampaignKey(id))
+            .ToListAsync();
+        _db.TenantConfigs.RemoveRange(rows);
+    }
+
+    private async Task<List<object>> LoadIdeationIdeaMediaAsync(int tenantId, int ideaId)
+    {
+        var prefix = IdeationIdeaMediaPrefix();
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+
+        var media = new List<IdeationIdeaMediaMetadata>();
+        foreach (var row in rows)
+        {
+            if (!TryParseIdeationIdeaMediaId(row.Key, out _))
+            {
+                continue;
+            }
+
+            try
+            {
+                var item = JsonSerializer.Deserialize<IdeationIdeaMediaMetadata>(row.Value);
+                if (item?.IdeaId == ideaId)
+                {
+                    media.Add(item);
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore malformed bridge rows rather than breaking the React page.
+            }
+        }
+
+        return media
+            .OrderBy(item => item.CreatedAt)
+            .Select(ProjectIdeationIdeaMedia)
+            .ToList();
+    }
+
+    private async Task<int> NextIdeationIdeaMediaIdAsync(int tenantId)
+    {
+        var prefix = IdeationIdeaMediaPrefix();
+        var keys = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .Select(c => c.Key)
+            .ToListAsync();
+        var max = keys
+            .Select(key => TryParseIdeationIdeaMediaId(key, out var id) ? id : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return max + 1;
+    }
+
+    private async Task UpsertIdeationIdeaMediaAsync(int tenantId, IdeationIdeaMediaMetadata media)
+    {
+        var now = DateTime.UtcNow;
+        var key = IdeationIdeaMediaKey(media.Id);
+        var value = JsonSerializer.Serialize(media);
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = now;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private async Task RemoveIdeationIdeaMediaAsync(int tenantId, int ideaId)
+    {
+        var prefix = IdeationIdeaMediaPrefix();
+        var rows = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .ToListAsync();
+
+        var remove = new List<TenantConfig>();
+        foreach (var row in rows)
+        {
+            try
+            {
+                var media = JsonSerializer.Deserialize<IdeationIdeaMediaMetadata>(row.Value);
+                if (media?.IdeaId == ideaId)
+                {
+                    remove.Add(row);
+                }
+            }
+            catch (JsonException)
+            {
+                // Leave malformed rows for a later cleanup pass.
+            }
+        }
+
+        _db.TenantConfigs.RemoveRange(remove);
+    }
+
+    private object ProjectIdeationCampaign(IdeationCampaignMetadata campaign, bool includeChallenges)
+    {
+        var challenges = includeChallenges
+            ? Array.Empty<object>()
+            : Array.Empty<object>();
+
+        return new
+        {
+            id = campaign.Id,
+            title = campaign.Title,
+            description = campaign.Description,
+            cover_image = campaign.CoverImage,
+            status = campaign.Status,
+            start_date = campaign.StartDate,
+            end_date = campaign.EndDate,
+            created_by = campaign.CreatedBy,
+            creator = new
+            {
+                id = campaign.CreatedBy,
+                name = string.Empty
+            },
+            challenge_count = campaign.Challenges.Count,
+            challenges_count = campaign.Challenges.Count,
+            challenges,
+            created_at = campaign.CreatedAt,
+            updated_at = campaign.UpdatedAt
+        };
+    }
+
+    private async Task<object> ProjectIdeationCampaignAsync(int tenantId, IdeationCampaignMetadata campaign, bool includeChallenges)
+    {
+        var challenges = includeChallenges
+            ? await ProjectIdeationCampaignChallengesAsync(tenantId, campaign)
+            : [];
+
+        return new
+        {
+            id = campaign.Id,
+            title = campaign.Title,
+            description = campaign.Description,
+            cover_image = campaign.CoverImage,
+            status = campaign.Status,
+            start_date = campaign.StartDate,
+            end_date = campaign.EndDate,
+            created_by = campaign.CreatedBy,
+            creator = new
+            {
+                id = campaign.CreatedBy,
+                name = string.Empty
+            },
+            challenge_count = challenges.Count,
+            challenges_count = challenges.Count,
+            challenges,
+            created_at = campaign.CreatedAt,
+            updated_at = campaign.UpdatedAt
+        };
+    }
+
+    private async Task<List<object>> ProjectIdeationCampaignChallengesAsync(int tenantId, IdeationCampaignMetadata campaign)
+    {
+        var links = campaign.Challenges
+            .OrderBy(link => link.SortOrder)
+            .ThenBy(link => link.ChallengeId)
+            .ToList();
+        if (links.Count == 0)
+        {
+            return [];
+        }
+
+        var challengeIds = links.Select(link => link.ChallengeId).ToArray();
+        var challenges = await _db.Challenges
+            .Include(c => c.Participants)
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && challengeIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id);
+
+        var projected = new List<object>();
+        foreach (var link in links)
+        {
+            if (!challenges.TryGetValue(link.ChallengeId, out var challenge))
+            {
+                continue;
+            }
+
+            var metadata = await LoadIdeationChallengeMetadataAsync(tenantId, challenge.Id);
+            var favoritesCount = await CountIdeationChallengeFavoritesAsync(tenantId, challenge.Id);
+            projected.Add(new
+            {
+                id = challenge.Id,
+                title = challenge.Title,
+                description = challenge.Description ?? string.Empty,
+                status = metadata.Status ?? MapAdminIdeationStatus(challenge),
+                ideas_count = challenge.Participants?.Count ?? 0,
+                views_count = 0,
+                favorites_count = favoritesCount,
+                cover_image = metadata.CoverImage,
+                tags = metadata.Tags,
+                submission_deadline = metadata.SubmissionDeadline ?? challenge.EndsAt,
+                prize_description = metadata.PrizeDescription,
+                is_featured = false,
+                sort_order = link.SortOrder
+            });
+        }
+
+        return projected;
+    }
+
     private static bool IsLaravelIdeationStatus(string status)
         => status is "draft" or "open" or "voting" or "evaluating" or "closed" or "archived";
 
@@ -3833,6 +4604,22 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return int.TryParse(ReadString(body, propertyName), out var value) ? value : null;
     }
 
+    private static bool? ReadBool(JsonElement body, string propertyName)
+    {
+        if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(property.GetString(), out var value) => value,
+            _ => null
+        };
+    }
+
     private static string[] ReadStringArray(JsonElement body, string propertyName)
     {
         if (body.ValueKind != JsonValueKind.Object ||
@@ -3858,6 +4645,88 @@ public class ReactFrontendCompatibilityController : ControllerBase
     private static string IdeationChallengeFavoritePrefix(int challengeId) => $"ideation.challenge.favorite.{challengeId}.";
 
     private static string IdeationChallengeFavoriteKey(int challengeId, int userId) => $"{IdeationChallengeFavoritePrefix(challengeId)}{userId}";
+
+    private static string IdeationCampaignPrefix() => "ideation.campaign.";
+
+    private static string IdeationCampaignKey(int campaignId) => $"{IdeationCampaignPrefix()}{campaignId}";
+
+    private static bool TryParseIdeationCampaignId(string key, out int campaignId)
+    {
+        campaignId = 0;
+        var prefix = IdeationCampaignPrefix();
+        return key.StartsWith(prefix, StringComparison.Ordinal) &&
+            int.TryParse(key[prefix.Length..], out campaignId);
+    }
+
+    private static string IdeationChallengeIdeaCategory(int challengeId) => $"challenge:{challengeId}";
+
+    private static int? ChallengeIdFromIdea(Idea idea)
+    {
+        const string prefix = "challenge:";
+        return idea.Category != null &&
+            idea.Category.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(idea.Category[prefix.Length..], out var challengeId)
+                ? challengeId
+                : null;
+    }
+
+    private static string IdeationIdeaMediaPrefix() => "ideation.idea.media.";
+
+    private static string IdeationIdeaMediaKey(int mediaId) => $"{IdeationIdeaMediaPrefix()}{mediaId}";
+
+    private static bool TryParseIdeationIdeaMediaId(string key, out int mediaId)
+    {
+        mediaId = 0;
+        var prefix = IdeationIdeaMediaPrefix();
+        return key.StartsWith(prefix, StringComparison.Ordinal) &&
+            int.TryParse(key[prefix.Length..], out mediaId);
+    }
+
+    private static string NormalizeIdeationCampaignStatus(string? status, string fallback = "draft")
+    {
+        var normalized = status?.Trim().ToLowerInvariant();
+        return normalized is "draft" or "active" or "completed" or "archived"
+            ? normalized
+            : fallback;
+    }
+
+    private static string? NormalizeNullable(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private sealed class IdeationCampaignMetadata
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("title")] public string Title { get; set; } = string.Empty;
+        [JsonPropertyName("description")] public string? Description { get; set; }
+        [JsonPropertyName("cover_image")] public string? CoverImage { get; set; }
+        [JsonPropertyName("status")] public string Status { get; set; } = "draft";
+        [JsonPropertyName("start_date")] public DateTime? StartDate { get; set; }
+        [JsonPropertyName("end_date")] public DateTime? EndDate { get; set; }
+        [JsonPropertyName("created_by")] public int? CreatedBy { get; set; }
+        [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+        [JsonPropertyName("updated_at")] public DateTime? UpdatedAt { get; set; }
+        [JsonPropertyName("challenges")] public List<IdeationCampaignChallengeLink> Challenges { get; set; } = [];
+    }
+
+    private sealed class IdeationCampaignChallengeLink
+    {
+        [JsonPropertyName("challenge_id")] public int ChallengeId { get; set; }
+        [JsonPropertyName("sort_order")] public int SortOrder { get; set; }
+    }
+
+    private sealed class IdeationIdeaMediaMetadata
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("idea_id")] public int IdeaId { get; set; }
+        [JsonPropertyName("media_type")] public string MediaType { get; set; } = "link";
+        [JsonPropertyName("url")] public string Url { get; set; } = string.Empty;
+        [JsonPropertyName("caption")] public string? Caption { get; set; }
+        [JsonPropertyName("created_by")] public int CreatedBy { get; set; }
+        [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+    }
 
     private sealed class IdeationChallengeOutcomeMetadata
     {
@@ -4100,15 +4969,59 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return string.IsNullOrWhiteSpace(name) ? user.Email : name;
     }
 
-    private static object ProjectIdea(Idea idea) => new
+    private static object ProjectIdeationComment(IdeaComment comment)
+    {
+        var authorName = comment.User == null
+            ? string.Empty
+            : string.Join(" ", new[] { comment.User.FirstName, comment.User.LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        return new
+        {
+            id = comment.Id,
+            idea_id = comment.IdeaId,
+            body = comment.Content,
+            content = comment.Content,
+            user_id = comment.UserId,
+            author_id = comment.UserId,
+            author_name = string.IsNullOrWhiteSpace(authorName) ? comment.User?.Email : authorName,
+            user = comment.User == null ? null : new
+            {
+                id = comment.User.Id,
+                first_name = comment.User.FirstName,
+                last_name = comment.User.LastName,
+                name = string.IsNullOrWhiteSpace(authorName) ? comment.User.Email : authorName,
+                avatar_url = comment.User.AvatarUrl
+            },
+            created_at = comment.CreatedAt
+        };
+    }
+
+    private static object ProjectIdeationIdeaMedia(IdeationIdeaMediaMetadata media) => new
+    {
+        id = media.Id,
+        idea_id = media.IdeaId,
+        media_type = media.MediaType,
+        url = media.Url,
+        caption = media.Caption,
+        created_by = media.CreatedBy,
+        created_at = media.CreatedAt
+    };
+
+    private static object ProjectIdea(Idea idea, bool hasVoted = false) => new
     {
         id = idea.Id,
+        challenge_id = ChallengeIdFromIdea(idea),
         title = idea.Title,
+        description = idea.Content,
         content = idea.Content,
         category = idea.Category,
         status = idea.Status,
         upvote_count = idea.UpvoteCount,
+        votes_count = idea.UpvoteCount,
         comment_count = idea.CommentCount,
+        comments_count = idea.CommentCount,
+        has_voted = hasVoted,
         author = idea.Author == null ? null : new { id = idea.Author.Id, first_name = idea.Author.FirstName, last_name = idea.Author.LastName },
         created_at = idea.CreatedAt,
         updated_at = idea.UpdatedAt

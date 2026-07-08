@@ -512,18 +512,6 @@ public class MiscParityController : ControllerBase
         return Created($"/api/v2/ideation-challenges/{challenge.Id}", new { success = true, data });
     }
 
-    [HttpPost("ideation-campaigns")]
-    [Authorize]
-    public IActionResult CreateIdeationCampaign([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), title = Str(body, "title") ?? "Campaign", status = "draft" } });
-
-    [HttpPost("ideation-campaigns/{id:int}/challenges")]
-    [Authorize]
-    public IActionResult CreateIdeationCampaignChallenge(int id, [FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), campaign_id = id, title = Str(body, "title") ?? "Challenge" } });
-
-    [HttpDelete("ideation-campaigns/{id:int}/challenges/{challengeId:int}")]
-    [Authorize]
-    public IActionResult DeleteIdeationCampaignChallenge(int id, int challengeId) => NoContent();
-
     [HttpGet("ideation-ideas/{id:int}/comments")]
     [Authorize]
     public IActionResult IdeationIdeaComments(int id) => Ok(new { data = Array.Empty<object>(), idea_id = id });

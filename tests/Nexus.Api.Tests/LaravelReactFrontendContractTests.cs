@@ -4236,6 +4236,262 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IdeationCampaignsV2_UseLaravelReactCrudAndChallengeLinkShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var challengeCreate = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React campaign linked challenge",
+            description = "Challenge linked into a campaign by the canonical React workflow.",
+            submission_deadline = DateTime.UtcNow.AddDays(5).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(10).ToString("O"),
+            status = "open"
+        });
+        var challengeId = (await challengeCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-campaigns", new
+        {
+            title = "Laravel React campaign",
+            description = "Campaign created through the Laravel React campaign modal.",
+            cover_image = "https://example.test/campaign.png",
+            status = "active",
+            start_date = DateTime.UtcNow.AddDays(1).ToString("O"),
+            end_date = DateTime.UtcNow.AddDays(30).ToString("O")
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var campaignId = created.GetProperty("id").GetInt32();
+        campaignId.Should().BeGreaterThan(0);
+        created.GetProperty("title").GetString().Should().Be("Laravel React campaign");
+        created.GetProperty("description").GetString().Should().Be("Campaign created through the Laravel React campaign modal.");
+        created.GetProperty("cover_image").GetString().Should().Be("https://example.test/campaign.png");
+        created.GetProperty("status").GetString().Should().Be("active");
+        created.GetProperty("challenges_count").GetInt32().Should().Be(0);
+        created.GetProperty("challenges").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var list = await Client.GetAsync("/api/v2/ideation-campaigns");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(item =>
+                item.GetProperty("id").GetInt32() == campaignId &&
+                item.GetProperty("title").GetString() == "Laravel React campaign" &&
+                item.GetProperty("challenges_count").GetInt32() == 0);
+
+        var link = await Client.PostAsJsonAsync($"/api/v2/ideation-campaigns/{campaignId}/challenges", new
+        {
+            challenge_id = challengeId,
+            sort_order = 2
+        });
+
+        link.StatusCode.Should().Be(HttpStatusCode.Created);
+        var linkJson = await link.Content.ReadFromJsonAsync<JsonElement>();
+        linkJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        linkJson.GetProperty("data").GetProperty("linked").GetBoolean().Should().BeTrue();
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-campaigns/{campaignId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(campaignId);
+        detailData.GetProperty("challenges_count").GetInt32().Should().Be(1);
+        var linkedChallenge = detailData.GetProperty("challenges").EnumerateArray().Should().ContainSingle().Subject;
+        linkedChallenge.GetProperty("id").GetInt32().Should().Be(challengeId);
+        linkedChallenge.GetProperty("title").GetString().Should().Be("Laravel React campaign linked challenge");
+        linkedChallenge.GetProperty("status").GetString().Should().Be("open");
+        linkedChallenge.GetProperty("ideas_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        linkedChallenge.GetProperty("favorites_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/ideation-campaigns/{campaignId}", new
+        {
+            title = "Laravel React campaign updated",
+            description = "Updated through the Laravel React campaign detail modal.",
+            status = "completed"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("title").GetString().Should().Be("Laravel React campaign updated");
+        updated.GetProperty("description").GetString().Should().Be("Updated through the Laravel React campaign detail modal.");
+        updated.GetProperty("status").GetString().Should().Be("completed");
+        updated.GetProperty("challenges_count").GetInt32().Should().Be(1);
+
+        var unlink = await Client.DeleteAsync($"/api/v2/ideation-campaigns/{campaignId}/challenges/{challengeId}");
+
+        unlink.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await unlink.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var unlinkedDetail = await Client.GetAsync($"/api/v2/ideation-campaigns/{campaignId}");
+        var unlinkedData = (await unlinkedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        unlinkedData.GetProperty("challenges_count").GetInt32().Should().Be(0);
+        unlinkedData.GetProperty("challenges").EnumerateArray().Should().BeEmpty();
+
+        var delete = await Client.DeleteAsync($"/api/v2/ideation-campaigns/{campaignId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await delete.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var deletedDetail = await Client.GetAsync($"/api/v2/ideation-campaigns/{campaignId}");
+        deletedDetail.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task IdeationIdeasV2_UseLaravelReactSubmitMediaCommentStatusAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var challengeCreate = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React idea workflow challenge",
+            description = "Challenge used to verify the Laravel React idea workflow.",
+            submission_deadline = DateTime.UtcNow.AddDays(5).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(10).ToString("O"),
+            status = "open"
+        });
+        var challengeId = (await challengeCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        await AuthenticateAsMemberAsync();
+
+        var submit = await Client.PostAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}/ideas", new
+        {
+            title = "Laravel React submitted idea",
+            description = "Submitted through the canonical Laravel React challenge page."
+        });
+
+        submit.StatusCode.Should().Be(HttpStatusCode.Created);
+        var submitJson = await submit.Content.ReadFromJsonAsync<JsonElement>();
+        submitJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var ideaId = submitJson.GetProperty("data").GetProperty("id").GetInt32();
+        ideaId.Should().BeGreaterThan(0);
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-ideas/{ideaId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var idea = detailJson.GetProperty("data");
+        idea.GetProperty("id").GetInt32().Should().Be(ideaId);
+        idea.GetProperty("challenge_id").GetInt32().Should().Be(challengeId);
+        idea.GetProperty("title").GetString().Should().Be("Laravel React submitted idea");
+        idea.GetProperty("description").GetString().Should().Be("Submitted through the canonical Laravel React challenge page.");
+        idea.GetProperty("comments_count").GetInt32().Should().Be(0);
+
+        var vote = await Client.PostAsync($"/api/v2/ideation-ideas/{ideaId}/vote", null);
+
+        vote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var voteJson = await vote.Content.ReadFromJsonAsync<JsonElement>();
+        voteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        voteJson.GetProperty("data").GetProperty("voted").GetBoolean().Should().BeTrue();
+        voteJson.GetProperty("data").GetProperty("votes_count").GetInt32().Should().Be(1);
+
+        var media = await Client.PostAsJsonAsync($"/api/v2/ideation-ideas/{ideaId}/media", new
+        {
+            media_type = "link",
+            url = "https://example.test/prototype",
+            caption = "Prototype reference"
+        });
+
+        media.StatusCode.Should().Be(HttpStatusCode.Created);
+        var mediaJson = await media.Content.ReadFromJsonAsync<JsonElement>();
+        mediaJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        mediaJson.GetProperty("data").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+
+        var mediaList = await Client.GetAsync($"/api/v2/ideation-ideas/{ideaId}/media");
+
+        mediaList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var mediaItem = (await mediaList.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle()
+            .Subject;
+        var mediaId = mediaItem.GetProperty("id").GetInt32();
+        mediaItem.GetProperty("idea_id").GetInt32().Should().Be(ideaId);
+        mediaItem.GetProperty("media_type").GetString().Should().Be("link");
+        mediaItem.GetProperty("url").GetString().Should().Be("https://example.test/prototype");
+        mediaItem.GetProperty("caption").GetString().Should().Be("Prototype reference");
+
+        var comment = await Client.PostAsJsonAsync($"/api/v2/ideation-ideas/{ideaId}/comments", new
+        {
+            body = "This idea needs a pilot partner."
+        });
+
+        comment.StatusCode.Should().Be(HttpStatusCode.Created);
+        var commentJson = await comment.Content.ReadFromJsonAsync<JsonElement>();
+        commentJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var commentData = commentJson.GetProperty("data");
+        var commentId = commentData.GetProperty("id").GetInt32();
+        commentData.GetProperty("body").GetString().Should().Be("This idea needs a pilot partner.");
+        commentData.GetProperty("idea_id").GetInt32().Should().Be(ideaId);
+
+        var comments = await Client.GetAsync($"/api/v2/ideation-ideas/{ideaId}/comments");
+
+        comments.StatusCode.Should().Be(HttpStatusCode.OK);
+        var commentsJson = await comments.Content.ReadFromJsonAsync<JsonElement>();
+        commentsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        commentsJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(row =>
+                row.GetProperty("id").GetInt32() == commentId &&
+                row.GetProperty("body").GetString() == "This idea needs a pilot partner.");
+
+        await AuthenticateAsAdminAsync();
+
+        var status = await Client.PutAsJsonAsync($"/api/v2/ideation-ideas/{ideaId}/status", new
+        {
+            status = "approved"
+        });
+
+        status.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusJson = await status.Content.ReadFromJsonAsync<JsonElement>();
+        statusJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        statusJson.GetProperty("data").GetProperty("status").GetString().Should().Be("approved");
+
+        var convert = await Client.PostAsJsonAsync($"/api/v2/ideation-ideas/{ideaId}/convert-to-group", new
+        {
+            name = "Laravel React idea delivery group",
+            description = "Group created from an approved idea.",
+            visibility = "private"
+        });
+
+        convert.StatusCode.Should().Be(HttpStatusCode.Created);
+        var convertJson = await convert.Content.ReadFromJsonAsync<JsonElement>();
+        convertJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        convertJson.GetProperty("data").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+
+        var deleteComment = await Client.DeleteAsync($"/api/v2/ideation-comments/{commentId}");
+
+        deleteComment.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await deleteComment.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var deleteMedia = await Client.DeleteAsync($"/api/v2/ideation-media/{mediaId}");
+
+        deleteMedia.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await deleteMedia.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var deleteIdea = await Client.DeleteAsync($"/api/v2/ideation-ideas/{ideaId}");
+
+        deleteIdea.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await deleteIdea.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        var deletedDetail = await Client.GetAsync($"/api/v2/ideation-ideas/{ideaId}");
+        deletedDetail.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();
