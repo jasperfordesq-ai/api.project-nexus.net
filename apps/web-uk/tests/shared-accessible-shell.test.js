@@ -1000,6 +1000,30 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the profile page with Laravel gamification links', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({
+      first_name: 'Alex',
+      last_name: 'River',
+      email: 'alex@example.test',
+      phone: '07123 456789',
+      bio: 'I help with repair cafes.'
+    });
+
+    const signed = await request(app)
+      .get('/profile')
+      .set('Cookie', signedCookieHeader());
+
+    expect(signed.status).toBe(200);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(signed.text).toContain('Your profile');
+    expect(signed.text).toContain('I help with repair cafes.');
+    expect(signed.text).toContain('href="/achievements"');
+    expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).not.toContain('href="/progress"');
+    expect(signed.text).not.toContain('href="/progress/leaderboard"');
+  });
+
   it('renders the Laravel-style profile settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

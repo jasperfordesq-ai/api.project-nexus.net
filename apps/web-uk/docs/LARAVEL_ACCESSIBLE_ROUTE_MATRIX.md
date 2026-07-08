@@ -43,15 +43,20 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 674 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 670 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 67 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
+| Extra `apps/web-uk` routes | 63 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
+
+The legacy local `/progress`, `/progress/badges`, `/progress/leaderboard`, and
+`/progress/xp-history` routes have been removed. Laravel's accessible
+gamification source uses `/achievements`, `/leaderboard`, and `/nexus-score`
+route families, and local profile links now use those canonical paths.
 
 The legacy local `/settings`, `/settings/notifications`, `/settings/password`,
 and `/settings/privacy` routes have been removed. Laravel's accessible settings

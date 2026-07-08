@@ -18,26 +18,29 @@ A comprehensive audit of the NEXUS UK Frontend was conducted covering routes, te
 
 ## Critical Issues Found & Fixed
 
-### 1. Gamification Routes - Wrong Token Source (CRITICAL - FIXED)
+### 1. Retired Progress-Alias Routes - Wrong Token Source (CRITICAL - HISTORICAL)
 
-**File:** `src/routes/gamification.js`
+**File:** retired progress-alias route module
 **Issue:** All routes used `req.session.token` instead of `req.token`
 **Impact:** Routes would fail with undefined token errors
-**Fix:** Replaced all `req.session.token` with `req.token`
+**Fix:** The old alias module was later removed in favor of Laravel-aligned
+`/achievements`, `/leaderboard`, and `/nexus-score` routes.
 
-### 2. Gamification Routes - Missing Error Handling (HIGH - FIXED)
+### 2. Retired Progress-Alias Routes - Missing Error Handling (HIGH - HISTORICAL)
 
-**File:** `src/routes/gamification.js`
+**File:** retired progress-alias route module
 **Issue:** No handling for `ApiError` (401) or `ApiOfflineError`
 **Impact:** Users wouldn't get proper error pages
-**Fix:** Added proper error handling for all route handlers
+**Fix:** The old alias module was later removed in favor of Laravel-aligned
+gamification pages.
 
-### 3. Gamification Routes - Missing Token Refresh (MEDIUM - FIXED)
+### 3. Retired Progress-Alias Routes - Missing Token Refresh (MEDIUM - HISTORICAL)
 
-**File:** `src/routes/gamification.js`
+**File:** retired progress-alias route module
 **Issue:** Routes had `requireAuth` but not `withTokenRefresh`
 **Impact:** Token refresh wouldn't work on these pages
-**Fix:** Wrapped all handlers with `withTokenRefresh`
+**Fix:** The old alias module was later removed in favor of Laravel-aligned
+gamification pages.
 
 ### 4. XSS Vulnerability in nl2br Filter (HIGH - FIXED)
 
@@ -58,7 +61,7 @@ A comprehensive audit of the NEXUS UK Frontend was conducted covering routes, te
 - `src/views/feed/index.njk` (post author)
 - `src/views/groups/members.njk` (member list)
 - `src/views/groups/detail.njk` (member preview)
-- `src/views/gamification/leaderboard.njk` (user entries)
+- retired progress-alias leaderboard template (user entries)
 - `src/views/events/detail.njk` (RSVP lists)
 
 ### 6. Avatar Partial Null Safety (LOW - FIXED)
@@ -163,7 +166,7 @@ A comprehensive audit of the NEXUS UK Frontend was conducted covering routes, te
 
 | File | Changes Made |
 |------|-------------|
-| `src/routes/gamification.js` | Fixed token source, added error handling, added withTokenRefresh |
+| Retired progress-alias route module | Historical audit fixes later superseded by Laravel-aligned gamification routes |
 | `src/routes/members.js` | Fixed API response handling for users array |
 | `src/server.js` | Fixed nl2br filter XSS vulnerability |
 | `src/views/partials/avatar.njk` | Fixed null safety for initials |
@@ -171,7 +174,7 @@ A comprehensive audit of the NEXUS UK Frontend was conducted covering routes, te
 | `src/views/feed/index.njk` | Added property name fallbacks |
 | `src/views/groups/members.njk` | Added property name fallbacks |
 | `src/views/groups/detail.njk` | Added property name fallbacks |
-| `src/views/gamification/leaderboard.njk` | Added property name fallbacks |
+| Retired progress-alias leaderboard template | Historical fallback work later superseded by Laravel-aligned leaderboard templates |
 | `src/views/events/detail.njk` | Added property name fallbacks |
 
 ---

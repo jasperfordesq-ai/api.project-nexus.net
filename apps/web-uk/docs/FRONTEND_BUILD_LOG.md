@@ -215,11 +215,13 @@ This document tracks the implementation progress of the NEXUS UK Frontend.
 
 ---
 
-### 3.11 Gamification (COMPLETE - Prior)
-**Route:** `src/routes/gamification.js`
-**Views:** `src/views/gamification/index.njk`, `badges.njk`, `leaderboard.njk`, `xp-history.njk`
+### 3.11 Gamification (historical progress-alias module retired)
+The old `/progress` alias module and templates were removed after the
+Laravel-primary route audit. Current gamification pages live under the
+Laravel-aligned `/achievements`, `/leaderboard`, and `/nexus-score` route
+families.
 
-**Endpoints Used:**
+**Historical endpoints used by the retired module:**
 - `GET /api/gamification/profile`
 - `GET /api/gamification/profile/{userId}`
 - `GET /api/gamification/badges`

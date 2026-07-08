@@ -144,6 +144,13 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('GET /progress should return not found', async () => {
+      const response = await request(app).get('/progress');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 

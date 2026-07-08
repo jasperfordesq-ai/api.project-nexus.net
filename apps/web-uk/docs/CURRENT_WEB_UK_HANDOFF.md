@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `674` |
+| Web UK routes | `670` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `67` |
+| Extra Web UK routes | `63` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused progress route slice: legacy local `/progress`,
+`/progress/badges`, `/progress/leaderboard`, and `/progress/xp-history` were
+removed. Profile links now point to Laravel's accessible `/achievements` and
+`/leaderboard` surfaces instead of the old progress aliases.
 
 Latest focused settings route slice: legacy local `/settings`,
 `/settings/notifications`, `/settings/password`, and `/settings/privacy` were

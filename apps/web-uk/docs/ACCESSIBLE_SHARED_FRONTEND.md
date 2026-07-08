@@ -1349,10 +1349,16 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 674 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 67 local-only routes. These
+accessible route declarations, 670 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 63 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/progress`, `/progress/badges`, `/progress/leaderboard`, and
+`/progress/xp-history` are intentionally not exposed as separate local pages.
+Laravel's accessible gamification source uses `/achievements`, the
+`/achievements/*` subpages, `/leaderboard`, `/leaderboard/*`, and
+`/nexus-score` instead.
 
 `/settings`, `/settings/notifications`, `/settings/password`, and
 `/settings/privacy` are intentionally not exposed as separate local pages.
