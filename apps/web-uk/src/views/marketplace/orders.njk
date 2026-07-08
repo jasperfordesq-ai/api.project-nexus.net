@@ -17,7 +17,7 @@
     <ul class="govuk-tabs__list">
       {% for tabItem in tabs %}
         <li class="govuk-tabs__list-item{% if tabItem.active %} govuk-tabs__list-item--selected{% endif %}">
-          <a class="govuk-tabs__tab" href="{{ tabItem.href }}" {% if tabItem.active %}aria-current="page"{% endif %}>{{ tabItem.label }}</a>
+          <a class="govuk-tabs__tab" href="{{ urlFor(tabItem.href) }}" {% if tabItem.active %}aria-current="page"{% endif %}>{{ tabItem.label }}</a>
         </li>
       {% endfor %}
     </ul>
@@ -61,7 +61,7 @@
           <details class="govuk-details" data-module="govuk-details">
             <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Mark as shipped</span></summary>
             <div class="govuk-details__text">
-              <form method="post" action="/marketplace/orders/{{ order.id }}/ship">
+              <form method="post" action="{{ urlFor('/marketplace/orders/' + (order.id | string) + '/ship') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <div class="govuk-form-group">
                   <label class="govuk-label govuk-label--s" for="tracking_number_{{ order.id }}">Tracking number (optional)</label>
@@ -81,14 +81,14 @@
               Only confirm once you have received the item. This releases the order to the seller.
             </strong>
           </div>
-          <form method="post" action="/marketplace/orders/{{ order.id }}/confirm" class="govuk-!-margin-bottom-2">
+          <form method="post" action="{{ urlFor('/marketplace/orders/' + (order.id | string) + '/confirm') }}" class="govuk-!-margin-bottom-2">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Confirm delivery</button>
           </form>
         {% endif %}
 
         {% if order.canPay %}
-          <form method="post" action="/marketplace/orders/{{ order.id }}/pay" class="govuk-!-margin-bottom-2">
+          <form method="post" action="{{ urlFor('/marketplace/orders/' + (order.id | string) + '/pay') }}" class="govuk-!-margin-bottom-2">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Pay by card</button>
           </form>
@@ -99,7 +99,7 @@
           <details class="govuk-details" data-module="govuk-details">
             <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Cancel order</span></summary>
             <div class="govuk-details__text">
-              <form method="post" action="/marketplace/orders/{{ order.id }}/cancel">
+              <form method="post" action="{{ urlFor('/marketplace/orders/' + (order.id | string) + '/cancel') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <div class="govuk-form-group">
                   <label class="govuk-label govuk-label--s" for="reason_{{ order.id }}">Reason for cancelling</label>
@@ -115,7 +115,7 @@
           <details class="govuk-details" data-module="govuk-details">
             <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Leave a rating</span></summary>
             <div class="govuk-details__text">
-              <form method="post" action="/marketplace/orders/{{ order.id }}/rate">
+              <form method="post" action="{{ urlFor('/marketplace/orders/' + (order.id | string) + '/rate') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <div class="govuk-form-group">
                   <fieldset class="govuk-fieldset">

@@ -17,7 +17,7 @@
   <h1 class="govuk-heading-xl">Pickup slots</h1>
   <p class="govuk-body-l">Offer buyers time slots to collect items in person. Set how many collections each slot can take.</p>
 
-  <form method="post" action="/marketplace/slots/scan" class="govuk-!-margin-bottom-6">
+  <form method="post" action="{{ urlFor('/marketplace/slots/scan') }}" class="govuk-!-margin-bottom-6">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group">
       <label class="govuk-label govuk-label--m" for="qr_code">Confirm a collection</label>
@@ -60,7 +60,7 @@
               <span class="govuk-body-s nexus-alpha-meta">{{ slot.remainingLabel }}</span>
             </td>
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="/marketplace/slots/{{ slot.id }}/edit">Edit</a>
+              <a class="govuk-link" href="{{ urlFor('/marketplace/slots/' + (slot.id | string) + '/edit') }}">Edit</a>
             </td>
           </tr>
         {% endfor %}

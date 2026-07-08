@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace/slots">Back to pickup slots</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace/slots') }}">Back to pickup slots</a>
   {% include "marketplace/_nav.njk" %}
   {% include "marketplace/_status-banner.njk" %}
 
@@ -22,7 +22,7 @@
         Deleting a slot cannot be undone. Buyers will no longer be able to book it.
       </strong>
     </div>
-    <form method="post" action="/marketplace/slots/{{ slot.id }}/delete">
+    <form method="post" action="{{ urlFor('/marketplace/slots/' + (slot.id | string) + '/delete') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete slot</button>
     </form>

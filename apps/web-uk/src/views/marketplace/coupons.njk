@@ -13,7 +13,7 @@
   <h1 class="govuk-heading-xl">My coupons</h1>
   <p class="govuk-body-l">Create discount coupons for your buyers, edit them or remove them.</p>
 
-  <a class="govuk-button" href="/marketplace/coupons/new" data-module="govuk-button">Create a coupon</a>
+  <a class="govuk-button" href="{{ urlFor('/marketplace/coupons/new') }}" data-module="govuk-button">Create a coupon</a>
 
   {% if not coupons.length %}
     <p class="govuk-inset-text">You have not created any coupons yet. Create one to offer buyers a discount.</p>
@@ -37,7 +37,7 @@
             <td class="govuk-table__cell">{{ coupon.discountLabel }}</td>
             <td class="govuk-table__cell"><strong class="govuk-tag {{ coupon.statusTagClass }}">{{ coupon.statusLabel }}</strong></td>
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="/marketplace/coupons/{{ coupon.id }}/edit">Edit</a>
+              <a class="govuk-link" href="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/edit') }}">Edit</a>
             </td>
           </tr>
         {% endfor %}

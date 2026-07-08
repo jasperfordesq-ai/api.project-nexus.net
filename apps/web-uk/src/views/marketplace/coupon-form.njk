@@ -6,13 +6,13 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace/coupons">Back to my coupons</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace/coupons') }}">Back to my coupons</a>
   {% include "marketplace/_nav.njk" %}
   {% include "marketplace/_status-banner.njk" %}
 
   <h1 class="govuk-heading-xl">{% if isEdit %}Edit your coupon{% else %}Create a coupon{% endif %}</h1>
 
-  <form method="post" action="{{ action }}" novalidate>
+  <form method="post" action="{{ urlFor(action) }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <fieldset class="govuk-fieldset">
@@ -94,7 +94,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
-      <a class="govuk-link" href="/marketplace/coupons">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/coupons') }}">Cancel</a>
     </div>
   </form>
 
@@ -107,7 +107,7 @@
         Deleting a coupon removes it permanently. Buyers will no longer be able to use it. This cannot be undone.
       </strong>
     </div>
-    <form method="post" action="/marketplace/coupons/{{ coupon.id }}/delete">
+    <form method="post" action="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/delete') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
     </form>

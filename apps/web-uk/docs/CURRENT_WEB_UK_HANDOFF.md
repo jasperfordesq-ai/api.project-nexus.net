@@ -212,6 +212,10 @@ my-listings tabs, create/view/edit links, and renew/delete forms through
 tabs, listing/card/category links, search and category filter forms, listing
 detail actions, buyer buy/offer/report forms, listing create/edit form actions,
 seller profile links, and seller onboarding controls through `urlFor()`.
+`src/views/marketplace/coupons.njk`, `coupon-form.njk`, `orders.njk`,
+`slots.njk`, `slot-form.njk`, and `_slot-form.njk` now route coupon links and
+forms, order tab links, order ship/confirm/pay/cancel/rate forms, pickup-slot
+scan/edit/delete forms, and shared slot form actions through `urlFor()`.
 Source-level regressions in `tests/template-source.test.js` guard these pages
 from drifting back to literal root-relative local links/forms.
 Verification for the account, activity, achievements, leaderboard/NEXUS,
@@ -230,13 +234,14 @@ check passed `11/11` selected tests. The focused detail/report render check
 passed `10/10` selected tests. The focused marketplace offers/action render
 check passed `2/2` selected tests, and the focused marketplace my-listings
 render check passed `1/1` selected test. The focused marketplace browse/detail/
-buyer/search/seller/onboarding render check passed `26/26` selected marketplace
-tests. The remaining marketplace source-template conversion work is narrowed to
-coupon, order, and pickup-slot management templates:
-`coupon-form.njk`, `coupons.njk`, `orders.njk`, `slot-form.njk`,
-`slots.njk`, and `_slot-form.njk`. Broad verification after this marketplace
-browse/action slice also passed: full `npm --prefix apps/web-uk test -- --runInBand`
-reported `714/714`, `npm --prefix apps/web-uk run lint` passed, and
+buyer/search/seller/onboarding and coupon/order/pickup-slot render checks passed
+`26/26` selected marketplace tests. The latest source guard passed `10/10`, and
+a source scan for literal `href="/marketplace`, `action="/marketplace`,
+`action="{{ action }}"`, and `href="{{ tabItem.href }}"` in
+`src/views/marketplace/*.njk` returned no matches. Broad verification after
+closing the marketplace template-helper family also passed: full
+`npm --prefix apps/web-uk test -- --runInBand` reported `715/715`,
+`npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` reported `608/608` matched,
 `0` missing, `0` extra Web UK routes, and `3` ignored infrastructure routes.
 The earlier event-focused render

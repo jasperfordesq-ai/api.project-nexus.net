@@ -72,8 +72,10 @@ gamification, leaderboard/NEXUS score, profile/settings, group/listing/member
 detail, report-link, marketplace offer/manage, and marketplace browse/detail/
 buyer-action/search/seller/onboarding source templates now use `urlFor()` for
 their focused local links/forms, but full template helper conversion is still
-open. Marketplace coupon, order, and pickup-slot management templates remain
-the next commerce source-conversion gap.
+open. Marketplace coupon, order, and pickup-slot management source templates
+now also use `urlFor()` for their local links/forms, so the marketplace
+template family has source-level helper coverage for local marketplace
+`href`/`action` targets.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the

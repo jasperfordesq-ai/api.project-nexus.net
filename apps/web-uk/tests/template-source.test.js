@@ -200,4 +200,27 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
   });
+
+  it('keeps marketplace coupons, orders, and pickup slots behind urlFor()', () => {
+    const templates = [
+      path.join('marketplace', '_slot-form.njk'),
+      path.join('marketplace', 'coupon-form.njk'),
+      path.join('marketplace', 'coupons.njk'),
+      path.join('marketplace', 'orders.njk'),
+      path.join('marketplace', 'slot-form.njk'),
+      path.join('marketplace', 'slots.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/marketplace/);
+      expect(template).not.toMatch(/action="\/marketplace/);
+      expect(template).not.toContain('action="{{ action }}"');
+      expect(template).not.toContain('href="{{ tabItem.href }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
+  });
 });

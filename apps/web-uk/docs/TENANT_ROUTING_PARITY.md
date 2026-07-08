@@ -128,8 +128,12 @@ Current gaps:
   onboarding templates, including browse tabs, listing/card/category links,
   search and category filter forms, listing detail buy/offer/save/report
   controls, buyer buy/offer/report forms, listing create/edit form actions,
-  seller profile links, and seller onboarding controls. Marketplace coupon,
-  order, and pickup-slot management templates still need the same conversion.
+  seller profile links, and seller onboarding controls. The latest focused
+  source conversion also covers marketplace coupon, order, and pickup-slot
+  management templates, including coupon links/forms, order tabs and actions,
+  and pickup-slot scan/edit/delete forms. The marketplace source-template
+  family now has source-level `urlFor()` coverage for local marketplace links
+  and forms.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -300,8 +304,18 @@ and category filter forms, listing detail buy/offer/save/report controls,
 buyer buy/offer/report forms, listing create/edit form actions, seller profile
 links, and seller onboarding controls through `urlFor()`. A source-level
 regression plus focused marketplace render tests prove the flat marketplace
-output remains unchanged. The remaining marketplace source-template conversion
-work is narrowed to coupon, order, and pickup-slot management templates.
+output remains unchanged. At that point the remaining marketplace
+source-template conversion work was narrowed to coupon, order, and pickup-slot
+management templates.
+
+The nineteenth template-helper source slice closes that remaining marketplace
+source-template gap. `src/views/marketplace/coupons.njk`, `coupon-form.njk`,
+`orders.njk`, `slots.njk`, `slot-form.njk`, and `_slot-form.njk` now route
+coupon links and forms, order tab links, order ship/confirm/pay/cancel/rate
+forms, pickup-slot scan/edit/delete forms, and shared slot form actions through
+`urlFor()`. The source-level regression now covers all marketplace templates
+that previously had literal marketplace-local links/forms, and a source scan
+for raw marketplace `href`/`action` strings returns no matches.
 
 Verification command:
 
