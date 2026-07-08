@@ -569,12 +569,14 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The module-page/body-text marker gap is now
-0: `279` module-page checks and `279` body-text contract checks.
-The default scope now contains `626` checks:
+0: `279` module-page checks and `283` body-text contract checks. `/dashboard`
+now carries stable body-text checks for `Welcome back`, `Your time bank`,
+`Quick links`, `Recent feed`, and `Recent listings`.
+The default scope now contains `630` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 279 body-text contract checks, and the 6
+content-type contract checks, 283 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
