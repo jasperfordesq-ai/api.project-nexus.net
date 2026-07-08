@@ -8,10 +8,8 @@ const { requireAuth } = require('../middleware/auth');
 const {
   getBalance,
   getTransactions,
-  getTransaction,
   transferCredits,
   donateCredits,
-  getUsers,
   getProfile,
   callWalletApi,
   callWalletDownload,
@@ -21,8 +19,6 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
-
-router.use(requireAuth);
 
 function dataFrom(result) {
   if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')) {
@@ -134,7 +130,7 @@ async function walletRecipientsFor(token, query) {
 }
 
 // Wallet overview
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const [balanceData, transactionsData, currentUser] = await Promise.all([
     getBalance(req.token),
     getTransactions(req.token, { limit: 5 }),
@@ -157,7 +153,7 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/export.csv', asyncRoute(async (req, res) => {
+router.get('/export.csv', requireAuth, asyncRoute(async (req, res) => {
   const result = await callWalletDownload(req.token, '/statement');
   res.status(result.status || 200);
   const headers = result.headers || {};
@@ -169,7 +165,7 @@ router.get('/export.csv', asyncRoute(async (req, res) => {
   return res.send(result.body);
 }));
 
-router.get('/recipients', asyncRoute(async (req, res) => {
+router.get('/recipients', requireAuth, asyncRoute(async (req, res) => {
   const recipients = await walletRecipientsFor(req.token, req.query.q);
   return res.json({
     results: recipients.map((recipient) => ({
@@ -181,7 +177,7 @@ router.get('/recipients', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/manage', asyncRoute(async (req, res) => {
+router.get('/manage', requireAuth, asyncRoute(async (req, res) => {
   const recipientQuery = String(req.query.recipient_q || '').trim();
   const donateTarget = req.query.donate_target === 'user' ? 'user' : 'community_fund';
   const [walletRaw, fundRaw, recipients] = await Promise.all([
@@ -203,90 +199,22 @@ router.get('/manage', asyncRoute(async (req, res) => {
   });
 }));
 
-// Transaction history
-router.get('/transactions', asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const type = req.query.type || '';
-
-  const [transactionsData, currentUser] = await Promise.all([
-    getTransactions(req.token, { page, limit: 20, type }),
-    getProfile(req.token)
-  ]);
-
-  const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
-  // Compute relative_type (sent/received) from sender_id relative to the current user
-  transactions.forEach(tx => {
-    tx.relative_type = String(tx.sender_id || tx.senderId) === String(currentUser.id) ? 'sent' : 'received';
-  });
-  const pagination = transactionsData.pagination || {
-    page,
-    totalPages: 1,
-    total: transactions.length
-  };
-
-  res.render('wallet/transactions', {
-    title: 'Transaction history',
-    transactions,
-    pagination: {
-      currentPage: pagination.page || pagination.currentPage,
-      totalPages: pagination.pages || pagination.totalPages || pagination.total_pages || 1,
-      total: pagination.total || pagination.totalCount
-    },
-    filters: { type },
-    currentUser
-  });
-}));
-
-// View single transaction
-router.get('/transactions/:id', asyncRoute(async (req, res) => {
-  const [transaction, currentUser] = await Promise.all([
-    getTransaction(req.token, req.params.id),
-    getProfile(req.token)
-  ]);
-  // Compute relative_type (sent/received) from sender_id relative to the current user
-  transaction.relative_type = String(transaction.sender_id || transaction.senderId) === String(currentUser.id) ? 'sent' : 'received';
-
-  res.render('wallet/transaction-detail', {
-    title: 'Transaction details',
-    transaction
-  });
-}, { notFoundTitle: 'Transaction not found' }));
-
-// Transfer form
-router.get('/transfer', asyncRoute(async (req, res) => {
-  const [balanceData, usersData] = await Promise.all([
-    getBalance(req.token),
-    getUsers(req.token)
-  ]);
-
-  res.render('wallet/transfer', {
-    title: 'Transfer credits',
-    balance: balanceData.balance || balanceData,
-    users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
-    values: null,
-    errors: null,
-    fieldErrors: {},
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}));
-
 // Process transfer
-router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => {
-  const { receiver_id, amount, description } = req.body;
+router.post('/transfer', requireAuth, audit.walletTransfer(), asyncRoute(async (req, res) => {
+  const receiverId = req.body.recipient_id || req.body.receiver_id;
+  const { amount } = req.body;
+  const description = req.body.note || req.body.description;
 
   // Basic validation
   const errors = [];
-  const fieldErrors = {};
 
-  if (!receiver_id) {
-    errors.push({ text: 'Select a recipient', href: '#receiver_id' });
-    fieldErrors.receiver_id = 'Select a recipient';
+  if (!receiverId) {
+    errors.push('invalid');
   }
 
   const amountNum = parseFloat(amount);
   if (!amount || isNaN(amountNum) || amountNum <= 0) {
-    errors.push({ text: 'Enter a valid amount greater than 0', href: '#amount' });
-    fieldErrors.amount = 'Enter a valid amount greater than 0';
+    errors.push('invalid');
   }
 
   // Fetch profile and balance for self-transfer and insufficient balance checks
@@ -296,54 +224,28 @@ router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => 
   ]);
   const balance = balanceData.balance !== undefined ? balanceData.balance : balanceData;
 
-  if (receiver_id && String(receiver_id) === String(currentProfile.id)) {
-    errors.push({ text: 'You cannot transfer credits to yourself', href: '#receiver_id' });
-    fieldErrors.receiver_id = 'You cannot transfer credits to yourself';
+  if (receiverId && String(receiverId) === String(currentProfile.id)) {
+    errors.push('self');
   }
 
   if (!isNaN(amountNum) && amountNum > 0 && amountNum > balance) {
-    errors.push({ text: 'Insufficient balance', href: '#amount' });
-    fieldErrors.amount = 'Insufficient balance';
+    errors.push('insufficient');
   }
 
   if (errors.length > 0) {
-    const usersData = await getUsers(req.token);
-
-    return res.render('wallet/transfer', {
-      title: 'Transfer credits',
-      balance,
-      users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
-      values: { receiver_id, amount, description },
-      errors,
-      fieldErrors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
+    return res.redirect(`/wallet?status=transfer-failed&error=${encodeURIComponent(errors[0])}#transfer`);
   }
 
   try {
-    await transferCredits(req.token, parseInt(receiver_id), amountNum, description);
+    await transferCredits(req.token, parseInt(receiverId, 10), amountNum, description);
 
     if (req.flash) {
       req.flash('success', 'Transfer completed successfully');
     }
-    res.redirect('/wallet');
+    res.redirect('/wallet?status=transfer-sent#transactions');
   } catch (error) {
-    // Handle validation errors from API by re-rendering form
     if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
-      const [balanceData, usersData] = await Promise.all([
-        getBalance(req.token),
-        getUsers(req.token)
-      ]);
-
-      return res.render('wallet/transfer', {
-        title: 'Transfer credits',
-        balance: balanceData.balance || balanceData,
-        users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
-        values: req.body,
-        errors: [{ text: error.message }],
-        fieldErrors: error.data?.errors || {},
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+      return res.redirect('/wallet?status=transfer-failed&error=failed#transfer');
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -366,7 +268,7 @@ function walletDonationPayload(body) {
   };
 }
 
-router.post('/donate', asyncRoute(async (req, res) => {
+router.post('/donate', requireAuth, asyncRoute(async (req, res) => {
   const payload = walletDonationPayload(req.body);
 
   if (!Number.isFinite(payload.amount) || payload.amount <= 0) {

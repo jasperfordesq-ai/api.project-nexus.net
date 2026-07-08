@@ -73,13 +73,8 @@
 
       <div class="govuk-button-group">
         {{ govukButton({
-          text: "Transfer credits",
-          href: "/wallet/transfer"
-        }) }}
-        {{ govukButton({
-          text: "View all transactions",
-          href: "/wallet/transactions",
-          classes: "govuk-button--secondary"
+          text: "Manage credits",
+          href: "/wallet/manage"
         }) }}
       </div>
 
@@ -144,11 +139,7 @@
             {% for tx in transactions %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">{{ (tx.created_at or tx.createdAt) | formatDate if tx.created_at or tx.createdAt else "N/A" }}</td>
-                <td class="govuk-table__cell">
-                  <a href="/wallet/transactions/{{ tx.id }}" class="govuk-link">
-                    {{ tx.description or "Transaction" }}
-                  </a>
-                </td>
+                <td class="govuk-table__cell">{{ tx.description or "Transaction" }}</td>
                 <td class="govuk-table__cell govuk-table__cell--numeric">
                   {% if tx.relative_type == "received" %}
                     <span class="app-text--positive">+{{ tx.amount | abs }}</span>
@@ -160,10 +151,6 @@
             {% endfor %}
           </tbody>
         </table>
-
-        <p class="govuk-body">
-          <a href="/wallet/transactions" class="govuk-link">View all transactions</a>
-        </p>
       {% else %}
         <p class="govuk-body">No transactions yet.</p>
       {% endif %}

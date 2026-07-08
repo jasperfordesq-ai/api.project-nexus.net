@@ -146,7 +146,7 @@ function getNotificationLink(notification) {
     case 'message_received':
       return (data.conversationId || data.conversation_id) ? `/messages/${data.conversationId || data.conversation_id}` : '/messages';
     case 'transfer_received':
-      return (data.transactionId || data.transaction_id) ? `/wallet/transactions/${data.transactionId || data.transaction_id}` : '/wallet';
+      return '/wallet#transactions';
     default:
       return null;
   }

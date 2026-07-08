@@ -158,6 +158,15 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('legacy wallet GET pages should return not found', async () => {
+      for (const path of ['/wallet/transactions', '/wallet/transactions/42', '/wallet/transfer']) {
+        const response = await request(app).get(path);
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+    });
   });
 });
 

@@ -4743,15 +4743,28 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app)
       .get('/wallet')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacyTransactions = await request(app)
+      .get('/wallet/transactions')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const legacyTransfer = await request(app)
+      .get('/wallet/transfer')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Wallet');
     expect(response.text).toContain('Donate time credits');
+    expect(response.text).toContain('href="/wallet/manage"');
+    expect(response.text).not.toContain('href="/wallet/transfer"');
+    expect(response.text).not.toContain('href="/wallet/transactions"');
     expect(response.text).toContain('method="post" action="/wallet/donate"');
     expect(response.text).toContain('name="target" type="radio" value="community_fund" checked');
     expect(response.text).toContain('name="target" type="radio" value="user"');
     expect(response.text).toContain('Recipient member ID');
     expect(response.text).toContain('Your current balance is 8 credits.');
+    expect(legacyTransactions.status).toBe(404);
+    expect(legacyTransactions.text).toContain('Page not found');
+    expect(legacyTransfer.status).toBe(404);
+    expect(legacyTransfer.text).toContain('Page not found');
   });
 
   it('renders the Laravel wallet manage hub for signed-in members', async () => {
@@ -10201,6 +10214,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/notifications?status=all-notifications-deleted');
     expect(api.deleteAllNotifications).toHaveBeenCalledWith('test-token');
+  });
+
+  it('links wallet transfer notifications to the canonical wallet history section', async () => {
+    const api = require('../src/lib/api');
+    const { getNotificationLink } = require('../src/routes/notifications');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{
+        id: 9,
+        type: 'transfer_received',
+        title: 'Time credits received',
+        data: JSON.stringify({ transactionId: 44 }),
+        is_read: false
+      }],
+      unreadCount: 1,
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const response = await request(app)
+      .get('/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(getNotificationLink({ type: 'transfer_received', data: JSON.stringify({ transactionId: 44 }) })).toBe('/wallet#transactions');
+    expect(response.text).toContain('value="/wallet#transactions"');
+    expect(response.text).not.toContain('/wallet/transactions/44');
   });
 
   it('renders the Laravel-backed clubs directory for signed-in members', async () => {

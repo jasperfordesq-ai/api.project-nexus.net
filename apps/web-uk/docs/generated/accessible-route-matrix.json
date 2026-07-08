@@ -1,13 +1,13 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T10:24:21.104Z",
+    "generatedAt": "2026-07-08T10:30:35.971Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 668,
+    "webUkRoutes": 665,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 61,
+    "extraWebUkRoutes": 58,
     "familyCounts": {
       "admin": {
         "matched": 0,
@@ -78,11 +78,6 @@
         "matched": 0,
         "missing": 0,
         "extraWebUk": 1
-      },
-      "wallet": {
-        "matched": 6,
-        "missing": 0,
-        "extraWebUk": 3
       },
       "about": {
         "matched": 1,
@@ -361,6 +356,11 @@
       },
       "volunteering": {
         "matched": 52,
+        "missing": 0,
+        "extraWebUk": 0
+      },
+      "wallet": {
+        "matched": 6,
         "missing": 0,
         "extraWebUk": 0
       }
@@ -1468,63 +1468,6 @@
       "webUkPath": "/verify-2fa",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
-    },
-    {
-      "method": "GET",
-      "path": "/wallet/transactions",
-      "family": "wallet",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/wallet/transactions",
-      "webUkView": "wallet/transactions",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
-    },
-    {
-      "method": "GET",
-      "path": "/wallet/transactions/{param}",
-      "family": "wallet",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/wallet/transactions/{param}",
-      "webUkView": "wallet/transaction-detail",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
-    },
-    {
-      "method": "GET",
-      "path": "/wallet/transfer",
-      "family": "wallet",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/wallet/transfer",
-      "webUkView": "wallet/transfer",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
     },
     {
       "method": "GET",
@@ -13075,7 +13018,7 @@
       "gates": "module:wallet",
       "apiNeeds": "service:WalletService",
       "webUkPath": "/wallet/transfer",
-      "webUkView": "wallet/transfer",
+      "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
     }
   ]

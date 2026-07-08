@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `668` |
+| Web UK routes | `665` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `61` |
+| Extra Web UK routes | `58` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused wallet route slice: legacy local GET-only `/wallet/transactions`,
+`/wallet/transactions/{id}`, and `/wallet/transfer` pages were removed. Wallet
+navigation now points to Laravel's accessible `/wallet/manage` flow while
+keeping canonical POST `/wallet/transfer` and wallet export/recipient helpers.
 
 Latest focused profile route slice: legacy local GET/POST `/profile/edit` was
 removed. Profile summary change links now point to Laravel's accessible
