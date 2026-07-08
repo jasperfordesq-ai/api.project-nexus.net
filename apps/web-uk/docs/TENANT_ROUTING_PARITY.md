@@ -133,7 +133,9 @@ Current gaps:
   management templates, including coupon links/forms, order tabs and actions,
   and pickup-slot scan/edit/delete forms. The marketplace source-template
   family now has source-level `urlFor()` coverage for local marketplace links
-  and forms.
+  and forms. The latest focused source conversion covers the federation member
+  detail template, including the back link, federation service navigation,
+  opt-in CTA, connection/message forms, and transfer CTA.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live

@@ -91,7 +91,10 @@ generic Web UK home inside tenant contexts with the Laravel Blade-style
 stats, sign-in/register CTAs, module availability rows, and service details. A
 follow-up tenant-stats slice now scopes those platform stats through Laravel's
 tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
-domain homes send the resolved Host and Origin.
+domain homes send the resolved Host and Origin. The latest federation member
+source slice now routes the federation member back link, federation service
+navigation, opt-in CTA, connection/message forms, and transfer CTA through
+`urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -147,6 +150,14 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8`, and 283 body-text checks across
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
+
+Latest local verification after the federation member source-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `11/11`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation member"` passed `2/2` selected tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `716/716` tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
@@ -216,11 +227,14 @@ seller profile links, and seller onboarding controls through `urlFor()`.
 `slots.njk`, `slot-form.njk`, and `_slot-form.njk` now route coupon links and
 forms, order tab links, order ship/confirm/pay/cancel/rate forms, pickup-slot
 scan/edit/delete forms, and shared slot form actions through `urlFor()`.
+`src/views/federation/member.njk` now routes the federation member back link,
+service-navigation links, opt-in CTA, connection/message forms, and transfer
+CTA through `urlFor()`.
 Source-level regressions in `tests/template-source.test.js` guard these pages
 from drifting back to literal root-relative local links/forms.
 Verification for the account, activity, achievements, leaderboard/NEXUS,
-detail/report, and marketplace slices included deliberate failing source-test
-runs before the template fixes,
+detail/report, marketplace, and federation member slices included deliberate
+failing source-test runs before the template fixes,
 then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
 passed `9/9`,
@@ -235,12 +249,13 @@ passed `10/10` selected tests. The focused marketplace offers/action render
 check passed `2/2` selected tests, and the focused marketplace my-listings
 render check passed `1/1` selected test. The focused marketplace browse/detail/
 buyer/search/seller/onboarding and coupon/order/pickup-slot render checks passed
-`26/26` selected marketplace tests. The latest source guard passed `10/10`, and
+`26/26` selected marketplace tests. The focused federation member render check
+passed `2/2` selected tests. The latest source guard passed `11/11`, and
 a source scan for literal `href="/marketplace`, `action="/marketplace`,
 `action="{{ action }}"`, and `href="{{ tabItem.href }}"` in
 `src/views/marketplace/*.njk` returned no matches. Broad verification after
-closing the marketplace template-helper family also passed: full
-`npm --prefix apps/web-uk test -- --runInBand` reported `715/715`,
+the latest federation member template-helper slice also passed: full
+`npm --prefix apps/web-uk test -- --runInBand` reported `716/716`,
 `npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` reported `608/608` matched,
 `0` missing, `0` extra Web UK routes, and `3` ignored infrastructure routes.

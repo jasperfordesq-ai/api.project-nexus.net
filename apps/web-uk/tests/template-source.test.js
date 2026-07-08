@@ -223,4 +223,15 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
   });
+
+  it('keeps federation member navigation and actions behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'federation', 'member.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/federation/);
+    expect(template).not.toMatch(/action="\/federation/);
+    expect(template).toMatch(/urlFor\(["']\/federation/);
+  });
 });
