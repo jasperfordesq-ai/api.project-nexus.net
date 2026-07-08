@@ -94,6 +94,46 @@ public class GamificationV2ControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelReactDailyRewardV2Alias_UsesClaimedRewardDataEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/gamification/daily-reward");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        using (var initialJson = JsonDocument.Parse(await initial.Content.ReadAsStringAsync()))
+        {
+            var initialData = initialJson.RootElement.GetProperty("data");
+            initialData.GetProperty("claimed_today").GetBoolean().Should().BeFalse();
+            initialData.GetProperty("current_streak").GetInt32().Should().Be(0);
+            initialData.GetProperty("reward_xp").GetInt32().Should().BePositive();
+        }
+
+        var claim = await Client.PostAsync("/api/v2/gamification/daily-reward", null);
+
+        claim.StatusCode.Should().Be(HttpStatusCode.OK);
+        using (var claimJson = JsonDocument.Parse(await claim.Content.ReadAsStringAsync()))
+        {
+            var claimData = claimJson.RootElement.GetProperty("data");
+            claimData.GetProperty("claimed").GetBoolean().Should().BeTrue();
+            var reward = claimData.GetProperty("reward");
+            reward.GetProperty("xp_earned").GetInt32().Should().BePositive();
+            reward.GetProperty("streak_day").GetInt32().Should().Be(1);
+            reward.GetProperty("base_xp").GetInt32().Should().BePositive();
+            reward.GetProperty("milestone_bonus").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        }
+
+        var reloaded = await Client.GetAsync("/api/v2/gamification/daily-reward");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var reloadedJson = JsonDocument.Parse(await reloaded.Content.ReadAsStringAsync());
+        var reloadedData = reloadedJson.RootElement.GetProperty("data");
+        reloadedData.GetProperty("claimed_today").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("current_streak").GetInt32().Should().Be(1);
+        reloadedData.GetProperty("next_claim_at").ValueKind.Should().Be(JsonValueKind.String);
+    }
+
+    [Fact]
     public async Task GetChallenges_Unauthenticated_Returns401()
     {
         ClearAuthToken();

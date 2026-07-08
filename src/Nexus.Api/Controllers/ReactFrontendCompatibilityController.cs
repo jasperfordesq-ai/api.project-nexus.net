@@ -24,6 +24,8 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 public class ReactFrontendCompatibilityController : ControllerBase
 {
+    private const int DailyRewardBaseXp = 5;
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ProviderConfigEncryption _encryption;
@@ -37,6 +39,17 @@ public class ReactFrontendCompatibilityController : ControllerBase
         _tenantContext = tenantContext;
         _encryption = encryption;
     }
+
+    private static int DailyRewardMilestoneBonus(int streakDay) => streakDay switch
+    {
+        3 => 5,
+        7 => 15,
+        14 => 25,
+        30 => 50,
+        60 => 100,
+        90 => 150,
+        _ => 0
+    };
 
     [HttpGet("api/health/ready")]
     [AllowAnonymous]
@@ -383,23 +396,30 @@ public class ReactFrontendCompatibilityController : ControllerBase
             .AnyAsync(r => r.UserId == userId.Value && r.ClaimedAt >= today);
 
         if (alreadyClaimed)
-            return Ok(new { success = false, already_claimed = true, message = "Daily reward already claimed" });
+        {
+            return StatusCode(StatusCodes.Status409Conflict, new
+            {
+                errors = new[] { new { code = "RESOURCE_CONFLICT", message = "Daily reward already claimed" } },
+                meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+            });
+        }
 
         var previous = await _db.DailyRewards
             .Where(r => r.UserId == userId.Value)
             .OrderByDescending(r => r.ClaimedAt)
             .FirstOrDefaultAsync();
 
-        var day = previous != null && previous.ClaimedAt.Date == today.AddDays(-1)
-            ? Math.Min(previous.Day + 1, 7)
+        var streakDay = previous != null && previous.ClaimedAt.Date == today.AddDays(-1)
+            ? previous.Day + 1
             : 1;
-        var xp = 10 + (day - 1) * 5;
+        var milestoneBonus = DailyRewardMilestoneBonus(streakDay);
+        var xp = DailyRewardBaseXp + milestoneBonus;
 
         _db.DailyRewards.Add(new DailyReward
         {
             TenantId = tenantId,
             UserId = userId.Value,
-            Day = day,
+            Day = streakDay,
             XpAwarded = xp,
             ClaimedAt = DateTime.UtcNow
         });
@@ -414,7 +434,22 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, day, xp_awarded = xp, total_xp = user?.TotalXp });
+        return Ok(new
+        {
+            data = new
+            {
+                claimed = true,
+                reward = new
+                {
+                    xp_earned = xp,
+                    base_xp = DailyRewardBaseXp,
+                    milestone_bonus = milestoneBonus,
+                    streak_day = streakDay,
+                    longest_streak = streakDay
+                }
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     [HttpGet("api/gamification/daily-reward")]
@@ -437,19 +472,33 @@ public class ReactFrontendCompatibilityController : ControllerBase
             : latest.ClaimedAt.Date == today || latest.ClaimedAt.Date == today.AddDays(-1)
                 ? latest.Day
                 : 0;
-        var rewardDay = claimedToday ? Math.Min((latest?.Day ?? 1) + 1, 7) : Math.Min(currentStreak + 1, 7);
-        var rewardXp = 10 + (Math.Max(1, rewardDay) - 1) * 5;
+        var rewardDay = claimedToday ? latest?.Day ?? 1 : currentStreak + 1;
+        var rewardXp = claimedToday
+            ? latest?.XpAwarded ?? DailyRewardBaseXp
+            : DailyRewardBaseXp + DailyRewardMilestoneBonus(Math.Max(1, rewardDay));
+        var nextRewardXp = DailyRewardBaseXp + DailyRewardMilestoneBonus(Math.Max(1, rewardDay + 1));
+        var user = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId.Value)
+            .Select(u => new { u.TotalXp })
+            .FirstOrDefaultAsync();
 
         return Ok(new
         {
             data = new
             {
                 claimed_today = claimedToday,
+                claimed_at = latest?.ClaimedAt,
+                xp_earned_today = claimedToday ? latest?.XpAwarded ?? 0 : 0,
                 current_streak = currentStreak,
+                longest_streak = currentStreak,
+                total_xp = user?.TotalXp ?? 0,
+                can_claim = !claimedToday,
                 reward_xp = rewardXp,
-                next_reward_xp = rewardXp,
+                next_reward_xp = nextRewardXp,
                 next_claim_at = claimedToday ? today.AddDays(1) : (DateTime?)null
-            }
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
         });
     }
 
