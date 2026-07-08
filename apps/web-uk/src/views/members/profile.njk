@@ -10,7 +10,7 @@
   {{ super() }}
   {{ govukBackLink({
     text: "Back to members",
-    href: "/members"
+    href: urlFor("/members")
   }) }}
 {% endblock %}
 
@@ -95,13 +95,13 @@
       <p class="govuk-body govuk-!-margin-bottom-4">
         {% set reportType = "user" %}
         {% set reportId = user.id %}
-        {% set returnTo = "/members/" + (user.id | string) %}
+        {% set returnTo = urlFor("/members/" + (user.id | string)) %}
         {% include "partials/report-link.njk" %}
       </p>
 
       <div class="govuk-button-group">
         {% if not connection %}
-          <form action="/members/{{ user.id }}/connection" method="post" style="display: inline;">
+          <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post" style="display: inline;">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="connect">
             {{ govukButton({
@@ -109,12 +109,12 @@
             }) }}
           </form>
         {% elif connection.status == 'accepted' %}
-          <a href="/messages/new/{{ user.id }}" class="govuk-button">
+          <a href="{{ urlFor('/messages/new/' + (user.id | string)) }}" class="govuk-button">
             Send message
           </a>
-          <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+          <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+            <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
             {{ govukButton({
               text: "Remove connection",
               classes: "govuk-button--warning"
@@ -122,22 +122,22 @@
           </form>
         {% elif connection.status == 'pending' %}
           {% if connection.is_requester %}
-            <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+              <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
               {{ govukButton({
                 text: "Cancel request",
                 classes: "govuk-button--secondary"
               }) }}
             </form>
           {% else %}
-            <form action="/connections/{{ connection.id }}/accept" method="post" style="display: inline;">
+            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/accept') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
                 text: "Accept request"
               }) }}
             </form>
-            <form action="/connections/{{ connection.id }}/decline" method="post" style="display: inline;">
+            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/decline') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
                 text: "Decline request",
@@ -191,9 +191,9 @@
       {# Leave a Review Form #}
       {% if not isOwnProfile %}
       <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
-      <form method="post" action="/members/{{ user.id }}/review" class="govuk-!-margin-bottom-6">
+      <form method="post" action="{{ urlFor('/members/' + (user.id | string) + '/review') }}" class="govuk-!-margin-bottom-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-        <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+        <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
 
         <div class="govuk-form-group">
           <fieldset class="govuk-fieldset">

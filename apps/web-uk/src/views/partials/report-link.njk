@@ -8,9 +8,9 @@
   - returnTo: URL to return to after reporting (optional, defaults to current page)
 #}
 {% if reportType == "listing" %}
-  {% set reportHref = "/listings/" + (reportId | string) + "/report" %}
+  {% set reportHref = urlFor("/listings/" + (reportId | string) + "/report") %}
 {% else %}
-  {% set reportHref = "/report-a-problem?return=" + (returnTo | urlencode if returnTo else "") %}
+  {% set reportHref = urlFor("/report-a-problem?return=" + (returnTo | urlencode if returnTo else "")) %}
 {% endif %}
 <a href="{{ reportHref }}" class="govuk-link govuk-body-s app-report-link">
   Report

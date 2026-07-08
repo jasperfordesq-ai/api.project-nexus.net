@@ -116,7 +116,11 @@ Current gaps:
   profile summary links, settings card links, profile/security/privacy forms,
   two-step verification actions, blocked member unblock forms, delete-account
   controls, and settings appearance, availability, data-rights,
-  linked-account, and insurance form actions.
+  linked-account, and insurance form actions. The latest focused source
+  conversion covers group detail, listing detail, member profile, and the
+  shared report-link partial, including breadcrumbs, action controls, report
+  return targets, listing report links, member connection controls, and member
+  review actions.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -258,6 +262,15 @@ their local links and form actions through `urlFor()`, including settings hub
 card links and dynamic member unblock forms. A source-level regression plus
 focused profile/settings render tests prove the flat `/profile` and
 `/settings/*` output remains unchanged.
+
+The sixteenth template-helper source slice extends the same direct `urlFor()`
+conversion into group detail, listing detail, member profile, and the shared
+report-link partial. Those templates now pass detail breadcrumbs, edit/delete/
+join/leave/member/review actions, report return targets, listing report links,
+member connection controls, and member review form targets through `urlFor()`.
+A source-level regression plus focused group/listing/member/report render tests
+prove the flat `/groups`, `/listings`, `/members`, and `/report-a-problem`
+output remains unchanged.
 
 Verification command:
 

@@ -127,4 +127,29 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toContain("urlFor('/profile");
     expect(templates.join('\n')).toContain("urlFor('/settings");
   });
+
+  it('keeps group, listing, member detail, and report links behind urlFor()', () => {
+    const templates = [
+      path.join('groups', 'detail.njk'),
+      path.join('listings', 'detail.njk'),
+      path.join('members', 'profile.njk'),
+      path.join('partials', 'report-link.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:groups|listings|members|events|messages|report-a-problem)/);
+      expect(template).not.toMatch(/action="\/(?:groups|listings|members|connections)/);
+      expect(template).not.toMatch(/href:\s*"\/(?:groups|listings|members)/);
+      expect(template).not.toMatch(/returnTo\s*=\s*"\/(?:groups|listings|members)/);
+      expect(template).not.toMatch(/value="\/members\//);
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/groups/);
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/listings/);
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/report-a-problem/);
+  });
 });

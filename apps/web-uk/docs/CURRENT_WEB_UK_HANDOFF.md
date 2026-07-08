@@ -75,7 +75,10 @@ profile/settings slice now routes the profile summary links, settings hub
 cards, profile/security/privacy forms, two-step verification actions, blocked
 member unblock forms, delete-account controls, and settings appearance,
 availability, data-rights, linked-account, and insurance forms through
-`urlFor()`. A tenant-home parity slice now replaces the old
+`urlFor()`. A follow-up detail/report slice now routes group detail,
+listing detail, member profile, and report-link partial breadcrumbs, action
+controls, report returns, listing report links, member connection controls, and
+review form actions through `urlFor()`. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A
@@ -125,7 +128,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 711 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 712 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -187,20 +190,27 @@ and `src/views/settings/{appearance,availability,data-rights,insurance,linked-ac
 now route profile summary links, settings card links, profile/security/privacy
 forms, two-step verification actions, blocked member unblock forms,
 delete-account controls, and settings form actions through `urlFor()`.
+`src/views/groups/detail.njk`, `src/views/listings/detail.njk`,
+`src/views/members/profile.njk`, and `src/views/partials/report-link.njk` now
+route group/listing/member detail breadcrumbs and actions, report return
+targets, listing report links, member connection controls, and member review
+actions through `urlFor()`.
 Source-level regressions in `tests/template-source.test.js` guard these pages
 from drifting back to literal root-relative local links/forms.
-Verification for the account, activity, achievements, and leaderboard/NEXUS
-slices included deliberate failing source-test runs before the template fixes,
+Verification for the account, activity, achievements, leaderboard/NEXUS, and
+detail/report slices included deliberate failing source-test runs before the
+template fixes,
 then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
-passed `6/6`,
+passed `7/7`,
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "account hub"`
 passed `2/2` selected account tests, and
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity"`
 passed `4/4` selected activity tests. The focused achievements/gamification
 render check passed `15/15` selected tests. The focused leaderboard/NEXUS score
 render check passed `7/7` selected tests. The focused profile/settings render
-check passed `11/11` selected tests. The earlier event-focused render
+check passed `11/11` selected tests. The focused detail/report render check
+passed `10/10` selected tests. The earlier event-focused render
 check also passed:
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
 passed `23/23` selected tests.

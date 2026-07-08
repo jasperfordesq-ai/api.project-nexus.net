@@ -6,7 +6,7 @@
 {% block beforeContent %}
   {{ super() }}
   {% set breadcrumbs = [
-    { text: "Groups", href: "/groups" },
+    { text: "Groups", href: urlFor("/groups") },
     { text: group.name }
   ] %}
   {% include "partials/breadcrumbs.njk" %}
@@ -59,7 +59,7 @@
       <p class="govuk-body">
         {% set reportType = "group" %}
         {% set reportId = group.id %}
-        {% set returnTo = "/groups/" + (group.id | string) %}
+        {% set returnTo = urlFor("/groups/" + (group.id | string)) %}
         {% include "partials/report-link.njk" %}
       </p>
 
@@ -67,16 +67,16 @@
         {% if myMembership %}
           {# User is a member #}
           {% if myMembership.role == 'owner' or myMembership.role == 'admin' %}
-            <a href="/groups/{{ group.id }}/edit" class="govuk-button govuk-button--secondary">
+            <a href="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" class="govuk-button govuk-button--secondary">
               Edit group
             </a>
-            <a href="/groups/{{ group.id }}/manage" class="govuk-button govuk-button--secondary">
+            <a href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}" class="govuk-button govuk-button--secondary">
               Manage members
             </a>
           {% endif %}
 
           {% if myMembership.role != 'owner' %}
-            <form action="/groups/{{ group.id }}/leave" method="post" style="display: inline;">
+            <form action="{{ urlFor('/groups/' + (group.id | string) + '/leave') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
                 text: "Leave group",
@@ -86,7 +86,7 @@
           {% endif %}
 
           {% if myMembership.role == 'owner' %}
-            <form action="/groups/{{ group.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group? This action cannot be undone.');">
+            <form action="{{ urlFor('/groups/' + (group.id | string) + '/delete') }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group? This action cannot be undone.');">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
                 text: "Delete group",
@@ -97,7 +97,7 @@
         {% else %}
           {# User is not a member #}
           {% if not (group.isPrivate or group.is_private) %}
-            <form action="/groups/{{ group.id }}/join" method="post" style="display: inline;">
+            <form action="{{ urlFor('/groups/' + (group.id | string) + '/join') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
                 text: "Join this group"
@@ -133,7 +133,7 @@
         </ul>
         {% if members and members.length > 10 %}
           <p class="govuk-body">
-            <a href="/groups/{{ group.id }}/manage" class="govuk-link">View all {{ members.length }} members</a>
+            <a href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}" class="govuk-link">View all {{ members.length }} members</a>
           </p>
         {% endif %}
       {% else %}
@@ -147,7 +147,7 @@
         <ul class="govuk-list">
           {% for event in events %}
             <li class="govuk-!-margin-bottom-4">
-              <a href="/events/{{ event.id }}" class="govuk-link govuk-!-font-weight-bold">
+              <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link govuk-!-font-weight-bold">
                 {{ event.title }}
               </a>
               <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
@@ -160,7 +160,7 @@
           {% endfor %}
         </ul>
         <p class="govuk-body">
-          <a href="/events?group_id={{ group.id }}" class="govuk-link">View all events for this group</a>
+          <a href="{{ urlFor('/events?group_id=' + (group.id | string)) }}" class="govuk-link">View all events for this group</a>
         </p>
       {% else %}
         <p class="govuk-body">No upcoming events.</p>
@@ -168,7 +168,7 @@
 
       {% if myMembership %}
         <p class="govuk-body govuk-!-margin-top-4">
-          <a href="/events/new?group_id={{ group.id }}" class="govuk-link">Create an event for this group</a>
+          <a href="{{ urlFor('/events/new?group_id=' + (group.id | string)) }}" class="govuk-link">Create an event for this group</a>
         </p>
       {% endif %}
 

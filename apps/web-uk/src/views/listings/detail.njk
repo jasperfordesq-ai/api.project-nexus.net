@@ -10,8 +10,8 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
-      { text: "Listings", href: "/listings" },
+      { text: "Home", href: urlFor("/") },
+      { text: "Listings", href: urlFor("/listings") },
       { text: listing.title or listing.name or "Listing details" }
     ]
   }) }}
@@ -97,10 +97,10 @@
         <div class="govuk-button-group">
           {{ govukButton({
             text: "Edit",
-            href: "/listings/" + listing.id + "/edit",
+            href: urlFor("/listings/" + (listing.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}
-          <form method="post" action="/listings/{{ listing.id }}/delete">
+          <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
           </form>
@@ -109,7 +109,7 @@
         <p class="govuk-body">
           {% set reportType = "listing" %}
           {% set reportId = listing.id %}
-          {% set returnTo = "/listings/" + (listing.id | string) %}
+          {% set returnTo = urlFor("/listings/" + (listing.id | string)) %}
           {% include "partials/report-link.njk" %}
         </p>
       {% endif %}
@@ -155,7 +155,7 @@
       {% endif %}
 
       <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/listings" class="govuk-link">Back to listings</a>
+        <a href="{{ urlFor('/listings') }}" class="govuk-link">Back to listings</a>
       </p>
 
     </div>
