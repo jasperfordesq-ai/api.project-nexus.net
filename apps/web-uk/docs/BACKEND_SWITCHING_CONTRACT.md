@@ -375,13 +375,20 @@ returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6215`;
 `/jobs/responses`, and `/jobs/employer-onboarding` returned expected body
 markers against `WEB_UK_BASE_URL=http://127.0.0.1:6216` and now carry default
 body-marker coverage for their Laravel Blade titles and stable action text. The
-full default smoke scope then passed against
+previous full default smoke scope passed against
 `WEB_UK_BASE_URL=http://127.0.0.1:6218` with `459/459` checks and `0` failures.
-The default scope now contains `459` checks:
+The signed course subpages `/courses/instructor`, `/courses/instructor/new`,
+`/courses/1`, `/courses/2`, `/courses/instructor/1/edit`, and
+`/courses/instructor/2/edit` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6219` and now carry default body-marker
+coverage for their Laravel Blade headings and detail-page review section. The
+full default smoke scope then passed against
+`WEB_UK_BASE_URL=http://127.0.0.1:6220` with `465/465` checks and `0` failures.
+The default scope now contains `465` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 112 body-text contract checks, and the 6
+content-type contract checks, 118 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
