@@ -64,6 +64,41 @@ public class AdminFeedController : ControllerBase
             return await GetEventModerationQueue(tenantId, status, user_id, search, page, limit);
         }
 
+        if (IsV2Request() && IsPollType(type))
+        {
+            return await GetPollModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsGoalType(type))
+        {
+            return await GetGoalModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsJobType(type))
+        {
+            return await GetJobModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsChallengeType(type))
+        {
+            return await GetChallengeModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsVolunteerType(type))
+        {
+            return await GetVolunteerModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsBlogType(type))
+        {
+            return await GetBlogModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
+        if (IsV2Request() && IsDiscussionType(type))
+        {
+            return await GetDiscussionModerationQueue(tenantId, status, user_id, search, page, limit);
+        }
+
         var query = _db.FeedPosts
             .Include(p => p.User)
             .Include(p => p.Tenant)
@@ -147,6 +182,41 @@ public class AdminFeedController : ControllerBase
         if (IsV2Request() && IsEventType(type))
         {
             return await GetEventForModeration(id);
+        }
+
+        if (IsV2Request() && IsPollType(type))
+        {
+            return await GetPollForModeration(id);
+        }
+
+        if (IsV2Request() && IsGoalType(type))
+        {
+            return await GetGoalForModeration(id);
+        }
+
+        if (IsV2Request() && IsJobType(type))
+        {
+            return await GetJobForModeration(id);
+        }
+
+        if (IsV2Request() && IsChallengeType(type))
+        {
+            return await GetChallengeForModeration(id);
+        }
+
+        if (IsV2Request() && IsVolunteerType(type))
+        {
+            return await GetVolunteerForModeration(id);
+        }
+
+        if (IsV2Request() && IsBlogType(type))
+        {
+            return await GetBlogForModeration(id);
+        }
+
+        if (IsV2Request() && IsDiscussionType(type))
+        {
+            return await GetDiscussionForModeration(id);
         }
 
         if (IsV2Request() && !IsPostType(type))
@@ -236,6 +306,41 @@ public class AdminFeedController : ControllerBase
             return await HideEventFeedItem(id, adminId.Value);
         }
 
+        if (IsV2Request() && IsPollType(request?.Type))
+        {
+            return await HidePollFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsGoalType(request?.Type))
+        {
+            return await HideGoalFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsJobType(request?.Type))
+        {
+            return await HideJobFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsChallengeType(request?.Type))
+        {
+            return await HideChallengeFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsVolunteerType(request?.Type))
+        {
+            return await HideVolunteerFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsBlogType(request?.Type))
+        {
+            return await HideBlogFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsDiscussionType(request?.Type))
+        {
+            return await HideDiscussionFeedItem(id, adminId.Value);
+        }
+
         if (IsV2Request() && !IsPostType(request?.Type))
         {
             return LaravelNotFound("Feed item not found");
@@ -286,6 +391,41 @@ public class AdminFeedController : ControllerBase
         if (IsV2Request() && IsEventType(type))
         {
             return await DeleteEventFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsPollType(type))
+        {
+            return await DeletePollFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsGoalType(type))
+        {
+            return await DeleteGoalFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsJobType(type))
+        {
+            return await DeleteJobFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsChallengeType(type))
+        {
+            return await DeleteChallengeFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsVolunteerType(type))
+        {
+            return await DeleteVolunteerFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsBlogType(type))
+        {
+            return await DeleteBlogFeedItem(id, adminId.Value);
+        }
+
+        if (IsV2Request() && IsDiscussionType(type))
+        {
+            return await DeleteDiscussionFeedItem(id, adminId.Value);
         }
 
         if (IsV2Request() && !IsPostType(type))
@@ -385,6 +525,41 @@ public class AdminFeedController : ControllerBase
     private static bool IsEventType(string? type)
     {
         return string.Equals(type, "event", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPollType(string? type)
+    {
+        return string.Equals(type, "poll", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGoalType(string? type)
+    {
+        return string.Equals(type, "goal", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsJobType(string? type)
+    {
+        return string.Equals(type, "job", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsChallengeType(string? type)
+    {
+        return string.Equals(type, "challenge", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsVolunteerType(string? type)
+    {
+        return string.Equals(type, "volunteer", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsBlogType(string? type)
+    {
+        return string.Equals(type, "blog", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDiscussionType(string? type)
+    {
+        return string.Equals(type, "discussion", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<IActionResult> GetListingModerationQueue(
@@ -617,6 +792,811 @@ public class AdminFeedController : ControllerBase
         return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
     }
 
+    private async Task<IActionResult> GetPollModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "poll", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "poll", deleted: true);
+
+        var query = _db.Polls
+            .Include(p => p.CreatedBy)
+            .Include(p => p.Tenant)
+            .Where(p => p.TenantId == tenantId && !deletedIds.Contains(p.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(p => p.CreatedById == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(p =>
+                p.Title.Contains(normalizedSearch) ||
+                (p.Description != null && p.Description.Contains(normalizedSearch)) ||
+                p.CreatedBy!.FirstName.Contains(normalizedSearch) ||
+                p.CreatedBy.LastName.Contains(normalizedSearch) ||
+                p.CreatedBy.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(p => hiddenIds.Contains(p.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(p => !hiddenIds.Contains(p.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(p => false);
+        }
+
+        query = query.OrderByDescending(p => p.CreatedAt);
+        var total = await query.CountAsync();
+        var polls = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = polls.Select(poll => MapLaravelFeedPoll(poll, hiddenIds.Contains(poll.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetPollForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "poll", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var poll = await _db.Polls
+            .Include(p => p.CreatedBy)
+            .Include(p => p.Tenant)
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == id);
+
+        if (poll == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "poll", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedPoll(poll, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HidePollFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var pollExists = await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == id);
+        if (!pollExists || await IsFeedItemDeletedAsync(tenantId, "poll", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "poll", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid poll feed item {PollId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeletePollFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var pollExists = await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == id);
+        if (!pollExists || await IsFeedItemDeletedAsync(tenantId, "poll", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "poll", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted poll feed item {PollId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetGoalModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "goal", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "goal", deleted: true);
+
+        var query = _db.Goals
+            .Include(g => g.User)
+            .Include(g => g.Tenant)
+            .Where(g => g.TenantId == tenantId && !deletedIds.Contains(g.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(g => g.UserId == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(g =>
+                g.Title.Contains(normalizedSearch) ||
+                (g.Description != null && g.Description.Contains(normalizedSearch)) ||
+                g.User!.FirstName.Contains(normalizedSearch) ||
+                g.User.LastName.Contains(normalizedSearch) ||
+                g.User.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(g => hiddenIds.Contains(g.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(g => !hiddenIds.Contains(g.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(g => false);
+        }
+
+        query = query.OrderByDescending(g => g.CreatedAt);
+        var total = await query.CountAsync();
+        var goals = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = goals.Select(goal => MapLaravelFeedGoal(goal, hiddenIds.Contains(goal.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetGoalForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "goal", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var goal = await _db.Goals
+            .Include(g => g.User)
+            .Include(g => g.Tenant)
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == id);
+
+        if (goal == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "goal", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedGoal(goal, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideGoalFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var goalExists = await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == id);
+        if (!goalExists || await IsFeedItemDeletedAsync(tenantId, "goal", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "goal", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid goal feed item {GoalId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteGoalFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var goalExists = await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == id);
+        if (!goalExists || await IsFeedItemDeletedAsync(tenantId, "goal", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "goal", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted goal feed item {GoalId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetJobModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "job", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "job", deleted: true);
+
+        var query = _db.JobVacancies
+            .Include(j => j.PostedBy)
+            .Include(j => j.Tenant)
+            .Where(j => j.TenantId == tenantId && !deletedIds.Contains(j.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(j => j.PostedByUserId == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(j =>
+                j.Title.Contains(normalizedSearch) ||
+                (j.Description != null && j.Description.Contains(normalizedSearch)) ||
+                j.PostedBy!.FirstName.Contains(normalizedSearch) ||
+                j.PostedBy.LastName.Contains(normalizedSearch) ||
+                j.PostedBy.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(j => hiddenIds.Contains(j.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(j => !hiddenIds.Contains(j.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(j => false);
+        }
+
+        query = query.OrderByDescending(j => j.CreatedAt);
+        var total = await query.CountAsync();
+        var jobs = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = jobs.Select(job => MapLaravelFeedJob(job, hiddenIds.Contains(job.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetJobForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "job", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var job = await _db.JobVacancies
+            .Include(j => j.PostedBy)
+            .Include(j => j.Tenant)
+            .FirstOrDefaultAsync(j => j.TenantId == tenantId && j.Id == id);
+
+        if (job == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "job", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedJob(job, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideJobFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var jobExists = await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == id);
+        if (!jobExists || await IsFeedItemDeletedAsync(tenantId, "job", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "job", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid job feed item {JobId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteJobFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var jobExists = await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == id);
+        if (!jobExists || await IsFeedItemDeletedAsync(tenantId, "job", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "job", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted job feed item {JobId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetChallengeModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "challenge", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "challenge", deleted: true);
+        var author = userId.HasValue && userId.Value > 0
+            ? await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId.Value)
+            : null;
+        if (userId.HasValue && userId.Value > 0 && author == null)
+        {
+            return Ok(new { success = true, data = Array.Empty<object>(), meta = BuildLaravelPaginationMeta(page, limit, 0) });
+        }
+
+        var query = _db.Challenges
+            .Include(c => c.Tenant)
+            .Where(c => c.TenantId == tenantId && !deletedIds.Contains(c.Id));
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(c =>
+                c.Title.Contains(normalizedSearch) ||
+                (c.Description != null && c.Description.Contains(normalizedSearch)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(c => hiddenIds.Contains(c.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(c => !hiddenIds.Contains(c.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(c => false);
+        }
+
+        query = query.OrderByDescending(c => c.CreatedAt);
+        var total = await query.CountAsync();
+        var challenges = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+        var feedAuthor = author ?? await GetFeedSystemUserAsync(tenantId);
+
+        return Ok(new
+        {
+            success = true,
+            data = challenges.Select(challenge => MapLaravelFeedChallenge(challenge, feedAuthor, hiddenIds.Contains(challenge.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetChallengeForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "challenge", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var challenge = await _db.Challenges
+            .Include(c => c.Tenant)
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+
+        if (challenge == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "challenge", id);
+        var feedAuthor = await GetFeedSystemUserAsync(tenantId);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedChallenge(challenge, feedAuthor, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideChallengeFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var challengeExists = await _db.Challenges.AnyAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (!challengeExists || await IsFeedItemDeletedAsync(tenantId, "challenge", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "challenge", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid challenge feed item {ChallengeId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteChallengeFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var challengeExists = await _db.Challenges.AnyAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (!challengeExists || await IsFeedItemDeletedAsync(tenantId, "challenge", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "challenge", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted challenge feed item {ChallengeId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetVolunteerModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "volunteer", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "volunteer", deleted: true);
+
+        var query = _db.VolunteerOpportunities
+            .Include(o => o.Organizer)
+            .Include(o => o.Tenant)
+            .Where(o => o.TenantId == tenantId && o.Status != OpportunityStatus.Cancelled && !deletedIds.Contains(o.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(o => o.OrganizerId == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(o =>
+                o.Title.Contains(normalizedSearch) ||
+                (o.Description != null && o.Description.Contains(normalizedSearch)) ||
+                o.Organizer!.FirstName.Contains(normalizedSearch) ||
+                o.Organizer.LastName.Contains(normalizedSearch) ||
+                o.Organizer.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(o => hiddenIds.Contains(o.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(o => !hiddenIds.Contains(o.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(o => false);
+        }
+
+        query = query.OrderByDescending(o => o.CreatedAt);
+        var total = await query.CountAsync();
+        var opportunities = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = opportunities.Select(opportunity => MapLaravelFeedVolunteer(opportunity, hiddenIds.Contains(opportunity.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetVolunteerForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var opportunity = await _db.VolunteerOpportunities
+            .Include(o => o.Organizer)
+            .Include(o => o.Tenant)
+            .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled);
+
+        if (opportunity == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "volunteer", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedVolunteer(opportunity, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideVolunteerFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var opportunityExists = await _db.VolunteerOpportunities.AnyAsync(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled);
+        if (!opportunityExists || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "volunteer", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid volunteer feed item {OpportunityId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteVolunteerFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var opportunityExists = await _db.VolunteerOpportunities.AnyAsync(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled);
+        if (!opportunityExists || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "volunteer", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted volunteer feed item {OpportunityId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetBlogModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "blog", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "blog", deleted: true);
+
+        var query = _db.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Tenant)
+            .Where(b => b.TenantId == tenantId && b.Status != "archived" && !deletedIds.Contains(b.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(b => b.AuthorId == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(b =>
+                b.Title.Contains(normalizedSearch) ||
+                b.Content.Contains(normalizedSearch) ||
+                (b.Excerpt != null && b.Excerpt.Contains(normalizedSearch)) ||
+                b.Author!.FirstName.Contains(normalizedSearch) ||
+                b.Author.LastName.Contains(normalizedSearch) ||
+                b.Author.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(b => hiddenIds.Contains(b.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(b => !hiddenIds.Contains(b.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(b => false);
+        }
+
+        query = query.OrderByDescending(b => b.CreatedAt);
+        var total = await query.CountAsync();
+        var blogs = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = blogs.Select(blog => MapLaravelFeedBlog(blog, hiddenIds.Contains(blog.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetBlogForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "blog", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var blog = await _db.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Tenant)
+            .FirstOrDefaultAsync(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived");
+
+        if (blog == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "blog", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedBlog(blog, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideBlogFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var blogExists = await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived");
+        if (!blogExists || await IsFeedItemDeletedAsync(tenantId, "blog", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "blog", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid blog feed item {BlogId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteBlogFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var blogExists = await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived");
+        if (!blogExists || await IsFeedItemDeletedAsync(tenantId, "blog", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "blog", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted blog feed item {BlogId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
+    private async Task<IActionResult> GetDiscussionModerationQueue(
+        int tenantId,
+        string? status,
+        int? userId,
+        string? search,
+        int page,
+        int limit)
+    {
+        var hiddenIds = await LoadFeedFlaggedIdsAsync(tenantId, "discussion", deleted: false);
+        var deletedIds = await LoadFeedFlaggedIdsAsync(tenantId, "discussion", deleted: true);
+
+        var query = _db.GroupDiscussions
+            .Include(d => d.Author)
+            .Include(d => d.Tenant)
+            .Where(d => d.TenantId == tenantId && !deletedIds.Contains(d.Id));
+
+        if (userId.HasValue && userId.Value > 0)
+        {
+            query = query.Where(d => d.AuthorId == userId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(d =>
+                d.Title.Contains(normalizedSearch) ||
+                d.Content.Contains(normalizedSearch) ||
+                d.Author!.FirstName.Contains(normalizedSearch) ||
+                d.Author.LastName.Contains(normalizedSearch) ||
+                d.Author.Email.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "hidden")
+                query = query.Where(d => hiddenIds.Contains(d.Id));
+            else if (status == "active" || status == "visible")
+                query = query.Where(d => !hiddenIds.Contains(d.Id));
+            else if (status == "reported" || status == "flagged")
+                query = query.Where(d => false);
+        }
+
+        query = query.OrderByDescending(d => d.CreatedAt);
+        var total = await query.CountAsync();
+        var discussions = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = discussions.Select(discussion => MapLaravelFeedDiscussion(discussion, hiddenIds.Contains(discussion.Id), recentComments: null)).ToList(),
+            meta = BuildLaravelPaginationMeta(page, limit, total)
+        });
+    }
+
+    private async Task<IActionResult> GetDiscussionForModeration(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (await IsFeedItemDeletedAsync(tenantId, "discussion", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var discussion = await _db.GroupDiscussions
+            .Include(d => d.Author)
+            .Include(d => d.Tenant)
+            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.Id == id);
+
+        if (discussion == null)
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        var isHidden = await IsFeedItemHiddenAsync(tenantId, "discussion", id);
+        return Ok(new
+        {
+            success = true,
+            data = MapLaravelFeedDiscussion(discussion, isHidden, Array.Empty<object>())
+        });
+    }
+
+    private async Task<IActionResult> HideDiscussionFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var discussionExists = await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == id);
+        if (!discussionExists || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "discussion", id, deleted: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} hid discussion feed item {DiscussionId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item hidden" } });
+    }
+
+    private async Task<IActionResult> DeleteDiscussionFeedItem(int id, int adminId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var discussionExists = await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == id);
+        if (!discussionExists || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
+        {
+            return LaravelNotFound("Feed item not found");
+        }
+
+        await SetFeedFlagAsync(tenantId, "discussion", id, deleted: true);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} deleted discussion feed item {DiscussionId}", adminId, id);
+        return Ok(new { success = true, data = new { success = true, message = "Feed item deleted" } });
+    }
+
     private IActionResult LaravelNotFound(string message)
     {
         return NotFound(new
@@ -740,6 +1720,221 @@ public class AdminFeedController : ControllerBase
             created_at = evt.CreatedAt,
             recent_comments = recentComments ?? Array.Empty<object>()
         };
+    }
+
+    private static object MapLaravelFeedPoll(Poll poll, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = poll.Id,
+            activity_id = poll.Id,
+            user_id = poll.CreatedById,
+            tenant_id = poll.TenantId,
+            tenant_name = poll.Tenant?.Name ?? "Unknown",
+            user_name = FullName(poll.CreatedBy),
+            user_email = poll.CreatedBy?.Email,
+            user_avatar = poll.CreatedBy?.AvatarUrl,
+            type = "poll",
+            content = string.IsNullOrWhiteSpace(poll.Description)
+                ? poll.Title
+                : $"{poll.Title}\n{poll.Description}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = poll.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedGoal(Goal goal, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = goal.Id,
+            activity_id = goal.Id,
+            user_id = goal.UserId,
+            tenant_id = goal.TenantId,
+            tenant_name = goal.Tenant?.Name ?? "Unknown",
+            user_name = FullName(goal.User),
+            user_email = goal.User?.Email,
+            user_avatar = goal.User?.AvatarUrl,
+            type = "goal",
+            content = string.IsNullOrWhiteSpace(goal.Description)
+                ? goal.Title
+                : $"{goal.Title}\n{goal.Description}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = goal.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedJob(JobVacancy job, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = job.Id,
+            activity_id = job.Id,
+            user_id = job.PostedByUserId,
+            tenant_id = job.TenantId,
+            tenant_name = job.Tenant?.Name ?? "Unknown",
+            user_name = FullName(job.PostedBy),
+            user_email = job.PostedBy?.Email,
+            user_avatar = job.PostedBy?.AvatarUrl,
+            type = "job",
+            content = string.IsNullOrWhiteSpace(job.Description)
+                ? job.Title
+                : $"{job.Title}\n{job.Description}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = job.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedChallenge(Challenge challenge, User? user, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = challenge.Id,
+            activity_id = challenge.Id,
+            user_id = user?.Id ?? 0,
+            tenant_id = challenge.TenantId,
+            tenant_name = challenge.Tenant?.Name ?? "Unknown",
+            user_name = FullName(user),
+            user_email = user?.Email,
+            user_avatar = user?.AvatarUrl,
+            type = "challenge",
+            content = string.IsNullOrWhiteSpace(challenge.Description)
+                ? challenge.Title
+                : $"{challenge.Title}\n{challenge.Description}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = challenge.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedVolunteer(VolunteerOpportunity opportunity, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = opportunity.Id,
+            activity_id = opportunity.Id,
+            user_id = opportunity.OrganizerId,
+            tenant_id = opportunity.TenantId,
+            tenant_name = opportunity.Tenant?.Name ?? "Unknown",
+            user_name = FullName(opportunity.Organizer),
+            user_email = opportunity.Organizer?.Email,
+            user_avatar = opportunity.Organizer?.AvatarUrl,
+            type = "volunteer",
+            content = string.IsNullOrWhiteSpace(opportunity.Description)
+                ? opportunity.Title
+                : $"{opportunity.Title}\n{opportunity.Description}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = opportunity.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedBlog(BlogPost blog, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = blog.Id,
+            activity_id = blog.Id,
+            user_id = blog.AuthorId,
+            tenant_id = blog.TenantId,
+            tenant_name = blog.Tenant?.Name ?? "Unknown",
+            user_name = FullName(blog.Author),
+            user_email = blog.Author?.Email,
+            user_avatar = blog.Author?.AvatarUrl,
+            type = "blog",
+            content = string.IsNullOrWhiteSpace(blog.Excerpt)
+                ? blog.Title
+                : $"{blog.Title}\n{blog.Excerpt}",
+            image_url = blog.FeaturedImageUrl,
+            likes_count = 0,
+            comments_count = 0,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = blog.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private static object MapLaravelFeedDiscussion(GroupDiscussion discussion, bool isHidden, object? recentComments)
+    {
+        return new
+        {
+            id = discussion.Id,
+            activity_id = discussion.Id,
+            user_id = discussion.AuthorId,
+            tenant_id = discussion.TenantId,
+            tenant_name = discussion.Tenant?.Name ?? "Unknown",
+            user_name = FullName(discussion.Author),
+            user_email = discussion.Author?.Email,
+            user_avatar = discussion.Author?.AvatarUrl,
+            type = "discussion",
+            content = string.IsNullOrWhiteSpace(discussion.Content)
+                ? discussion.Title
+                : $"{discussion.Title}\n{discussion.Content}",
+            image_url = (string?)null,
+            likes_count = 0,
+            comments_count = discussion.ReplyCount,
+            is_hidden = isHidden,
+            is_flagged = false,
+            reports_count = 0,
+            visibility = isHidden ? "hidden" : "visible",
+            created_at = discussion.CreatedAt,
+            recent_comments = recentComments ?? Array.Empty<object>()
+        };
+    }
+
+    private async Task<User?> GetFeedSystemUserAsync(int tenantId)
+    {
+        var userId = User.GetUserId();
+        if (userId.HasValue)
+        {
+            var currentUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value && u.TenantId == tenantId);
+            if (currentUser != null)
+            {
+                return currentUser;
+            }
+        }
+
+        return await _db.Users
+            .AsNoTracking()
+            .OrderByDescending(u => u.Role == "admin")
+            .ThenBy(u => u.Id)
+            .FirstOrDefaultAsync(u => u.TenantId == tenantId);
     }
 
     private async Task<HashSet<int>> LoadFeedFlaggedIdsAsync(int tenantId, string type, bool deleted)

@@ -2995,6 +2995,391 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactPollListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var pollId = await SeedAdminFeedPollAsync("Laravel React feed poll moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=poll&search=Laravel%20React%20feed%20poll&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == pollId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("poll");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed poll moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{pollId}?type=poll");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(pollId);
+        detailData.GetProperty("type").GetString().Should().Be("poll");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{pollId}/hide", new { type = "poll" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{pollId}?type=poll");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{pollId}?type=poll");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{pollId}?type=poll");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactGoalListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var goalId = await SeedAdminFeedGoalAsync("Laravel React feed goal moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=goal&search=Laravel%20React%20feed%20goal&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == goalId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("goal");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed goal moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{goalId}?type=goal");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(goalId);
+        detailData.GetProperty("type").GetString().Should().Be("goal");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{goalId}/hide", new { type = "goal" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{goalId}?type=goal");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{goalId}?type=goal");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{goalId}?type=goal");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactJobListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var jobId = await SeedAdminFeedJobAsync("Laravel React feed job moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=job&search=Laravel%20React%20feed%20job&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == jobId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("job");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed job moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{jobId}?type=job");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(jobId);
+        detailData.GetProperty("type").GetString().Should().Be("job");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{jobId}/hide", new { type = "job" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{jobId}?type=job");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{jobId}?type=job");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{jobId}?type=job");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactChallengeListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var challengeId = await SeedAdminFeedChallengeAsync("Laravel React feed challenge moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=challenge&search=Laravel%20React%20feed%20challenge&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == challengeId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.AdminUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("challenge");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed challenge moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(challengeId);
+        detailData.GetProperty("type").GetString().Should().Be("challenge");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.AdminUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{challengeId}/hide", new { type = "challenge" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{challengeId}?type=challenge");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactVolunteerListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var opportunityId = await SeedAdminFeedVolunteerAsync("Laravel React feed volunteer moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=volunteer&search=Laravel%20React%20feed%20volunteer&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == opportunityId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("volunteer");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed volunteer moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{opportunityId}?type=volunteer");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(opportunityId);
+        detailData.GetProperty("type").GetString().Should().Be("volunteer");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{opportunityId}/hide", new { type = "volunteer" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{opportunityId}?type=volunteer");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{opportunityId}?type=volunteer");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{opportunityId}?type=volunteer");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactBlogListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var blogId = await SeedAdminFeedBlogAsync("Laravel React feed blog moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=blog&search=Laravel%20React%20feed%20blog&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == blogId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("blog");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed blog moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{blogId}?type=blog");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(blogId);
+        detailData.GetProperty("type").GetString().Should().Be("blog");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{blogId}/hide", new { type = "blog" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{blogId}?type=blog");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{blogId}?type=blog");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{blogId}?type=blog");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_UsesLaravelReactDiscussionListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var discussionId = await SeedAdminFeedDiscussionAsync("Laravel React feed discussion moderation");
+
+        var list = await Client.GetAsync("/api/v2/admin/feed/posts?type=discussion&search=Laravel%20React%20feed%20discussion&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == discussionId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("type").GetString().Should().Be("discussion");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React feed discussion moderation");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/feed/posts/{discussionId}?type=discussion");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(discussionId);
+        detailData.GetProperty("type").GetString().Should().Be("discussion");
+        detailData.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+
+        var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{discussionId}/hide", new { type = "discussion" });
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenDetail = await Client.GetAsync($"/api/v2/admin/feed/posts/{discussionId}?type=discussion");
+        hiddenDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenJson = await hiddenDetail.Content.ReadFromJsonAsync<JsonElement>();
+        hiddenJson.GetProperty("data").GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{discussionId}?type=discussion");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var deleted = await Client.GetAsync($"/api/v2/admin/feed/posts/{discussionId}?type=discussion");
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task AdminReviewsV2_UsesLaravelReactModerationListDetailFlagHideAndDeleteShape()
     {
         await AuthenticateAsAdminAsync();
@@ -3715,6 +4100,188 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         db.Events.Add(evt);
         await db.SaveChangesAsync();
         return evt.Id;
+    }
+
+    private async Task<int> SeedAdminFeedPollAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var poll = new Poll
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.MemberUser.Id,
+            Title = title,
+            Description = "Poll included in the Laravel React admin feed moderation contract.",
+            PollType = "single",
+            Status = "active",
+            ShowResultsBeforeClose = true,
+            CreatedAt = now.AddHours(-2)
+        };
+        db.Polls.Add(poll);
+        await db.SaveChangesAsync();
+
+        db.PollOptions.Add(new PollOption
+        {
+            TenantId = TestData.Tenant1.Id,
+            PollId = poll.Id,
+            Text = "First moderation option",
+            SortOrder = 1,
+            CreatedAt = now.AddHours(-2)
+        });
+        await db.SaveChangesAsync();
+        return poll.Id;
+    }
+
+    private async Task<int> SeedAdminFeedGoalAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var goal = new Goal
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.MemberUser.Id,
+            Title = title,
+            Description = "Goal included in the Laravel React admin feed moderation contract.",
+            GoalType = "custom",
+            TargetValue = 5,
+            CurrentValue = 2,
+            Category = "Community",
+            Status = "active",
+            CreatedAt = DateTime.UtcNow.AddHours(-2)
+        };
+        db.Goals.Add(goal);
+        await db.SaveChangesAsync();
+        return goal.Id;
+    }
+
+    private async Task<int> SeedAdminFeedJobAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var job = new JobVacancy
+        {
+            TenantId = TestData.Tenant1.Id,
+            PostedByUserId = TestData.MemberUser.Id,
+            Title = title,
+            Description = "Job included in the Laravel React admin feed moderation contract.",
+            Category = "Community",
+            JobType = "volunteer",
+            Location = "Contract test hub",
+            IsRemote = false,
+            TimeCreditsPerHour = 2,
+            RequiredSkills = "moderation,contract",
+            Status = "active",
+            CreatedAt = DateTime.UtcNow.AddHours(-2)
+        };
+        db.JobVacancies.Add(job);
+        await db.SaveChangesAsync();
+        return job.Id;
+    }
+
+    private async Task<int> SeedAdminFeedChallengeAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var challenge = new Challenge
+        {
+            TenantId = TestData.Tenant1.Id,
+            Title = title,
+            Description = "Challenge included in the Laravel React admin feed moderation contract.",
+            ChallengeType = ChallengeType.Community,
+            TargetAction = "contract_test",
+            TargetCount = 3,
+            XpReward = 25,
+            StartsAt = now.AddDays(-1),
+            EndsAt = now.AddDays(14),
+            IsActive = true,
+            Difficulty = ChallengeDifficulty.Medium,
+            CreatedAt = now.AddHours(-2)
+        };
+        db.Challenges.Add(challenge);
+        await db.SaveChangesAsync();
+        return challenge.Id;
+    }
+
+    private async Task<int> SeedAdminFeedVolunteerAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var opportunity = new VolunteerOpportunity
+        {
+            TenantId = TestData.Tenant1.Id,
+            OrganizerId = TestData.MemberUser.Id,
+            Title = title,
+            Description = "Volunteer opportunity included in the Laravel React admin feed moderation contract.",
+            Location = "Contract test centre",
+            Status = OpportunityStatus.Published,
+            RequiredVolunteers = 4,
+            StartsAt = now.AddDays(3),
+            EndsAt = now.AddDays(3).AddHours(2),
+            ApplicationDeadline = now.AddDays(2),
+            SkillsRequired = "moderation,volunteering",
+            CreditReward = 2,
+            CreatedAt = now.AddHours(-2)
+        };
+        db.VolunteerOpportunities.Add(opportunity);
+        await db.SaveChangesAsync();
+        return opportunity.Id;
+    }
+
+    private async Task<int> SeedAdminFeedBlogAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var blog = new BlogPost
+        {
+            TenantId = TestData.Tenant1.Id,
+            AuthorId = TestData.MemberUser.Id,
+            Title = title,
+            Slug = $"laravel-react-feed-blog-{Guid.NewGuid():N}",
+            Content = "Blog post included in the Laravel React admin feed moderation contract.",
+            Excerpt = "Blog post included in the Laravel React admin feed moderation contract.",
+            FeaturedImageUrl = "https://example.test/blog-feed.png",
+            Status = "published",
+            Tags = "moderation,contract",
+            PublishedAt = now.AddHours(-1),
+            CreatedAt = now.AddHours(-2)
+        };
+        db.BlogPosts.Add(blog);
+        await db.SaveChangesAsync();
+        return blog.Id;
+    }
+
+    private async Task<int> SeedAdminFeedDiscussionAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var group = new Group
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.MemberUser.Id,
+            Name = $"Contract discussion group {Guid.NewGuid():N}",
+            Description = "Group backing a Laravel React admin feed discussion contract test.",
+            CreatedAt = now.AddHours(-3)
+        };
+        db.Groups.Add(group);
+        await db.SaveChangesAsync();
+
+        var discussion = new GroupDiscussion
+        {
+            TenantId = TestData.Tenant1.Id,
+            GroupId = group.Id,
+            AuthorId = TestData.MemberUser.Id,
+            Title = title,
+            Content = "Discussion included in the Laravel React admin feed moderation contract.",
+            CreatedAt = now.AddHours(-2)
+        };
+        db.GroupDiscussions.Add(discussion);
+        await db.SaveChangesAsync();
+        return discussion.Id;
     }
 
     private async Task<(int ReviewId, int ReviewerId, int RevieweeId)> SeedAdminReviewAsync(string content)
