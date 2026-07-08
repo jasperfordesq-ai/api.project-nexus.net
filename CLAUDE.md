@@ -81,7 +81,8 @@ See `docs/REACT_FRONTEND_RETIREMENT.md` for the maintained policy.
 ## Current Inventory Snapshot
 
 Backend, API, schema, frontend, localization, and backlog counts were refreshed
-from source on 2026-07-05.
+from source on 2026-07-05. The accessible `apps/web-uk` route count was
+superseded by the 2026-07-08 consolidated Web UK route matrix noted below.
 
 | Surface | Laravel Edition (`C:\platforms\htdocs\staging`) | .NET Edition (this repo) |
 | --- | ---: | ---: |
@@ -91,7 +92,7 @@ from source on 2026-07-05.
 | Migrations | 318 Laravel migrations | 89 EF migration classes excluding designers/snapshot |
 | API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,737 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,429 static matches / 0 missing source operations |
 | Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 316 static EF/migration table names; 126 exact matches |
-| Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 React routes / 136 `apps/web-uk` routes; 393 React matches and 53 accessible matches |
+| Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1`; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |
 | Module docs | 24 curated Laravel module guides | docs recreated in this pass |
 | Locales | 11 Laravel locales | 7 React locale directories |

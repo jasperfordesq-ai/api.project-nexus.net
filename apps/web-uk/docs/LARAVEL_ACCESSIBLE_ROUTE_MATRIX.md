@@ -1,6 +1,6 @@
 # Laravel Accessible Route Matrix
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-07-08
 
 ## Purpose
 
@@ -43,10 +43,10 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 610 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 612 | Express app/router/static-page declarations scanned from local source after the consolidated merge; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 0 | True unmatched accessible route declarations. |
+| Extra `apps/web-uk` routes | 2 | True unmatched accessible route declarations retained by the consolidated main-branch exchange request workflow: `GET /exchanges/request/{param}` and `POST /exchanges/request/{param}`. Decide whether to keep and document these as useful accessible additions or remove them for literal Laravel route identity. |
 | Ignored `apps/web-uk` infrastructure routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set and are not page parity gaps: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
 
 These are declaration counts, not a parity score. Laravel registers the route

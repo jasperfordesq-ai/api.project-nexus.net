@@ -14,7 +14,7 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Migrations | 318 | 89 EF migration classes excluding designers/snapshot |
 | OpenAPI operations | 891 | 3,737 static controller operations from parity script |
 | Schema tables | 361 Laravel source tables | 316 .NET static table names |
-| Frontend routes | 589 React / 607 accessible | 462 React / 136 accessible |
+| Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
 | Locales | 11 | 7 |
@@ -45,6 +45,12 @@ for the retired `apps/react-frontend` fork. Do not use it to plan new React work
 in this repo unless explicitly approved. Use the production Laravel React
 frontend at `C:\platforms\htdocs\staging\react-frontend` as the contract target
 for ASP.NET backend compatibility.
+
+For current `apps/web-uk` accessible frontend work, prefer
+`apps/web-uk/docs/generated/accessible-route-matrix.*`. After the 2026-07-08
+merge commit `f7c80d32`, that matrix reports 608/608 Laravel accessible routes
+matched, 0 missing, 2 extra local exchange workflow routes, and 3 ignored
+infrastructure routes.
 
 `scripts/compare-laravel-localization-parity.ps1` generated
 `artifacts/parity/localization/localization-parity.json` on 2026-07-04 with 11

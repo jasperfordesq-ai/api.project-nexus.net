@@ -58,9 +58,10 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Item | Last observed state |
 | --- | --- |
 | Branch | `main` |
-| Head commit | Run `git rev-parse --short HEAD` after the consolidation commit. |
+| Head commit | `f7c80d32` at the 2026-07-08 consolidation checkpoint; rerun `git rev-parse --short HEAD` before editing because `main` may move. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
 | Working estimate | about `965/1000` implementation/certification parity |
+| Green confidence estimate | about `925/1000`, mainly gated by full live Laravel runtime smoke and visual/manual parity certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, runtime-smoke harness usage, and remaining live-smoke uncertainty, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -198,13 +199,16 @@ workflows remain in their canonical module pages such as `/jobs/bias-audit`.
 The jobs bias-audit back link no longer points at the removed local `/admin`
 surface.
 
-Latest focused route-matrix evidence slice: the generator now separates
-documented local infrastructure helpers from true accessible route extras.
-Static route parity now reports `608` matched Laravel routes, `0` missing
-Laravel routes, and `0` true extra `apps/web-uk` routes. The local-only
-`GET /health`, `GET /service-unavailable`, and `POST /session/touch` helpers
-remain available but are classified as ignored infrastructure instead of
-accessible route parity gaps.
+Latest consolidated route-matrix evidence slice: after merge commit
+`f7c80d32`, static route parity reports `608` matched Laravel routes, `0`
+missing Laravel routes, and `2` true extra `apps/web-uk` routes. The extras are
+the stronger consolidated exchange request workflow routes
+`GET /exchanges/request/{param}` and `POST /exchanges/request/{param}` from
+`src/routes/exchanges.js`; decide whether to keep and document them as useful
+accessible additions or remove them for literal Laravel route identity. The
+local-only `GET /health`, `GET /service-unavailable`, and `POST /session/touch`
+helpers remain available but are classified as ignored infrastructure instead
+of accessible route parity gaps.
 
 Latest focused backend-contract provenance slice: `resolveBackendContract()`
 now returns `baseUrlSource` so Laravel defaults, future ASP.NET mode, and
@@ -966,7 +970,10 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `947/1000`.
+Current working estimate at this handoff: `965/1000`.
+Green confidence estimate: `925/1000`, because the consolidated code and static
+tests are strong but the full live Laravel runtime smoke and visual/manual
+Blade parity spot-checks still need final certification.
 
 ## Final Handoff Checklist
 

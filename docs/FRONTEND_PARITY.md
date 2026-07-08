@@ -27,6 +27,8 @@ explicitly approves that specific frontend change.
 ## Current Route Counts
 
 Generated with `scripts/compare-laravel-frontend-parity.ps1` on 2026-07-04.
+These historical accessible counts are superseded for current Web UK work by
+`apps/web-uk/docs/generated/accessible-route-matrix.*`.
 
 | Surface | Laravel source routes | .NET target routes | Matched | Missing from .NET | Extra in .NET |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -49,6 +51,14 @@ Future compatibility reports should instead inventory API calls made by
 `C:\platforms\htdocs\staging\react-frontend`, then verify that ASP.NET exposes
 compatible routes, request shapes, response shapes, auth/tenant behavior,
 uploads, realtime config, and status codes.
+
+Current Web UK accessible route evidence after merge commit `f7c80d32` on
+2026-07-08 lives in `apps/web-uk/docs/generated/accessible-route-matrix.*`.
+That matrix reports 608 Laravel accessible declarations, 612 local Web UK route
+declarations, 608 exact matches, 0 missing Laravel routes, 2 extra local
+exchange workflow routes, and 3 ignored infrastructure/helper routes. It still
+does not prove rendered UI, workflow, tenant/auth, localization, API side
+effects, or live Laravel runtime behavior.
 
 ## Accessible Frontend Direction
 

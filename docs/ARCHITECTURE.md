@@ -79,7 +79,12 @@ routes, with 393 matches and 196 missing Laravel-side React routes. Those React
 counts no longer define the forward development target. The current target is
 backend contract compatibility with the canonical Laravel React frontend. The
 same report found 607 Laravel accessible routes versus 136 `apps/web-uk` routes,
-with 53 matches and 554 missing Laravel-side accessible routes.
+with 53 matches and 554 missing Laravel-side accessible routes. That accessible
+count is now historical: after the 2026-07-08 Web UK consolidation on `main`,
+`apps/web-uk/docs/generated/accessible-route-matrix.*` reports 608 Laravel
+accessible declarations, 612 local Web UK declarations, 608 exact matches, 0
+missing Laravel routes, 2 extra local exchange workflow routes, and 3 ignored
+infrastructure/helper routes.
 
 The localization report scans all locale/namespace presence and scans English
 keys by default. It found 11 Laravel locales versus 7 .NET locales, 605 Laravel
