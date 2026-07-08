@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `683` |
+| Web UK routes | `682` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `76` |
+| Extra Web UK routes | `75` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused component-demo slice: the local `/components` route, home-page
+demo link, and unused `components.njk` template were removed. The Laravel
+accessible source keeps GOV.UK component inventory in docs/source assets rather
+than publishing a component-demo route.
 
 Latest focused legal-route slice: legacy local top-level `/terms` and
 `/privacy` routes were removed. Legal documents now expose Laravel's accessible

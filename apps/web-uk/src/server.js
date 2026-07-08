@@ -365,10 +365,6 @@ app.post('/session/touch', doubleCsrfProtection, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/components', (req, res) => {
-  res.render('components', { title: 'Components Demo' });
-});
-
 app.get('/cookies', (req, res) => {
   res.render('cookie-settings', {
     title: 'Cookies',

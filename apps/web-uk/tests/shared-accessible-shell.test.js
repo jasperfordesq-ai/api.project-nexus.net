@@ -468,6 +468,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-style accessible shell on the home page', async () => {
     const response = await request(app).get('/');
+    const components = await request(app).get('/components');
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('class="nexus-alpha-header"');
@@ -491,6 +492,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Project NEXUS is free software licensed under AGPL-3.0-or-later.');
     expect(response.text).toContain('View the source code on GitHub');
     expect(response.text).toContain('https://github.com/jasperfordesq-ai/nexus-v1');
+    expect(response.text).not.toContain('href="/components"');
+    expect(response.text).not.toContain('View components demo');
+    expect(components.status).toBe(404);
+    expect(components.text).toContain('Page not found');
   });
 
   it('renders the Laravel-backed member dashboard summary', async () => {
