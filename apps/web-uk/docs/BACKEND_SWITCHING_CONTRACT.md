@@ -578,6 +578,11 @@ module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, and the 6
 auth/health checks.
+A targeted live dashboard marker smoke on 2026-07-08 against a temporary
+web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
+`TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and
+the dashboard body markers `Welcome back`, `Your time bank`, `Quick links`,
+`Recent feed`, and `Recent listings`.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 

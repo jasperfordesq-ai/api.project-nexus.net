@@ -81,8 +81,13 @@ member endorsements helpers, and the Nunjucks view renders the Blade-style
 welcome, onboarding banner, exchange-attention banner, create-listing CTA,
 time-bank stat grid, progress/badges, upcoming events, skill endorsements,
 quick links, and recent feed/listings. Remaining dashboard gaps are
-tenant/module/feature gates, exact localization, live Laravel runtime
-certification, and ASP.NET backend compatibility.
+tenant/module/feature gates, exact localization, broader live Laravel workflow
+certification, and ASP.NET backend compatibility. A targeted live dashboard
+marker smoke on 2026-07-08 against a temporary web-uk process at
+`WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with `TENANT_ID=2`, passed
+`12/12` checks for auth/health, signed `/dashboard`, and body markers
+`Welcome back`, `Your time bank`, `Quick links`, `Recent feed`, and
+`Recent listings`.
 
 Focused runtime-smoke harness test: `npm test --
 tests/laravel-runtime-smoke.test.js --runInBand` passed with `17/17` tests
