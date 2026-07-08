@@ -19,7 +19,7 @@ public static class AuthExtensions
 {
     /// <summary>
     /// Configures JWT Bearer authentication, SignalR token extraction,
-    /// and the AdminOnly authorization policy.
+    /// and role-based authorization policies.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">Application configuration.</param>
@@ -105,7 +105,8 @@ public static class AuthExtensions
                         if (principal == null) return;
                         var tokenRole = principal.FindFirst("role")?.Value
                             ?? principal.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-                        if (tokenRole != "admin" && tokenRole != "super_admin") return;
+                        if (string.IsNullOrEmpty(tokenRole)) return;
+                        if (!PrivilegedTokenRoles.Contains(tokenRole)) return;
 
                         var sub = principal.FindFirst("sub")?.Value
                             ?? principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -137,8 +138,20 @@ public static class AuthExtensions
         {
             options.AddPolicy("AdminOnly", policy =>
                 policy.RequireClaim("role", "admin", "super_admin"));
+            options.AddPolicy("BrokerOrAdmin", policy =>
+                policy.RequireClaim("role", "admin", "super_admin", "tenant_admin", "god", "broker", "coordinator"));
         });
 
         return services;
     }
+
+    private static readonly HashSet<string> PrivilegedTokenRoles = new(StringComparer.Ordinal)
+    {
+        "admin",
+        "super_admin",
+        "tenant_admin",
+        "god",
+        "broker",
+        "coordinator"
+    };
 }

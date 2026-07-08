@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -2831,6 +2832,105 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminFeedModerationV2_AllowsBrokerAndCoordinatorButKeepsAnnouncerAdminOnly()
+    {
+        var postId = await SeedAdminFeedPostAsync("Laravel React broker feed moderation post");
+        var brokerToken = await SeedAndLoginUserAsync("broker-feed@test.com", "broker");
+
+        SetAuthToken(brokerToken);
+
+        var brokerList = await Client.GetAsync("/api/v2/admin/feed/posts?type=post&search=Laravel%20React%20broker%20feed&page=1&limit=20");
+
+        brokerList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var brokerListJson = await brokerList.Content.ReadFromJsonAsync<JsonElement>();
+        brokerListJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        brokerListJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(post => post.GetProperty("id").GetInt32() == postId);
+
+        var brokerHide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{postId}/hide", new { type = "post" });
+
+        brokerHide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var brokerHideJson = await brokerHide.Content.ReadFromJsonAsync<JsonElement>();
+        brokerHideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var brokerAnnouncerGrant = await Client.PostAsJsonAsync("/api/v2/admin/feed/grant-announcer", new { user_id = TestData.MemberUser.Id });
+
+        brokerAnnouncerGrant.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var coordinatorToken = await SeedAndLoginUserAsync("coordinator-feed@test.com", "coordinator");
+
+        SetAuthToken(coordinatorToken);
+
+        var coordinatorStats = await Client.GetAsync("/api/v2/admin/feed/stats");
+
+        coordinatorStats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var coordinatorStatsJson = await coordinatorStats.Content.ReadFromJsonAsync<JsonElement>();
+        coordinatorStatsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        await AuthenticateAsMemberAsync();
+
+        var memberList = await Client.GetAsync("/api/v2/admin/feed/posts?type=post&page=1&limit=20");
+
+        memberList.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_BrokerCannotHideOrDeleteOwnFeedPost()
+    {
+        var brokerToken = await SeedAndLoginUserAsync("broker-self-feed@test.com", "broker");
+        SetAuthToken(brokerToken);
+
+        var brokerId = await GetUserIdByEmailAsync("broker-self-feed@test.com");
+        var ownPostId = await SeedAdminFeedPostAsync("Laravel React broker self moderation post", brokerId);
+
+        var ownHide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{ownPostId}/hide", new { type = "post" });
+
+        ownHide.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var ownHideJson = await ownHide.Content.ReadFromJsonAsync<JsonElement>();
+        ownHideJson.GetProperty("success").GetBoolean().Should().BeFalse();
+
+        var ownDelete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{ownPostId}?type=post");
+
+        ownDelete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var ownDeleteJson = await ownDelete.Content.ReadFromJsonAsync<JsonElement>();
+        ownDeleteJson.GetProperty("success").GetBoolean().Should().BeFalse();
+
+        await AuthenticateAsAdminAsync();
+
+        var adminHide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{ownPostId}/hide", new { type = "post" });
+
+        adminHide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adminDelete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{ownPostId}?type=post");
+
+        adminDelete.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AdminFeedModerationV2_BrokerCannotHideOrDeleteOwnAuthoredNonPostFeedItems()
+    {
+        var brokerToken = await SeedAndLoginUserAsync("broker-self-nonpost-feed@test.com", "broker");
+        var brokerId = await GetUserIdByEmailAsync("broker-self-nonpost-feed@test.com");
+        var sourceTypes = new[] { "listing", "event", "poll", "goal", "job", "volunteer", "blog", "discussion" };
+        var moderationResults = new List<(string Type, string Action, HttpStatusCode Status)>();
+
+        foreach (var sourceType in sourceTypes)
+        {
+            var sourceId = await SeedAuthoredFeedItemAsync(sourceType, brokerId);
+            SetAuthToken(brokerToken);
+
+            var hide = await Client.PostAsJsonAsync($"/api/v2/admin/feed/posts/{sourceId}/hide", new { type = sourceType });
+            moderationResults.Add((sourceType, "hide", hide.StatusCode));
+
+            var delete = await Client.DeleteAsync($"/api/v2/admin/feed/posts/{sourceId}?type={sourceType}");
+            moderationResults.Add((sourceType, "delete", delete.StatusCode));
+        }
+
+        moderationResults.Should().OnlyContain(
+            result => result.Status == HttpStatusCode.Forbidden,
+            "Laravel denies broker/coordinator self-moderation for every authored feed source type");
+    }
+
+    [Fact]
     public async Task AdminFeedAnnouncerV2_GrantsAndRevokesMunicipalityAnnouncerRoleForUserEdit()
     {
         await AuthenticateAsAdminAsync();
@@ -4016,7 +4116,12 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return comment.Id;
     }
 
-    private async Task<int> SeedAdminFeedPostAsync(string content)
+    private Task<int> SeedAdminFeedPostAsync(string content)
+    {
+        return SeedAdminFeedPostAsync(content, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedPostAsync(string content, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -4024,7 +4129,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var post = new FeedPost
         {
             TenantId = TestData.Tenant1.Id,
-            UserId = TestData.MemberUser.Id,
+            UserId = userId,
             Content = content,
             ImageUrl = "https://example.test/feed-post.png",
             CreatedAt = now.AddHours(-3)
@@ -4061,14 +4166,52 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return post.Id;
     }
 
-    private async Task<int> SeedAdminFeedListingAsync(string title)
+    private async Task<int> GetUserIdByEmailAsync(string email)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        return await db.Users
+            .Where(user => user.TenantId == TestData.Tenant1.Id && user.Email == email)
+            .Select(user => user.Id)
+            .SingleAsync();
+    }
+
+    private async Task<string> SeedAndLoginUserAsync(string email, string role)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var user = new User
+        {
+            TenantId = TestData.Tenant1.Id,
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword),
+            FirstName = role[..1].ToUpperInvariant() + role[1..],
+            LastName = "Feed",
+            Role = role,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        return await GetAccessTokenAsync(email, TestData.Tenant1.Slug);
+    }
+
+    private Task<int> SeedAdminFeedListingAsync(string title)
+    {
+        return SeedAdminFeedListingAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedListingAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var listing = new Listing
         {
             TenantId = TestData.Tenant1.Id,
-            UserId = TestData.MemberUser.Id,
+            UserId = userId,
             Title = title,
             Description = "Listing included in the Laravel React admin feed moderation contract.",
             Type = ListingType.Offer,
@@ -4081,14 +4224,19 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return listing.Id;
     }
 
-    private async Task<int> SeedAdminFeedEventAsync(string title)
+    private Task<int> SeedAdminFeedEventAsync(string title)
+    {
+        return SeedAdminFeedEventAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedEventAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var evt = new Event
         {
             TenantId = TestData.Tenant1.Id,
-            CreatedById = TestData.MemberUser.Id,
+            CreatedById = userId,
             Title = title,
             Description = "Event included in the Laravel React admin feed moderation contract.",
             Location = "Contract test hall",
@@ -4102,7 +4250,12 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return evt.Id;
     }
 
-    private async Task<int> SeedAdminFeedPollAsync(string title)
+    private Task<int> SeedAdminFeedPollAsync(string title)
+    {
+        return SeedAdminFeedPollAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedPollAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -4110,7 +4263,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var poll = new Poll
         {
             TenantId = TestData.Tenant1.Id,
-            CreatedById = TestData.MemberUser.Id,
+            CreatedById = userId,
             Title = title,
             Description = "Poll included in the Laravel React admin feed moderation contract.",
             PollType = "single",
@@ -4133,14 +4286,19 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return poll.Id;
     }
 
-    private async Task<int> SeedAdminFeedGoalAsync(string title)
+    private Task<int> SeedAdminFeedGoalAsync(string title)
+    {
+        return SeedAdminFeedGoalAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedGoalAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var goal = new Goal
         {
             TenantId = TestData.Tenant1.Id,
-            UserId = TestData.MemberUser.Id,
+            UserId = userId,
             Title = title,
             Description = "Goal included in the Laravel React admin feed moderation contract.",
             GoalType = "custom",
@@ -4155,14 +4313,19 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return goal.Id;
     }
 
-    private async Task<int> SeedAdminFeedJobAsync(string title)
+    private Task<int> SeedAdminFeedJobAsync(string title)
+    {
+        return SeedAdminFeedJobAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedJobAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var job = new JobVacancy
         {
             TenantId = TestData.Tenant1.Id,
-            PostedByUserId = TestData.MemberUser.Id,
+            PostedByUserId = userId,
             Title = title,
             Description = "Job included in the Laravel React admin feed moderation contract.",
             Category = "Community",
@@ -4204,7 +4367,12 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return challenge.Id;
     }
 
-    private async Task<int> SeedAdminFeedVolunteerAsync(string title)
+    private Task<int> SeedAdminFeedVolunteerAsync(string title)
+    {
+        return SeedAdminFeedVolunteerAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedVolunteerAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -4212,7 +4380,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var opportunity = new VolunteerOpportunity
         {
             TenantId = TestData.Tenant1.Id,
-            OrganizerId = TestData.MemberUser.Id,
+            OrganizerId = userId,
             Title = title,
             Description = "Volunteer opportunity included in the Laravel React admin feed moderation contract.",
             Location = "Contract test centre",
@@ -4230,7 +4398,12 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return opportunity.Id;
     }
 
-    private async Task<int> SeedAdminFeedBlogAsync(string title)
+    private Task<int> SeedAdminFeedBlogAsync(string title)
+    {
+        return SeedAdminFeedBlogAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedBlogAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -4238,7 +4411,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var blog = new BlogPost
         {
             TenantId = TestData.Tenant1.Id,
-            AuthorId = TestData.MemberUser.Id,
+            AuthorId = userId,
             Title = title,
             Slug = $"laravel-react-feed-blog-{Guid.NewGuid():N}",
             Content = "Blog post included in the Laravel React admin feed moderation contract.",
@@ -4254,7 +4427,12 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return blog.Id;
     }
 
-    private async Task<int> SeedAdminFeedDiscussionAsync(string title)
+    private Task<int> SeedAdminFeedDiscussionAsync(string title)
+    {
+        return SeedAdminFeedDiscussionAsync(title, TestData.MemberUser.Id);
+    }
+
+    private async Task<int> SeedAdminFeedDiscussionAsync(string title, int userId)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -4262,7 +4440,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var group = new Group
         {
             TenantId = TestData.Tenant1.Id,
-            CreatedById = TestData.MemberUser.Id,
+            CreatedById = userId,
             Name = $"Contract discussion group {Guid.NewGuid():N}",
             Description = "Group backing a Laravel React admin feed discussion contract test.",
             CreatedAt = now.AddHours(-3)
@@ -4274,7 +4452,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         {
             TenantId = TestData.Tenant1.Id,
             GroupId = group.Id,
-            AuthorId = TestData.MemberUser.Id,
+            AuthorId = userId,
             Title = title,
             Content = "Discussion included in the Laravel React admin feed moderation contract.",
             CreatedAt = now.AddHours(-2)
@@ -4282,6 +4460,23 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         db.GroupDiscussions.Add(discussion);
         await db.SaveChangesAsync();
         return discussion.Id;
+    }
+
+    private Task<int> SeedAuthoredFeedItemAsync(string sourceType, int userId)
+    {
+        var title = $"Laravel React broker self moderation {sourceType} {Guid.NewGuid():N}";
+        return sourceType switch
+        {
+            "listing" => SeedAdminFeedListingAsync(title, userId),
+            "event" => SeedAdminFeedEventAsync(title, userId),
+            "poll" => SeedAdminFeedPollAsync(title, userId),
+            "goal" => SeedAdminFeedGoalAsync(title, userId),
+            "job" => SeedAdminFeedJobAsync(title, userId),
+            "volunteer" => SeedAdminFeedVolunteerAsync(title, userId),
+            "blog" => SeedAdminFeedBlogAsync(title, userId),
+            "discussion" => SeedAdminFeedDiscussionAsync(title, userId),
+            _ => throw new ArgumentOutOfRangeException(nameof(sourceType), sourceType, "Unsupported feed source type")
+        };
     }
 
     private async Task<(int ReviewId, int ReviewerId, int RevieweeId)> SeedAdminReviewAsync(string content)

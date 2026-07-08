@@ -19,7 +19,7 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 [Route("api/admin/feed")]
 [Route("api/v2/admin/feed")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "BrokerOrAdmin")]
 public class AdminFeedController : ControllerBase
 {
     private const string FeedHiddenKeyPrefix = "admin.feed.hidden.";
@@ -351,6 +351,12 @@ public class AdminFeedController : ControllerBase
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return IsV2Request() ? LaravelNotFound("Feed item not found") : NotFound(new { error = "Post not found" });
 
+        if (IsV2Request())
+        {
+            var guard = GuardBrokerNotAuthor(post.UserId, adminId.Value);
+            if (guard != null) return guard;
+        }
+
         post.IsHidden = true;
 
         // Mark pending reports as actioned
@@ -437,6 +443,12 @@ public class AdminFeedController : ControllerBase
 
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return IsV2Request() ? LaravelNotFound("Feed item not found") : NotFound(new { error = "Post not found" });
+
+        if (IsV2Request())
+        {
+            var guard = GuardBrokerNotAuthor(post.UserId, adminId.Value);
+            if (guard != null) return guard;
+        }
 
         _db.FeedPosts.Remove(post);
         await _db.SaveChangesAsync();
@@ -648,11 +660,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideListingFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var listingExists = await _db.Listings.AnyAsync(l => l.TenantId == tenantId && l.Id == id && l.DeletedAt == null);
-        if (!listingExists || await IsFeedItemDeletedAsync(tenantId, "listing", id))
+        var authorId = await _db.Listings
+            .Where(l => l.TenantId == tenantId && l.Id == id && l.DeletedAt == null)
+            .Select(l => (int?)l.UserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "listing", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "listing", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -664,11 +682,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteListingFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var listingExists = await _db.Listings.AnyAsync(l => l.TenantId == tenantId && l.Id == id && l.DeletedAt == null);
-        if (!listingExists || await IsFeedItemDeletedAsync(tenantId, "listing", id))
+        var authorId = await _db.Listings
+            .Where(l => l.TenantId == tenantId && l.Id == id && l.DeletedAt == null)
+            .Select(l => (int?)l.UserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "listing", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "listing", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -763,11 +787,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideEventFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var eventExists = await _db.Events.AnyAsync(e => e.TenantId == tenantId && e.Id == id && !e.IsCancelled);
-        if (!eventExists || await IsFeedItemDeletedAsync(tenantId, "event", id))
+        var authorId = await _db.Events
+            .Where(e => e.TenantId == tenantId && e.Id == id && !e.IsCancelled)
+            .Select(e => (int?)e.CreatedById)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "event", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "event", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -779,11 +809,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteEventFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var eventExists = await _db.Events.AnyAsync(e => e.TenantId == tenantId && e.Id == id && !e.IsCancelled);
-        if (!eventExists || await IsFeedItemDeletedAsync(tenantId, "event", id))
+        var authorId = await _db.Events
+            .Where(e => e.TenantId == tenantId && e.Id == id && !e.IsCancelled)
+            .Select(e => (int?)e.CreatedById)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "event", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "event", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -878,11 +914,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HidePollFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var pollExists = await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == id);
-        if (!pollExists || await IsFeedItemDeletedAsync(tenantId, "poll", id))
+        var authorId = await _db.Polls
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .Select(p => (int?)p.CreatedById)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "poll", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "poll", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -894,11 +936,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeletePollFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var pollExists = await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == id);
-        if (!pollExists || await IsFeedItemDeletedAsync(tenantId, "poll", id))
+        var authorId = await _db.Polls
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .Select(p => (int?)p.CreatedById)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "poll", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "poll", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -993,11 +1041,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideGoalFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var goalExists = await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == id);
-        if (!goalExists || await IsFeedItemDeletedAsync(tenantId, "goal", id))
+        var authorId = await _db.Goals
+            .Where(g => g.TenantId == tenantId && g.Id == id)
+            .Select(g => (int?)g.UserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "goal", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "goal", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -1009,11 +1063,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteGoalFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var goalExists = await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == id);
-        if (!goalExists || await IsFeedItemDeletedAsync(tenantId, "goal", id))
+        var authorId = await _db.Goals
+            .Where(g => g.TenantId == tenantId && g.Id == id)
+            .Select(g => (int?)g.UserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "goal", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "goal", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -1108,11 +1168,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideJobFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var jobExists = await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == id);
-        if (!jobExists || await IsFeedItemDeletedAsync(tenantId, "job", id))
+        var authorId = await _db.JobVacancies
+            .Where(j => j.TenantId == tenantId && j.Id == id)
+            .Select(j => (int?)j.PostedByUserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "job", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "job", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -1124,11 +1190,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteJobFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var jobExists = await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == id);
-        if (!jobExists || await IsFeedItemDeletedAsync(tenantId, "job", id))
+        var authorId = await _db.JobVacancies
+            .Where(j => j.TenantId == tenantId && j.Id == id)
+            .Select(j => (int?)j.PostedByUserId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "job", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "job", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -1337,11 +1409,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideVolunteerFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var opportunityExists = await _db.VolunteerOpportunities.AnyAsync(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled);
-        if (!opportunityExists || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
+        var authorId = await _db.VolunteerOpportunities
+            .Where(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled)
+            .Select(o => (int?)o.OrganizerId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "volunteer", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -1353,11 +1431,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteVolunteerFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var opportunityExists = await _db.VolunteerOpportunities.AnyAsync(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled);
-        if (!opportunityExists || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
+        var authorId = await _db.VolunteerOpportunities
+            .Where(o => o.TenantId == tenantId && o.Id == id && o.Status != OpportunityStatus.Cancelled)
+            .Select(o => (int?)o.OrganizerId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "volunteer", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "volunteer", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -1453,11 +1537,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideBlogFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var blogExists = await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived");
-        if (!blogExists || await IsFeedItemDeletedAsync(tenantId, "blog", id))
+        var authorId = await _db.BlogPosts
+            .Where(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived")
+            .Select(b => (int?)b.AuthorId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "blog", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "blog", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -1469,11 +1559,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteBlogFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var blogExists = await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived");
-        if (!blogExists || await IsFeedItemDeletedAsync(tenantId, "blog", id))
+        var authorId = await _db.BlogPosts
+            .Where(b => b.TenantId == tenantId && b.Id == id && b.Status != "archived")
+            .Select(b => (int?)b.AuthorId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "blog", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "blog", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -1568,11 +1664,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> HideDiscussionFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var discussionExists = await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == id);
-        if (!discussionExists || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
+        var authorId = await _db.GroupDiscussions
+            .Where(d => d.TenantId == tenantId && d.Id == id)
+            .Select(d => (int?)d.AuthorId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "discussion", id, deleted: false);
         await _db.SaveChangesAsync();
@@ -1584,11 +1686,17 @@ public class AdminFeedController : ControllerBase
     private async Task<IActionResult> DeleteDiscussionFeedItem(int id, int adminId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var discussionExists = await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == id);
-        if (!discussionExists || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
+        var authorId = await _db.GroupDiscussions
+            .Where(d => d.TenantId == tenantId && d.Id == id)
+            .Select(d => (int?)d.AuthorId)
+            .FirstOrDefaultAsync();
+        if (!authorId.HasValue || await IsFeedItemDeletedAsync(tenantId, "discussion", id))
         {
             return LaravelNotFound("Feed item not found");
         }
+
+        var guard = GuardBrokerNotAuthor(authorId.Value, adminId);
+        if (guard != null) return guard;
 
         await SetFeedFlagAsync(tenantId, "discussion", id, deleted: true);
         await _db.SaveChangesAsync();
@@ -1604,6 +1712,33 @@ public class AdminFeedController : ControllerBase
             success = false,
             error = new { code = "NOT_FOUND", message }
         });
+    }
+
+    private IActionResult? GuardBrokerNotAuthor(int authorId, int callerId)
+    {
+        if (CallerIsAdminTier() || authorId != callerId)
+        {
+            return null;
+        }
+
+        return StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            success = false,
+            error = new
+            {
+                code = "AUTH_INSUFFICIENT_PERMISSIONS",
+                message = "Broker or coordinator cannot moderate their own content"
+            }
+        });
+    }
+
+    private bool CallerIsAdminTier()
+    {
+        var role = User.GetRole();
+        return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "super_admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "tenant_admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "god", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<IReadOnlyList<object>> MapLaravelFeedPostsAsync(IReadOnlyList<FeedPost> posts, int tenantId)
