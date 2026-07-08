@@ -1,0 +1,104 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/jobs">Back to opportunities</a>
+
+  <div class="nexus-alpha-module-row govuk-!-margin-bottom-2">
+    {% if employer.avatarUrl %}
+      <img class="nexus-alpha-avatar" src="{{ employer.avatarUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async" width="64" height="64">
+    {% else %}
+      <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ employer.initial }}</span>
+    {% endif %}
+    <div>
+      <h1 class="govuk-heading-xl govuk-!-margin-bottom-1">{{ employer.name }}</h1>
+      {% if employer.headline %}
+        <p class="govuk-body-l govuk-!-margin-bottom-0">{{ employer.headline }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="govuk-body-l">Open opportunities and reviews for this employer.</p>
+
+  <p class="govuk-body-s nexus-alpha-meta">
+    {% if employer.location %}{{ employer.location }}{% endif %}
+    {% if employer.memberSinceLabel %}{% if employer.location %} - {% endif %}Member since {{ employer.memberSinceLabel }}{% endif %}
+  </p>
+
+  {% if employer.bio %}
+    <div class="govuk-body govuk-!-margin-bottom-6">{{ employer.bio | nl2br | safe }}</div>
+  {% endif %}
+
+  {% if loadError %}
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text">
+        <span class="govuk-visually-hidden">Warning</span>
+        Some employer details could not be loaded.
+      </strong>
+    </div>
+  {% endif %}
+
+  <h2 class="govuk-heading-m">Open opportunities</h2>
+  <p class="govuk-body">{{ openJobsMeta.countLabel }}</p>
+
+  {% if openJobs.length %}
+    <div class="nexus-alpha-card-list govuk-!-margin-bottom-6">
+      {% for job in openJobs %}
+        <article class="nexus-alpha-card">
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+            <a class="govuk-link" href="/jobs/{{ job.id }}">{{ job.title }}</a>
+          </h3>
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            {{ job.typeLabel }}{% if job.commitmentLabel %} - {{ job.commitmentLabel }}{% endif %}{% if job.locationLabel %} - {{ job.locationLabel }}{% endif %}
+          </p>
+          {% if job.deadlineLabel %}
+            <p class="govuk-body-s govuk-!-margin-bottom-0">Closing date: {{ job.deadlineLabel }}</p>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="govuk-body">This employer has no open opportunities right now.</p>
+  {% endif %}
+
+  <h2 class="govuk-heading-m">Employer reviews</h2>
+  <p class="govuk-body">{{ reviewStats.reviewsLabel }}</p>
+
+  {% if reviewStats.averageRating != null %}
+    <p class="govuk-body"><strong>Average rating</strong>: {{ reviewStats.averageRating }} out of 5</p>
+  {% endif %}
+
+  {% if reviewStats.dimensionRows.length %}
+    <h3 class="govuk-heading-s">Rated for</h3>
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      {% for row in reviewStats.dimensionRows %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value">{{ row.score }} out of 5</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  {% if employerReviews.length %}
+    <div class="nexus-alpha-card-list">
+      {% for review in employerReviews %}
+        <article class="nexus-alpha-card">
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            {{ review.rating }} out of 5{% if review.reviewerName %} - {{ review.reviewerName }}{% endif %}{% if review.createdLabel %} - {{ review.createdLabel }}{% endif %}
+          </p>
+          {% if review.comment %}
+            <div class="govuk-body govuk-!-margin-bottom-0">{{ review.comment | nl2br | safe }}</div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="govuk-body">This employer has no reviews yet.</p>
+  {% endif %}
+{% endblock %}

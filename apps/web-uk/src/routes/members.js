@@ -5,179 +5,638 @@
 
 const express = require('express');
 const {
-  getMembers,
+  getUsers,
   getUser,
+  getUserV2,
+  getMemberVerificationBadges,
+  getMembersV2,
+  getMembersNearby,
   getConnections,
-  getConnectionStatus,
-  sendConnectionRequest,
+  getMemberConnectionStatus,
+  sendMemberConnectionRequest,
+  acceptMemberConnection,
+  declineMemberConnection,
+  removeMemberConnection,
+  blockMember,
+  unblockMember,
+  endorseMemberSkill,
+  removeMemberEndorsement,
+  transferWalletCredits,
+  createReview,
   getGamificationProfileByUserId,
   getUserReviews,
   getProfile,
-  ApiError,
-  ApiOfflineError
+  ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
-router.use(requireAuth);
+const MEMBER_CONNECTION_ACTIONS = new Set(['connect', 'accept', 'decline', 'cancel', 'remove']);
+const MEMBER_ENDORSEMENT_ACTIONS = new Set(['endorse', 'remove']);
 
-function unwrapList(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
-  if (payload.data && Array.isArray(payload.data.data)) return payload.data.data;
+function tokenFrom(req) {
+  return req.signedCookies.token || '';
+}
+
+function memberUrl(id, status) {
+  return `/members/${id}?status=${encodeURIComponent(status)}`;
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function isNotFound(error) {
+  return error instanceof ApiError && error.status === 404;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data && typeof result.data === 'object'
+    ? result.data
+    : result;
+}
+
+function positiveInteger(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function boundedInteger(value, fallback, min = 0, max = 1000) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+}
+
+function connectionIdFrom(current) {
+  return positiveInteger(current.connection_id || current.connectionId || current.id);
+}
+
+function rowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
   return [];
 }
 
-function unwrapMeta(payload, fallback = {}) {
-  if (!payload || typeof payload !== 'object') return fallback;
-  return payload.meta || payload.pagination || payload.data?.meta || fallback;
+function metaFrom(result) {
+  return result && result.meta && typeof result.meta === 'object' ? result.meta : {};
 }
 
-function unwrapEntity(payload) {
-  if (!payload || typeof payload !== 'object') return null;
-  if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) return payload.data;
-  if (payload.user && typeof payload.user === 'object' && !Array.isArray(payload.user)) return payload.user;
-  if (payload.profile && typeof payload.profile === 'object' && !Array.isArray(payload.profile)) return payload.profile;
-  return payload;
+function memberName(member) {
+  const explicit = String(member.name || '').trim();
+  if (explicit) return explicit;
+  const first = String(member.first_name || member.firstName || '').trim();
+  const last = String(member.last_name || member.lastName || '').trim();
+  return `${first} ${last}`.trim() || 'A community member';
 }
 
-function allow(value, allowedValues, fallback) {
-  return allowedValues.includes(value) ? value : fallback;
+function connectionLabel(state) {
+  const labels = {
+    connected: 'Connected',
+    pending_sent: 'Request sent',
+    pending_received: 'Wants to connect'
+  };
+  return labels[state] || '';
 }
 
-function normalizeMember(member) {
-  const rawName = String(member.name || '').trim();
-  const nameParts = rawName.split(/\s+/).filter(Boolean);
-  const firstName = member.first_name || member.firstName || nameParts[0] || '';
-  const lastName = member.last_name || member.lastName || nameParts.slice(1).join(' ');
-  const name = String(rawName || `${firstName} ${lastName}` || '').trim();
+function normalizeDiscoverMember(member) {
+  const score = Number(member.community_rank_score);
+  const rankPercent = Number.isFinite(score) ? Math.round(score * 100) : null;
+  const level = boundedInteger(member.level, 0, 0, 1000);
+  const rating = Number(member.rating);
+  const given = boundedInteger(member.total_hours_given ?? member.hours_given, 0, 0, Number.MAX_SAFE_INTEGER);
+  const received = boundedInteger(member.total_hours_received ?? member.hours_received, 0, 0, Number.MAX_SAFE_INTEGER);
 
   return {
-    ...member,
-    id: member.id,
-    first_name: firstName,
-    last_name: lastName,
-    firstName,
-    lastName,
-    name: name || firstName || 'Unknown member',
-    displayName: name || firstName || 'Unknown member',
-    avatar: member.avatar || member.avatar_url || member.avatarUrl || '',
-    tagline: member.tagline || member.bio || '',
-    location: member.location || '',
-    rating: member.rating,
-    total_hours_given: Number(member.total_hours_given ?? member.hours_given ?? 0) || 0,
-    total_hours_received: Number(member.total_hours_received ?? member.hours_received ?? 0) || 0,
-    identity_verified: !!(member.identity_verified || member.id_verified || member.is_verified),
-    level: Number(member.level || 0) || 0,
-    connection_state: member.connection_state || member.connectionState || 'none',
-    badges: Array.isArray(member.badges)
-      ? member.badges
-      : (Array.isArray(member.showcased_badges) ? member.showcased_badges : [])
+    id: positiveInteger(member.id) || 0,
+    name: memberName(member),
+    initial: memberName(member).slice(0, 1).toUpperCase() || 'M',
+    avatar: String(member.avatar || member.avatar_url || member.avatarUrl || '').trim(),
+    tagline: String(member.tagline || '').trim(),
+    rankPercent,
+    location: String(member.location || '').trim(),
+    hoursGivenLabel: `${given} hour${given === 1 ? '' : 's'} given`,
+    hoursReceivedLabel: `${received} hour${received === 1 ? '' : 's'} received`,
+    ratingLabel: Number.isFinite(rating) && rating > 0 ? `${rating.toFixed(1)} out of 5` : '',
+    isVerified: !!(member.is_verified || member.identity_verified),
+    level,
+    levelLabel: level > 0 ? `Level ${level}` : '',
+    connectionLabel: connectionLabel(member.connection_state || member.connectionState)
   };
 }
 
-function memberFilters(req) {
+function numericCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeNearbyMember(member) {
+  const normalized = normalizeDiscoverMember(member);
+  const distance = Number(member.distance);
   return {
-    q: typeof req.query.q === 'string' ? req.query.q.trim() : (typeof req.query.search === 'string' ? req.query.search.trim() : ''),
-    sort: allow(req.query.sort, ['name', 'joined', 'rating', 'hours_given'], 'name'),
-    order: allow(String(req.query.order || '').toUpperCase(), ['ASC', 'DESC'], 'ASC'),
-    limit: 20,
-    offset: Math.max(parseInt(req.query.offset, 10) || 0, 0)
+    ...normalized,
+    distanceLabel: Number.isFinite(distance) ? `${distance.toFixed(1)} km away` : ''
   };
 }
 
-function normalizeConnectionStatus(payload) {
-  const statusPayload = unwrapEntity(payload);
-  if (!statusPayload || typeof statusPayload !== 'object') return null;
-
-  const status = statusPayload.status;
-  const connectionId = statusPayload.connection_id || statusPayload.connectionId || statusPayload.id || null;
-
-  if (status === 'connected' || status === 'accepted') {
-    return { id: connectionId, status: 'accepted', is_requester: false };
-  }
-
-  if (status === 'pending_sent') {
-    return { id: connectionId, status: 'pending', is_requester: true };
-  }
-
-  if (status === 'pending_received') {
-    return { id: connectionId, status: 'pending', is_requester: false };
-  }
-
-  return null;
+function decimalLabel(value, fallback = '0.0') {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : fallback;
 }
 
-// Members directory - list all users in tenant
-router.get('/', asyncRoute(async (req, res) => {
-  const filters = memberFilters(req);
-  let payload = null;
-  let error = false;
+function integerLabel(value, fallback = '0') {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(Math.trunc(number)) : fallback;
+}
+
+function titleLabel(value) {
+  const raw = String(value || '').replace(/_/g, ' ').trim();
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+function dateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function normalizeInsightsProfile(profile) {
+  const stats = profile && typeof profile.stats === 'object' && profile.stats !== null ? profile.stats : {};
+  const nexusScore = profile && typeof profile.nexus_score === 'object' && profile.nexus_score !== null
+    ? profile.nexus_score
+    : null;
+  const badges = Array.isArray(profile.badges)
+    ? profile.badges
+    : (Array.isArray(profile.showcased_badges) ? profile.showcased_badges : []);
+
+  return {
+    displayName: memberName(profile || {}),
+    nexusScore: nexusScore
+      ? {
+          scoreLabel: decimalLabel(nexusScore.total_score, ''),
+          tierLabel: titleLabel(nexusScore.tier),
+          percentile: boundedInteger(nexusScore.percentile, 0, 0, 100)
+        }
+      : null,
+    stats: {
+      hoursGiven: decimalLabel(profile.total_hours_given ?? stats.total_hours_given),
+      hoursReceived: decimalLabel(profile.total_hours_received ?? stats.total_hours_received),
+      listingsCount: integerLabel(stats.listings_count),
+      groupsCount: integerLabel(profile.groups_count ?? stats.groups_count),
+      eventsAttended: integerLabel(profile.events_attended ?? stats.events_attended),
+      connectionsCount: integerLabel(stats.connections_count),
+      reviewsCount: integerLabel(stats.reviews_count),
+      rating: profile.rating ?? stats.average_rating,
+      ratingLabel: Number.isFinite(Number(profile.rating ?? stats.average_rating))
+        ? decimalLabel(profile.rating ?? stats.average_rating)
+        : '',
+      level: integerLabel(profile.level, '1'),
+      xp: integerLabel(profile.xp)
+    },
+    badges: badges.slice(0, 12).map((badge) => ({
+      name: String(badge.name || badge.badge_name || badge.badge_key || '').trim(),
+      icon: String(badge.icon || '').trim()
+    })).filter((badge) => badge.name)
+  };
+}
+
+function normalizeVerificationBadges(result) {
+  return rowsFrom(result).map((badge) => {
+    const type = String(badge.badge_type || badge.type || '').trim();
+    return {
+      label: String(badge.label || titleLabel(type) || 'Verified').trim(),
+      grantedLabel: dateLabel(badge.granted_at || badge.created_at || badge.verified_at)
+    };
+  }).filter((badge) => badge.label);
+}
+
+function redirectAuthIfNeeded(error, res) {
+  if (isAuthError(error)) {
+    res.redirect('/login?status=auth-required');
+    return true;
+  }
+  return false;
+}
+
+function transferFailureStatus(error) {
+  const message = error instanceof Error ? error.message : '';
+  const code = error instanceof ApiError && error.data && typeof error.data === 'object'
+    ? String(error.data.error || error.data.code || '')
+    : '';
+
+  if (code === 'INSUFFICIENT_FUNDS' || message.includes('Insufficient')) {
+    return 'transfer-insufficient';
+  }
+  if (message.includes('yourself')) {
+    return 'transfer-self';
+  }
+  return 'transfer-failed';
+}
+
+router.post('/:id(\\d+)/connection', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const action = String(req.body.action || '').trim();
+  let status = 'connection-failed';
+
+  if (MEMBER_CONNECTION_ACTIONS.has(action)) {
+    try {
+      const current = dataFrom(await getMemberConnectionStatus(token, id)) || {};
+      const currentStatus = String(current.status || 'none');
+      const connectionId = connectionIdFrom(current);
+
+      if (action === 'connect' && currentStatus === 'none') {
+        await sendMemberConnectionRequest(token, id);
+        status = 'connection-sent';
+      } else if (action === 'accept' && currentStatus === 'pending_received' && connectionId !== null) {
+        await acceptMemberConnection(token, connectionId);
+        status = 'connection-accepted';
+      } else if (action === 'decline' && currentStatus === 'pending_received' && connectionId !== null) {
+        await declineMemberConnection(token, connectionId);
+        status = 'connection-declined';
+      } else if (action === 'cancel' && currentStatus === 'pending_sent' && connectionId !== null) {
+        await removeMemberConnection(token, connectionId);
+        status = 'connection-cancelled';
+      } else if (action === 'remove' && currentStatus === 'connected' && connectionId !== null) {
+        await removeMemberConnection(token, connectionId);
+        status = 'connection-removed';
+      }
+    } catch (error) {
+      if (redirectAuthIfNeeded(error, res)) return undefined;
+      if (isNotFound(error)) throw error;
+      status = 'connection-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/endorse', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const skillName = String(req.body.skill_name || '').trim();
+  const action = String(req.body.action || '').trim();
+  let status = 'endorsement-failed';
+
+  if (skillName !== '' && MEMBER_ENDORSEMENT_ACTIONS.has(action)) {
+    try {
+      if (action === 'endorse') {
+        await endorseMemberSkill(token, id, { skill_name: skillName });
+        status = 'endorsement-added';
+      } else {
+        await removeMemberEndorsement(token, id, skillName);
+        status = 'endorsement-removed';
+      }
+    } catch (error) {
+      if (redirectAuthIfNeeded(error, res)) return undefined;
+      if (isNotFound(error)) throw error;
+      status = 'endorsement-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/block', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let status = 'member-blocked';
+  try {
+    await blockMember(token, id, String(req.body.reason || '').trim());
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    status = error instanceof ApiError && error.status === 400 ? 'block-self' : 'block-failed';
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/unblock', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
 
   try {
-    payload = await getMembers(req.token, filters);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      throw err;
-    }
-    if (!(err instanceof ApiError) && !(err instanceof ApiOfflineError)) {
-      throw err;
-    }
-    error = true;
+    await unblockMember(token, id);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
   }
 
-  const meta = unwrapMeta(payload, {
-    total_items: 0,
-    offset: filters.offset,
-    per_page: filters.limit,
-    has_more: false
+  if (String(req.body.from || '').trim() === 'list') {
+    return res.redirect('/profile/blocked?status=member-unblocked');
+  }
+  return res.redirect(memberUrl(id, 'member-unblocked'));
+}));
+
+router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const rating = Number(req.body.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.redirect(memberUrl(id, 'review-invalid'));
+  }
+
+  let status = 'review-submitted';
+  try {
+    await createReview(token, {
+      receiver_id: id,
+      rating,
+      comment: String(req.body.comment || '').trim() || null
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
+      status = 'review-invalid';
+    } else if (error instanceof ApiError && error.status === 409) {
+      status = 'review-duplicate';
+    } else {
+      status = 'review-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const amount = Number(req.body.amount);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return res.redirect(memberUrl(id, 'transfer-failed'));
+  }
+
+  let status = 'transfer-sent';
+  try {
+    await transferWalletCredits(token, {
+      recipient: id,
+      amount,
+      description: String(req.body.note || '').trim().slice(0, 255),
+      idempotency_key: String(req.body.idempotency_key || '').trim()
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    status = transferFailureStatus(error);
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.get('/discover', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const search = String(req.query.q || '').trim().slice(0, 100);
+  const limit = boundedInteger(req.query.limit, 20, 1, 100);
+  const offset = boundedInteger(req.query.offset, 0, 0, 100000);
+
+  let members = [];
+  let totalItems = 0;
+  let hasMore = false;
+  let errorMessage = null;
+
+  try {
+    const result = await getMembersV2(token, {
+      q: search,
+      sort: 'communityrank',
+      limit,
+      offset
+    });
+    const meta = metaFrom(result);
+    members = rowsFrom(result).map(normalizeDiscoverMember).filter((member) => member.id > 0);
+    totalItems = boundedInteger(meta.total_items, members.length, 0, Number.MAX_SAFE_INTEGER);
+    hasMore = !!meta.has_more;
+  } catch {
+    errorMessage = 'Sorry, there is a problem loading recommended members.';
+  }
+
+  res.render('members/discover', {
+    title: 'Recommended members',
+    activeNav: 'members',
+    alphaActiveNav: 'members',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    members,
+    search,
+    totalItems,
+    totalItemsLabel: `${totalItems} member${totalItems === 1 ? '' : 's'}`,
+    hasMore,
+    nextHref: hasMore ? `/members/discover${search ? `?q=${encodeURIComponent(search)}&` : '?'}offset=${offset + limit}` : '',
+    errorMessage
   });
-  const users = error ? [] : unwrapList(payload).map(normalizeMember);
-  const totalItems = Number(meta.total_items ?? meta.total ?? users.length) || 0;
-  const hasFilters = !!(filters.q || filters.sort !== 'name' || filters.order !== 'ASC');
+}));
+
+router.get('/nearby', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const search = String(req.query.q || '').trim().slice(0, 100);
+  const radius = boundedInteger(req.query.radius, 25, 5, 100);
+  const limit = boundedInteger(req.query.limit, 24, 1, 100);
+  const offset = boundedInteger(req.query.offset, 0, 0, 100000);
+
+  let members = [];
+  let hasMore = false;
+  let errorMessage = null;
+  let hasLocation = false;
+
+  try {
+    const profile = dataFrom(await getProfile(token)) || {};
+    const lat = numericCoordinate(profile.latitude ?? profile.lat);
+    const lon = numericCoordinate(profile.longitude ?? profile.lon ?? profile.lng);
+
+    if (lat !== null && lon !== null) {
+      hasLocation = true;
+      const result = await getMembersNearby(token, {
+        lat,
+        lon,
+        q: search,
+        radius_km: radius,
+        limit,
+        offset
+      });
+      const meta = metaFrom(result);
+      members = rowsFrom(result).map(normalizeNearbyMember).filter((member) => member.id > 0);
+      hasMore = !!meta.has_more;
+    }
+  } catch {
+    errorMessage = 'Nearby members could not be loaded. Try again.';
+  }
+
+  res.render('members/nearby', {
+    title: 'Members near me',
+    activeNav: 'members',
+    alphaActiveNav: 'members',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    members,
+    search,
+    radius,
+    radiusOptions: [5, 10, 25, 50, 100],
+    hasLocation,
+    hasMore,
+    nextHref: hasMore ? `/members/nearby${search ? `?q=${encodeURIComponent(search)}&` : '?'}radius=${radius}&offset=${offset + limit}` : '',
+    errorMessage
+  });
+}));
+
+router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  try {
+    const [viewerResult, profileResult, verificationResult] = await Promise.all([
+      getProfile(token),
+      getUserV2(token, id),
+      getMemberVerificationBadges(token, id).catch(() => ({ data: [] }))
+    ]);
+    const viewer = dataFrom(viewerResult) || {};
+    const profile = dataFrom(profileResult) || {};
+    const normalized = normalizeInsightsProfile(profile);
+    const isOwnProfile = Number(viewer.id) === id;
+
+    res.render('members/insights', {
+      title: `Reputation and recognition - ${normalized.displayName}`,
+      activeNav: isOwnProfile ? 'profile' : 'members',
+      alphaActiveNav: isOwnProfile ? 'profile' : 'members',
+      memberId: id,
+      isOwnProfile,
+      displayName: normalized.displayName,
+      nexusScore: normalized.nexusScore,
+      insightsStats: normalized.stats,
+      verificationBadges: normalizeVerificationBadges(verificationResult),
+      earnedBadges: normalized.badges
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    throw error;
+  }
+}));
+
+// Members directory - list all users in tenant
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = 20;
+  const searchQuery = req.query.search ? req.query.search.trim() : '';
+  let memberErrorMessage = null;
+
+  const [usersResult, connectionsResult] = await Promise.all([
+    getUsers(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      memberErrorMessage = 'Sorry, there is a problem loading members.';
+      return { data: [] };
+    }),
+    getConnections(req.token).catch(() => ({ data: [] }))
+  ]);
+
+  let allUsers = usersResult.items || usersResult.data || usersResult.users || usersResult || [];
+  // Ensure allUsers is always an array
+  if (!Array.isArray(allUsers)) {
+    allUsers = [];
+  }
+  const connections = connectionsResult.items || connectionsResult.data || connectionsResult.connections || [];
+  // Ensure connections is always an array
+  const connectionsList = Array.isArray(connections) ? connections : [];
+
+  // Build a map of connection status by user ID
+  const connectionMap = {};
+  connectionsList.forEach(conn => {
+    const otherUser = conn.otherUser || conn.other_user;
+    if (otherUser) {
+      connectionMap[otherUser.id] = {
+        id: conn.id,
+        status: conn.status,
+        isRequester: conn.isRequester || conn.is_requester
+      };
+    }
+  });
+
+  // Apply search filter
+  if (searchQuery) {
+    const searchLower = searchQuery.toLowerCase();
+    allUsers = allUsers.filter(user => {
+      const firstName = (user.first_name || user.firstName || '').toLowerCase();
+      const lastName = (user.last_name || user.lastName || '').toLowerCase();
+      const email = (user.email || '').toLowerCase();
+      const fullName = `${firstName} ${lastName}`;
+      return firstName.includes(searchLower) ||
+             lastName.includes(searchLower) ||
+             fullName.includes(searchLower) ||
+             email.includes(searchLower);
+    });
+  }
+
+  // Client-side pagination
+  const total = allUsers.length;
+  const totalPages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const users = allUsers.slice(offset, offset + limit);
 
   res.render('members/index', {
     title: 'Community members',
     users,
-    items: users,
-    meta: {
-      ...meta,
-      total_items: totalItems,
-      offset: Number(meta.offset ?? filters.offset) || 0,
-      per_page: Number(meta.per_page ?? filters.limit) || filters.limit,
-      has_more: !!(meta.has_more || meta.hasMore)
+    connectionMap,
+    searchQuery,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: totalPages
     },
-    filters,
-    hasFilters,
-    error,
-    communityName: res.locals.tenant?.name || res.locals.tenantSlug || 'Project NEXUS Accessible',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    errorMessage: memberErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
 }));
 
 // View single user profile
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [userResult, connectionsResult, connectionStatusResult, gamificationResult, reviewsResult, currentProfileResult] = await Promise.all([
+  const [user, connectionsResult, gamificationResult, reviewsResult, currentProfile] = await Promise.all([
     getUser(req.token, id),
     getConnections(req.token).catch(() => ({ data: [] })),
-    getConnectionStatus(req.token, id).catch(() => null),
     getGamificationProfileByUserId(req.token, id).catch(() => ({ profile: null })),
     getUserReviews(req.token, id).catch(() => ({ data: [], summary: null })),
     getProfile(req.token).catch(() => null)
   ]);
 
-  const user = normalizeMember(unwrapEntity(userResult) || {});
-  const currentProfile = unwrapEntity(currentProfileResult);
-
-  if (!user.id) {
+  if (!user) {
     return res.status(404).render('errors/404', { title: 'User not found' });
   }
 
@@ -185,11 +644,10 @@ router.get('/:id', asyncRoute(async (req, res) => {
   const connectionsArr = Array.isArray(connections) ? connections : [];
 
   // Find connection with this user
-  const listConnection = connectionsArr.find(conn => {
+  const connection = connectionsArr.find(conn => {
     const otherUser = conn.otherUser || conn.other_user;
     return otherUser && otherUser.id === parseInt(id);
   });
-  const connection = normalizeConnectionStatus(connectionStatusResult) || listConnection;
 
   const isOwnProfile = currentProfile && (currentProfile.id == id || currentProfile.id === parseInt(id, 10));
 
@@ -199,39 +657,16 @@ router.get('/:id', asyncRoute(async (req, res) => {
   }
 
   res.render('members/profile', {
-    title: user.displayName,
+    title: `${user.first_name || user.firstName} ${user.last_name || user.lastName}`,
     user,
     connection,
     isOwnProfile,
     gamification: gamificationResult.profile || null,
-    reviews: unwrapList(reviewsResult),
-    reviewSummary: reviewsResult.summary || reviewsResult.data?.summary || null,
+    reviews: reviewsResult.data || [],
+    reviewSummary: reviewsResult.summary || null,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }, { notFoundTitle: 'User not found' }));
-
-// Send connection request from member profile
-router.post('/:id/connect', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await sendConnectionRequest(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', result.message || 'Connection request sent');
-    }
-    res.redirect(`/members/${id}`);
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message);
-      }
-      return res.redirect(`/members/${id}`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
 
 module.exports = router;

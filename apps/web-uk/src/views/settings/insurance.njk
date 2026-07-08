@@ -1,0 +1,120 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/profile/settings">Back to settings</a>
+
+      {% if statusMessage and successStatus %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="insurance-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="insurance-status-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
+          </div>
+        </div>
+      {% elif statusMessage and errorStatus %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li><a href="#{{ errorAnchor }}">{{ statusMessage }}</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <span class="govuk-caption-xl">Account settings</span>
+      <h1 class="govuk-heading-xl">Insurance certificates</h1>
+      <p class="govuk-body-l">Upload proof of insurance so the team can verify your cover. Accepted file types are PDF, JPG and PNG, up to 10MB.</p>
+
+      <section aria-labelledby="insurance-certificates-heading" id="certificates">
+        <h2 class="govuk-heading-l" id="insurance-certificates-heading">Your certificates</h2>
+        {% if not certificates.length %}
+          <div class="govuk-inset-text"><p class="govuk-body">You have not uploaded any insurance certificates yet.</p></div>
+        {% else %}
+          {% for certificate in certificates %}
+            <div class="nexus-alpha-card govuk-!-margin-bottom-4">
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
+                {{ certificate.insuranceTypeLabel }}
+                <strong class="govuk-tag {{ certificate.statusTagClass }}">{{ certificate.statusLabel }}</strong>
+              </h3>
+              <dl class="nexus-alpha-inline-list govuk-!-margin-bottom-0">
+                <div>
+                  <dt>Provider</dt>
+                  <dd>{{ certificate.providerName or "Provider not given" }}</dd>
+                </div>
+                <div>
+                  <dt>Expires</dt>
+                  <dd>{{ certificate.expiryLabel or "No expiry date given" }}</dd>
+                </div>
+              </dl>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </section>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <section aria-labelledby="insurance-upload-heading" id="upload">
+        <h2 class="govuk-heading-l" id="insurance-upload-heading">Upload a certificate</h2>
+
+        <form method="post" action="/settings/insurance" enctype="multipart/form-data" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {% set typeError = errorAnchor == "insurance_type" and errorStatus %}
+          <div class="govuk-form-group{% if typeError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="insurance_type">Type of insurance</label>
+            {% if typeError %}
+              <p id="insurance-type-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ statusMessage }}
+              </p>
+            {% endif %}
+            <select class="govuk-select" id="insurance_type" name="insurance_type"{% if typeError %} aria-describedby="insurance-type-error"{% endif %}>
+              {% for type in insuranceTypes %}
+                <option value="{{ type.value }}">{{ type.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="provider_name">Insurance provider (optional)</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="provider_name" name="provider_name" type="text" maxlength="255">
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="policy_number">Policy number (optional)</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="policy_number" name="policy_number" type="text" maxlength="100">
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="expiry_date">Expiry date (optional)</label>
+            <div id="expiry-date-hint" class="govuk-hint">For example, 27 3 2027</div>
+            <input class="govuk-input govuk-input--width-10" id="expiry_date" name="expiry_date" type="date" aria-describedby="expiry-date-hint">
+          </div>
+
+          {% set fileError = errorAnchor == "certificate_file" and errorStatus %}
+          <div class="govuk-form-group{% if fileError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="certificate_file">Certificate file</label>
+            <div id="certificate-file-hint" class="govuk-hint">Upload a PDF, JPG or PNG, up to 10MB.</div>
+            {% if fileError %}
+              <p id="certificate-file-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ statusMessage }}
+              </p>
+            {% endif %}
+            <input class="govuk-file-upload" id="certificate_file" name="certificate_file" type="file" accept="application/pdf,image/jpeg,image/png" aria-describedby="certificate-file-hint{% if fileError %} certificate-file-error{% endif %}">
+          </div>
+
+          <button class="govuk-button" data-module="govuk-button">Upload certificate</button>
+        </form>
+      </section>
+    </div>
+  </div>
+{% endblock %}

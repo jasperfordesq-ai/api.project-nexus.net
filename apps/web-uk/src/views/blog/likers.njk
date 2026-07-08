@@ -1,0 +1,41 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/blog/{{ post.slug }}/comments">Back to the discussion</a>
+
+      <span class="govuk-caption-l">Blog reactions</span>
+      <h1 class="govuk-heading-xl">People who reacted {{ reactionEmoji }}</h1>
+
+      <p class="govuk-body-l">
+        {% if likersTotal == 0 %}No people{% elif likersTotal == 1 %}1 person{% else %}{{ likersTotal }} people{% endif %}
+      </p>
+
+      {% if not likers.length %}
+        <div class="govuk-inset-text"><p class="govuk-body">No one has reacted with this yet.</p></div>
+      {% else %}
+        <ul class="govuk-list nexus-alpha-card-list">
+          {% for liker in likers %}
+            <li class="nexus-alpha-module-row">
+              {% if liker.id %}
+                <a class="govuk-link" href="/members/{{ liker.id }}">{{ liker.name }}</a>
+              {% else %}
+                {{ liker.name }}
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if likersHasMore %}
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="/blog/{{ post.slug }}/likers/{{ reaction }}?page={{ likersPage + 1 }}">Show more people</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

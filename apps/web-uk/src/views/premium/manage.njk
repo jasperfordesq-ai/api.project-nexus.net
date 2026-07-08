@@ -1,0 +1,72 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/premium" class="govuk-back-link">Back to support tiers</a>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Manage your support</h1>
+  <p class="govuk-body-l">View your current recurring support plan and manage billing or cancellation.</p>
+
+  {% if status %}
+    <div class="govuk-notification-banner{% if status.type == 'success' %} govuk-notification-banner--success{% endif %}" role="region" aria-labelledby="premium-status" data-module="govuk-notification-banner">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="premium-status">Notice</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Tier</dt>
+      <dd class="govuk-summary-list__value">{{ subscription.tierName }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Status</dt>
+      <dd class="govuk-summary-list__value"><strong class="govuk-tag {{ subscription.statusClass }}">{{ subscription.statusLabel }}</strong></dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Billing interval</dt>
+      <dd class="govuk-summary-list__value">{{ subscription.intervalLabel }}</dd>
+    </div>
+    {% if subscription.currentPeriodEnd %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">{% if subscription.canceledAt %}Ends on{% else %}Renews on{% endif %}</dt>
+        <dd class="govuk-summary-list__value">{{ subscription.currentPeriodEnd | date }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if subscription.features and subscription.features.length %}
+    <h2 class="govuk-heading-m">Included support benefits</h2>
+    <ul class="govuk-list govuk-list--bullet">
+      {% for feature in subscription.features %}
+        <li>{{ feature }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="post" action="/premium/portal" class="govuk-!-margin-bottom-4">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Manage billing</button>
+  </form>
+
+  {% if not subscription.canceledAt %}
+    <h2 class="govuk-heading-m">Cancel support</h2>
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">Notice</span> Your support will stay active until the end of the current billing period.</strong>
+    </div>
+    <form method="post" action="/premium/cancel">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <button class="govuk-button govuk-button--warning" data-module="govuk-button">Cancel support</button>
+    </form>
+  {% endif %}
+{% endblock %}

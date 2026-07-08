@@ -1,0 +1,83 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace">Back to marketplace</a>
+
+  {% if status %}
+    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
+      <div role="alert">
+        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}There is a problem{% else %}Success{% endif %}</h2>
+        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
+          <p class="govuk-body">{{ status.message }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">{{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">{{ item.title }}</h1>
+  <p><strong class="govuk-tag {{ item.priceTagClass }}">{{ item.priceLabel }}</strong></p>
+
+  {% if item.images.length == 1 %}
+    <div class="nexus-alpha-detail-hero">
+      <img src="{{ item.images[0] }}" alt="{{ item.title }}" loading="lazy" decoding="async">
+    </div>
+  {% elseif item.images.length > 1 %}
+    <ul class="govuk-list nexus-alpha-image-strip govuk-!-margin-bottom-4">
+      {% for image in item.images %}
+        <li><a href="{{ image }}" target="_blank" rel="noopener noreferrer"><img src="{{ image }}" alt="{{ item.title }}" loading="lazy" decoding="async"></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if item.description %}
+    <h2 class="govuk-heading-l">Description</h2>
+    <p class="govuk-body">{{ item.description }}</p>
+  {% endif %}
+
+  <dl class="govuk-summary-list">
+    {% if item.condition %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Condition</dt>
+        <dd class="govuk-summary-list__value">{{ item.condition }}</dd>
+      </div>
+    {% endif %}
+    {% if item.location %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Location</dt>
+        <dd class="govuk-summary-list__value">{{ item.location }}</dd>
+      </div>
+    {% endif %}
+    {% if item.deliveryMethod %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Delivery</dt>
+        <dd class="govuk-summary-list__value">{{ item.deliveryMethod }}</dd>
+      </div>
+    {% endif %}
+    {% if item.sellerName %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Seller</dt>
+        <dd class="govuk-summary-list__value">{{ item.sellerName }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if item.id and not item.isOwnItem %}
+    <div class="govuk-button-group govuk-!-margin-top-4">
+      <a class="govuk-button" href="/marketplace/{{ item.id }}/buy" role="button" draggable="false" data-module="govuk-button">Buy this item</a>
+      <a class="govuk-button govuk-button--secondary" href="/marketplace/{{ item.id }}/offer" role="button" draggable="false" data-module="govuk-button">Make an offer</a>
+      <form method="post" action="/marketplace/{{ item.id }}/save">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Save this item</button>
+      </form>
+    </div>
+    <p class="govuk-body">
+      <a class="govuk-link" href="/marketplace/{{ item.id }}/report">Report this item</a>
+    </p>
+  {% endif %}
+{% endblock %}

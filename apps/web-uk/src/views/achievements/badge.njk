@@ -1,0 +1,63 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+
+  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">{% if badge.icon %}{{ badge.icon }} {% endif %}{{ badge.name }}</h1>
+
+  {% if badge.description %}
+    <p class="govuk-body-l">{{ badge.description }}</p>
+  {% endif %}
+
+  {% if badge.earned %}
+    <strong class="govuk-tag govuk-tag--green govuk-!-margin-bottom-4">You have earned this badge</strong>
+  {% else %}
+    <strong class="govuk-tag govuk-tag--grey govuk-!-margin-bottom-4">You have not earned this badge yet</strong>
+  {% endif %}
+
+  <dl class="govuk-summary-list">
+    {% if badge.earned and badge.earnedAtLabel %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Earned on</dt>
+        <dd class="govuk-summary-list__value">{{ badge.earnedAtLabel }}</dd>
+      </div>
+    {% endif %}
+    {% if badge.rarityLabel %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Rarity</dt>
+        <dd class="govuk-summary-list__value">{{ badge.rarityLabel }}</dd>
+      </div>
+    {% endif %}
+    {% if badge.xpValue > 0 %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">XP value</dt>
+        <dd class="govuk-summary-list__value">{{ badge.xpValueLabel }}</dd>
+      </div>
+    {% endif %}
+    {% if badge.tierLabel %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Tier</dt>
+        <dd class="govuk-summary-list__value">{{ badge.tierLabel }}</dd>
+      </div>
+    {% endif %}
+    {% if badge.typeLabel %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Category</dt>
+        <dd class="govuk-summary-list__value">{{ badge.typeLabel }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if badge.earned and badge.isShowcased %}
+    <p class="govuk-body">Showcased on your profile</p>
+  {% endif %}
+
+  <p class="govuk-body govuk-!-margin-top-4">
+    <a class="govuk-link" href="/achievements">View all achievements</a>
+  </p>
+{% endblock %}

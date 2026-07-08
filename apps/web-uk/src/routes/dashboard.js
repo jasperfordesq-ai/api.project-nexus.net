@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Jasper Ford
+// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -12,7 +12,10 @@ const {
   getFeedPosts,
   getMyEvents,
   getGamificationProfile,
-  getAllBadges
+  getMyBadges,
+  getOnboardingStatus,
+  getExchangeAttentionCount,
+  getMemberEndorsements
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -20,180 +23,245 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-function unwrapList(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
-  if (payload.data && Array.isArray(payload.data.data)) return payload.data.data;
+function dataFrom(result) {
+  if (!result || typeof result !== 'object') return result;
+  return result.data !== undefined ? result.data : result;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data && data.items)) return data.items;
+  if (Array.isArray(data && data.data)) return data.data;
+  if (Array.isArray(result && result.items)) return result.items;
+  if (Array.isArray(result && result.data)) return result.data;
   return [];
 }
 
-function unwrapObject(payload) {
-  if (!payload || typeof payload !== 'object') return {};
-  return payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
-    ? payload.data
-    : payload;
+function numberFrom(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function firstPresent(...values) {
-  return values.find(value => value !== undefined && value !== null && value !== '');
+function integerFrom(value, fallback = 0) {
+  return Math.trunc(numberFrom(value, fallback));
 }
 
-function toNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+function formatOneDecimal(value) {
+  return numberFrom(value).toFixed(1);
 }
 
-function formatDecimal(value, places = 1) {
-  return toNumber(value).toFixed(places);
+function formatInteger(value) {
+  return new Intl.NumberFormat('en-GB').format(integerFrom(value));
 }
 
-function stripHtml(value) {
-  return String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+function displayName(profile) {
+  const first = String(profile && (profile.first_name || profile.firstName || '')).trim();
+  const last = String(profile && (profile.last_name || profile.lastName || '')).trim();
+  const combined = [first, last].filter(Boolean).join(' ').trim();
+  return combined || String(profile && (profile.display_name || profile.displayName || profile.name || 'User')).trim();
 }
 
-function truncate(value, maxLength = 180) {
-  const clean = stripHtml(value);
-  if (clean.length <= maxLength) return clean;
-  return `${clean.slice(0, maxLength - 3).trim()}...`;
+function profileId(profile) {
+  const id = Number(profile && (profile.id ?? profile.user_id ?? profile.userId));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function firstName(profile) {
+  return String(profile && (profile.first_name || profile.firstName || '')).trim() || displayName(profile);
+}
+
+function profileStats(profile) {
+  const stats = (profile && (profile.stats || profile.profile_stats || profile.profileStats)) || {};
+  const hoursGiven = numberFrom(stats.hours_given ?? stats.hoursGiven ?? profile.hours_given ?? profile.hoursGiven);
+  const hoursReceived = numberFrom(stats.hours_received ?? stats.hoursReceived ?? profile.hours_received ?? profile.hoursReceived);
+  const listingsCount = integerFrom(stats.listings_count ?? stats.listingsCount ?? profile.listings_count ?? profile.listingsCount);
+
+  return {
+    hoursGiven,
+    hoursGivenLabel: formatOneDecimal(hoursGiven),
+    hoursReceived,
+    hoursReceivedLabel: formatOneDecimal(hoursReceived),
+    listingsCount,
+    listingsCountLabel: formatInteger(listingsCount)
+  };
+}
+
+function walletBalance(result) {
+  const data = dataFrom(result);
+  if (typeof data === 'number') return data;
+  return numberFrom(data && (data.balance ?? data.available_balance ?? data.availableBalance));
+}
+
+function onboardingCompleted(result) {
+  const data = dataFrom(result) || {};
+  if (data.onboarding_completed !== undefined) return Boolean(data.onboarding_completed);
+  if (data.onboardingCompleted !== undefined) return Boolean(data.onboardingCompleted);
+  if (data.completed !== undefined) return Boolean(data.completed);
+  return true;
+}
+
+function normalizedGamification(result, badges) {
+  const data = dataFrom(result) || {};
+  const profile = data.profile || data.gamification || data;
+  const levelProgress = profile.level_progress || profile.levelProgress || {};
+  const progressPct = Math.max(0, Math.min(100, integerFrom(
+    levelProgress.progress_percentage ?? levelProgress.progressPercentage ?? profile.progress_percentage ?? profile.progressPercentage
+  )));
+
+  const level = integerFrom(profile.level, 1);
+  const xp = integerFrom(profile.xp ?? profile.total_xp ?? profile.totalXp);
+  const badgesCount = integerFrom(profile.badges_count ?? profile.badgesCount ?? badges.length, badges.length);
+
+  return {
+    level,
+    levelName: String(profile.level_name || profile.levelName || '').trim(),
+    xp,
+    xpLabel: formatInteger(xp),
+    progressPct,
+    progressLabel: `${progressPct}% of the way to the next level`,
+    badgesCount,
+    badgesCountLabel: formatInteger(badgesCount)
+  };
+}
+
+function feedItemType(item) {
+  const type = String(item && item.type ? item.type : 'post');
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function stripTags(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').trim();
 }
 
 function normalizeFeedItem(item) {
-  const type = firstPresent(item.type, item.item_type, 'post');
-  const author = item.author || item.user || {};
-  const media = Array.isArray(item.media) ? item.media : [];
-  const title = firstPresent(item.title, item.name, type === 'post' ? 'Post' : 'Activity');
-
   return {
-    id: item.id,
-    type,
-    typeLabel: type === 'request' ? 'Request' : type === 'offer' ? 'Offer' : type === 'event' ? 'Event' : type === 'listing' ? 'Listing' : 'Post',
-    title,
-    url: '/feed',
-    authorName: firstPresent(author.name, author.full_name, author.firstName, author.first_name, item.author_name, 'Unknown author'),
-    authorAvatar: firstPresent(author.avatar_url, author.avatarUrl),
-    content: truncate(firstPresent(item.content, item.body, item.description, ''), 180),
-    imageUrl: firstPresent(item.image_url, item.imageUrl, media[0]?.thumbnail_url, media[0]?.file_url)
+    id: item && item.id,
+    typeLabel: feedItemType(item),
+    title: String(item && (item.title || item.heading || feedItemType(item))).trim(),
+    content: stripTags(item && (item.content || item.body)),
+    authorName: String(item && ((item.author && item.author.name) || item.author_name || item.authorName || 'Unknown author')).trim(),
+    imageUrl: item && (item.image_url || item.imageUrl || (item.media && item.media[0] && (item.media[0].thumbnail_url || item.media[0].file_url)))
   };
 }
 
 function normalizeListing(listing) {
-  const type = firstPresent(listing.type, listing.listing_type, 'offer') === 'request' ? 'request' : 'offer';
-
+  const type = String(listing && listing.type ? listing.type : 'offer').toLowerCase() === 'request' ? 'request' : 'offer';
   return {
-    id: listing.id,
+    id: listing && listing.id,
+    title: String(listing && (listing.title || listing.name || 'Untitled')).trim(),
     type,
-    typeLabel: type === 'request' ? 'Request' : 'Offer',
-    typeClass: type === 'request' ? 'govuk-tag--purple' : 'govuk-tag--blue',
-    title: firstPresent(listing.title, listing.name, 'Untitled listing'),
-    description: truncate(firstPresent(listing.description, listing.summary, ''), 180),
-    imageUrl: firstPresent(listing.image_url, listing.imageUrl)
+    description: stripTags(listing && listing.description),
+    imageUrl: listing && (listing.image_url || listing.imageUrl)
   };
 }
 
 function normalizeEvent(event) {
   return {
-    id: event.id,
-    title: firstPresent(event.title, event.name, 'Untitled event'),
-    startsAt: firstPresent(event.start_time, event.starts_at, event.startsAt, event.date),
-    location: firstPresent(event.location, event.venue, event.address)
+    id: event && event.id,
+    title: String(event && (event.title || event.name || 'Event')).trim(),
+    start: event && (event.start_time || event.startTime || event.starts_at || event.startsAt || event.start_date || event.startDate),
+    location: String(event && (event.location || event.venue || '')).trim()
   };
 }
 
-function normalizeBadge(badge) {
+function normalizeExchangeAttention(result) {
+  const data = dataFrom(result) || {};
+  const count = integerFrom(data.count ?? data.total);
+  const items = collectionFrom(data.items ? { data: data.items } : data)
+    .slice(0, 5)
+    .map((item) => ({
+      id: item && item.id,
+      title: String(item && (item.listing_title || item.listingTitle || item.title || item.description || 'Exchange')).trim()
+    }));
+
   return {
-    icon: firstPresent(badge.icon, badge.emoji, ''),
-    name: firstPresent(badge.name, badge.title, 'Badge')
+    count,
+    items,
+    body: count === 1
+      ? 'You have 1 exchange that needs your attention.'
+      : `You have ${formatInteger(count)} exchanges that need your attention.`
   };
+}
+
+function normalizeEndorsements(result) {
+  const data = dataFrom(result) || {};
+  const endorsements = Array.isArray(data.endorsements)
+    ? data.endorsements
+    : collectionFrom(data);
+
+  return endorsements
+    .map((endorsement) => {
+      const skillName = String(endorsement && (endorsement.skill_name || endorsement.skillName || endorsement.name || endorsement.skill || '')).trim();
+      const count = integerFrom(endorsement && (endorsement.count ?? endorsement.endorsement_count ?? endorsement.endorsements_count));
+      return {
+        skillName,
+        count,
+        countLabel: count === 1 ? '1 endorsement' : `${formatInteger(count)} endorsements`
+      };
+    })
+    .filter((endorsement) => endorsement.skillName && endorsement.count > 0)
+    .slice(0, 6);
+}
+
+function isGoingEvent(event) {
+  const rsvp = event && (event.my_rsvp || event.myRsvp);
+  if (!rsvp) return true;
+  if (typeof rsvp === 'string') return rsvp.toLowerCase() === 'going';
+  return String(rsvp.status || '').toLowerCase() === 'going';
 }
 
 router.get('/', asyncRoute(async (req, res) => {
   const [
-    profileData,
+    profile,
     balanceData,
+    onboardingData,
+    gamificationData,
+    badgesData,
     listingsData,
     feedData,
-    eventsData,
-    gamificationData,
-    badgesData
+    eventsData
   ] = await Promise.all([
-    getProfile(req.token).catch(() => ({})),
+    getProfile(req.token),
     getBalance(req.token).catch(() => ({ balance: 0 })),
+    getOnboardingStatus(req.token).catch(() => ({ data: { onboarding_completed: true } })),
+    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, total_xp: 0 } })),
+    getMyBadges(req.token).catch(() => ({ data: [] })),
     getListings(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getFeedPosts(req.token, { limit: 5 }).catch(() => ({ data: [] })),
-    getMyEvents(req.token).catch(() => ({ data: [] })),
-    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, xp: 0 } })),
-    getAllBadges(req.token).catch(() => ({ badges: [] }))
+    getMyEvents(req.token).catch(() => ({ data: [] }))
   ]);
 
-  const profile = unwrapObject(profileData);
-  const profileStats = profile.stats || {};
-  const walletBalance = balanceData != null ? firstPresent(balanceData.balance, balanceData.wallet_balance, balanceData) : 0;
-  const gamification = unwrapObject(gamificationData.profile || gamificationData);
-  const progress = gamification.level_progress || gamification.levelProgress || {};
-  const progressPercent = Math.max(0, Math.min(100, Math.round(toNumber(firstPresent(
-    progress.progress_percentage,
-    progress.progressPercentage
-  )))));
-  const badges = unwrapList(firstPresent(badgesData.badges, badgesData.items, badgesData.data, badgesData))
-    .map(normalizeBadge)
-    .slice(0, 8);
-  const firstName = firstPresent(profile.first_name, profile.firstName, profile.name, profile.email);
-  const now = new Date();
+  const safeProfile = dataFrom(profile) || {};
+  const badges = collectionFrom(badgesData).slice(0, 8);
+  const balance = walletBalance(balanceData);
+  const currentProfileId = profileId(safeProfile);
+  const [exchangeAttentionData, endorsementsData] = await Promise.all([
+    getExchangeAttentionCount(req.token).catch(() => ({ data: { count: 0, items: [] } })),
+    currentProfileId
+      ? getMemberEndorsements(req.token, currentProfileId).catch(() => ({ data: { endorsements: [] } }))
+      : Promise.resolve({ data: { endorsements: [] } })
+  ]);
 
   res.render('dashboard/index', {
     title: 'Dashboard',
     activeNav: 'dashboard',
-    communityName: res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible',
-    firstName,
-    profile,
-    profileStats: {
-      hoursGiven: formatDecimal(firstPresent(
-        profileStats.hours_given,
-        profileStats.hoursGiven,
-        profile.hours_given,
-        profile.hoursGiven
-      )),
-      hoursReceived: formatDecimal(firstPresent(
-        profileStats.hours_received,
-        profileStats.hoursReceived,
-        profile.hours_received,
-        profile.hoursReceived
-      )),
-      listingsCount: Math.round(toNumber(firstPresent(
-        profileStats.listings_count,
-        profileStats.listingsCount,
-        profile.listings_count,
-        profile.listingsCount
-      )))
-    },
-    wallet: {
-      balance: formatDecimal(walletBalance)
-    },
-    listings: unwrapList(listingsData).map(normalizeListing).slice(0, 5),
-    feedItems: unwrapList(feedData).map(normalizeFeedItem).slice(0, 5),
-    upcomingEvents: unwrapList(eventsData)
-      .map(normalizeEvent)
-      .filter(event => !event.startsAt || new Date(event.startsAt) >= now)
-      .slice(0, 3),
-    endorsements: [],
-    gamification: {
-      level: Math.round(toNumber(gamification.level, 1)),
-      levelName: firstPresent(gamification.level_name, gamification.levelName, ''),
-      xp: Math.round(toNumber(firstPresent(gamification.xp, gamification.total_xp, gamification.totalXp))),
-      progressPercent,
-      badgesCount: Math.round(toNumber(firstPresent(
-        gamification.badges_count,
-        gamification.badgesCount,
-        badges.length
-      ), badges.length))
-    },
+    profile: safeProfile,
+    displayName: displayName(safeProfile),
+    firstName: firstName(safeProfile),
+    profileStats: profileStats(safeProfile),
+    balance,
+    balanceLabel: `${formatOneDecimal(balance)} hours`,
+    onboardingCompleted: onboardingCompleted(onboardingData),
+    exchangeAttention: normalizeExchangeAttention(exchangeAttentionData),
+    endorsements: normalizeEndorsements(endorsementsData),
+    gamification: normalizedGamification(gamificationData, badges),
     badges,
-    onboardingCompleted: firstPresent(profile.onboarding_completed, profile.onboardingCompleted, true) !== false,
-    exchangeAttentionCount: 0,
-    status: req.query.status,
+    listings: collectionFrom(listingsData).slice(0, 5).map(normalizeListing),
+    feedItems: collectionFrom(feedData).slice(0, 5).map(normalizeFeedItem),
+    upcomingEvents: collectionFrom(eventsData).filter(Boolean).filter(isGoingEvent).slice(0, 3).map(normalizeEvent),
+    communityName: res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible',
+    status: String(req.query.status || ''),
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));

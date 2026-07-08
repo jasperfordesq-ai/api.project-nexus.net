@@ -1,0 +1,368 @@
+// Copyright (c) 2024-2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+const express = require('express');
+const { requireAuth } = require('../middleware/auth');
+const {
+  getProfile,
+  getUserV2,
+  getBookmarks,
+  getUserPublicCollections,
+  getUserAppreciations,
+  unsaveSavedItem,
+  sendAppreciation,
+  reactToAppreciation,
+  ApiError
+} = require('../lib/api');
+const { asyncRoute } = require('../lib/routeHelpers');
+
+const router = express.Router();
+const APPRECIATION_REACTIONS = new Set(['heart', 'clap', 'star']);
+const APPRECIATION_REACTION_TYPES = [
+  { value: 'heart', label: 'Heart' },
+  { value: 'clap', label: 'Clap' },
+  { value: 'star', label: 'Star' }
+];
+const SAVED_TYPES = [
+  { value: 'post', label: 'Post' },
+  { value: 'listing', label: 'Listing' },
+  { value: 'event', label: 'Event' },
+  { value: 'job', label: 'Opportunity' },
+  { value: 'blog', label: 'Blog post' },
+  { value: 'discussion', label: 'Discussion' }
+];
+
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+}
+
+function rowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function metaFrom(result) {
+  if (result && typeof result === 'object' && result.meta && typeof result.meta === 'object') return result.meta;
+  const data = dataFrom(result);
+  if (data && data.meta && typeof data.meta === 'object') return data.meta;
+  return {};
+}
+
+function selectedSavedType(value) {
+  const text = trimmed(value).toLowerCase();
+  return SAVED_TYPES.some((type) => type.value === text) ? text : '';
+}
+
+function safeColor(value) {
+  const color = trimmed(value);
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1d70b8';
+}
+
+function plural(count, singular, pluralText) {
+  if (count === 0) return `No ${pluralText}`;
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${pluralText}`;
+}
+
+function normalizeOwner(result, fallbackId) {
+  const data = dataFrom(result) || {};
+  const row = data.user || data.member || data.profile || data;
+  const firstLast = `${trimmed(row.first_name ?? row.firstName)} ${trimmed(row.last_name ?? row.lastName)}`.trim();
+  return {
+    id: positiveInteger(row.id) || fallbackId,
+    name: trimmed(row.name) || firstLast || 'A member'
+  };
+}
+
+function bookmarkType(value) {
+  const raw = trimmed(value).split('\\').pop().toLowerCase();
+  return raw.replace(/[_-]*model$/, '');
+}
+
+function bookmarkHref(type, id, slug) {
+  if (type === 'listing' && id) return `/listings/${id}`;
+  if (type === 'event' && id) return `/events/${id}`;
+  if (type === 'job' && id) return `/jobs/${id}`;
+  if (type === 'blog' && slug) return `/blog/${encodeURIComponent(slug)}`;
+  if (['post', 'discussion'].includes(type)) return '/feed';
+  return '';
+}
+
+function savedTypeLabel(type) {
+  return (SAVED_TYPES.find((item) => item.value === type) || {}).label
+    || type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function normalizeBookmark(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const itemId = positiveInteger(row.bookmarkable_id ?? row.bookmarkableId ?? row.item_id ?? row.itemId);
+  const type = bookmarkType(row.bookmarkable_type ?? row.bookmarkableType ?? row.item_type ?? row.itemType);
+  const slug = trimmed(row.slug);
+  const label = savedTypeLabel(type);
+  const title = trimmed(row.title) || (itemId ? `${label} #${itemId}` : label);
+  return {
+    id: positiveInteger(row.id),
+    itemId,
+    type,
+    label,
+    title,
+    href: bookmarkHref(type, itemId, slug)
+  };
+}
+
+function normalizeCollection(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const count = Number.isFinite(Number(row.items_count ?? row.itemsCount))
+    ? Number(row.items_count ?? row.itemsCount)
+    : 0;
+  return {
+    id: positiveInteger(row.id),
+    name: trimmed(row.name) || 'Collection',
+    description: trimmed(row.description),
+    color: safeColor(row.color),
+    itemsCount: count,
+    countLabel: plural(count, 'item', 'items')
+  };
+}
+
+function savedStatusMessage(status) {
+  const messages = {
+    'bookmark-removed': 'Item removed from saved items.',
+    'bookmark-failed': 'Sorry, that item could not be removed. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function formatDate(value) {
+  const raw = trimmed(value);
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
+function normalizeAppreciation(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const sender = row.sender && typeof row.sender === 'object' ? row.sender : {};
+  const senderId = positiveInteger(sender.id ?? row.sender_id ?? row.senderId);
+  const reactionCount = Number.isFinite(Number(row.reactions_count ?? row.reactionsCount))
+    ? Number(row.reactions_count ?? row.reactionsCount)
+    : 0;
+  return {
+    id: positiveInteger(row.id),
+    sender: {
+      id: senderId,
+      name: trimmed(sender.name ?? row.sender_name ?? row.senderName) || 'Someone'
+    },
+    message: trimmed(row.message),
+    receivedOn: formatDate(row.created_at ?? row.createdAt),
+    reactionCount,
+    reactionLabel: plural(reactionCount, 'reaction', 'reactions'),
+    myReaction: trimmed(row.my_reaction ?? row.myReaction)
+  };
+}
+
+function successMessage(status) {
+  const messages = {
+    'appreciation-sent': 'Your thank-you has been sent.',
+    'reaction-updated': 'Reaction updated.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function errorMessage(status) {
+  const messages = {
+    'appreciation-message-required': 'Enter a thank-you message.',
+    'appreciation-self': 'You cannot send yourself appreciation.',
+    'appreciation-too-long': 'Keep the thank-you message to 1,000 characters or fewer.',
+    'appreciation-rate-limited': 'Please wait before sending another thank-you.',
+    'appreciation-failed': 'Sorry, that thank-you could not be sent. Please try again.',
+    'reaction-failed': 'Sorry, that reaction could not be saved. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function appreciationStatus(error) {
+  const message = String(error?.message || '');
+  if (/cannot_thank_self/i.test(message)) return 'appreciation-self';
+  if (/message_too_long/i.test(message)) return 'appreciation-too-long';
+  if (/rate_limit/i.test(message)) return 'appreciation-rate-limited';
+  return 'appreciation-failed';
+}
+
+router.get('/saved', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const type = selectedSavedType(req.query.type);
+  const status = trimmed(req.query.status);
+  const bookmarks = rowsFrom(await getBookmarks(token, {
+    type,
+    page: 1,
+    per_page: 50
+  }))
+    .map(normalizeBookmark)
+    .filter((item) => item.title || item.type);
+
+  return res.render('saved/index', {
+    title: 'Saved items',
+    activeNav: 'saved',
+    bookmarks,
+    savedTypes: SAVED_TYPES,
+    selectedType: type,
+    status,
+    statusMessage: savedStatusMessage(status),
+    statusIsError: status === 'bookmark-failed',
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const [ownerResult, collectionsResult] = await Promise.all([
+    getUserV2(token, userId),
+    getUserPublicCollections(token, userId)
+  ]);
+  const owner = normalizeOwner(ownerResult, userId);
+  const collections = rowsFrom(collectionsResult)
+    .map(normalizeCollection)
+    .filter((collection) => collection.id !== null);
+
+  return res.render('saved-social/public-collections', {
+    title: 'Public collections',
+    activeNav: 'members',
+    owner,
+    collections
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Member not found' }));
+
+router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const page = Math.max(1, Number(req.query.page || 1));
+  const status = trimmed(req.query.status);
+  const [viewerResult, ownerResult, appreciationsResult] = await Promise.all([
+    getProfile(token),
+    getUserV2(token, userId),
+    getUserAppreciations(token, userId, { page, per_page: 20 })
+  ]);
+  const viewer = normalizeOwner(viewerResult, 0);
+  const owner = normalizeOwner(ownerResult, userId);
+  const meta = metaFrom(appreciationsResult);
+  const currentPage = Number(meta.current_page || page || 1);
+  const lastPage = Number(meta.last_page || 1);
+  const appreciations = rowsFrom(appreciationsResult)
+    .map(normalizeAppreciation)
+    .filter((appreciation) => appreciation.id !== null);
+
+  return res.render('saved-social/appreciations', {
+    title: 'Appreciation wall',
+    activeNav: 'members',
+    owner,
+    isSelf: viewer.id === owner.id,
+    appreciations,
+    reactionTypes: APPRECIATION_REACTION_TYPES,
+    currentPage,
+    lastPage,
+    status,
+    successMessage: successMessage(status),
+    errorMessage: errorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Member not found' }));
+
+router.post('/saved/destroy', requireAuth, asyncRoute(async (req, res) => {
+  const type = String(req.body.type || '').trim();
+  const id = Number(req.body.id);
+  let ok = false;
+
+  if (type && Number.isInteger(id) && id > 0) {
+    try {
+      await unsaveSavedItem(req.token, type, id);
+      ok = true;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) throw error;
+    }
+  }
+
+  return res.redirect(`/saved?status=${ok ? 'bookmark-removed' : 'bookmark-failed'}`);
+}));
+
+router.post('/users/:userId(\\d+)/appreciations', requireAuth, asyncRoute(async (req, res) => {
+  const userId = Number(req.params.userId);
+  const message = String(req.body.message || '').trim();
+  const isPublic = req.body.is_public === undefined
+    ? true
+    : ['1', 'on', 'true'].includes(String(req.body.is_public).toLowerCase());
+
+  if (!message) {
+    return res.redirect(`/users/${userId}/appreciations?status=appreciation-message-required`);
+  }
+
+  let status = 'appreciation-sent';
+  try {
+    await sendAppreciation(req.token, {
+      receiver_id: userId,
+      message,
+      context_type: 'general',
+      is_public: isPublic
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    status = appreciationStatus(error);
+  }
+
+  return res.redirect(`/users/${userId}/appreciations?status=${status}`);
+}));
+
+router.post('/appreciations/:id(\\d+)/react', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const ownerId = Number(req.body.owner_id);
+  const reaction = String(req.body.reaction_type || '').trim();
+  const returnOwnerId = Number.isInteger(ownerId) && ownerId > 0 ? ownerId : 0;
+  const basePath = returnOwnerId > 0 ? `/users/${returnOwnerId}/appreciations` : '/saved';
+
+  if (!APPRECIATION_REACTIONS.has(reaction)) {
+    return res.redirect(`${basePath}?status=reaction-failed#appreciation-${id}`);
+  }
+
+  let status = 'reaction-updated';
+  try {
+    await reactToAppreciation(req.token, id, reaction);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (error instanceof ApiError && error.status === 404) throw error;
+    status = 'reaction-failed';
+  }
+
+  return res.redirect(`${basePath}?status=${status}#appreciation-${id}`);
+}));
+
+module.exports = router;

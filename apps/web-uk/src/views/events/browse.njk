@@ -1,0 +1,51 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/events">Back to events</a>
+
+  <span class="govuk-caption-l">Events</span>
+  <h1 class="govuk-heading-xl">Browse events by category</h1>
+  <p class="govuk-body-l">Choose a category to see the events in it. Select "All events" to clear the filter.</p>
+
+  {% if not categories or not categories.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No event categories have been set up for this community yet.</p>
+      <p class="govuk-body">
+        <a class="govuk-link" href="/events">View all events</a>
+      </p>
+    </div>
+  {% else %}
+    <form method="get" action="/events" class="govuk-!-margin-bottom-7">
+      <fieldset class="govuk-fieldset" aria-describedby="events-browse-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">Choose a category</h2>
+        </legend>
+        <div id="events-browse-hint" class="govuk-hint">Select one category, then continue to the filtered events list.</div>
+
+        <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="category-all" name="category_id" type="radio" value=""{% if selectedCategoryId == null %} checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="category-all">All events</label>
+            <div class="govuk-hint govuk-radios__hint">Show events from every category.</div>
+          </div>
+          {% for category in categories %}
+            <div class="govuk-radios__item">
+              <input class="govuk-radios__input" id="category-{{ category.id }}" name="category_id" type="radio" value="{{ category.id }}"{% if selectedCategoryId == category.id %} checked{% endif %}>
+              <label class="govuk-label govuk-radios__label" for="category-{{ category.id }}">{{ category.name }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button">View events</button>
+    </form>
+
+    <p class="govuk-body">
+      <a class="govuk-link" href="/events">View all events</a>
+    </p>
+  {% endif %}
+{% endblock %}

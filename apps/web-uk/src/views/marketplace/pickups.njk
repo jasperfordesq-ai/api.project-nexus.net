@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% include "marketplace/_nav.njk" %}
+
+  <span class="govuk-caption-l">Collections at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">My collections</h1>
+  <p class="govuk-body-l">Collection reservations and pickup codes for marketplace orders.</p>
+
+  {% if not reservations.length %}
+    <p class="govuk-inset-text">You do not have any collection reservations.</p>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for reservation in reservations %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ reservation.title }}</h2>
+            <strong class="govuk-tag {{ reservation.statusTagClass }}">{{ reservation.statusLabel }}</strong>
+          </div>
+          {% if reservation.slotStart %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Collection window: {{ reservation.slotStart }}</p>
+          {% endif %}
+          {% if reservation.status == 'reserved' and reservation.qrCode %}
+            <div class="govuk-inset-text govuk-!-margin-top-0 govuk-!-margin-bottom-0">
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Collection code</h3>
+              <p class="govuk-hint govuk-!-margin-bottom-1">Show this code to the seller when collecting your item.</p>
+              <p class="govuk-body govuk-!-font-weight-bold">{{ reservation.qrCode }}</p>
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

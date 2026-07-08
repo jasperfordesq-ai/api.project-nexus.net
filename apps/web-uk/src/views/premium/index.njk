@@ -1,0 +1,67 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% if status %}
+    {% if status.type == 'error' %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list"><li>{{ status.message }}</li></ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ status.message }}</p></div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Donate</h1>
+  <p class="govuk-body-l">Choose a recurring support tier to help keep local projects, volunteering and member services running.</p>
+
+  {% if currentTierName %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Current support plan</h2>
+      <p class="govuk-body govuk-!-margin-bottom-0">You are currently on {{ currentTierName }}.</p>
+    </div>
+  {% endif %}
+
+  {% if not tiers or not tiers.length %}
+    <div class="govuk-inset-text"><p class="govuk-body">There are no support tiers available yet.</p></div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for tier in tiers %}
+        <article class="nexus-alpha-card">
+          <h2 class="govuk-heading-m govuk-!-margin-bottom-2">{{ tier.name }}</h2>
+          {% if tier.description %}
+            <p class="govuk-body">{{ tier.description }}</p>
+          {% endif %}
+          <p class="govuk-body govuk-!-margin-bottom-2">
+            {% if tier.monthlyPrice %}<strong>{{ tier.monthlyPrice }} per month</strong>{% endif %}
+            {% if tier.monthlyPrice and tier.yearlyPrice %}<br>{% endif %}
+            {% if tier.yearlyPrice %}<strong>{{ tier.yearlyPrice }} per year</strong>{% endif %}
+          </p>
+          {% if tier.features and tier.features.length %}
+            <ul class="govuk-list govuk-list--bullet">
+              {% for feature in tier.features %}
+                <li>{{ feature }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <form method="post" action="/premium/subscribe">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="tier_id" value="{{ tier.id }}">
+            <input type="hidden" name="interval" value="{{ tier.defaultInterval }}">
+            <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Support with this tier</button>
+          </form>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

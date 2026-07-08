@@ -1,0 +1,72 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/polls">Back to polls</a>
+
+      <span class="govuk-caption-xl">Polls at this community</span>
+      <h1 class="govuk-heading-xl">Manage my polls</h1>
+      <p class="govuk-body-l">View, export and delete the polls you have created.</p>
+
+      {% if statusBanner and statusBanner.type == "success" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">Success</h2></div>
+          <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
+        </div>
+      {% elif statusBanner and statusBanner.type == "error" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert"><h2 class="govuk-error-summary__title">There is a problem</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
+        </div>
+      {% endif %}
+
+      <p class="govuk-body"><a class="govuk-link" href="/polls/parity/create">Create a poll</a></p>
+
+      {% if not polls.length %}
+        <div class="govuk-inset-text"><p class="govuk-body">You have not created any polls yet.</p></div>
+      {% else %}
+        {% for poll in polls %}
+          <article class="nexus-alpha-card govuk-!-margin-bottom-6" id="poll-{{ poll.id }}">
+            <div class="nexus-alpha-module-row">
+              <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ poll.question }}</h2>
+              {% if poll.status == "open" %}<strong class="govuk-tag govuk-tag--green">Open</strong>{% else %}<strong class="govuk-tag govuk-tag--grey">Closed</strong>{% endif %}
+            </div>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-3">
+              {% if poll.pollType == "ranked" %}<strong class="govuk-tag govuk-tag--purple">Ranked</strong> {% endif %}
+              {% if poll.isAnonymous %}<strong class="govuk-tag govuk-tag--blue">Anonymous</strong> {% endif %}
+              {% if poll.totalVotes == 1 %}1 vote{% else %}{{ poll.totalVotes }} votes{% endif %}
+              {% if poll.expiresAt %} - {{ poll.expiresAt | formatDate }}{% endif %}
+            </p>
+            <div class="nexus-alpha-actions govuk-button-group">
+              {% if poll.pollType == "ranked" %}
+                <a class="govuk-link" href="/polls/{{ poll.id }}/rank">View ranked results</a>
+              {% endif %}
+              <a class="govuk-link" href="/polls/{{ poll.id }}/export">Export results (CSV)</a>
+            </div>
+            <details class="govuk-details govuk-!-margin-top-3" data-module="govuk-details">
+              <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Delete poll</span></summary>
+              <div class="govuk-details__text">
+                <div class="govuk-warning-text">
+                  <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                  <strong class="govuk-warning-text__text">
+                    <span class="govuk-visually-hidden">Warning</span>
+                    Deleting a poll removes it and all of its votes permanently. This cannot be undone.
+                  </strong>
+                </div>
+                <form method="post" action="/polls/{{ poll.id }}/delete">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete poll</button>
+                </form>
+              </div>
+            </details>
+          </article>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

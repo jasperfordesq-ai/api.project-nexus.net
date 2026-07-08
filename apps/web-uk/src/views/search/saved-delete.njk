@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/search/advanced">Back to search</a>
+
+  <h1 class="govuk-heading-xl">Delete this saved search?</h1>
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Saved search</dt>
+      <dd class="govuk-summary-list__value">
+        <strong>{{ savedSearch.name }}</strong>
+        {% if savedSearch.query %}
+          <br><span class="nexus-alpha-meta">{{ savedSearch.query }}</span>
+        {% endif %}
+      </dd>
+    </div>
+  </dl>
+
+  <div class="govuk-warning-text">
+    <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+    <strong class="govuk-warning-text__text">
+      <span class="govuk-visually-hidden">There is a problem</span>
+      This will permanently delete the saved search. You cannot undo this.
+    </strong>
+  </div>
+
+  <div class="govuk-button-group">
+    <form method="post" action="/search/saved/{{ savedSearch.id }}/delete" class="govuk-!-display-inline">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Yes, delete it</button>
+    </form>
+    <a class="govuk-link" href="/search/advanced">No, keep it</a>
+  </div>
+{% endblock %}

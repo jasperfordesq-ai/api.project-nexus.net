@@ -54,10 +54,10 @@ before trusting it.
 
 | Item | Last observed state |
 | --- | --- |
-| Branch | `main` |
-| Head commit | `44695cf0 Add Laravel React backend parity endpoints` |
-| Remote delta | `main...origin/main [ahead 52]` |
-| Dirty files seen | `src/Nexus.Api/Controllers/ShiftManagementController.cs`, `src/Nexus.Api/Services/ShiftManagementService.cs`, `tests/Nexus.Api.Tests/LaravelReactFrontendContractTests.cs`, plus `codex-write-test.tmp` |
+| Backend branch | `main` in `C:\platforms\htdocs\asp.net-backend` |
+| Backend head commit | `44695cf0 Add Laravel React backend parity endpoints` |
+| Backend remote delta | `main...origin/main [ahead 52]` |
+| Backend dirty files seen | `src/Nexus.Api/Controllers/ShiftManagementController.cs`, `src/Nexus.Api/Services/ShiftManagementService.cs`, `tests/Nexus.Api.Tests/LaravelReactFrontendContractTests.cs`, plus `codex-write-test.tmp` |
 | Working estimate | about `600/1000` implementation parity |
 | Documentation readiness after this handoff | `1000/1000` for resuming safely, assuming agents rerun the refresh protocol |
 
@@ -75,9 +75,10 @@ backend parity still incomplete:
 
 ## Refresh Protocol
 
-Run this before continuing work or reporting a score:
+Run this in the backend checkout before continuing work or reporting a score:
 
 ```powershell
+cd C:\platforms\htdocs\asp.net-backend
 git status --short --branch
 git log --oneline --decorate -n 20
 git diff --stat

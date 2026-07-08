@@ -5,6 +5,24 @@
 
 import js from '@eslint/js';
 
+const nodeGlobals = {
+  process: 'readonly',
+  __dirname: 'readonly',
+  __filename: 'readonly',
+  require: 'readonly',
+  module: 'writable',
+  exports: 'writable',
+  console: 'readonly',
+  Buffer: 'readonly',
+  fetch: 'readonly',
+  URLSearchParams: 'readonly',
+  AbortController: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+  setInterval: 'readonly',
+  clearInterval: 'readonly',
+};
+
 export default [
   js.configs.recommended,
   {
@@ -12,19 +30,43 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
+      globals: nodeGlobals,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-console': 'off',
+      'no-undef': 'error',
+    },
+  },
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: nodeGlobals,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-console': 'off',
+      'no-undef': 'error',
+    },
+  },
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
       globals: {
-        process: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        require: 'readonly',
-        module: 'writable',
-        exports: 'writable',
-        console: 'readonly',
-        Buffer: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
+        ...nodeGlobals,
+        afterAll: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        jest: 'readonly',
+        test: 'readonly',
       },
     },
     rules: {

@@ -30,7 +30,11 @@
 
       <h1 class="govuk-heading-xl">Create an event</h1>
 
-      <form action="/events/new" method="post" novalidate data-validate-form>
+      {% if setupErrorMessage %}
+        <div class="govuk-inset-text">{{ setupErrorMessage }}</div>
+      {% endif %}
+
+      <form action="/events/new" method="post" enctype="multipart/form-data" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
@@ -66,6 +70,35 @@
           rows: 6
         }) }}
 
+        {% set selectedCategoryId = values.category_id if values else "" %}
+        {% set categoryItems = [{value: "", text: "No category", selected: not selectedCategoryId}] %}
+        {% for category in categories or [] %}
+          {% set categoryItems = (categoryItems.push({
+            value: category.id | string,
+            text: category.name,
+            selected: selectedCategoryId and (category.id | string) == (selectedCategoryId | string)
+          }), categoryItems) %}
+        {% endfor %}
+        {{ govukSelect({
+          id: "category_id",
+          name: "category_id",
+          label: {
+            text: "Category",
+            classes: "govuk-label--m"
+          },
+          items: categoryItems
+        }) }}
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="image">
+            Image
+          </label>
+          <div id="image-hint" class="govuk-hint">
+            Upload an optional JPG, PNG, GIF or WebP cover image.
+          </div>
+          <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
+        </div>
+
         {{ govukInput({
           id: "location",
           name: "location",
@@ -78,6 +111,50 @@
             text: "Where will the event take place? Include address or online meeting details"
           }
         }) }}
+
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1" data-aria-controls="is-online-conditional" {% if values and values.is_online %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="is_online">This is an online event</label>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not (values and values.is_online) %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
+              {{ govukInput({
+                id: "online_link",
+                name: "online_link",
+                type: "url",
+                value: values.online_link if values else "",
+                label: {
+                  text: "Online event link"
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="allow_remote_attendance" name="allow_remote_attendance" type="checkbox" value="1" aria-describedby="allow-remote-hint" data-aria-controls="remote-attendance-conditional" {% if values and values.allow_remote_attendance %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">Allow people to attend remotely</label>
+              <div id="allow-remote-hint" class="govuk-hint govuk-checkboxes__hint">Use this when an in-person event also has a remote option.</div>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not (values and values.allow_remote_attendance) %} govuk-checkboxes__conditional--hidden{% endif %}" id="remote-attendance-conditional">
+              {{ govukInput({
+                id: "video_url",
+                name: "video_url",
+                type: "url",
+                value: values.video_url if values else "",
+                label: {
+                  text: "Video link"
+                },
+                hint: {
+                  text: "Add the meeting or livestream URL."
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
 
         {# Start date/time #}
         {% set startDateError = errors | selectattr('href', 'equalto', '#starts_at_date') | first if errors else undefined %}
@@ -149,6 +226,82 @@
           }
         }) }}
 
+        {% set isRecurring = values and values.is_recurring %}
+        {% set recurrenceFrequency = (values.recurrence_frequency if values and values.recurrence_frequency else "weekly") %}
+        {% set recurrenceInterval = (values.recurrence_interval if values and values.recurrence_interval else "1") %}
+        {% set recurrenceEndsType = (values.recurrence_ends_type if values and values.recurrence_ends_type else "after_count") %}
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">Recurring event</h2>
+          </legend>
+          <div id="recurrence-hint" class="govuk-hint">Creates copies of this event at the selected frequency.</div>
+
+          <div class="govuk-form-group">
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="is_recurring" name="is_recurring" type="checkbox" value="1" aria-describedby="recurrence-hint" data-aria-controls="recurrence-conditional" {% if isRecurring %}checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="is_recurring">Repeat this event</label>
+              </div>
+              <div class="govuk-checkboxes__conditional{% if not isRecurring %} govuk-checkboxes__conditional--hidden{% endif %}" id="recurrence-conditional">
+                <div class="govuk-form-group">
+                  <fieldset class="govuk-fieldset">
+                    <legend class="govuk-fieldset__legend">How often should it repeat?</legend>
+                    <div class="govuk-radios govuk-radios--small" data-module="govuk-radios" id="recurrence_frequency">
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="freq-daily" name="recurrence_frequency" type="radio" value="daily" data-recurrence-interval="1" {% if recurrenceFrequency == "daily" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="freq-daily">Daily</label>
+                      </div>
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="freq-weekly" name="recurrence_frequency" type="radio" value="weekly" data-recurrence-interval="1" {% if recurrenceFrequency == "weekly" and recurrenceInterval != "2" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="freq-weekly">Weekly</label>
+                      </div>
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="freq-biweekly" name="recurrence_frequency" type="radio" value="weekly" data-recurrence-interval="2" {% if recurrenceFrequency == "weekly" and recurrenceInterval == "2" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="freq-biweekly">Every two weeks</label>
+                      </div>
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="freq-monthly" name="recurrence_frequency" type="radio" value="monthly" data-recurrence-interval="1" {% if recurrenceFrequency == "monthly" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="freq-monthly">Monthly</label>
+                      </div>
+                    </div>
+                    <input type="hidden" id="recurrence_interval" name="recurrence_interval" value="{{ recurrenceInterval }}">
+                  </fieldset>
+                </div>
+
+                <div class="govuk-form-group">
+                  <fieldset class="govuk-fieldset">
+                    <legend class="govuk-fieldset__legend">When should it end?</legend>
+                    <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="rec-end-count" name="recurrence_ends_type" type="radio" value="after_count" data-aria-controls="rec-count-conditional" {% if recurrenceEndsType == "after_count" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="rec-end-count">After a number of occurrences</label>
+                      </div>
+                      <div class="govuk-radios__conditional{% if recurrenceEndsType != "after_count" %} govuk-radios__conditional--hidden{% endif %}" id="rec-count-conditional">
+                        <div class="govuk-form-group">
+                          <label class="govuk-label" for="recurrence_ends_after_count">Number of occurrences</label>
+                          <div id="rec-count-hint" class="govuk-hint">Maximum 52.</div>
+                          <input class="govuk-input govuk-input--width-3" id="recurrence_ends_after_count" name="recurrence_ends_after_count" type="number" min="1" max="52" value="{{ values.recurrence_ends_after_count if values and values.recurrence_ends_after_count else '10' }}" aria-describedby="rec-count-hint">
+                        </div>
+                      </div>
+                      <div class="govuk-radios__item">
+                        <input class="govuk-radios__input" id="rec-end-date" name="recurrence_ends_type" type="radio" value="on_date" data-aria-controls="rec-date-conditional" {% if recurrenceEndsType == "on_date" %}checked{% endif %}>
+                        <label class="govuk-label govuk-radios__label" for="rec-end-date">On a specific date</label>
+                      </div>
+                      <div class="govuk-radios__conditional{% if recurrenceEndsType != "on_date" %} govuk-radios__conditional--hidden{% endif %}" id="rec-date-conditional">
+                        <div class="govuk-form-group">
+                          <label class="govuk-label" for="recurrence_ends_on_date">End date</label>
+                          <div id="rec-date-hint" class="govuk-hint">The series will end on or before this date.</div>
+                          <input class="govuk-input govuk-!-width-one-half" id="recurrence_ends_on_date" name="recurrence_ends_on_date" type="date" value="{{ values.recurrence_ends_on_date if values else '' }}" aria-describedby="rec-date-hint">
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
         {% if myGroups and myGroups.length > 0 %}
           {% set groupItems = [{value: "", text: "No group (public event)", selected: not selectedGroupId}] %}
           {% for group in myGroups %}
@@ -182,4 +335,30 @@
 
     </div>
   </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script>
+    (function () {
+      var intervalInput = document.getElementById('recurrence_interval');
+      var frequencyInputs = document.querySelectorAll('input[name="recurrence_frequency"][data-recurrence-interval]');
+
+      if (!intervalInput || !frequencyInputs.length) {
+        return;
+      }
+
+      function syncRecurrenceInterval(event) {
+        var input = event && event.target ? event.target : document.querySelector('input[name="recurrence_frequency"]:checked');
+        if (input && input.dataset.recurrenceInterval) {
+          intervalInput.value = input.dataset.recurrenceInterval;
+        }
+      }
+
+      frequencyInputs.forEach(function (input) {
+        input.addEventListener('change', syncRecurrenceInterval);
+      });
+      syncRecurrenceInterval();
+    }());
+  </script>
 {% endblock %}

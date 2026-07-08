@@ -8,215 +8,690 @@ const { requireAuth } = require('../middleware/auth');
 const {
   getListings,
   getListing,
-  getPublicListing,
   createListing,
   updateListing,
   deleteListing,
+  callListingApi,
+  createExchangeRequest,
+  createComment,
+  getComments,
+  toggleFeedLike,
   getListingReviews,
   getProfile,
-  ApiError,
-  ApiOfflineError
+  callWalletApi,
+  ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
-const LOCAL_DEFAULT_TENANT_SLUG = 'hour-timebank';
 
-router.use(requireAuth);
-
-function unwrapList(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
-  if (payload.data && Array.isArray(payload.data.data)) return payload.data.data;
-  return [];
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
 }
 
-function unwrapObject(payload) {
-  if (!payload || typeof payload !== 'object') return {};
-  return payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
-    ? payload.data
-    : payload;
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
 }
 
-function unwrapMeta(payload) {
-  if (!payload || typeof payload !== 'object') return {};
-  return payload.meta || payload.pagination || payload.data?.meta || {};
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
-function firstPresent(...values) {
-  return values.find(value => value !== undefined && value !== null && value !== '');
+function boundedNumber(value, min, max, fallback = null) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, number));
 }
 
-function stripHtml(value) {
-  return String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined
+    ? result.data
+    : result;
 }
 
-function truncate(value, maxLength = 220) {
-  const clean = stripHtml(value);
-  if (clean.length <= maxLength) return clean;
-  return `${clean.slice(0, maxLength - 3).trim()}...`;
+function loginRedirect() {
+  return '/login?status=auth-required';
 }
 
-function normalizeListing(listing) {
-  const type = firstPresent(listing.type, listing.listing_type, 'offer') === 'request' ? 'request' : 'offer';
-  const user = listing.user && typeof listing.user === 'object' ? listing.user : {};
-  const serviceType = firstPresent(listing.service_type, listing.serviceType);
-
-  return {
-    ...listing,
-    id: listing.id,
-    type,
-    typeLabel: type === 'request' ? 'Request' : 'Offer',
-    typeClass: type === 'request' ? 'govuk-tag--purple' : 'govuk-tag--blue',
-    title: firstPresent(listing.title, listing.name, 'Untitled listing'),
-    description: truncate(firstPresent(listing.description, listing.summary, listing.content, '')),
-    imageUrl: firstPresent(listing.image_url, listing.imageUrl),
-    authorName: firstPresent(user.name, user.full_name, user.firstName, user.first_name, listing.author_name),
-    categoryName: firstPresent(listing.category_name, listing.category?.name),
-    location: firstPresent(listing.location, listing.address),
-    hoursEstimate: firstPresent(listing.hours_estimate, listing.hoursEstimate),
-    serviceType,
-    serviceTypeLabel: serviceType === 'remote' ? 'Remote' : serviceType === 'in_person' ? 'In person' : '',
-    isFeatured: !!firstPresent(listing.is_featured, listing.featured),
-    can_edit: listing.can_edit
-  };
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
 }
 
-function normalizeListingDetail(listing) {
-  const normalized = normalizeListing(listing);
-  const user = listing.user && typeof listing.user === 'object' ? listing.user : {};
-  const rawDescription = firstPresent(listing.description, listing.summary, listing.content, '');
-  const authorName = firstPresent(normalized.authorName, listing.author_name, user.name);
-
-  return {
-    ...normalized,
-    ...listing,
-    description: stripHtml(rawDescription),
-    authorName,
-    authorId: firstPresent(listing.user_id, listing.author_id, user.id),
-    authorAvatar: firstPresent(listing.author_avatar, user.avatar_url, user.avatarUrl),
-    authorTagline: firstPresent(listing.author_tagline, user.tagline),
-    authorReviewsCount: Number(firstPresent(listing.author_reviews_count, 0)) || 0,
-    authorExchangesCount: Number(firstPresent(listing.author_exchanges_count, 0)) || 0,
-    authorVerified: !!firstPresent(listing.author_verified, user.verified),
-    createdAt: firstPresent(listing.created_at, listing.createdAt),
-    expiresAt: firstPresent(listing.expires_at, listing.expiresAt),
-    statusValue: firstPresent(listing.status, ''),
-    statusLabel: firstPresent(listing.status, ''),
-    likesCount: Number(firstPresent(listing.likes_count, listing.like_count, 0)) || 0,
-    commentsCount: Number(firstPresent(listing.comments_count, 0)) || 0,
-    shareUrl: `/listings/${listing.id}`,
-    images: Array.isArray(listing.images) ? listing.images : [],
-    skillTags: Array.isArray(listing.skill_tags)
-      ? listing.skill_tags.map(tag => firstPresent(tag.name, tag.tag, tag)).filter(Boolean)
-      : []
-  };
+function apiErrorCode(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  return String(data.code || data.error || '').toUpperCase();
 }
 
-function normalizeResultCount(count) {
-  const numeric = Number(count);
-  if (!Number.isFinite(numeric)) return 0;
-  return numeric;
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
 }
 
-function allow(value, allowedValues, fallback) {
-  return allowedValues.includes(value) ? value : fallback;
+function listingRedirect(id, status, fragment = '') {
+  return `/listings/${id}?status=${encodeURIComponent(status)}${fragment}`;
 }
 
-function tenantSlugForRequest(req) {
-  return String(
-    req.signedCookies?.tenant_slug ||
-    req.cookies?.tenant_slug ||
-    process.env.ACCESSIBLE_TENANT_SLUG ||
-    process.env.DEFAULT_TENANT_SLUG ||
-    process.env.TENANT_SLUG ||
-    (process.env.NODE_ENV === 'production' ? '' : LOCAL_DEFAULT_TENANT_SLUG) ||
-    ''
-  ).trim();
+async function callListing(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callListingApi(token, method, path);
+  }
+
+  return callListingApi(token, method, path, data);
 }
 
-async function getListingWithTenantFallback(req) {
+async function runListingAction(req, res, method, path, data, successRedirect, failureRedirect) {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
   try {
-    return await getListing(req.token, req.params.id);
+    await callListing(token, method, path, data);
+    return res.redirect(successRedirect);
   } catch (error) {
-    if (!(error instanceof ApiError) && !(error instanceof ApiOfflineError)) {
-      throw error;
-    }
-
-    if (error instanceof ApiError && error.status === 401) {
-      throw error;
-    }
-
-    const tenantSlug = tenantSlugForRequest(req);
-    if (!tenantSlug) {
-      throw error;
-    }
-
-    return getPublicListing(req.params.id, tenantSlug);
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(failureRedirect);
   }
 }
 
-// List all listings with search/filter/pagination
-router.get('/', asyncRoute(async (req, res) => {
-  const filters = {
-    search: typeof req.query.q === 'string' ? req.query.q.trim() : (typeof req.query.search === 'string' ? req.query.search.trim() : ''),
-    type: allow(req.query.type, ['offer', 'request'], ''),
-    category_id: typeof req.query.category_id === 'string' ? req.query.category_id.trim() : '',
-    hours: allow(req.query.hours, ['any', 'quick', 'short', 'half_day', 'full_day'], 'any'),
-    service: allow(req.query.service, ['any', 'remote', 'in_person'], 'any'),
-    posted: allow(req.query.posted, ['any', '1', '7', '30'], 'any'),
-    sort: allow(req.query.sort, ['newest', 'recommended'], 'newest'),
-    near: allow(req.query.near, ['any', '5', '10', '25', '50'], 'any'),
-    cursor: typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '',
-    per_page: 20
+function listingType(value) {
+  const type = trimmed(value).toLowerCase();
+  return ['offer', 'request'].includes(type) ? type : 'offer';
+}
+
+function generateDescriptionRedirect(listingId, status) {
+  const target = listingId === null ? '/listings/new' : `/listings/${listingId}/edit`;
+  return `${target}?status=${encodeURIComponent(status)}#description`;
+}
+
+function reportPayload(body) {
+  const allowedReasons = new Set(['inappropriate', 'safety_concern', 'misleading', 'spam', 'not_timebank_service', 'other']);
+  const reason = trimmed(body.reason);
+  if (!allowedReasons.has(reason)) {
+    return null;
+  }
+
+  return {
+    reason,
+    details: trimmed(body.details, 500) || null
   };
-  const hasFilters = !!(
-    filters.search ||
-    filters.type ||
-    filters.category_id ||
-    filters.hours !== 'any' ||
-    filters.service !== 'any' ||
-    filters.posted !== 'any' ||
-    filters.near !== 'any' ||
-    filters.sort !== 'newest'
+}
+
+function listingOwnerId(listing) {
+  return positiveInteger(listing && (listing.user_id || listing.author_id || listing.userId || listing.authorId))
+    || positiveInteger(listing && listing.user && listing.user.id);
+}
+
+function listingReportStatus(status) {
+  const messages = {
+    'report-invalid': 'Select a reason for reporting',
+    'report-failed': 'We could not submit your report. Please try again.',
+    'already-reported': 'You have already reported this listing.'
+  };
+  const message = messages[trimmed(status)];
+  return message ? { type: 'error', message } : null;
+}
+
+function listingReportReasons() {
+  return [
+    { value: 'inappropriate', label: 'Inappropriate content' },
+    { value: 'safety_concern', label: 'Safety concern' },
+    { value: 'misleading', label: 'Misleading information' },
+    { value: 'spam', label: 'Spam or misleading' },
+    { value: 'not_timebank_service', label: 'Not a timebank service' },
+    { value: 'other', label: 'Other' }
+  ];
+}
+
+function suggestedExchangeHours(listing) {
+  const raw = Number(listing && (listing.hours_estimate ?? listing.estimated_hours));
+  const hours = Number.isFinite(raw) && raw > 0 ? raw : 1;
+  return Math.max(0.25, Math.min(24, hours));
+}
+
+function oneDecimal(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : '';
+}
+
+function exchangeRequestStatus(status) {
+  const messages = {
+    'compliance-failed': 'This exchange needs requirements to be resolved before it can be requested.',
+    'exchange-failed': 'The exchange request could not be created.'
+  };
+  const message = messages[trimmed(status)];
+  return message ? { type: 'error', message } : null;
+}
+
+function listingAuthorName(listing) {
+  return trimmed(listing && (listing.author_name || listing.authorName))
+    || trimmed(listing && listing.user && listing.user.name)
+    || '';
+}
+
+function listingAnalyticsDays(value) {
+  const allowed = new Set([7, 14, 30, 60, 90]);
+  const days = Number(value);
+  return allowed.has(days) ? days : 30;
+}
+
+function integerLabel(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.trunc(number).toLocaleString('en-GB') : '0';
+}
+
+function decimalLabel(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return number.toLocaleString('en-GB', { maximumFractionDigits: 1 });
+}
+
+function dateParts(value) {
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]) - 1,
+    day: Number(match[3])
+  };
+}
+
+function dateLabel(value, month = 'long') {
+  const parts = dateParts(value);
+  if (!parts) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month,
+    year: month === 'long' ? 'numeric' : undefined,
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(parts.year, parts.month, parts.day)));
+}
+
+function contactTypeLabel(value) {
+  const labels = {
+    message: 'Message',
+    phone: 'Phone',
+    email: 'Email',
+    exchange_request: 'Exchange request'
+  };
+  const type = trimmed(value);
+  if (labels[type]) return labels[type];
+  return type
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function analyticsSeries(rows) {
+  const series = Array.isArray(rows) ? rows : [];
+  const max = series.reduce((highest, row) => Math.max(highest, Number(row && row.count) || 0), 1);
+  return series.map((row) => {
+    const count = Math.max(0, Number(row && row.count) || 0);
+    return {
+      dateLabel: dateLabel(row && row.date, 'short'),
+      count,
+      countLabel: integerLabel(count),
+      max
+    };
+  });
+}
+
+function decorateListingAnalytics(result) {
+  const data = dataFrom(result) || {};
+  const summary = data && typeof data.summary === 'object' && data.summary !== null ? data.summary : {};
+  const viewsOverTime = analyticsSeries(data.views_over_time || data.viewsOverTime);
+  const contactsOverTime = analyticsSeries(data.contacts_over_time || data.contactsOverTime);
+  const contactTypes = (Array.isArray(data.contact_types || data.contactTypes) ? (data.contact_types || data.contactTypes) : [])
+    .map((row) => ({
+      label: contactTypeLabel(row && (row.contact_type || row.contactType)),
+      countLabel: integerLabel(row && row.count)
+    }));
+  const trend = Number(summary.views_trend_percent ?? summary.viewsTrendPercent ?? 0);
+
+  return {
+    hasData: Object.keys(summary).length > 0 || viewsOverTime.length > 0 || contactsOverTime.length > 0,
+    summary: {
+      totalViews: integerLabel(summary.total_views ?? summary.totalViews),
+      uniqueViewers: integerLabel(summary.unique_viewers ?? summary.uniqueViewers),
+      totalContacts: integerLabel(summary.total_contacts ?? summary.totalContacts),
+      totalSaves: integerLabel(summary.total_saves ?? summary.totalSaves),
+      contactRate: decimalLabel(summary.contact_rate ?? summary.contactRate),
+      saveRate: decimalLabel(summary.save_rate ?? summary.saveRate),
+      trendLabel: trend > 0
+        ? `Up ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
+        : trend < 0
+          ? `Down ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
+          : 'No change on the previous 7 days'
+    },
+    createdAtLabel: dateLabel(data.created_at || data.createdAt),
+    expiresAtLabel: dateLabel(data.expires_at || data.expiresAt),
+    viewsOverTime,
+    contactsOverTime,
+    contactTypes
+  };
+}
+
+function listingCommentsStatus(status) {
+  const states = {
+    'comment-added': { type: 'success', title: 'Success', message: 'Your comment has been posted.' },
+    'reply-added': { type: 'success', title: 'Success', message: 'Your reply has been posted.' },
+    'comment-invalid': { type: 'error', title: 'There is a problem', message: 'Enter a comment before posting.', anchor: 'body' },
+    'comment-failed': { type: 'error', title: 'There is a problem', message: 'Your comment could not be posted. Please try again.', anchor: 'body' }
+  };
+  return states[trimmed(status)] || null;
+}
+
+function normalizeListingComment(comment, depth = 0) {
+  const item = comment && typeof comment === 'object' ? comment : {};
+  const replies = Array.isArray(item.replies) && depth < 4
+    ? item.replies.map((reply) => normalizeListingComment(reply, depth + 1))
+    : [];
+  const author = item.author && typeof item.author === 'object' ? item.author : {};
+
+  return {
+    id: positiveInteger(item.id),
+    content: trimmed(item.content || item.body || item.text, 5000),
+    authorName: trimmed(author.name || item.author_name || item.authorName),
+    createdAtLabel: dateLabel(item.created_at || item.createdAt),
+    edited: Boolean(item.edited || item.is_edited || item.isEdited),
+    replies
+  };
+}
+
+function commentsPayload(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) {
+    return { comments: data.map((comment) => normalizeListingComment(comment)), count: data.length };
+  }
+
+  const object = data && typeof data === 'object' ? data : {};
+  const rows = Array.isArray(object.comments) ? object.comments : [];
+  const comments = rows.map((comment) => normalizeListingComment(comment));
+  const count = positiveInteger(object.count || object.total || object.comments_count || object.commentsCount);
+  return { comments, count: count || countListingComments(comments) };
+}
+
+function countListingComments(comments) {
+  return comments.reduce((total, comment) => total + 1 + countListingComments(comment.replies || []), 0);
+}
+
+async function walletBalanceForExchange(token) {
+  try {
+    const result = await callWalletApi(token, 'GET', '/balance');
+    const data = dataFrom(result) || {};
+    const balance = Number(data.balance ?? data.available_balance ?? data.current_balance);
+    return Number.isFinite(balance) ? balance : null;
+  } catch {
+    return null;
+  }
+}
+
+router.post('/generate-description', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = positiveInteger(req.body.listing_id);
+  const title = trimmed(req.body.title, 255);
+  if (title === '') {
+    return res.redirect(generateDescriptionRedirect(listingId, 'ai-title-required'));
+  }
+
+  const payload = {
+    title,
+    type: listingType(req.body.type),
+    category: trimmed(req.body.category || req.body.category_name || req.body.category_id),
+    notes: trimmed(req.body.notes || req.body.description, 5000)
+  };
+
+  if (payload.category === '') delete payload.category;
+  if (payload.notes === '') delete payload.notes;
+
+  let status = 'ai-generated';
+  try {
+    await callListing(token, 'POST', '/generate-description', payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 403 ? 'ai-disabled' : 'ai-failed';
+  }
+
+  return res.redirect(generateDescriptionRedirect(listingId, status));
+}));
+
+router.post('/:id(\\d+)/save', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'POST',
+    `/${id}/save`,
+    undefined,
+    listingRedirect(id, 'listing-saved'),
+    listingRedirect(id, 'save-failed')
   );
+}));
+
+router.post('/:id(\\d+)/unsave', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'DELETE',
+    `/${id}/save`,
+    undefined,
+    listingRedirect(id, 'listing-unsaved'),
+    listingRedirect(id, 'unsave-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/renew', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'POST',
+    `/${id}/renew`,
+    undefined,
+    listingRedirect(id, 'listing-renewed'),
+    listingRedirect(id, 'renew-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  let status = 'like-failed';
+  try {
+    const result = await toggleFeedLike(token, {
+      target_type: 'listing',
+      target_id: id
+    });
+    const data = dataFrom(result);
+    status = data && data.action === 'unliked' ? 'unliked' : 'liked';
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.redirect(listingRedirect(id, status, '#like'));
+}));
+
+router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const body = trimmed(req.body.body || req.body.content, 5000);
+  if (body === '') {
+    return res.redirect(`/listings/${id}/comments?status=comment-invalid#add-comment`);
+  }
+
+  const parentId = positiveInteger(req.body.parent_id);
+  const payload = {
+    target_type: 'listing',
+    target_id: id,
+    content: body
+  };
+  if (parentId !== null) {
+    payload.parent_id = parentId;
+  }
+
+  let status = parentId !== null ? 'reply-added' : 'comment-added';
+  try {
+    await createComment(token, payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && [400, 422].includes(error.status)
+      ? 'comment-invalid'
+      : 'comment-failed';
+  }
+
+  return res.redirect(`/listings/${id}/comments?status=${status}#add-comment`);
+}));
+
+router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = Number(req.params.listingId);
+  const prepTime = boundedNumber(req.body.prep_time, 0, 24, null);
+  const message = trimmed(req.body.message, 5000);
+  const payload = {
+    listing_id: listingId,
+    proposed_hours: boundedNumber(req.body.proposed_hours, 0.25, 24, 1)
+  };
+  if (prepTime !== null) {
+    payload.prep_time = prepTime;
+  }
+  if (message !== '') {
+    payload.message = message;
+  }
+
+  try {
+    const result = await createExchangeRequest(token, payload);
+    const data = dataFrom(result);
+    const exchangeId = positiveInteger(
+      data && (data.id || data.exchange_id || (data.exchange && data.exchange.id))
+    );
+    if (exchangeId !== null) {
+      return res.redirect(`/exchanges/${exchangeId}?status=exchange-created`);
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'COMPLIANCE_VIOLATION') {
+      return res.redirect(`/listings/${listingId}/exchange-request?status=compliance-failed`);
+    }
+    if (code === 'FEATURE_DISABLED') {
+      return res.redirect(listingRedirect(listingId, 'exchange-disabled'));
+    }
+  }
+
+  return res.redirect(`/listings/${listingId}/exchange-request?status=exchange-failed`);
+}));
+
+router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = Number(req.params.listingId);
+  const [listingResult, profileResult, walletBalance] = await Promise.all([
+    callListing(token, 'GET', `/${listingId}`),
+    getProfile(token).catch(() => null),
+    walletBalanceForExchange(token)
+  ]);
+
+  const listing = dataFrom(listingResult) || {};
+  const currentUser = dataFrom(profileResult) || {};
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
+    return res.redirect(listingRedirect(listingId, 'own-listing'));
+  }
+
+  const suggestedHours = suggestedExchangeHours(listing);
+  res.render('listings/exchange-request', {
+    title: 'Request an exchange',
+    listing: { ...listing, id: listingId },
+    listingType: listingType(listing.type),
+    authorName: listingAuthorName(listing),
+    suggestedHours,
+    suggestedHoursLabel: oneDecimal(suggestedHours),
+    walletBalance,
+    walletBalanceLabel: walletBalance === null ? '' : oneDecimal(walletBalance),
+    status: exchangeRequestStatus(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const days = listingAnalyticsDays(req.query.days);
+  let listingResult;
+  let analyticsResult;
+
+  try {
+    [listingResult, analyticsResult] = await Promise.all([
+      callListing(token, 'GET', `/${id}`),
+      callListing(token, 'GET', `/${id}/analytics?days=${days}`)
+    ]);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Listing not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+    throw error;
+  }
+
+  const listing = dataFrom(listingResult) || {};
+  const analyticsData = dataFrom(analyticsResult) || {};
+  const listingTitle = trimmed(listing.title || listing.name || analyticsData.title) || 'Listing analytics';
+
+  return res.render('listings/analytics', {
+    title: 'Listing analytics',
+    listing: { ...listing, id },
+    listingTitle,
+    days,
+    dayOptions: [7, 14, 30, 60, 90],
+    analytics: decorateListingAnalytics(analyticsResult)
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const listingResult = await callListing(token, 'GET', `/${id}`);
+  let commentsResult = { data: { comments: [], count: 0 } };
+
+  try {
+    commentsResult = await getComments(token, { target_type: 'listing', target_id: id });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const listing = dataFrom(listingResult) || {};
+  const commentData = commentsPayload(commentsResult);
+  return res.render('listings/comments', {
+    title: 'Comments',
+    listing: { ...listing, id },
+    listingTitle: trimmed(listing.title || listing.name) || 'Comments',
+    comments: commentData.comments,
+    commentsCount: commentData.count,
+    status: listingCommentsStatus(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const payload = reportPayload(req.body);
+  if (payload === null) {
+    return res.redirect(`/listings/${id}/report?status=report-invalid`);
+  }
+
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let status = 'listing-reported';
+  try {
+    await callListing(token, 'POST', `/${id}/report`, payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 409
+      ? 'already-reported'
+      : 'report-failed';
+  }
+
+  return res.redirect(listingRedirect(id, status));
+}));
+
+router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const [listingResult, profileResult] = await Promise.all([
+    callListing(token, 'GET', `/${id}`),
+    getProfile(token).catch(() => null)
+  ]);
+
+  const listing = dataFrom(listingResult) || {};
+  const currentUser = dataFrom(profileResult) || {};
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
+    return res.status(403).render('static-page', {
+      title: 'Cannot report listing',
+      heading: 'Cannot report listing',
+      body: 'You cannot report your own listing.'
+    });
+  }
+
+  res.render('listings/report', {
+    title: 'Report a listing',
+    listing: { ...listing, id },
+    status: listingReportStatus(req.query.status),
+    reasons: listingReportReasons(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
+
+// List all listings with search/filter/pagination
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
+  const { search, status, page = 1 } = req.query;
+  const params = { search, status, page, limit: 20 };
 
   const [data, currentUser] = await Promise.all([
-    getListings(req.token, filters),
-    getProfile(req.token).catch(() => null)
+    getListings(req.token, params),
+    getProfile(req.token)
   ]);
-  const meta = unwrapMeta(data);
-  const listings = unwrapList(data).map(normalizeListing);
-  const totalItems = normalizeResultCount(firstPresent(meta.total_items, meta.total, data.total, listings.length));
+
+  // Handle both array and paginated response formats
+  let listings, pagination;
+  if (Array.isArray(data)) {
+    listings = data;
+    pagination = null;
+  } else {
+    listings = data.data || data.items || [];
+    pagination = {
+      currentPage: parseInt(page, 10),
+      totalPages: data.pagination?.pages || data.totalPages || Math.ceil((data.pagination?.total || data.total || listings.length) / 20),
+      total: data.pagination?.total || data.total || listings.length
+    };
+  }
 
   res.render('listings/index', {
     title: 'Listings',
     listings,
-    items: listings,
-    categories: [],
-    meta: {
-      ...meta,
-      total_items: totalItems,
-      has_more: !!firstPresent(meta.has_more, meta.hasMore),
-      cursor: firstPresent(meta.cursor, meta.next_cursor, '')
-    },
-    filters,
-    hasFilters,
+    pagination,
+    filters: { search, status },
     currentUser,
-    isAuthenticated: true,
-    moduleDisabled: false,
-    error: false,
-    communityName: res.locals.tenant?.name || res.locals.tenantSlug || 'Project NEXUS Accessible',
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
 // New listing form
-router.get('/new', (req, res) => {
+router.get('/new', requireAuth, (req, res) => {
   res.render('listings/form', {
     title: 'Create listing',
     listing: null,
@@ -228,7 +703,7 @@ router.get('/new', (req, res) => {
 });
 
 // Create listing
-router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
+router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, res) => {
   const { title, description, status, type } = req.body;
 
   // Basic validation
@@ -285,13 +760,12 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
 }));
 
 // View listing detail
-router.get('/:id', asyncRoute(async (req, res) => {
-  const [listingResult, reviewsResult, currentUser] = await Promise.all([
-    getListingWithTenantFallback(req),
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
+  const [listing, reviewsResult, currentUser] = await Promise.all([
+    getListing(req.token, req.params.id),
     getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null })),
-    getProfile(req.token).catch(() => null)
+    getProfile(req.token)
   ]);
-  const listing = normalizeListingDetail(unwrapObject(listingResult));
 
   const listingOwnerId = listing.user?.id || listing.userId || listing.user_id;
   const can_edit = !!(listingOwnerId && currentUser && String(listingOwnerId) === String(currentUser.id));
@@ -299,14 +773,8 @@ router.get('/:id', asyncRoute(async (req, res) => {
   res.render('listings/detail', {
     title: listing.title || listing.name || 'Listing details',
     listing: { ...listing, can_edit },
-    reviews: unwrapList(reviewsResult),
+    reviews: reviewsResult.data || [],
     reviewSummary: reviewsResult.summary || null,
-    isAuthenticated: true,
-    isOwner: can_edit,
-    requiresAuth: false,
-    exchangeWorkflowEnabled: false,
-    directMessagingEnabled: true,
-    shareUrl: `${req.protocol}://${req.get('host')}/listings/${listing.id}`,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -314,7 +782,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Listing not found' }));
 
 // Edit listing form
-router.get('/:id/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const [listing, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
     getProfile(req.token)
@@ -336,7 +804,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Listing not found' }));
 
 // Update listing
-router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { title, description, status, type } = req.body;
 
@@ -393,27 +861,8 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
   }
 }));
 
-// Delete confirmation page
-router.get('/:id/delete', asyncRoute(async (req, res) => {
-  const [listing, currentUser] = await Promise.all([
-    getListing(req.token, req.params.id),
-    getProfile(req.token)
-  ]);
-
-  // Only the owner may access the delete confirmation page
-  if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
-    return res.redirect('/listings/' + req.params.id);
-  }
-
-  res.render('listings/delete', {
-    title: 'Delete listing',
-    listing,
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}, { notFoundTitle: 'Listing not found' }));
-
 // Delete listing
-router.post('/:id/delete', audit.listingDelete(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/delete', requireAuth, audit.listingDelete(), asyncRoute(async (req, res) => {
   await deleteListing(req.token, req.params.id);
 
   if (req.flash) {

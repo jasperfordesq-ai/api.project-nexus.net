@@ -1,0 +1,98 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <a class="govuk-back-link" href="/goals">Back to goals</a>
+
+      {% if errorMessage %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [
+            {
+              text: errorMessage,
+              href: "#templates-list"
+            }
+          ]
+        }) }}
+      {% endif %}
+
+      <span class="govuk-caption-xl">Start a goal from a ready-made template.</span>
+      <h1 class="govuk-heading-xl">Goal templates</h1>
+
+      {% if categories and categories.length %}
+        <form method="get" action="/goals/templates" class="govuk-!-margin-bottom-6">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="category">Filter by category</label>
+            <select class="govuk-select" id="category" name="category">
+              <option value="">All categories</option>
+              {% for item in categories %}
+                <option value="{{ item }}"{% if category == item %} selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Filter</button>
+        </form>
+      {% endif %}
+
+      <div id="templates-list">
+        {% if not templates or not templates.length %}
+          <div class="govuk-inset-text">
+            <p class="govuk-body">There are no goal templates available yet.</p>
+          </div>
+        {% else %}
+          <div class="nexus-alpha-card-list">
+            {% for template in templates %}
+              <article class="nexus-alpha-card">
+                <div class="nexus-alpha-module-row">
+                  <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ template.title }}</h2>
+                  {% if template.category %}
+                    <strong class="govuk-tag govuk-tag--grey">{{ template.category }}</strong>
+                  {% endif %}
+                </div>
+
+                {% if template.description %}
+                  <p class="govuk-body-s">{{ template.description }}</p>
+                {% endif %}
+
+                {% if template.targetText %}
+                  <p class="govuk-body-s nexus-alpha-meta">Suggested target: {{ template.targetText }}</p>
+                {% endif %}
+
+                <form method="post" action="/goals/templates/{{ template.id }}">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <div class="govuk-form-group">
+                    <label class="govuk-label" for="title-{{ template.id }}">Goal name (optional)</label>
+                    <div id="title-hint-{{ template.id }}" class="govuk-hint">Leave blank to use the template name.</div>
+                    <input class="govuk-input" id="title-{{ template.id }}" name="title" type="text" maxlength="255" aria-describedby="title-hint-{{ template.id }}">
+                  </div>
+
+                  <div class="govuk-checkboxes govuk-checkboxes--small govuk-form-group" data-module="govuk-checkboxes">
+                    <div class="govuk-checkboxes__item">
+                      <input class="govuk-checkboxes__input" id="is_public-{{ template.id }}" name="is_public" type="checkbox" value="1" checked>
+                      <label class="govuk-label govuk-checkboxes__label" for="is_public-{{ template.id }}">Public</label>
+                    </div>
+                  </div>
+
+                  <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button" type="submit">Start this goal</button>
+                </form>
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if nextHref %}
+        <p class="govuk-body govuk-!-margin-top-6">
+          <a class="govuk-link" href="{{ nextHref }}">Load more templates</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{# Copyright (C) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <span class="govuk-caption-xl">{{ communityName }}</span>
+  <h1 class="govuk-heading-xl">My activity</h1>
+  <p class="govuk-body-l">A summary of your contribution to the community.</p>
+
+  <p class="govuk-body govuk-!-margin-bottom-6">
+    <a class="govuk-link" href="/activity/insights">View detailed insights</a>
+  </p>
+
+  <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
+    <div class="nexus-alpha-stat">
+      <dt>Hours given</dt>
+      <dd>{{ activity.hoursGivenLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Hours received</dt>
+      <dd>{{ activity.hoursReceivedLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Connections</dt>
+      <dd>{{ activity.connectionsLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Groups joined</dt>
+      <dd>{{ activity.groupsJoinedLabel }}</dd>
+    </div>
+  </dl>
+
+  {% if activity.hasEngagement %}
+    <h2 class="govuk-heading-l">Recent engagement (last 30 days)</h2>
+    <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-6">
+      <div class="nexus-alpha-stat">
+        <dt>Posts</dt>
+        <dd>{{ activity.engagement.postsLabel }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Comments</dt>
+        <dd>{{ activity.engagement.commentsLabel }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Likes given</dt>
+        <dd>{{ activity.engagement.likesGivenLabel }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Likes received</dt>
+        <dd>{{ activity.engagement.likesReceivedLabel }}</dd>
+      </div>
+      {% if activity.netBalanceLabel %}
+        <div class="nexus-alpha-stat">
+          <dt>Net balance</dt>
+          <dd>{{ activity.netBalanceLabel }}</dd>
+        </div>
+      {% endif %}
+    </dl>
+  {% endif %}
+
+  {% if activity.skills.length %}
+    <h2 class="govuk-heading-l">Skills breakdown</h2>
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      {% for skill in activity.skills %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ skill.name }}</dt>
+          <dd class="govuk-summary-list__value">
+            {% if skill.isOffering %}
+              <strong class="govuk-tag govuk-tag--green">Offering</strong>
+            {% endif %}
+            {% if skill.isRequesting %}
+              <strong class="govuk-tag govuk-tag--blue">Requesting</strong>
+            {% endif %}
+            {% if skill.endorsementsLabel %}
+              <span class="govuk-body-s nexus-alpha-meta">{{ skill.endorsementsLabel }}</span>
+            {% endif %}
+          </dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  {% if activity.monthly.length %}
+    <h2 class="govuk-heading-l">Hours over the last months</h2>
+    {% for month in activity.monthly %}
+      <div class="govuk-!-margin-bottom-2">
+        <p class="govuk-body-s govuk-!-margin-bottom-1">
+          {{ month.label }} - Given {{ month.givenLabel }} &middot; Received {{ month.receivedLabel }}
+        </p>
+        <progress max="100" value="{{ month.percent }}" aria-label="{{ month.label }}: {{ month.totalLabel }}">{{ month.percent }}%</progress>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-7">Recent activity</h2>
+  {% if activity.timeline.length %}
+    <ul class="govuk-list govuk-list--spaced">
+      {% for item in activity.timeline %}
+        <li>
+          {% if item.text %}{{ item.text }}{% endif %}
+          {% if item.dateLabel %}<span class="govuk-body-s nexus-alpha-meta"> - {{ item.dateLabel }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">You have no recent activity yet.</p>
+    </div>
+  {% endif %}
+{% endblock %}

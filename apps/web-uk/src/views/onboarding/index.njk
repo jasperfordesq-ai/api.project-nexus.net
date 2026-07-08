@@ -1,0 +1,247 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% set bagInterests = bag.interests or [] %}
+  {% set bagOffers = bag.offers or [] %}
+  {% set bagNeeds = bag.needs or [] %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">This community - Step {{ stepNumber }} of {{ totalSteps }}</span>
+
+      {% if statusBanner and statusBanner.type == "error" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li>
+                  {% if statusBanner.anchor %}
+                    <a href="#{{ statusBanner.anchor }}">{{ statusBanner.message }}</a>
+                  {% else %}
+                    {{ statusBanner.message }}
+                  {% endif %}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% elif statusBanner and statusBanner.type == "success" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ob-status">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="ob-status">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if step == "welcome" %}
+        <h1 class="govuk-heading-xl">Welcome</h1>
+        <p class="govuk-body-l">Welcome to your community. Set up your profile so others can find and connect with you.</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Earn time credits by helping others.</li>
+          <li>Meet people in your community.</li>
+          <li>Share the skills you have and find the help you need.</li>
+        </ul>
+        <form method="post" action="/onboarding/welcome">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button class="govuk-button" data-module="govuk-button">Get started</button>
+        </form>
+
+      {% elif step == "profile" %}
+        <h1 class="govuk-heading-xl">Your profile</h1>
+        <p class="govuk-body">Add a photo and a short bio so people know who you are.</p>
+
+        <form method="post" action="/onboarding/avatar" enctype="multipart/form-data" class="govuk-!-margin-bottom-6">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'avatar' %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label govuk-label--s" for="avatar">Profile photo</label>
+            <div id="avatar-hint" class="govuk-hint">JPG, PNG, GIF or WEBP.</div>
+            {% if statusBanner and statusBanner.anchor == "avatar" %}
+              <p id="avatar-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+            {% endif %}
+            {% if onboardingUser.avatar_url %}
+              <p class="govuk-body-s nexus-alpha-meta">Current photo</p>
+              <img class="nexus-alpha-avatar nexus-alpha-avatar--large govuk-!-margin-bottom-2" src="{{ onboardingUser.avatar_url }}" alt="" width="96" height="96">
+            {% endif %}
+            <input class="govuk-file-upload" id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="avatar-hint">
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Upload photo</button>
+        </form>
+
+        <form method="post" action="/onboarding/profile">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'bio' %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label govuk-label--s" for="bio">About you</label>
+            <div id="bio-hint" class="govuk-hint">A sentence or two about yourself.</div>
+            {% if statusBanner and statusBanner.anchor == "bio" %}
+              <p id="bio-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+            {% endif %}
+            <textarea class="govuk-textarea" id="bio" name="bio" rows="4" maxlength="2000" aria-describedby="bio-hint">{{ onboardingUser.bio or "" }}</textarea>
+          </div>
+          <button class="govuk-button" data-module="govuk-button">Save and continue</button>
+        </form>
+
+      {% elif step == "interests" %}
+        <h1 class="govuk-heading-xl">Your interests</h1>
+        <p class="govuk-body">Choose the topics you are interested in. You can change these later.</p>
+        <form method="post" action="/onboarding/interests">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <fieldset class="govuk-fieldset">
+              <legend class="govuk-fieldset__legend govuk-visually-hidden">Your interests</legend>
+              <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+                {% for category in categories %}
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="interest-{{ category.id }}" name="interests[]" type="checkbox" value="{{ category.id }}"{% if category.id in bagInterests %} checked{% endif %}>
+                    <label class="govuk-label govuk-checkboxes__label" for="interest-{{ category.id }}">{{ category.name }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+          <button class="govuk-button" data-module="govuk-button">Continue</button>
+        </form>
+
+      {% elif step == "skills" %}
+        <h1 class="govuk-heading-xl">Your skills</h1>
+        <form method="post" action="/onboarding/skills">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <fieldset class="govuk-fieldset" aria-describedby="offers-hint">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Skills you can offer</legend>
+              <div id="offers-hint" class="govuk-hint">Things you can help others with.</div>
+              <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+                {% for category in categories %}
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="offer-{{ category.id }}" name="offers[]" type="checkbox" value="{{ category.id }}"{% if category.id in bagOffers %} checked{% endif %}>
+                    <label class="govuk-label govuk-checkboxes__label" for="offer-{{ category.id }}">{{ category.name }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="govuk-form-group">
+            <fieldset class="govuk-fieldset" aria-describedby="needs-hint">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Help you are looking for</legend>
+              <div id="needs-hint" class="govuk-hint">Things you would like help with.</div>
+              <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+                {% for category in categories %}
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="need-{{ category.id }}" name="needs[]" type="checkbox" value="{{ category.id }}"{% if category.id in bagNeeds %} checked{% endif %}>
+                    <label class="govuk-label govuk-checkboxes__label" for="need-{{ category.id }}">{{ category.name }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+
+          <button class="govuk-button" data-module="govuk-button">Continue</button>
+        </form>
+
+      {% elif step == "safeguarding" %}
+        {% set noneOption = null %}
+        <h1 class="govuk-heading-xl">Safeguarding</h1>
+        <p class="govuk-body">Some communities ask a few optional safeguarding questions. These help keep everyone safe.</p>
+        <div class="govuk-inset-text">Your answers are private and only used for safeguarding. You can change or remove them at any time in your settings. Nothing is selected unless you choose it.</div>
+
+        <form method="post" action="/onboarding/safeguarding">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Safeguarding</legend>
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              {% for option in safeguardingOptions %}
+                {% if option.option_key == "none_apply" %}
+                  {% set noneOption = option %}
+                {% elif option.option_type == "info" %}
+                  <div class="govuk-inset-text govuk-!-margin-top-2">
+                    <p class="govuk-body govuk-!-margin-bottom-0">{{ option.label }}{% if option.description %} - {{ option.description }}{% endif %}</p>
+                  </div>
+                {% elif option.option_type == "select" %}
+                  <div class="govuk-form-group">
+                    <label class="govuk-label" for="sg-{{ option.id }}">{{ option.label }}</label>
+                    {% if option.description %}<div class="govuk-hint">{{ option.description }}</div>{% endif %}
+                    <select class="govuk-select" id="sg-{{ option.id }}" name="safeguarding[{{ option.id }}]">
+                      <option value="">Prefer not to say</option>
+                      {% for value, label in option.select_options %}
+                        <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                {% else %}
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="sg-{{ option.id }}" name="safeguarding[{{ option.id }}]" type="checkbox" value="1">
+                    <label class="govuk-label govuk-checkboxes__label" for="sg-{{ option.id }}">{{ option.label }}</label>
+                    {% if option.description %}<div class="govuk-hint">{{ option.description }}</div>{% endif %}
+                    {% if option.help_url %}<div class="govuk-hint"><a class="govuk-link" href="{{ option.help_url }}" rel="noopener">Help</a></div>{% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </fieldset>
+
+          {% if noneOption %}
+            <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--m">
+            <p class="govuk-body govuk-!-font-weight-bold">Or</p>
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="sg-{{ noneOption.id }}" name="safeguarding[{{ noneOption.id }}]" type="checkbox" value="1">
+                <label class="govuk-label govuk-checkboxes__label" for="sg-{{ noneOption.id }}">{{ noneOption.label or "None of these apply to me" }}</label>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="govuk-button-group govuk-!-margin-top-4">
+            <button class="govuk-button" data-module="govuk-button">Continue</button>
+            {% if not stepRequired %}
+              <button class="govuk-button govuk-button--secondary" name="skip" value="1" data-module="govuk-button">Skip for now</button>
+            {% endif %}
+          </div>
+        </form>
+
+      {% else %}
+        <h1 class="govuk-heading-xl">Check your answers</h1>
+        <dl class="govuk-summary-list">
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Profile photo</dt>
+            <dd class="govuk-summary-list__value">{% if onboardingUser.avatar_url %}Added{% else %}Not added{% endif %}</dd>
+            <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/onboarding/profile">Change</a></dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">About you</dt>
+            <dd class="govuk-summary-list__value">{{ onboardingUser.bio or "" }}</dd>
+            <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/onboarding/profile">Change</a></dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Interests</dt>
+            <dd class="govuk-summary-list__value">{{ bagInterests.length }} selected</dd>
+            <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/onboarding/interests">Change</a></dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Skills you offer</dt>
+            <dd class="govuk-summary-list__value">{{ bagOffers.length }} selected</dd>
+            <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/onboarding/skills">Change</a></dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Help you want</dt>
+            <dd class="govuk-summary-list__value">{{ bagNeeds.length }} selected</dd>
+            <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/onboarding/skills">Change</a></dd>
+          </div>
+        </dl>
+        <p class="govuk-body">You can update any of this later from your profile.</p>
+        <form method="post" action="/onboarding/confirm">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button class="govuk-button" data-module="govuk-button">Finish and go to my dashboard</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to federation</a>
+
+  <span class="govuk-caption-xl">This community</span>
+  <h1 class="govuk-heading-xl">Federated events</h1>
+  <p class="govuk-body-l">Events shared by communities across the network.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if not allowed %}
+    <div class="govuk-inset-text"><p class="govuk-body">Browsing federated events is not available for this community right now.</p></div>
+  {% else %}
+    <form method="get" action="/federation/events" class="govuk-!-margin-bottom-6">
+      <fieldset class="govuk-fieldset">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter events</legend>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="q">Search federated events</label>
+          <div id="q-hint" class="govuk-hint">Search by title or description.</div>
+          <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="partner_id">Community</label>
+          <select class="govuk-select" id="partner_id" name="partner_id">
+            <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+            {% for partner in partnerOptions %}
+              <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+            <input type="hidden" name="upcoming" value="false">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="upcoming" name="upcoming" type="checkbox" value="1"{% if filters.upcoming %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="upcoming">Upcoming events only</label>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+      </fieldset>
+    </form>
+
+    {% if loadError %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">We could not load federated events.</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="/federation/events">Try again</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% elif not events.length %}
+      {% if filters.upcoming %}
+        <div class="govuk-inset-text"><p class="govuk-body">No upcoming events in partner communities.</p></div>
+      {% else %}
+        <div class="govuk-inset-text"><p class="govuk-body">No events available in partner communities.</p></div>
+      {% endif %}
+    {% else %}
+      <div class="nexus-alpha-card-list">
+        {% for event in events %}
+          <article class="nexus-alpha-card">
+            {% if event.coverImage %}
+              <img class="nexus-alpha-card-image govuk-!-margin-bottom-2" src="{{ event.coverImage }}" alt="">
+            {% endif %}
+
+            <div class="nexus-alpha-module-row">
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ event.title }}</h2>
+              {% if event.isPast %}
+                <strong class="govuk-tag govuk-tag--grey">Past</strong>
+              {% endif %}
+              {% if event.isOnline %}
+                <strong class="govuk-tag govuk-tag--turquoise">Online</strong>
+              {% endif %}
+            </div>
+
+            {% if event.startDate %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ event.startDate | date }}</p>
+            {% endif %}
+
+            {% if event.organiserName %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Organiser: {{ event.organiserName }}</p>
+            {% endif %}
+
+            {% if event.tenantName %}
+              <p class="govuk-body-s govuk-!-margin-bottom-1">
+                <strong class="govuk-tag govuk-tag--grey">{{ event.tenantName }}</strong>
+              </p>
+            {% endif %}
+
+            {% if event.description %}
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ event.description }}</p>
+            {% endif %}
+
+            <dl class="nexus-alpha-inline-list">
+              {% if event.location and not event.isOnline %}
+                <div>
+                  <dt>Location</dt>
+                  <dd>{{ event.location }}</dd>
+                </div>
+              {% endif %}
+              <div>
+                <dt>Going</dt>
+                <dd>{{ event.attendeesCount }} going</dd>
+              </div>
+            </dl>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if loadMoreHref %}
+        <p class="govuk-body govuk-!-margin-top-4">
+          <a class="govuk-link" href="{{ loadMoreHref }}">Load more events</a>
+        </p>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endblock %}

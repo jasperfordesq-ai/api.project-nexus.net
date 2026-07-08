@@ -1,179 +1,220 @@
 {% extends "layouts/base.njk" %}
 
-{% set typeLabels = {
-  all: "All",
-  following: "Following",
-  saved: "Saved",
-  posts: "Posts",
-  listings: "Listings",
-  events: "Events",
-  goals: "Goals",
-  polls: "Polls",
-  jobs: "Jobs",
-  challenges: "Challenges",
-  volunteering: "Volunteering",
-  blogs: "Blogs",
-  discussions: "Discussions"
-} %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {% block mainContent %}
-  {% if successMessage %}
-    {% set notificationMessage = successMessage %}
-    {% set notificationType = "success" %}
-    {% include "partials/notification-banner.njk" %}
-  {% endif %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
 
-  {% if errorMessage %}
-    {% set notificationMessage = errorMessage %}
-    {% set notificationType = null %}
-    {% include "partials/notification-banner.njk" %}
-  {% endif %}
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
 
-  <span class="govuk-caption-l">{{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Feed</h1>
-  <p class="govuk-body-l">Community updates, conversations and activity.</p>
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
 
-  <p class="govuk-body govuk-!-margin-bottom-6">
-    <a class="govuk-link" href="/feed/hashtags">Hashtags</a>
-  </p>
-
-  <div class="govuk-inset-text">
-    <p class="govuk-body">Use listings for offers and requests. Use posts for short community updates.</p>
-    <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" href="/listings/new" role="button" draggable="false" data-module="govuk-button">Post an offer or request</a>
-  </div>
-
-  <form method="post" action="/feed/new" enctype="multipart/form-data" class="govuk-!-margin-bottom-7">
-    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--m" for="content">Write a post</label>
-      <div id="content-hint" class="govuk-hint">Share a short update with your community.</div>
-      <textarea class="govuk-textarea" id="content" name="content" rows="4" aria-describedby="content-hint"></textarea>
-    </div>
-    <div class="govuk-form-group">
-      <label class="govuk-label" for="image_url">Add a photo URL (optional)</label>
-      <div id="image-hint" class="govuk-hint">Paste a safe image URL if you want to include a photo.</div>
-      <input class="govuk-input" id="image_url" name="image_url" type="url" aria-describedby="image-hint">
-    </div>
-    <button class="govuk-button" data-module="govuk-button">Post</button>
-  </form>
-
-  <form method="get" action="/feed" class="govuk-!-margin-bottom-6">
-    <fieldset class="govuk-fieldset" aria-describedby="feed-filter-hint">
-      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-        <h2 class="govuk-fieldset__heading">Filter the feed</h2>
-      </legend>
-      <div id="feed-filter-hint" class="govuk-hint">Choose the kind of community activity you want to read.</div>
-      <div class="govuk-grid-row">
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="type">Feed type</label>
-            <select class="govuk-select" id="type" name="type">
-              {% for type in typeOptions %}
-                <option value="{{ type }}"{% if selectedType == type %} selected{% endif %}>{{ typeLabels[type] or type }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="mode">Feed order</label>
-            <select class="govuk-select" id="mode" name="mode">
-              <option value="ranking"{% if selectedMode == "ranking" %} selected{% endif %}>Recommended</option>
-              <option value="recent"{% if selectedMode == "recent" %} selected{% endif %}>Most recent</option>
-            </select>
-          </div>
-        </div>
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="subtype">Listing subtype</label>
-            <div id="subtype-hint" class="govuk-hint">Only applies when the feed type is Listings.</div>
-            <select class="govuk-select" id="subtype" name="subtype" aria-describedby="subtype-hint">
-              <option value=""{% if not selectedSubtype %} selected{% endif %}>All listings</option>
-              <option value="offer"{% if selectedSubtype == "offer" %} selected{% endif %}>Offers</option>
-              <option value="request"{% if selectedSubtype == "request" %} selected{% endif %}>Requests</option>
-            </select>
-          </div>
+      <div class="app-page-header">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Feed</h1>
+        <div class="app-page-header__actions">
+          {{ govukButton({
+            text: "Write a post",
+            href: "#content",
+            classes: "govuk-!-margin-bottom-0"
+          }) }}
         </div>
       </div>
-      <input type="hidden" name="per_page" value="{{ perPage }}">
-      <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
-    </fieldset>
-  </form>
 
-  {% if error %}
-    <div class="govuk-notification-banner" role="region" aria-labelledby="feed-load-error-title">
-      <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="feed-load-error-title">There is a problem</h2>
-      </div>
-      <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">{{ error }}</p>
-      </div>
-    </div>
-  {% elif not items or items.length == 0 %}
-    <h2 class="govuk-heading-l">Results</h2>
-    <p class="govuk-body nexus-alpha-result-count" aria-live="polite">No feed items shown</p>
-    <div class="govuk-inset-text">
-      <h3 class="govuk-heading-m">Nothing to show yet</h3>
-      <p class="govuk-body">There are no feed items to show yet.</p>
-    </div>
-  {% else %}
-    <h2 class="govuk-heading-l">Results</h2>
-    <p class="govuk-body nexus-alpha-result-count" aria-live="polite">{{ items.length }} feed item{% if items.length != 1 %}s{% endif %} shown</p>
-    <div class="nexus-alpha-card-list">
-      {% for item in items %}
-        <article class="nexus-alpha-card" id="feed-item-{{ item.type }}-{{ item.id }}">
-          <div class="nexus-alpha-feed-row">
-            <div>
-              <strong class="govuk-tag {{ item.typeClass }}">{{ item.typeLabel }}</strong>
-              <h3 class="govuk-heading-m govuk-!-margin-top-2 govuk-!-margin-bottom-2">
-                {% if item.detailUrl %}
-                  <a class="govuk-link" href="{{ item.detailUrl }}">{{ item.title }}</a>
-                {% else %}
-                  {{ item.title }}
-                {% endif %}
-              </h3>
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
-                {% if item.authorAvatar %}
-                  <img class="nexus-alpha-avatar nexus-alpha-avatar--small" src="{{ item.authorAvatar }}" alt="" loading="lazy" decoding="async" width="32" height="32">
-                {% endif %}
-                Posted by {{ item.authorName }}
-                {% if item.createdAt %}
-                  <span aria-hidden="true"> | </span>
-                  <span class="govuk-visually-hidden">Posted on</span>
-                  <time datetime="{{ item.createdAt }}">{{ item.createdAt | formatDate }}</time>
-                {% endif %}
-              </p>
-            </div>
-            {% if item.detailUrl %}
-              <p class="govuk-body-s govuk-!-margin-bottom-0">
-                <a class="govuk-link" href="{{ item.detailUrl }}">View details</a>
-              </p>
+      <form method="post" action="/feed/posts" enctype="multipart/form-data" class="govuk-!-margin-bottom-7" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="content">Share an update</label>
+          <div id="content-hint" class="govuk-hint">Post a community update, question, or thought.</div>
+          <textarea class="govuk-textarea" id="content" name="content" rows="4" aria-describedby="content-hint"></textarea>
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="image">Image</label>
+          <div id="image-hint" class="govuk-hint">Upload an optional JPG, PNG, GIF or WebP image.</div>
+          <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="image_alt">Image description</label>
+          <div id="image-alt-hint" class="govuk-hint">Describe the image for people who cannot see it.</div>
+          <input class="govuk-input" id="image_alt" name="image_alt" type="text" maxlength="500" aria-describedby="image-alt-hint">
+        </div>
+        {{ govukButton({
+          text: "Post"
+        }) }}
+      </form>
+
+      {# Group filter #}
+      {% if myGroups.length > 0 %}
+        {% set groupItems = [{value: "", text: "All posts", selected: not groupId}] %}
+        {% for group in myGroups %}
+          {% set groupItems = (groupItems.push({
+            value: group.id | string,
+            text: group.name,
+            selected: groupId and (group.id | string) == (groupId | string)
+          }), groupItems) %}
+        {% endfor %}
+        <form action="/feed" method="get" class="govuk-!-margin-bottom-6">
+          <div class="app-filter-row">
+            {{ govukSelect({
+              id: "group_id",
+              name: "group_id",
+              label: {
+                text: "Filter by group"
+              },
+              items: groupItems,
+              formGroup: {
+                classes: "govuk-!-margin-bottom-0"
+              }
+            }) }}
+            {{ govukButton({
+              text: "Filter",
+              classes: "govuk-button--secondary govuk-!-margin-bottom-0 govuk-!-margin-left-2"
+            }) }}
+            {% if groupId %}
+              <a href="/feed" class="govuk-link govuk-!-margin-left-3">Clear filter</a>
             {% endif %}
           </div>
-          {% if item.content %}
-            <p class="govuk-body">{{ item.content }}</p>
-          {% endif %}
-          {% if item.imageUrl %}
-            <img class="nexus-alpha-card-thumb" src="{{ item.imageUrl }}" alt="Image for {{ item.title }}" width="120" height="90" loading="lazy" decoding="async">
-          {% endif %}
-          <p class="govuk-body-s nexus-alpha-meta">
-            {{ item.likesCount }} like{% if item.likesCount != 1 %}s{% endif %}
-            <span aria-hidden="true"> - </span>
-            {{ item.commentsCount }} comment{% if item.commentsCount != 1 %}s{% endif %}
-          </p>
-        </article>
-      {% endfor %}
-    </div>
-    {% if meta.hasMore and meta.cursor %}
-      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Feed pages">
-        <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="/feed?type={{ selectedType }}&amp;mode={{ selectedMode }}{% if selectedSubtype %}&amp;subtype={{ selectedSubtype }}{% endif %}&amp;cursor={{ meta.cursor }}&amp;per_page={{ perPage }}" rel="next">
-            <span class="govuk-pagination__link-title">Load more</span>
-            <span class="govuk-visually-hidden">:</span>
-            <span class="govuk-pagination__link-label">More feed items</span>
-          </a>
+        </form>
+      {% endif %}
+
+      {# Posts list #}
+      {% if posts.length > 0 %}
+        <div class="app-feed">
+          {% for post in posts %}
+            <article class="app-post {% if post.isPinned or post.is_pinned %}app-post--pinned{% endif %}">
+              {% if post.isPinned or post.is_pinned %}
+                <div class="app-post__pinned-badge">
+                  {{ govukTag({ text: "Pinned", classes: "govuk-tag--yellow" }) }}
+                </div>
+              {% endif %}
+
+              <header class="app-post__header">
+                <div class="app-post__author">
+                  {% set user = post.user %}
+                  {% include "partials/avatar.njk" %}
+                  <div class="app-post__author-info">
+                    <a href="/members/{{ post.user.id }}" class="govuk-link govuk-link--no-visited-state govuk-!-font-weight-bold">
+                      {{ post.user.first_name or post.user.firstName }} {{ post.user.last_name or post.user.lastName }}
+                    </a>
+                    <span class="govuk-body-s govuk-!-margin-bottom-0 app-post__meta">
+                      {{ (post.createdAt or post.created_at) | formatDate }}
+                      {% if post.group %}
+                        in <a href="/groups/{{ post.group.id }}" class="govuk-link">{{ post.group.name }}</a>
+                      {% endif %}
+                    </span>
+                  </div>
+                </div>
+              </header>
+
+              <div class="app-post__content">
+                <p class="govuk-body">{{ post.content | truncate(500) }}</p>
+                {% if post.imageUrl or post.image_url %}
+                  <img src="{{ post.imageUrl or post.image_url }}" alt="Image attached to post by {{ post.user.first_name or post.user.firstName }}" class="app-post__image">
+                {% endif %}
+              </div>
+
+              <footer class="app-post__footer">
+                <div class="app-post__actions">
+                  {# Like button #}
+                  {% if post.isLiked or post.is_liked %}
+                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button type="submit" class="app-link-button app-post__action-button app-post__action-button--active">
+                        <span aria-hidden="true">&#9829;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
+                      </button>
+                    </form>
+                  {% else %}
+                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button type="submit" class="app-link-button app-post__action-button">
+                        <span aria-hidden="true">&#9825;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
+                      </button>
+                    </form>
+                  {% endif %}
+
+                  {# Comment link #}
+                  <a href="/feed/posts/{{ post.id }}" class="govuk-link app-post__action-button">
+                    <span aria-hidden="true">&#128172;</span> {{ post.commentCount or post.comment_count }} Comment{{ 's' if post.commentCount or post.comment_count != 1 else '' }}
+                  </a>
+                </div>
+
+                <a href="/feed/posts/{{ post.id }}" class="govuk-link">View post</a>
+              </footer>
+            </article>
+          {% endfor %}
         </div>
-      </nav>
-    {% endif %}
-  {% endif %}
+
+        {# Pagination #}
+        {% set feedTotalPages = pagination.totalPages or pagination.total_pages %}
+        {% if feedTotalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, feedTotalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/feed?page=" + i + ("&group_id=" + groupId if groupId else ""),
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: {
+              href: "/feed?page=" + (pagination.page - 1) + ("&group_id=" + groupId if groupId else "")
+            } if pagination.page > 1 else undefined,
+            next: {
+              href: "/feed?page=" + (pagination.page + 1) + ("&group_id=" + groupId if groupId else "")
+            } if pagination.page < feedTotalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        <div class="app-empty-state">
+          <p class="govuk-heading-m app-empty-state__heading">No posts yet</p>
+          <p class="govuk-body app-empty-state__message">
+            {% if groupId %}
+              This group doesn't have any posts yet. Be the first to share something!
+            {% else %}
+              The feed is empty. Create a post to get the conversation started.
+            {% endif %}
+          </p>
+          {{ govukButton({
+            text: "Write a post",
+            href: "#content"
+          }) }}
+        </div>
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      {# Sidebar - My Groups #}
+      {% if myGroups.length > 0 %}
+        <div class="app-sidebar-card">
+          <h2 class="govuk-heading-m">My groups</h2>
+          <ul class="govuk-list">
+            {% for group in myGroups | take(5) %}
+              <li>
+                <a href="/feed?group_id={{ group.id }}" class="govuk-link">{{ group.name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if myGroups.length > 5 %}
+            <p class="govuk-body-s">
+              <a href="/groups" class="govuk-link">View all {{ myGroups.length }} groups</a>
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
 {% endblock %}

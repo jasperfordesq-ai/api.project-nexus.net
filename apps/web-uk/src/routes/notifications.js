@@ -9,6 +9,8 @@ const {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  markNotificationGroupRead,
+  deleteAllNotifications: deleteAllNotificationsApi,
   deleteNotification,
   ApiError
 } = require('../lib/api');
@@ -41,6 +43,23 @@ router.get('/', asyncRoute(async (req, res) => {
     showUnreadOnly: unread_only === 'true',
     successMessage: req.flash ? req.flash('success')[0] : null
   });
+}));
+
+// Laravel accessible alias: mark a grouped notification bucket read.
+router.post('/group/read', asyncRoute(async (req, res) => {
+  const groupKey = typeof req.body.group_key === 'string' ? req.body.group_key.trim() : '';
+  if (!groupKey) {
+    return res.redirect('/notifications');
+  }
+
+  try {
+    await markNotificationGroupRead(req.token, groupKey);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (req.flash) req.flash('error', error.message || 'Unable to mark grouped notifications as read');
+  }
+
+  return res.redirect('/notifications?status=group-marked-read');
 }));
 
 // Mark single notification as read
@@ -82,6 +101,18 @@ router.post('/read-all', asyncRoute(async (req, res) => {
   res.redirect('/notifications');
 }));
 
+// Laravel accessible alias: delete every notification for the signed-in user.
+router.post('/delete-all', asyncRoute(async (req, res) => {
+  try {
+    await deleteAllNotificationsApi(req.token);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (req.flash) req.flash('error', error.message || 'Unable to delete notifications');
+  }
+
+  return res.redirect('/notifications?status=all-notifications-deleted');
+}));
+
 // Delete notification
 router.post('/:id/delete', asyncRoute(async (req, res) => {
   const { id } = req.params;
@@ -107,7 +138,7 @@ function getNotificationLink(notification) {
 
   switch (notification.type) {
     case 'connection_request':
-      return '/connections/pending';
+      return '/connections/network?tab=pending_received';
     case 'connection_accepted':
       return (data.userId || data.user_id) ? `/members/${data.userId || data.user_id}` : '/connections';
     case 'connection_declined':
@@ -115,7 +146,7 @@ function getNotificationLink(notification) {
     case 'message_received':
       return (data.conversationId || data.conversation_id) ? `/messages/${data.conversationId || data.conversation_id}` : '/messages';
     case 'transfer_received':
-      return (data.transactionId || data.transaction_id) ? `/wallet/transactions/${data.transactionId || data.transaction_id}` : '/wallet';
+      return '/wallet#transactions';
     default:
       return null;
   }

@@ -1,0 +1,150 @@
+{# Copyright (C) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/activity">Back to activity</a>
+
+  <span class="govuk-caption-xl">Your activity</span>
+  <h1 class="govuk-heading-xl">Activity insights</h1>
+  <p class="govuk-body-l">A detailed view of your contributions, skills and recent activity across the community.</p>
+
+  <h2 class="govuk-visually-hidden">At a glance</h2>
+  <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
+    <div class="nexus-alpha-stat">
+      <dt>Hours given</dt>
+      <dd>{{ activity.hoursGivenLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Hours received</dt>
+      <dd>{{ activity.hoursReceivedLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Connections</dt>
+      <dd>{{ activity.connectionsLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Exchanges</dt>
+      <dd>{{ activity.exchangesLabel }}</dd>
+    </div>
+  </dl>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-visually-hidden">Activity</h2>
+
+      <h3 class="govuk-heading-l">Monthly activity</h3>
+      <p class="govuk-body">Hours given and received over the last 12 months.</p>
+      {% if activity.hasChart %}
+        <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-4">
+          <strong class="govuk-tag govuk-tag--green">Given</strong>
+          <strong class="govuk-tag govuk-tag--turquoise">Received</strong>
+        </p>
+        <div role="img" aria-label="Monthly hours given and received over the last 12 months.">
+          {% for month in activity.chartMonths %}
+            <div class="govuk-!-margin-bottom-3">
+              <p class="govuk-body-s govuk-!-margin-bottom-1">
+                <strong>{{ month.label }}</strong>
+                <span class="nexus-alpha-meta">
+                  - Given {{ month.givenLabel }} &middot; Received {{ month.receivedLabel }}
+                </span>
+              </p>
+              <progress max="100" value="{{ month.givenPercent }}" aria-label="{{ month.label }}: {{ month.givenLabel }} hours given, {{ month.receivedLabel }} hours received.">{{ month.givenPercent }}%</progress>
+              <progress max="100" value="{{ month.receivedPercent }}" aria-hidden="true">{{ month.receivedPercent }}%</progress>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body govuk-!-margin-bottom-0">No monthly activity to show yet.</p>
+        </div>
+      {% endif %}
+
+      <h3 class="govuk-heading-l govuk-!-margin-top-7">Recent activity</h3>
+      {% if activity.timeline.length %}
+        <ul class="govuk-list govuk-list--spaced">
+          {% for item in activity.timeline %}
+            <li>
+              <strong class="govuk-tag {{ item.tagClass }}">{{ item.typeLabel }}</strong>
+              {% if item.text %} {{ item.text }}{% endif %}
+              {% if item.dateLabel %}<span class="govuk-body-s nexus-alpha-meta"> - {{ item.dateLabel }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="govuk-inset-text">
+          <h4 class="govuk-heading-s govuk-!-margin-bottom-1">No activity yet</h4>
+          <p class="govuk-body govuk-!-margin-bottom-0">Once you start giving and receiving help, posting and connecting, your activity will appear here.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      <h2 class="govuk-visually-hidden">Your stats and skills</h2>
+
+      <div class="nexus-alpha-card govuk-!-margin-bottom-6">
+        <h3 class="govuk-heading-m">Quick stats</h3>
+        <dl class="govuk-summary-list govuk-!-margin-bottom-0">
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Groups joined</dt>
+            <dd class="govuk-summary-list__value">{{ activity.groupsJoinedLabel }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Posts (last 30 days)</dt>
+            <dd class="govuk-summary-list__value">{{ activity.engagement.postsLabel }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Comments (last 30 days)</dt>
+            <dd class="govuk-summary-list__value">{{ activity.engagement.commentsLabel }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Likes given (last 30 days)</dt>
+            <dd class="govuk-summary-list__value">{{ activity.engagement.likesGivenLabel }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Likes received (last 30 days)</dt>
+            <dd class="govuk-summary-list__value">{{ activity.engagement.likesReceivedLabel }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Net balance</dt>
+            <dd class="govuk-summary-list__value">
+              <strong class="govuk-tag {{ activity.netBalanceInsight.tagClass }}">{{ activity.netBalanceInsight.label }}</strong>
+              <span class="govuk-visually-hidden">{{ activity.netBalanceInsight.meaning }}</span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="nexus-alpha-card">
+        <h3 class="govuk-heading-m">My skills</h3>
+        {% if activity.skills.length %}
+          <p class="govuk-body-s nexus-alpha-meta">{{ activity.skillsSummaryLabel }}</p>
+          <ul class="govuk-list nexus-alpha-skill-list govuk-!-margin-bottom-0">
+            {% for skill in activity.skills %}
+              <li>
+                <span>{{ skill.name }}</span>
+                {% if skill.isOffering %}
+                  <strong class="govuk-tag govuk-tag--green">Offering</strong>
+                {% endif %}
+                {% if skill.isRequesting %}
+                  <strong class="govuk-tag govuk-tag--blue">Requesting</strong>
+                {% endif %}
+                {% if skill.endorsementsLabel %}
+                  <span class="govuk-body-s nexus-alpha-meta">{{ skill.endorsementsLabel }}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body govuk-!-margin-bottom-0">You have not added any skills yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <p class="govuk-body govuk-!-margin-top-7">
+    <a class="govuk-link" href="/activity">Back to activity</a>
+  </p>
+{% endblock %}

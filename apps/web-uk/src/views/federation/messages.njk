@@ -1,0 +1,108 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to federation</a>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Federated messages</h1>
+  <p class="govuk-body-l">Messages exchanged with members across the community network.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if statusBanner %}
+    {% if statusBanner.type == "error" %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#messages-list">{{ statusBanner.message }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-messages-status">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="fed-messages-status">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  {% if not viewerCanMessage %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Opt in to send federated messages</h2>
+      <p class="govuk-body">You need to opt in to federation and turn on federated messaging before you can message members in other communities.</p>
+    </div>
+    <a href="/federation/opt-in" class="govuk-button govuk-button--secondary" data-module="govuk-button">Opt in to federation</a>
+  {% endif %}
+
+  <form method="get" action="/federation/messages" class="govuk-!-margin-bottom-4">
+    <div class="govuk-form-group govuk-!-margin-bottom-2">
+      <label class="govuk-label" for="q">Search conversations</label>
+      <input class="govuk-input govuk-input--width-20" id="q" name="q" type="text" value="{{ query }}" placeholder="Search by name or community">
+    </div>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+  </form>
+
+  <p class="govuk-body">
+    <a class="govuk-link" href="/federation/members">Browse federated members</a>
+  </p>
+  <p class="govuk-hint">To start a new conversation, message a member from the federated members directory.</p>
+
+  <h2 class="govuk-heading-m">Conversations</h2>
+
+  <div id="messages-list">
+    {% if threads.length == 0 %}
+      {% if query %}
+        <div class="govuk-inset-text"><p class="govuk-body">No conversations match your search.</p></div>
+      {% else %}
+        <div class="govuk-inset-text"><p class="govuk-body">You have no federated messages yet.</p></div>
+      {% endif %}
+    {% else %}
+      <div class="nexus-alpha-card-list">
+        {% for thread in threads %}
+          <article class="nexus-alpha-card">
+            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+              <a class="govuk-link" href="{{ thread.href }}" title="Open conversation">{{ thread.partnerName }}</a>
+            </h3>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+              <strong class="govuk-tag govuk-tag--grey">{{ thread.partnerTenantName }}</strong>
+              {% if thread.unreadCount > 0 %}
+                <strong class="govuk-tag govuk-tag--blue">{{ thread.unreadCount }} unread</strong>
+                <span class="govuk-visually-hidden">{{ thread.unreadCount }} unread messages</span>
+              {% endif %}
+            </p>
+            {% if thread.lastPreview %}
+              <p class="govuk-body-s govuk-!-margin-bottom-1">{% if thread.lastOutbound %}You: {% endif %}{{ thread.lastPreview }}</p>
+            {% endif %}
+            {% if thread.lastCreatedAt %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ thread.lastCreatedAt | date }}</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  {% set editNameError = status == "collection-name-required" %}
+
+  <a class="govuk-back-link" href="/me/collections">My collections</a>
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          {% if editNameError %}
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#edit-collection-name">{{ errorMessage }}</a></li>
+            </ul>
+          {% else %}
+            <p class="govuk-body">{{ errorMessage }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Saved items at {{ tenant.name or tenant.slug or "Community" }}</span>
+  <h1 class="govuk-heading-xl">
+    <span class="nexus-alpha-avatar" style="background-color: {{ collection.color }}; width: 1.25rem; height: 1.25rem; display: inline-block; border-radius: 50%; vertical-align: middle;" aria-hidden="true"></span>
+    {{ collection.name }}
+  </h1>
+
+  {% if successMessage %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-detail-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="saved-detail-status-title">There is a problem</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="govuk-body">
+    {{ collection.countLabel }}
+    <strong class="govuk-tag {% if collection.isPublic %}govuk-tag--blue{% else %}govuk-tag--grey{% endif %} govuk-!-margin-left-1">{{ collection.visibilityLabel }}</strong>
+  </p>
+  {% if collection.description %}
+    <p class="govuk-body-l">{{ collection.description }}</p>
+  {% endif %}
+
+  {% if items and items.length %}
+    <ul class="govuk-list nexus-alpha-card-list">
+      {% for item in items %}
+        <li class="nexus-alpha-card">
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+            {% if item.href %}
+              <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+            {% else %}
+              {{ item.title }}
+            {% endif %}
+          </h2>
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            <strong class="govuk-tag govuk-tag--grey">{{ item.typeLabel }}</strong>
+            {% if item.savedOn %}
+              <span class="govuk-!-margin-left-1">Saved on {{ item.savedOn }}</span>
+            {% endif %}
+          </p>
+          {% if item.note %}
+            <p class="govuk-body">{{ item.note }}</p>
+          {% endif %}
+          {% if isOwner and item.id %}
+            <form method="post" action="/me/collections/{{ collection.id }}/items/{{ item.id }}/remove" class="govuk-!-margin-bottom-0">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="Remove {{ item.title }} from this collection">Remove</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No items in this collection</h2>
+      <p class="govuk-body">When you save items to this collection, they will appear here.</p>
+    </div>
+  {% endif %}
+
+  {% if lastPage > 1 %}
+    <nav class="govuk-pagination" role="navigation" aria-label="Page {{ currentPage }} of {{ lastPage }}">
+      {% if currentPage > 1 %}
+        <div class="govuk-pagination__prev">
+          <a class="govuk-link govuk-pagination__link" href="/me/collections/{{ collection.id }}?page={{ currentPage - 1 }}" rel="prev">
+            <span class="govuk-pagination__link-title">Previous</span>
+          </a>
+        </div>
+      {% endif %}
+      {% if currentPage < lastPage %}
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" href="/me/collections/{{ collection.id }}?page={{ currentPage + 1 }}" rel="next">
+            <span class="govuk-pagination__link-title">Next</span>
+          </a>
+        </div>
+      {% endif %}
+    </nav>
+  {% endif %}
+
+  {% if isOwner and collection.id %}
+    <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
+    <details class="govuk-details" data-module="govuk-details"{% if editNameError %} open{% endif %}>
+      <summary class="govuk-details__summary">
+        <span class="govuk-details__summary-text">Edit this collection</span>
+      </summary>
+      <div class="govuk-details__text">
+        <form method="post" action="/me/collections/{{ collection.id }}/update">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group{% if editNameError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="edit-collection-name">Collection name</label>
+            {% if editNameError %}
+              <p id="edit-collection-name-error" class="govuk-error-message"><span class="govuk-visually-hidden">There is a problem:</span> {{ errorMessage }}</p>
+            {% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if editNameError %} govuk-input--error{% endif %}" id="edit-collection-name" name="name" type="text" maxlength="255" value="{{ collection.name }}" {% if editNameError %}aria-describedby="edit-collection-name-error"{% endif %}>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="edit-collection-description">Description (optional)</label>
+            <textarea class="govuk-textarea govuk-!-width-two-thirds" id="edit-collection-description" name="description" rows="3">{{ collection.description }}</textarea>
+          </div>
+          <div class="govuk-form-group">
+            <fieldset class="govuk-fieldset">
+              <legend class="govuk-fieldset__legend govuk-visually-hidden">Make this collection public</legend>
+              <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+                <div class="govuk-checkboxes__item">
+                  <input class="govuk-checkboxes__input" id="edit-collection-public" name="is_public" type="checkbox" value="1" {% if collection.isPublic %}checked{% endif %}>
+                  <label class="govuk-label govuk-checkboxes__label" for="edit-collection-public">Make this collection public</label>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Save changes</button>
+        </form>
+
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">There is a problem</span>
+            Deleting a collection cannot be undone. The saved items it contains will also be removed.
+          </strong>
+        </div>
+        <form method="post" action="/me/collections/{{ collection.id }}/delete">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button" aria-label="Delete the collection {{ collection.name }}">Delete collection</button>
+        </form>
+      </div>
+    </details>
+  {% endif %}
+{% endblock %}

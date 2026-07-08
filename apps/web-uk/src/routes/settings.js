@@ -4,242 +4,775 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
+const fs = require('fs/promises');
 const {
-  getProfile,
-  getNotificationPreferences,
-  updateNotificationPreference,
-  getPrivacyPreferences,
-  updatePrivacyPreferences,
-  getPreferences,
-  changePassword,
+  callUserSettingsApi,
+  uploadInsuranceCertificate,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
-router.use(requireAuth);
+const SETTINGS_THEMES = ['light', 'dark', 'system'];
+const SETTINGS_LINK_TYPES = ['family', 'guardian', 'carer', 'organization'];
+const SETTINGS_LINK_PERMISSIONS = [
+  'can_view_activity',
+  'can_manage_listings',
+  'can_transact',
+  'can_view_messages'
+];
+const SETTINGS_GDPR_TYPES = ['portability', 'rectification', 'restriction', 'objection'];
+const SETTINGS_INSURANCE_TYPES = [
+  'public_liability',
+  'professional_indemnity',
+  'employers_liability',
+  'product_liability',
+  'personal_accident',
+  'other'
+];
+const SETTINGS_GDPR_TYPE_LABELS = {
+  portability: 'Transfer my data to another service',
+  rectification: 'Correct my data',
+  restriction: 'Restrict how my data is used',
+  objection: 'Object to how my data is used'
+};
+const SETTINGS_GDPR_TYPE_HINTS = {
+  portability: 'Receive your data in a portable, machine-readable format you can give to another service.',
+  rectification: 'Ask us to correct personal data that is inaccurate or incomplete.',
+  restriction: 'Ask us to limit how we use your data while a concern is being looked into.',
+  objection: 'Object to us processing your data for a particular purpose.'
+};
+const SETTINGS_STATUS_MESSAGES = {
+  'link-requested': 'Your link request has been sent. The other member must approve it.',
+  'link-approved': 'You have approved the link.',
+  'link-revoked': 'The link has been removed.',
+  'link-permissions-saved': 'Permissions updated.',
+  'link-email-invalid': 'Enter a valid email address.',
+  'link-user-not-found': 'We could not find a member with that email address in this community.',
+  'link-self': 'You cannot link your own account to itself.',
+  'link-exists': 'A link with this member already exists.',
+  'link-max': 'You have reached the maximum number of linked accounts.',
+  'link-failed': 'Sorry, we could not complete that request. Please try again.',
+  'appearance-saved': 'Your appearance settings have been saved.',
+  'appearance-invalid': 'Choose one of the available themes.',
+  'appearance-failed': 'Sorry, we could not save your appearance settings. Please try again.',
+  'availability-saved': 'Your availability has been saved.',
+  'availability-invalid': 'Check the times you entered. Each end time must be after its start time.',
+  'availability-failed': 'Sorry, we could not save your availability. Please try again.',
+  'gdpr-requested': 'Your request has been submitted. We will be in touch.',
+  'gdpr-duplicate': 'You already have a request of this type being looked into.',
+  'gdpr-invalid': 'Choose the type of request you want to make.',
+  'gdpr-failed': 'Sorry, we could not submit your request. Please try again.',
+  'insurance-uploaded': 'Your certificate has been uploaded and is awaiting review.',
+  'insurance-type-invalid': 'Choose the type of insurance.',
+  'insurance-file-required': 'Choose a certificate file to upload.',
+  'insurance-file-type': 'The certificate must be a PDF, JPG or PNG file.',
+  'insurance-file-large': 'The certificate file must be smaller than 10MB.',
+  'insurance-failed': 'Sorry, we could not upload your certificate. Please try again.'
+};
+const SETTINGS_THEME_LABELS = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'Match my device'
+};
+const SETTINGS_THEME_HINTS = {
+  light: 'Dark text on a light background.',
+  dark: 'Light text on a dark background.',
+  system: 'Follow the light or dark setting on your device.'
+};
+const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
+const SETTINGS_AVAILABILITY_DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
+const SETTINGS_LINK_TYPE_LABELS = {
+  family: 'Family member',
+  guardian: 'Guardian',
+  carer: 'Carer',
+  organization: 'Organisation'
+};
+const SETTINGS_LINK_PERMISSION_LABELS = {
+  can_view_activity: 'View their activity',
+  can_manage_listings: 'Manage their listings',
+  can_transact: 'Send and receive time credits',
+  can_view_messages: 'View their messages'
+};
+const SETTINGS_INSURANCE_TYPE_LABELS = {
+  public_liability: 'Public liability',
+  professional_indemnity: 'Professional indemnity',
+  employers_liability: 'Employers liability',
+  product_liability: 'Product liability',
+  personal_accident: 'Personal accident',
+  other: 'Other'
+};
+const SETTINGS_INSURANCE_STATUS_LABELS = {
+  pending: 'Pending',
+  submitted: 'Submitted',
+  verified: 'Verified',
+  expired: 'Expired',
+  rejected: 'Rejected',
+  revoked: 'Revoked'
+};
+const SETTINGS_INSURANCE_STATUS_TAGS = {
+  verified: 'govuk-tag--green',
+  submitted: 'govuk-tag--yellow',
+  pending: 'govuk-tag--yellow',
+  rejected: 'govuk-tag--red',
+  revoked: 'govuk-tag--red',
+  expired: 'govuk-tag--red'
+};
 
-// Settings overview
-router.get('/', asyncRoute(async (req, res) => {
-  const profile = await getProfile(req.token);
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
 
-  let notificationPrefs = {};
-  let privacyPrefs = {};
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function allowedValue(value, allowed, fallback = null) {
+  const text = trimmed(value);
+  return allowed.includes(text) ? text : fallback;
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
   try {
-    const notifData = await getNotificationPreferences(req.token);
-    if (Array.isArray(notifData) && notifData.length > 0) {
-      // Any enabled email notification counts as "enabled"
-      notificationPrefs.anyEmailEnabled = notifData.some(p => p.enable_email !== false);
-    } else {
-      notificationPrefs.anyEmailEnabled = true;
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function apiErrorCode(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  return String(data.code || data.error || '').toUpperCase();
+}
+
+function dataFrom(result) {
+  return result && result.data && typeof result.data === 'object' ? result.data : {};
+}
+
+function payloadFrom(result) {
+  return result && Object.prototype.hasOwnProperty.call(result, 'data') ? result.data : result;
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+async function callSettings(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callUserSettingsApi(token, method, path);
+  }
+
+  return callUserSettingsApi(token, method, path, data);
+}
+
+function permissionPayload(body) {
+  return SETTINGS_LINK_PERMISSIONS.reduce((permissions, key) => {
+    permissions[key] = checked(body[`perm_${key}`]);
+    return permissions;
+  }, {});
+}
+
+function settingsStatusRedirect(path, status, fragment = '') {
+  return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function jsonObjectFrom(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function relationshipRowsFromPayload(payload, keys) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+
+  if (payload.data && typeof payload.data === 'object') {
+    return relationshipRowsFromPayload(payload.data, keys);
+  }
+
+  return [];
+}
+
+function normalizeRelationship(row) {
+  const permissions = jsonObjectFrom(row && row.permissions);
+  const first = trimmed(row && row.first_name);
+  const last = trimmed(row && row.last_name);
+  const name = trimmed((row && row.name) || `${first} ${last}` || (row && row.email));
+  const type = allowedValue(row && row.relationship_type, SETTINGS_LINK_TYPES, 'family');
+
+  return {
+    relationshipId: positiveInteger(row && (row.relationship_id || row.id)) || 0,
+    name: name || 'Unknown member',
+    email: trimmed(row && row.email),
+    avatarUrl: trimmed(row && row.avatar_url),
+    relationshipType: type,
+    relationshipTypeLabel: SETTINGS_LINK_TYPE_LABELS[type],
+    status: trimmed(row && row.status) || 'pending',
+    permissions: SETTINGS_LINK_PERMISSIONS.reduce((acc, key) => {
+      acc[key] = Boolean(permissions[key]);
+      return acc;
+    }, {})
+  };
+}
+
+function normalizeRelationships(payload, keys) {
+  return relationshipRowsFromPayload(payload, keys).map(normalizeRelationship);
+}
+
+function humanizeStatus(value) {
+  const text = trimmed(value);
+  if (text === '') return '';
+  return text
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function formatInsuranceDate(value) {
+  const text = trimmed(value);
+  if (text === '') return '';
+  const date = new Date(text.includes('T') ? text : `${text}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return text;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
+function insuranceRowsFromPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  for (const key of ['certificates', 'insurance_certificates', 'items', 'data']) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  if (payload.data && typeof payload.data === 'object') {
+    return insuranceRowsFromPayload(payload.data);
+  }
+  return [];
+}
+
+function normalizeInsuranceCertificate(row) {
+  const type = allowedValue(row && row.insurance_type, SETTINGS_INSURANCE_TYPES, 'other');
+  const status = trimmed(row && row.status) || 'pending';
+
+  return {
+    insuranceType: type,
+    insuranceTypeLabel: SETTINGS_INSURANCE_TYPE_LABELS[type],
+    providerName: trimmed(row && row.provider_name),
+    expiryLabel: formatInsuranceDate(row && row.expiry_date),
+    status,
+    statusLabel: SETTINGS_INSURANCE_STATUS_LABELS[status] || humanizeStatus(status) || SETTINGS_INSURANCE_STATUS_LABELS.pending,
+    statusTagClass: SETTINGS_INSURANCE_STATUS_TAGS[status] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeInsuranceCertificates(payload) {
+  return insuranceRowsFromPayload(payload).map(normalizeInsuranceCertificate);
+}
+
+function themeFromSettingsData(data) {
+  const nested = data.user && typeof data.user === 'object' ? data.user : {};
+  return allowedValue(data.preferred_theme || data.theme || nested.preferred_theme || nested.theme, SETTINGS_THEMES, 'system');
+}
+
+function normalizeAvailabilitySlot(slot) {
+  if (!slot || typeof slot !== 'object') return null;
+  const start = trimmed(slot.start || slot.start_time);
+  const end = trimmed(slot.end || slot.end_time);
+  return start || end ? { start, end } : null;
+}
+
+function availabilityByDayFromData(data) {
+  const raw = Array.isArray(data.schedule)
+    ? data.schedule
+    : Array.isArray(data.availability)
+      ? data.availability
+      : [];
+  const byDay = {};
+
+  for (const slot of raw) {
+    if (!slot || typeof slot !== 'object') continue;
+    const day = Number(slot.day_of_week ?? slot.day);
+    if (!Number.isInteger(day) || day < 0 || day > 6) continue;
+
+    const normalized = normalizeAvailabilitySlot(slot);
+    if (!normalized) continue;
+    byDay[day] = byDay[day] || [];
+    byDay[day].push(normalized);
+  }
+
+  return byDay;
+}
+
+function availabilitySlotsFromRawBody(rawBody) {
+  const hasAvailabilityKeys = rawBody && (rawBody.includes('slots%5B') || rawBody.includes('slots['));
+  if (!hasAvailabilityKeys) {
+    return null;
+  }
+
+  const slotsByDay = {};
+  for (const [key, value] of new URLSearchParams(rawBody).entries()) {
+    const match = key.match(/^slots\[([0-6])\]\[([^\]]+)\]\[(start|end)\]$/);
+    if (!match) continue;
+
+    const [, day, index, field] = match;
+    slotsByDay[day] = slotsByDay[day] || {};
+    slotsByDay[day][index] = slotsByDay[day][index] || {};
+    slotsByDay[day][index][field] = value;
+  }
+
+  return Object.keys(slotsByDay).length > 0 ? slotsByDay : null;
+}
+
+function flattenAvailabilitySlots(rawSlots, rawBody = '') {
+  const slotsByDay = availabilitySlotsFromRawBody(rawBody) || (rawSlots && typeof rawSlots === 'object' ? rawSlots : {});
+  const flat = [];
+  let hasInvalid = false;
+
+  for (const [dayKey, slots] of Object.entries(slotsByDay)) {
+    const day = Number(dayKey);
+    if (!Number.isInteger(day) || day < 0 || day > 6 || !slots || typeof slots !== 'object') {
+      continue;
     }
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-    notificationPrefs.anyEmailEnabled = true;
-  }
 
-  try {
-    privacyPrefs = await getPrivacyPreferences(req.token);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-  }
+    for (const slot of Object.values(slots)) {
+      if (!slot || typeof slot !== 'object') continue;
 
-  res.render('settings/index', {
-    title: 'Settings',
-    profile,
-    notificationPrefs,
-    privacyPrefs,
-    successMessage: req.flash ? req.flash('success')[0] : null
-  });
-}));
+      const start = trimmed(slot.start);
+      const end = trimmed(slot.end);
+      if (start === '' && end === '') continue;
+      if (start === '' || end === '' || start >= end) {
+        hasInvalid = true;
+        continue;
+      }
 
-// Notification settings
-router.get('/notifications', asyncRoute(async (req, res) => {
-  const profile = await getProfile(req.token);
-
-  // Fetch current notification preferences from API
-  let notificationPrefs = [];
-  try {
-    notificationPrefs = await getNotificationPreferences(req.token);
-  } catch (error) {
-    // If preferences API fails, continue with defaults
-    if (!(error instanceof ApiError) || error.status === 401) throw error;
-  }
-
-  // Build a map of notification_type -> enable_email for the template
-  const prefMap = {};
-  if (Array.isArray(notificationPrefs)) {
-    for (const pref of notificationPrefs) {
-      prefMap[pref.notification_type] = pref.enable_email !== false;
-    }
-  }
-
-  res.render('settings/notifications', {
-    title: 'Notification settings',
-    profile,
-    notificationPrefs: prefMap,
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
-  });
-}));
-
-// POST notification settings
-router.post('/notifications', asyncRoute(async (req, res) => {
-  const selectedNotifications = req.body.notifications || [];
-  const allTypes = ['messages', 'listings', 'transactions', 'marketing'];
-
-  // Normalize to array (single checkbox submits as string)
-  const selected = Array.isArray(selectedNotifications) ? selectedNotifications : [selectedNotifications];
-
-  // Validate: only allow known notification types
-  const validSelected = selected.filter(t => allTypes.includes(t));
-
-  try {
-    // Update each notification type
-    for (const type of allTypes) {
-      const enabled = validSelected.includes(type);
-      await updateNotificationPreference(req.token, {
-        notification_type: type,
-        enable_email: enabled,
-        enable_in_app: true,
-        enable_push: enabled
+      flat.push({
+        day_of_week: day,
+        start_time: start,
+        end_time: end
       });
     }
-
-    req.flash('success', 'Notification settings saved');
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-    req.flash('error', error.message || 'Failed to save notification settings');
   }
 
-  res.redirect('/settings/notifications');
-}));
+  return { flat, hasInvalid };
+}
 
-// Privacy settings
-router.get('/privacy', asyncRoute(async (req, res) => {
-  const profile = await getProfile(req.token);
+function linkedFailureStatus(error) {
+  if (error instanceof ApiError && error.status === 404) {
+    return 'link-user-not-found';
+  }
 
-  // Fetch current privacy preferences from API
-  let privacyPrefs = {};
+  const code = apiErrorCode(error);
+  if (code.includes('SELF')) return 'link-self';
+  if (code.includes('EXIST')) return 'link-exists';
+  if (code.includes('MAX') || code.includes('LIMIT')) return 'link-max';
+  return 'link-failed';
+}
+
+router.get('/linked-accounts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let children = [];
+  let parents = [];
+
   try {
-    privacyPrefs = await getPrivacyPreferences(req.token);
+    children = normalizeRelationships(payloadFrom(await callSettings(token, 'GET', '/sub-accounts')), [
+      'children',
+      'child_accounts',
+      'sub_accounts',
+      'accounts',
+      'items'
+    ]);
+    parents = normalizeRelationships(payloadFrom(await callSettings(token, 'GET', '/parent-accounts')), [
+      'parents',
+      'parent_accounts',
+      'accounts',
+      'items'
+    ]);
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status === 401) throw error;
+    if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  // Also fetch general preferences for profile_visibility
-  let generalPrefs = {};
-  try {
-    generalPrefs = await getPreferences(req.token);
-  } catch (error) {
-    if (!(error instanceof ApiError) || error.status === 401) throw error;
-  }
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
 
-  // Use privacyPrefs.visibility as the authoritative source for profile_visibility
-  if (privacyPrefs.visibility) {
-    generalPrefs.profile_visibility = privacyPrefs.visibility;
-  }
-
-  res.render('settings/privacy', {
-    title: 'Privacy settings',
-    profile,
-    privacyPrefs,
-    generalPrefs,
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+  return res.render('settings/linked-accounts', {
+    title: 'Linked accounts',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: ['link-requested', 'link-approved', 'link-revoked', 'link-permissions-saved'].includes(status),
+    errorStatus: ['link-email-invalid', 'link-user-not-found', 'link-self', 'link-exists', 'link-max', 'link-failed'].includes(status),
+    children,
+    parents,
+    maxChildren: 20,
+    linkTypes: SETTINGS_LINK_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_LINK_TYPE_LABELS[type],
+      selected: type === 'family'
+    })),
+    permissions: SETTINGS_LINK_PERMISSIONS.map((permission) => ({
+      value: permission,
+      field: `perm_${permission}`,
+      label: SETTINGS_LINK_PERMISSION_LABELS[permission],
+      checkedByDefault: permission === 'can_view_activity'
+    }))
   });
 }));
 
-// POST privacy settings
-router.post('/privacy', asyncRoute(async (req, res) => {
-  const { profile_visibility, show_balance } = req.body;
+router.get('/appearance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
 
-  // Validate profile_visibility
-  const allowedVisibilities = ['public', 'contacts', 'private'];
-  const visibility = allowedVisibilities.includes(profile_visibility) ? profile_visibility : 'public';
-  const showBalance = show_balance === 'yes';
-
+  let currentTheme = 'system';
   try {
-    await updatePrivacyPreferences(req.token, {
-      visibility,
-      show_balance: showBalance,
-      searchable: visibility !== 'private'
-    });
-
-    req.flash('success', 'Privacy settings saved');
+    currentTheme = themeFromSettingsData(dataFrom(await callSettings(token, 'GET', '')));
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-    req.flash('error', error.message || 'Failed to save privacy settings');
+    if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  res.redirect('/settings/privacy');
-}));
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
 
-// Change password
-router.get('/password', asyncRoute(async (req, res) => {
-  res.render('settings/password', {
-    title: 'Change password',
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    errors: null,
-    fieldErrors: {}
+  return res.render('settings/appearance', {
+    title: 'Appearance',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'appearance-saved',
+    errorStatus: ['appearance-invalid', 'appearance-failed'].includes(status),
+    currentTheme,
+    themes: SETTINGS_THEMES.map((theme) => ({
+      value: theme,
+      label: SETTINGS_THEME_LABELS[theme],
+      hint: SETTINGS_THEME_HINTS[theme],
+      checked: currentTheme === theme
+    }))
   });
 }));
 
-router.post('/password', asyncRoute(async (req, res) => {
-  const { current_password, new_password, confirm_password } = req.body;
+router.post('/appearance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
 
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!current_password) {
-    errors.push({ text: 'Enter your current password', href: '#current_password' });
-    fieldErrors.current_password = 'Enter your current password';
+  const theme = allowedValue(req.body.theme, SETTINGS_THEMES, null);
+  if (theme === null) {
+    return res.redirect(settingsStatusRedirect('/settings/appearance', 'appearance-invalid'));
   }
 
-  if (!new_password) {
-    errors.push({ text: 'Enter a new password', href: '#new_password' });
-    fieldErrors.new_password = 'Enter a new password';
-  } else if (new_password.length < 8) {
-    errors.push({ text: 'New password must be at least 8 characters', href: '#new_password' });
-    fieldErrors.new_password = 'New password must be at least 8 characters';
-  }
-
-  if (new_password !== confirm_password) {
-    errors.push({ text: 'Passwords do not match', href: '#confirm_password' });
-    fieldErrors.confirm_password = 'Passwords do not match';
-  }
-
-  if (errors.length > 0) {
-    return res.render('settings/password', {
-      title: 'Change password',
-      errors,
-      fieldErrors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-  }
-
+  let status = 'appearance-saved';
   try {
-    await changePassword(req.token, current_password, new_password);
+    await callSettings(token, 'PUT', '/theme', { theme });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'appearance-failed';
+  }
 
-    if (req.flash) {
-      req.flash('success', 'Password changed successfully');
+  return res.redirect(settingsStatusRedirect('/settings/appearance', status));
+}));
+
+router.get('/availability', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let availabilityByDay = {};
+  try {
+    availabilityByDay = availabilityByDayFromData(dataFrom(await callSettings(token, 'GET', '/availability')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/availability', {
+    title: 'Your availability',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'availability-saved',
+    errorStatus: ['availability-invalid', 'availability-failed'].includes(status),
+    availabilityByDay,
+    displayDays: SETTINGS_AVAILABILITY_DISPLAY_DAYS,
+    dayLabels: SETTINGS_AVAILABILITY_DAY_LABELS,
+    slotsPerDay: SETTINGS_AVAILABILITY_SLOTS_PER_DAY
+  });
+}));
+
+router.post('/availability', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const { flat, hasInvalid } = flattenAvailabilitySlots(req.body.slots, req.rawUrlencodedBody);
+  if (hasInvalid) {
+    return res.redirect(settingsStatusRedirect('/settings/availability', 'availability-invalid', '#availability'));
+  }
+
+  let status = 'availability-saved';
+  try {
+    await callSettings(token, 'PUT', '/availability', { schedule: flat });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'availability-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/availability', status));
+}));
+
+router.post('/data-rights', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const type = allowedValue(req.body.request_type, SETTINGS_GDPR_TYPES, null);
+  if (type === null) {
+    return res.redirect(settingsStatusRedirect('/settings/data-rights', 'gdpr-invalid', '#request'));
+  }
+
+  const notes = trimmed(req.body.notes);
+  let status = 'gdpr-requested';
+  let fragment = '#your-requests';
+  try {
+    await callSettings(token, 'POST', '/gdpr-request', {
+      type,
+      notes: notes || null
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 409 ? 'gdpr-duplicate' : 'gdpr-failed';
+    fragment = '#request';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/data-rights', status, fragment));
+}));
+
+router.get('/data-rights', (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const requests = [];
+
+  return res.render('settings/data-rights', {
+    title: 'Your data rights',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'gdpr-requested',
+    infoStatus: status === 'gdpr-duplicate',
+    errorStatus: ['gdpr-invalid', 'gdpr-failed'].includes(status),
+    requestTypes: SETTINGS_GDPR_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_GDPR_TYPE_LABELS[type],
+      hint: SETTINGS_GDPR_TYPE_HINTS[type]
+    })),
+    requests
+  });
+});
+
+router.get('/insurance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let certificates = [];
+  try {
+    certificates = normalizeInsuranceCertificates(payloadFrom(await callSettings(token, 'GET', '/insurance')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/insurance', {
+    title: 'Insurance certificates',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'insurance-uploaded',
+    errorStatus: [
+      'insurance-type-invalid',
+      'insurance-file-required',
+      'insurance-file-type',
+      'insurance-file-large',
+      'insurance-failed'
+    ].includes(status),
+    errorAnchor: status === 'insurance-type-invalid' ? 'insurance_type' : 'certificate_file',
+    certificates,
+    insuranceTypes: SETTINGS_INSURANCE_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_INSURANCE_TYPE_LABELS[type]
+    }))
+  });
+}));
+
+router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const email = trimmed(req.body.email);
+  if (email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-email-invalid', '#request'));
+  }
+
+  const payload = {
+    email,
+    relationship_type: allowedValue(req.body.relationship_type, SETTINGS_LINK_TYPES, 'family'),
+    permissions: permissionPayload(req.body)
+  };
+
+  let status = 'link-requested';
+  let fragment = '#children';
+  try {
+    await callSettings(token, 'POST', '/sub-accounts', payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = linkedFailureStatus(error);
+    fragment = '#request';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, fragment));
+}));
+
+router.post('/linked-accounts/approve', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  let status = 'link-approved';
+  try {
+    if (relationshipId === null) {
+      status = 'link-failed';
+    } else {
+      await callSettings(token, 'PUT', `/sub-accounts/${relationshipId}/approve`);
     }
-    res.redirect('/settings');
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-
-    const errorMessage = (error instanceof ApiError && error.message) ? error.message : 'Unable to change password. Check your current password and try again.';
-    return res.render('settings/password', {
-      title: 'Change password',
-      errors: [{ text: errorMessage }],
-      fieldErrors: {},
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
   }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#parents'));
+}));
+
+router.post('/linked-accounts/permissions', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  if (relationshipId === null) {
+    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-failed', '#children'));
+  }
+
+  let status = 'link-permissions-saved';
+  try {
+    await callSettings(token, 'PUT', `/sub-accounts/${relationshipId}/permissions`, {
+      permissions: permissionPayload(req.body)
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+}));
+
+router.post('/linked-accounts/revoke', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  let status = 'link-revoked';
+  try {
+    if (relationshipId === null) {
+      status = 'link-failed';
+    } else {
+      await callSettings(token, 'DELETE', `/sub-accounts/${relationshipId}`);
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+}));
+
+router.post('/insurance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const insuranceType = allowedValue(req.body.insurance_type, SETTINGS_INSURANCE_TYPES, null);
+  if (insuranceType === null) {
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
+  }
+
+  const file = uploadedFile(req, 'certificate_file');
+  if (!file) {
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadInsuranceCertificate(token, {
+      insurance_type: insuranceType,
+      provider_name: trimmed(req.body.provider_name, 255),
+      policy_number: trimmed(req.body.policy_number, 255),
+      coverage_amount: trimmed(req.body.coverage_amount),
+      start_date: trimmed(req.body.start_date),
+      expiry_date: trimmed(req.body.expiry_date),
+      notes: trimmed(req.body.notes, 1000),
+      file: {
+        buffer,
+        filename: trimmed(file.originalFilename) || 'certificate',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-failed', '#upload'));
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-uploaded', '#certificates'));
 }));
 
 module.exports = router;

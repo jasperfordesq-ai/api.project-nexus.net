@@ -33,6 +33,17 @@ If an agent is resuming this work after an interrupted session, start with
 current handoff checklist, route-matrix interpretation rules, and safety rules
 for working while other agents may still be committing accessible parity work.
 
+Generated route-matrix artifacts live under `docs/generated/` and are refreshed
+with:
+
+```bash
+npm run route:matrix
+```
+
+Treat those generated counts as backlog evidence only. They do not certify
+workflow parity, tenant routing, auth behavior, API contracts, localization, or
+production readiness.
+
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
 from skeleton or styling work.
@@ -262,8 +273,10 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
   staging `.env`.
 - `ACCESSIBLE_BACKEND_TARGET=aspnet` is future work only and is marked
   `future-not-certified`.
-- `API_BASE_URL` remains an explicit override, but Laravel-first work should
-  prefer `LARAVEL_BASE_URL`.
+- `API_BASE_URL` remains an explicit override and is labelled as
+  `api-base-url` by the resolver; it does not certify ASP.NET compatibility or
+  replace Laravel as the source of truth. Laravel-first work should prefer
+  `LARAVEL_BASE_URL`.
 - See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
 
 ### Key Endpoints Used
@@ -277,16 +290,16 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 | `/api/auth/forgot-password` | POST | Request password reset email |
 | `/api/auth/reset-password` | POST | Reset password with token |
 | `/api/auth/validate` | GET | Validate token |
-| `/api/users/me` | GET | Get current user profile |
+| `/api/v2/users/me` | GET | Get current user profile |
 | `/api/users/me` | PATCH | Update profile (first_name, last_name) |
 | `/api/listings` | GET | List listings (supports filtering) |
 | `/api/listings` | POST | Create listing |
 | `/api/listings/{id}` | GET | Get listing |
 | `/api/listings/{id}` | PUT | Update listing |
 | `/api/listings/{id}` | DELETE | Delete listing |
-| `/api/wallet/balance` | GET | Get user balance |
-| `/api/wallet/transactions` | GET | List transactions |
-| `/api/messages` | GET | List conversations |
+| `/api/v2/wallet/balance` | GET | Get user balance |
+| `/api/v2/wallet/transactions` | GET | List transactions |
+| `/api/v2/messages` | GET | List conversations |
 | `/api/messages/{id}` | POST | Send message in conversation |
 | `/api/messages/{id}/read` | PUT | Mark conversation as read |
 | `/api/connections` | GET | List connections (?status=accepted\|pending) |
@@ -384,7 +397,7 @@ See the root [agent instructions](../../CLAUDE.md) for the Docker-only project i
 | `ACCESSIBLE_BACKEND_TARGET` | No | laravel | Backend contract target. `aspnet` is future/not-certified only. |
 | `LARAVEL_BASE_URL` | No | http://127.0.0.1:8088 | Laravel backend base URL used by default. |
 | `ASPNET_BASE_URL` | No | http://localhost:5080 | Future ASP.NET backend base URL when explicitly selected. |
-| `API_BASE_URL` | No | - | Explicit backend URL override. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
+| `API_BASE_URL` | No | - | Explicit backend URL override. Labelled as `api-base-url`; does not certify ASP.NET compatibility. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 | `COOKIE_SECRET` | **Yes** | - | Secret for signed cookies |
 | `SESSION_SECRET` | No | COOKIE_SECRET | Secret for sessions |
 | `NODE_ENV` | No | development | Environment |

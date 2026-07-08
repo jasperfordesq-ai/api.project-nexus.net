@@ -18,6 +18,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const listingsRoutes = require('./routes/listings');
 const profileRoutes = require('./routes/profile');
+const activityRoutes = require('./routes/activity');
 const walletRoutes = require('./routes/wallet');
 const messagesRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
@@ -26,21 +27,53 @@ const connectionsRoutes = require('./routes/connections');
 const membersRoutes = require('./routes/members');
 const notificationsRoutes = require('./routes/notifications');
 const groupsRoutes = require('./routes/groups');
+const jobsRoutes = require('./routes/jobs');
+const goalsRoutes = require('./routes/goals');
+const coursesRoutes = require('./routes/courses');
 const eventsRoutes = require('./routes/events');
 const feedRoutes = require('./routes/feed');
-const reportsRoutes = require('./routes/reports');
-const gamificationRoutes = require('./routes/gamification');
+const feedActionRoutes = require('./routes/feed-actions');
+const marketplaceActionRoutes = require('./routes/marketplace-actions');
+const marketplaceRoutes = require('./routes/marketplace');
+const volunteeringActionRoutes = require('./routes/volunteering-actions');
+const ideationRoutes = require('./routes/ideation');
+const ideationActionRoutes = require('./routes/ideation-actions');
+const groupExchangeRoutes = require('./routes/group-exchanges');
+const groupExchangeActionRoutes = require('./routes/group-exchange-actions');
+const matchesRoutes = require('./routes/matches');
+const exchangeRoutes = require('./routes/exchanges');
 const searchRoutes = require('./routes/search');
 const reviewsRoutes = require('./routes/reviews');
-const exchangesRoutes = require('./routes/exchanges');
-const chatRoutes = require('./routes/chat');
-const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
+const kbRoutes = require('./routes/kb');
+const supportRoutes = require('./routes/support');
+const legalRoutes = require('./routes/legal');
+const publicInfoRoutes = require('./routes/public-info');
+const contactSupportRoutes = require('./routes/contact-support');
+const onboardingPostRoutes = require('./routes/onboarding-posts');
+const savedCollectionRoutes = require('./routes/saved-collections');
+const savedSocialRoutes = require('./routes/saved-social');
+const aiChatRoutes = require('./routes/ai-chat');
+const skillsRoutes = require('./routes/skills');
+const premiumRoutes = require('./routes/premium');
+const couponsRoutes = require('./routes/coupons');
+const achievementsRoutes = require('./routes/achievements');
+const leaderboardRoutes = require('./routes/leaderboard');
+const nexusScoreRoutes = require('./routes/nexus-score');
+const resourcesRoutes = require('./routes/resources');
+const blogPostRoutes = require('./routes/blog-posts');
+const pollActionRoutes = require('./routes/poll-actions');
+const clubsRoutes = require('./routes/clubs');
+const podcastRoutes = require('./routes/podcasts');
+const podcastActionRoutes = require('./routes/podcast-actions');
+const federationRoutes = require('./routes/federation');
+const federationActionRoutes = require('./routes/federation-actions');
+const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
-const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
 const { buildShellLocals } = require('./lib/accessible-shell');
+const { parseMultipartForm } = require('./middleware/multipart');
 
 const app = express();
 
@@ -63,7 +96,7 @@ const nunjucksEnv = nunjucks.configure([
 ], {
   autoescape: true,
   express: app,
-  watch: NODE_ENV !== 'production'
+  watch: NODE_ENV === 'development'
 });
 
 // Custom Nunjucks filters
@@ -71,7 +104,7 @@ nunjucksEnv.addFilter('parseJson', (str) => {
   if (!str) return {};
   try {
     return JSON.parse(str);
-  } catch (e) {
+  } catch {
     return {};
   }
 });
@@ -96,7 +129,7 @@ nunjucksEnv.addFilter('formatDate', (dateStr) => {
       month: 'short',
       year: 'numeric'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -113,7 +146,7 @@ nunjucksEnv.addFilter('formatEventDate', (dateStr) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -128,7 +161,7 @@ nunjucksEnv.addFilter('date', (dateStr) => {
       month: 'short',
       year: 'numeric'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -214,7 +247,12 @@ app.use('/js', express.static(
 app.use(generalLimiter);
 
 // Body parsing
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({
+  extended: true,
+  verify: (req, _res, buffer) => {
+    req.rawUrlencodedBody = buffer.toString('utf8');
+  }
+}));
 app.use(express.json());
 
 // Cookies
@@ -295,7 +333,7 @@ app.use(async (req, res, next) => {
       ]);
       res.locals.notificationCount = notifResult.unreadCount || notifResult.unread_count || 0;
       res.locals.unreadMessageCount = msgResult.unreadCount || msgResult.unread_count || 0;
-    } catch (error) {
+    } catch {
       // Silently fail - don't break the page if counts fail
       res.locals.notificationCount = 0;
       res.locals.unreadMessageCount = 0;
@@ -322,37 +360,6 @@ app.post('/session/touch', doubleCsrfProtection, (req, res) => {
     req.session.touch = Date.now();
   }
   res.json({ ok: true });
-});
-
-app.get('/components', (req, res) => {
-  res.render('components', { title: 'Components Demo' });
-});
-
-app.get('/privacy', (req, res) => {
-  res.render('privacy', { title: 'Privacy policy' });
-});
-
-app.get('/terms', (req, res) => {
-  res.render('terms', { title: 'Terms and conditions' });
-});
-
-app.get('/contact', (req, res) => {
-  res.render('contact', { title: 'Contact us' });
-});
-
-app.get('/about', (req, res) => {
-  const groups = getContributorGroups();
-  const researchFoundation = getResearchFoundation();
-  // Filter acknowledgements to exclude research foundation (shown separately)
-  const otherAcknowledgements = groups.acknowledgements.filter(
-    a => a.role !== 'Research Foundation'
-  );
-  res.render('about', {
-    title: 'About',
-    groups,
-    researchFoundation,
-    otherAcknowledgements
-  });
 });
 
 app.get('/cookies', (req, res) => {
@@ -428,7 +435,7 @@ app.get('/account', (req, res) => {
       {
         title: 'Account settings',
         description: 'Email, password, two-factor sign in, language, notifications and privacy.',
-        href: '/settings'
+        href: '/profile/settings'
       }
     ]
   });
@@ -723,6 +730,80 @@ app.get('/organisations/register', (req, res) => {
   });
 });
 
+function trimBodyValue(body, field) {
+  const value = body && typeof body[field] === 'string' ? body[field] : '';
+  return value.trim();
+}
+
+function buildOrganisationRegistrationPayload(body) {
+  return {
+    name: trimBodyValue(body, 'name'),
+    description: trimBodyValue(body, 'description'),
+    contact_email: trimBodyValue(body, 'contact_email') || trimBodyValue(body, 'email'),
+    website: trimBodyValue(body, 'website')
+  };
+}
+
+function acceptedOrganisationTerms(value) {
+  return ['1', 'on', 'true'].includes(String(value || '').toLowerCase());
+}
+
+function organisationRegistrationStatus(payload, agreedTerms) {
+  if (payload.name.length < 3) return 'org-name-invalid';
+  if (payload.description.length < 20) return 'org-description-invalid';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.contact_email)) return 'org-email-invalid';
+  if (payload.website && !/^https?:\/\//i.test(payload.website)) return 'org-website-invalid';
+  if (!agreedTerms) return 'org-terms-required';
+  return '';
+}
+
+async function handleOrganisationRegistrationPost(req, res, options = {}) {
+  const token = req.signedCookies.token;
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const payload = buildOrganisationRegistrationPayload(req.body);
+  const invalidStatus = organisationRegistrationStatus(
+    payload,
+    acceptedOrganisationTerms(req.body.agreed_terms)
+  );
+
+  if (invalidStatus) {
+    const invalidRedirect = options.coarseInvalid
+      ? '/organisations?status=org-invalid'
+      : `/organisations/register?status=${invalidStatus}`;
+    return res.redirect(invalidRedirect);
+  }
+
+  const { ApiOfflineError, createVolunteerOrganisation } = require('./lib/api');
+  try {
+    await createVolunteerOrganisation(token, {
+      name: payload.name,
+      description: payload.description,
+      contact_email: payload.contact_email,
+      website: payload.website || undefined
+    });
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    }
+
+    const failedRedirect = options.coarseInvalid
+      ? '/organisations?status=org-failed'
+      : '/organisations/register?status=org-failed';
+    return res.redirect(failedRedirect);
+  }
+
+  return res.redirect('/organisations?status=org-submitted');
+}
+
+app.post('/organisations', formLimiter, doubleCsrfProtection, (req, res) => {
+  return handleOrganisationRegistrationPost(req, res, { coarseInvalid: true });
+});
+
+app.post('/organisations/register', formLimiter, doubleCsrfProtection, handleOrganisationRegistrationPost);
+
 app.get('/organisations/manage', (req, res) => {
   const token = req.signedCookies.token;
   const renderManage = ({ organisations = [], error = false, authRequired = false } = {}) => {
@@ -884,6 +965,11 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
 });
 
 app.get('/organisations/:id(\\d+)', (req, res) => {
+  const token = req.signedCookies.token || '';
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
   const {
     ApiError,
     getOrganisationOpportunities,
@@ -952,6 +1038,44 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
     });
 });
 
+app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use('/volunteering/credentials', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use('/onboarding/avatar', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use('/feed/posts', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use('/marketplace/create', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use(/^\/marketplace\/\d+\/update$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use('/events/new', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use(/^\/events\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
+app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/groups\/\d+\/image$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/groups\/\d+\/files$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/podcasts\/studio\/\d+\/episodes$/, parseMultipartForm({ maxFileSize: 100 * 1024 * 1024 }));
+app.use(/^\/jobs\/\d+\/apply$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+
+app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
+app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
+app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
+app.use('/marketplace', doubleCsrfProtection, marketplaceRoutes);
+app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
+app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
+app.use('/coupons', doubleCsrfProtection, postOnly(formLimiter), couponsRoutes);
+app.use('/federation', federationRoutes);
+app.use('/blog', doubleCsrfProtection, postOnly(formLimiter), blogPostRoutes);
+app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes);
+app.use('/clubs', doubleCsrfProtection, postOnly(formLimiter), clubsRoutes);
+app.use('/resources', doubleCsrfProtection, postOnly(formLimiter), resourcesRoutes);
+app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), aiChatRoutes);
+app.use('/skills', doubleCsrfProtection, postOnly(formLimiter), skillsRoutes);
+app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoutes);
+app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
+app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationRoutes, ideationActionRoutes);
+app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeRoutes, groupExchangeActionRoutes);
+app.use('/kb', kbRoutes);
+app.use(supportRoutes);
+app.use(legalRoutes);
+app.use(publicInfoRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -961,15 +1085,16 @@ app.get('/service-unavailable', (req, res) => {
 // Auth routes (with stricter rate limiting on POST)
 app.get('/login', authRoutes);
 app.post('/login', authLimiter, doubleCsrfProtection, authRoutes);
+app.get('/login/two-factor', authRoutes);
+app.post('/login/two-factor', authLimiter, doubleCsrfProtection, authRoutes);
+app.post('/login/resend-verification', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/register', authRoutes);
 app.post('/register', authLimiter, doubleCsrfProtection, authRoutes);
-app.get('/logout', authRoutes);
 app.post('/logout', doubleCsrfProtection, authRoutes);
-app.get('/forgot-password', authRoutes);
-app.post('/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
-app.get('/reset-password', authRoutes);
-app.post('/reset-password', authLimiter, doubleCsrfProtection, authRoutes);
-app.post('/verify-2fa', authLimiter, doubleCsrfProtection, authRoutes);
+app.get('/login/forgot-password', authRoutes);
+app.post('/login/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
+app.get('/password/reset', authRoutes);
+app.post('/password/reset', authLimiter, doubleCsrfProtection, authRoutes);
 
 // Rate limit only on state-changing methods (POST/PUT/DELETE), not GET
 function postOnly(limiter) {
@@ -993,22 +1118,31 @@ function safeLocalPath(input, fallback = '/') {
 app.use('/dashboard', doubleCsrfProtection, dashboardRoutes);
 app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
 app.use('/profile', doubleCsrfProtection, profileRoutes);
+app.use('/activity', doubleCsrfProtection, activityRoutes);
 app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);
 app.use('/messages', doubleCsrfProtection, postOnly(formLimiter), messagesRoutes);
+app.use('/podcasts', doubleCsrfProtection, postOnly(formLimiter), podcastActionRoutes);
 app.use('/connections', doubleCsrfProtection, postOnly(formLimiter), connectionsRoutes);
 app.use('/members', doubleCsrfProtection, membersRoutes);
 app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
 app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
 app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
+app.use('/marketplace', doubleCsrfProtection, postOnly(formLimiter), marketplaceActionRoutes);
+app.use('/volunteering', doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);
+app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
 app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
-app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
-app.use('/progress', doubleCsrfProtection, gamificationRoutes);
+app.use('/matches', doubleCsrfProtection, postOnly(formLimiter), matchesRoutes);
+app.use('/achievements', doubleCsrfProtection, postOnly(formLimiter), achievementsRoutes);
+app.use('/leaderboard', doubleCsrfProtection, leaderboardRoutes);
+app.use('/nexus-score', doubleCsrfProtection, nexusScoreRoutes);
+app.use('/onboarding', doubleCsrfProtection, postOnly(formLimiter), onboardingPostRoutes);
+app.use('/me/collections', doubleCsrfProtection, postOnly(formLimiter), savedCollectionRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
-app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangesRoutes);
-app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), chatRoutes);
-app.use('/admin', doubleCsrfProtection, adminRoutes);
+app.use('/federation', doubleCsrfProtection, postOnly(formLimiter), federationActionRoutes);
+app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
+app.use(laravelPrepRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {

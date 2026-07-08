@@ -1,0 +1,129 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <a class="govuk-back-link" href="/members/{{ memberId }}">Back to profile</a>
+
+      <span class="govuk-caption-l">{{ displayName }}</span>
+      <h1 class="govuk-heading-xl">Reputation and recognition</h1>
+      <p class="govuk-body-l">
+        {% if isOwnProfile %}
+          A summary of your standing in the community: your NEXUS score, activity totals, verifications and earned badges.
+        {% else %}
+          A summary of {{ displayName }}'s standing in the community: NEXUS score, activity totals, verifications and earned badges.
+        {% endif %}
+      </p>
+
+      <h2 class="govuk-heading-l">NEXUS score</h2>
+      {% if nexusScore and nexusScore.scoreLabel %}
+        <div class="nexus-alpha-card govuk-!-margin-bottom-6">
+          <p class="govuk-body govuk-!-margin-bottom-2">
+            <span class="govuk-!-font-size-48 govuk-!-font-weight-bold">{{ nexusScore.scoreLabel }}</span>
+            <span class="govuk-body">out of 1,000</span>
+          </p>
+          {% if nexusScore.tierLabel %}
+            <p class="govuk-!-margin-bottom-2">
+              <strong class="govuk-tag govuk-tag--purple">{{ nexusScore.tierLabel }}</strong>
+            </p>
+          {% endif %}
+          {% if nexusScore.percentile > 0 %}
+            <p class="govuk-body govuk-!-margin-bottom-2">Top {{ nexusScore.percentile }}% of members in this community.</p>
+            <progress class="nexus-alpha-progress" value="{{ nexusScore.percentile }}" max="100" aria-label="Ranked in the top {{ nexusScore.percentile }} per cent of members">{{ nexusScore.percentile }}%</progress>
+          {% endif %}
+          {% if isOwnProfile %}
+            <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">Your NEXUS score reflects your engagement, contribution quality and impact across the community.</p>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="govuk-inset-text">No NEXUS score has been calculated yet. Take part in the community to build one.</div>
+      {% endif %}
+
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">Activity</h2>
+      <dl class="nexus-alpha-stat-grid">
+        <div class="nexus-alpha-stat">
+          <dt>Hours given</dt>
+          <dd>{{ insightsStats.hoursGiven }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Hours received</dt>
+          <dd>{{ insightsStats.hoursReceived }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Active listings</dt>
+          <dd>{{ insightsStats.listingsCount }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Groups joined</dt>
+          <dd>{{ insightsStats.groupsCount }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Events attended</dt>
+          <dd>{{ insightsStats.eventsAttended }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Connections</dt>
+          <dd>{{ insightsStats.connectionsCount }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Reviews received</dt>
+          <dd>{{ insightsStats.reviewsCount }}</dd>
+        </div>
+        {% if insightsStats.ratingLabel %}
+          <div class="nexus-alpha-stat">
+            <dt>Average rating</dt>
+            <dd>{{ insightsStats.ratingLabel }}</dd>
+          </div>
+        {% endif %}
+        <div class="nexus-alpha-stat">
+          <dt>Level</dt>
+          <dd>{{ insightsStats.level }}</dd>
+        </div>
+        <div class="nexus-alpha-stat">
+          <dt>Experience points</dt>
+          <dd>{{ insightsStats.xp }}</dd>
+        </div>
+      </dl>
+
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">Verifications</h2>
+      <p class="govuk-body">Checks completed for this member.</p>
+      {% if not verificationBadges or not verificationBadges.length %}
+        <div class="govuk-inset-text">No verifications have been recorded yet.</div>
+      {% else %}
+        <ul class="govuk-list">
+          {% for badge in verificationBadges %}
+            <li class="govuk-!-margin-bottom-2">
+              <strong class="govuk-tag govuk-tag--green">{{ badge.label }}</strong>
+              {% if badge.grantedLabel %}
+                <span class="nexus-alpha-meta">Verified on {{ badge.grantedLabel }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">Earned badges</h2>
+      {% if not earnedBadges or not earnedBadges.length %}
+        <div class="govuk-inset-text">No badges earned yet.</div>
+      {% else %}
+        <ul class="govuk-list nexus-alpha-actions">
+          {% for badge in earnedBadges %}
+            <li>
+              {% if badge.icon %}<span aria-hidden="true">{{ badge.icon }}</span>{% endif %}
+              <strong class="govuk-tag govuk-tag--blue">{{ badge.name }}</strong>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-7">
+        <a class="govuk-link" href="/members/{{ memberId }}">Back to profile</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

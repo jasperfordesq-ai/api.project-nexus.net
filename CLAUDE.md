@@ -109,9 +109,11 @@ pass. Previous numeric parity scores in this repo are retired because they
 excluded modules that are now in scope.
 
 If an agent is resuming this work after an interrupted session, start with
-`docs/CURRENT_LARAVEL_PARITY_HANDOFF.md`. It gives the live-state refresh
-commands, current handoff checklist, known verification blockers, and rules for
-working safely while other agents may still be committing parity work.
+`docs/CURRENT_LARAVEL_PARITY_HANDOFF.md`. For the accessible frontend branch,
+also read `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`. These handoff documents
+give live-state refresh commands, current handoff checklists, known verification
+blockers, and rules for working safely while other agents may still be
+committing parity work.
 
 The canonical tracking documents are:
 

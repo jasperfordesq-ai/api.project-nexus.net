@@ -31,10 +31,6 @@
         {% endif %}
       </h1>
 
-      <p class="govuk-body govuk-!-margin-bottom-6">
-        <a href="/messages/new" class="govuk-button">Start new conversation</a>
-      </p>
-
       {% if conversations and conversations.length > 0 %}
         <ul class="govuk-list app-conversation-list">
           {% for conversation in conversations %}
@@ -72,12 +68,12 @@
           heading: "No conversations yet",
           message: "Start a conversation with one of your connections to begin messaging.",
           action: {
-            text: "Start a new conversation",
-            href: "/messages/new"
-          },
-          secondaryAction: {
             text: "Browse community members",
             href: "/members"
+          },
+          secondaryAction: {
+            text: "View your connections",
+            href: "/connections"
           }
         } %}
         {% include "partials/empty-state.njk" %}

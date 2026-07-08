@@ -12,12 +12,6 @@
     Find the main community spaces from one simpler accessible page.
   </p>
 
-  <div class="govuk-inset-text">
-    This page is a shared-accessible-frontend preparation skeleton. It copies the
-    Laravel accessible frontend information architecture, but it does not certify
-    ASP.NET route or workflow parity yet.
-  </div>
-
   <div class="nexus-alpha-card-list govuk-!-margin-top-6">
     {% for item in alphaExploreLinks %}
       <article class="nexus-alpha-card">
@@ -25,24 +19,41 @@
           <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
         </h2>
         <p class="govuk-body govuk-!-margin-bottom-0">{{ item.description }}</p>
-        {% if item.status == 'placeholder' %}
-          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-            Preparation link: backend workflow parity is not certified yet.
-          </p>
-        {% endif %}
       </article>
     {% endfor %}
   </div>
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-8">Recent listings</h2>
-  <p class="govuk-body">
-    Recent listing content will be wired only after the ASP.NET backend exposes
-    contracts compatible with the Laravel accessible frontend.
-  </p>
+  {% if recentListings and recentListings.length %}
+    <h2 class="govuk-heading-l govuk-!-margin-top-8">Recent listings</h2>
+    <ul class="govuk-list govuk-list--spaced govuk-!-margin-bottom-2">
+      {% for listing in recentListings %}
+        <li>
+          {% if listing.href %}
+            <a class="govuk-link" href="{{ listing.href }}">{{ listing.title }}</a>
+          {% else %}
+            {{ listing.title }}
+          {% endif %}
+          <strong class="govuk-tag {{ listing.tagClass }} govuk-!-margin-left-1">{{ listing.type }}</strong>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="govuk-body"><a class="govuk-link" href="/listings">View all listings</a></p>
+  {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-6">Upcoming events</h2>
-  <p class="govuk-body">
-    Upcoming event content will be wired only after route, tenant, auth, feature
-    gate, and response-shape parity has been proven.
-  </p>
+  {% if upcomingEvents and upcomingEvents.length %}
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">Upcoming events</h2>
+    <ul class="govuk-list govuk-list--spaced govuk-!-margin-bottom-2">
+      {% for event in upcomingEvents %}
+        <li>
+          {% if event.href %}
+            <a class="govuk-link" href="{{ event.href }}">{{ event.title }}</a>
+          {% else %}
+            {{ event.title }}
+          {% endif %}
+          {% if event.date %}<span class="govuk-body-s nexus-alpha-meta"> - {{ event.date | date }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="govuk-body"><a class="govuk-link" href="/events">View all events</a></p>
+  {% endif %}
 {% endblock %}

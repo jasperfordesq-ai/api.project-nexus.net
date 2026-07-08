@@ -1,0 +1,67 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
+  <h1 class="govuk-heading-xl">Saved items</h1>
+  <p class="govuk-body-l">Listings, posts and other items you have saved.</p>
+
+  {% if statusMessage %}
+    <div class="govuk-notification-banner{% if not statusIsError %} govuk-notification-banner--success{% endif %}" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="saved-status-title">{% if statusIsError %}There is a problem{% else %}Success{% endif %}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="get" action="/saved" class="govuk-!-margin-bottom-4">
+    <div class="govuk-form-group govuk-!-margin-bottom-2">
+      <label class="govuk-label" for="saved-type-filter">Filter saved items by type</label>
+      <select class="govuk-select" id="saved-type-filter" name="type">
+        <option value="">All saved items</option>
+        {% for type in savedTypes %}
+          <option value="{{ type.value }}"{% if selectedType == type.value %} selected{% endif %}>{{ type.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply</button>
+    {% if selectedType %}
+      <a class="govuk-link govuk-!-margin-left-4" href="/saved">Clear filters</a>
+    {% endif %}
+  </form>
+
+  {% if not bookmarks.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">You have not saved anything yet.</p>
+    </div>
+  {% else %}
+    <ul class="govuk-list govuk-list--spaced">
+      {% for item in bookmarks %}
+        <li>
+          {% if item.href %}
+            <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+          {% else %}
+            {{ item.title }}
+          {% endif %}
+          {% if item.type %}
+            <strong class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ item.label }}</strong>
+          {% endif %}
+          {% if item.itemId and item.type %}
+            <form method="post" action="/saved/destroy" class="nexus-alpha-linkform govuk-!-display-inline-block govuk-!-margin-left-2">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="type" value="{{ item.type }}">
+              <input type="hidden" name="id" value="{{ item.itemId }}">
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="Remove {{ item.title }}">Remove</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

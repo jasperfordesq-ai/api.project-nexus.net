@@ -1,0 +1,94 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to Federation</a>
+
+  <span class="govuk-caption-xl">This community federation</span>
+  <h1 class="govuk-heading-xl">Groups from partner communities</h1>
+  <p class="govuk-body-l">Browse groups from communities in the network that have opened their groups to federation.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if not allowed %}
+    <div class="govuk-inset-text"><p class="govuk-body">Federated groups browsing is not available for this community.</p></div>
+  {% else %}
+    <form method="get" action="/federation/groups" class="govuk-!-margin-bottom-6">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="q">Search groups</label>
+        <div id="q-hint" class="govuk-hint">Filter by group name or description.</div>
+        <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="partner_id">Community</label>
+        <select class="govuk-select" id="partner_id" name="partner_id">
+          <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+          {% for partner in partnerOptions %}
+            <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+    </form>
+
+    {% if groups.length %}
+      <div class="nexus-alpha-card-list">
+        {% for group in groups %}
+          <article class="nexus-alpha-card">
+            {% if group.coverImage %}
+              <img class="nexus-alpha-card-image govuk-!-margin-bottom-2" src="{{ group.coverImage }}" alt="">
+            {% endif %}
+
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+              {{ group.name }}
+              {% if group.privacy == "private" %}
+                <strong class="govuk-tag govuk-tag--yellow">Private</strong>
+              {% endif %}
+            </h2>
+
+            {% if group.description %}
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ group.description }}</p>
+            {% endif %}
+
+            <dl class="nexus-alpha-inline-list">
+              <div>
+                <dt>Community</dt>
+                <dd>{{ group.tenantName }}</dd>
+              </div>
+              <div>
+                <dt>Members</dt>
+                <dd>{{ group.memberCount }}</dd>
+              </div>
+            </dl>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if loadMoreHref %}
+        <p class="govuk-body govuk-!-margin-top-4">
+          <a class="govuk-link" href="{{ loadMoreHref }}">Load more groups</a>
+        </p>
+      {% endif %}
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">No groups from partner communities are available right now.</p></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

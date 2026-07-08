@@ -1,0 +1,161 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to Federation</a>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-xl">Federation settings</span>
+      <h1 class="govuk-heading-xl">Federation settings</h1>
+      <p class="govuk-body-l">Control what partner communities can see and do with your federation profile.</p>
+
+      <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+        <ul class="govuk-service-navigation__list">
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+        </ul>
+      </nav>
+
+      {% if statusBanner %}
+        {% if statusBanner.type == "error" %}
+          <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+            <div role="alert">
+              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <div class="govuk-error-summary__body">
+                <ul class="govuk-list govuk-error-summary__list">
+                  <li><a href="#profile_visible_federated">{{ statusBanner.message }}</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-settings-status">
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title" id="fed-settings-status">Success</h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      {% if not optedIn %}
+        <div class="govuk-inset-text"><p class="govuk-body">Turn on federation before changing federation visibility, messaging, and transfer settings.</p></div>
+        <a class="govuk-button" data-module="govuk-button" href="/federation/opt-in">Turn on federation</a>
+      {% else %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="fed-settings-active">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="fed-settings-active">
+              <span class="govuk-tag govuk-tag--green">Federation active</span>
+            </h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-body">Your federation profile is active. These settings control cross-community discovery and contact.</p>
+          </div>
+        </div>
+
+        <form method="post" action="/federation/settings">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Profile visibility</legend>
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="profile_visible_federated" name="profile_visible_federated" type="checkbox" value="1" aria-describedby="profile_visible_federated-hint"{% if settings.profileVisibleFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">Show my profile to partner communities</label>
+                <div id="profile_visible_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities view your federation profile.</div>
+              </div>
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="appear_in_federated_search" name="appear_in_federated_search" type="checkbox" value="1" aria-describedby="appear_in_federated_search-hint"{% if settings.appearInFederatedSearch %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="appear_in_federated_search">Appear in federation search</label>
+                <div id="appear_in_federated_search-hint" class="govuk-hint govuk-checkboxes__hint">Allow partner communities to find you in member search.</div>
+              </div>
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="show_skills_federated" name="show_skills_federated" type="checkbox" value="1" aria-describedby="show_skills_federated-hint"{% if settings.showSkillsFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="show_skills_federated">Show skills</label>
+                <div id="show_skills_federated-hint" class="govuk-hint govuk-checkboxes__hint">Share your skills with partner communities.</div>
+              </div>
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="show_location_federated" name="show_location_federated" type="checkbox" value="1" aria-describedby="show_location_federated-hint"{% if settings.showLocationFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="show_location_federated">Show location</label>
+                <div id="show_location_federated-hint" class="govuk-hint govuk-checkboxes__hint">Share your approximate location with partner communities.</div>
+              </div>
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="show_reviews_federated" name="show_reviews_federated" type="checkbox" value="1" aria-describedby="show_reviews_federated-hint"{% if settings.showReviewsFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="show_reviews_federated">Show reviews</label>
+                <div id="show_reviews_federated-hint" class="govuk-hint govuk-checkboxes__hint">Show federation reputation and reviews where partner communities can see them.</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Notifications</legend>
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="email_notifications" name="email_notifications" type="checkbox" value="1" aria-describedby="email_notifications-hint"{% if settings.emailNotifications %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="email_notifications">Email me about federation activity</label>
+                <div id="email_notifications-hint" class="govuk-hint govuk-checkboxes__hint">Receive email updates about federation requests, messages, and transfers.</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Messaging and transfers</legend>
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="messaging_enabled_federated" name="messaging_enabled_federated" type="checkbox" value="1" aria-describedby="messaging_enabled_federated-hint"{% if settings.messagingEnabledFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="messaging_enabled_federated">Allow federation messages</label>
+                <div id="messaging_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities send you federation messages.</div>
+              </div>
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="transactions_enabled_federated" name="transactions_enabled_federated" type="checkbox" value="1" aria-describedby="transactions_enabled_federated-hint"{% if settings.transactionsEnabledFederated %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="transactions_enabled_federated">Allow federation time-credit transfers</label>
+                <div id="transactions_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities send time credits to you.</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="govuk-form-group govuk-!-margin-bottom-6">
+            <label class="govuk-label govuk-label--m" for="service_reach">Service reach</label>
+            <div id="service_reach-hint" class="govuk-hint">Choose whether you can help locally, remotely, or by travelling.</div>
+            <select class="govuk-select" id="service_reach" name="service_reach" aria-describedby="service_reach-hint">
+              <option value="local_only"{% if settings.serviceReach == "local_only" %} selected{% endif %}>Local help only</option>
+              <option value="remote_ok"{% if settings.serviceReach == "remote_ok" %} selected{% endif %}>Remote help possible</option>
+              <option value="travel_ok"{% if settings.serviceReach == "travel_ok" %} selected{% endif %}>Can travel</option>
+            </select>
+          </div>
+
+          <div class="govuk-form-group govuk-!-margin-bottom-6">
+            <label class="govuk-label govuk-label--m" for="travel_radius_km">Travel radius</label>
+            <div id="travel_radius_km-hint" class="govuk-hint">This applies when you are willing to travel.</div>
+            <div class="govuk-input__wrapper">
+              <input class="govuk-input govuk-input--width-5" id="travel_radius_km" name="travel_radius_km" type="number" inputmode="numeric" value="{{ settings.travelRadiusKm }}" aria-describedby="travel_radius_km-hint">
+              <div class="govuk-input__suffix" aria-hidden="true">km</div>
+            </div>
+          </div>
+
+          <div class="govuk-button-group">
+            <button type="submit" class="govuk-button" data-module="govuk-button">Save federation settings</button>
+          </div>
+        </form>
+
+        <div class="govuk-button-group govuk-!-margin-top-6">
+          <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/federation/opt-out">Turn off federation</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

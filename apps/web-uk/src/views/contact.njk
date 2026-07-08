@@ -1,19 +1,108 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
+  {% set hasErrors = errors and (errors.name or errors.email or errors.message) %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h1 class="govuk-heading-xl">Contact us</h1>
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Contact Us</h1>
+      <p class="govuk-body-l">Have a question about {{ tenantName }}? We'd love to hear from you.</p>
 
-      <p class="govuk-body">If you need help with this service or have feedback, you can contact us.</p>
+      {% if status == 'contact-sent' %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="contact-success-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="contact-success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">Message Sent!</p>
+            <p class="govuk-body">We'll get back to you as soon as possible.</p>
+            <p class="govuk-body govuk-!-margin-bottom-0">
+              <a class="govuk-link" href="/">Back to accessible home</a>
+            </p>
+          </div>
+        </div>
+      {% else %}
+        {% if hasErrors %}
+          <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+            <div role="alert">
+              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <div class="govuk-error-summary__body">
+                <ul class="govuk-list govuk-error-summary__list">
+                  {% if errors.name %}<li><a href="#name">{{ errors.name }}</a></li>{% endif %}
+                  {% if errors.email %}<li><a href="#email">{{ errors.email }}</a></li>{% endif %}
+                  {% if errors.message %}<li><a href="#message">{{ errors.message }}</a></li>{% endif %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        {% elif statusMessage %}
+          <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="contact-error-title">
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title" id="contact-error-title">Error</h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
+            </div>
+          </div>
+        {% endif %}
 
-      <h2 class="govuk-heading-l">Email</h2>
-      <p class="govuk-body">
-        <a href="mailto:support@project-nexus.net" class="govuk-link">support@project-nexus.net</a>
-      </p>
+        <form method="post" action="/contact" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
-      <h2 class="govuk-heading-l">Response time</h2>
-      <p class="govuk-body">We aim to respond within 2 working days.</p>
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-visually-hidden">Contact form</legend>
+
+            <div class="govuk-form-group{% if errors.name %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="name">Name</label>
+              {% if errors.name %}
+                <p id="name-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.name }}</p>
+              {% endif %}
+              <input class="govuk-input{% if errors.name %} govuk-input--error{% endif %}" id="name" name="name" type="text" autocomplete="name" value="{{ values.name or '' }}" {% if errors.name %}aria-describedby="name-error"{% endif %}>
+            </div>
+
+            <div class="govuk-form-group{% if errors.email %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="email">Email address</label>
+              {% if errors.email %}
+                <p id="email-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.email }}</p>
+              {% endif %}
+              <input class="govuk-input govuk-!-width-two-thirds{% if errors.email %} govuk-input--error{% endif %}" id="email" name="email" type="email" autocomplete="email" value="{{ values.email or '' }}" {% if errors.email %}aria-describedby="email-error"{% endif %}>
+            </div>
+
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="subject">Subject</label>
+              <select class="govuk-select" id="subject" name="subject">
+                <option value="">What is this about?</option>
+                <option value="general" {% if values.subject == 'general' %}selected{% endif %}>General Inquiry</option>
+                <option value="account" {% if values.subject == 'account' %}selected{% endif %}>Account Help</option>
+                <option value="technical" {% if values.subject == 'technical' %}selected{% endif %}>Technical Issue</option>
+                <option value="feedback" {% if values.subject == 'feedback' %}selected{% endif %}>Feedback / Suggestion</option>
+                <option value="other" {% if values.subject == 'other' %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+
+            <div class="govuk-form-group{% if errors.message %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="message">Message</label>
+              {% if errors.message %}
+                <p id="message-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.message }}</p>
+              {% endif %}
+              <textarea class="govuk-textarea{% if errors.message %} govuk-textarea--error{% endif %}" id="message" name="message" rows="5" {% if errors.message %}aria-describedby="message-error"{% endif %}>{{ values.message or '' }}</textarea>
+            </div>
+          </fieldset>
+
+          <button class="govuk-button" data-module="govuk-button" type="submit">Send Message</button>
+
+          {% if not isAuthenticated %}
+            <p class="govuk-body-s">
+              Already have an account? <a class="govuk-link" href="/login">Log in</a> for faster support.
+            </p>
+          {% endif %}
+        </form>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

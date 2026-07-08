@@ -1,0 +1,109 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <nav class="govuk-!-margin-bottom-5" aria-label="Marketplace">
+    <ul class="govuk-list nexus-alpha-inline-list">
+      <li><a class="govuk-link" href="/marketplace">Browse</a></li>
+      <li><a class="govuk-link" href="/marketplace/mine">My listings</a></li>
+      <li><a class="govuk-link" href="/marketplace/saved">Saved</a></li>
+      <li><a class="govuk-link" href="/marketplace/offers">Offers</a></li>
+      <li><a class="govuk-link" href="/marketplace/orders">My orders</a></li>
+      <li><a class="govuk-link" href="/marketplace/create">Sell an item</a></li>
+    </ul>
+  </nav>
+
+  {% if status %}
+    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
+      <div role="alert">
+        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}There is a problem{% else %}Success{% endif %}</h2>
+        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
+          <p class="govuk-body">{{ status.message }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">{{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">Marketplace</h1>
+  <p class="govuk-body-l">Buy, sell and swap goods and services with your community.</p>
+
+  <form method="get" action="/marketplace" class="govuk-!-margin-bottom-6">
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Filter listings</h2>
+      </legend>
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="q">Find an item</label>
+            <div id="q-hint" class="govuk-hint">Search by title.</div>
+            <input class="govuk-input" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
+          </div>
+        </div>
+        {% if categories.length %}
+          <div class="govuk-grid-column-one-half">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="category_id">Category</label>
+              <select class="govuk-select" id="category_id" name="category_id">
+                <option value="">All categories</option>
+                {% for category in categories %}
+                  <option value="{{ category.id }}" {% if category.id == categoryId %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </fieldset>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+    <a class="govuk-link govuk-!-margin-left-3" href="/marketplace/search">Advanced search</a>
+  </form>
+
+  {% if categories.length %}
+    <h2 class="govuk-heading-s">Browse by category</h2>
+    <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-6">
+      {% for category in categories %}
+        {% if category.href %}
+          <li><a class="govuk-link" href="{{ category.href }}">{{ category.name }}</a></li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if not listings.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There is nothing in the marketplace yet.</p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for item in listings %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-listing-row">
+            {% if item.primaryImage %}
+              <div class="nexus-alpha-listing-row__media">
+                <img class="nexus-alpha-card-thumb" src="{{ item.primaryImage }}" alt="{{ item.title }}" width="120" height="90" loading="lazy" decoding="async">
+              </div>
+            {% endif %}
+            <div class="nexus-alpha-listing-row__body">
+              <div class="nexus-alpha-module-row">
+                <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a></h2>
+                <strong class="govuk-tag {{ item.priceTagClass }}">{{ item.priceLabel }}</strong>
+              </div>
+              {% if item.summary %}
+                <p class="govuk-body govuk-!-margin-bottom-1">{{ item.summary }}</p>
+              {% endif %}
+              {% if item.location %}
+                <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ item.location }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

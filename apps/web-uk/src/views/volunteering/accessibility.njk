@@ -1,0 +1,85 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+
+  {% if status %}
+    {% if status.type == "success" %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="accessibility-saved-title">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="accessibility-saved-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <p>{{ status.message }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-l">Volunteering</span>
+  <h1 class="govuk-heading-xl">Your accessibility needs</h1>
+  <p class="govuk-body-l">Tell organisers about any accessibility needs so they can support you. You control this information and can change or remove it at any time.</p>
+
+  <form method="post" action="/volunteering/accessibility">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset" aria-describedby="need-types-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">Which of these apply to you?</h2>
+        </legend>
+        <div id="need-types-hint" class="govuk-hint">Select all that apply. Leave them all unselected to remove your saved needs.</div>
+        <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+          {% for needType in needTypes %}
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="need-{{ needType.value }}" name="need_types[]" type="checkbox" value="{{ needType.value }}"{% if selectedTypes.includes(needType.value) %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="need-{{ needType.value }}">{{ needType.label }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="description">Anything organisers should know</label>
+      <div id="description-hint" class="govuk-hint">Describe your needs in your own words. Optional.</div>
+      <textarea class="govuk-textarea" id="description" name="description" rows="3" maxlength="2000" aria-describedby="description-hint">{{ accessibility.description }}</textarea>
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="accommodations_required">Adjustments that would help</label>
+      <div id="accommodations-hint" class="govuk-hint">For example a quiet space, step-free access, or printed materials. Optional.</div>
+      <textarea class="govuk-textarea" id="accommodations_required" name="accommodations_required" rows="3" maxlength="2000" aria-describedby="accommodations-hint">{{ accessibility.accommodations }}</textarea>
+    </div>
+
+    <fieldset class="govuk-fieldset govuk-!-margin-bottom-4">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Emergency contact</h2>
+      </legend>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="emergency_contact_name">Contact name</label>
+        <input class="govuk-input govuk-!-width-two-thirds" id="emergency_contact_name" name="emergency_contact_name" type="text" maxlength="255" value="{{ accessibility.emergencyName }}" autocomplete="name">
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="emergency_contact_phone">Contact phone number</label>
+        <div id="emergency-phone-hint" class="govuk-hint">Include the international dialling code, for example +1 555 123 4567.</div>
+        <input class="govuk-input govuk-input--width-20" id="emergency_contact_phone" name="emergency_contact_phone" type="tel" maxlength="32" value="{{ accessibility.emergencyPhone }}" autocomplete="tel" aria-describedby="emergency-phone-hint">
+      </div>
+    </fieldset>
+
+    <button class="govuk-button" data-module="govuk-button">Save accessibility needs</button>
+  </form>
+{% endblock %}

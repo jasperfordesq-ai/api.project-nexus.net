@@ -4,13 +4,13 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { login, register, logout, forgotPassword, resetPassword, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
-const { redirectIfAuthenticated, setAuthCookies, clearAuthCookies } = require('../middleware/auth');
+const { login, register, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
+const { setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
-router.get('/login', redirectIfAuthenticated, (req, res) => {
+router.get('/login', (req, res) => {
   res.render('login', {
     title: 'Sign in',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
@@ -42,23 +42,20 @@ router.post('/login', asyncRoute(async (req, res) => {
 
     // Handle 2FA requirement — store pending token in session for verification
     if (result.requires_2fa) {
-      if (req.session) {
-        req.session.pending2faToken = result.temp_token || result.access_token;
-        req.session.pending2faTenantSlug = String(tenant_slug || '').trim();
+      const pendingToken = result.two_factor_token || result.temp_token || result.access_token;
+      if (!pendingToken || !req.session) {
+        return res.redirect('/login?status=two-factor-required');
       }
-      return res.render('login', {
-        title: 'Sign in',
-        show2fa: true,
-        values: { email, tenant_slug },
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+
+      req.session.pending2faToken = pendingToken;
+      return res.redirect('/login/two-factor');
     }
 
     if (!result.access_token) {
       throw new Error('No access token received');
     }
 
-    setAuthCookies(res, result.access_token, result.refresh_token, tenant_slug);
+    setAuthCookies(res, result.access_token, result.refresh_token);
 
     res.redirect('/dashboard');
   } catch (error) {
@@ -86,12 +83,12 @@ router.post('/login', asyncRoute(async (req, res) => {
 }));
 
 // 2FA verification
-router.post('/verify-2fa', asyncRoute(async (req, res) => {
+async function handleTwoFactorPost(req, res) {
   const { code } = req.body;
   const pendingToken = req.session?.pending2faToken;
 
   if (!pendingToken) {
-    return res.redirect('/login');
+    return res.redirect('/login?status=two-factor-expired');
   }
 
   if (!code || !code.trim()) {
@@ -105,14 +102,12 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
 
   try {
     const result = await verify2fa(pendingToken, code.trim());
-    const tenantSlug = req.signedCookies.tenant_slug || req.session?.pending2faTenantSlug || '';
 
     // Clear pending token from session
     delete req.session.pending2faToken;
-    delete req.session.pending2faTenantSlug;
 
     const accessToken = result.access_token || pendingToken;
-    setAuthCookies(res, accessToken, result.refresh_token, tenantSlug);
+    setAuthCookies(res, accessToken, result.refresh_token);
 
     res.redirect('/dashboard');
   } catch (error) {
@@ -128,6 +123,34 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
+}
+
+router.get('/login/two-factor', (req, res) => {
+  if (!req.session?.pending2faToken) {
+    return res.redirect('/login?status=two-factor-expired');
+  }
+
+  res.render('login', {
+    title: 'Two-factor authentication',
+    show2fa: true,
+    error: req.query.status ? 'Enter your authentication code' : '',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
+  });
+});
+
+router.post('/login/two-factor', asyncRoute(handleTwoFactorPost));
+
+router.post('/login/resend-verification', asyncRoute(async (req, res) => {
+  try {
+    await resendVerification((req.body.email || '').trim().toLowerCase());
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    }
+  }
+
+  return res.redirect('/login?status=verification-resent');
 }));
 
 // Cloudflare Turnstile siteverify. Returns true when the env secret is
@@ -162,9 +185,9 @@ async function verifyTurnstile(token, remoteIp) {
 }
 
 // Registration
-router.get('/register', redirectIfAuthenticated, (req, res) => {
+router.get('/register', (req, res) => {
   res.render('register', {
-    title: 'Create an account',
+    title: 'Register',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -194,7 +217,7 @@ router.post('/register', asyncRoute(async (req, res) => {
   const turnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
   if (!(await verifyTurnstile(turnstileToken, req.ip))) {
     return res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
       fieldErrors: {},
       values: req.body || {},
@@ -246,7 +269,7 @@ router.post('/register', asyncRoute(async (req, res) => {
 
   if (errors.length > 0) {
     return res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors,
       fieldErrors,
       values: { email, first_name, last_name, tenant_slug },
@@ -268,7 +291,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     const result = await login(email.trim().toLowerCase(), password, tenant_slug.trim());
 
     if (result.access_token) {
-      setAuthCookies(res, result.access_token, result.refresh_token, tenant_slug.trim());
+      setAuthCookies(res, result.access_token, result.refresh_token);
 
       if (req.flash) {
         req.flash('success', 'Account created successfully. Welcome!');
@@ -296,7 +319,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     }
 
     res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors: [{ text: errorMessage }],
       fieldErrors: error.data?.errors || {},
       values: { email, first_name, last_name, tenant_slug },
@@ -331,41 +354,25 @@ router.post('/logout', asyncRoute(async (req, res) => {
   res.redirect('/login');
 }));
 
-// GET /logout revokes tokens server-side then clears cookies
-router.get('/logout', asyncRoute(async (req, res) => {
-  const token = req.signedCookies.token;
-
-  if (token) {
-    try {
-      await logout(token);
-    } catch (error) {
-      // Ignore errors - still clear local cookies
-      console.error('Logout API error:', error.message);
-    }
-
-    invalidateUserCache(token);
-  }
-
-  if (req.session) {
-    req.session.destroy((err) => { if (err) console.error('Session destroy error:', err); });
-  }
-
-  clearAuthCookies(res);
-  res.redirect('/login');
-}));
-
 // Forgot password
-router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {
+function renderForgotPassword(req, res) {
+  const status = req.query.status || '';
   res.render('forgot-password', {
     title: 'Reset your password',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
+    successMessage: status === 'forgot-sent'
+      ? 'If an account exists with this email, we have sent password reset instructions.'
+      : (req.flash ? req.flash('success')[0] : null),
+    formAction: '/login/forgot-password',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
-});
+}
 
-router.post('/forgot-password', asyncRoute(async (req, res) => {
+router.get('/login/forgot-password', renderForgotPassword);
+
+async function handleForgotPasswordPost(req, res) {
   const { email, tenant_slug } = req.body;
+  const formAction = '/login/forgot-password';
 
   // Turnstile gate intentionally removed from forgot-password (2026-05-15).
   // It was silently rejecting legitimate reset requests, so users saw the
@@ -391,6 +398,7 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
       errors,
       fieldErrors,
       values: { email, tenant_slug },
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -410,26 +418,34 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
   if (req.flash) {
     req.flash('success', 'If an account exists with this email, we have sent password reset instructions.');
   }
-  res.redirect('/forgot-password');
-}));
+  res.redirect('/login/forgot-password?status=forgot-sent');
+}
+
+router.post('/login/forgot-password', asyncRoute(handleForgotPasswordPost));
 
 // Reset password (with token from email)
-router.get('/reset-password', redirectIfAuthenticated, (req, res) => {
+function renderResetPassword(req, res) {
   const { token } = req.query;
 
   if (!token) {
-    return res.redirect('/forgot-password');
+    return res.redirect('/login/forgot-password');
   }
 
   res.render('reset-password', {
-    title: 'Set a new password',
+    title: 'Choose a new password',
     resetToken: token,
+    formAction: '/password/reset',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-});
+}
 
-router.post('/reset-password', asyncRoute(async (req, res) => {
-  const { token, password, confirm_password } = req.body;
+router.get('/password/reset', renderResetPassword);
+
+async function handleResetPasswordPost(req, res) {
+  const token = req.body.token;
+  const password = req.body.password;
+  const confirmPassword = req.body.password_confirmation || req.body.confirm_password;
+  const formAction = '/password/reset';
 
   const errors = [];
   const fieldErrors = {};
@@ -446,23 +462,24 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
     fieldErrors.password = 'Password must be at least 8 characters';
   }
 
-  if (password !== confirm_password) {
-    errors.push({ text: 'Passwords do not match', href: '#confirm_password' });
-    fieldErrors.confirm_password = 'Passwords do not match';
+  if (password !== confirmPassword) {
+    errors.push({ text: 'Passwords do not match', href: '#password_confirmation' });
+    fieldErrors.password_confirmation = 'Passwords do not match';
   }
 
   if (errors.length > 0) {
     return res.render('reset-password', {
-      title: 'Set a new password',
+      title: 'Choose a new password',
       errors,
       fieldErrors,
       resetToken: token,
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
   try {
-    await resetPassword(token, password);
+    await resetPassword(token, password, confirmPassword);
 
     if (req.flash) {
       req.flash('success', 'Your password has been reset. Please sign in with your new password.');
@@ -480,14 +497,17 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
     }
 
     res.render('reset-password', {
-      title: 'Set a new password',
+      title: 'Choose a new password',
       errors: [{ text: errorMessage }],
       fieldErrors: {},
       resetToken: token,
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
-}));
+}
+
+router.post('/password/reset', asyncRoute(handleResetPasswordPost));
 
 module.exports = router;

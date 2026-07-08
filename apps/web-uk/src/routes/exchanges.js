@@ -15,12 +15,7 @@ const {
   getExchange,
   getExchangeRatings,
   createExchangeRequest,
-  acceptExchange,
-  declineExchange,
-  startExchange,
-  completeExchange,
-  confirmExchange,
-  cancelExchange,
+  performExchangeAction,
   rateExchange,
   ApiError,
   ApiOfflineError
@@ -223,7 +218,7 @@ function statusForTab(tab) {
     case 'active':
       return 'active';
     case 'needs_confirmation':
-      return 'needs_action';
+      return 'needs_confirmation';
     case 'completed':
       return 'completed';
     case 'all':
@@ -382,10 +377,11 @@ router.post('/request/:listingId', asyncRoute(async (req, res) => {
 }));
 
 router.get('/:id', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
   const [exchangePayload, profilePayload, ratingsPayload] = await Promise.all([
-    getExchange(req.token, req.params.id),
+    getExchange(req.token, id),
     Promise.resolve(getProfile(req.token)).catch(() => null),
-    getExchangeRatings(req.token, req.params.id).catch(() => ({ data: { ratings: [], has_rated: false } }))
+    getExchangeRatings(req.token, id).catch(() => ({ data: { ratings: [], has_rated: false } }))
   ]);
   const currentUserId = toNumber(firstPresent(profilePayload?.id, profilePayload?.data?.id), null);
   const exchange = normalizeExchange(unwrapObject(exchangePayload), currentUserId);
@@ -404,56 +400,51 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
   const action = String(req.body.action || '').trim();
+  const actionPayload = (() => {
+    switch (action) {
+      case 'decline':
+      case 'cancel':
+        return { reason: String(req.body.reason || '').trim() };
+      case 'confirm':
+        return { hours: clampHours(req.body.hours, 0) };
+      default:
+        return {};
+    }
+  })();
 
   try {
-    switch (action) {
-      case 'accept':
-        await acceptExchange(req.token, req.params.id);
-        break;
-      case 'decline':
-        await declineExchange(req.token, req.params.id, { reason: String(req.body.reason || '').trim() });
-        break;
-      case 'start':
-        await startExchange(req.token, req.params.id);
-        break;
-      case 'complete':
-        await completeExchange(req.token, req.params.id);
-        break;
-      case 'confirm':
-        await confirmExchange(req.token, req.params.id, { hours: clampHours(req.body.hours, 0) });
-        break;
-      case 'cancel':
-        await cancelExchange(req.token, req.params.id, { reason: String(req.body.reason || '').trim() });
-        break;
-      default:
-        return res.redirect(`/exchanges/${req.params.id}?status=exchange-action-failed`);
+    if (!['accept', 'decline', 'start', 'complete', 'confirm', 'cancel'].includes(action)) {
+      return res.redirect(`/exchanges/${id}?status=exchange-action-failed`);
     }
 
-    return res.redirect(`/exchanges/${req.params.id}?status=exchange-updated`);
+    await performExchangeAction(req.token, id, action, actionPayload);
+    return res.redirect(`/exchanges/${id}?status=exchange-updated`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
-      return res.redirect(`/exchanges/${req.params.id}?status=exchange-action-failed`);
+      return res.redirect(`/exchanges/${id}?status=exchange-action-failed`);
     }
     throw error;
   }
 }));
 
 router.post('/:id/rate', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
   const rating = parseInt(req.body.rating, 10);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.redirect(`/exchanges/${req.params.id}?status=rating-invalid#rating`);
+    return res.redirect(`/exchanges/${id}?status=rating-invalid#rating`);
   }
 
   try {
-    await rateExchange(req.token, req.params.id, {
+    await rateExchange(req.token, id, {
       rating,
       comment: String(req.body.comment || '').trim()
     });
-    return res.redirect(`/exchanges/${req.params.id}?status=rating-submitted`);
+    return res.redirect(`/exchanges/${id}?status=rating-submitted`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
-      return res.redirect(`/exchanges/${req.params.id}?status=rating-failed#rating`);
+      return res.redirect(`/exchanges/${id}?status=rating-failed#rating`);
     }
     throw error;
   }

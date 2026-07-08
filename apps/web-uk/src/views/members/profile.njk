@@ -101,14 +101,15 @@
 
       <div class="govuk-button-group">
         {% if not connection %}
-          <form action="/members/{{ user.id }}/connect" method="post" style="display: inline;">
+          <form action="/members/{{ user.id }}/connection" method="post" style="display: inline;">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="action" value="connect">
             {{ govukButton({
               text: "Send connection request"
             }) }}
           </form>
         {% elif connection.status == 'accepted' %}
-          <a href="/messages/new?user_id={{ user.id }}" class="govuk-button">
+          <a href="/messages/new/{{ user.id }}" class="govuk-button">
             Send message
           </a>
           <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
@@ -190,7 +191,7 @@
       {# Leave a Review Form #}
       {% if not isOwnProfile %}
       <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
-      <form method="post" action="/reviews/user/{{ user.id }}" class="govuk-!-margin-bottom-6">
+      <form method="post" action="/members/{{ user.id }}/review" class="govuk-!-margin-bottom-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="return_url" value="/members/{{ user.id }}">
 

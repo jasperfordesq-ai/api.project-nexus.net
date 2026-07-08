@@ -56,7 +56,7 @@
 
             {# Determine link based on notification type #}
             {% if notification.type == 'connection_request' %}
-              {% set notificationLink = '/connections/pending' %}
+              {% set notificationLink = '/connections/network?tab=pending_received' %}
             {% elif notification.type == 'connection_accepted' %}
               {% set notificationLink = '/members/' + (notificationData.userId or notificationData.user_id or '') if notificationData.userId or notificationData.user_id else '/connections' %}
             {% elif notification.type == 'connection_declined' %}
@@ -64,7 +64,7 @@
             {% elif notification.type == 'message_received' %}
               {% set notificationLink = '/messages/' + (notificationData.conversationId or notificationData.conversation_id or '') if notificationData.conversationId or notificationData.conversation_id else '/messages' %}
             {% elif notification.type == 'transfer_received' %}
-              {% set notificationLink = '/wallet/transactions/' + (notificationData.transactionId or notificationData.transaction_id) if (notificationData.transactionId or notificationData.transaction_id) else '/wallet' %}
+              {% set notificationLink = '/wallet#transactions' %}
             {% endif %}
 
             <li class="app-notification-item{% if not (notification.isRead or notification.is_read) %} app-notification-item--unread{% endif %}">

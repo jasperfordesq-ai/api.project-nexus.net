@@ -1,0 +1,88 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+
+  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">Showcase badges</h1>
+  <p class="govuk-body-l">Choose up to 5 of your earned badges to feature on your profile.</p>
+
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
+    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/shop">XP shop</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/collections">Collections</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/achievements/showcase" aria-current="page">Showcase badges</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/engagement">Engagement history</a>
+      </li>
+    </ul>
+  </nav>
+
+  {% if status == 'showcase-updated' %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="showcase-status">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="showcase-status">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">Your showcase has been updated.</p>
+      </div>
+    </div>
+  {% elif status == 'showcase-failed' or status == 'showcase-too-many' or status == 'showcase-not-owned' %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-error-summary__list">
+            <li>
+              <a href="#showcase-badges">
+                {% if status == 'showcase-too-many' %}
+                  You can showcase a maximum of 5 badges. Please deselect some.
+                {% elif status == 'showcase-not-owned' %}
+                  You can only showcase badges you have earned.
+                {% else %}
+                  We could not update your showcase. Please try again.
+                {% endif %}
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if earnedBadges.length %}
+    <form method="post" action="/achievements/showcase">
+      <fieldset class="govuk-fieldset" id="showcase-badges" aria-describedby="showcase-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Select up to 5 badges to showcase</legend>
+        <div id="showcase-hint" class="govuk-hint">Tick a badge to show it on your profile. You can change this at any time.</div>
+        <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+          {% for badge in earnedBadges %}
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="showcase-{{ loop.index0 }}" name="badge_keys[]" type="checkbox" value="{{ badge.key }}"{% if badge.isShowcased %} checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="showcase-{{ loop.index0 }}">
+                {{ badge.name }}
+                {% if badge.description %}<span class="govuk-hint">{{ badge.description }}</span>{% endif %}
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button">Save showcase</button>
+    </form>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">You have not earned any badges yet. Earn badges to showcase them here.</p>
+    </div>
+  {% endif %}
+{% endblock %}

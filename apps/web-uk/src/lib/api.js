@@ -38,47 +38,17 @@ class ApiOfflineError extends Error {
   }
 }
 
-function hasTenantContextHeader(headers) {
-  return Object.keys(headers).some((name) => {
-    const normalized = name.toLowerCase();
-    return normalized === 'x-tenant-id' || normalized === 'x-tenant-slug';
-  });
-}
-
-function tenantSlugHeader(tenantSlug) {
-  const slug = String(tenantSlug || '').trim();
-  return slug ? { 'X-Tenant-Slug': slug } : {};
-}
-
-function hasAuthorizationHeader(headers) {
-  return Object.keys(headers).some((name) => name.toLowerCase() === 'authorization');
-}
-
-function apiErrorMessage(data) {
-  if (data && typeof data === 'object') {
-    if (data.error) return data.error;
-    if (data.message) return data.message;
-    if (data.title) return data.title;
-    if (Array.isArray(data.errors) && data.errors.length > 0) {
-      const firstError = data.errors[0];
-      if (firstError && typeof firstError === 'object' && firstError.message) return firstError.message;
-      if (typeof firstError === 'string') return firstError;
-    }
-  }
-  return 'API request failed';
-}
-
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const isFormData = typeof globalThis.FormData !== 'undefined' && options.body instanceof globalThis.FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
   };
 
-  // Include default tenant context for unauthenticated requests only. Laravel
-  // authenticated routes resolve tenant from the token unless a slug is explicit.
-  if (TENANT_ID && !hasAuthorizationHeader(headers) && !hasTenantContextHeader(headers)) {
+  // Include X-Tenant-ID only when there is no bearer auth or tenant slug.
+  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug']) {
     headers['X-Tenant-ID'] = TENANT_ID;
   }
 
@@ -107,8 +77,11 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
+    const errorMessage = Array.isArray(data.errors)
+      ? data.errors.map(error => error && error.message).filter(Boolean).join('; ')
+      : '';
     throw new ApiError(
-      apiErrorMessage(data),
+      errorMessage || data.error || data.message || data.title || 'API request failed',
       response.status,
       data
     );
@@ -117,16 +90,75 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+async function downloadRequest(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const headers = {
+    ...options.headers
+  };
+
+  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug']) {
+    headers['X-Tenant-ID'] = TENANT_ID;
+  }
+
+  const config = {
+    ...options,
+    headers
+  };
+
+  let response;
+  try {
+    response = await fetch(url, config);
+  } catch (error) {
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.message.includes('fetch failed')) {
+      throw new ApiOfflineError();
+    }
+    throw error;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!response.ok) {
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    throw new ApiError(
+      data.error || data.message || data.title || 'API request failed',
+      response.status,
+      data
+    );
+  }
+
+  return {
+    status: response.status,
+    body: Buffer.from(await response.arrayBuffer()),
+    headers: {
+      'content-type': contentType,
+      'content-disposition': response.headers.get('content-disposition') || '',
+      'content-length': response.headers.get('content-length') || '',
+      'cache-control': response.headers.get('cache-control') || '',
+      pragma: response.headers.get('pragma') || '',
+      expires: response.headers.get('expires') || '',
+      etag: response.headers.get('etag') || '',
+      'last-modified': response.headers.get('last-modified') || ''
+    }
+  };
+}
+
 // Auth
 async function login(email, password, tenantSlug) {
-  const normalizedTenantSlug = String(tenantSlug || '').trim();
+  const headers = tenantSlug ? { 'X-Tenant-Slug': tenantSlug } : {};
   return request('/api/auth/login', {
     method: 'POST',
-    headers: tenantSlugHeader(normalizedTenantSlug),
+    headers,
     body: JSON.stringify({
       email,
       password,
-      tenant_slug: normalizedTenantSlug
+      tenant_slug: tenantSlug
     })
   });
 }
@@ -140,7 +172,6 @@ async function validateToken(token) {
 async function register(data) {
   return request('/api/auth/register', {
     method: 'POST',
-    headers: tenantSlugHeader(data?.tenant_slug),
     body: JSON.stringify(data)
   });
 }
@@ -159,6 +190,13 @@ async function logout(token) {
   });
 }
 
+async function submitContact(data) {
+  return request('/api/v2/contact', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
 async function verify2fa(token, code) {
   return request('/api/auth/2fa/verify', {
     method: 'POST',
@@ -168,24 +206,37 @@ async function verify2fa(token, code) {
 }
 
 async function forgotPassword(email, tenantSlug) {
-  const normalizedTenantSlug = String(tenantSlug || '').trim();
   return request('/api/auth/forgot-password', {
     method: 'POST',
-    headers: tenantSlugHeader(normalizedTenantSlug),
     body: JSON.stringify({
       email,
-      tenant_slug: normalizedTenantSlug
+      tenant_slug: tenantSlug
     })
   });
 }
 
-async function resetPassword(token, newPassword) {
+async function resetPassword(token, password, passwordConfirmation = password) {
   return request('/api/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify({
       token,
-      new_password: newPassword
+      password,
+      password_confirmation: passwordConfirmation
     })
+  });
+}
+
+async function resendVerification(email) {
+  return request('/api/auth/resend-verification-by-email', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+async function verifyEmail(token) {
+  return request('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token })
   });
 }
 
@@ -218,7 +269,7 @@ async function changePassword(token, currentPassword, newPassword) {
 
 // Users / Profile
 async function getProfile(token) {
-  return request('/api/users/me', {
+  return request('/api/v2/users/me', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -231,12 +282,116 @@ async function updateProfile(token, data) {
   });
 }
 
-async function getUsers(token, params = {}) {
-  return getMembers(token, params);
+async function uploadProfileAvatar(token, data) {
+  const form = new globalThis.FormData();
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('avatar', blob, data.file.filename || 'avatar');
+  }
+
+  return request('/api/v2/users/me/avatar', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadInsuranceCertificate(token, data) {
+  const form = new globalThis.FormData();
+  form.append('insurance_type', data.insurance_type || '');
+  form.append('provider_name', data.provider_name || '');
+  form.append('policy_number', data.policy_number || '');
+  form.append('coverage_amount', data.coverage_amount || '');
+  form.append('start_date', data.start_date || '');
+  form.append('expiry_date', data.expiry_date || '');
+  form.append('notes', data.notes || '');
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('certificate_file', blob, data.file.filename || 'certificate');
+  }
+
+  return request('/api/v2/users/me/insurance', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function getOnboardingStatus(token) {
+  return request('/api/v2/onboarding/status', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingConfig(token) {
+  return request('/api/v2/onboarding/config', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingCategories(token) {
+  return request('/api/v2/onboarding/categories', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingSafeguardingOptions(token) {
+  return request('/api/v2/onboarding/safeguarding-options', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function saveOnboardingSafeguarding(token, preferences) {
+  return request('/api/v2/onboarding/safeguarding', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ preferences })
+  });
+}
+
+async function completeOnboarding(token, data) {
+  return request('/api/v2/onboarding/complete', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getUsers(token) {
+  return request('/api/users', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function searchUsers(token, query, params = {}) {
+  const search = new URLSearchParams();
+  search.set('q', query || '');
+  if (params.limit) search.set('limit', params.limit);
+
+  return request(`/api/v2/users/search?${search.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 }
 
 async function getUser(token, id) {
+  return request(`/api/users/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserV2(token, id) {
   return request(`/api/v2/users/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMemberVerificationBadges(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/verification-badges`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -248,8 +403,7 @@ async function getListings(token, params = {}) {
   if (params.status) query.set('status', params.status);
   if (params.user_id) query.set('user_id', params.user_id);
   if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
-  if (params.search) query.set('search', params.search);
+  if (params.search || params.q) query.set('search', params.search || params.q);
   if (params.category_id) query.set('category_id', params.category_id);
   if (params.hours) query.set('hours', params.hours);
   if (params.service) query.set('service', params.service);
@@ -257,7 +411,7 @@ async function getListings(token, params = {}) {
   if (params.sort) query.set('sort', params.sort);
   if (params.near) query.set('near', params.near);
   if (params.cursor) query.set('cursor', params.cursor);
-  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.limit || params.per_page) query.set('per_page', params.per_page || params.limit);
 
   const queryString = query.toString();
   const endpoint = `/api/v2/listings${queryString ? `?${queryString}` : ''}`;
@@ -274,9 +428,8 @@ async function getListing(token, id) {
 }
 
 async function getPublicListing(id, tenantSlug) {
-  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
-    headers: tenantSlugHeader(tenantSlug)
-  });
+  const headers = tenantSlug ? { 'X-Tenant-Slug': tenantSlug } : {};
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, { headers });
 }
 
 async function createListing(token, data) {
@@ -302,6 +455,20 @@ async function deleteListing(token, id) {
   });
 }
 
+async function callListingApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/listings${normalizedPath}`, options);
+}
+
 // Laravel volunteering API
 async function getVolunteerOrganisations(params = {}) {
   const query = new URLSearchParams();
@@ -311,6 +478,18 @@ async function getVolunteerOrganisations(params = {}) {
 
   const queryString = query.toString();
   const endpoint = `/api/v2/volunteering/organisations${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint);
+}
+
+async function getClubs(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/clubs${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint);
 }
@@ -354,6 +533,51 @@ async function getOrganisationReviews(organisationId) {
   return request(`/api/v2/volunteering/reviews/organization/${encodeURIComponent(organisationId)}`);
 }
 
+async function getKnowledgeBaseArticles(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.q) {
+    query.set('q', params.q);
+    if (params.limit) query.set('limit', params.limit);
+    return request(`/api/v2/kb/search?${query.toString()}`);
+  }
+
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.category_id) query.set('category_id', params.category_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/kb${queryString ? `?${queryString}` : ''}`);
+}
+
+async function getKnowledgeBaseArticle(id) {
+  return request(`/api/v2/kb/${encodeURIComponent(id)}`);
+}
+
+async function getHelpFaqs(params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.category_id) query.set('category_id', params.category_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/help/faqs${queryString ? `?${queryString}` : ''}`);
+}
+
+async function getLegalDocument(type) {
+  return request(`/api/v2/legal/${encodeURIComponent(type)}`);
+}
+
+async function callNewsletterApi(method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`) : '';
+  const options = { method };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/newsletter/unsubscribe${normalizedPath}`, options);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -366,6 +590,387 @@ async function getMyVolunteerOrganisations(token, params = {}) {
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
   });
+}
+
+async function createVolunteerOrganisation(token, data) {
+  return request('/api/v2/volunteering/organisations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function callVolunteeringApi(token, method, path, data = undefined) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/volunteering${normalizedPath}`, options);
+}
+
+async function uploadVolunteerCredential(token, data) {
+  const form = new globalThis.FormData();
+  form.append('credential_type', data.credential_type || data.type || '');
+  if (data.expires_at) {
+    form.append('expires_at', data.expires_at);
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'credential');
+  }
+
+  return request('/api/v2/volunteering/credentials', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function callMarketplaceApi(token, method, path, data = undefined) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/marketplace${normalizedPath}`, options);
+}
+
+async function callCouponApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path === '' ? '' : (path.startsWith('/') ? path : `/${path}`);
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/coupons${normalizedPath}`, options);
+}
+
+async function uploadMarketplaceListingImages(token, listingId, data) {
+  const form = new globalThis.FormData();
+  const files = Array.isArray(data.files) ? data.files : [data.file || data.image].filter(Boolean);
+  for (const file of files) {
+    if (!file || !file.buffer) continue;
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'marketplace-image');
+  }
+
+  return request(`/api/v2/marketplace/listings/${listingId}/images`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadEventImage(token, eventId, data) {
+  const form = new globalThis.FormData();
+  const file = data.file || data.image;
+  if (file && file.buffer) {
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'event-image');
+  }
+
+  return request(`/api/v2/events/${eventId}/image`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function callIdeationApi(token, method, path, data = undefined) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2${normalizedPath}`, options);
+}
+
+async function callGroupExchangeApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/group-exchanges${normalizedPath}`, options);
+}
+
+async function callEventApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/events${normalizedPath}`, options);
+}
+
+async function getEventCategories(token) {
+  return request('/api/v2/categories?type=event', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getVolunteeringCategories(token) {
+  return request('/api/v2/categories?type=volunteering', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getGoals(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.status) query.set('status', params.status);
+  if (params.visibility) query.set('visibility', params.visibility);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/goals${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getGoal(token, id) {
+  return request(`/api/v2/goals/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function callGoalApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/goals${normalizedPath}`, options);
+}
+
+async function callCourseApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path
+    ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`)
+    : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/courses${normalizedPath}`, options);
+}
+
+async function getMyCourses(token) {
+  return request('/api/v2/me/courses', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function callGroupApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/groups${normalizedPath}`, options);
+}
+
+async function uploadGroupImage(token, groupId, data) {
+  const type = data.type === 'cover' ? 'cover' : 'avatar';
+  const form = new globalThis.FormData();
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, data.file.filename || 'group-image');
+  }
+
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/image?type=${encodeURIComponent(type)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadGroupFile(token, groupId, data) {
+  const form = new globalThis.FormData();
+  form.append('folder', data.folder || '');
+  form.append('description', data.description || '');
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'group-file');
+  }
+
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/files`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function downloadGroupFile(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return downloadRequest(`/api/v2/groups${normalizedPath}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function callJobApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/jobs${normalizedPath}`, options);
+}
+
+async function uploadJobApplication(token, jobId, data) {
+  const form = new globalThis.FormData();
+  form.append('message', data.message || '');
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('cv', blob, data.file.filename || 'cv');
+  }
+
+  return request(`/api/v2/jobs/${encodeURIComponent(jobId)}/apply`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function callAdminJobApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/admin/jobs${normalizedPath}`, options);
+}
+
+async function callJobDownload(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+
+  return downloadRequest(`/api/v2/jobs${normalizedPath}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function callUgcTranslateApi(token, data) {
+  return request('/api/v2/ugc-translate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function callUserSettingsApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/users/me${normalizedPath}`, options);
+}
+
+async function callProfileApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2${normalizedPath}`, options);
+}
+
+async function callWebAuthnApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/webauthn${normalizedPath}`, options);
 }
 
 async function getOrganisationJobs(organisationId, token, params = {}) {
@@ -382,9 +987,35 @@ async function getOrganisationJobs(organisationId, token, params = {}) {
   });
 }
 
+async function getJobs(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+  if (params.status) query.set('status', params.status);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.search) query.set('search', params.search);
+  if (params.type) query.set('type', params.type);
+  if (params.commitment) query.set('commitment', params.commitment);
+  if (params.is_remote) query.set('is_remote', params.is_remote);
+  if (params.organization_id) query.set('organization_id', params.organization_id);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const endpoint = `/api/v2/jobs${query.toString() ? `?${query.toString()}` : ''}`;
+
+  return request(endpoint, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+}
+
+async function getJob(token, id) {
+  return request(`/api/v2/jobs/${encodeURIComponent(id)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+}
+
 // Wallet
 async function getBalance(token) {
-  return request('/api/wallet/balance', {
+  return request('/api/v2/wallet/balance', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -396,7 +1027,7 @@ async function getTransactions(token, params = {}) {
   if (params.limit) query.set('limit', params.limit);
 
   const queryString = query.toString();
-  const endpoint = `/api/wallet/transactions${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/wallet/transactions${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -404,7 +1035,7 @@ async function getTransactions(token, params = {}) {
 }
 
 async function getTransaction(token, id) {
-  return request(`/api/wallet/transactions/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/wallet/transactions/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -421,15 +1052,735 @@ async function transferCredits(token, receiverId, amount, description) {
   });
 }
 
+async function transferWalletCredits(token, data) {
+  return request('/api/v2/wallet/transfer', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function donateCredits(token, data) {
+  return request('/api/v2/wallet/donate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function callWalletApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/wallet${normalizedPath}`, options);
+}
+
+async function callWalletDownload(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return downloadRequest(`/api/v2/wallet${normalizedPath}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getBookmarks(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.type) query.set('type', params.type);
+  if (params.collection_id) query.set('collection_id', params.collection_id);
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/bookmarks${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function unsaveSavedItem(token, itemType, itemId) {
+  const query = new URLSearchParams();
+  query.set('item_type', itemType);
+  query.set('item_id', itemId);
+
+  return request(`/api/v2/me/saved-items?${query.toString()}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function saveSavedItem(token, data) {
+  return request('/api/v2/me/saved-items', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function checkSavedItem(token, itemType, itemId) {
+  const query = new URLSearchParams();
+  query.set('item_type', itemType);
+  query.set('item_id', itemId);
+
+  return request(`/api/v2/me/saved-items/check?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getSavedCollections(token) {
+  return request('/api/v2/me/collections', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getSavedCollectionItems(token, id, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}/items${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserPublicCollections(token, userId) {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/public-collections`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserAppreciations(token, userId, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/appreciations${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendAppreciation(token, data) {
+  return request('/api/v2/appreciations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function reactToAppreciation(token, id, reactionType) {
+  return request(`/api/v2/appreciations/${encodeURIComponent(id)}/react`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reaction_type: reactionType })
+  });
+}
+
+async function getResources(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.category_id) query.set('category_id', params.category_id);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/resources${queryString ? `?${queryString}` : ''}`;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(endpoint, { headers });
+}
+
+async function getResourceCategories(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/resources/categories', { headers });
+}
+
+async function getResourceCategoryTree(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/resources/categories/tree', { headers });
+}
+
+async function getSkillCategories(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/skills/categories', { headers });
+}
+
+async function getSkillCategory(token, id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/skills/categories/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getSkillMembers(token, skill, params = {}) {
+  const query = new URLSearchParams();
+  query.set('skill', skill);
+  if (params.limit) query.set('limit', params.limit);
+
+  return request(`/api/v2/skills/members?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function downloadResource(token, id) {
+  return downloadRequest(`/api/v2/resources/${encodeURIComponent(id)}/download`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function uploadResource(token, data) {
+  const form = new globalThis.FormData();
+  form.append('title', data.title || '');
+  form.append('description', data.description || '');
+  if (data.category_id) {
+    form.append('category_id', data.category_id);
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'resource');
+  }
+
+  return request('/api/v2/resources', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function deleteResource(token, id) {
+  return request(`/api/v2/resources/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function reorderResources(token, data) {
+  return request('/api/v2/resources/reorder', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createSavedCollection(token, data) {
+  return request('/api/v2/me/collections', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function updateSavedCollection(token, id, data) {
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteSavedCollection(token, id) {
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function deleteSavedItem(token, id) {
+  return request(`/api/v2/me/saved-items/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getBlogPosts(token = '', params = {}) {
+  const query = new URLSearchParams();
+  if (params.search || params.q) query.set('search', params.search || params.q);
+  if (params.category_id || params.category) query.set('category_id', params.category_id || params.category);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/blog${queryString ? `?${queryString}` : ''}`;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(endpoint, { headers });
+}
+
+async function getBlogPost(token = '', slug) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/blog/${encodeURIComponent(slug)}`, { headers });
+}
+
+async function getComments(token = '', params = {}) {
+  const query = new URLSearchParams();
+  if (params.target_type) query.set('target_type', params.target_type);
+  if (params.target_id) query.set('target_id', params.target_id);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/comments${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
+async function getReactionSummary(token = '', type, id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/reactions/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getReactors(token = '', type, id, reactionType, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/reactions/${encodeURIComponent(type)}/${encodeURIComponent(id)}/users/${encodeURIComponent(reactionType)}${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
+async function getPolls(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.mine) query.set('mine', '1');
+  if (params.category) query.set('category', params.category);
+  if (params.event_id) query.set('event_id', params.event_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/polls${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPoll(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPollCategories(token) {
+  return request('/api/v2/polls/categories', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPollRankedResults(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/ranked-results`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPollExport(token, id) {
+  return downloadRequest(`/api/v2/polls/${encodeURIComponent(id)}/export`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createPoll(token, data) {
+  return request('/api/v2/polls', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deletePoll(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function votePoll(token, id, data) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function rankPoll(token, id, data) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/rank`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function callMatchesApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/matches${normalizedPath}`, options);
+}
+
+async function dismissMatch(token, id, reason) {
+  return request(`/api/v2/matches/${encodeURIComponent(id)}/dismiss`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reason })
+  });
+}
+
+async function performExchangeAction(token, id, action, data = {}) {
+  const encodedId = encodeURIComponent(id);
+  const endpoint = action === 'cancel'
+    ? `/api/v2/exchanges/${encodedId}`
+    : `/api/v2/exchanges/${encodedId}/${encodeURIComponent(action)}`;
+
+  return request(endpoint, {
+    method: action === 'cancel' ? 'DELETE' : 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getExchangeConfig(token) {
+  return request('/api/v2/exchanges/config', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchangeAttentionCount(token) {
+  return request('/api/v2/exchanges/needs-attention-count', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function checkExchangeForListing(token, listingId) {
+  return request(`/api/v2/exchanges/check?listing_id=${encodeURIComponent(listingId)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchanges(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.status) query.set('status', params.status);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  return request(`/api/v2/exchanges${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchangeRatings(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/ratings`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createExchangeRequest(token, listingIdOrData, maybeData) {
+  const data = maybeData === undefined
+    ? listingIdOrData
+    : { listing_id: listingIdOrData, ...maybeData };
+
+  return request('/api/v2/exchanges', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function acceptExchange(token, id) {
+  return performExchangeAction(token, id, 'accept');
+}
+
+async function declineExchange(token, id, data = {}) {
+  return performExchangeAction(token, id, 'decline', data);
+}
+
+async function startExchange(token, id) {
+  return performExchangeAction(token, id, 'start');
+}
+
+async function completeExchange(token, id) {
+  return performExchangeAction(token, id, 'complete');
+}
+
+async function confirmExchange(token, id, data = {}) {
+  return performExchangeAction(token, id, 'confirm', data);
+}
+
+async function cancelExchange(token, id, data = {}) {
+  return performExchangeAction(token, id, 'cancel', data);
+}
+
+async function rateExchange(token, id, data) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/rate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function sendAiChat(token, data) {
+  return request('/api/ai/chat', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getAiChatStarters(token) {
+  return request('/api/ai/chat/starters', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendAiChatMessage(token, data = {}) {
+  return sendAiChat(token, data);
+}
+
+async function sendAiChatFeedback(token, data = {}) {
+  return request('/api/ai/chat/feedback', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getAiConversations(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset) query.set('offset', params.offset);
+  const queryString = query.toString();
+
+  return request(`/api/ai/conversations${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiConversation(token, id) {
+  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createAiConversation(token, data = {}) {
+  return request('/api/ai/conversations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteAiConversation(token, id) {
+  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiProviders(token) {
+  return request('/api/ai/providers', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiLimits(token) {
+  return request('/api/ai/limits', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExplore(token) {
+  return request('/api/v2/explore', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMemberPremiumTiers(token) {
+  return request('/api/v2/member-premium/tiers', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMemberPremiumMe(token) {
+  return request('/api/v2/member-premium/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createMemberPremiumCheckout(token, data) {
+  return request('/api/v2/member-premium/checkout', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createMemberPremiumPortal(token, data) {
+  return request('/api/v2/member-premium/billing-portal', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function cancelMemberPremium(token) {
+  return request('/api/v2/member-premium/cancel', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Messages
+async function callMessageApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/messages${normalizedPath}`, options);
+}
+
+async function uploadVoiceMessage(token, data) {
+  const form = new globalThis.FormData();
+  form.append('recipient_id', String(data.recipient_id || data.recipientId || ''));
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('voice_message', blob, data.file.filename || 'voice-message');
+  }
+
+  return request('/api/v2/messages/voice', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadMessageAttachments(token, data) {
+  const form = new globalThis.FormData();
+  form.append('recipient_id', String(data.recipient_id || data.recipientId || ''));
+
+  if (data.body !== undefined && data.body !== null) {
+    form.append('body', String(data.body));
+  }
+
+  const files = Array.isArray(data.files) ? data.files : [data.file].filter(Boolean);
+  files.forEach((file) => {
+    if (!file || !file.buffer) return;
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('attachments[]', blob, file.filename || 'attachment');
+  });
+
+  return request('/api/v2/messages', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function callConversationApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/conversations${normalizedPath}`, options);
+}
+
+async function callPodcastApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/podcasts${normalizedPath}`, options);
+}
+
+async function uploadPodcastEpisode(token, showId, data) {
+  const form = new globalThis.FormData();
+  form.append('title', data.title || '');
+  form.append('summary', data.summary || '');
+  form.append('description', data.description || '');
+
+  if (data.audio_url) {
+    form.append('audio_url', data.audio_url);
+  }
+  if (data.episode_number !== undefined && data.episode_number !== null) {
+    form.append('episode_number', String(data.episode_number));
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('audio', blob, data.file.filename || 'podcast-audio');
+  }
+
+  return request(`/api/v2/podcasts/${encodeURIComponent(showId)}/episodes`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function callFederationApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/federation${normalizedPath}`, options);
+}
+
 async function getConversations(token) {
-  return request('/api/messages', {
+  return request('/api/v2/messages', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getConversation(token, id) {
-  return request(`/api/messages/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/messages/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -442,7 +1793,7 @@ async function getUnreadCount(token) {
     return cached;
   }
 
-  const result = await request('/api/messages/unread-count', {
+  const result = await request('/api/v2/messages/unread-count', {
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -484,19 +1835,31 @@ async function markConversationRead(token, conversationId) {
 // Connections
 async function getConnections(token, status = null) {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`/api/v2/connections${query}`, {
+  return request(`/api/connections${query}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getPendingConnections(token) {
-  return request('/api/v2/connections/pending', {
+  return request('/api/connections/pending', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getConnectionStatus(token, userId) {
-  return request(`/api/v2/connections/status/${encodeURIComponent(userId)}`, {
+async function getConnectionsV2(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+
+  return request(`/api/v2/connections${suffix}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getConnectionPendingCountsV2(token) {
+  return request('/api/v2/connections/pending', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -506,6 +1869,82 @@ async function sendConnectionRequest(token, userId) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ user_id: parseInt(userId, 10) })
+  });
+}
+
+async function getConnectionStatus(token, userId) {
+  return getMemberConnectionStatus(token, userId);
+}
+
+async function getMemberConnectionStatus(token, userId) {
+  return request(`/api/v2/connections/status/${encodeURIComponent(userId)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendMemberConnectionRequest(token, userId) {
+  return request('/api/v2/connections/request', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ user_id: parseInt(userId, 10) })
+  });
+}
+
+async function acceptMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function declineMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/decline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function removeMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function blockMember(token, userId, reason = '') {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/block`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reason })
+  });
+}
+
+async function unblockMember(token, userId) {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/block`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function endorseMemberSkill(token, userId, data) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorse`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function removeMemberEndorsement(token, userId, skillName) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorse`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ skill_name: skillName })
+  });
+}
+
+async function getMemberEndorsements(token, userId) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorsements`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
 }
 
@@ -580,14 +2019,35 @@ async function markNotificationRead(token, id) {
 }
 
 async function markAllNotificationsRead(token) {
-  const result = await request('/api/notifications/read-all', {
-    method: 'PUT',
+  const result = await request('/api/v2/notifications/read-all', {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 
   // Invalidate notification unread count cache
   cache.delete(cacheKey(token, 'notif-unread'));
 
+  return result;
+}
+
+async function markNotificationGroupRead(token, groupKey) {
+  const result = await request('/api/v2/notifications/group/read', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ group_key: groupKey })
+  });
+
+  cache.delete(cacheKey(token, 'notif-unread'));
+  return result;
+}
+
+async function deleteAllNotifications(token) {
+  const result = await request('/api/v2/notifications', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  cache.delete(cacheKey(token, 'notif-unread'));
   return result;
 }
 
@@ -625,7 +2085,7 @@ async function getMyGroups(token) {
 }
 
 async function getGroup(token, id) {
-  return request(`/api/groups/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/groups/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -707,14 +2167,14 @@ async function transferGroupOwnership(token, groupId, newOwnerId) {
 // Events
 async function getEvents(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page && String(params.page) !== '1') query.set('cursor', params.page);
-  if (params.limit) query.set('per_page', params.limit);
+  if (params.page) query.set('page', params.page);
+  if (params.limit) query.set('limit', params.limit);
   if (params.group_id) query.set('group_id', params.group_id);
-  if (params.upcoming_only) query.set('when', 'upcoming');
-  if (params.search) query.set('q', params.search);
+  if (params.upcoming_only) query.set('upcoming_only', 'true');
+  if (params.search) query.set('search', params.search);
 
   const queryString = query.toString();
-  const endpoint = `/api/v2/events${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/events${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -734,7 +2194,7 @@ async function getEvent(token, id) {
 }
 
 async function createEvent(token, data) {
-  return request('/api/v2/events', {
+  return request('/api/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -742,7 +2202,7 @@ async function createEvent(token, data) {
 }
 
 async function updateEvent(token, id, data) {
-  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
+  return request(`/api/events/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -750,31 +2210,30 @@ async function updateEvent(token, id, data) {
 }
 
 async function cancelEvent(token, id) {
-  return request(`/api/v2/events/${encodeURIComponent(id)}/cancel`, {
-    method: 'POST',
+  return request(`/api/events/${encodeURIComponent(id)}/cancel`, {
+    method: 'PUT',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function deleteEvent(token, id) {
-  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
+  return request(`/api/events/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getEventRsvps(token, eventId, status = null) {
-  const params = new URLSearchParams();
-  params.set('status', status || 'all');
-  params.set('per_page', '20');
-
-  return request(`/api/v2/events/${encodeURIComponent(eventId)}/attendees?${params.toString()}`, {
+  const query = new URLSearchParams();
+  if (status) query.set('status', status);
+  query.set('per_page', 20);
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/attendees?${query.toString()}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function rsvpToEvent(token, eventId, status) {
-  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ status })
@@ -782,7 +2241,7 @@ async function rsvpToEvent(token, eventId, status) {
 }
 
 async function removeEventRsvp(token, eventId) {
-  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -793,11 +2252,11 @@ async function getFeedPosts(token, params = {}) {
   const query = new URLSearchParams();
   if (params.page) query.set('page', params.page);
   if (params.limit) query.set('limit', params.limit);
-  if (params.group_id) query.set('group_id', params.group_id);
   if (params.type) query.set('type', params.type);
   if (params.mode) query.set('mode', params.mode);
   if (params.subtype) query.set('subtype', params.subtype);
   if (params.cursor) query.set('cursor', params.cursor);
+  if (params.group_id) query.set('group_id', params.group_id);
 
   const queryString = query.toString();
   const endpoint = `/api/v2/feed${queryString ? `?${queryString}` : ''}`;
@@ -813,8 +2272,73 @@ async function getFeedPost(token, id) {
   });
 }
 
+async function getFeedPostV2(token = '', id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getFeedItemV2(token = '', type, id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/feed/items/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getFeedHashtags(token = '', params = {}) {
+  const query = new URLSearchParams();
+  const searchQuery = params.q !== undefined && params.q !== null ? String(params.q).trim() : '';
+  const endpoint = searchQuery
+    ? '/api/v2/feed/hashtags/search'
+    : '/api/v2/feed/hashtags/trending';
+
+  if (searchQuery) query.set('q', searchQuery);
+  if (params.limit) query.set('limit', params.limit);
+  if (!searchQuery && params.days) query.set('days', params.days);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(`${endpoint}${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
+async function getFeedHashtagPosts(token = '', tag, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(`/api/v2/feed/hashtags/${encodeURIComponent(tag)}${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
 async function createFeedPost(token, data) {
   return request('/api/feed', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createFeedPostV2(token, data) {
+  const file = data.file || data.image;
+  if (file && file.buffer) {
+    const form = new globalThis.FormData();
+    for (const [key, value] of Object.entries(data)) {
+      if (['file', 'image'].includes(key) || value === undefined || value === null) continue;
+      form.append(key, String(value));
+    }
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'feed-image');
+
+    return request('/api/v2/feed/posts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
+    });
+  }
+
+  return request('/api/v2/feed/posts', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -829,8 +2353,23 @@ async function updateFeedPost(token, id, data) {
   });
 }
 
+async function updateFeedPostV2(token, id, data) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function deleteFeedPost(token, id) {
   return request(`/api/feed/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function deleteFeedPostV2(token, id) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -847,6 +2386,61 @@ async function unlikeFeedPost(token, postId) {
   return request(`/api/feed/${encodeURIComponent(postId)}/like`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function toggleFeedLike(token, data) {
+  return request('/api/v2/feed/like', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function markFeedItemNotInterested(token, id, data = {}) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}/not-interested`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function hideFeedItem(token, id, data = {}) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}/hide`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function reportFeedItem(token, type, id, data = {}) {
+  return request(`/api/v2/feed/items/${encodeURIComponent(type)}/${encodeURIComponent(id)}/report`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function muteFeedUser(token, id) {
+  return request(`/api/v2/feed/users/${encodeURIComponent(id)}/mute`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function shareFeedItem(token, data) {
+  return request('/api/v2/shares', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function voteFeedPoll(token, id, data) {
+  return request(`/api/v2/feed/polls/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
 }
 
@@ -881,6 +2475,14 @@ async function deleteFeedComment(token, postId, commentId) {
 // Reports
 async function submitReport(token, data) {
   return request('/api/reports', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function submitSupportReport(token, data) {
+  return request('/api/v2/support/reports', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -953,6 +2555,53 @@ async function getXpHistory(token, params = {}) {
   });
 }
 
+function gamificationEndpoint(pathValue) {
+  const path = String(pathValue || '').trim();
+  if (path.startsWith('/achievements/')) {
+    return `/api${path}`;
+  }
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `/api/v2/gamification${normalized}`;
+}
+
+async function callGamificationApi(token, method = 'GET', pathValue = '', body = null) {
+  return request(gamificationEndpoint(pathValue), {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    ...(body === null ? {} : { body: JSON.stringify(body) })
+  });
+}
+
+async function claimDailyReward(token) {
+  return request('/api/v2/gamification/daily-reward', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function claimGamificationChallenge(token, id) {
+  return request(`/api/v2/gamification/challenges/${encodeURIComponent(id)}/claim`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function purchaseGamificationShopItem(token, itemId) {
+  return request('/api/v2/gamification/shop/purchase', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ item_id: itemId })
+  });
+}
+
+async function updateGamificationShowcase(token, badgeKeys) {
+  return request('/api/v2/gamification/showcase', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ badge_keys: badgeKeys })
+  });
+}
+
 // Search
 async function search(token, query, type = 'all', page = 1, limit = 20) {
   const params = new URLSearchParams();
@@ -976,20 +2625,59 @@ async function searchSuggestions(token, query, limit = 5) {
   });
 }
 
-async function getMembers(token, filters = {}, page = 1, limit = 20) {
-  const params = new URLSearchParams();
-  if (typeof filters === 'string') {
-    if (filters) params.set('q', filters);
-    if (page) params.set('page', page);
-    if (limit) params.set('limit', limit);
-  } else {
-    if (filters.q) params.set('q', filters.q);
-    if (filters.search) params.set('q', filters.search);
-    if (filters.sort) params.set('sort', filters.sort);
-    if (filters.order) params.set('order', filters.order);
-    if (filters.limit) params.set('limit', filters.limit);
-    if (filters.offset !== undefined && filters.offset !== null) params.set('offset', filters.offset);
+async function searchV2(token, params = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
   }
+
+  return request(`/api/v2/search?${query.toString()}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getSavedSearches(token) {
+  return request('/api/v2/search/saved', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function saveSavedSearch(token, data) {
+  return request('/api/v2/search/saved', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteSavedSearch(token, id) {
+  return request(`/api/v2/search/saved/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function runSavedSearch(token, id, data = {}) {
+  return request(`/api/v2/search/saved/${encodeURIComponent(id)}/run`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getMembers(token, query = '', page = 1, limit = 20) {
+  if (query && typeof query === 'object') {
+    return getMembersV2(token, query);
+  }
+
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  if (page) params.set('page', page);
+  if (limit) params.set('limit', limit);
 
   const queryString = params.toString();
   return request(`/api/v2/users${queryString ? `?${queryString}` : ''}`, {
@@ -997,11 +2685,39 @@ async function getMembers(token, filters = {}, page = 1, limit = 20) {
   });
 }
 
+async function getMembersV2(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.order) query.set('order', params.order);
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+
+  const queryString = query.toString();
+  return request(`/api/v2/users${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMembersNearby(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.lat !== undefined && params.lat !== null) query.set('lat', params.lat);
+  if (params.lon !== undefined && params.lon !== null) query.set('lon', params.lon);
+  if (params.radius_km) query.set('radius_km', params.radius_km);
+  if (params.q) query.set('q', params.q);
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+
+  const queryString = query.toString();
+  return request(`/api/v2/members/nearby${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Reviews
-async function getUserReviews(token, userId, page = 1, limit = 20) {
+async function getUserReviews(token, userId, _page = 1, limit = 20) {
   const params = new URLSearchParams();
   if (limit) params.set('per_page', limit);
-  if (page && String(page) !== '1') params.set('cursor', page);
 
   const queryString = params.toString();
   return request(`/api/v2/reviews/user/${encodeURIComponent(userId)}${queryString ? `?${queryString}` : ''}`, {
@@ -1013,10 +2729,7 @@ async function createUserReview(token, userId, data) {
   return request('/api/v2/reviews', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      receiver_id: parseInt(userId, 10),
-      ...data
-    })
+    body: JSON.stringify({ receiver_id: userId, ...data })
   });
 }
 
@@ -1046,7 +2759,7 @@ async function getReview(token, reviewId) {
 }
 
 async function updateReview(token, reviewId, data) {
-  return request(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+  return request(`/api/v2/reviews/${encodeURIComponent(reviewId)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -1060,171 +2773,56 @@ async function deleteReview(token, reviewId) {
   });
 }
 
-// Exchanges
-async function getExchangeConfig(token) {
-  return request('/api/v2/exchanges/config', {
+async function callReviewApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
     headers: { Authorization: `Bearer ${token}` }
-  });
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/reviews${normalizedPath}`, options);
 }
 
-async function checkExchangeForListing(token, listingId) {
-  return request(`/api/v2/exchanges/check?listing_id=${encodeURIComponent(listingId)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getExchanges(token, params = {}) {
-  const query = new URLSearchParams();
-  if (params.per_page) query.set('per_page', params.per_page);
-  if (params.status) query.set('status', params.status);
-  if (params.cursor) query.set('cursor', params.cursor);
-
-  const queryString = query.toString();
-  return request(`/api/v2/exchanges${queryString ? `?${queryString}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getExchange(token, id) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function createExchangeRequest(token, listingId, data = {}) {
-  return request('/api/v2/exchanges', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      listing_id: parseInt(listingId, 10),
-      ...data
-    })
-  });
-}
-
-async function acceptExchange(token, id) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/accept`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function declineExchange(token, id, data = {}) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/decline`, {
+async function createReview(token, data) {
+  return request('/api/v2/reviews', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
 }
 
-async function startExchange(token, id) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/start`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function completeExchange(token, id) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/complete`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function confirmExchange(token, id, data = {}) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/confirm`, {
+async function createComment(token, data) {
+  return request('/api/v2/comments', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
 }
 
-async function cancelExchange(token, id, data = {}) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
+async function updateComment(token, id, data) {
+  return request(`/api/v2/comments/${encodeURIComponent(id)}`, {
+    method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
 }
 
-async function getExchangeRatings(token, id) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/ratings`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function rateExchange(token, id, data = {}) {
-  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/rate`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
-// AI chat
-async function getAiChatStarters(token) {
-  return request('/api/ai/chat/starters', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function sendAiChatMessage(token, data = {}) {
-  return request('/api/ai/chat', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
-async function sendAiChatFeedback(token, data = {}) {
-  return request('/api/ai/chat/feedback', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
-async function getAiConversations(token, params = {}) {
-  const query = new URLSearchParams();
-  if (params.limit) query.set('limit', params.limit);
-  if (params.offset) query.set('offset', params.offset);
-
-  const queryString = query.toString();
-  return request(`/api/ai/conversations${queryString ? `?${queryString}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getAiConversation(token, id) {
-  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function createAiConversation(token, data = {}) {
-  return request('/api/ai/conversations', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
-async function deleteAiConversation(token, id) {
-  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+async function deleteComment(token, id) {
+  return request(`/api/v2/comments/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getAiProviders(token) {
-  return request('/api/ai/providers', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getAiLimits(token) {
-  return request('/api/ai/limits', {
-    headers: { Authorization: `Bearer ${token}` }
+async function toggleReaction(token, data) {
+  return request('/api/v2/reactions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
 }
 
@@ -1446,16 +3044,30 @@ module.exports = {
   register,
   refreshToken,
   logout,
+  submitContact,
   forgotPassword,
   resetPassword,
+  resendVerification,
+  verifyEmail,
   changePassword,
   validateToken,
   verify2fa,
   // Users
   getProfile,
   updateProfile,
+  uploadProfileAvatar,
+  uploadInsuranceCertificate,
+  getOnboardingStatus,
+  getOnboardingConfig,
+  getOnboardingCategories,
+  getOnboardingSafeguardingOptions,
+  saveOnboardingSafeguarding,
+  completeOnboarding,
   getUsers,
+  searchUsers,
   getUser,
+  getUserV2,
+  getMemberVerificationBadges,
   // Listings
   getListings,
   getListing,
@@ -1463,21 +3075,141 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  callListingApi,
   // Laravel volunteering
   getVolunteerOrganisations,
+  getClubs,
   getVolunteeringOpportunities,
   getVolunteerOrganisation,
   getVolunteerOpportunity,
   getOrganisationOpportunities,
   getOrganisationReviews,
+  getKnowledgeBaseArticles,
+  getKnowledgeBaseArticle,
+  getHelpFaqs,
+  getLegalDocument,
+  callNewsletterApi,
   getMyVolunteerOrganisations,
+  createVolunteerOrganisation,
+  callVolunteeringApi,
+  uploadVolunteerCredential,
+  callMarketplaceApi,
+  callCouponApi,
+  uploadMarketplaceListingImages,
+  callCourseApi,
+  getMyCourses,
+  callGroupApi,
+  uploadGroupImage,
+  uploadGroupFile,
+  downloadGroupFile,
+  callIdeationApi,
+  callGroupExchangeApi,
+  callEventApi,
+  getEventCategories,
+  getVolunteeringCategories,
+  uploadEventImage,
+  getGoals,
+  getGoal,
+  callGoalApi,
+  callUgcTranslateApi,
+  callUserSettingsApi,
+  callProfileApi,
+  callWebAuthnApi,
   getOrganisationJobs,
+  getJobs,
+  getJob,
+  callJobApi,
+  uploadJobApplication,
+  callAdminJobApi,
+  callJobDownload,
   // Wallet
   getBalance,
   getTransactions,
   getTransaction,
   transferCredits,
+  transferWalletCredits,
+  donateCredits,
+  callWalletApi,
+  callWalletDownload,
+  getBookmarks,
+  saveSavedItem,
+  checkSavedItem,
+  unsaveSavedItem,
+  getSavedCollections,
+  getSavedCollectionItems,
+  getUserPublicCollections,
+  getUserAppreciations,
+  sendAppreciation,
+  reactToAppreciation,
+  getResources,
+  getResourceCategories,
+  getResourceCategoryTree,
+  getSkillCategories,
+  getSkillCategory,
+  getSkillMembers,
+  uploadResource,
+  downloadResource,
+  deleteResource,
+  reorderResources,
+  createSavedCollection,
+  updateSavedCollection,
+  deleteSavedCollection,
+  deleteSavedItem,
+  getBlogPosts,
+  getBlogPost,
+  getComments,
+  getReactionSummary,
+  getReactors,
+  getPolls,
+  getPoll,
+  getPollCategories,
+  getPollRankedResults,
+  getPollExport,
+  createPoll,
+  deletePoll,
+  votePoll,
+  rankPoll,
+  callMatchesApi,
+  dismissMatch,
+  getExchangeConfig,
+  getExchangeAttentionCount,
+  checkExchangeForListing,
+  getExchanges,
+  getExchange,
+  getExchangeRatings,
+  performExchangeAction,
+  createExchangeRequest,
+  acceptExchange,
+  declineExchange,
+  startExchange,
+  completeExchange,
+  confirmExchange,
+  cancelExchange,
+  rateExchange,
+  sendAiChat,
+  getAiChatStarters,
+  sendAiChatMessage,
+  sendAiChatFeedback,
+  getAiConversations,
+  getAiConversation,
+  createAiConversation,
+  deleteAiConversation,
+  getAiProviders,
+  getAiLimits,
+  getExplore,
+  getMemberPremiumTiers,
+  getMemberPremiumMe,
+  createMemberPremiumCheckout,
+  createMemberPremiumPortal,
+  cancelMemberPremium,
   // Messages
+  callMessageApi,
+  uploadVoiceMessage,
+  uploadMessageAttachments,
+  callConversationApi,
+  callPodcastApi,
+  uploadPodcastEpisode,
+  callFederationApi,
   getConversations,
   getConversation,
   getUnreadCount,
@@ -1488,8 +3220,20 @@ module.exports = {
   // Connections
   getConnections,
   getPendingConnections,
+  getConnectionsV2,
+  getConnectionPendingCountsV2,
   getConnectionStatus,
   sendConnectionRequest,
+  getMemberConnectionStatus,
+  sendMemberConnectionRequest,
+  acceptMemberConnection,
+  declineMemberConnection,
+  removeMemberConnection,
+  blockMember,
+  unblockMember,
+  endorseMemberSkill,
+  removeMemberEndorsement,
+  getMemberEndorsements,
   acceptConnection,
   declineConnection,
   removeConnection,
@@ -1499,6 +3243,8 @@ module.exports = {
   getNotificationUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
+  markNotificationGroupRead,
+  deleteAllNotifications,
   deleteNotification,
   // Groups
   getGroups,
@@ -1528,16 +3274,31 @@ module.exports = {
   // Feed
   getFeedPosts,
   getFeedPost,
+  getFeedPostV2,
+  getFeedItemV2,
+  getFeedHashtags,
+  getFeedHashtagPosts,
   createFeedPost,
+  createFeedPostV2,
   updateFeedPost,
+  updateFeedPostV2,
   deleteFeedPost,
+  deleteFeedPostV2,
   likeFeedPost,
   unlikeFeedPost,
+  toggleFeedLike,
+  markFeedItemNotInterested,
+  hideFeedItem,
+  reportFeedItem,
+  muteFeedUser,
+  shareFeedItem,
+  voteFeedPoll,
   getFeedComments,
   addFeedComment,
   deleteFeedComment,
   // Reports
   submitReport,
+  submitSupportReport,
   getMyReports,
   // Gamification
   getGamificationProfile,
@@ -1546,10 +3307,22 @@ module.exports = {
   getMyBadges,
   getLeaderboard,
   getXpHistory,
+  callGamificationApi,
+  claimDailyReward,
+  claimGamificationChallenge,
+  purchaseGamificationShopItem,
+  updateGamificationShowcase,
   // Search
   search,
   searchSuggestions,
+  searchV2,
+  getSavedSearches,
+  saveSavedSearch,
+  deleteSavedSearch,
+  runSavedSearch,
   getMembers,
+  getMembersV2,
+  getMembersNearby,
   // Reviews
   getUserReviews,
   createUserReview,
@@ -1558,30 +3331,12 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
-  // Exchanges
-  getExchangeConfig,
-  checkExchangeForListing,
-  getExchanges,
-  getExchange,
-  getExchangeRatings,
-  createExchangeRequest,
-  acceptExchange,
-  declineExchange,
-  startExchange,
-  completeExchange,
-  confirmExchange,
-  cancelExchange,
-  rateExchange,
-  // AI chat
-  getAiChatStarters,
-  sendAiChatMessage,
-  sendAiChatFeedback,
-  getAiConversations,
-  getAiConversation,
-  createAiConversation,
-  deleteAiConversation,
-  getAiProviders,
-  getAiLimits,
+  callReviewApi,
+  createReview,
+  createComment,
+  updateComment,
+  deleteComment,
+  toggleReaction,
   // Admin
   adminGetDashboard,
   adminGetUsers,

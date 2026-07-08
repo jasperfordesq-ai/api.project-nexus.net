@@ -1,0 +1,58 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">This community</span>
+  <h1 class="govuk-heading-xl">Clubs</h1>
+  <p class="govuk-body-l">Clubs and associations organised within your community.</p>
+
+  <form method="get" action="/clubs" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="q">Find a club</label>
+      <div id="q-hint" class="govuk-hint">Search by name.</div>
+      <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ clubsQuery }}" aria-describedby="q-hint">
+    </div>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+  </form>
+
+  {% if not clubs.length %}
+    <div class="govuk-inset-text"><p class="govuk-body">There are no clubs yet.</p></div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for club in clubs %}
+        <article class="nexus-alpha-card" id="club-{{ club.id }}">
+          <div class="nexus-alpha-module-row">
+            {% if club.logoUrl %}
+              <img class="nexus-alpha-avatar" src="{{ club.logoUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+            {% endif %}
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ club.name }}</h2>
+            <strong class="govuk-tag govuk-tag--blue">{{ club.memberCount }} members</strong>
+          </div>
+
+          {% if club.description %}
+            <p class="govuk-body govuk-!-margin-bottom-2">{{ club.description }}</p>
+          {% endif %}
+
+          <dl class="nexus-alpha-inline-list">
+            {% if club.meetingSchedule %}
+              <div><dt>Meets</dt><dd>{{ club.meetingSchedule }}</dd></div>
+            {% endif %}
+            {% if club.contactEmail %}
+              <div><dt>Contact</dt><dd><a class="govuk-link" href="mailto:{{ club.contactEmail }}">{{ club.contactEmail }}</a></dd></div>
+            {% endif %}
+          </dl>
+
+          {% if club.websiteHref %}
+            <p class="govuk-body govuk-!-margin-bottom-0">
+              <a class="govuk-link" href="{{ club.websiteHref }}" rel="noopener noreferrer" target="_blank">Visit website<span class="govuk-visually-hidden"> opens in new tab</span></a>
+            </p>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

@@ -28,9 +28,10 @@
 
       <h1 class="govuk-heading-xl">Edit event</h1>
 
-      <form action="/events/{{ event.id }}/edit" method="post" novalidate data-validate-form>
+      <form action="/events/{{ event.id }}/edit" method="post" enctype="multipart/form-data" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
+        {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
         {{ govukInput({
           id: "title",
           name: "title",
@@ -42,7 +43,7 @@
           hint: {
             text: "Give your event a clear, descriptive title"
           },
-          errorMessage: { text: errors | selectattr("href", "equalto", "#title") | first | attr("text") } if errors | selectattr("href", "equalto", "#title") | first else undefined,
+          errorMessage: { text: titleError.text } if titleError else undefined,
           attributes: {
             "data-validate": "required maxLength:255",
             "data-label": "event title"
@@ -63,6 +64,41 @@
           rows: 6
         }) }}
 
+        {% set selectedCategoryId = event.category_id or event.categoryId or "" %}
+        {% set categoryItems = [{value: "", text: "No category", selected: not selectedCategoryId}] %}
+        {% for category in categories or [] %}
+          {% set categoryItems = (categoryItems.push({
+            value: category.id | string,
+            text: category.name,
+            selected: selectedCategoryId and (category.id | string) == (selectedCategoryId | string)
+          }), categoryItems) %}
+        {% endfor %}
+        {{ govukSelect({
+          id: "category_id",
+          name: "category_id",
+          label: {
+            text: "Category",
+            classes: "govuk-label--m"
+          },
+          items: categoryItems
+        }) }}
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="image">
+            Image
+          </label>
+          <div id="image-hint" class="govuk-hint">
+            Upload an optional JPG, PNG, GIF or WebP cover image.
+          </div>
+          {% set currentImage = event.cover_image or event.coverImage %}
+          {% if currentImage %}
+            <figure class="govuk-!-margin-bottom-4 govuk-!-margin-top-2">
+              <img src="{{ currentImage }}" alt="Current image for {{ event.title }}" style="max-width:100%;max-height:240px;" loading="lazy">
+            </figure>
+          {% endif %}
+          <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
+        </div>
+
         {{ govukInput({
           id: "location",
           name: "location",
@@ -76,8 +112,55 @@
           }
         }) }}
 
+        {% set isOnline = event.is_online or event.isOnline %}
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1" data-aria-controls="is-online-conditional" {% if isOnline %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="is_online">This is an online event</label>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not isOnline %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
+              {{ govukInput({
+                id: "online_link",
+                name: "online_link",
+                type: "url",
+                value: event.online_link or event.onlineLink,
+                label: {
+                  text: "Online event link"
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
+
+        {% set allowRemote = event.allow_remote_attendance or event.allowRemoteAttendance %}
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="allow_remote_attendance" name="allow_remote_attendance" type="checkbox" value="1" aria-describedby="allow-remote-hint" data-aria-controls="remote-attendance-conditional" {% if allowRemote %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">Allow people to attend remotely</label>
+              <div id="allow-remote-hint" class="govuk-hint govuk-checkboxes__hint">Use this when an in-person event also has a remote option.</div>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not allowRemote %} govuk-checkboxes__conditional--hidden{% endif %}" id="remote-attendance-conditional">
+              {{ govukInput({
+                id: "video_url",
+                name: "video_url",
+                type: "url",
+                value: event.video_url or event.videoUrl,
+                label: {
+                  text: "Video link"
+                },
+                hint: {
+                  text: "Add the meeting or livestream URL."
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
+
         {# Start date/time #}
-        <div class="govuk-form-group {% if errors | selectattr('href', 'equalto', '#starts_at_date') | first %}govuk-form-group--error{% endif %}">
+        {% set startDateError = errors | selectattr('href', 'equalto', '#starts_at_date') | first if errors else undefined %}
+        <div class="govuk-form-group {% if startDateError %}govuk-form-group--error{% endif %}">
           <fieldset class="govuk-fieldset" role="group">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
               Start date and time
@@ -85,10 +168,10 @@
             <div id="starts-at-hint" class="govuk-hint">
               When does the event start?
             </div>
-            {% if errors | selectattr("href", "equalto", "#starts_at_date") | first %}
+            {% if startDateError %}
               <p class="govuk-error-message">
                 <span class="govuk-visually-hidden">Error:</span>
-                {{ errors | selectattr("href", "equalto", "#starts_at_date") | first | attr("text") }}
+                {{ startDateError.text }}
               </p>
             {% endif %}
             <div class="app-date-time-input">

@@ -1,0 +1,92 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation/listings" class="govuk-back-link">Back to listings</a>
+
+  <span class="govuk-caption-xl">This community</span>
+  <h1 class="govuk-heading-xl">{{ listing.title }}</h1>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  <p class="govuk-body-s govuk-!-margin-bottom-3 nexus-alpha-inline-list">
+    {% if listing.type == "request" %}
+      <strong class="govuk-tag govuk-tag--purple govuk-!-margin-right-1">Request</strong>
+    {% else %}
+      <strong class="govuk-tag govuk-tag--blue govuk-!-margin-right-1">Offer</strong>
+    {% endif %}
+    {% if listing.categoryName %}
+      <strong class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ listing.categoryName }}</strong>
+    {% endif %}
+    {% if listing.tenantName %}
+      <strong class="govuk-tag govuk-tag--grey">Community: {{ listing.tenantName }}</strong>
+    {% endif %}
+  </p>
+
+  {% if listing.imageUrl %}
+    <img src="{{ listing.imageUrl }}" alt="{{ listing.title }}" loading="lazy" class="govuk-!-margin-bottom-4" style="max-width: 100%; height: auto;">
+  {% endif %}
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Category</dt>
+      <dd class="govuk-summary-list__value">{{ listing.categoryName or "-" }}</dd>
+    </div>
+
+    {% if listing.estimatedHours and listing.estimatedHours > 0 %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Estimated hours</dt>
+        <dd class="govuk-summary-list__value">{{ listing.estimatedHours }} hours</dd>
+      </div>
+    {% endif %}
+
+    {% if listing.location %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Location</dt>
+        <dd class="govuk-summary-list__value">{{ listing.location }}</dd>
+      </div>
+    {% endif %}
+
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Posted by</dt>
+      <dd class="govuk-summary-list__value">{{ listing.authorName }}</dd>
+    </div>
+
+    {% if listing.createdAt %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Posted on</dt>
+        <dd class="govuk-summary-list__value">{{ listing.createdAt | date }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if listing.description %}
+    <h2 class="govuk-heading-m">Description</h2>
+    <p class="govuk-body">{{ listing.description | nl2br | safe }}</p>
+  {% endif %}
+
+  {% if listing.memberHref %}
+    <div class="govuk-button-group">
+      <a class="govuk-link" href="{{ listing.memberHref }}">View profile</a>
+      {% if listing.canContact %}
+        <a class="govuk-button" href="{{ listing.memberHref }}" data-module="govuk-button">Contact author</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

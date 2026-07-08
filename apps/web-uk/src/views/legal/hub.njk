@@ -1,0 +1,26 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ communityName }}</span>
+      <h1 class="govuk-heading-xl">Legal</h1>
+      <p class="govuk-body-l">The policies and terms that apply when you use {{ communityName }}. These documents explain your rights, your responsibilities, and how we look after your data.</p>
+
+      <div class="nexus-alpha-card-list" aria-label="Legal documents">
+        {% for document in documents %}
+          <article class="nexus-alpha-card">
+            <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+              <a class="govuk-link" href="{{ document.path }}">{{ document.title }}</a>
+            </h2>
+            <p class="govuk-body govuk-!-margin-bottom-0">{{ document.summary }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

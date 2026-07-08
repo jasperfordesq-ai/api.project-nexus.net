@@ -4,9 +4,9 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   getEvents,
-  getMyEvents,
   getEvent,
   createEvent,
   updateEvent,
@@ -14,56 +14,515 @@ const {
   deleteEvent,
   getEventRsvps,
   rsvpToEvent,
-  removeEventRsvp,
+  votePoll,
+  getPolls,
+  callEventApi,
+  getEventCategories,
+  uploadEventImage,
+  callUgcTranslateApi,
   getMyGroups,
+  getProfile,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { localeOptions } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
-router.use(requireAuth);
-
-function firstPresent(...values) {
-  return values.find((value) => value !== undefined && value !== null && value !== '') || null;
+function tokenFrom(req) {
+  return req.signedCookies.token || '';
 }
 
-function normalizeEvent(event = {}) {
-  const startsAt = firstPresent(event.startsAt, event.starts_at, event.start_time, event.start_date);
-  const endsAt = firstPresent(event.endsAt, event.ends_at, event.end_time, event.end_date);
-  const attendeeCount = firstPresent(
-    event.attendeeCount,
-    event.attendee_count,
-    event.rsvp_counts?.going,
-    event.rsvp_counts?.attending,
-    0
-  );
-  const status = firstPresent(event.status, 'active');
-  const organizer = firstPresent(event.createdBy, event.created_by, event.organizer, event.user);
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function boundedPositiveInteger(value, fallback, max = null) {
+  const number = positiveInteger(value) || fallback;
+  return max === null ? number : Math.min(number, max);
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
+function resultEventId(result) {
+  return result?.event?.id || result?.data?.id || result?.data?.template?.id || result?.id;
+}
+
+async function uploadEventCoverImage(token, eventId, image) {
+  if (!image || !image.filepath || !eventId) return;
+
+  const buffer = await fs.readFile(image.filepath);
+  await uploadEventImage(token, eventId, {
+    file: {
+      buffer,
+      filename: trimmed(image.originalFilename) || 'event-image',
+      contentType: trimmed(image.mimetype) || 'application/octet-stream',
+      size: image.size
+    }
+  });
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+async function callApi(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callEventApi(token, method, path);
+  }
+
+  return callEventApi(token, method, path, data);
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
+    ? result.data
+    : result;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function eventCategoryFrom(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const name = trimmed(row.name || row.title);
+  if (id === null || !name) return null;
+  return { id, name };
+}
+
+function eventFrom(result) {
+  const data = dataFrom(result);
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data.event || data;
+  }
+  return {};
+}
+
+function idFrom(value) {
+  const object = value && typeof value === 'object' ? value : {};
+  const data = dataFrom(object);
+  const row = data && typeof data === 'object' && !Array.isArray(data) ? data : object;
+  return positiveInteger(row.id || row.user_id || row.userId);
+}
+
+function eventOwnerId(event) {
+  const user = event && typeof event.user === 'object' ? event.user : {};
+  return positiveInteger(event.user_id || event.userId || user.id);
+}
+
+function coordinate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatCoordinate(value) {
+  return Number(value).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function eventMapState(event) {
+  const lat = coordinate(event.latitude ?? event.lat);
+  const lng = coordinate(event.longitude ?? event.lng);
+  const location = trimmed(event.location);
+  const isOnline = checked(event.is_online ?? event.isOnline);
+  const hasCoordinates = lat !== null && lng !== null && !isOnline;
+  const latText = hasCoordinates ? formatCoordinate(lat) : '';
+  const lngText = hasCoordinates ? formatCoordinate(lng) : '';
+  const delta = 0.01;
+  const bbox = hasCoordinates
+    ? `${lng - delta}%2C${lat - delta}%2C${lng + delta}%2C${lat + delta}`
+    : '';
 
   return {
-    ...event,
-    startsAt,
-    starts_at: startsAt,
-    endsAt,
-    ends_at: endsAt,
-    attendeeCount,
-    attendee_count: attendeeCount,
-    isCancelled: event.isCancelled || event.is_cancelled || status === 'cancelled',
-    is_cancelled: event.is_cancelled || event.isCancelled || status === 'cancelled',
-    isPast: event.isPast || event.is_past || (startsAt ? new Date(startsAt) < new Date() : false),
-    is_past: event.is_past || event.isPast || (startsAt ? new Date(startsAt) < new Date() : false),
-    createdBy: organizer,
-    created_by: organizer,
-    myRsvp: firstPresent(event.myRsvp, event.my_rsvp, event.user_rsvp),
-    my_rsvp: firstPresent(event.my_rsvp, event.myRsvp, event.user_rsvp)
+    id: event.id,
+    title: trimmed(event.title) || 'Location',
+    location,
+    isOnline,
+    hasCoordinates,
+    latText,
+    lngText,
+    embedUrl: hasCoordinates ? `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latText}%2C${lngText}` : '',
+    viewUrl: hasCoordinates ? `https://www.openstreetmap.org/?mlat=${latText}&mlon=${lngText}#map=15/${latText}/${lngText}` : '',
+    directionsUrl: hasCoordinates ? `https://www.openstreetmap.org/directions?to=${latText}%2C${lngText}` : ''
   };
 }
 
+function eventPollFrom(item, eventId) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  if (id === null) return null;
+  const question = trimmed(row.question || row.title) || `#${id}`;
+  const attached = checked(row.attached) || positiveInteger(row.event_id ?? row.eventId) === eventId;
+  return {
+    id,
+    question,
+    attached
+  };
+}
+
+function eventIsSeries(event) {
+  return checked(event.is_series ?? event.isSeries)
+    || checked(event.is_recurring_template ?? event.isRecurringTemplate)
+    || positiveInteger(event.parent_event_id ?? event.parentEventId) !== null;
+}
+
+function dateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toISOString().slice(0, 16);
+  }
+  const text = trimmed(value);
+  return text.length >= 16 ? text.slice(0, 16) : text;
+}
+
+function occurrenceFrom(item, currentEventId) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  if (id === null) return null;
+  const startTime = row.start_time ?? row.startTime ?? row.starts_at ?? row.startsAt;
+  return {
+    id,
+    when: dateTimeLocal(startTime).replace('T', ' '),
+    current: id === currentEventId
+  };
+}
+
+async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  try {
+    await callApi(token, method, path, data);
+    return res.redirect(successRedirect);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(failureRedirect);
+  }
+}
+
+function eventRedirect(id, status, fragment = '') {
+  return `/events/${id}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+router.get('/browse', asyncRoute(async (req, res) => {
+  const categoriesResult = await getEventCategories(tokenFrom(req));
+  const categories = collectionFrom(categoriesResult)
+    .map(eventCategoryFrom)
+    .filter(Boolean);
+  const selectedCategoryId = positiveInteger(req.query.category_id);
+
+  return res.render('events/browse', {
+    title: 'Browse events by category',
+    activeNav: 'events',
+    categories,
+    selectedCategoryId
+  });
+}));
+
+router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const result = await callApi(tokenFrom(req), 'GET', `/${id}`);
+  const map = eventMapState(eventFrom(result));
+
+  res.render('events/map', {
+    title: 'Event location',
+    activeNav: 'events',
+    map
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const event = eventFrom(await callApi(token, 'GET', `/${id}`));
+  if (!eventIsSeries(event)) {
+    return res.redirect(`/events/${id}/edit`);
+  }
+
+  const occurrences = collectionFrom(event.series_occurrences ?? event.seriesOccurrences)
+    .map((occurrence) => occurrenceFrom(occurrence, id))
+    .filter(Boolean);
+
+  return res.render('events/recurring-edit', {
+    title: 'Edit a repeating event',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title),
+      description: trimmed(event.description, 8000),
+      location: trimmed(event.location),
+      startTime: dateTimeLocal(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt),
+      endTime: dateTimeLocal(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt)
+    },
+    occurrences,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const [eventResult, pollsResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    getPolls(token, { mine: true, limit: 100 })
+  ]);
+  const event = eventFrom(eventResult);
+  const polls = collectionFrom(pollsResult)
+    .map((poll) => eventPollFrom(poll, id))
+    .filter(Boolean);
+
+  res.render('events/polls', {
+    title: 'Polls for this event',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title) || 'Polls'
+    },
+    polls,
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const event = eventFrom(await callApi(token, 'GET', `/${id}`));
+  const sourceText = trimmed(event.description, 8000);
+  const targetLocale = trimmed(req.query.target_locale || req.query.locale) || '';
+
+  res.render('events/translate', {
+    title: 'Translate event description',
+    activeNav: 'events',
+    event: {
+      id,
+      title: trimmed(event.title) || 'Translate'
+    },
+    sourceText,
+    languages: localeOptions.map(([code, name]) => ({ code, name, selected: code === targetLocale })),
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+function eventScopedPayload(body) {
+  const categoryId = positiveInteger(body.category_id);
+  const maxAttendees = positiveInteger(body.max_attendees);
+  return {
+    title: trimmed(body.title),
+    description: trimmed(body.description),
+    start_time: trimmed(body.start_time) || null,
+    end_time: trimmed(body.end_time) || null,
+    location: trimmed(body.location) || null,
+    category_id: categoryId,
+    max_attendees: maxAttendees === null ? null : Math.max(1, maxAttendees),
+    is_online: checked(body.is_online),
+    online_link: trimmed(body.online_link) || null,
+    allow_remote_attendance: checked(body.allow_remote_attendance),
+    video_url: trimmed(body.video_url) || null
+  };
+}
+
+function recurrencePayload(body) {
+  const frequency = ['daily', 'weekly', 'monthly'].includes(trimmed(body.recurrence_frequency))
+    ? trimmed(body.recurrence_frequency)
+    : 'weekly';
+  const endsType = trimmed(body.recurrence_ends_type) === 'on_date' ? 'on_date' : 'after_count';
+
+  return {
+    recurrence_frequency: frequency,
+    recurrence_interval: boundedPositiveInteger(body.recurrence_interval, 1),
+    recurrence_ends_type: endsType,
+    recurrence_ends_after_count: boundedPositiveInteger(body.recurrence_ends_after_count, 10, 52),
+    recurrence_ends_on_date: trimmed(body.recurrence_ends_on_date) || null
+  };
+}
+
+function pollIdsFrom(value) {
+  const values = Array.isArray(value) ? value : String(value || '').split(',');
+  const unique = new Set();
+  values.forEach((item) => {
+    const id = positiveInteger(item);
+    if (id !== null) {
+      unique.add(id);
+    }
+  });
+  return Array.from(unique);
+}
+
+router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'POST',
+    `/${id}/waitlist`,
+    undefined,
+    eventRedirect(id, 'waitlist-joined'),
+    eventRedirect(id, 'waitlist-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'DELETE',
+    `/${id}/waitlist`,
+    undefined,
+    eventRedirect(id, 'waitlist-left'),
+    eventRedirect(id, 'waitlist-leave-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/attendees/:attendeeId(\\d+)/check-in', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const attendeeId = Number(req.params.attendeeId);
+  return runEventAction(
+    req,
+    res,
+    'POST',
+    `/${id}/attendees/${attendeeId}/check-in`,
+    undefined,
+    eventRedirect(id, 'checkin-success'),
+    eventRedirect(id, 'checkin-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/polls/:pollId(\\d+)/vote', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+  const id = Number(req.params.id);
+  const pollId = Number(req.params.pollId);
+  const optionId = positiveInteger(req.body.option_id);
+  if (optionId === null) {
+    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+  }
+
+  try {
+    await votePoll(token, pollId, { option_id: optionId });
+    return res.redirect(eventRedirect(id, 'poll-voted', `#poll-${pollId}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+  }
+}));
+
+router.post('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'PUT',
+    `/${id}`,
+    { poll_ids: pollIdsFrom(req.body.poll_ids) },
+    `/events/${id}/polls?status=polls-updated`,
+    `/events/${id}/polls?status=polls-failed`
+  );
+}));
+
+router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const scope = trimmed(req.body.scope) === 'all' ? 'all' : 'single';
+  return runEventAction(
+    req,
+    res,
+    'PUT',
+    `/${id}/recurring`,
+    {
+      ...eventScopedPayload(req.body),
+      scope
+    },
+    eventRedirect(id, 'event-updated'),
+    eventRedirect(id, 'event-update-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+  const id = Number(req.params.id);
+  const sourceText = trimmed(req.body.source_text || req.body.description, 8000);
+  if (sourceText === '') {
+    return res.redirect(`/events/${id}/translate?status=translate-empty`);
+  }
+
+  const payload = {
+    content_type: 'event',
+    content_id: id,
+    source_text: sourceText,
+    target_locale: trimmed(req.body.target_locale) || 'en'
+  };
+
+  const sourceLocale = trimmed(req.body.source_locale);
+  if (sourceLocale !== '') {
+    payload.source_locale = sourceLocale;
+  }
+
+  try {
+    await callUgcTranslateApi(token, payload);
+    return res.redirect(`/events/${id}/translate?status=translate-done`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(`/events/${id}/translate?status=translate-failed`);
+  }
+}));
+
 // List events
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const searchQuery = req.query.search ? req.query.search.trim() : '';
@@ -92,44 +551,44 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-// My events (RSVPs)
-router.get('/my', asyncRoute(async (req, res) => {
-  const result = await getMyEvents(req.token);
-  const events = (result.items || result.data || []).map(e => {
-    const startsAt = e.starts_at || e.startsAt;
-    return {
-      ...e,
-      // Normalize for template: add myRsvp object and is_past flag
-      myRsvp: { status: (e.my_rsvp || e.myRsvp || '').toLowerCase() },
-      is_past: startsAt ? new Date(startsAt) < new Date() : false
-    };
-  });
-
-  res.render('events/my', {
-    title: 'My events',
-    events,
-    successMessage: req.flash ? req.flash('success')[0] : null
-  });
-}));
-
 // Create event form
-router.get('/new', asyncRoute(async (req, res) => {
+router.get('/new', requireAuth, asyncRoute(async (req, res) => {
   const groupId = req.query.group_id || null;
+  let setupErrorMessage = null;
 
-  const myGroupsResult = await getMyGroups(req.token);
+  const [myGroupsResult, categoriesResult] = await Promise.all([
+    getMyGroups(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    }),
+    getEventCategories(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    })
+  ]);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
+  const categories = categoriesResult.items || categoriesResult.data || [];
 
   res.render('events/new', {
     title: 'Create an event',
     myGroups,
+    categories,
     selectedGroupId: groupId,
+    setupErrorMessage,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
 // Create event
-router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id } = req.body;
+router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res) => {
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url, is_recurring, recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date } = req.body;
+  const image = uploadedFile(req, 'image');
 
   const errors = [];
 
@@ -157,19 +616,26 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
 
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
+    await removeUploadedFile(image);
     let myGroups = [];
+    let categories = [];
     try {
-      const myGroupsResult = await getMyGroups(req.token);
+      const [myGroupsResult, categoriesResult] = await Promise.all([
+        getMyGroups(req.token),
+        getEventCategories(req.token)
+      ]);
       myGroups = myGroupsResult.data || [];
-    } catch (e) {
-      // Ignore - render with empty groups
+      categories = categoriesResult.data || [];
+    } catch {
+      // Ignore - render with empty form support data
     }
 
     return res.render('events/new', {
       title: 'Create an event',
       errors: errorList,
-      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id },
+      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url, is_recurring, recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date },
       myGroups,
+      categories,
       selectedGroupId: group_id,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
@@ -187,18 +653,52 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       starts_at: startsAt,
       ends_at: endsAt,
       max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
-      group_id: group_id ? parseInt(group_id, 10) : null
+      group_id: group_id ? parseInt(group_id, 10) : null,
+      category_id: positiveInteger(category_id),
+      is_online: checked(is_online),
+      online_link: trimmed(online_link) || null,
+      allow_remote_attendance: checked(allow_remote_attendance),
+      video_url: trimmed(video_url) || null
     };
 
-    const result = await createEvent(req.token, eventData);
+    const result = checked(is_recurring)
+      ? await callApi(req.token, 'POST', '/recurring', {
+        title: eventData.title,
+        description: eventData.description,
+        start_time: startsAt,
+        end_time: endsAt,
+        location: eventData.location,
+        category_id: eventData.category_id,
+        max_attendees: eventData.max_attendees,
+        is_online: eventData.is_online,
+        online_link: eventData.online_link,
+        allow_remote_attendance: eventData.allow_remote_attendance,
+        video_url: eventData.video_url,
+        ...recurrencePayload({ recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date })
+      })
+      : await createEvent(req.token, eventData);
+    const eventId = resultEventId(result);
+
+    try {
+      await uploadEventCoverImage(req.token, eventId, image);
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 401) {
+        throw uploadError;
+      }
+      if (req.flash) {
+        req.flash('error', uploadError.message || 'Event created, but the image could not be uploaded');
+      }
+    } finally {
+      await removeUploadedFile(image);
+    }
 
     if (req.flash) {
       req.flash('success', 'Event created successfully');
     }
 
-    const eventId = result.event?.id || result.id;
     res.redirect(`/events/${eventId}`);
   } catch (error) {
+    await removeUploadedFile(image);
     // Handle validation errors from API by re-rendering form
     if (error instanceof ApiError && error.status !== 401) {
       return renderFormWithErrors([{ text: error.message || 'Unable to create event' }]);
@@ -208,16 +708,16 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
 }));
 
 // View event details
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const [eventResult, rsvpsResult] = await Promise.all([
     getEvent(req.token, id),
-    getEventRsvps(req.token, id, 'all').catch(() => ({ data: [] }))
+    getEventRsvps(req.token, id).catch(() => ({ data: [] }))
   ]);
 
-  const event = normalizeEvent(eventResult.data || eventResult.event || eventResult);
-  const myRsvp = event.myRsvp || event.my_rsvp || eventResult.myRsvp || eventResult.my_rsvp;
+  const event = eventFrom(eventResult);
+  const myRsvp = eventResult.myRsvp || eventResult.my_rsvp;
   const rsvps = rsvpsResult.data || [];
 
   // Group RSVPs by status
@@ -232,23 +732,45 @@ router.get('/:id', asyncRoute(async (req, res) => {
     event,
     myRsvp,
     rsvpsByStatus,
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }, { notFoundTitle: 'Event not found' }));
 
 // Edit event form
-router.get('/:id/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [eventResult, myGroupsResult] = await Promise.all([
+  const [eventResult, currentUser] = await Promise.all([
     getEvent(req.token, id),
-    getMyGroups(req.token)
+    getProfile(req.token)
   ]);
+  const event = eventFrom(eventResult);
+  const ownerId = eventOwnerId(event);
+  const currentUserId = idFrom(currentUser);
+  if (ownerId !== null && currentUserId !== null && String(ownerId) !== String(currentUserId)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
 
-  const event = eventResult.event || eventResult;
+  let setupErrorMessage = null;
+  const [myGroupsResult, categoriesResult] = await Promise.all([
+    getMyGroups(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    }),
+    getEventCategories(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    })
+  ]);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
+  const categories = categoriesResult.items || categoriesResult.data || [];
 
   // Parse dates for form (backend returns camelCase: startsAt, endsAt)
   const startsAt = (event.startsAt || event.starts_at) ? new Date(event.startsAt || event.starts_at) : null;
@@ -258,6 +780,8 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     title: `Edit ${event.title}`,
     event,
     myGroups,
+    categories,
+    setupErrorMessage,
     startsAtDate: startsAt ? startsAt.toISOString().split('T')[0] : '',
     startsAtTime: startsAt ? startsAt.toTimeString().slice(0, 5) : '',
     endsAtDate: endsAt ? endsAt.toISOString().split('T')[0] : '',
@@ -267,9 +791,10 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Event not found' }));
 
 // Update event
-router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, category_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
+  const image = uploadedFile(req, 'image');
 
   const errors = [];
 
@@ -295,19 +820,26 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
+    await removeUploadedFile(image);
     let myGroups = [];
+    let categories = [];
     try {
-      const myGroupsResult = await getMyGroups(req.token);
+      const [myGroupsResult, categoriesResult] = await Promise.all([
+        getMyGroups(req.token),
+        getEventCategories(req.token)
+      ]);
       myGroups = myGroupsResult.data || [];
-    } catch (e) {
-      // Ignore - render with empty groups
+      categories = categoriesResult.data || [];
+    } catch {
+      // Ignore - render with empty form support data
     }
 
     return res.render('events/edit', {
       title: 'Edit event',
-      event: { id, title, description, location, max_attendees },
+      event: { id, title, description, location, max_attendees, category_id, is_online, online_link, allow_remote_attendance, video_url },
       errors: errorList,
       myGroups,
+      categories,
       startsAtDate: starts_at_date,
       startsAtTime: starts_at_time,
       endsAtDate: ends_at_date,
@@ -327,8 +859,26 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       location: location ? location.trim() : null,
       starts_at: startsAt,
       ends_at: endsAt,
-      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null
+      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
+      category_id: positiveInteger(category_id),
+      is_online: checked(is_online),
+      online_link: trimmed(online_link) || null,
+      allow_remote_attendance: checked(allow_remote_attendance),
+      video_url: trimmed(video_url) || null
     });
+
+    try {
+      await uploadEventCoverImage(req.token, id, image);
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 401) {
+        throw uploadError;
+      }
+      if (req.flash) {
+        req.flash('error', uploadError.message || 'Event updated, but the image could not be uploaded');
+      }
+    } finally {
+      await removeUploadedFile(image);
+    }
 
     if (req.flash) {
       req.flash('success', 'Event updated successfully');
@@ -336,6 +886,7 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 
     res.redirect(`/events/${id}`);
   } catch (error) {
+    await removeUploadedFile(image);
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
@@ -348,7 +899,7 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 }));
 
 // Cancel event
-router.post('/:id/cancel', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -372,7 +923,7 @@ router.post('/:id/cancel', asyncRoute(async (req, res) => {
 }));
 
 // Delete event
-router.post('/:id/delete', audit.eventDelete(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -396,7 +947,7 @@ router.post('/:id/delete', audit.eventDelete(), asyncRoute(async (req, res) => {
 }));
 
 // RSVP to event
-router.post('/:id/rsvp', audit.eventRsvp(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/rsvp', requireAuth, audit.eventRsvp(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -416,30 +967,6 @@ router.post('/:id/rsvp', audit.eventRsvp(), asyncRoute(async (req, res) => {
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to RSVP');
-      }
-      return res.redirect(`/events/${id}`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/events/${id}`);
-}));
-
-// Remove RSVP
-router.post('/:id/rsvp/remove', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    await removeEventRsvp(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', 'RSVP removed');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to remove RSVP');
       }
       return res.redirect(`/events/${id}`);
     }

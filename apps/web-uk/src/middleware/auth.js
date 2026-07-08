@@ -3,7 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-const { refreshToken: refreshTokenApi, validateToken, ApiError, ApiOfflineError } = require('../lib/api');
+const { refreshToken: refreshTokenApi, validateToken, ApiError } = require('../lib/api');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -71,7 +71,7 @@ async function requireAuth(req, res, next) {
         token = result.access_token;
         setAuthCookies(res, result.access_token, result.refresh_token);
       }
-    } catch (error) {
+    } catch {
       refreshLocks.delete(tokenKey);
       // Refresh failed - clear cookies and redirect to login
       clearAuthCookies(res);
@@ -121,7 +121,7 @@ function withTokenRefresh(handler) {
               // Retry the original handler
               return handler(req, res, next);
             }
-          } catch (refreshError) {
+          } catch {
             // Refresh failed - clear cookies and redirect
             clearAuthCookies(res);
             return res.redirect('/login');

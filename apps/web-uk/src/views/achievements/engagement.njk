@@ -1,0 +1,59 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+
+  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">Engagement history</h1>
+  <p class="govuk-body-l">Your community activity over the last 12 months.</p>
+
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
+    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/shop">XP shop</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/collections">Collections</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/achievements/showcase">Showcase badges</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/achievements/engagement" aria-current="page">Engagement history</a>
+      </li>
+    </ul>
+  </nav>
+
+  {% if engagementHistory.length %}
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Engagement history</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Month</th>
+          <th scope="col" class="govuk-table__header">Active</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Activities</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for row in engagementHistory %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ row.month }}</td>
+            <td class="govuk-table__cell">
+              <strong class="govuk-tag {% if row.wasActive %}govuk-tag--green{% else %}govuk-tag--grey{% endif %}">{% if row.wasActive %}Active{% else %}Inactive{% endif %}</strong>
+            </td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.activityCountLabel }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There is no engagement history to show yet.</p>
+    </div>
+  {% endif %}
+{% endblock %}

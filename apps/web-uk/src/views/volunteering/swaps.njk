@@ -1,0 +1,142 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+
+  {% if status %}
+    {% if status.type == "success" %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="swap-success-title">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="swap-success-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <p>{{ status.message }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-l">Volunteering</span>
+  <h1 class="govuk-heading-xl">Shift swaps</h1>
+  <p class="govuk-body-l">Ask another volunteer to swap one of your shifts, and respond to swap requests sent to you.</p>
+
+  <h2 class="govuk-heading-l">Request a shift swap</h2>
+  {% if not myShifts.length %}
+    <div class="govuk-inset-text">You are not signed up for any upcoming shifts, so there is nothing to swap yet.</div>
+  {% else %}
+    <form method="post" action="/volunteering/swaps" class="govuk-!-margin-bottom-8">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="from_shift_id">Your shift to give up</label>
+        <div id="from_shift_id-hint" class="govuk-hint">Choose one of the shifts you are signed up for.</div>
+        <select class="govuk-select" id="from_shift_id" name="from_shift_id" aria-describedby="from_shift_id-hint" required>
+          <option value="">Select a shift</option>
+          {% for shift in myShifts %}
+            <option value="{{ shift.id }}">{{ shift.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="to_shift_id">Shift you want instead (shift number)</label>
+        <div id="to_shift_id-hint" class="govuk-hint">The number of the shift the other volunteer is signed up for.</div>
+        <input class="govuk-input govuk-input--width-10" id="to_shift_id" name="to_shift_id" type="text" inputmode="numeric" pattern="[0-9]*" aria-describedby="to_shift_id-hint" required>
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="to_user_id">Volunteer to swap with (member number)</label>
+        <div id="to_user_id-hint" class="govuk-hint">The member number of the volunteer who holds that shift.</div>
+        <input class="govuk-input govuk-input--width-10" id="to_user_id" name="to_user_id" type="text" inputmode="numeric" pattern="[0-9]*" aria-describedby="to_user_id-hint" required>
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="message">Message (optional)</label>
+        <div id="message-hint" class="govuk-hint">Explain why you would like to swap.</div>
+        <textarea class="govuk-textarea" id="message" name="message" rows="3" aria-describedby="message-hint" maxlength="500"></textarea>
+      </div>
+      <button class="govuk-button" data-module="govuk-button">Send swap request</button>
+    </form>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Your swap requests</h2>
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>{{ loadError }}</p>
+        </div>
+      </div>
+    </div>
+  {% elif not swaps.length %}
+    <div class="govuk-inset-text">You have no swap requests.</div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for swap in swaps %}
+        <article class="nexus-alpha-card">
+          <p class="govuk-!-margin-bottom-2">
+            <strong class="govuk-tag {{ swap.directionClassName }}">{{ swap.directionLabel }}</strong>
+            <strong class="govuk-tag {{ swap.status.className }}">{{ swap.status.label }}</strong>
+          </p>
+          {% if swap.direction == "sent" and swap.recipientName %}
+            <p class="govuk-body-s govuk-!-margin-bottom-3">To {{ swap.recipientName }}</p>
+          {% elif swap.direction == "received" and swap.requesterName %}
+            <p class="govuk-body-s govuk-!-margin-bottom-3">From {{ swap.requesterName }}</p>
+          {% endif %}
+
+          <div class="govuk-grid-row">
+            <div class="govuk-grid-column-one-half">
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Their shift</h3>
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ swap.originalShift.title }}</p>
+              {% if swap.originalShift.organizationName %}
+                <p class="govuk-body-s govuk-!-margin-bottom-1">{{ swap.originalShift.organizationName }}</p>
+              {% endif %}
+              {% if swap.originalShift.startLabel %}
+                <p class="govuk-body-s govuk-!-margin-bottom-0">{{ swap.originalShift.startLabel }}</p>
+              {% endif %}
+            </div>
+            <div class="govuk-grid-column-one-half">
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Proposed shift</h3>
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ swap.proposedShift.title }}</p>
+              {% if swap.proposedShift.organizationName %}
+                <p class="govuk-body-s govuk-!-margin-bottom-1">{{ swap.proposedShift.organizationName }}</p>
+              {% endif %}
+              {% if swap.proposedShift.startLabel %}
+                <p class="govuk-body-s govuk-!-margin-bottom-0">{{ swap.proposedShift.startLabel }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if swap.message %}
+            <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-3"><span class="govuk-!-font-weight-bold">Message:</span> {{ swap.message }}</p>
+          {% endif %}
+
+          {% if swap.direction == "received" and swap.status.value == "pending" %}
+            <form method="post" action="/volunteering/swaps/{{ swap.id }}/respond">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <div class="govuk-button-group">
+                <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="accept" data-module="govuk-button">Accept</button>
+                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" name="action" value="reject" data-module="govuk-button">Decline</button>
+              </div>
+            </form>
+          {% elif swap.direction == "sent" and (swap.status.value == "pending" or swap.status.value == "admin_pending") %}
+            <form method="post" action="/volunteering/swaps/{{ swap.id }}/cancel">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel request</button>
+            </form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

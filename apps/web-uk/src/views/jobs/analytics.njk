@@ -1,0 +1,150 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/jobs/{{ job.id }}/applications">Back to my opportunities</a>
+
+  <span class="govuk-caption-xl">{{ job.title }}</span>
+  <h1 class="govuk-heading-xl">Opportunity analytics</h1>
+  <p class="govuk-body-l">See how your opportunity is performing - views, applications and where candidates are in your pipeline.</p>
+
+  <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
+    <a class="govuk-button" data-module="govuk-button" href="/jobs/{{ job.id }}/pipeline">View pipeline</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/{{ job.id }}/applications/export.csv">Download applications (CSV)</a>
+    <a class="govuk-link" href="/jobs/{{ job.id }}">View opportunity</a>
+  </div>
+
+  <h2 class="govuk-heading-l">Key metrics</h2>
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Total views</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.totalViews }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Unique viewers</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.uniqueViewers }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Applications</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.totalApplications }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Conversion rate</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.conversionRate }}%</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Average time to apply</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.averageTimeToApplyHours }} hours</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Time to fill</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.timeToFillDays }} days</dd>
+    </div>
+  </dl>
+
+  <h2 class="govuk-heading-l">Referrals</h2>
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Referral shares</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.referralStats.totalShares }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Referral applications</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.referralStats.referralApplications }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Referral conversion</dt>
+      <dd class="govuk-summary-list__value">{{ analytics.referralStats.referralConversionPct }}%</dd>
+    </div>
+    {% if analytics.scorecardAverage or analytics.scorecardAverage == 0 %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Average scorecard</dt>
+        <dd class="govuk-summary-list__value">{{ analytics.scorecardAverage }}%</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  <h2 class="govuk-heading-l">Views over the last 30 days</h2>
+  {% if analytics.viewsByDay.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No views recorded yet.</p>
+    </div>
+  {% else %}
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      {% for row in analytics.viewsByDay %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value">{{ row.count }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Applications by week</h2>
+  {% if analytics.weeklyTrend.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No applications yet.</p>
+    </div>
+  {% else %}
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      {% for row in analytics.weeklyTrend %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value">{{ row.count }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Applications by stage</h2>
+  {% if analytics.applicationsByStage.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No applications yet.</p>
+    </div>
+  {% else %}
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      {% for row in analytics.applicationsByStage %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value">{{ row.count }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Predictions</h2>
+  {% if predictions and predictions.similarJobsAnalyzed > 0 %}
+    <p class="govuk-body">Based on {{ predictions.similarJobsAnalyzed }} similar filled opportunities</p>
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Expected applications</dt>
+        <dd class="govuk-summary-list__value">
+          {{ predictions.expectedApplications.value }}
+          <span class="govuk-body-s nexus-alpha-meta">Current {{ predictions.expectedApplications.current }} - {% if predictions.expectedApplications.aboveAverage %}Above average{% else %}Below average{% endif %}</span>
+        </dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Estimated time to fill</dt>
+        <dd class="govuk-summary-list__value">{{ predictions.estimatedTimeToFill.value }} days</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Conversion rate vs average</dt>
+        <dd class="govuk-summary-list__value">Yours {{ predictions.conversionRate.yours }}% - Average {{ predictions.conversionRate.average }}%</dd>
+      </div>
+      {% if predictions.salaryComparison %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Salary vs market</dt>
+          <dd class="govuk-summary-list__value">{{ predictions.salaryComparison.yourSalary }} vs {{ predictions.salaryComparison.marketAverage }} ({{ predictions.salaryComparison.diffPercent }}%)</dd>
+        </div>
+      {% endif %}
+    </dl>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">Not enough similar opportunities yet to make predictions.</p>
+    </div>
+  {% endif %}
+{% endblock %}

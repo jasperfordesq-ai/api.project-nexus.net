@@ -1,0 +1,85 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <a class="govuk-back-link" href="/reviews/list">Back to all reviews</a>
+{% endblock %}
+
+{% block mainContent %}
+  {% if statusMessage %}
+    <div class="govuk-notification-banner{% if statusMessage.type == 'success' %} govuk-notification-banner--success{% endif %}" role="region" aria-labelledby="review-comments-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="review-comments-status-title">{{ "Success" if statusMessage.type == "success" else "Important" }}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-xl">Review discussion</span>
+      <h1 class="govuk-heading-xl">Comments on this review</h1>
+
+      <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="review-heading">
+        <h2 class="govuk-heading-m" id="review-heading">{{ review.otherLabel }} {{ review.otherName }}</h2>
+        <p class="govuk-body-s nexus-alpha-meta">Rating: {{ review.ratingLabel }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
+        {% if review.comment %}
+          <p class="govuk-body">{{ review.comment }}</p>
+        {% endif %}
+      </section>
+
+      <section id="review-reactions" class="govuk-!-margin-bottom-6" aria-labelledby="review-reactions-heading">
+        <h2 class="govuk-heading-m" id="review-reactions-heading">Reactions</h2>
+        <p class="govuk-body-s nexus-alpha-meta">{{ reactionTotal }} reactions</p>
+        <div class="govuk-button-group">
+          {% for reaction in alphaReactions %}
+            <form method="post" action="/reviews/{{ review.id }}/react#review-reactions">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="emoji" value="{{ reaction.value }}">
+              <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">
+                {{ reaction.label }}{% if reaction.count %} ({{ reaction.count }}){% endif %}{% if reaction.selected %} selected{% endif %}
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section aria-labelledby="comments-heading">
+        <h2 class="govuk-heading-m" id="comments-heading">Comments</h2>
+        {% if comments.length %}
+          <p class="govuk-body-s nexus-alpha-meta">{{ commentsCount }} comments</p>
+          <ul class="nexus-alpha-card-list">
+            {% for comment in comments %}
+              <li class="nexus-alpha-card">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ comment.authorName }}</h3>
+                {% if comment.createdAt %}<p class="govuk-body-s nexus-alpha-meta">{{ comment.createdAt | formatDate }}</p>{% endif %}
+                <p class="govuk-body govuk-!-margin-bottom-0">{{ comment.body }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body">No comments on this review yet. Be the first to comment.</p>
+        {% endif %}
+      </section>
+
+      <section class="govuk-!-margin-top-6" aria-labelledby="add-comment-heading">
+        <h2 class="govuk-heading-m" id="add-comment-heading">Add a comment</h2>
+        <form method="post" action="/reviews/{{ review.id }}/comments" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--s" for="body">Your comment</label>
+            <textarea class="govuk-textarea" id="body" name="body" rows="5" maxlength="5000"></textarea>
+          </div>
+          <button class="govuk-button" data-module="govuk-button" type="submit">Post comment</button>
+        </form>
+      </section>
+    </div>
+  </div>
+{% endblock %}

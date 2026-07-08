@@ -1,0 +1,114 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+
+  <span class="govuk-caption-xl">Invite people to {{ group.name }}</span>
+  <h1 class="govuk-heading-xl">Invite members</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: "#emails"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <p class="govuk-body-l">Invite people to join this group by sharing a link or sending email invitations.</p>
+
+  <h2 class="govuk-heading-l">Share an invite link</h2>
+  <p class="govuk-body">Generate a link anyone can use to join this group. The link expires automatically.</p>
+
+  {% if generatedLink %}
+    <div class="govuk-inset-text">
+      <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Your invite link</h3>
+      <p class="govuk-hint govuk-!-margin-bottom-2">Copy this link and share it. It is also listed under pending invites below.</p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ generatedLink }}">{{ generatedLink }}</a></p>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/groups/{{ group.id }}/invite/link" class="govuk-!-margin-bottom-8" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="expiry_days">Link expiry in days (optional)</label>
+      <div id="expiry_days-hint" class="govuk-hint">Leave blank for the default. Choose a number between 1 and 90.</div>
+      <input class="govuk-input govuk-input--width-3" id="expiry_days" name="expiry_days" type="number" min="1" max="90" inputmode="numeric" aria-describedby="expiry_days-hint">
+    </div>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Generate invite link</button>
+  </form>
+
+  <h2 class="govuk-heading-l">Invite by email</h2>
+  <p class="govuk-body">Send invitations to one or more email addresses.</p>
+
+  <form method="post" action="/groups/{{ group.id }}/invite/email" class="govuk-!-margin-bottom-8" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="govuk-form-group{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} govuk-form-group--error{% endif %}">
+      <label class="govuk-label govuk-label--m" for="emails">Email addresses</label>
+      <div id="emails-hint" class="govuk-hint">Enter one or more email addresses, separated by commas or new lines. Maximum 50 per request.</div>
+      {% if statusBanner and statusBanner.message == 'Enter at least one email address.' %}
+        <p id="emails-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter at least one email address.</p>
+      {% endif %}
+      <textarea class="govuk-textarea{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} govuk-textarea--error{% endif %}" id="emails" name="emails" rows="3" aria-describedby="emails-hint{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} emails-error{% endif %}"></textarea>
+    </div>
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="message">Personal message (optional)</label>
+      <div id="message-hint" class="govuk-hint">This message is included in the invitation email.</div>
+      <textarea class="govuk-textarea" id="message" name="message" rows="3" maxlength="1000" aria-describedby="message-hint"></textarea>
+    </div>
+    <button class="govuk-button" data-module="govuk-button">Send invitations</button>
+  </form>
+
+  <h2 class="govuk-heading-l">Pending invitations</h2>
+  {% if not pendingInvites.length %}
+    <div class="govuk-inset-text"><p class="govuk-body">There are no pending invitations.</p></div>
+  {% else %}
+    <table class="govuk-table">
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Email</th>
+          <th scope="col" class="govuk-table__header">Invited by</th>
+          <th scope="col" class="govuk-table__header">Expires</th>
+          <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">Revoke</span></th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for invite in pendingInvites %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">
+              {% if invite.type == "email" and invite.email %}
+                {{ invite.email }}
+              {% else %}
+                <strong class="govuk-tag govuk-tag--blue">Invite link</strong>
+              {% endif %}
+            </td>
+            <td class="govuk-table__cell">{{ invite.inviterName }}</td>
+            <td class="govuk-table__cell">{{ invite.expiresAtLabel }}</td>
+            <td class="govuk-table__cell">
+              <form method="post" action="/groups/{{ group.id }}/invite/{{ invite.id }}/revoke">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button govuk-button--warning govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Revoke this invitation">Revoke</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

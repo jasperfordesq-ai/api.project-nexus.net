@@ -1,0 +1,76 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  {% if orderReference %}
+    <p class="govuk-body">Order reference: {{ orderReference }}</p>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Click and collect at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">Pickup slots</h1>
+  <p class="govuk-body-l">Offer buyers time slots to collect items in person. Set how many collections each slot can take.</p>
+
+  <form method="post" action="/marketplace/slots/scan" class="govuk-!-margin-bottom-6">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--m" for="qr_code">Confirm a collection</label>
+      <div id="qr_code-hint" class="govuk-hint">Enter the collection code the buyer shows you to mark their order as collected.</div>
+      <input class="govuk-input govuk-input--width-20" id="qr_code" name="qr_code" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="64" aria-describedby="qr_code-hint">
+    </div>
+    <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Confirm collection</button>
+  </form>
+
+  <a class="govuk-button" href="#new-slot" data-module="govuk-button">Add a pickup slot</a>
+
+  {% if not slots.length %}
+    <p class="govuk-inset-text">You have not set up any pickup slots yet. Add a slot so buyers can choose a collection time.</p>
+  {% else %}
+    <table class="govuk-table">
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Collection window</th>
+          <th scope="col" class="govuk-table__header">Capacity</th>
+          <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">View</span></th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for slot in slots %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">
+              <strong>{{ slot.slotStartLabel }}</strong><br>
+              <span class="govuk-body-s nexus-alpha-meta">{{ slot.slotEndLabel }}</span>
+              <div class="govuk-!-margin-top-1">
+                {% if slot.isRecurring %}
+                  <strong class="govuk-tag govuk-tag--blue">Repeats weekly</strong>
+                {% endif %}
+                {% if not slot.isActive %}
+                  <strong class="govuk-tag govuk-tag--yellow">Not active</strong>
+                {% endif %}
+              </div>
+            </td>
+            <td class="govuk-table__cell">
+              {{ slot.capacityLabel }}<br>
+              <span class="govuk-body-s nexus-alpha-meta">{{ slot.remainingLabel }}</span>
+            </td>
+            <td class="govuk-table__cell">
+              <a class="govuk-link" href="/marketplace/slots/{{ slot.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-6" id="new-slot">Add a pickup slot</h2>
+  {% set slot = emptySlot %}
+  {% set action = "/marketplace/slots" %}
+  {% set submitLabel = "Add slot" %}
+  {% include "marketplace/_slot-form.njk" %}
+{% endblock %}

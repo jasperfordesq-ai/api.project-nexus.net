@@ -1,0 +1,116 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation/messages" class="govuk-back-link">Back to conversations</a>
+
+  <span class="govuk-caption-xl">Conversation with {{ conversation.partnerName }}</span>
+  <h1 class="govuk-heading-xl">{{ conversation.partnerName }}</h1>
+
+  {% if conversation.partnerTenantName %}
+    <p class="govuk-body-l govuk-!-margin-bottom-2">
+      <strong class="govuk-tag govuk-tag--grey">Community: {{ conversation.partnerTenantName }}</strong>
+    </p>
+  {% endif %}
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if statusBanner %}
+    {% if statusBanner.type == "error" %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#conversation-messages">{{ statusBanner.message }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-conversation-status">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="fed-conversation-status">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="nexus-alpha-card-list" id="conversation-messages">
+    {% for message in conversation.messages %}
+      <article class="nexus-alpha-card">
+        <p class="govuk-body-s govuk-!-margin-bottom-1">
+          {% if message.outbound %}
+            <strong class="govuk-tag govuk-tag--grey">Sent</strong>
+          {% else %}
+            <strong class="govuk-tag govuk-tag--blue">Received</strong>
+          {% endif %}
+        </p>
+
+        <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ message.subject or "No subject" }}</h2>
+        <p class="govuk-body govuk-!-margin-bottom-1">{{ message.body }}</p>
+
+        {% if message.createdAt %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            <time datetime="{{ message.createdAt }}">{{ message.createdAt | date }}</time>
+          </p>
+        {% endif %}
+
+        {% if message.outbound %}
+          <p class="govuk-body-s govuk-!-margin-bottom-0">
+            {% if message.read %}
+              <strong class="govuk-tag govuk-tag--green">Read</strong>
+            {% else %}
+              <strong class="govuk-tag govuk-tag--grey">Delivered</strong>
+            {% endif %}
+          </p>
+        {% elif translateEnabled %}
+          <form method="post" action="/federation/messages/translate/{{ message.id }}" class="govuk-!-margin-top-2">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="partner_id" value="{{ conversation.partnerId }}">
+            <input type="hidden" name="partner_tenant_id" value="{{ conversation.partnerTenantId }}">
+            <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Translate</button>
+          </form>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if canReply %}
+    <form method="post" action="/federation/messages" class="govuk-!-margin-top-6">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <input type="hidden" name="receiver_id" value="{{ conversation.partnerId }}">
+      <input type="hidden" name="receiver_tenant_id" value="{{ conversation.partnerTenantId }}">
+      <input type="hidden" name="context" value="conversation">
+      <input type="hidden" name="reference_message_id" value="{{ conversation.referenceMessageId }}">
+      <input type="hidden" name="subject" value="Re: federated message">
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="body">Your reply</label>
+        <div id="body-hint" class="govuk-hint">Write a reply to this member.</div>
+        <textarea class="govuk-textarea" id="body" name="body" rows="4" maxlength="10000" aria-describedby="body-hint"></textarea>
+      </div>
+
+      <button type="submit" class="govuk-button" data-module="govuk-button">Send reply</button>
+    </form>
+  {% endif %}
+{% endblock %}

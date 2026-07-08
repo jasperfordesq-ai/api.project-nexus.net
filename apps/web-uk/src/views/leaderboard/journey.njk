@@ -1,0 +1,96 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/leaderboard">Back to leaderboard</a>
+
+  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">My journey</h1>
+  <p class="govuk-body-l">A timeline of your activity, milestones and progress in the community.</p>
+
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Leaderboard">
+    <h2 class="govuk-tabs__title">Leaderboard</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/competitive">Competitive</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/seasons">Seasons</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/leaderboard/journey" aria-current="page">My journey</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/spotlight">Member spotlight</a>
+      </li>
+    </ul>
+  </nav>
+
+  {% if journey.isEmpty %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There is nothing to show on your journey yet. Get involved to build your timeline.</p>
+    </div>
+  {% else %}
+    {% if journey.summaryRows.length %}
+      <h2 class="govuk-heading-l">Summary</h2>
+      <dl class="govuk-summary-list">
+        {% for row in journey.summaryRows %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ row.key }}</dt>
+            <dd class="govuk-summary-list__value">{{ row.value }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+    {% endif %}
+
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">Milestones</h2>
+    {% if journey.milestoneRows.length %}
+      <ul class="govuk-list govuk-list--bullet">
+        {% for milestone in journey.milestoneRows %}
+          <li>{{ milestone }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">You have not reached any milestones yet.</p>
+      </div>
+    {% endif %}
+
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">Monthly activity</h2>
+    {% if journey.activityRows.length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Monthly activity</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Month</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Activities</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in journey.activityRows %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">{{ row.month }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.countLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">No monthly activity recorded yet.</p>
+      </div>
+    {% endif %}
+
+    {% if journey.badgeRows.length %}
+      <h2 class="govuk-heading-l govuk-!-margin-top-6">Badge progression</h2>
+      <ul class="govuk-list govuk-list--bullet">
+        {% for badge in journey.badgeRows %}
+          <li>{{ badge }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+{% endblock %}

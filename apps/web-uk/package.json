@@ -13,7 +13,9 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "route:matrix": "node scripts/generate-accessible-route-matrix.js",
+    "smoke:laravel": "node scripts/laravel-runtime-smoke.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
@@ -23,6 +25,7 @@
     "express-flash": "^0.0.2",
     "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.0",
+    "formidable": "^3.5.4",
     "govuk-frontend": "^6.3.0",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
@@ -31,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "concurrently": "^8.2.2",
+    "eslint": "^9.39.4",
     "jest": "^30.2.0",
     "nodemon": "^3.1.4",
     "sass": "^1.77.0",

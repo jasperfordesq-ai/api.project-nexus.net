@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/premium" class="govuk-back-link">Back to Donate</a>
+
+  {% if returnStatus == 'success' %}
+    <div class="govuk-panel govuk-panel--confirmation">
+      <h1 class="govuk-panel__title">Donation support confirmed</h1>
+      <div class="govuk-panel__body">
+        {% if tierName %}
+          Your recurring donation to {{ tierName }} is active. Thank you for your support.
+        {% else %}
+          Your recurring donation has been confirmed.
+        {% endif %}
+      </div>
+    </div>
+    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Manage your support</a></p>
+  {% elif returnStatus == 'pending' %}
+    <h1 class="govuk-heading-l">Payment pending</h1>
+    <div class="govuk-inset-text"><p class="govuk-body">Your payment is being processed. Check back shortly.</p></div>
+    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Check your support status</a></p>
+  {% else %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list"><li>We could not confirm your recurring donation. Please try again or contact support.</li></ul>
+        </div>
+      </div>
+    </div>
+    <h1 class="govuk-heading-l">Donation setup failed</h1>
+    <p class="govuk-body"><a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="/premium">Donate</a></p>
+  {% endif %}
+{% endblock %}

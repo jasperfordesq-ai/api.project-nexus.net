@@ -1,0 +1,38 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/kb">Back to the knowledge base</a>
+
+      <span class="govuk-caption-l">{{ communityName }}</span>
+      <h1 class="govuk-heading-xl">{{ article.title }}</h1>
+
+      {% if article.authorName or article.updatedLabel %}
+        <p class="govuk-body-s nexus-alpha-meta">
+          {% if article.authorName %}Written by {{ article.authorName }}{% endif %}
+          {% if article.authorName and article.updatedLabel %} &middot; {% endif %}
+          {% if article.updatedLabel %}Last updated: {{ article.updatedLabel }}{% endif %}
+        </p>
+      {% endif %}
+
+      <div class="legal-content govuk-body">
+        {{ article.content | safe }}
+      </div>
+
+      {% if article.children and article.children.length %}
+        <h2 class="govuk-heading-m">Related articles</h2>
+        <ul class="govuk-list">
+          {% for child in article.children %}
+            <li><a class="govuk-link" href="/kb/{{ child.id }}">{{ child.title }}</a></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

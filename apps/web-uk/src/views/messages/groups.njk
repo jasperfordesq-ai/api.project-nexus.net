@@ -1,0 +1,87 @@
+{# Copyright (C) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <a class="govuk-back-link" href="/messages">Back to direct messages</a>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {% if statusMessage %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="messages-groups-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="messages-groups-status-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-body">{{ statusMessage }}</p>
+          </div>
+        </div>
+      {% endif %}
+
+      <span class="govuk-caption-l">Messages</span>
+      <h1 class="govuk-heading-xl">Group conversations</h1>
+      <p class="govuk-body-l">Talk with several members at once in a shared conversation.</p>
+
+      <nav class="govuk-!-margin-bottom-6" aria-label="Message views">
+        <ul class="govuk-list govuk-list--inline">
+          <li><a class="govuk-link" href="/messages">Direct messages</a></li>
+          <li><a class="govuk-link govuk-!-font-weight-bold" href="/messages/groups" aria-current="page">Groups</a></li>
+        </ul>
+      </nav>
+
+      <p class="govuk-body">
+        <a class="govuk-button" href="/messages/groups/new">Start a group conversation</a>
+      </p>
+
+      {% if error %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">{{ error }}</p>
+        </div>
+      {% elif groups and groups.length %}
+        <div class="nexus-alpha-card-list">
+          {% for group in groups %}
+            <article class="nexus-alpha-card">
+              <h2 class="govuk-heading-m">
+                <a class="govuk-link" href="/messages/groups/{{ group.id }}">{{ group.displayName }}</a>
+              </h2>
+              <p class="govuk-hint govuk-!-margin-bottom-2">
+                {{ group.participant_count or group.participantCount or 0 }} members
+              </p>
+              {% if (group.unread_count or group.unreadCount or 0) > 0 %}
+                <strong class="govuk-tag govuk-tag--blue">
+                  {{ group.unread_count or group.unreadCount }} unread messages
+                </strong>
+              {% endif %}
+              {% set lastMessage = group.last_message or group.lastMessage %}
+              {% if lastMessage and lastMessage.body %}
+                <p class="govuk-body govuk-!-margin-top-3">
+                  <strong>Latest:</strong>
+                  {% if lastMessage.sender_name or lastMessage.senderName %}
+                    {{ lastMessage.sender_name or lastMessage.senderName }}:
+                  {% endif %}
+                  {{ lastMessage.body }}
+                </p>
+              {% else %}
+                <p class="govuk-hint govuk-!-margin-top-3">No messages yet</p>
+              {% endif %}
+              {% if lastMessage and lastMessage.created_at %}
+                <p class="govuk-hint">Sent {{ lastMessage.created_at | formatDate }}</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="govuk-inset-text">
+          <h2 class="govuk-heading-m">You are not in any group conversations</h2>
+          <p class="govuk-body govuk-!-margin-bottom-0">When you start or are added to a group conversation, it will appear here.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

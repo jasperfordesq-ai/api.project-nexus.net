@@ -1,0 +1,47 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  <span class="govuk-caption-xl">Coupons at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">My coupons</h1>
+  <p class="govuk-body-l">Create discount coupons for your buyers, edit them or remove them.</p>
+
+  <a class="govuk-button" href="/marketplace/coupons/new" data-module="govuk-button">Create a coupon</a>
+
+  {% if not coupons.length %}
+    <p class="govuk-inset-text">You have not created any coupons yet. Create one to offer buyers a discount.</p>
+  {% else %}
+    <table class="govuk-table">
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Code</th>
+          <th scope="col" class="govuk-table__header">Discount</th>
+          <th scope="col" class="govuk-table__header">Status</th>
+          <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">View</span></th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for coupon in coupons %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">
+              <strong>{{ coupon.title }}</strong><br>
+              <span class="govuk-body-s nexus-alpha-meta">{{ coupon.code }}</span>
+            </td>
+            <td class="govuk-table__cell">{{ coupon.discountLabel }}</td>
+            <td class="govuk-table__cell"><strong class="govuk-tag {{ coupon.statusTagClass }}">{{ coupon.statusLabel }}</strong></td>
+            <td class="govuk-table__cell">
+              <a class="govuk-link" href="/marketplace/coupons/{{ coupon.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}
