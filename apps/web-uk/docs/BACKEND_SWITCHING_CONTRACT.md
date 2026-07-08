@@ -357,10 +357,14 @@ federation subpages `/federation/opt-in`, `/federation/opt-out`,
 `/federation/onboarding`, `/federation/groups`, `/federation/listings`,
 `/federation/events`, `/federation/connections`, and `/federation/messages`
 returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6213`.
-The default scope now contains `429` checks: `279`
+The signed marketplace account subpages `/marketplace/saved`, `/marketplace/free`,
+`/marketplace/offers`, `/marketplace/orders`, `/marketplace/sales`,
+`/marketplace/pickups`, and `/marketplace/slots` returned expected body markers
+against `WEB_UK_BASE_URL=http://127.0.0.1:6214`. The default scope now contains
+`436` checks: `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 82 body-text contract checks, and the 6
+content-type contract checks, 89 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
