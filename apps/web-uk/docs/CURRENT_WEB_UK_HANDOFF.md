@@ -73,6 +73,16 @@ The latest generated route matrix at this handoff reported:
 | Extra Web UK routes | `83` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
+Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
+shell test for the Laravel Blade dashboard contract. The route calls
+Laravel-compatible profile, onboarding status, wallet balance, gamification
+profile, badges, listings, feed, and member events helpers, and the Nunjucks
+view renders the Blade-style welcome, onboarding banner, create-listing CTA,
+time-bank stat grid, progress/badges, quick links, recent feed/listings, and
+upcoming events. Remaining dashboard gaps are exchange-attention count,
+endorsements, tenant/module/feature gates, exact localization, live Laravel
+runtime certification, and ASP.NET backend compatibility.
+
 Focused runtime-smoke harness test: `npm test --
 tests/laravel-runtime-smoke.test.js --runInBand` passed with `17/17` tests
 after red steps for the missing harness, stale Acme defaults, missing public

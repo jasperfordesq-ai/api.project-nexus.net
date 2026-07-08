@@ -205,6 +205,9 @@ jest.mock('../src/lib/api', () => ({
   deleteAllNotifications: jest.fn().mockResolvedValue({ data: { deleted: 2 } }),
   deleteNotification: jest.fn().mockResolvedValue({}),
   getTransactions: jest.fn(),
+  getMyEvents: jest.fn().mockResolvedValue({ data: [] }),
+  getGamificationProfile: jest.fn().mockResolvedValue({ profile: { level: 1, total_xp: 0, totalXp: 0 } }),
+  getMyBadges: jest.fn().mockResolvedValue({ data: [] }),
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
   uploadVoiceMessage: jest.fn().mockResolvedValue({ data: { id: 12, is_voice: true } }),
   uploadMessageAttachments: jest.fn().mockResolvedValue({ data: { id: 12 } }),
@@ -291,6 +294,7 @@ describe('shared accessible frontend shell', () => {
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
+    api.getListings.mockReset().mockResolvedValue({ data: [] });
     api.getConnections.mockReset().mockResolvedValue({ data: [] });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
@@ -427,6 +431,10 @@ describe('shared accessible frontend shell', () => {
     api.createExchangeRequest.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
+    api.getUnreadCount.mockReset().mockResolvedValue({ unreadCount: 0 });
+    api.getMyEvents.mockReset().mockResolvedValue({ data: [] });
+    api.getGamificationProfile.mockReset().mockResolvedValue({ profile: { level: 1, total_xp: 0, totalXp: 0 } });
+    api.getMyBadges.mockReset().mockResolvedValue({ data: [] });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
     api.markNotificationGroupRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -479,6 +487,101 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Project NEXUS is free software licensed under AGPL-3.0-or-later.');
     expect(response.text).toContain('View the source code on GitHub');
     expect(response.text).toContain('https://github.com/jasperfordesq-ai/nexus-v1');
+  });
+
+  it('renders the Laravel-backed member dashboard summary', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({
+      id: 101,
+      first_name: 'Ada',
+      stats: {
+        hours_given: 12.25,
+        hours_received: 4,
+        listings_count: 3
+      }
+    });
+    api.getBalance.mockResolvedValue({ balance: 8.5 });
+    api.getOnboardingStatus.mockResolvedValue({ data: { onboarding_completed: false } });
+    api.getGamificationProfile.mockResolvedValue({
+      profile: {
+        level: 4,
+        level_name: 'Neighbour',
+        xp: 1250,
+        level_progress: { progress_percentage: 65 },
+        badges_count: 2
+      }
+    });
+    api.getMyBadges.mockResolvedValue({
+      data: [
+        { name: 'Community helper', icon: 'star' },
+        { name: 'First exchange', icon: 'spark' }
+      ]
+    });
+    api.getFeedPosts.mockResolvedValue({
+      data: [
+        {
+          id: 77,
+          type: 'post',
+          title: 'Community garden update',
+          content: 'The beds are ready for planting.',
+          author: { name: 'Mo' }
+        }
+      ]
+    });
+    api.getListings.mockResolvedValue({
+      data: [
+        { id: 501, title: 'Borrow a repair kit', type: 'offer', description: 'Hand tools for small repairs.' }
+      ]
+    });
+    api.getMyEvents.mockResolvedValue({
+      data: [
+        { id: 44, title: 'Garden morning', starts_at: '2026-08-01T10:00:00Z', my_rsvp: 'Going' }
+      ]
+    });
+
+    const unsigned = await request(app).get('/dashboard');
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+
+    const response = await request(app)
+      .get('/dashboard?status=onboarding-complete')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getOnboardingStatus).toHaveBeenCalledWith('test-token');
+    expect(api.getBalance).toHaveBeenCalledWith('test-token');
+    expect(api.getGamificationProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getMyBadges).toHaveBeenCalledWith('test-token');
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { limit: 5 });
+    expect(api.getListings).toHaveBeenCalledWith('test-token', { limit: 5 });
+    expect(api.getMyEvents).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('Dashboard');
+    expect(response.text).toContain('Welcome back, Ada.');
+    expect(response.text).toContain('Finish setting up your profile');
+    expect(response.text).toContain('Your time bank');
+    expect(response.text).toContain('Time-credit balance');
+    expect(response.text).toContain('8.5 hours');
+    expect(response.text).toContain('Hours given');
+    expect(response.text).toContain('12.3');
+    expect(response.text).toContain('Your progress');
+    expect(response.text).toContain('Level 4');
+    expect(response.text).toContain('Neighbour');
+    expect(response.text).toContain('1,250 XP');
+    expect(response.text).toContain('65% of the way to the next level');
+    expect(response.text).toContain('Badges (2)');
+    expect(response.text).toContain('Community helper');
+    expect(response.text).toContain('Upcoming events');
+    expect(response.text).toContain('Garden morning');
+    expect(response.text).toContain('Quick links');
+    expect(response.text).toContain('View your profile');
+    expect(response.text).toContain('Edit your profile');
+    expect(response.text).toContain('Recent feed');
+    expect(response.text).toContain('Community garden update');
+    expect(response.text).toContain('Recent listings');
+    expect(response.text).toContain('Borrow a repair kit');
+    expect(response.text).toContain('href="/listings/new"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('renders the Laravel-backed Explore hub with live discovery sections', async () => {
