@@ -913,6 +913,79 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminPagesV2_UsesLaravelReactCmsWorkflowShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var title = $"Contract Page {Guid.NewGuid():N}"[..28];
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/pages", new
+        {
+            title,
+            content = "<p>Laravel React CMS contract body.</p>",
+            content_format = "builder",
+            design_json = "{\"blocks\":[{\"type\":\"hero\"}]}",
+            meta_description = "Contract CMS meta description",
+            status = "published",
+            show_in_menu = 1,
+            menu_location = "footer",
+            menu_order = 7,
+            sort_order = 4
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var pageId = created.GetProperty("id").GetInt32();
+        created.GetProperty("title").GetString().Should().Be(title);
+        created.GetProperty("slug").GetString().Should().StartWith("contract-page");
+        created.GetProperty("content_format").GetString().Should().Be("builder");
+        created.GetProperty("design_json").GetString().Should().Contain("hero");
+        created.GetProperty("status").GetString().Should().Be("published");
+        created.GetProperty("show_in_menu").GetInt32().Should().Be(1);
+        created.GetProperty("menu_location").GetString().Should().Be("footer");
+        created.GetProperty("menu_order").GetInt32().Should().Be(7);
+
+        var list = await Client.GetAsync("/api/v2/admin/pages");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listData = (await list.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        listData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == pageId &&
+            item.GetProperty("status").GetString() == "published");
+
+        var detail = await Client.GetAsync($"/api/v2/admin/pages/{pageId}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("content").GetString().Should().Contain("contract body");
+        detailData.GetProperty("content_format").GetString().Should().Be("builder");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/pages/{pageId}", new
+        {
+            title = $"{title} Updated",
+            slug = $"custom-{Guid.NewGuid():N}"[..20],
+            status = "draft",
+            show_in_menu = 0,
+            menu_order = 2,
+            content_format = "html",
+            content = "<p>Updated body.</p>"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("title").GetString().Should().EndWith("Updated");
+        updated.GetProperty("status").GetString().Should().Be("draft");
+        updated.GetProperty("show_in_menu").GetInt32().Should().Be(0);
+        updated.GetProperty("menu_order").GetInt32().Should().Be(2);
+        updated.GetProperty("content_format").GetString().Should().Be("html");
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/pages/{pageId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleted = (await delete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        deleted.GetProperty("deleted").GetBoolean().Should().BeTrue();
+
+        var missing = await Client.GetAsync($"/api/v2/admin/pages/{pageId}");
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task VolunteeringShiftWaitlistV2_UsesLaravelReactActionEnvelope()
     {
         await AuthenticateAsMemberAsync();
