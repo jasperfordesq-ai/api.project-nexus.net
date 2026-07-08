@@ -76,6 +76,25 @@ describe('Public Routes', () => {
       expect(response.status).toBe(301);
       expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
     });
+
+    it('keeps local redirects inside the active shared accessible mount', async () => {
+      const response = await request(app).get('/acme/accessible/dashboard');
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/login');
+    });
+
+    it('keeps rendered forms and links inside the active shared accessible mount', async () => {
+      const response = await request(app).get('/acme/accessible/login');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('action="/acme/accessible/login"');
+      expect(response.text).toContain('href="/acme/accessible/login/forgot-password"');
+      expect(response.text).toContain('href="/acme/accessible/register"');
+      expect(response.text).not.toContain('action="/login"');
+      expect(response.text).not.toContain('href="/login/forgot-password"');
+      expect(response.text).not.toContain('href="/register"');
+    });
   });
 
   describe('GET /health', () => {

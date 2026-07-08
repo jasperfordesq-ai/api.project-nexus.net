@@ -54,14 +54,23 @@ Current implemented slice:
 - The shared shell locals now expose `urlFor()` and prefix header, service-nav,
   footer, cookie, report-problem, and home-page CTA links under the active
   shared mount.
+- Shared-mount local redirects are rewritten back under
+  `/{tenantSlug}/accessible`, so auth redirects such as `/dashboard` to
+  `/login` stay inside the tenant-visible accessible path.
+- Rendered HTML responses under the shared mount rewrite local root-relative
+  `href` and `action` attributes to the active `/{tenantSlug}/accessible`
+  prefix while leaving assets, API paths, health checks, service-worker paths,
+  uploads, and other infrastructure URLs unprefixed.
 
 Current gaps:
 
 - Custom accessible-domain host resolution is not implemented in Web UK yet.
 - Web UK does not yet call Laravel tenant bootstrap during request routing to
   resolve `accessible_domain` or `parent_domain`.
-- Most individual templates still contain direct root-relative paths and must be
-  converted to `urlFor()` or equivalent route helpers.
+- Most individual templates still contain direct root-relative paths. Shared
+  tenant-mount rendering now protects those links at response time, but the
+  templates still need gradual conversion to `urlFor()` or equivalent helpers
+  so custom-domain and flat-host modes remain easier to audit.
 - Shared root `/` still renders the local home page, not Laravel's tenant
   chooser.
 - Dedicated accessible-domain root `/` is not yet certified to render the
@@ -80,6 +89,10 @@ apps/web-uk/tests/routes.test.js
 It verifies that `/acme/accessible` renders the existing home page with prefixed
 shell links and that `/acme/alpha/login?status=auth-required` redirects to
 `/acme/accessible/login?status=auth-required`.
+
+The second shared-mount runtime slice verifies that protected-route redirects
+and rendered login-page form/link targets remain under
+`/acme/accessible/...` instead of escaping to flat root paths.
 
 Verification command:
 

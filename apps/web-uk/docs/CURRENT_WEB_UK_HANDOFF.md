@@ -41,10 +41,13 @@ Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared
 mount, and legacy `/{tenantSlug}/alpha` requests redirect to the cleaner
-`/{tenantSlug}/accessible` path. This is not full tenant-domain parity yet:
-custom accessible-domain resolution, parent-domain child tenant routing, root
-tenant chooser behavior, and template-wide link rewriting still need runtime
-work and Laravel smoke certification.
+`/{tenantSlug}/accessible` path. A follow-up shared-mount slice keeps local
+redirects plus rendered HTML `href` and `action` targets inside the active
+`/{tenantSlug}/accessible` mount, so individual templates no longer escape to
+flat root paths during shared-host tenant browsing. This is not full
+tenant-domain parity yet: custom accessible-domain resolution, parent-domain
+child tenant routing, root tenant chooser behavior, template-helper conversion,
+and Laravel runtime smoke certification still need work.
 
 ## Non-Negotiable Rules
 
@@ -218,6 +221,15 @@ accessible additions or remove them for literal Laravel route identity. The
 local-only `GET /health`, `GET /service-unavailable`, and `POST /session/touch`
 helpers remain available but are classified as ignored infrastructure instead
 of accessible route parity gaps.
+
+Latest focused tenant-routing response-rewrite slice: shared-host tenant pages
+under `/{tenantSlug}/accessible` now keep local redirects plus rendered HTML
+`href` and `action` attributes inside the active shared mount. The middleware
+skips asset, API, upload, service-worker, health, and other infrastructure URLs
+so static resources stay on their flat public paths. Focused route tests passed
+with `30/30` tests, full Web UK Jest passed with `8` suites and `681` tests,
+lint passed, and the route matrix stayed at `608/608` Laravel accessible routes
+matched with `0` missing and `2` extra Web UK exchange routes.
 
 Latest focused backend-contract provenance slice: `resolveBackendContract()`
 now returns `baseUrlSource` so Laravel defaults, future ASP.NET mode, and

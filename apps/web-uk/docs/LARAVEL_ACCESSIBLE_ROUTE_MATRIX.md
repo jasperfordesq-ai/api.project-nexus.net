@@ -56,9 +56,12 @@ certification.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
-`/{tenantSlug}/alpha` requests canonicalized to `/accessible`, but custom
-accessible-domain resolution, parent-domain child tenant routing, root tenant
-chooser behavior, and template-wide route-prefix rewriting are still open.
+`/{tenantSlug}/alpha` requests canonicalized to `/accessible`. Shared-mount
+responses now also rewrite local redirects plus rendered HTML `href` and
+`action` targets back under the active `/{tenantSlug}/accessible` prefix while
+leaving asset/API/infrastructure URLs flat. Custom accessible-domain
+resolution, parent-domain child tenant routing, root tenant chooser behavior,
+and full template helper conversion are still open.
 
 The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
 no longer exposed. Laravel's accessible source uses GET/POST
