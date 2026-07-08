@@ -1349,10 +1349,15 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 645 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 38 local-only routes. These
+accessible route declarations, 644 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 37 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local listing delete confirmation pages are intentionally not exposed.
+Laravel's accessible listing source uses POST `/listings/{id}/delete`; owner
+controls now submit that action directly from the listing index/detail pages,
+and local listing dynamic routes preserve Laravel numeric constraints.
 
 Legacy local group member-management routes are intentionally not exposed as
 separate pages or actions. Laravel's accessible group source uses `/groups`,

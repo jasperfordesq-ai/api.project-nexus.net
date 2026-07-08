@@ -655,10 +655,8 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   });
 }, { notFoundTitle: 'Listing not found' }));
 
-router.use(requireAuth);
-
 // List all listings with search/filter/pagination
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const { search, status, page = 1 } = req.query;
   const params = { search, status, page, limit: 20 };
 
@@ -687,12 +685,13 @@ router.get('/', asyncRoute(async (req, res) => {
     pagination,
     filters: { search, status },
     currentUser,
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
 // New listing form
-router.get('/new', (req, res) => {
+router.get('/new', requireAuth, (req, res) => {
   res.render('listings/form', {
     title: 'Create listing',
     listing: null,
@@ -704,7 +703,7 @@ router.get('/new', (req, res) => {
 });
 
 // Create listing
-router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
+router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, res) => {
   const { title, description, status, type } = req.body;
 
   // Basic validation
@@ -761,7 +760,7 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
 }));
 
 // View listing detail
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const [listing, reviewsResult, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
     getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null })),
@@ -783,7 +782,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Listing not found' }));
 
 // Edit listing form
-router.get('/:id/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const [listing, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
     getProfile(req.token)
@@ -805,7 +804,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Listing not found' }));
 
 // Update listing
-router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { title, description, status, type } = req.body;
 
@@ -862,27 +861,8 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
   }
 }));
 
-// Delete confirmation page
-router.get('/:id/delete', asyncRoute(async (req, res) => {
-  const [listing, currentUser] = await Promise.all([
-    getListing(req.token, req.params.id),
-    getProfile(req.token)
-  ]);
-
-  // Only the owner may access the delete confirmation page
-  if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
-    return res.redirect('/listings/' + req.params.id);
-  }
-
-  res.render('listings/delete', {
-    title: 'Delete listing',
-    listing,
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}, { notFoundTitle: 'Listing not found' }));
-
 // Delete listing
-router.post('/:id/delete', audit.listingDelete(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/delete', requireAuth, audit.listingDelete(), asyncRoute(async (req, res) => {
   await deleteListing(req.token, req.params.id);
 
   if (req.flash) {

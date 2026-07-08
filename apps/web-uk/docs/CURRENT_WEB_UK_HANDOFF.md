@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `645` |
+| Web UK routes | `644` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `38` |
+| Extra Web UK routes | `37` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused listing route slice: legacy local GET
+`/listings/{id}/delete` was removed. Listing index/detail owner controls now
+submit Laravel's canonical POST `/listings/{id}/delete` action directly, and
+local listing dynamic routes now preserve Laravel numeric constraints.
 
 Latest focused group route slice: legacy local GET `/groups/my`,
 GET `/groups/{id}/members`, POST `/groups/{id}/members/add`,

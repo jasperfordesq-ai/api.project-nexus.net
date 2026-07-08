@@ -107,7 +107,10 @@
                   {% set currentUserId = currentUser.id if currentUser and currentUser.id else null %}
                   {% if listing.can_edit or (listingOwnerId and currentUserId and (listingOwnerId | string) == (currentUserId | string)) %}
                     <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
-                    <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
+                    <form method="post" action="/listings/{{ listing.id }}/delete" class="nexus-alpha-linkform govuk-!-display-inline-block">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button type="submit" class="govuk-link app-link--destructive nexus-alpha-linkbutton">Delete</button>
+                    </form>
                   {% endif %}
                 </td>
               </tr>

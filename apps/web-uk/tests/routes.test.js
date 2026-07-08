@@ -168,6 +168,13 @@ describe('Protected Routes', () => {
       }
     });
 
+    it('legacy listing delete GET page should return not found', async () => {
+      const response = await request(app).get('/listings/42/delete');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
+
     it('bare /messages/new should return not found', async () => {
       const getResponse = await request(app).get('/messages/new');
       expect(getResponse.status).toBe(404);

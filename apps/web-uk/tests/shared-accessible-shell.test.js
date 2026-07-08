@@ -65,6 +65,8 @@ jest.mock('../src/lib/api', () => ({
   getMembersV2: jest.fn(),
   getMembersNearby: jest.fn(),
   getListings: jest.fn(),
+  getListing: jest.fn(),
+  getListingReviews: jest.fn().mockResolvedValue({ data: [], summary: null }),
   getConnections: jest.fn().mockResolvedValue({ data: [] }),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
@@ -297,6 +299,8 @@ describe('shared accessible frontend shell', () => {
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
     api.getListings.mockReset().mockResolvedValue({ data: [] });
+    api.getListing.mockReset().mockResolvedValue({ id: 42, title: 'Listing' });
+    api.getListingReviews.mockReset().mockResolvedValue({ data: [], summary: null });
     api.getConnections.mockReset().mockResolvedValue({ data: [] });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
@@ -15619,6 +15623,50 @@ describe('shared accessible frontend shell', () => {
     });
     expect(response.text).toContain('Borrow a ladder');
     expect(response.text).not.toContain('href="/listings/42/edit"');
+  });
+
+  it('renders owner listing delete controls without the legacy GET delete page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getListings.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Borrow a ladder',
+          status: 'active',
+          created_at: '2026-07-05T14:15:00Z',
+          user_id: 101
+        }
+      ],
+      meta: { per_page: 20, has_more: false }
+    });
+
+    const index = await request(app)
+      .get('/listings')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('href="/listings/42/edit"');
+    expect(index.text).toContain('method="post" action="/listings/42/delete"');
+    expect(index.text).not.toContain('href="/listings/42/delete"');
+
+    api.getListing.mockResolvedValueOnce({
+      id: 42,
+      title: 'Borrow a ladder',
+      description: 'Useful for painting',
+      status: 'active',
+      type: 'offer',
+      user_id: 101
+    });
+
+    const detail = await request(app)
+      .get('/listings/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('href="/listings/42/edit"');
+    expect(detail.text).toContain('method="post" action="/listings/42/delete"');
+    expect(detail.text).not.toContain('href="/listings/42/delete"');
   });
 
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {

@@ -100,11 +100,10 @@
             href: "/listings/" + listing.id + "/edit",
             classes: "govuk-button--secondary"
           }) }}
-          {{ govukButton({
-            text: "Delete",
-            href: "/listings/" + listing.id + "/delete",
-            classes: "govuk-button--warning"
-          }) }}
+          <form method="post" action="/listings/{{ listing.id }}/delete">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
+          </form>
         </div>
       {% else %}
         <p class="govuk-body">
