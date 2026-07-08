@@ -458,11 +458,22 @@ failures. The signed volunteering opportunity and organisation-owner pages
 `WEB_UK_BASE_URL=http://127.0.0.1:6223` and now carry default body-marker
 coverage for their Laravel Blade headings and owner action text. The
 body-text-only default smoke scope passed against the same port with `138/138`
-checks and `0` failures. The default scope now contains `479` checks:
+checks and `0` failures. The signed group pages `/groups`, `/groups/new`,
+`/groups/484`, `/groups/484/invite`, `/groups/484/notifications`,
+`/groups/484/image`, `/groups/484/announcements`, `/groups/484/discussions`,
+`/groups/484/discussions/new`, `/groups/484/files`, `/groups/484/manage`,
+`/groups/482`, `/groups/482/announcements`, `/groups/482/discussions`,
+`/groups/482/discussions/new`, `/groups/482/files`, `/groups/482/manage`,
+`/groups/482/invite`, `/groups/482/notifications`, and `/groups/482/image`
+returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6224`; group detail now follows the Laravel
+Blade section heading `Group events`. The body-text-only default smoke scope
+passed against the same port with `158/158` body-text checks and `0` failures.
+The default scope now contains `499` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 132 body-text contract checks, and the 6
+content-type contract checks, 152 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against

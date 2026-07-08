@@ -253,7 +253,27 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/federation/listings', 'Federated listings'],
       ['/federation/events', 'Federated events'],
       ['/federation/connections', 'Federated connections'],
-      ['/federation/messages', 'Federated messages']
+      ['/federation/messages', 'Federated messages'],
+      ['/groups', 'Groups'],
+      ['/groups/new', 'Create a group'],
+      ['/groups/484', 'Group events'],
+      ['/groups/484/invite', 'Invite members'],
+      ['/groups/484/notifications', 'Notification preferences'],
+      ['/groups/484/image', 'Group images'],
+      ['/groups/484/announcements', 'Announcements'],
+      ['/groups/484/discussions', 'Discussions'],
+      ['/groups/484/discussions/new', 'Start a discussion'],
+      ['/groups/484/files', 'Group files'],
+      ['/groups/484/manage', 'Manage group'],
+      ['/groups/482', 'Group events'],
+      ['/groups/482/announcements', 'Announcements'],
+      ['/groups/482/discussions', 'Discussions'],
+      ['/groups/482/discussions/new', 'Start a discussion'],
+      ['/groups/482/files', 'Group files'],
+      ['/groups/482/manage', 'Manage group'],
+      ['/groups/482/invite', 'Invite members'],
+      ['/groups/482/notifications', 'Notification preferences'],
+      ['/groups/482/image', 'Group images']
     ]);
 
     const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
@@ -1182,7 +1202,27 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/federation/listings', text: 'Federated listings' },
       { path: '/federation/events', text: 'Federated events' },
       { path: '/federation/connections', text: 'Federated connections' },
-      { path: '/federation/messages', text: 'Federated messages' }
+      { path: '/federation/messages', text: 'Federated messages' },
+      { path: '/groups', text: 'Groups' },
+      { path: '/groups/new', text: 'Create a group' },
+      { path: '/groups/484', text: 'Group events' },
+      { path: '/groups/484/invite', text: 'Invite members' },
+      { path: '/groups/484/notifications', text: 'Notification preferences' },
+      { path: '/groups/484/image', text: 'Group images' },
+      { path: '/groups/484/announcements', text: 'Announcements' },
+      { path: '/groups/484/discussions', text: 'Discussions' },
+      { path: '/groups/484/discussions/new', text: 'Start a discussion' },
+      { path: '/groups/484/files', text: 'Group files' },
+      { path: '/groups/484/manage', text: 'Manage group' },
+      { path: '/groups/482', text: 'Group events' },
+      { path: '/groups/482/announcements', text: 'Announcements' },
+      { path: '/groups/482/discussions', text: 'Discussions' },
+      { path: '/groups/482/discussions/new', text: 'Start a discussion' },
+      { path: '/groups/482/files', text: 'Group files' },
+      { path: '/groups/482/manage', text: 'Manage group' },
+      { path: '/groups/482/invite', text: 'Invite members' },
+      { path: '/groups/482/notifications', text: 'Notification preferences' },
+      { path: '/groups/482/image', text: 'Group images' }
     ]));
   });
 
@@ -1821,7 +1861,27 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-federation-listings-contains-federated-listings': true,
       'body-text-page-federation-events-contains-federated-events': true,
       'body-text-page-federation-connections-contains-federated-connections': true,
-      'body-text-page-federation-messages-contains-federated-messages': true
+      'body-text-page-federation-messages-contains-federated-messages': true,
+      'body-text-page-groups-contains-groups': true,
+      'body-text-page-groups-new-contains-create-a-group': true,
+      'body-text-page-groups-484-contains-group-events': true,
+      'body-text-page-groups-484-invite-contains-invite-members': true,
+      'body-text-page-groups-484-notifications-contains-notification-preferences': true,
+      'body-text-page-groups-484-image-contains-group-images': true,
+      'body-text-page-groups-484-announcements-contains-announcements': true,
+      'body-text-page-groups-484-discussions-contains-discussions': true,
+      'body-text-page-groups-484-discussions-new-contains-start-a-discussion': true,
+      'body-text-page-groups-484-files-contains-group-files': true,
+      'body-text-page-groups-484-manage-contains-manage-group': true,
+      'body-text-page-groups-482-contains-group-events': true,
+      'body-text-page-groups-482-announcements-contains-announcements': true,
+      'body-text-page-groups-482-discussions-contains-discussions': true,
+      'body-text-page-groups-482-discussions-new-contains-start-a-discussion': true,
+      'body-text-page-groups-482-files-contains-group-files': true,
+      'body-text-page-groups-482-manage-contains-manage-group': true,
+      'body-text-page-groups-482-invite-contains-invite-members': true,
+      'body-text-page-groups-482-notifications-contains-notification-preferences': true,
+      'body-text-page-groups-482-image-contains-group-images': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');

@@ -328,7 +328,27 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/federation/listings', text: 'Federated listings' },
   { path: '/federation/events', text: 'Federated events' },
   { path: '/federation/connections', text: 'Federated connections' },
-  { path: '/federation/messages', text: 'Federated messages' }
+  { path: '/federation/messages', text: 'Federated messages' },
+  { path: '/groups', text: 'Groups' },
+  { path: '/groups/new', text: 'Create a group' },
+  { path: '/groups/484', text: 'Group events' },
+  { path: '/groups/484/invite', text: 'Invite members' },
+  { path: '/groups/484/notifications', text: 'Notification preferences' },
+  { path: '/groups/484/image', text: 'Group images' },
+  { path: '/groups/484/announcements', text: 'Announcements' },
+  { path: '/groups/484/discussions', text: 'Discussions' },
+  { path: '/groups/484/discussions/new', text: 'Start a discussion' },
+  { path: '/groups/484/files', text: 'Group files' },
+  { path: '/groups/484/manage', text: 'Manage group' },
+  { path: '/groups/482', text: 'Group events' },
+  { path: '/groups/482/announcements', text: 'Announcements' },
+  { path: '/groups/482/discussions', text: 'Discussions' },
+  { path: '/groups/482/discussions/new', text: 'Start a discussion' },
+  { path: '/groups/482/files', text: 'Group files' },
+  { path: '/groups/482/manage', text: 'Manage group' },
+  { path: '/groups/482/invite', text: 'Invite members' },
+  { path: '/groups/482/notifications', text: 'Notification preferences' },
+  { path: '/groups/482/image', text: 'Group images' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',
