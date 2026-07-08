@@ -57,7 +57,10 @@ accessible app below `/{childSlug}` when Laravel returns a matching
 parent-domain child path against the local Laravel `hour-timebank` fixture. This
 is not full tenant-domain parity yet: template-helper conversion and live
 Laravel smoke certification for direct custom accessible-domain fixtures still
-need work.
+need work. A tenant-home parity slice now replaces the old generic Web UK home
+inside tenant contexts with the Laravel Blade-style `Accessible` home page,
+including community caption, tenant tagline, platform stats, sign-in/register
+CTAs, module availability rows, and service details.
 
 ## Non-Negotiable Rules
 
@@ -82,8 +85,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `972/1000` implementation/certification parity |
-| Green confidence estimate | about `952/1000`, mainly gated by visual/manual Laravel Blade parity, live direct custom accessible-domain proof, and ASP.NET backend switching certification |
+| Working estimate | about `976/1000` implementation/certification parity |
+| Green confidence estimate | about `958/1000`, mainly gated by visual/manual Laravel Blade parity, live direct custom accessible-domain proof, full unchunked runtime certification, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -101,7 +104,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 692 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 697 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -113,6 +116,27 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8`, and 283 body-text checks across
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
+
+Latest focused tenant home Blade-parity slice: tenant-mounted root pages now
+render the Laravel Blade accessible home instead of the old generic Web UK
+welcome page. Shared mount `/{tenantSlug}/accessible` fetches Laravel tenant
+bootstrap data and public platform stats, uses tenant name/tagline in the
+layout and page content, renders the `Accessible` heading/copy, guest or signed
+CTAs, the beta/accessibility panel, stat grid, module availability cards, and
+service details. Dedicated accessible-domain root `/` reuses the same tenant
+home while keeping links slugless. Verification for this slice:
+`npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath`
+passed `33/33`, `npm --prefix apps/web-uk test -- tests/api.test.js --runInBand --runTestsByPath`
+passed `157/157`, `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath`
+passed `441/441`, full `npm --prefix apps/web-uk test -- --runInBand` passed
+`697/697`, `npm --prefix apps/web-uk run lint` passed, and
+`npm --prefix apps/web-uk run route:matrix` reported `608/608` matched, `0`
+missing, `0` extra Web UK routes, and `3` ignored infrastructure routes.
+Scoped live Laravel smoke against temporary Web UK
+`http://127.0.0.1:6330` and Laravel `http://127.0.0.1:8088` passed with
+`SMOKE_BODY_TEXT_PAGE_PATHS=/hour-timebank/accessible=>Accessible;/hour-timebank/accessible=>Connecting Communities;/hour-timebank/accessible=>What you can do`.
+The smoke also reran the base Laravel API, Web UK health, cookie, login,
+account, and logout checks green.
 
 Latest focused runtime-smoke refresh slice: the chunked body-text smoke exposed
 an expired-access-token redirect on signed `/feed/item/listing/{id}` after a

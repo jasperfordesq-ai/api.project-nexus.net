@@ -238,6 +238,28 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getPlatformStats', () => {
+    it('should call the Laravel public platform stats endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { members: 10, hours_exchanged: 25.5 } })
+      });
+
+      const result = await api.getPlatformStats();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/platform/stats',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data.members).toBe(10);
+    });
+  });
+
   describe('getListings', () => {
     it('should send auth header', async () => {
       mockFetch.mockResolvedValueOnce({

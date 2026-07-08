@@ -5,58 +5,121 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h1 class="govuk-heading-xl">Welcome to Project NEXUS Community</h1>
-
-      <p class="govuk-body-l">
-        A community platform for sharing skills, services, and time with your neighbours.
-      </p>
-
-      <p class="govuk-body">
-        Connect with local community members, offer your skills, request help, and build meaningful connections.
-      </p>
-
-      {% if isAuthenticated %}
-        <div class="govuk-button-group">
-          {{ govukButton({
-            text: "Go to Dashboard",
-            href: urlFor("/dashboard")
-          }) }}
-          {{ govukButton({
-            text: "Browse Listings",
-            href: urlFor("/listings"),
-            classes: "govuk-button--secondary"
-          }) }}
-        </div>
-      {% else %}
-        <div class="govuk-button-group">
-          {{ govukButton({
-            text: "Sign in",
-            href: urlFor("/login")
-          }) }}
-          {{ govukButton({
-            text: "Create an account",
-            href: urlFor("/register"),
-            classes: "govuk-button--secondary"
-          }) }}
+      {% if status == "signed-out" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="home-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="home-status-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">You have signed out.</p>
+          </div>
         </div>
       {% endif %}
 
-      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+      <span class="govuk-caption-xl">{{ communityName }}</span>
+      <h1 class="govuk-heading-xl">Accessible</h1>
+      <p class="govuk-body-l">Use a simpler, accessible version of {{ communityName }} for core community tasks.</p>
+      {% if tagline %}
+        <p class="govuk-body-l govuk-!-font-weight-bold">{{ tagline }}</p>
+      {% endif %}
+      <p class="govuk-body">These pages use clear structure, plain navigation, standard form controls and progressive enhancement so the core service works well with keyboards, screen readers and low-bandwidth connections.</p>
+      <p class="govuk-body">
+        <a class="govuk-link" href="{{ urlFor('/guide') }}">How timebanking works</a>
+      </p>
 
-      <h2 class="govuk-heading-m">What you can do</h2>
-
-      <ul class="govuk-list govuk-list--bullet">
-        <li>Offer your skills and services to the community</li>
-        <li>Request help from other members</li>
-        <li>Exchange time credits for services</li>
-        <li>Join groups and attend events</li>
-        <li>Connect with like-minded neighbours</li>
-      </ul>
-
-      <div class="govuk-inset-text">
-        This is a community service. We are not affiliated with, endorsed by, or connected to GOV.UK or the UK Government.
-        We use the GOV.UK Design System for accessibility and usability patterns only.
+      <div class="govuk-button-group govuk-!-margin-bottom-8">
+        {% if isAuthenticated %}
+          {{ govukButton({ text: "Go to your dashboard", href: urlFor("/dashboard") }) }}
+          {{ govukButton({ text: "View your profile", href: urlFor("/profile"), classes: "govuk-button--secondary" }) }}
+        {% else %}
+          {{ govukButton({ text: "Sign in", href: urlFor("/login") }) }}
+          {{ govukButton({ text: "Register", href: urlFor("/register"), classes: "govuk-button--secondary" }) }}
+        {% endif %}
       </div>
+    </div>
+    <div class="govuk-grid-column-one-third">
+      <div class="govuk-panel govuk-panel--confirmation nexus-alpha-panel">
+        <h2 class="govuk-panel__title">Beta service</h2>
+        <div class="govuk-panel__body">Built for accessibility needs</div>
+      </div>
+    </div>
+  </div>
+
+  {% if stats %}
+    <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
+      <div class="nexus-alpha-stat">
+        <dt>Members</dt>
+        <dd>{{ stats.members }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Hours exchanged</dt>
+        <dd>{{ stats.hoursExchanged }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Active listings</dt>
+        <dd>{{ stats.listings }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Communities</dt>
+        <dd>{{ stats.communities }}</dd>
+      </div>
+    </dl>
+  {% endif %}
+
+  <div class="govuk-inset-text">
+    This accessible frontend is an additional way to use Project NEXUS. It keeps normal page navigation and forms, then adds JavaScript only where it improves the experience.
+  </div>
+
+  <h2 class="govuk-heading-l">What you can do</h2>
+  <p class="govuk-body">Choose a task for {{ communityName }}. Availability follows the modules enabled for this community.</p>
+  <div class="nexus-alpha-card-list">
+    {% for module in modules %}
+      <article class="nexus-alpha-card">
+        <div class="nexus-alpha-module-row">
+          <div>
+            <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
+              {% if module.linked %}
+                <a class="govuk-link" href="{{ urlFor(module.href) }}">{{ module.title }}</a>
+              {% else %}
+                {{ module.title }}
+              {% endif %}
+            </h3>
+            <p class="govuk-body govuk-!-margin-bottom-0">{{ module.description }}</p>
+            {% if module.needsSignIn %}
+              <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Sign in to use this.</p>
+            {% elseif not module.available %}
+              <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">This module is not enabled for this community.</p>
+            {% endif %}
+          </div>
+          {% if module.available %}
+            <strong class="govuk-tag govuk-tag--green">Available</strong>
+          {% elseif module.needsSignIn %}
+            <strong class="govuk-tag govuk-tag--yellow">Sign in</strong>
+          {% else %}
+            <strong class="govuk-tag govuk-tag--grey">Not available</strong>
+          {% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+
+  <div class="govuk-grid-row govuk-!-margin-top-8">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-heading-l">Service details</h2>
+      <dl class="govuk-summary-list">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Community</dt>
+          <dd class="govuk-summary-list__value">{{ communityName }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Service</dt>
+          <dd class="govuk-summary-list__value">Accessible frontend for core NEXUS tasks</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Account</dt>
+          <dd class="govuk-summary-list__value">{% if isAuthenticated %}Signed in{% else %}Not signed in{% endif %}</dd>
+        </div>
+      </dl>
     </div>
   </div>
 {% endblock %}

@@ -43,6 +43,24 @@ jest.mock('../src/lib/api', () => ({
       { id: 2, name: 'Acme Timebank', slug: 'acme', tagline: 'Neighbours helping neighbours' }
     ]
   }),
+  getTenantBootstrap: jest.fn().mockResolvedValue({
+    data: {
+      id: 2,
+      name: 'Acme Timebank',
+      slug: 'acme',
+      tagline: 'Neighbours helping neighbours',
+      modules: { feed: true, listings: true, wallet: true },
+      features: { connections: true, events: true, volunteering: true }
+    }
+  }),
+  getPlatformStats: jest.fn().mockResolvedValue({
+    data: {
+      members: 0,
+      hours_exchanged: 0,
+      listings: 0,
+      communities: 0
+    }
+  }),
   getProfile: jest.fn(),
   verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),

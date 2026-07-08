@@ -67,6 +67,11 @@ UK now also resolves non-local Host values through Laravel
 host matches Laravel's `accessible_domain`. Parent-domain child tenant routing,
 full template helper conversion, and live Laravel custom-domain smoke
 certification are still open.
+Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
+the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
+uses Laravel tenant bootstrap and public platform stats for the community
+caption, tenant tagline, stat grid, and module availability cards, while
+dedicated accessible-domain roots reuse the same page with slugless links.
 Parent-domain child tenant routing now has a focused Web UK Jest slice: a
 non-local parent host plus `/{childSlug}/login` resolves `{childSlug}` through
 Laravel tenant bootstrap, requires returned `parent_domain` to match the host,
@@ -248,6 +253,16 @@ slow live Laravel pages. During that recertification, signed
 `/feed/item/listing/{id}` was fixed to refresh an expired access token via the
 existing refresh cookie, and the root body marker was updated to the tenant
 chooser text `Choose a community`.
+
+Focused tenant-home evidence from 2026-07-08: a scoped live Laravel smoke
+against temporary Web UK `http://127.0.0.1:6330`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed the base Laravel API, Web UK
+health, cookie, login, account, and logout checks plus these body markers:
+`/hour-timebank/accessible=>Accessible`,
+`/hour-timebank/accessible=>Connecting Communities`, and
+`/hour-timebank/accessible=>What you can do`. The same slice also passed full
+Web UK Jest (`697/697`), lint, and route matrix (`608/608` matched, `0`
+missing, `0` extra Web UK routes).
 
 Earlier local evidence from 2026-07-07: the harness passes end-to-end when
 web-uk is started with Laravel tenant context `TENANT_ID=2`, using the local E2E

@@ -35,7 +35,8 @@ jest.mock('../src/lib/api', () => ({
   getUnreadCount: jest.fn(),
   getTransactions: jest.fn(),
   getTenants: jest.fn(),
-  getTenantBootstrap: jest.fn()
+  getTenantBootstrap: jest.fn(),
+  getPlatformStats: jest.fn()
 }));
 
 // Set required env vars
@@ -82,11 +83,61 @@ describe('Public Routes', () => {
       const response = await request(app).get('/acme/accessible');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Project NEXUS Community');
+      expect(response.text).toContain('<h1 class="govuk-heading-xl">Accessible</h1>');
       expect(response.text).toContain('href="/acme/accessible"');
       expect(response.text).toContain('href="/acme/accessible/login"');
       expect(response.text).toContain('href="/acme/accessible/register"');
       expect(response.text).not.toContain('/acme/alpha');
+    });
+
+    it('renders the Laravel Blade tenant home for the mounted tenant root', async () => {
+      const api = require('../src/lib/api');
+      api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 2,
+          name: 'Acme Timebank',
+          slug: 'acme',
+          tagline: 'Neighbours helping neighbours',
+          modules: {
+            feed: true,
+            listings: true,
+            wallet: true
+          },
+          features: {
+            connections: true,
+            events: false,
+            volunteering: true
+          }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({
+        data: {
+          members: 1234,
+          hours_exchanged: 567.5,
+          listings: 89,
+          communities: 12
+        }
+      });
+
+      const response = await request(app).get('/acme/accessible');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('<h1 class="govuk-heading-xl">Accessible</h1>');
+      expect(response.text).toContain('Use a simpler, accessible version of Acme Timebank for core community tasks.');
+      expect(response.text).toContain('Neighbours helping neighbours');
+      expect(response.text).toContain('Built for accessibility needs');
+      expect(response.text).toContain('Members');
+      expect(response.text).toContain('1,234');
+      expect(response.text).toContain('567.5');
+      expect(response.text).toContain('What you can do');
+      expect(response.text).toContain('Choose a task for Acme Timebank.');
+      expect(response.text).toContain('This module is not enabled for this community.');
+      expect(response.text).toContain('href="/acme/accessible/login?status=auth-required"');
+      expect(response.text).not.toContain('Welcome to Project NEXUS Community');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'acme' });
+      expect(api.getPlatformStats).toHaveBeenCalled();
     });
 
     it('canonicalizes Laravel legacy alpha mount paths to the cleaner accessible mount', async () => {
@@ -135,7 +186,8 @@ describe('Public Routes', () => {
         .set('Host', 'acme-accessible.test');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Welcome to Project NEXUS Community');
+      expect(response.text).toContain('<h1 class="govuk-heading-xl">Accessible</h1>');
+      expect(response.text).toContain('Use a simpler, accessible version of Acme Timebank for core community tasks.');
       expect(response.text).toContain('href="/"');
       expect(response.text).toContain('href="/login"');
       expect(response.text).toContain('href="/register"');

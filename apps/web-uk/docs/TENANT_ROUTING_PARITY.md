@@ -64,6 +64,10 @@ Current implemented slice:
 - Shared root `/` renders the Laravel-style tenant chooser backed by
   `/api/v2/tenants` without `include_master`, excludes the master tenant, and
   links communities to the cleaner `/{tenantSlug}/accessible` mount.
+- Tenant-mounted roots render the Laravel Blade-style tenant home instead of
+  the old generic Web UK home. Shared mount `/{tenantSlug}/accessible` loads
+  tenant bootstrap and public platform stats, renders the `Accessible` page,
+  and rewrites links under the active shared mount.
 - Non-local Host values are resolved through Laravel
   `/api/v2/tenant/bootstrap`; when Laravel returns a tenant whose
   `accessible_domain` matches the request host, Web UK treats the request as a
@@ -90,6 +94,9 @@ Current gaps:
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
   `parent_domain: timebank.global`.
+- Shared tenant-root home rendering is covered by Jest and a scoped live
+  Laravel smoke against `/hour-timebank/accessible`, checking `Accessible`,
+  `Connecting Communities`, and `What you can do` in the rendered page body.
 
 ## First Verified Slice
 
@@ -133,11 +140,22 @@ HTTP `Host` header, asserts the expected body text, and rejects generated
 The emitted check was
 `tenant-domain-page-timebank-global-hour-timebank-login-renders`.
 
+The seventh tenant-home slice verifies that `/{tenantSlug}/accessible` renders
+Laravel's Blade-style tenant home, including tenant name, tagline, module
+availability, sign-in status, and platform stats. A scoped live smoke on
+2026-07-08 against Laravel `http://127.0.0.1:8088` and temporary Web UK
+`http://127.0.0.1:6330` passed body-text checks for
+`/hour-timebank/accessible=>Accessible`,
+`/hour-timebank/accessible=>Connecting Communities`, and
+`/hour-timebank/accessible=>What you can do`.
+
 Verification command:
 
 ```powershell
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk test -- laravel-runtime-smoke.test.js --runInBand
 $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'timebank.global|/hour-timebank/login=>Sign in'
+npm --prefix apps/web-uk run smoke:laravel
+$env:SMOKE_BODY_TEXT_PAGE_PATHS = '/hour-timebank/accessible=>Accessible;/hour-timebank/accessible=>Connecting Communities;/hour-timebank/accessible=>What you can do'
 npm --prefix apps/web-uk run smoke:laravel
 ```

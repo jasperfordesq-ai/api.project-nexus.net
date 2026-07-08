@@ -85,6 +85,19 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
 const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
+const HOME_MODULES = [
+  { key: 'dashboard', title: 'Dashboard', description: 'See your tasks, activity and quick links.', href: '/dashboard', authRequired: true },
+  { key: 'feed', title: 'Feed', description: 'Read updates and take part in community conversations.', href: '/feed', moduleKey: 'feed' },
+  { key: 'listings', title: 'Listings', description: 'Find offers and requests from people nearby.', href: '/listings', moduleKey: 'listings' },
+  { key: 'members', title: 'Members', description: 'Find members and build trusted connections.', href: '/members', featureKey: 'connections' },
+  { key: 'events', title: 'Events', description: 'Browse and join community events.', href: '/events', featureKey: 'events' },
+  { key: 'volunteering', title: 'Volunteering', description: 'Find volunteering opportunities and manage shifts.', href: '/volunteering', featureKey: 'volunteering' },
+  { key: 'messages', title: 'Messages', description: 'Read and send direct messages with members.', href: '/messages', authRequired: true },
+  { key: 'exchanges', title: 'Exchanges', description: 'Manage exchange requests and time-credit agreements.', href: '/exchanges', authRequired: true, moduleKey: 'listings' },
+  { key: 'wallet', title: 'Wallet', description: 'View your balance, history and time-credit transfers.', href: '/wallet', authRequired: true, moduleKey: 'wallet' },
+  { key: 'profile', title: 'My Profile', description: 'View and edit how you appear to other members.', href: '/profile', authRequired: true }
+];
+
 if (!COOKIE_SECRET) {
   console.error('COOKIE_SECRET environment variable is required');
   process.exit(1);
@@ -365,10 +378,99 @@ function normalizeTenantChooserCommunities(result) {
     });
 }
 
+function dataFrom(result) {
+  return result?.data || result?.tenant || result || {};
+}
+
+function numberLabel(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return '0';
+  return new Intl.NumberFormat('en-GB', {
+    maximumFractionDigits: Number.isInteger(number) ? 0 : 1
+  }).format(number);
+}
+
+function featureEnabled(tenant, key, fallback = true) {
+  const features = tenant.features && typeof tenant.features === 'object' ? tenant.features : {};
+  const modules = tenant.modules && typeof tenant.modules === 'object' ? tenant.modules : {};
+  if (Object.prototype.hasOwnProperty.call(features, key)) return Boolean(features[key]);
+  if (Object.prototype.hasOwnProperty.call(modules, key)) return Boolean(modules[key]);
+  return fallback;
+}
+
+function buildHomeModules(tenant, isAuthenticated) {
+  return HOME_MODULES.map((module) => {
+    const tenantEnabled = module.moduleKey || module.featureKey
+      ? featureEnabled(tenant, module.moduleKey || module.featureKey, true)
+      : true;
+    const needsSignIn = tenantEnabled && module.authRequired && !isAuthenticated;
+    const available = tenantEnabled && (!module.authRequired || isAuthenticated);
+
+    return {
+      ...module,
+      href: needsSignIn ? '/login?status=auth-required' : module.href,
+      available,
+      needsSignIn,
+      linked: available || needsSignIn
+    };
+  });
+}
+
+async function loadTenantHomeData(req, res) {
+  const { ApiOfflineError, getPlatformStats, getTenantBootstrap } = require('./lib/api');
+  const routedTenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+  let tenant = routedTenant;
+
+  if (!tenant.slug && req.accessibleRouting?.tenantSlug) {
+    try {
+      tenant = dataFrom(await getTenantBootstrap({ slug: req.accessibleRouting.tenantSlug }));
+      req.accessibleRouting.tenant = tenant;
+      Object.assign(res.locals, buildShellLocals(req, res.locals.isAuthenticated));
+    } catch (error) {
+      if (!(error instanceof ApiOfflineError)) {
+        throw error;
+      }
+      tenant = { slug: req.accessibleRouting.tenantSlug, name: req.accessibleRouting.tenantSlug };
+    }
+  }
+
+  let stats = {};
+  try {
+    stats = dataFrom(await getPlatformStats());
+  } catch (error) {
+    if (!(error instanceof ApiOfflineError)) {
+      throw error;
+    }
+  }
+
+  const communityName = tenant.name || tenant.slug || req.accessibleRouting?.tenantSlug || res.locals.tenantName;
+
+  return {
+    tenant,
+    communityName,
+    tagline: tenant.tagline || '',
+    stats: {
+      members: numberLabel(stats.members),
+      hoursExchanged: numberLabel(stats.hours_exchanged ?? stats.hoursExchanged),
+      listings: numberLabel(stats.listings),
+      communities: numberLabel(stats.communities)
+    },
+    modules: buildHomeModules(tenant, res.locals.isAuthenticated)
+  };
+}
+
 // Public routes (no CSRF needed for GET)
 app.get('/', async (req, res) => {
   if (req.accessibleRouting?.mode) {
-    return res.render('home', { title: 'Home' });
+    const homeData = await loadTenantHomeData(req, res);
+    return res.render('home', {
+      title: 'Accessible',
+      activeNav: 'home',
+      status: typeof req.query.status === 'string' ? req.query.status : '',
+      ...homeData
+    });
   }
 
   const { ApiOfflineError, getTenants } = require('./lib/api');

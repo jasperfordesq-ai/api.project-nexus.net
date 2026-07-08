@@ -238,7 +238,10 @@ function prefixFooterColumns(columns, prefix) {
 }
 
 function buildShellLocals(req, isAuthenticated) {
-  const tenantName = process.env.ACCESSIBLE_TENANT_NAME || serviceName;
+  const routedTenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+  const tenantName = routedTenant.name || process.env.ACCESSIBLE_TENANT_NAME || serviceName;
   const currentLocale = typeof req.query.locale === 'string' ? req.query.locale : 'en';
   const routePrefix = req.accessibleRouting?.prefix || '';
   const visiblePath = req.originalUrl ? req.originalUrl.split('?')[0] : (req.path || '/');

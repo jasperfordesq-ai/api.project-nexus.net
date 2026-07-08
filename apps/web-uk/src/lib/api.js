@@ -233,6 +233,10 @@ async function getTenantBootstrap(options = {}) {
   return request(endpoint, { headers });
 }
 
+async function getPlatformStats() {
+  return request('/api/v2/platform/stats');
+}
+
 async function verify2fa(token, code) {
   return request('/api/auth/2fa/verify', {
     method: 'POST',
@@ -3083,6 +3087,7 @@ module.exports = {
   submitContact,
   getTenants,
   getTenantBootstrap,
+  getPlatformStats,
   forgotPassword,
   resetPassword,
   resendVerification,
