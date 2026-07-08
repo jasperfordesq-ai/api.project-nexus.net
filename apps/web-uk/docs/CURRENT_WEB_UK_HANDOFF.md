@@ -67,11 +67,18 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `663` |
+| Web UK routes | `653` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `56` |
+| Extra Web UK routes | `46` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused feed route slice: legacy local GET/POST `/feed/new`,
+`/feed/{id}`, `/feed/{id}/edit`, `/feed/{id}/like`, `/feed/{id}/unlike`,
+`/feed/{id}/comments`, and delete/edit/comment variants were removed. The feed
+hub now points users at Laravel's accessible `/feed/posts/{id}` permalink and
+typed `/feed/items/post/{id}/like` action while preserving the Laravel
+`/feed/posts` multipart compose form.
 
 Latest focused messages route slice: legacy local GET/POST `/messages/new`
 without a member id was removed. Direct message entry points now use Laravel's

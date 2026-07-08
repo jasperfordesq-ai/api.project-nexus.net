@@ -1349,10 +1349,16 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 663 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 56 local-only routes. These
+accessible route declarations, 653 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 46 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local feed post routes are intentionally not exposed as separate pages.
+Laravel's accessible feed source uses `/feed/posts`, `/feed/posts/{id}`, typed
+`/feed/items/{type}/{id}` actions, and comment/reaction aliases under
+`/feed/posts/*` or `/feed/comments/*`; the feed hub now links and submits to
+those shapes instead of `/feed/new` or `/feed/{id}` routes.
 
 Bare `/messages/new` is intentionally not exposed as a separate local page.
 Laravel's accessible direct-message source uses `/messages/new/{userId}` and

@@ -25,8 +25,8 @@
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Feed</h1>
         <div class="app-page-header__actions">
           {{ govukButton({
-            text: "Create a post",
-            href: "/feed/new" + ("?group_id=" + groupId if groupId else ""),
+            text: "Write a post",
+            href: "#content",
             classes: "govuk-!-margin-bottom-0"
           }) }}
         </div>
@@ -128,17 +128,15 @@
                 <div class="app-post__actions">
                   {# Like button #}
                   {% if post.isLiked or post.is_liked %}
-                    <form action="/feed/{{ post.id }}/unlike" method="post" class="app-post__action-form">
+                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <input type="hidden" name="return_to" value="/feed{% if groupId %}?group_id={{ groupId }}{% endif %}">
                       <button type="submit" class="app-link-button app-post__action-button app-post__action-button--active">
                         <span aria-hidden="true">&#9829;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
                       </button>
                     </form>
                   {% else %}
-                    <form action="/feed/{{ post.id }}/like" method="post" class="app-post__action-form">
+                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <input type="hidden" name="return_to" value="/feed{% if groupId %}?group_id={{ groupId }}{% endif %}">
                       <button type="submit" class="app-link-button app-post__action-button">
                         <span aria-hidden="true">&#9825;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
                       </button>
@@ -146,12 +144,12 @@
                   {% endif %}
 
                   {# Comment link #}
-                  <a href="/feed/{{ post.id }}" class="govuk-link app-post__action-button">
+                  <a href="/feed/posts/{{ post.id }}" class="govuk-link app-post__action-button">
                     <span aria-hidden="true">&#128172;</span> {{ post.commentCount or post.comment_count }} Comment{{ 's' if post.commentCount or post.comment_count != 1 else '' }}
                   </a>
                 </div>
 
-                <a href="/feed/{{ post.id }}" class="govuk-link">View post</a>
+                <a href="/feed/posts/{{ post.id }}" class="govuk-link">View post</a>
               </footer>
             </article>
           {% endfor %}
@@ -190,8 +188,8 @@
             {% endif %}
           </p>
           {{ govukButton({
-            text: "Create a post",
-            href: "/feed/new" + ("?group_id=" + groupId if groupId else "")
+            text: "Write a post",
+            href: "#content"
           }) }}
         </div>
       {% endif %}

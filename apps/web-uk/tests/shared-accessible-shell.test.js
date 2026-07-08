@@ -9131,6 +9131,42 @@ describe('shared accessible frontend shell', () => {
     }));
   });
 
+  it('renders the feed hub without legacy post routes', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          content: 'Repair cafe is open.',
+          created_at: '2026-07-06T09:30:00Z',
+          user: {
+            id: 77,
+            first_name: 'Ada',
+            last_name: 'Lovelace'
+          },
+          like_count: 2,
+          comment_count: 1,
+          is_liked: false
+        }
+      ],
+      pagination: { page: 1, total_pages: 1 }
+    });
+
+    const response = await request(app)
+      .get('/feed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Feed');
+    expect(response.text).toContain('action="/feed/posts"');
+    expect(response.text).toContain('href="/feed/posts/42"');
+    expect(response.text).toContain('action="/feed/items/post/42/like"');
+    expect(response.text).not.toContain('href="/feed/new"');
+    expect(response.text).not.toContain('action="/feed/new"');
+    expect(response.text).not.toContain('href="/feed/42"');
+    expect(response.text).not.toContain('action="/feed/42');
+  });
+
   it('submits Laravel feed typed like and comment aliases through v2 social helpers', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

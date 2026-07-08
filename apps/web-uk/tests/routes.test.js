@@ -186,6 +186,38 @@ describe('Protected Routes', () => {
       expect(postResponse.status).toBe(404);
       expect(postResponse.text).toContain('Page not found');
     });
+
+    it('legacy feed post routes should return not found', async () => {
+      for (const path of ['/feed/new', '/feed/42', '/feed/42/edit']) {
+        const response = await request(app).get(path);
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      for (const path of [
+        '/feed/new',
+        '/feed/42/edit',
+        '/feed/42/delete',
+        '/feed/42/like',
+        '/feed/42/unlike',
+        '/feed/42/comments',
+        '/feed/42/comments/12/delete'
+      ]) {
+        const response = await agent
+          .post(path)
+          .type('form')
+          .send({ _csrf: csrfMatch[1] });
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+    });
   });
 });
 
