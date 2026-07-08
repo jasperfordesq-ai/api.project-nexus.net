@@ -6312,7 +6312,7 @@ describe('shared accessible frontend shell', () => {
     expect(pricing.status).toBe(200);
     expect(api.getMemberPremiumTiers).toHaveBeenCalledWith('test-token');
     expect(api.getMemberPremiumMe).toHaveBeenCalledWith('test-token');
-    expect(pricing.text).toContain('Support this community');
+    expect(pricing.text).toContain('Donate');
     expect(pricing.text).toContain('Community Champion');
     expect(pricing.text).toContain('Support local projects every month.');
     expect(pricing.text).toContain('5.00 per month');

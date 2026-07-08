@@ -43,7 +43,7 @@ function redirectAuthIfNeeded(error, res) {
   return false;
 }
 
-function renderPremiumError(error, res, title = 'Support this community') {
+function renderPremiumError(error, res, title = 'Donate') {
   if (redirectAuthIfNeeded(error, res)) return true;
 
   if (error instanceof ApiError && error.status === 404) {
@@ -176,7 +176,7 @@ router.get('/', asyncRoute(async (req, res) => {
     const me = premiumMe(meResult);
 
     return res.render('premium/index', {
-      title: 'Support this community',
+      title: 'Donate',
       activeNav: 'explore',
       tiers: listTiers(tiersResult).map(normalizeTier).filter((tier) => tier.id > 0),
       currentTierName: currentTierName(me),

@@ -334,11 +334,19 @@ The signed `/explore`, `/chat`, `/account`, `/wallet`, `/messages`,
 `/trust-and-safety`, `/legal`, `/accessibility`, `/legal/terms`,
 `/legal/privacy`, `/legal/cookies`, `/legal/community-guidelines`, and
 `/legal/acceptable-use` returned expected body markers against
-`WEB_UK_BASE_URL=http://127.0.0.1:6210`. The default scope now contains `374`
-checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
-unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
-checks, plus 2 content-type contract checks, 27 body-text contract checks, and
-the 6 auth/health checks.
+`WEB_UK_BASE_URL=http://127.0.0.1:6210`. The module landing pages
+`/volunteering`, `/organisations`, `/organisations/browse`, `/events`,
+`/events/new`, `/listings`, `/jobs`, `/courses`, `/courses/mine`,
+`/marketplace`, `/marketplace/mine`, `/marketplace/onboarding`, `/blog`,
+`/feed`, `/podcasts`, `/reviews`, `/search`, `/search/advanced`,
+`/federation`, `/notifications`, `/activity`, `/achievements`, `/leaderboard`,
+`/nexus-score`, and `/premium` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6211`; `/premium` now follows the Laravel
+Blade title `Donate`. The default scope now contains `399` checks: `279`
+module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
+redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
+content-type contract checks, 52 body-text contract checks, and the 6
+auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
