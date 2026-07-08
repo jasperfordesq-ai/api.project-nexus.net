@@ -568,18 +568,22 @@ The public support pages `/contact`, `/cookies`, `/newsletter/unsubscribe`,
 `/verify-email`, and `/report-a-problem` now carry Laravel-backed body-text
 markers, with `/contact` and `/report-a-problem` copy realigned to the Laravel
 Blade strings before certification.
+The no-JS cookie consent POST is now part of the default Laravel runtime smoke
+scope: it fetches the home-page CSRF token, posts `cookies=reject` to
+`/cookie-consent`, and asserts the redirect to `/cookies` plus the
+Laravel-compatible `nexus_alpha_cookie_consent=essential` cookie.
 The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The module-page/body-text marker gap is now
-0: `279` module-page checks and `279` body-text contract checks.
-The default scope now contains `626` checks:
+0: `279` module-page checks and `283` body-text contract checks.
+The default scope now contains `631` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 279 body-text contract checks, and the 6
-auth/health checks.
+content-type contract checks, 283 body-text contract checks, 1 cookie-consent
+POST workflow check, and the 6 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
@@ -919,10 +923,12 @@ The cookie banner and `/cookies` page are now local Blade-style no-JS
 candidates. The shell renders the GOV.UK cookie banner before the skip link
 until the Laravel-compatible `nexus_alpha_cookie_consent` cookie is present.
 Accept/reject/save posts use `/cookie-consent` and store `all` or `essential`
-locally, matching Laravel's first-party choice cookie values. This remains
-partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
-generation, localization, runtime smoke tests, and ASP.NET backend
-compatibility are not certified.
+locally, matching Laravel's first-party choice cookie values. The default
+Laravel runtime smoke now verifies the no-JS reject POST redirect and
+`nexus_alpha_cookie_consent=essential` cookie against a tenant-aware local
+web-uk process. This remains partial: Laravel `cookie_consents` audit
+persistence, tenant scoping, route-name generation, localization, and ASP.NET
+backend compatibility are not certified.
 
 The `/listings/{id}/report`, `/listings/{id}/exchange-request`,
 `/listings/{id}/analytics`, and `/listings/{id}/comments` GET pages are now

@@ -571,12 +571,12 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `279` body-text contract checks.
-The default scope now contains `626` checks:
+The default scope now contains `631` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 279 body-text contract checks, and the 6
-auth/health checks.
+content-type contract checks, 283 body-text contract checks, 1 cookie-consent
+POST workflow check, and the 6 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
@@ -597,7 +597,7 @@ fell from 28 to 0.
 | Sign in and email auth | `/login`, `/login/forgot-password`, `/password/reset`, `/login/two-factor`, `/verify-email`, `/newsletter/unsubscribe` | `/login`, `/login/forgot-password`, `/password/reset`, `/login/two-factor`, `/verify-email`, `/newsletter/unsubscribe` | Partial Laravel-compatible candidate. Forgot-password, reset-password, two-factor, and resend-verification Laravel aliases route to local handlers. Signed-session `/login`, `/login/forgot-password`, `/password/reset?token=reset-token`, and `/register` render like Laravel; `/login/two-factor` redirects to `/login?status=two-factor-expired` when the pending 2FA session token is absent. POST `/login` now handles Laravel `requires_2fa` responses by storing `two_factor_token` in the web session and redirecting to `/login/two-factor`. `/verify-email` renders Blade-style missing, invalid, and success states and calls Laravel `/api/auth/verify-email` when a token is present. `/newsletter/unsubscribe` renders Blade-style missing, invalid, and success states and calls Laravel `/api/v2/newsletter/unsubscribe` when a token is present. Tenant-domain routing, localization, and runtime email-token behavior are not certified. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
 | Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Partial Laravel-backed candidate. Signed-out visitors redirect to `/contact?problem_url=...`; signed-in visitors get a structured support report form that posts to Laravel `/api/v2/support/reports`. |
-| Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_alpha_cookie_consent` is present; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and runtime certification are not complete. |
+| Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_alpha_cookie_consent` is present; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values. The default Laravel runtime smoke now verifies the no-JS reject POST stores `nexus_alpha_cookie_consent=essential` and redirects to `/cookies`; a targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:6241` with `TENANT_ID=2` passed this check on 2026-07-08. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and ASP.NET backend compatibility are not certified. |
 
 ## Footer Column Contract
 

@@ -9,6 +9,7 @@ const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
 const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
+const ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
 const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/events/6',
@@ -664,6 +665,10 @@ class CookieJar {
       }
     }
   }
+
+  get(name) {
+    return this.cookies.get(name) || '';
+  }
 }
 
 function stripTrailingSlash(value) {
@@ -854,6 +859,10 @@ function unsignedLoginRedirectPageCheckName(path) {
     .replace(/[^a-z0-9]+/gi, '-')
     .toLowerCase();
   return `unsigned-login-page-${pathSlug || 'home'}-redirects-login`;
+}
+
+function cookieConsentPostCheckName() {
+  return 'cookie-consent-post-stores-essential-choice';
 }
 
 function hasOwn(object, key) {
@@ -1049,6 +1058,56 @@ async function runLaravelRuntimeSmoke(options = {}) {
     );
   } catch (error) {
     addCheck(checks, 'protected-account-redirects-to-login', false, error.message);
+  }
+
+  try {
+    const response = await smokeRequest({
+      fetchImpl: config.fetchImpl,
+      timeoutMs: config.timeoutMs,
+      cookieJar,
+      url: joinUrl(config.webBaseUrl, '/')
+    });
+    const html = await readTextSafely(response);
+    const csrfToken = extractCsrfToken(html);
+
+    if (!response.ok || !csrfToken) {
+      addCheck(
+        checks,
+        cookieConsentPostCheckName(),
+        false,
+        `expected home page cookie banner with CSRF token, got ${response.status}`,
+        { status: response.status }
+      );
+    } else {
+      const form = new URLSearchParams({
+        _csrf: csrfToken,
+        cookies: 'reject',
+        return: '/cookies'
+      });
+      const postResponse = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, '/cookie-consent'),
+        options: {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: form.toString()
+        }
+      });
+      const ok = isRedirectTo(postResponse, '/cookies') && cookieJar.get(ALPHA_COOKIE_NAME) === 'essential';
+      addCheck(
+        checks,
+        cookieConsentPostCheckName(),
+        ok,
+        ok
+          ? 'No-JS cookie consent POST stored the essential-only Laravel-compatible choice.'
+          : `expected redirect to /cookies and ${ALPHA_COOKIE_NAME}=essential, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${cookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: cookieJar.get(ALPHA_COOKIE_NAME) }
+      );
+    }
+  } catch (error) {
+    addCheck(checks, cookieConsentPostCheckName(), false, error.message);
   }
 
   for (const path of config.unsignedAuthRequiredPagePaths) {

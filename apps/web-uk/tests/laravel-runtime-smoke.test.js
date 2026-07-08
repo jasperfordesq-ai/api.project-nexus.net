@@ -77,6 +77,39 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    if (req.method === 'GET' && req.url === '/') {
+      if ((req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end('<h1>Welcome to Project NEXUS Community</h1>');
+        return;
+      }
+
+      res.writeHead(200, {
+        'content-type': 'text/html',
+        'set-cookie': 'nexus.csrf=csrf-cookie; Path=/; HttpOnly'
+      });
+      res.end('<form method="post" action="/cookie-consent"><input type="hidden" name="_csrf" value="csrf-token"><button name="cookies" value="reject">Reject analytics cookies</button></form>');
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/cookie-consent') {
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      requests[requests.length - 1].body = body;
+      const hasExpectedCsrf = params.get('_csrf') === 'csrf-token' && (req.headers.cookie || '').includes('nexus.csrf=csrf-cookie');
+      const storesEssentialChoice = hasExpectedCsrf && params.get('cookies') === 'reject';
+      if (storesEssentialChoice) {
+        res.writeHead(302, {
+          location: params.get('return') || '/',
+          'set-cookie': 'nexus_alpha_cookie_consent=essential; Path=/'
+        });
+      } else {
+        res.writeHead(400, { 'content-type': 'text/plain' });
+      }
+      res.end();
+      return;
+    }
+
     const publicAuthFixtures = new Map([
       ['/login', 'Sign in'],
       ['/login/forgot-password', 'Reset your password'],
@@ -1545,12 +1578,15 @@ describe('Laravel runtime smoke harness', () => {
       ['laravel-api-reachable', true],
       ['web-health', true],
       ['protected-account-redirects-to-login', true],
+      ['cookie-consent-post-stores-essential-choice', true],
       ['login-form-csrf', true],
       ['login-post-redirects-dashboard', true],
       ['signed-account-renders', true]
     ]));
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/groups?limit=1');
+    expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /cookie-consent');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /login');
+    expect(requests.find((request) => request.method === 'POST' && request.url === '/cookie-consent').body).toContain('cookies=reject');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/account').at(-1).cookie).toContain('token=signed-token');
   });
 
