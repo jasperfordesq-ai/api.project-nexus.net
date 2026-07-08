@@ -5,6 +5,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -51,6 +54,46 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         json.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
         json.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+    }
+
+    [Fact]
+    public async Task LaravelReactReactionsV2ReadAlias_ReturnsReactionSummaryForExistingPost()
+    {
+        await AuthenticateAsMemberAsync();
+        int postId;
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var post = new FeedPost
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.AdminUser.Id,
+                Content = "Runtime smoke post for Laravel React reaction summary",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.FeedPosts.Add(post);
+            await db.SaveChangesAsync();
+            postId = post.Id;
+            db.ContentReactions.Add(new ContentReaction
+            {
+                TenantId = TestData.Tenant1.Id,
+                TargetType = "post",
+                TargetId = postId,
+                UserId = TestData.MemberUser.Id,
+                ReactionType = "celebrate",
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await Client.GetAsync($"/api/v2/reactions/post/{postId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var data = json.RootElement.GetProperty("data");
+        data.GetProperty("counts").GetProperty("celebrate").GetInt32().Should().Be(1);
+        data.GetProperty("user_reaction").GetString().Should().Be("celebrate");
+        data.GetProperty("total").GetInt32().Should().Be(1);
     }
 
     [Theory]
@@ -467,7 +510,7 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     [InlineData("/api/v2/ideation-tags/popular")]
     [InlineData("/api/v2/bookmark-collections")]
     [InlineData("/api/v2/link-preview?url=https%3A%2F%2Fexample.com")]
-    [InlineData("/api/v2/reactions/post/42")]
+    [InlineData("/api/v2/reactions/listing/1")]
     [InlineData("/api/v2/reviews/pending")]
     [InlineData("/api/v2/reviews/user/1")]
     [InlineData("/api/v2/me/fadp/consent-history")]
