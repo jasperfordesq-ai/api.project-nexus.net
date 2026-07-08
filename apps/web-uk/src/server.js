@@ -104,7 +104,7 @@ nunjucksEnv.addFilter('parseJson', (str) => {
   if (!str) return {};
   try {
     return JSON.parse(str);
-  } catch (e) {
+  } catch {
     return {};
   }
 });
@@ -129,7 +129,7 @@ nunjucksEnv.addFilter('formatDate', (dateStr) => {
       month: 'short',
       year: 'numeric'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -146,7 +146,7 @@ nunjucksEnv.addFilter('formatEventDate', (dateStr) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -161,7 +161,7 @@ nunjucksEnv.addFilter('date', (dateStr) => {
       month: 'short',
       year: 'numeric'
     });
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 });
@@ -333,7 +333,7 @@ app.use(async (req, res, next) => {
       ]);
       res.locals.notificationCount = notifResult.unreadCount || notifResult.unread_count || 0;
       res.locals.unreadMessageCount = msgResult.unreadCount || msgResult.unread_count || 0;
-    } catch (error) {
+    } catch {
       // Silently fail - don't break the page if counts fail
       res.locals.notificationCount = 0;
       res.locals.unreadMessageCount = 0;
