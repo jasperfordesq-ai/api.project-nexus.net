@@ -24,7 +24,7 @@
         </div>
       {% endif %}
 
-      <form method="post" action="/group-exchanges/new" class="govuk-!-margin-top-2">
+      <form method="post" action="{{ urlFor('/group-exchanges/new') }}" class="govuk-!-margin-top-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group{% if errorMessage %} govuk-form-group--error{% endif %}">
           <label class="govuk-label govuk-label--m" for="title">Title</label>

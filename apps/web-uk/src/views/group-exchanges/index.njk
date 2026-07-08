@@ -22,25 +22,25 @@
   {% endif %}
 
   <p class="govuk-body">
-    <a class="govuk-button" href="/group-exchanges/new" role="button" draggable="false" data-module="govuk-button">Start a group exchange</a>
+    <a class="govuk-button" href="{{ urlFor('/group-exchanges/new') }}" role="button" draggable="false" data-module="govuk-button">Start a group exchange</a>
   </p>
 
   <nav class="govuk-!-margin-bottom-4" aria-label="Filter by status">
     <ul class="govuk-list nexus-alpha-filter-tabs">
       {% set tabs = [
-        { value: "", label: "All", href: "/group-exchanges" },
-        { value: "draft", label: "Draft", href: "/group-exchanges?state=draft" },
-        { value: "pending", label: "Awaiting approval", href: "/group-exchanges?state=pending" },
-        { value: "active", label: "Active", href: "/group-exchanges?state=active" },
-        { value: "completed", label: "Completed", href: "/group-exchanges?state=completed" },
-        { value: "cancelled", label: "Cancelled", href: "/group-exchanges?state=cancelled" }
+        { value: "", label: "All", path: "/group-exchanges" },
+        { value: "draft", label: "Draft", path: "/group-exchanges?state=draft" },
+        { value: "pending", label: "Awaiting approval", path: "/group-exchanges?state=pending" },
+        { value: "active", label: "Active", path: "/group-exchanges?state=active" },
+        { value: "completed", label: "Completed", path: "/group-exchanges?state=completed" },
+        { value: "cancelled", label: "Cancelled", path: "/group-exchanges?state=cancelled" }
       ] %}
       {% for tab in tabs %}
         <li class="govuk-!-display-inline-block govuk-!-margin-right-3">
           {% if exchangeState == tab.value %}
             <strong>{{ tab.label }}</strong>
           {% else %}
-            <a class="govuk-link" href="{{ tab.href }}">{{ tab.label }}</a>
+            <a class="govuk-link" href="{{ urlFor(tab.path) }}">{{ tab.label }}</a>
           {% endif %}
         </li>
       {% endfor %}
@@ -61,7 +61,7 @@
         {% for exchange in exchanges %}
           <tr class="govuk-table__row">
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="/group-exchanges/{{ exchange.id }}">{{ exchange.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/group-exchanges/' + (exchange.id | string)) }}">{{ exchange.title }}</a>
             </td>
             <td class="govuk-table__cell">
               <strong class="govuk-tag {{ exchange.statusClass }}">{{ exchange.statusLabel }}</strong>

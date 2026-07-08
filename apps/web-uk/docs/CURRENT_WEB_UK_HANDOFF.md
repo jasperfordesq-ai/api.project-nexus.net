@@ -100,7 +100,10 @@ empty-state member CTAs, pagination base URL, network search form, network
 tabs, load-more links, card actions, and back link through `urlFor()`. The
 latest notifications source slice now routes the notifications breadcrumb,
 filter links, read/delete form actions, redirect hidden values, pagination base
-URL, and unread empty-state CTA through `urlFor()`.
+URL, and unread empty-state CTA through `urlFor()`. The latest group-exchanges
+source slice now routes group-exchange create CTA, status tabs, detail links,
+create form, participant add/remove/search forms, confirmation form, and
+complete/cancel actions through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -157,12 +160,12 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
 
-Latest local verification after the notifications source-helper slice:
+Latest local verification after the group-exchanges source-helper slice:
 
-- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"` first failed on raw `/notifications` links/actions, then passed after the template conversion.
-- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `13/13`.
-- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"` passed `1/1` selected test.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `718/718` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange tabs"` first failed on raw `/group-exchanges` links/actions, then passed after the template conversion.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"` passed `3/3` selected tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `14/14`.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `719/719` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 

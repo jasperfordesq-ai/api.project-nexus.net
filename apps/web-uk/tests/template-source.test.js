@@ -274,4 +274,24 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toMatch(/urlFor\(["']\/notifications/);
     expect(template).toContain('value="{{ urlFor(notificationLink) }}"');
   });
+
+  it('keeps group exchange tabs, links, and forms behind urlFor()', () => {
+    const templates = [
+      path.join('group-exchanges', 'index.njk'),
+      path.join('group-exchanges', 'create.njk'),
+      path.join('group-exchanges', 'detail.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/group-exchanges/);
+      expect(template).not.toMatch(/action="\/group-exchanges/);
+      expect(template).not.toContain('href: "/group-exchanges');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/group-exchanges/);
+    expect(templates.join('\n')).not.toContain('href="{{ tab.href }}"');
+  });
 });

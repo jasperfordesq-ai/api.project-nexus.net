@@ -142,7 +142,10 @@ Current gaps:
   route-provided card links/actions. The latest focused source conversion
   covers the notifications index template, including breadcrumbs, filters,
   read/delete form actions, redirect hidden values, pagination, and the unread
-  empty-state CTA.
+  empty-state CTA. The latest focused source conversion covers the group
+  exchange list/create/detail templates, including the create CTA, status tabs,
+  detail links, create form, participant add/remove/search forms, confirmation
+  form, and complete/cancel actions.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -335,9 +338,24 @@ the raw `/notifications` links/actions, then passed after conversion; a source
 scan for notification-local raw `href`/`action` strings and the old
 `notificationLink` hidden value returns no matches.
 
+The twenty-first template-helper source slice extends direct `urlFor()`
+conversion into group exchanges. `src/views/group-exchanges/index.njk`,
+`create.njk`, and `detail.njk` now route the create CTA, status filter tabs,
+detail links, create form, participant search/add/remove forms, participant
+confirmation form, and complete/cancel forms through `urlFor()`. The
+source-level regression first failed on the raw `/group-exchanges` links and
+actions, then passed after conversion; a source scan for group-exchange-local
+raw `href`/`action` strings returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange tabs"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath

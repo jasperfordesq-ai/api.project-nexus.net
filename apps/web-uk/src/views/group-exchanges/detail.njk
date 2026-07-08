@@ -75,7 +75,7 @@
             </td>
             {% if editable %}
               <td class="govuk-table__cell">
-                <form method="post" action="/group-exchanges/{{ exchange.id }}/participants/{{ participant.userId }}/remove" class="nexus-alpha-linkform">
+                <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/participants/' + (participant.userId | string) + '/remove') }}" class="nexus-alpha-linkform">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Remove</button>
                 </form>
@@ -96,7 +96,7 @@
         <div class="govuk-inset-text"><p class="govuk-body">You have confirmed your participation.</p></div>
       {% else %}
         <p class="govuk-body">Confirm that you agree to take part in this group exchange.</p>
-        <form method="post" action="/group-exchanges/{{ exchange.id }}/confirm">
+        <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/confirm') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button class="govuk-button" data-module="govuk-button">Confirm my participation</button>
         </form>
@@ -107,7 +107,7 @@
   {% if editable %}
     <section aria-labelledby="add-heading" class="govuk-!-margin-top-6">
       <h2 class="govuk-heading-l" id="add-heading">Add a person</h2>
-      <form method="get" action="/group-exchanges/{{ exchange.id }}">
+      <form method="get" action="{{ urlFor('/group-exchanges/' + (exchange.id | string)) }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="participant_q">Find a member</label>
           <div id="pq-hint" class="govuk-hint">Search by name.</div>
@@ -121,7 +121,7 @@
           {% for candidate in participantResults %}
             <div class="nexus-alpha-card govuk-!-margin-bottom-4">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ candidate.name }}</h3>
-              <form method="post" action="/group-exchanges/{{ exchange.id }}/participants">
+              <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/participants') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="participant_id" value="{{ candidate.id }}">
                 <div class="govuk-form-group govuk-!-margin-bottom-3">
@@ -158,11 +158,11 @@
         </strong>
       </div>
       <div class="nexus-alpha-actions">
-        <form method="post" action="/group-exchanges/{{ exchange.id }}/complete" class="nexus-alpha-linkform">
+        <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/complete') }}" class="nexus-alpha-linkform">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button class="govuk-button govuk-!-margin-bottom-0 {% if not allConfirmed %}govuk-button--disabled{% endif %}" data-module="govuk-button" {% if not allConfirmed %}disabled aria-disabled="true"{% endif %}>Complete and move credits</button>
         </form>
-        <form method="post" action="/group-exchanges/{{ exchange.id }}/cancel" class="nexus-alpha-linkform">
+        <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/cancel') }}" class="nexus-alpha-linkform">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel this exchange</button>
         </form>
