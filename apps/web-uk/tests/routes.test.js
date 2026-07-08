@@ -288,6 +288,13 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('legacy search suggestions route should return not found', async () => {
+      const response = await request(app).get('/search/suggestions?q=repair');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 

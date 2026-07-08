@@ -1349,10 +1349,15 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 643 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 36 local-only routes. These
+accessible route declarations, 642 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 35 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local search suggestions are intentionally not exposed as an accessible
+frontend route. Laravel's accessible GOV.UK route set does not include GET
+`/search/suggestions`; suggestions remain an API concern rather than a page or
+HTML helper route.
 
 Legacy local member connection aliases are intentionally not exposed. Laravel's
 accessible member source uses POST `/members/{id}/connection` with an action

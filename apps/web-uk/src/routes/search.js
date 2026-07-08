@@ -6,7 +6,6 @@
 const express = require('express');
 const {
   search,
-  searchSuggestions,
   searchV2,
   getSavedSearches,
   saveSavedSearch,
@@ -429,10 +428,8 @@ router.post('/saved/:id(\\d+)/run', asyncRoute(async (req, res) => {
   return res.redirect(searchAdvancedUrl({}, 'search-run-failed'));
 }));
 
-router.use(requireAuth);
-
 // Search results page
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const query = req.query.q ? req.query.q.trim() : '';
   const type = req.query.type || 'all';
   const page = parseInt(req.query.page, 10) || 1;
@@ -475,31 +472,6 @@ router.get('/', asyncRoute(async (req, res) => {
       });
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
-
-// API endpoint for autocomplete suggestions (JSON response)
-router.get('/suggestions', asyncRoute(async (req, res) => {
-  const query = req.query.q ? req.query.q.trim() : '';
-  const limit = parseInt(req.query.limit, 10) || 5;
-
-  if (!query || query.length < 2) {
-    return res.json([]);
-  }
-
-  try {
-    const suggestions = await searchSuggestions(req.token, query, limit);
-    res.json(suggestions);
-  } catch (error) {
-    // For JSON endpoint, return empty array on non-auth errors
-    if (error instanceof ApiError && error.status !== 401) {
-      return res.json([]);
-    }
-    // For 401, return proper JSON error
-    if (error instanceof ApiError && error.status === 401) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    throw error; // Re-throw for asyncRoute to handle 503
   }
 }));
 

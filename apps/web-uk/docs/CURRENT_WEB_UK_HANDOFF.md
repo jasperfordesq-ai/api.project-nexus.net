@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `643` |
+| Web UK routes | `642` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `36` |
+| Extra Web UK routes | `35` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused search route slice: legacy local GET `/search/suggestions` was
+removed. Laravel exposes search suggestions as an API route, not as a GOV.UK
+accessible frontend page/helper route; the search family now reports `0` extra
+local routes.
 
 Latest focused member route slice: legacy local POST `/members/{id}/connect`
 was removed. Member index/profile connection controls now submit Laravel's
