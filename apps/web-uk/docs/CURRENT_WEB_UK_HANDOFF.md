@@ -68,8 +68,9 @@ conversion slices now cover the event detail page's breadcrumbs, group/member
 links, RSVP/admin forms, attendee links, and report return path plus the
 account hub's card links and CSRF logout form, the activity dashboard/insights
 navigation links, and the achievements/gamification tabs, back links, forms,
-and badge links with `urlFor()`; most other templates still need the same
-source-level conversion. A tenant-home parity slice now replaces the old
+and badge links, plus the leaderboard/NEXUS score tabs, back links, forms,
+load-more links, tier link, and profile links with `urlFor()`; most other
+templates still need the same source-level conversion. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A
@@ -119,7 +120,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 709 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 710 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -173,17 +174,22 @@ back-to-activity links through `urlFor()`. `src/views/achievements/index.njk`,
 `shop.njk`, `collections.njk`, `engagement.njk`, `showcase.njk`, and
 `badge.njk` now route gamification tabs, back links, daily reward/challenge/
 purchase/showcase forms, badge collection links, and view-all links through
+`urlFor()`. `src/views/leaderboard/*.njk` and
+`src/views/nexus-score/*.njk` now route leaderboard tabs, back links, filter
+forms, load-more links, NEXUS tier links, and member profile links through
 `urlFor()`. Source-level regressions in `tests/template-source.test.js` guard
 these pages from drifting back to literal root-relative local links/forms.
-Verification for the account, activity, and achievements slices included
-deliberate failing source-test runs before the template fixes, then:
+Verification for the account, activity, achievements, and leaderboard/NEXUS
+slices included deliberate failing source-test runs before the template fixes,
+then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
-passed `4/4`,
+passed `5/5`,
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "account hub"`
 passed `2/2` selected account tests, and
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity"`
 passed `4/4` selected activity tests. The focused achievements/gamification
-render check passed `15/15` selected tests. The earlier event-focused render
+render check passed `15/15` selected tests. The focused leaderboard/NEXUS score
+render check passed `7/7` selected tests. The earlier event-focused render
 check also passed:
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
 passed `23/23` selected tests.

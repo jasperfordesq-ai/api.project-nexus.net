@@ -62,4 +62,35 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toContain("urlFor('/achievements");
   });
+
+  it('keeps leaderboard and NEXUS score links and forms behind urlFor()', () => {
+    const leaderboardTemplates = [
+      'index.njk',
+      'competitive.njk',
+      'seasons.njk',
+      'journey.njk',
+      'spotlight.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'leaderboard', file),
+      'utf8'
+    ));
+    const nexusScoreTemplates = [
+      'index.njk',
+      'tiers.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'nexus-score', file),
+      'utf8'
+    ));
+    const templates = [...leaderboardTemplates, ...nexusScoreTemplates];
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:leaderboard|nexus-score|members)/);
+      expect(template).not.toMatch(/action="\/(?:leaderboard|nexus-score)/);
+    }
+
+    expect(templates.join('\n')).not.toContain('href="{{ row.href }}"');
+    expect(templates.join('\n')).not.toContain('href="{{ member.href }}"');
+    expect(templates.join('\n')).toContain("urlFor('/leaderboard");
+    expect(templates.join('\n')).toContain("urlFor('/nexus-score");
+  });
 });

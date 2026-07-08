@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/leaderboard">Back to leaderboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">Back to leaderboard</a>
 
   <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">Leaderboard seasons</h1>
@@ -15,16 +15,16 @@
     <h2 class="govuk-tabs__title">Leaderboard</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/competitive">Competitive</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/leaderboard/seasons" aria-current="page">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}" aria-current="page">Seasons</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/journey">My journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">My journey</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/spotlight">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
       </li>
     </ul>
   </nav>

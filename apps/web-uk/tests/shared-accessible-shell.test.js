@@ -2252,7 +2252,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('89');
     expect(signed.text).toContain('Morgan Lee');
     expect(signed.text).toContain('Load more members');
-    expect(signed.text).toContain('/leaderboard/competitive?type=nexus_score&period=month&limit=60#leaderboard-end');
+    expect(signed.text).toContain('/leaderboard/competitive?type=nexus_score&amp;period=month&amp;limit=60#leaderboard-end');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

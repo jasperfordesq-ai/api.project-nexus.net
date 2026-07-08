@@ -9,16 +9,16 @@
     <h2 class="govuk-tabs__title">Leaderboard</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/competitive">Competitive leaderboard</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive leaderboard</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/seasons">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">Seasons</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/journey">Personal journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">Personal journey</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/spotlight">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
       </li>
     </ul>
   </nav>
@@ -58,7 +58,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/leaderboard" data-alpha-auto-submit class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/leaderboard') }}" data-alpha-auto-submit class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
         <h2 class="govuk-fieldset__heading">Filter leaderboard</h2>
@@ -105,7 +105,7 @@
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.rank }}</td>
             <td class="govuk-table__cell">
               {% if row.href %}
-                <a class="govuk-link" href="{{ row.href }}">{{ row.name }}</a>
+                <a class="govuk-link" href="{{ urlFor(row.href) }}">{{ row.name }}</a>
               {% else %}
                 {{ row.name }}
               {% endif %}

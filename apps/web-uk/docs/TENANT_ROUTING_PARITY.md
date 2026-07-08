@@ -109,7 +109,9 @@ Current gaps:
   link and back-to-activity links. The latest focused source conversion covers
   the achievements/gamification templates, including tabs, back links, daily
   reward/challenge/purchase/showcase forms, badge collection links, and badge
-  detail links.
+  detail links. The newest focused source conversion covers the leaderboard
+  and NEXUS score templates, including tabs, back links, filter forms,
+  load-more links, tier links, and member profile links.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -234,6 +236,14 @@ forms, shop purchase form, showcase save form, collection badge links, and
 view-all links through `urlFor()`. A source-level regression plus focused
 achievements/gamification render tests prove the flat `/achievements` family
 output remains unchanged.
+
+The fourteenth template-helper source slice extends the same direct `urlFor()`
+conversion into leaderboard and NEXUS score pages. The leaderboard index,
+competitive, seasons, journey, spotlight, NEXUS score overview, and NEXUS tier
+ladder templates now pass tabs, back links, filter form actions, load-more
+links, tier links, and data-driven member profile links through `urlFor()`. A
+source-level regression plus focused leaderboard/NEXUS score render tests prove
+the flat `/leaderboard` and `/nexus-score` family output remains unchanged.
 
 Verification command:
 

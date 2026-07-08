@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/nexus-score">Back to NEXUS score</a>
+  <a class="govuk-back-link" href="{{ urlFor('/nexus-score') }}">Back to NEXUS score</a>
 
   <span class="govuk-caption-xl">NEXUS score at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">NEXUS tier ladder</h1>

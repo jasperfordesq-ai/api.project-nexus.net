@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/leaderboard">Back to leaderboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">Back to leaderboard</a>
 
   <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">Competitive leaderboard</h1>
@@ -15,16 +15,16 @@
     <h2 class="govuk-tabs__title">Leaderboard</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/leaderboard/competitive" aria-current="page">Competitive</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}" aria-current="page">Competitive</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/seasons">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">Seasons</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/journey">My journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">My journey</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/leaderboard/spotlight">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
       </li>
     </ul>
   </nav>
@@ -38,11 +38,11 @@
       {% if competitive.season.hasUserData %}
         <p class="govuk-body">Your season XP: {{ competitive.season.xpLabel }}</p>
       {% endif %}
-      <a class="govuk-link" href="/leaderboard/seasons">View all seasons</a>
+      <a class="govuk-link" href="{{ urlFor('/leaderboard/seasons') }}">View all seasons</a>
     </div>
   {% endif %}
 
-  <form method="get" action="/leaderboard/competitive" data-alpha-auto-submit class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/leaderboard/competitive') }}" data-alpha-auto-submit class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
         <h2 class="govuk-fieldset__heading">Filter the leaderboard</h2>
@@ -98,7 +98,7 @@
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.rank }}</td>
             <td class="govuk-table__cell">
               {% if row.href %}
-                <a class="govuk-link" href="{{ row.href }}">{{ row.name }}</a>
+                <a class="govuk-link" href="{{ urlFor(row.href) }}">{{ row.name }}</a>
               {% else %}
                 {{ row.name }}
               {% endif %}
@@ -111,7 +111,7 @@
     </table>
 
     {% if competitive.hasMore %}
-      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="/leaderboard/competitive?type={{ competitive.type }}&period={{ competitive.period }}&limit={{ competitive.nextLimit }}#leaderboard-end">Load more members</a>
+      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/leaderboard/competitive?type=' + competitive.type + '&period=' + competitive.period + '&limit=' + (competitive.nextLimit | string) + '#leaderboard-end') }}">Load more members</a>
     {% endif %}
     <span id="leaderboard-end" tabindex="-1"></span>
   {% else %}
