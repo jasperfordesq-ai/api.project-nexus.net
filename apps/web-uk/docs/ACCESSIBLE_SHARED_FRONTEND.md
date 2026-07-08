@@ -1349,10 +1349,16 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 653 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 46 local-only routes. These
+accessible route declarations, 651 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 44 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local event RSVP routes are intentionally not exposed as separate pages
+or actions. Laravel's accessible event source uses `/events/{id}/rsvp` for RSVP
+state changes; `/events/my` and `/events/{id}/rsvp/remove` are not part of the
+Laravel accessible route set, and the event family now has 0 extra local
+routes.
 
 Legacy local feed post routes are intentionally not exposed as separate pages.
 Laravel's accessible feed source uses `/feed/posts`, `/feed/posts/{id}`, typed

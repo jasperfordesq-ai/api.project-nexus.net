@@ -1,23 +1,18 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T10:51:47.736Z",
+    "generatedAt": "2026-07-08T11:00:39.312Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 653,
+    "webUkRoutes": 651,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 46,
+    "extraWebUkRoutes": 44,
     "familyCounts": {
       "admin": {
         "matched": 0,
         "missing": 0,
         "extraWebUk": 24
-      },
-      "events": {
-        "matched": 21,
-        "missing": 0,
-        "extraWebUk": 2
       },
       "groups": {
         "matched": 36,
@@ -146,6 +141,11 @@
       },
       "dashboard": {
         "matched": 1,
+        "missing": 0,
+        "extraWebUk": 0
+      },
+      "events": {
+        "matched": 21,
         "missing": 0,
         "extraWebUk": 0
       },
@@ -846,46 +846,6 @@
       "webUkPath": "/admin/users/{param}/suspend",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\admin.js"
-    },
-    {
-      "method": "GET",
-      "path": "/events/my",
-      "family": "events",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelParamConstraints": [],
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/events/my",
-      "webUkView": "events/my",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/rsvp/remove",
-      "family": "events",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelParamConstraints": [],
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/events/{param}/rsvp/remove",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",

@@ -218,6 +218,25 @@ describe('Protected Routes', () => {
         expect(response.text).toContain('Page not found');
       }
     });
+
+    it('legacy event routes should return not found', async () => {
+      const myEventsResponse = await request(app).get('/events/my');
+      expect(myEventsResponse.status).toBe(404);
+      expect(myEventsResponse.text).toContain('Page not found');
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const removeRsvpResponse = await agent
+        .post('/events/42/rsvp/remove')
+        .type('form')
+        .send({ _csrf: csrfMatch[1] });
+
+      expect(removeRsvpResponse.status).toBe(404);
+      expect(removeRsvpResponse.text).toContain('Page not found');
+    });
   });
 });
 

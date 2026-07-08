@@ -15384,6 +15384,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Photo for Community garden day');
   });
 
+  it('renders the events list without the legacy my-events link', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvents.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Community garden day',
+          location: 'Village hall',
+          starts_at: '2026-08-01T10:00:00'
+        }
+      ],
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const response = await request(app)
+      .get('/events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/events/42"');
+    expect(response.text).not.toContain('href="/events/my"');
+  });
+
   it('renders the Laravel event cover image on the event detail page', async () => {
     const api = require('../src/lib/api');
 
@@ -15408,6 +15432,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('/uploads/events/garden.webp');
     expect(response.text).toContain('Photo for Community garden day');
+  });
+
+  it('renders event RSVP controls without the legacy remove-RSVP form', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        attendee_count: 3,
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      },
+      my_rsvp: { status: 'going' }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('action="/events/42/rsvp"');
+    expect(response.text).not.toContain('action="/events/42/rsvp/remove"');
+    expect(response.text).not.toContain('Remove RSVP');
   });
 
   it('renders Laravel v2 event detail payloads on the event detail page', async () => {

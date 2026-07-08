@@ -7,7 +7,6 @@ const express = require('express');
 const fs = require('fs/promises');
 const {
   getEvents,
-  getMyEvents,
   getEvent,
   createEvent,
   updateEvent,
@@ -15,7 +14,6 @@ const {
   deleteEvent,
   getEventRsvps,
   rsvpToEvent,
-  removeEventRsvp,
   votePoll,
   getPolls,
   callEventApi,
@@ -523,10 +521,8 @@ router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
   }
 }));
 
-router.use(requireAuth);
-
 // List events
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const searchQuery = req.query.search ? req.query.search.trim() : '';
@@ -555,28 +551,8 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-// My events (RSVPs)
-router.get('/my', asyncRoute(async (req, res) => {
-  const result = await getMyEvents(req.token);
-  const events = (result.items || result.data || []).map(e => {
-    const startsAt = e.starts_at || e.startsAt;
-    return {
-      ...e,
-      // Normalize for template: add myRsvp object and is_past flag
-      myRsvp: { status: (e.my_rsvp || e.myRsvp || '').toLowerCase() },
-      is_past: startsAt ? new Date(startsAt) < new Date() : false
-    };
-  });
-
-  res.render('events/my', {
-    title: 'My events',
-    events,
-    successMessage: req.flash ? req.flash('success')[0] : null
-  });
-}));
-
 // Create event form
-router.get('/new', asyncRoute(async (req, res) => {
+router.get('/new', requireAuth, asyncRoute(async (req, res) => {
   const groupId = req.query.group_id || null;
   let setupErrorMessage = null;
 
@@ -610,7 +586,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 }));
 
 // Create event
-router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
+router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res) => {
   const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url, is_recurring, recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date } = req.body;
   const image = uploadedFile(req, 'image');
 
@@ -732,7 +708,7 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
 }));
 
 // View event details
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const [eventResult, rsvpsResult] = await Promise.all([
@@ -762,7 +738,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Event not found' }));
 
 // Edit event form
-router.get('/:id/edit', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const [eventResult, currentUser] = await Promise.all([
@@ -815,7 +791,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Event not found' }));
 
 // Update event
-router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, category_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
   const image = uploadedFile(req, 'image');
@@ -923,7 +899,7 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 }));
 
 // Cancel event
-router.post('/:id/cancel', asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -947,7 +923,7 @@ router.post('/:id/cancel', asyncRoute(async (req, res) => {
 }));
 
 // Delete event
-router.post('/:id/delete', audit.eventDelete(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -971,7 +947,7 @@ router.post('/:id/delete', audit.eventDelete(), asyncRoute(async (req, res) => {
 }));
 
 // RSVP to event
-router.post('/:id/rsvp', audit.eventRsvp(), asyncRoute(async (req, res) => {
+router.post('/:id(\\d+)/rsvp', requireAuth, audit.eventRsvp(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -991,30 +967,6 @@ router.post('/:id/rsvp', audit.eventRsvp(), asyncRoute(async (req, res) => {
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to RSVP');
-      }
-      return res.redirect(`/events/${id}`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-
-  res.redirect(`/events/${id}`);
-}));
-
-// Remove RSVP
-router.post('/:id/rsvp/remove', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    await removeEventRsvp(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', 'RSVP removed');
-    }
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to remove RSVP');
       }
       return res.redirect(`/events/${id}`);
     }

@@ -163,15 +163,6 @@
             }) }}
           </form>
 
-          {% if myRsvp %}
-            <form action="/events/{{ event.id }}/rsvp/remove" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: "Remove RSVP",
-                classes: "govuk-button--warning"
-              }) }}
-            </form>
-          {% endif %}
         </div>
 
         {% if isFull and (not myRsvp or myRsvp.status != 'going') %}

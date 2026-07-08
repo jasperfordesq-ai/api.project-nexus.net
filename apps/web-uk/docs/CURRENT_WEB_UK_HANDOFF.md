@@ -67,11 +67,17 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `653` |
+| Web UK routes | `651` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `46` |
+| Extra Web UK routes | `44` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused event route slice: legacy local GET `/events/my` and POST
+`/events/{id}/rsvp/remove` were removed. The event list no longer links to a
+separate My events page, event detail pages use Laravel's canonical
+`/events/{id}/rsvp` action for RSVP changes, and the generated matrix now
+reports `0` extra local event routes.
 
 Latest focused feed route slice: legacy local GET/POST `/feed/new`,
 `/feed/{id}`, `/feed/{id}/edit`, `/feed/{id}/like`, `/feed/{id}/unlike`,
