@@ -1,14 +1,14 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-08T10:18:46.599Z
+Generated: 2026-07-08T10:24:21.104Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 670 |
+| web-uk routes | 668 |
 | Matched routes | 608 |
 | Missing routes | 0 |
-| Extra web-uk routes | 63 |
+| Extra web-uk routes | 61 |
 
 ## Family Counts
 
@@ -67,7 +67,7 @@ Generated: 2026-07-08T10:18:46.599Z
 | podcasts | 14 | 0 | 0 |
 | polls | 13 | 0 | 0 |
 | premium | 6 | 0 | 0 |
-| profile | 21 | 0 | 2 |
+| profile | 21 | 0 | 0 |
 | register | 2 | 0 | 0 |
 | report-a-problem | 2 | 0 | 0 |
 | reports | 0 | 0 | 3 |

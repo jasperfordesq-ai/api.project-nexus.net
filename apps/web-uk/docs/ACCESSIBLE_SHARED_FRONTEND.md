@@ -1349,10 +1349,14 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 670 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 63 local-only routes. These
+accessible route declarations, 668 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 61 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/profile/edit` is intentionally not exposed as a separate local page. Laravel's
+accessible profile editing surface uses `/profile/settings`, and the profile
+summary change links now point there.
 
 `/progress`, `/progress/badges`, `/progress/leaderboard`, and
 `/progress/xp-history` are intentionally not exposed as separate local pages.

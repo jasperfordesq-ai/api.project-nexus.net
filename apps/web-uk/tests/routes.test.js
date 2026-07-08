@@ -151,6 +151,13 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('GET /profile/edit should return not found', async () => {
+      const response = await request(app).get('/profile/edit');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 

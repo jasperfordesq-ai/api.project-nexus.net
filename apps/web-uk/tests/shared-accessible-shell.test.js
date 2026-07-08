@@ -1013,15 +1013,22 @@ describe('shared accessible frontend shell', () => {
     const signed = await request(app)
       .get('/profile')
       .set('Cookie', signedCookieHeader());
+    const legacyEdit = await request(app)
+      .get('/profile/edit')
+      .set('Cookie', signedCookieHeader());
 
     expect(signed.status).toBe(200);
     expect(api.getProfile).toHaveBeenCalledWith('test-token');
     expect(signed.text).toContain('Your profile');
     expect(signed.text).toContain('I help with repair cafes.');
+    expect(signed.text).toContain('href="/profile/settings"');
+    expect(signed.text).not.toContain('href="/profile/edit"');
     expect(signed.text).toContain('href="/achievements"');
     expect(signed.text).toContain('href="/leaderboard"');
     expect(signed.text).not.toContain('href="/progress"');
     expect(signed.text).not.toContain('href="/progress/leaderboard"');
+    expect(legacyEdit.status).toBe(404);
+    expect(legacyEdit.text).toContain('Page not found');
   });
 
   it('renders the Laravel-style profile settings page', async () => {

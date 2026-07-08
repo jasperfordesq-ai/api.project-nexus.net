@@ -46,8 +46,6 @@ extra-web-uk,GET,/listings/{param}/delete,listings,,,,,,,,listings/delete,,,C:\U
 extra-web-uk,POST,/members/{param}/connect,members,,,,,,,,,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\members.js,
 extra-web-uk,GET,/messages/new,messages,,,,,,,,messages/new,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\messages.js,
 extra-web-uk,POST,/messages/new,messages,,,,,,,,messages/new,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\messages.js,
-extra-web-uk,GET,/profile/edit,profile,,,,,,,,profile/edit,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\profile.js,
-extra-web-uk,POST,/profile/edit,profile,,,,,,,,profile/edit,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\profile.js,
 extra-web-uk,GET,/reports/my,reports,,,,,,,,reports/my,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\reports.js,
 extra-web-uk,GET,/reports/new,reports,,,,,,,,reports/new,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\reports.js,
 extra-web-uk,POST,/reports/new,reports,,,,,,,,reports/new,,,C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity\apps\web-uk\src\routes\reports.js,

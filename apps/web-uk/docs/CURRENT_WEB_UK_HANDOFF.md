@@ -67,11 +67,15 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `670` |
+| Web UK routes | `668` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `63` |
+| Extra Web UK routes | `61` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused profile route slice: legacy local GET/POST `/profile/edit` was
+removed. Profile summary change links now point to Laravel's accessible
+`/profile/settings` page.
 
 Latest focused progress route slice: legacy local `/progress`,
 `/progress/badges`, `/progress/leaderboard`, and `/progress/xp-history` were
