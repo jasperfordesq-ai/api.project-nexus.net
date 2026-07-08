@@ -43,15 +43,19 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 685 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 683 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 78 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
+| Extra `apps/web-uk` routes | 76 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
+
+The legacy local top-level `/terms` and `/privacy` routes have been removed.
+Legal documents now expose Laravel's accessible `/legal/terms` and
+`/legal/privacy` route shapes only.
 
 The legacy local top-level `/forgot-password` and `/reset-password` routes
 have been removed for both GET and POST. The accessible auth flow now exposes
@@ -615,7 +619,7 @@ fell from 28 to 0.
 | --- | --- | --- |
 | Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a partial Laravel-backed landing/search/detail candidate with Laravel-backed POST aliases; Blog is a partial Laravel-backed listing/detail/discussion/likers candidate with Laravel-backed POST aliases. |
 | Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented. `/about` now renders Laravel's community intro, how-it-works list, values, contributor credits, open-source links, and CTA group. Help centre `/help` now calls Laravel `/api/v2/help/faqs` and renders Blade-style FAQ search, grouped accordions, empty/no-result states, and contact CTA. Trust and safety `/trust-and-safety` now ports the Laravel Blade warning, section list, contact CTA, and community-guidelines link. Knowledge base `/kb` and `/kb/{id}` are Laravel-backed candidates through `/api/v2/kb`, `/api/v2/kb/search`, and `/api/v2/kb/{id}` with Blade-style search, article cards, cursor load-more, article body, and related links. |
-| Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | `/legal`, `/accessibility`, and `/legal/{terms,privacy,cookies,community-guidelines,acceptable-use}` now render Blade-style pages. Legal documents call Laravel `/api/v2/legal/{type}` and fall back to the same GOV.UK-structured policy copy when no tenant document is published. Old `/terms` and `/privacy` still exist as legacy local routes. |
+| Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | `/legal`, `/accessibility`, and `/legal/{terms,privacy,cookies,community-guidelines,acceptable-use}` now render Blade-style pages. Legal documents call Laravel `/api/v2/legal/{type}` and fall back to the same GOV.UK-structured policy copy when no tenant document is published. Legacy top-level `/terms` and `/privacy` no longer exist locally. |
 
 ## Explore Contract
 

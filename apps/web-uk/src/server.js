@@ -369,14 +369,6 @@ app.get('/components', (req, res) => {
   res.render('components', { title: 'Components Demo' });
 });
 
-app.get('/privacy', (req, res) => {
-  res.render('privacy', { title: 'Privacy policy' });
-});
-
-app.get('/terms', (req, res) => {
-  res.render('terms', { title: 'Terms and conditions' });
-});
-
 app.get('/cookies', (req, res) => {
   res.render('cookie-settings', {
     title: 'Cookies',

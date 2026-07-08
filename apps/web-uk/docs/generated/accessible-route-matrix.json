@@ -1,13 +1,13 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T09:42:21.009Z",
+    "generatedAt": "2026-07-08T09:50:29.442Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 685,
+    "webUkRoutes": 683,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 78,
+    "extraWebUkRoutes": 76,
     "familyCounts": {
       "admin": {
         "matched": 0,
@@ -59,11 +59,6 @@
         "missing": 0,
         "extraWebUk": 2
       },
-      "privacy": {
-        "matched": 0,
-        "missing": 0,
-        "extraWebUk": 1
-      },
       "profile": {
         "matched": 21,
         "missing": 0,
@@ -103,11 +98,6 @@
         "matched": 13,
         "missing": 0,
         "extraWebUk": 7
-      },
-      "terms": {
-        "matched": 0,
-        "missing": 0,
-        "extraWebUk": 1
       },
       "verify-2fa": {
         "matched": 0,
@@ -1320,25 +1310,6 @@
     },
     {
       "method": "GET",
-      "path": "/privacy",
-      "family": "privacy",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/privacy",
-      "webUkView": "privacy",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
-    },
-    {
-      "method": "GET",
       "path": "/profile/edit",
       "family": "profile",
       "status": "extra-web-uk",
@@ -1773,25 +1744,6 @@
       "webUkPath": "/settings/privacy",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\settings.js"
-    },
-    {
-      "method": "GET",
-      "path": "/terms",
-      "family": "terms",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/terms",
-      "webUkView": "terms",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",

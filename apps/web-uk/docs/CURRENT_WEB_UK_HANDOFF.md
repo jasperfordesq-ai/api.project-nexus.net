@@ -67,11 +67,15 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `685` |
+| Web UK routes | `683` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `78` |
+| Extra Web UK routes | `76` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused legal-route slice: legacy local top-level `/terms` and
+`/privacy` routes were removed. Legal documents now expose Laravel's accessible
+`/legal/terms` and `/legal/privacy` routes only.
 
 Latest focused auth-alias route slice: legacy local top-level password-reset
 aliases `/forgot-password` and `/reset-password` were removed for both GET and

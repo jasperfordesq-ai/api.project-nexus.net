@@ -1349,10 +1349,14 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 685 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 78 local-only routes. These
+accessible route declarations, 683 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 76 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/terms` and `/privacy` are intentionally not exposed as top-level local
+aliases: Laravel's accessible legal documents use `/legal/terms` and
+`/legal/privacy`.
 
 `/forgot-password` and `/reset-password` are intentionally not exposed as
 top-level local aliases: Laravel's accessible auth flow uses

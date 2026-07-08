@@ -811,6 +811,8 @@ describe('shared accessible frontend shell', () => {
     const accessibility = await request(app).get('/accessibility');
     const terms = await request(app).get('/legal/terms');
     const privacy = await request(app).get('/legal/privacy');
+    const legacyTerms = await request(app).get('/terms');
+    const legacyPrivacy = await request(app).get('/privacy');
 
     expect(staticPageRoutes.pages['/legal']).toBeUndefined();
     expect(staticPageRoutes.pages['/accessibility']).toBeUndefined();
@@ -843,6 +845,11 @@ describe('shared accessible frontend shell', () => {
     expect(privacy.text).toContain('What we collect: the details you give us');
     expect(privacy.text).toContain('href="/contact"');
     expect(api.getLegalDocument).toHaveBeenNthCalledWith(2, 'privacy');
+
+    expect(legacyTerms.status).toBe(404);
+    expect(legacyTerms.text).toContain('Page not found');
+    expect(legacyPrivacy.status).toBe(404);
+    expect(legacyPrivacy.text).toContain('Page not found');
   });
 
   it('renders the Laravel-style guide and features pages', async () => {
