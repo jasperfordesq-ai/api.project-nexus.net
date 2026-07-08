@@ -14,6 +14,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { doubleCsrf } = require('csrf-csrf');
 const path = require('path');
+const { URL } = require('url');
 
 const authRoutes = require('./routes/auth');
 const listingsRoutes = require('./routes/listings');
@@ -390,6 +391,58 @@ function numberLabel(value) {
   }).format(number);
 }
 
+function normalizeRequestHost(req) {
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  const raw = String(forwardedHost || req.hostname || req.headers.host || '').trim().toLowerCase();
+  if (!raw) return '';
+
+  const withoutProtocol = raw.replace(/^https?:\/\//, '');
+  const withoutPath = withoutProtocol.split('/')[0];
+  const withoutPort = withoutPath.startsWith('[')
+    ? withoutPath.replace(/^\[|\](?::\d+)?$/g, '')
+    : withoutPath.split(':')[0];
+
+  return withoutPort.replace(/^www\./, '');
+}
+
+function networkCommunityHref(item, req) {
+  const rawUrl = String(item?.url || '').trim();
+  if (!rawUrl) {
+    return item?.slug ? `/${encodeURIComponent(String(item.slug))}` : '';
+  }
+
+  if (rawUrl.startsWith('/') && !rawUrl.startsWith('//')) {
+    return rawUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    const host = normalizeRequestHost(req);
+    const parsedHost = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    if (host && parsedHost === host) {
+      return `${parsed.pathname || '/'}${parsed.search || ''}${parsed.hash || ''}`;
+    }
+    return rawUrl;
+  } catch {
+    return item?.slug ? `/${encodeURIComponent(String(item.slug))}` : '';
+  }
+}
+
+function normalizeNetworkCommunities(tenant, req) {
+  const items = Array.isArray(tenant?.tenant_switcher?.items)
+    ? tenant.tenant_switcher.items
+    : [];
+
+  return items
+    .map((item) => ({
+      name: item?.name || item?.slug || '',
+      slug: item?.slug || '',
+      tagline: item?.tagline || '',
+      href: networkCommunityHref(item, req)
+    }))
+    .filter((item) => item.name && item.href);
+}
+
 function featureEnabled(tenant, key, fallback = true) {
   const features = tenant.features && typeof tenant.features === 'object' ? tenant.features : {};
   const modules = tenant.modules && typeof tenant.modules === 'object' ? tenant.modules : {};
@@ -419,7 +472,7 @@ function buildHomeModules(tenant, isAuthenticated) {
 function platformStatsOptionsForRequest(req, tenant) {
   const routing = req.accessibleRouting || {};
   if (routing.mode === 'custom-domain') {
-    return { host: req.headers.host || tenant.accessible_domain || '' };
+    return { host: normalizeRequestHost(req) || tenant.accessible_domain || '' };
   }
 
   const slug = tenant.slug || routing.tenantSlug || '';
@@ -456,11 +509,22 @@ async function loadTenantHomeData(req, res) {
   }
 
   const communityName = tenant.name || tenant.slug || req.accessibleRouting?.tenantSlug || res.locals.tenantName;
+  const networkCommunities = normalizeNetworkCommunities(tenant, req);
+  const usesNetworkLanding = networkCommunities.length > 0 || Number(tenant.id) === 1;
+  const homeHeading = usesNetworkLanding
+    ? tenant.seo?.h1_headline || 'Accessible'
+    : 'Accessible';
+  const homeDescription = usesNetworkLanding
+    ? tenant.seo?.hero_intro || `Use a simpler, accessible version of ${communityName} for core community tasks.`
+    : `Use a simpler, accessible version of ${communityName} for core community tasks.`;
 
   return {
     tenant,
     communityName,
+    homeHeading,
+    homeDescription,
     tagline: tenant.tagline || '',
+    networkCommunities,
     stats: {
       members: numberLabel(stats.members),
       hoursExchanged: numberLabel(stats.hours_exchanged ?? stats.hoursExchanged),

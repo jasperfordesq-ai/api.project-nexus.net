@@ -38,6 +38,15 @@ src/lib/backend-contract.js
 `API_BASE_URL` reports `api-base-url` so override-driven runs cannot be mistaken
 for certified backend readiness.
 
+Host-scoped tenant API calls must carry the same tenant context Laravel can
+resolve from browser traffic. Web UK sends `Host` plus `Origin:
+https://{host}` for host-scoped `/api/v2/tenant/bootstrap` and
+`/api/v2/platform/stats` requests unless an explicit tenant slug is available.
+This is required because Laravel's tenant bootstrap can fall back from the API
+server host to the browser Origin when resolving configured `domain` or
+`accessible_domain` values. Future ASP.NET mode must accept equivalent
+host/Origin tenant context before it can be certified.
+
 ## Laravel Runtime Smoke
 
 The Laravel-backed runtime proof command is:
@@ -145,6 +154,12 @@ On 2026-07-08, the local Laravel `hour-timebank` fixture exposed
 `SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/hour-timebank/login=>Sign in`
 passed the `tenant-domain-page-timebank-global-hour-timebank-login-renders`
 check plus the base auth/cookie checks.
+A later host-domain slice proved Laravel bootstrap and the Web UK
+tenant-routing middleware can resolve `timebank.global` and `project-nexus.ie`
+from Host/Origin or `X-Forwarded-Host` context, and Jest covers the rendered
+network landing behavior. A temporary full Web UK process host-root probe still
+rendered the shared chooser, so full-app custom host-root runtime smoke remains
+open.
 A targeted real-fixture parameterised run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
 2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18

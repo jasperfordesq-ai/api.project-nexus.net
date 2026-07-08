@@ -169,6 +169,11 @@ function normalizeHost(host) {
   return withoutPort.replace(/^www\./, '');
 }
 
+function requestHost(req) {
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  return normalizeHost(forwardedHost || req.hostname || req.headers.host);
+}
+
 function shouldResolveCustomAccessibleDomain(host) {
   if (!host || LOCAL_HOSTS.has(host)) {
     return false;
@@ -179,6 +184,10 @@ function shouldResolveCustomAccessibleDomain(host) {
 
 function tenantDataMatchesAccessibleHost(data, host) {
   return data?.slug && normalizeHost(data.accessible_domain) === host;
+}
+
+function tenantDataMatchesDomainHost(data, host) {
+  return normalizeHost(data?.domain) === host && (data?.slug || Number(data?.id) === 1);
 }
 
 function tenantDataMatchesParentHost(data, host) {
@@ -204,7 +213,7 @@ async function resolveParentDomainChildTenant(req, res, pathname, queryIndex, or
     return false;
   }
 
-  const host = normalizeHost(req.headers.host);
+  const host = requestHost(req);
   if (!shouldResolveCustomAccessibleDomain(host)) {
     return false;
   }
@@ -252,7 +261,7 @@ async function resolveCustomAccessibleDomain(req, pathname) {
     return;
   }
 
-  const host = normalizeHost(req.headers.host);
+  const host = requestHost(req);
   if (!shouldResolveCustomAccessibleDomain(host)) {
     return;
   }
@@ -263,7 +272,7 @@ async function resolveCustomAccessibleDomain(req, pathname) {
     const result = await getTenantBootstrap({ host });
     const tenant = result?.data || result?.tenant || result;
 
-    if (tenantDataMatchesAccessibleHost(tenant, host)) {
+    if (tenantDataMatchesAccessibleHost(tenant, host) || tenantDataMatchesDomainHost(tenant, host)) {
       req.accessibleRouting = {
         mode: 'custom-domain',
         tenantSlug: tenant.slug,

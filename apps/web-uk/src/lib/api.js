@@ -219,6 +219,14 @@ function normalizeTenantHost(host) {
   return withoutPort.replace(/^www\./, '');
 }
 
+function tenantHostHeaders(host) {
+  const normalizedHost = normalizeTenantHost(host);
+  return normalizedHost ? {
+    Host: normalizedHost,
+    Origin: `https://${normalizedHost}`
+  } : {};
+}
+
 async function getTenantBootstrap(options = {}) {
   const query = new URLSearchParams();
   if (options.slug) {
@@ -227,21 +235,19 @@ async function getTenantBootstrap(options = {}) {
 
   const queryString = query.toString();
   const endpoint = `/api/v2/tenant/bootstrap${queryString ? `?${queryString}` : ''}`;
-  const host = options.slug ? '' : normalizeTenantHost(options.host);
-  const headers = host ? { Host: host } : {};
+  const headers = options.slug ? {} : tenantHostHeaders(options.host);
 
   return request(endpoint, { headers });
 }
 
 async function getPlatformStats(options = {}) {
   const slug = options.slug ? String(options.slug).trim() : '';
-  const host = slug ? '' : normalizeTenantHost(options.host);
   const headers = {};
 
   if (slug) {
     headers['X-Tenant-Slug'] = slug;
-  } else if (host) {
-    headers.Host = host;
+  } else {
+    Object.assign(headers, tenantHostHeaders(options.host));
   }
 
   return request('/api/v2/platform/stats', { headers });

@@ -30,9 +30,12 @@ Laravel root behavior is also tenant-aware:
 
 - Shared root `/` renders the tenant chooser.
 - A dedicated accessible custom-domain root `/` renders that tenant's accessible
-  home.
-- The master tenant is seeded as ID `1`, has a null slug/domain, and is excluded
-  from the chooser.
+  home. Laravel bootstrap may expose either `accessible_domain` or the broader
+  tenant `domain`, depending on fixture/source path.
+- The master tenant is seeded as ID `1` and is excluded from the chooser. When
+  Laravel bootstrap exposes a configured master domain, such as
+  `project-nexus.ie` locally, that host should render the master network landing
+  instead of the shared chooser.
 - Parent custom-domain routing can resolve direct child tenants from the first
   non-reserved path segment, for example `parent-domain.test/child-slug`.
 - `/api/v2/tenant/bootstrap?slug={slug}` is the public Laravel data source for
@@ -72,14 +75,18 @@ Current implemented slice:
   `X-Tenant-Slug`, matching Laravel's path-resolved `TenantContext`.
 - Non-local Host values are resolved through Laravel
   `/api/v2/tenant/bootstrap`; when Laravel returns a tenant whose
-  `accessible_domain` matches the request host, Web UK treats the request as a
-  slugless custom accessible-domain route.
-- Dedicated accessible-domain root `/` renders the resolved tenant home and
-  keeps generated local links flat, matching Laravel's custom-domain behavior
-  without exposing either `/alpha` or `/{tenantSlug}/accessible`. For this
-  mode, Web UK forwards the resolved Host to Laravel `/api/v2/platform/stats`
-  so host-resolved tenant stats use the same lookup path as Laravel's
-  accessible custom-domain runtime.
+  `accessible_domain` or `domain` matches the request host, Web UK treats the
+  request as a slugless custom-domain route. `X-Forwarded-Host` is accepted
+  before the socket host for reverse-proxy custom-domain routing.
+- Dedicated custom-domain root `/` renders the resolved tenant home and keeps
+  generated local links flat, matching Laravel's custom-domain behavior without
+  exposing either `/alpha` or `/{tenantSlug}/accessible`. For this mode, Web UK
+  forwards the resolved Host and Origin to Laravel `/api/v2/platform/stats` and
+  `/api/v2/tenant/bootstrap` so host-resolved tenant stats use the same lookup
+  path as Laravel's accessible runtime.
+- Master and parent/cluster custom-domain roots render Laravel SEO h1/intro
+  copy plus `tenant_switcher` communities. Same-host switcher URLs are converted
+  to relative paths, while external community domains remain absolute.
 - Parent-domain child tenant paths now resolve the first non-reserved path
   segment through Laravel `/api/v2/tenant/bootstrap?slug={slug}`. When Laravel
   returns `parent_domain` matching the request host, Web UK serves the flat
@@ -93,11 +100,13 @@ Current gaps:
   tenant-mount rendering now protects those links at response time, but the
   templates still need gradual conversion to `urlFor()` or equivalent helpers
   so custom-domain and flat-host modes remain easier to audit.
-- Custom accessible-domain routing is covered by Jest for a host-resolved
-  root request, including host-scoped platform-stats lookup, but it is not yet
-  certified by live Laravel runtime smoke because the local Laravel fixture
-  data currently exposes no tenant with `accessible_domain`; unknown accessible
-  hosts resolve to the master tenant.
+- Custom-domain routing is covered by Jest for host-resolved root requests,
+  including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
+  forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
+  Laravel bootstrap calls and a direct Web UK middleware harness resolve
+  `timebank.global` and `project-nexus.ie` correctly. A temporary full Web UK
+  process host-root smoke still rendered the shared chooser during probing, so
+  that runtime proof remains open.
 - Parent-domain child-tenant paths are covered by Jest for a parent-host child
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
@@ -169,6 +178,16 @@ custom accessible-domain requests call the same endpoint with the resolved
 request `Host`. Focused Jest covers both request shapes, and a live local
 Laravel proof on 2026-07-08 rendered `/hour-timebank/accessible` with the
 tenant-scoped stat values `946`, `1,988`, `129`, and `1`.
+
+The ninth host-domain network landing slice verifies that Laravel `domain`
+hosts are treated as custom root hosts, not only `accessible_domain` hosts.
+Tests cover `timebank.global` rendering the Timebank Global cluster landing,
+`project-nexus.ie` rendering the master network landing, and `X-Forwarded-Host:
+timebank.global` resolving ahead of a local socket host. The page uses Laravel
+SEO h1/intro text and `tenant_switcher` communities, converts same-host
+community links to relative paths, preserves external domains, and never emits
+the legacy `/alpha` slug. API tests also prove host-scoped bootstrap/stats
+calls send `Origin: https://{host}` with the normalized Host.
 
 Verification command:
 

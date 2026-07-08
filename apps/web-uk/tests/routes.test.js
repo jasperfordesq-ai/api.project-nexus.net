@@ -168,6 +168,179 @@ describe('Public Routes', () => {
   });
 
   describe('custom accessible domains', () => {
+    it('renders a parent custom-domain tenant home with network child links at the slugless root', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 4,
+          name: 'Timebank Global',
+          slug: 'timebank-global',
+          domain: 'timebank.global',
+          tagline: 'Connecting Communities Worldwide...',
+          seo: {
+            h1_headline: 'Exchange Skills Across Borders',
+            hero_intro: 'Join the world largest timebanking community.'
+          },
+          tenant_switcher: {
+            source: 'children',
+            items: [
+              {
+                id: 2,
+                name: 'Hour Timebank',
+                slug: 'hour-timebank',
+                tagline: 'Connecting Communities',
+                url: 'https://timebank.global/hour-timebank'
+              },
+              {
+                id: 9,
+                name: 'timebanks.us',
+                slug: 'timebanks-us',
+                tagline: 'Timebanking platform for the US',
+                url: 'https://timebanks.us'
+              }
+            ]
+          }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({
+        data: {
+          members: 946,
+          hours_exchanged: 1988,
+          listings: 129,
+          communities: 5
+        }
+      });
+
+      const response = await request(app)
+        .get('/')
+        .set('Host', 'timebank.global');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Exchange Skills Across Borders');
+      expect(response.text).toContain('Join the world largest timebanking community.');
+      expect(response.text).toContain('Communities in this network');
+      expect(response.text).toContain('Hour Timebank');
+      expect(response.text).toContain('Connecting Communities');
+      expect(response.text).toContain('href="/hour-timebank"');
+      expect(response.text).toContain('timebanks.us');
+      expect(response.text).toContain('href="https://timebanks.us"');
+      expect(response.text).not.toContain('Choose a community');
+      expect(response.text).not.toContain('/timebank-global/accessible');
+      expect(response.text).not.toContain('/timebank-global/alpha');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'timebank.global' });
+      expect(api.getPlatformStats).toHaveBeenCalledWith({ host: 'timebank.global' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
+    it('renders the master custom-domain front page instead of the shared chooser', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          name: 'Master',
+          slug: '',
+          domain: 'project-nexus.ie',
+          tagline: 'Project NEXUS Master Platform',
+          seo: {
+            h1_headline: 'Build Thriving Communities with NEXUS',
+            hero_intro: 'NEXUS is the all-in-one platform for launching and managing timebanks.'
+          },
+          tenant_switcher: {
+            source: 'children',
+            items: [
+              {
+                id: 5,
+                name: 'Partner Demo',
+                slug: 'partner-demo',
+                url: 'https://project-nexus.ie/partner-demo'
+              },
+              {
+                id: 4,
+                name: 'Timebank Global',
+                slug: 'timebank-global',
+                url: 'https://timebank.global'
+              }
+            ]
+          }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({
+        data: {
+          members: 1200,
+          hours_exchanged: 3000,
+          listings: 200,
+          communities: 16
+        }
+      });
+
+      const response = await request(app)
+        .get('/')
+        .set('Host', 'project-nexus.ie');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Build Thriving Communities with NEXUS');
+      expect(response.text).toContain('NEXUS is the all-in-one platform for launching and managing timebanks.');
+      expect(response.text).toContain('Communities in this network');
+      expect(response.text).toContain('Partner Demo');
+      expect(response.text).toContain('href="/partner-demo"');
+      expect(response.text).toContain('Timebank Global');
+      expect(response.text).toContain('href="https://timebank.global"');
+      expect(response.text).not.toContain('Choose a community');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'project-nexus.ie' });
+      expect(api.getPlatformStats).toHaveBeenCalledWith({ host: 'project-nexus.ie' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
+    it('resolves the tenant home from a forwarded custom-domain host', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 4,
+          name: 'Timebank Global',
+          slug: 'timebank-global',
+          domain: 'timebank.global',
+          seo: {
+            h1_headline: 'Exchange Skills Across Borders',
+            hero_intro: 'Join the world largest timebanking community.'
+          },
+          tenant_switcher: {
+            source: 'children',
+            items: [
+              {
+                id: 2,
+                name: 'Hour Timebank',
+                slug: 'hour-timebank',
+                url: 'https://timebank.global/hour-timebank'
+              }
+            ]
+          }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({ data: { members: 1, hours_exchanged: 2, listings: 3, communities: 4 } });
+
+      const response = await request(app)
+        .get('/')
+        .set('Host', '127.0.0.1:5180')
+        .set('X-Forwarded-Host', 'timebank.global');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Exchange Skills Across Borders');
+      expect(response.text).toContain('href="/hour-timebank"');
+      expect(response.text).not.toContain('Choose a community');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'timebank.global' });
+      expect(api.getPlatformStats).toHaveBeenCalledWith({ host: 'timebank.global' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
     it('serves the tenant home at the slugless root when Laravel resolves the host accessible domain', async () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();

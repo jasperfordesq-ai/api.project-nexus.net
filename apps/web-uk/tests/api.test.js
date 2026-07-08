@@ -215,7 +215,8 @@ describe('API Request Functions', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            Host: 'acme-accessible.test'
+            Host: 'acme-accessible.test',
+            Origin: 'https://acme-accessible.test'
           })
         })
       );
@@ -293,7 +294,8 @@ describe('API Request Functions', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            Host: 'acme-accessible.test'
+            Host: 'acme-accessible.test',
+            Origin: 'https://acme-accessible.test'
           })
         })
       );

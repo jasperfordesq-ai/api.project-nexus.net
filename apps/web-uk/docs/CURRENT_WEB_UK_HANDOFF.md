@@ -47,23 +47,25 @@ redirects plus rendered HTML `href` and `action` targets inside the active
 flat root paths during shared-host tenant browsing. A shared-root slice now
 renders the Laravel-style tenant chooser at `/`, backed by Laravel
 `/api/v2/tenants` with the master tenant excluded and community links using the
-cleaner `/{tenantSlug}/accessible` mount. A custom accessible-domain root slice
-now asks Laravel `/api/v2/tenant/bootstrap` to resolve non-local Host values and
-renders the resolved tenant home at slugless `/` when the host matches
-`accessible_domain`. A parent-domain child slice now resolves the first
-non-reserved path segment through Laravel bootstrap and serves the flat
-accessible app below `/{childSlug}` when Laravel returns a matching
-`parent_domain`. A live runtime-smoke slice now certifies that same
-parent-domain child path against the local Laravel `hour-timebank` fixture. This
-is not full tenant-domain parity yet: template-helper conversion and live
-Laravel smoke certification for direct custom accessible-domain fixtures still
-need work. A tenant-home parity slice now replaces the old generic Web UK home
-inside tenant contexts with the Laravel Blade-style `Accessible` home page,
-including community caption, tenant tagline, platform stats, sign-in/register
-CTAs, module availability rows, and service details. A follow-up tenant-stats
-slice now scopes those platform stats through Laravel's tenant resolution:
-shared-mount tenant homes send `X-Tenant-Slug`, while custom accessible-domain
-homes send the resolved Host.
+cleaner `/{tenantSlug}/accessible` mount. Custom/root domain slices now ask
+Laravel `/api/v2/tenant/bootstrap` to resolve non-local Host values, including
+Laravel `domain` and `accessible_domain`, and render the resolved tenant home at
+slugless `/` when Laravel returns a matching tenant. This covers the master
+tenant's configured `project-nexus.ie` domain and the `timebank.global` cluster
+front page in tests, using Laravel SEO h1/intro copy and `tenant_switcher`
+items. A parent-domain child slice now resolves the first non-reserved path
+segment through Laravel bootstrap and serves the flat accessible app below
+`/{childSlug}` when Laravel returns a matching `parent_domain`. A live
+runtime-smoke slice certifies that same parent-domain child path against the
+local Laravel `hour-timebank` fixture. This is not full tenant-domain parity
+yet: template-helper conversion and a full temporary Web UK process smoke for
+custom host-root pages still need work. A tenant-home parity slice now replaces
+the old generic Web UK home inside tenant contexts with the Laravel Blade-style
+`Accessible` home page, including community caption, tenant tagline, platform
+stats, sign-in/register CTAs, module availability rows, and service details. A
+follow-up tenant-stats slice now scopes those platform stats through Laravel's
+tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
+domain homes send the resolved Host and Origin.
 
 ## Non-Negotiable Rules
 
@@ -88,8 +90,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `976/1000` implementation/certification parity |
-| Green confidence estimate | about `958/1000`, mainly gated by visual/manual Laravel Blade parity, live direct custom accessible-domain proof, full unchunked runtime certification, and ASP.NET backend switching certification |
+| Working estimate | about `978/1000` implementation/certification parity |
+| Green confidence estimate | about `960/1000`, mainly gated by visual/manual Laravel Blade parity, full custom host-root Web UK runtime proof, full unchunked runtime certification, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -107,7 +109,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 697 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 9 suites, 703 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -119,6 +121,27 @@ Latest consolidation verification on 2026-07-08:
   `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8`, and 283 body-text checks across
   `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`. The unchunked full command is
   still too slow for a single shell run.
+
+Latest focused host-domain network landing slice: Web UK now treats Laravel
+`domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
+on `timebank.global` renders the Timebank Global cluster landing with Laravel
+SEO heading `Exchange Skills Across Borders`, intro copy, and
+`tenant_switcher` communities. Same-host child entries such as Hour Timebank
+become relative links like `/hour-timebank`, while external entries such as
+`timebanks.us` remain absolute. Root `/` on the master tenant's configured
+`project-nexus.ie` domain renders the master network landing instead of the
+shared chooser. `X-Forwarded-Host` is accepted before the socket host for proxy
+custom-domain routing, and host-scoped Laravel API calls send `Origin` as well
+as `Host` so Laravel's bootstrap fallback can resolve configured custom
+domains. Verification for this slice: focused route and API tests passed, full
+Web UK Jest passed `703/703`, lint passed, and the generated route matrix still
+reported `608/608` Laravel accessible routes matched, `0` missing, `0` extra
+Web UK routes, and `3` ignored infrastructure routes. Direct live Laravel
+bootstrap calls and a direct Web UK tenant-routing middleware harness resolved
+`timebank.global` and `project-nexus.ie` correctly. A temporary full Web UK
+process host-root smoke still rendered the shared chooser during probing, so
+that full-app runtime proof remains unresolved and must not be reported as
+green.
 
 Latest focused tenant home Blade-parity slice: tenant-mounted root pages now
 render the Laravel Blade accessible home instead of the old generic Web UK
