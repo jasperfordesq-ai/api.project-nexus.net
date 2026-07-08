@@ -3932,6 +3932,310 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IdeationChallengesV2_StatusUpdatesLaravelLifecycleAndPersistsDetailStatus()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React status ideation challenge",
+            description = "Challenge that should follow the Laravel lifecycle status contract.",
+            category = "Community",
+            submission_deadline = DateTime.UtcNow.AddDays(3).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(6).ToString("O"),
+            max_ideas_per_user = 2,
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var status = await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}/status", new { status = "voting" });
+
+        status.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusJson = await status.Content.ReadFromJsonAsync<JsonElement>();
+        statusJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var statusData = statusJson.GetProperty("data");
+        statusData.GetProperty("id").GetInt32().Should().Be(challengeId);
+        statusData.GetProperty("status").GetString().Should().Be("voting");
+        statusData.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(challengeId);
+        detailData.GetProperty("status").GetString().Should().Be("voting");
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_StatusRejectsInvalidLaravelLifecycleTransition()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React guarded status ideation challenge",
+            description = "Challenge that should reject invalid lifecycle transitions.",
+            submission_deadline = DateTime.UtcNow.AddDays(3).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(6).ToString("O"),
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var invalid = await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}/status", new { status = "draft" });
+
+        invalid.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var invalidJson = await invalid.Content.ReadFromJsonAsync<JsonElement>();
+        var error = invalidJson.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("CONFLICT");
+        error.GetProperty("message").GetString().Should().Contain("open").And.Contain("draft");
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("status").GetString().Should().Be("open");
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_StatusRequiresAdminLikeLaravel()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React admin-only status ideation challenge",
+            description = "Challenge status changes should be admin-only like Laravel.",
+            submission_deadline = DateTime.UtcNow.AddDays(3).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(6).ToString("O"),
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        await AuthenticateAsMemberAsync();
+
+        var forbidden = await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}/status", new { status = "voting" });
+
+        forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsAdminAsync();
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("status").GetString().Should().Be("open");
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_FavoriteTogglesAndPersistsLaravelReactFlags()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React favorite ideation challenge",
+            description = "Challenge that should support the Laravel favorite toggle contract.",
+            submission_deadline = DateTime.UtcNow.AddDays(3).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(6).ToString("O"),
+            status = "open"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        await AuthenticateAsMemberAsync();
+
+        var favorite = await Client.PostAsync($"/api/v2/ideation-challenges/{challengeId}/favorite", null);
+
+        favorite.StatusCode.Should().Be(HttpStatusCode.OK);
+        var favoriteJson = await favorite.Content.ReadFromJsonAsync<JsonElement>();
+        favoriteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        favoriteJson.GetProperty("data").GetProperty("favorited").GetBoolean().Should().BeTrue();
+        favoriteJson.GetProperty("data").GetProperty("favorites_count").GetInt32().Should().Be(1);
+
+        var favoritedDetail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+        var favoritedData = (await favoritedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        favoritedData.GetProperty("is_favorited").GetBoolean().Should().BeTrue();
+        favoritedData.GetProperty("favorites_count").GetInt32().Should().Be(1);
+
+        var unfavorite = await Client.PostAsync($"/api/v2/ideation-challenges/{challengeId}/favorite", null);
+
+        unfavorite.StatusCode.Should().Be(HttpStatusCode.OK);
+        var unfavoriteJson = await unfavorite.Content.ReadFromJsonAsync<JsonElement>();
+        unfavoriteJson.GetProperty("data").GetProperty("favorited").GetBoolean().Should().BeFalse();
+        unfavoriteJson.GetProperty("data").GetProperty("favorites_count").GetInt32().Should().Be(0);
+
+        var unfavoritedDetail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}");
+        var unfavoritedData = (await unfavoritedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        unfavoritedData.GetProperty("is_favorited").GetBoolean().Should().BeFalse();
+        unfavoritedData.GetProperty("favorites_count").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_DuplicateCreatesLaravelReactDraftCopy()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React duplicable ideation challenge",
+            description = "Challenge that should duplicate into a draft copy.",
+            category = "Community",
+            prize_description = "Original recognition",
+            submission_deadline = DateTime.UtcNow.AddDays(5).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(10).ToString("O"),
+            max_ideas_per_user = 4,
+            tags = new[] { "duplicate", "ideation" },
+            status = "open"
+        });
+        var originalId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var duplicate = await Client.PostAsync($"/api/v2/ideation-challenges/{originalId}/duplicate", null);
+
+        duplicate.StatusCode.Should().Be(HttpStatusCode.Created);
+        var duplicateJson = await duplicate.Content.ReadFromJsonAsync<JsonElement>();
+        duplicateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var duplicateData = duplicateJson.GetProperty("data");
+        var duplicateId = duplicateData.GetProperty("id").GetInt32();
+        duplicateId.Should().BeGreaterThan(0).And.NotBe(originalId);
+        duplicateData.GetProperty("title").GetString().Should().Be("[Copy] Laravel React duplicable ideation challenge");
+        duplicateData.GetProperty("description").GetString().Should().Be("Challenge that should duplicate into a draft copy.");
+        duplicateData.GetProperty("status").GetString().Should().Be("draft");
+        duplicateData.GetProperty("category").GetString().Should().Be("Community");
+        duplicateData.GetProperty("prize_description").GetString().Should().Be("Original recognition");
+        duplicateData.GetProperty("max_ideas_per_user").GetInt32().Should().Be(4);
+        duplicateData.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString()).Should().Contain(new[] { "duplicate", "ideation" });
+        duplicateData.GetProperty("favorites_count").GetInt32().Should().Be(0);
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{duplicateId}");
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("title").GetString().Should().Be("[Copy] Laravel React duplicable ideation challenge");
+        detailData.GetProperty("status").GetString().Should().Be("draft");
+        detailData.GetProperty("category").GetString().Should().Be("Community");
+    }
+
+    [Fact]
+    public async Task IdeationChallengesV2_OutcomePersistsLaravelReactPayload()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React outcome ideation challenge",
+            description = "Challenge that should persist outcome modal fields.",
+            submission_deadline = DateTime.UtcNow.AddDays(-10).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(-5).ToString("O"),
+            status = "closed"
+        });
+        var challengeId = (await create.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var save = await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{challengeId}/outcome", new
+        {
+            winning_idea_id = (int?)null,
+            implementation_status = "in_progress",
+            impact_description = "Pilot implementation started with two local partners."
+        });
+
+        save.StatusCode.Should().Be(HttpStatusCode.OK);
+        var saveJson = await save.Content.ReadFromJsonAsync<JsonElement>();
+        saveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var savedOutcome = saveJson.GetProperty("data");
+        savedOutcome.GetProperty("challenge_id").GetInt32().Should().Be(challengeId);
+        savedOutcome.GetProperty("winning_idea_id").ValueKind.Should().Be(JsonValueKind.Null);
+        savedOutcome.GetProperty("winning_idea_title").ValueKind.Should().Be(JsonValueKind.Null);
+        savedOutcome.GetProperty("implementation_status").GetString().Should().Be("in_progress");
+        savedOutcome.GetProperty("impact_description").GetString().Should().Be("Pilot implementation started with two local partners.");
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-challenges/{challengeId}/outcome");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailOutcome = detailJson.GetProperty("data");
+        detailOutcome.GetProperty("challenge_id").GetInt32().Should().Be(challengeId);
+        detailOutcome.GetProperty("implementation_status").GetString().Should().Be("in_progress");
+        detailOutcome.GetProperty("impact_description").GetString().Should().Be("Pilot implementation started with two local partners.");
+    }
+
+    [Fact]
+    public async Task IdeationOutcomesDashboardV2_ReturnsLaravelReactSummaryAndRows()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var firstCreate = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React implemented outcome challenge",
+            description = "Closed challenge with an implemented outcome.",
+            submission_deadline = DateTime.UtcNow.AddDays(-14).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(-7).ToString("O"),
+            status = "closed"
+        });
+        var firstId = (await firstCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var secondCreate = await Client.PostAsJsonAsync("/api/v2/ideation-challenges", new
+        {
+            title = "Laravel React in-progress outcome challenge",
+            description = "Closed challenge with an in-progress outcome.",
+            submission_deadline = DateTime.UtcNow.AddDays(-12).ToString("O"),
+            voting_deadline = DateTime.UtcNow.AddDays(-6).ToString("O"),
+            status = "closed"
+        });
+        var secondId = (await secondCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{firstId}/outcome", new
+        {
+            implementation_status = "implemented",
+            impact_description = "Implemented by the neighbourhood team."
+        });
+        await Client.PutAsJsonAsync($"/api/v2/ideation-challenges/{secondId}/outcome", new
+        {
+            implementation_status = "in_progress",
+            impact_description = "Delivery partner onboarding is in progress."
+        });
+
+        var dashboard = await Client.GetAsync("/api/v2/ideation-outcomes/dashboard");
+
+        dashboard.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dashboardJson = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
+        dashboardJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = dashboardJson.GetProperty("data");
+        data.GetProperty("total").GetInt32().Should().Be(2);
+        data.GetProperty("implemented").GetInt32().Should().Be(1);
+        data.GetProperty("in_progress").GetInt32().Should().Be(1);
+        data.GetProperty("not_started").GetInt32().Should().Be(0);
+        data.GetProperty("abandoned").GetInt32().Should().Be(0);
+
+        var outcomes = data.GetProperty("outcomes").EnumerateArray().ToArray();
+        outcomes.Should().HaveCount(2);
+        outcomes.Should().Contain(row =>
+            row.GetProperty("challenge_id").GetInt32() == firstId &&
+            row.GetProperty("challenge_title").GetString() == "Laravel React implemented outcome challenge" &&
+            row.GetProperty("implementation_status").GetString() == "implemented" &&
+            row.GetProperty("impact_description").GetString() == "Implemented by the neighbourhood team.");
+        outcomes.Should().Contain(row =>
+            row.GetProperty("challenge_id").GetInt32() == secondId &&
+            row.GetProperty("challenge_title").GetString() == "Laravel React in-progress outcome challenge" &&
+            row.GetProperty("implementation_status").GetString() == "in_progress");
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();

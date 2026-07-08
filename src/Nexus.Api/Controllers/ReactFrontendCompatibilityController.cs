@@ -695,16 +695,96 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/ideation-outcomes/dashboard")]
+    [HttpGet("api/v2/ideation-outcomes/dashboard")]
     [Authorize]
     public async Task<IActionResult> IdeationOutcomesDashboard()
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var prefix = "ideation.challenge.outcome.";
+        var outcomeConfigs = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key.StartsWith(prefix))
+            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+            .ToListAsync();
+
+        var outcomes = new List<IdeationDashboardOutcomeRow>();
+        foreach (var config in outcomeConfigs)
+        {
+            IdeationChallengeOutcomeMetadata? outcome;
+            try
+            {
+                outcome = JsonSerializer.Deserialize<IdeationChallengeOutcomeMetadata>(config.Value);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (outcome == null)
+            {
+                continue;
+            }
+
+            var challenge = await _db.Challenges
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == outcome.ChallengeId && c.TenantId == tenantId);
+            if (challenge == null)
+            {
+                continue;
+            }
+
+            string? winningIdeaTitle = null;
+            if (outcome.WinningIdeaId.HasValue)
+            {
+                winningIdeaTitle = await _db.Ideas
+                    .AsNoTracking()
+                    .Where(i => i.Id == outcome.WinningIdeaId.Value && i.TenantId == tenantId)
+                    .Select(i => i.Title)
+                    .FirstOrDefaultAsync();
+            }
+
+            var implementationStatus = outcome.ImplementationStatus ?? outcome.Status ?? "not_started";
+            outcomes.Add(new IdeationDashboardOutcomeRow(
+                challenge.Id,
+                challenge.Title,
+                winningIdeaTitle,
+                implementationStatus,
+                outcome.ImpactDescription,
+                outcome.UpdatedAt));
+        }
+
+        var stats = new
+        {
+            total = outcomes.Count,
+            implemented = outcomes.Count(o => o.ImplementationStatus == "implemented"),
+            in_progress = outcomes.Count(o => o.ImplementationStatus == "in_progress"),
+            not_started = outcomes.Count(o => o.ImplementationStatus == "not_started"),
+            abandoned = outcomes.Count(o => o.ImplementationStatus == "abandoned")
+        };
+
+        var rows = outcomes.Select(o => new
+        {
+            challenge_id = o.ChallengeId,
+            challenge_title = o.ChallengeTitle,
+            winning_idea_title = o.WinningIdeaTitle,
+            implementation_status = o.ImplementationStatus,
+            status = o.ImplementationStatus,
+            impact_description = o.ImpactDescription,
+            updated_at = o.UpdatedAt
+        }).ToArray();
+
         var data = new
         {
-            active_campaigns = await _db.Challenges.CountAsync(c => c.IsActive),
-            ideas = await _db.Ideas.CountAsync(),
-            votes = await _db.IdeaVotes.CountAsync()
+            stats.total,
+            stats.implemented,
+            stats.in_progress,
+            stats.not_started,
+            stats.abandoned,
+            outcomes = rows,
+            stats
         };
-        return Ok(new { data });
+
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("api/goals/discover")]
@@ -2239,45 +2319,105 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
     [HttpPost("api/ideation-challenges/{id:int}/favorite")]
     [HttpDelete("api/ideation-challenges/{id:int}/favorite")]
+    [HttpPost("api/v2/ideation-challenges/{id:int}/favorite")]
+    [HttpDelete("api/v2/ideation-challenges/{id:int}/favorite")]
     [Authorize]
     public async Task<IActionResult> IdeationChallengeFavorite(int id)
     {
-        var exists = await _db.Challenges.AnyAsync(c => c.Id == id);
-        if (!exists) return NotFound(new { error = "Challenge not found" });
-        return Ok(new { success = true, favorite = HttpContext.Request.Method != HttpMethods.Delete, challenge_id = id });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { errors = new[] { IdeationStatusError("AUTH_REQUIRED", "Authentication required.") } });
+
+        var exists = await _db.Challenges.AnyAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (!exists) return NotFound(new { errors = new[] { IdeationStatusError("NOT_FOUND", "Challenge not found.") } });
+
+        var key = IdeationChallengeFavoriteKey(id, userId.Value);
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        var favorited = HttpContext.Request.Method == HttpMethods.Delete ? false : existing == null;
+        if (existing != null)
+        {
+            _db.TenantConfigs.Remove(existing);
+        }
+        else if (favorited)
+        {
+            var now = DateTime.UtcNow;
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = now.ToString("O"),
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        var favoritesCount = await CountIdeationChallengeFavoritesAsync(tenantId, id);
+        var data = new { favorited, favorites_count = favoritesCount };
+        return Ok(new { success = true, data, favorited, favorites_count = favoritesCount });
     }
 
     [HttpGet("api/ideation-challenges/{id:int}/outcome")]
+    [HttpGet("api/v2/ideation-challenges/{id:int}/outcome")]
     [Authorize]
     public async Task<IActionResult> IdeationChallengeOutcome(int id)
     {
-        var challenge = await _db.Challenges.Include(c => c.Participants).FirstOrDefaultAsync(c => c.Id == id);
-        if (challenge == null) return NotFound(new { error = "Challenge not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var exists = await _db.Challenges.AnyAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (!exists) return NotFound(new { errors = new[] { IdeationStatusError("NOT_FOUND", "Challenge not found.") } });
 
-        return Ok(new
+        var data = await ProjectIdeationChallengeOutcomeAsync(tenantId, id);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("api/v2/ideation-challenges/{id:int}/outcome")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> UpsertIdeationChallengeOutcome(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var exists = await _db.Challenges.AnyAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (!exists) return NotFound(new { errors = new[] { IdeationStatusError("RESOURCE_NOT_FOUND", "Challenge not found.") } });
+
+        var status = (ReadString(body, "implementation_status") ?? ReadString(body, "status") ?? "not_started")
+            .Trim()
+            .ToLowerInvariant();
+        if (status is not ("not_started" or "in_progress" or "implemented" or "abandoned"))
         {
-            data = new
-            {
-                challenge_id = id,
-                title = challenge.Title,
-                participant_count = challenge.Participants.Count,
-                completed_count = challenge.Participants.Count(p => p.IsCompleted),
-                status = challenge.IsActive ? "active" : "inactive"
-            }
-        });
+            return UnprocessableEntity(new { errors = new[] { IdeationStatusError("VALIDATION_INVALID_VALUE", "Invalid outcome status.", "status") } });
+        }
+
+        var outcome = await LoadIdeationChallengeOutcomeAsync(tenantId, id) ?? new IdeationChallengeOutcomeMetadata();
+        outcome.ChallengeId = id;
+        outcome.WinningIdeaId = ReadInt(body, "winning_idea_id");
+        outcome.ImplementationStatus = status;
+        outcome.Status = status;
+        outcome.ImpactDescription = ReadString(body, "impact_description")?.Trim();
+        outcome.UpdatedAt = DateTime.UtcNow;
+        outcome.CreatedAt ??= outcome.UpdatedAt;
+
+        await UpsertIdeationChallengeOutcomeAsync(tenantId, id, outcome);
+        await _db.SaveChangesAsync();
+
+        var data = await ProjectIdeationChallengeOutcomeAsync(tenantId, id);
+        return Ok(new { success = true, data });
     }
 
     [HttpPost("api/ideation-challenges/{id:int}/duplicate")]
-    [Authorize]
+    [HttpPost("api/v2/ideation-challenges/{id:int}/duplicate")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DuplicateIdeationChallenge(int id)
     {
-        var source = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id);
-        if (source == null) return NotFound(new { error = "Challenge not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { errors = new[] { IdeationStatusError("AUTH_REQUIRED", "Authentication required.") } });
+
+        var source = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+        if (source == null) return NotFound(new { errors = new[] { IdeationStatusError("NOT_FOUND", "Challenge not found.") } });
 
         var copy = new Challenge
         {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
-            Title = source.Title + " copy",
+            TenantId = tenantId,
+            Title = "[Copy] " + source.Title,
             Description = source.Description,
             ChallengeType = source.ChallengeType,
             TargetAction = source.TargetAction,
@@ -2290,22 +2430,70 @@ public class ReactFrontendCompatibilityController : ControllerBase
         };
         _db.Challenges.Add(copy);
         await _db.SaveChangesAsync();
-        return Ok(new { data = ProjectChallenge(copy), challenge = ProjectChallenge(copy) });
+
+        var metadata = await LoadIdeationChallengeMetadataAsync(source.TenantId, source.Id);
+        metadata.Status = "draft";
+        metadata.SubmissionDeadline = null;
+        metadata.VotingDeadline = null;
+        await UpsertIdeationChallengeMetadataAsync(copy.TenantId, copy.Id, metadata);
+
+        var now = DateTime.UtcNow;
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = copy.TenantId,
+            Key = $"admin.feed.author.challenge.{copy.Id}",
+            Value = userId.Value.ToString(),
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        await _db.SaveChangesAsync();
+        var data = await ProjectIdeationChallengeAsync(copy);
+        return Created($"/api/v2/ideation-challenges/{copy.Id}", new { success = true, data, challenge = data });
     }
 
     [HttpPost("api/ideation-challenges/{id:int}/status")]
     [HttpPut("api/ideation-challenges/{id:int}/status")]
-    [Authorize]
+    [HttpPost("api/v2/ideation-challenges/{id:int}/status")]
+    [HttpPut("api/v2/ideation-challenges/{id:int}/status")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> IdeationChallengeStatus(int id, [FromBody] JsonElement body)
     {
-        var challenge = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id);
+        var challenge = await _db.Challenges
+            .Include(c => c.Participants)
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == _tenantContext.GetTenantIdOrThrow());
         if (challenge == null) return NotFound(new { error = "Challenge not found" });
         var status = ReadString(body, "status");
-        if (!string.IsNullOrWhiteSpace(status))
-            challenge.IsActive = status.Equals("active", StringComparison.OrdinalIgnoreCase) || status.Equals("published", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return BadRequest(new { errors = new[] { IdeationStatusError("VALIDATION_REQUIRED_FIELD", "Status is required.", "status") } });
+        }
+
+        status = status.Trim().ToLowerInvariant();
+        if (!IsLaravelIdeationStatus(status))
+        {
+            return UnprocessableEntity(new { errors = new[] { IdeationStatusError("VALIDATION_ERROR", "Invalid status value.", "status") } });
+        }
+
+        var metadata = await LoadIdeationChallengeMetadataAsync(challenge.TenantId, challenge.Id);
+        var currentStatus = (metadata.Status ?? MapAdminIdeationStatus(challenge)).Trim().ToLowerInvariant();
+        if (!CanTransitionIdeationStatus(currentStatus, status))
+        {
+            return StatusCode(StatusCodes.Status409Conflict, new
+            {
+                errors = new[]
+                {
+                    IdeationStatusError("CONFLICT", $"Invalid challenge status transition from {currentStatus} to {status}.")
+                }
+            });
+        }
+
+        challenge.IsActive = status is "open" or "voting" or "evaluating";
+        await SaveIdeationChallengeMetadataAsync(challenge.TenantId, challenge.Id, body);
         challenge.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
+        var data = await ProjectIdeationChallengeAsync(challenge);
+        return Ok(new { success = true, data, challenge = data });
     }
 
     [HttpGet("api/ideation-challenges/{id:int}/ideas/drafts")]
@@ -3331,6 +3519,12 @@ public class ReactFrontendCompatibilityController : ControllerBase
     private async Task<object> ProjectIdeationChallengeAsync(Challenge challenge)
     {
         var metadata = await LoadIdeationChallengeMetadataAsync(challenge.TenantId, challenge.Id);
+        var userId = User.GetUserId();
+        var isFavorited = userId.HasValue &&
+            await _db.TenantConfigs.AnyAsync(c =>
+                c.TenantId == challenge.TenantId &&
+                c.Key == IdeationChallengeFavoriteKey(challenge.Id, userId.Value));
+        var favoritesCount = await CountIdeationChallengeFavoritesAsync(challenge.TenantId, challenge.Id);
         return new
         {
             id = challenge.Id,
@@ -3349,6 +3543,8 @@ public class ReactFrontendCompatibilityController : ControllerBase
             target_count = challenge.TargetCount,
             xp_reward = challenge.XpReward,
             is_active = challenge.IsActive,
+            is_favorited = isFavorited,
+            favorites_count = favoritesCount,
             difficulty = challenge.Difficulty.ToString().ToLowerInvariant(),
             participant_count = challenge.Participants?.Count ?? 0,
             starts_at = challenge.StartsAt,
@@ -3449,6 +3645,11 @@ public class ReactFrontendCompatibilityController : ControllerBase
             metadata.MaxIdeasPerUser = ReadInt(body, "max_ideas_per_user");
         }
 
+        if (body.TryGetProperty("status", out _))
+        {
+            metadata.Status = ReadString(body, "status")?.Trim();
+        }
+
         if (body.TryGetProperty("cover_image", out _))
         {
             metadata.CoverImage = ReadString(body, "cover_image")?.Trim();
@@ -3459,6 +3660,11 @@ public class ReactFrontendCompatibilityController : ControllerBase
             metadata.Tags = ReadStringArray(body, "tags");
         }
 
+        await UpsertIdeationChallengeMetadataAsync(tenantId, challengeId, metadata);
+    }
+
+    private async Task UpsertIdeationChallengeMetadataAsync(int tenantId, int challengeId, IdeationChallengeMetadata metadata)
+    {
         var now = DateTime.UtcNow;
         var key = IdeationChallengeMetaKey(challengeId);
         var value = JsonSerializer.Serialize(metadata);
@@ -3485,16 +3691,137 @@ public class ReactFrontendCompatibilityController : ControllerBase
         var keys = new[]
         {
             IdeationChallengeMetaKey(challengeId),
+            IdeationChallengeOutcomeKey(challengeId),
             $"admin.feed.author.challenge.{challengeId}",
             $"admin.feed.hidden.challenge.{challengeId}",
             $"admin.feed.deleted.challenge.{challengeId}"
         };
+        var favoritePrefix = IdeationChallengeFavoritePrefix(challengeId);
 
         var rows = await _db.TenantConfigs
-            .Where(c => c.TenantId == tenantId && keys.Contains(c.Key))
+            .Where(c => c.TenantId == tenantId && (keys.Contains(c.Key) || c.Key.StartsWith(favoritePrefix)))
             .ToListAsync();
         _db.TenantConfigs.RemoveRange(rows);
     }
+
+    private Task<int> CountIdeationChallengeFavoritesAsync(int tenantId, int challengeId)
+    {
+        var prefix = IdeationChallengeFavoritePrefix(challengeId);
+        return _db.TenantConfigs.CountAsync(c => c.TenantId == tenantId && c.Key.StartsWith(prefix));
+    }
+
+    private async Task<object?> ProjectIdeationChallengeOutcomeAsync(int tenantId, int challengeId)
+    {
+        var outcome = await LoadIdeationChallengeOutcomeAsync(tenantId, challengeId);
+        if (outcome == null)
+        {
+            return null;
+        }
+
+        string? winningIdeaTitle = null;
+        object? winningIdea = null;
+        if (outcome.WinningIdeaId.HasValue)
+        {
+            var idea = await _db.Ideas
+                .Include(i => i.Author)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == outcome.WinningIdeaId.Value && i.TenantId == tenantId);
+            if (idea != null)
+            {
+                winningIdeaTitle = idea.Title;
+                winningIdea = new
+                {
+                    id = idea.Id,
+                    title = idea.Title,
+                    description = idea.Content,
+                    author = idea.Author == null
+                        ? string.Empty
+                        : string.Join(" ", new[] { idea.Author.FirstName, idea.Author.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)))
+                };
+            }
+        }
+
+        var implementationStatus = outcome.ImplementationStatus ?? outcome.Status ?? "not_started";
+        return new
+        {
+            id = outcome.Id,
+            challenge_id = challengeId,
+            winning_idea_id = outcome.WinningIdeaId,
+            winning_idea_title = winningIdeaTitle,
+            winning_idea = winningIdea,
+            implementation_status = implementationStatus,
+            status = implementationStatus,
+            impact_description = outcome.ImpactDescription,
+            created_at = outcome.CreatedAt,
+            updated_at = outcome.UpdatedAt
+        };
+    }
+
+    private async Task<IdeationChallengeOutcomeMetadata?> LoadIdeationChallengeOutcomeAsync(int tenantId, int challengeId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == IdeationChallengeOutcomeKey(challengeId))
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<IdeationChallengeOutcomeMetadata>(raw);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task UpsertIdeationChallengeOutcomeAsync(int tenantId, int challengeId, IdeationChallengeOutcomeMetadata outcome)
+    {
+        var key = IdeationChallengeOutcomeKey(challengeId);
+        outcome.Id = outcome.Id == 0 ? challengeId : outcome.Id;
+        var value = JsonSerializer.Serialize(outcome);
+        var now = DateTime.UtcNow;
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = now;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    private static bool IsLaravelIdeationStatus(string status)
+        => status is "draft" or "open" or "voting" or "evaluating" or "closed" or "archived";
+
+    private static bool CanTransitionIdeationStatus(string currentStatus, string nextStatus)
+        => currentStatus switch
+        {
+            "draft" => nextStatus is "open",
+            "open" => nextStatus is "voting" or "evaluating" or "closed",
+            "voting" => nextStatus is "evaluating" or "closed",
+            "evaluating" => nextStatus is "closed",
+            "closed" => nextStatus is "open" or "archived",
+            "archived" => nextStatus is "closed",
+            _ => false
+        };
+
+    private static object IdeationStatusError(string code, string message, string? field = null)
+        => field == null
+            ? new { code, message }
+            : new { code, message, field };
 
     private static DateTime? ReadDateTime(JsonElement body, string propertyName)
     {
@@ -3525,6 +3852,32 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     private static string IdeationChallengeMetaKey(int challengeId) => $"ideation.challenge.meta.{challengeId}";
+
+    private static string IdeationChallengeOutcomeKey(int challengeId) => $"ideation.challenge.outcome.{challengeId}";
+
+    private static string IdeationChallengeFavoritePrefix(int challengeId) => $"ideation.challenge.favorite.{challengeId}.";
+
+    private static string IdeationChallengeFavoriteKey(int challengeId, int userId) => $"{IdeationChallengeFavoritePrefix(challengeId)}{userId}";
+
+    private sealed class IdeationChallengeOutcomeMetadata
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("challenge_id")] public int ChallengeId { get; set; }
+        [JsonPropertyName("winning_idea_id")] public int? WinningIdeaId { get; set; }
+        [JsonPropertyName("implementation_status")] public string? ImplementationStatus { get; set; }
+        [JsonPropertyName("status")] public string? Status { get; set; }
+        [JsonPropertyName("impact_description")] public string? ImpactDescription { get; set; }
+        [JsonPropertyName("created_at")] public DateTime? CreatedAt { get; set; }
+        [JsonPropertyName("updated_at")] public DateTime? UpdatedAt { get; set; }
+    }
+
+    private sealed record IdeationDashboardOutcomeRow(
+        int ChallengeId,
+        string ChallengeTitle,
+        string? WinningIdeaTitle,
+        string ImplementationStatus,
+        string? ImpactDescription,
+        DateTime? UpdatedAt);
 
     private sealed class IdeationChallengeMetadata
     {
