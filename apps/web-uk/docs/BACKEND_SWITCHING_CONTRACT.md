@@ -536,11 +536,20 @@ the `Suggested matches` caption. The targeted run passed with `8/8` checks and
 chunks against the same port, covering all 255 body-text contract checks with
 `303/303` executed checks including repeated auth/health setup checks and `0`
 failures.
-The default scope now contains `602` checks:
+The signed group exchange pages `/group-exchanges` and `/group-exchanges/new`
+returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6238`; the list marker tracks the
+Laravel-backed `Start a group exchange` action, and the create marker tracks
+the shared-hours fieldset text `How are the hours shared out?`. The targeted
+run passed with `8/8` checks and `0` failures. The body-text-only default smoke
+scope was recertified in 8 chunks against the same port, covering all 257
+body-text contract checks with `305/305` executed checks including repeated
+auth/health setup checks and `0` failures.
+The default scope now contains `604` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 255 body-text contract checks, and the 6
+content-type contract checks, 257 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

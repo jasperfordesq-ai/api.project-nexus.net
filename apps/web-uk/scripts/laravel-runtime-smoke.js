@@ -218,6 +218,8 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/resources/10/comments', text: 'Comments' },
   { path: '/skills', text: 'Skills' },
   { path: '/goals', text: 'Goals' },
+  { path: '/group-exchanges', text: 'Start a group exchange' },
+  { path: '/group-exchanges/new', text: 'How are the hours shared out?' },
   { path: '/clubs', text: 'Clubs' },
   { path: '/saved', text: 'Saved items' },
   { path: '/members', text: 'Community members' },
