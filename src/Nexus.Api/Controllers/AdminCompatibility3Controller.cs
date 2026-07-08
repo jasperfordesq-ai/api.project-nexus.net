@@ -46,6 +46,90 @@ public class AdminCompatibility3Controller : ControllerBase
 
     private int? GetCurrentUserId() => User.GetUserId();
     private int GetTenantId() => _tenantContext.GetTenantIdOrThrow();
+    private const string GlobalSuperAdminIdsKey = "super_admins.global_user_ids";
+
+    private IActionResult LaravelData(object data) => Ok(new
+    {
+        data,
+        meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+    });
+
+    private IActionResult LaravelError(string code, string message, int status)
+    {
+        var payload = new { errors = new[] { new { code, message } } };
+        return status switch
+        {
+            StatusCodes.Status404NotFound => NotFound(payload),
+            StatusCodes.Status403Forbidden => StatusCode(StatusCodes.Status403Forbidden, payload),
+            StatusCodes.Status422UnprocessableEntity => UnprocessableEntity(payload),
+            _ => StatusCode(status, payload)
+        };
+    }
+
+    private async Task<int> ReadIntBodyFieldAsync(string field)
+    {
+        if (Request.ContentLength == 0)
+            return 0;
+
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(Request.Body);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                doc.RootElement.TryGetProperty(field, out var value))
+            {
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+                    return number;
+                if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out var parsed))
+                    return parsed;
+            }
+        }
+        catch (JsonException)
+        {
+            return 0;
+        }
+
+        return 0;
+    }
+
+    private static int ReadIntProperty(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return 0;
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+            return number;
+
+        return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out var parsed)
+            ? parsed
+            : 0;
+    }
+
+    private static List<int> ReadIntArrayProperty(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty(propertyName, out var value) ||
+            value.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var ids = new List<int>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var number))
+                ids.Add(number);
+            else if (item.ValueKind == JsonValueKind.String && int.TryParse(item.GetString(), out var parsed))
+                ids.Add(parsed);
+        }
+
+        return ids;
+    }
+
+    private static string ReadStringProperty(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return string.Empty;
+
+        return value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : string.Empty;
+    }
 
     // ───────────────────────────────────────────────────────────────
     // Enterprise - Extended (beyond existing EnterpriseController)
@@ -603,58 +687,273 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users/{userId}/grant-super-admin - Grant super admin.</summary>
     [HttpPost("super/users/{userId}/grant-super-admin")]
-    public IActionResult GrantSuperAdmin(int userId)
+    public async Task<IActionResult> GrantSuperAdmin(int userId)
     {
-        return Ok(new { success = true, message = "Super admin granted", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        user.Role = "tenant_admin";
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} granted tenant super-admin compatibility privileges to user {UserId}", GetCurrentUserId(), userId);
+        return LaravelData(new { granted = true, user_id = userId });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/revoke-super-admin - Revoke super admin.</summary>
     [HttpPost("super/users/{userId}/revoke-super-admin")]
-    public IActionResult RevokeSuperAdmin(int userId)
+    public async Task<IActionResult> RevokeSuperAdmin(int userId)
     {
-        return Ok(new { success = true, message = "Super admin revoked", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (user.Role == "tenant_admin" || user.Role == "super_admin")
+            user.Role = "member";
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} revoked tenant super-admin compatibility privileges from user {UserId}", GetCurrentUserId(), userId);
+        return LaravelData(new { revoked = true, user_id = userId });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/grant-global-super-admin - Grant global super admin.</summary>
     [HttpPost("super/users/{userId}/grant-global-super-admin")]
-    public IActionResult GrantGlobalSuperAdmin(int userId)
+    public async Task<IActionResult> GrantGlobalSuperAdmin(int userId)
     {
-        return Ok(new { success = true, message = "Global super admin granted", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (user.Role == "member")
+            user.Role = "admin";
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var globalIds = await GetGlobalSuperAdminIdsAsync(user.TenantId);
+        globalIds.Add(userId);
+        await SaveGlobalSuperAdminIdsAsync(user.TenantId, globalIds, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} granted global super-admin compatibility metadata to user {UserId}", GetCurrentUserId(), userId);
+        return LaravelData(new { granted = true, user_id = userId, level = "global" });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/revoke-global-super-admin - Revoke global super admin.</summary>
     [HttpPost("super/users/{userId}/revoke-global-super-admin")]
-    public IActionResult RevokeGlobalSuperAdmin(int userId)
+    public async Task<IActionResult> RevokeGlobalSuperAdmin(int userId)
     {
-        return Ok(new { success = true, message = "Global super admin revoked", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        var globalIds = await GetGlobalSuperAdminIdsAsync(user.TenantId);
+        globalIds.Remove(userId);
+        await SaveGlobalSuperAdminIdsAsync(user.TenantId, globalIds, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} revoked global super-admin compatibility metadata from user {UserId}", GetCurrentUserId(), userId);
+        return LaravelData(new { revoked = true, user_id = userId, level = "global" });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/move-tenant - Move user to tenant.</summary>
     [HttpPost("super/users/{userId}/move-tenant")]
-    public IActionResult MoveSuperUserTenant(int userId)
+    public async Task<IActionResult> MoveSuperUserTenant(int userId)
     {
-        return Ok(new { success = true, message = "User moved to new tenant", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        var newTenantId = await ReadIntBodyFieldAsync("new_tenant_id");
+        if (newTenantId <= 0)
+            return LaravelError("VALIDATION_ERROR", "new_tenant_id is required", StatusCodes.Status422UnprocessableEntity);
+
+        var targetTenantExists = await _db.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Id == newTenantId);
+        if (!targetTenantExists)
+            return LaravelError("VALIDATION_ERROR", "Target tenant not found", StatusCodes.Status422UnprocessableEntity);
+
+        var oldTenantId = user.TenantId;
+        user.TenantId = newTenantId;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} moved user {UserId} from tenant {OldTenantId} to tenant {NewTenantId}", GetCurrentUserId(), userId, oldTenantId, newTenantId);
+        return LaravelData(new
+        {
+            moved = true,
+            user_id = userId,
+            old_tenant_id = oldTenantId,
+            new_tenant_id = newTenantId,
+            records_moved = 1,
+            tables_failed = Array.Empty<string>()
+        });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/move-and-promote - Move and promote user.</summary>
     [HttpPost("super/users/{userId}/move-and-promote")]
-    public IActionResult MoveAndPromoteSuperUser(int userId)
+    public async Task<IActionResult> MoveAndPromoteSuperUser(int userId)
     {
-        return Ok(new { success = true, message = "User moved and promoted", user_id = userId });
+        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        var targetTenantId = await ReadIntBodyFieldAsync("target_tenant_id");
+        if (targetTenantId <= 0)
+            return LaravelError("VALIDATION_ERROR", "target_tenant_id is required", StatusCodes.Status422UnprocessableEntity);
+
+        var targetTenantExists = await _db.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Id == targetTenantId);
+        if (!targetTenantExists)
+            return LaravelError("VALIDATION_ERROR", "Target tenant not found", StatusCodes.Status422UnprocessableEntity);
+
+        var oldTenantId = user.TenantId;
+        user.TenantId = targetTenantId;
+        user.Role = "tenant_admin";
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} moved user {UserId} from tenant {OldTenantId} to tenant {TargetTenantId} and promoted them", GetCurrentUserId(), userId, oldTenantId, targetTenantId);
+        return LaravelData(new
+        {
+            moved = true,
+            promoted = true,
+            user_id = userId,
+            old_tenant_id = oldTenantId,
+            new_tenant_id = targetTenantId
+        });
     }
 
     /// <summary>POST /api/admin/super/bulk/move-users - Bulk move users.</summary>
     [HttpPost("super/bulk/move-users")]
-    public IActionResult BulkMoveUsers()
+    public async Task<IActionResult> BulkMoveUsers()
     {
-        return Ok(new { success = true, message = "Bulk move initiated", moved_count = 0 });
+        using var doc = await JsonDocument.ParseAsync(Request.Body);
+        var root = doc.RootElement;
+        var userIds = ReadIntArrayProperty(root, "user_ids");
+        var targetTenantId = ReadIntProperty(root, "target_tenant_id");
+        var grantSuperAdmin = root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("grant_super_admin", out var grant) &&
+            grant.ValueKind == JsonValueKind.True;
+
+        if (userIds.Count == 0)
+            return LaravelError("VALIDATION_ERROR", "user_ids is required", StatusCodes.Status422UnprocessableEntity);
+        if (targetTenantId <= 0)
+            return LaravelError("VALIDATION_ERROR", "target_tenant_id is required", StatusCodes.Status422UnprocessableEntity);
+
+        var targetTenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == targetTenantId);
+        if (targetTenant == null)
+            return LaravelError("NOT_FOUND", "Target tenant not found", StatusCodes.Status404NotFound);
+
+        var errors = new List<string>();
+        var movedCount = 0;
+        var now = DateTime.UtcNow;
+        foreach (var userId in userIds)
+        {
+            var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                errors.Add($"User ID {userId} not found");
+                continue;
+            }
+
+            if (user.TenantId == targetTenantId)
+            {
+                errors.Add($"User ID {userId} is already in the target tenant");
+                continue;
+            }
+
+            user.TenantId = targetTenantId;
+            if (grantSuperAdmin)
+                user.Role = "tenant_admin";
+            user.UpdatedAt = now;
+            movedCount++;
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} bulk-moved {MovedCount}/{RequestedCount} users to tenant {TargetTenantId}", GetCurrentUserId(), movedCount, userIds.Count, targetTenantId);
+        return LaravelData(new
+        {
+            moved_count = movedCount,
+            total_requested = userIds.Count,
+            errors
+        });
     }
 
     /// <summary>POST /api/admin/super/bulk/update-tenants - Bulk update tenants.</summary>
     [HttpPost("super/bulk/update-tenants")]
-    public IActionResult BulkUpdateTenants()
+    public async Task<IActionResult> BulkUpdateTenants()
     {
-        return Ok(new { success = true, message = "Bulk update initiated", updated_count = 0 });
+        using var doc = await JsonDocument.ParseAsync(Request.Body);
+        var root = doc.RootElement;
+        var tenantIds = ReadIntArrayProperty(root, "tenant_ids");
+        var action = ReadStringProperty(root, "action");
+
+        if (tenantIds.Count == 0)
+            return LaravelError("VALIDATION_ERROR", "tenant_ids is required", StatusCodes.Status422UnprocessableEntity);
+
+        var allowedActions = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "activate",
+            "deactivate",
+            "enable_hub",
+            "disable_hub"
+        };
+        if (!allowedActions.Contains(action))
+            return LaravelError("VALIDATION_ERROR", "Invalid bulk action", StatusCodes.Status422UnprocessableEntity);
+
+        var errors = new List<string>();
+        var updatedCount = 0;
+        var now = DateTime.UtcNow;
+        foreach (var tenantId in tenantIds)
+        {
+            if (tenantId == 1)
+            {
+                errors.Add("Cannot modify Master tenant");
+                continue;
+            }
+
+            var tenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == tenantId);
+            if (tenant == null)
+            {
+                errors.Add($"Tenant ID {tenantId} not found");
+                continue;
+            }
+
+            switch (action)
+            {
+                case "activate":
+                    tenant.IsActive = true;
+                    tenant.UpdatedAt = now;
+                    updatedCount++;
+                    break;
+                case "deactivate":
+                    tenant.IsActive = false;
+                    tenant.UpdatedAt = now;
+                    updatedCount++;
+                    break;
+                case "enable_hub":
+                    await UpsertTenantConfigValueAsync(tenantId, "super_admin.allows_subtenants", "true", saveChanges: false);
+                    await UpsertTenantConfigValueAsync(tenantId, "super_admin.max_depth", "2", saveChanges: false);
+                    updatedCount++;
+                    break;
+                case "disable_hub":
+                    await UpsertTenantConfigValueAsync(tenantId, "super_admin.allows_subtenants", "false", saveChanges: false);
+                    await UpsertTenantConfigValueAsync(tenantId, "super_admin.max_depth", "0", saveChanges: false);
+                    updatedCount++;
+                    break;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} bulk-updated {UpdatedCount}/{RequestedCount} tenants with action {Action}", GetCurrentUserId(), updatedCount, tenantIds.Count, action);
+        return LaravelData(new
+        {
+            updated_count = updatedCount,
+            total_requested = tenantIds.Count,
+            action,
+            errors
+        });
     }
 
     /// <summary>GET /api/admin/super/audit - Audit log.</summary>
@@ -662,6 +961,84 @@ public class AdminCompatibility3Controller : ControllerBase
     public IActionResult GetSuperAuditLog([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? action = null)
     {
         return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+    }
+
+    private async Task<HashSet<int>> GetGlobalSuperAdminIdsAsync(int tenantId)
+    {
+        var raw = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenantId && c.Key == GlobalSuperAdminIdsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<int[]>(raw)?.Where(id => id > 0).ToHashSet() ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SaveGlobalSuperAdminIdsAsync(int tenantId, HashSet<int> ids, bool saveChanges = true)
+    {
+        var now = DateTime.UtcNow;
+        var value = JsonSerializer.Serialize(ids.OrderBy(id => id));
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == GlobalSuperAdminIdsKey);
+
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = GlobalSuperAdminIdsKey,
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            row.Value = value;
+            row.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+            await _db.SaveChangesAsync();
+    }
+
+    private async Task UpsertTenantConfigValueAsync(int tenantId, string key, string value, bool saveChanges = true)
+    {
+        var now = DateTime.UtcNow;
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            row.Value = value;
+            row.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+            await _db.SaveChangesAsync();
     }
 
     /// <summary>GET /api/admin/super/federation - Federation status.</summary>

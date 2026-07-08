@@ -116,6 +116,27 @@ public class AdminCompatibilityController : ControllerBase
     private static bool IsProtectedAdmin(User user)
         => user.Role is "admin" or "tenant_admin" or "super_admin" or "god";
 
+    private async Task<bool> ReadGrantFlagAsync(bool defaultValue)
+    {
+        if (Request.ContentLength == 0)
+            return defaultValue;
+
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(Request.Body);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                doc.RootElement.TryGetProperty("grant", out var grant) &&
+                (grant.ValueKind == JsonValueKind.True || grant.ValueKind == JsonValueKind.False))
+                return grant.GetBoolean();
+        }
+        catch (JsonException)
+        {
+            return defaultValue;
+        }
+
+        return defaultValue;
+    }
+
     private static string FormatConsentName(string consentType)
         => string.Join(' ', consentType.Split('_', StringSplitOptions.RemoveEmptyEntries)
             .Select(part => char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
@@ -696,33 +717,69 @@ public class AdminCompatibilityController : ControllerBase
     [HttpPut("users/{userId:int}/super-admin")]
     public async Task<IActionResult> SetSuperAdmin(int userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null)
-            return NotFound(new { error = "User not found" });
+        var adminId = GetCurrentUserId();
+        if (IsLaravelV2Request && adminId == userId)
+            return LaravelError("VALIDATION_ERROR", "Cannot modify your own super admin status", StatusCodes.Status422UnprocessableEntity);
 
-        user.Role = "admin";
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
+
+        var grant = await ReadGrantFlagAsync(defaultValue: !IsLaravelV2Request);
+
+        if (grant)
+            user.Role = IsLaravelV2Request ? "tenant_admin" : "admin";
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        _logger.LogWarning("Admin {AdminId} promoted user {UserId} to tenant admin through compatibility super-admin route", GetCurrentUserId(), userId);
+        if (IsLaravelV2Request)
+        {
+            _logger.LogWarning("Admin {AdminId} set tenant super-admin grant={Grant} for user {UserId} through compatibility route", adminId, grant, userId);
+            return LaravelData(new { id = userId, is_tenant_super_admin = grant });
+        }
+
+        _logger.LogWarning("Admin {AdminId} promoted user {UserId} to tenant admin through compatibility super-admin route", adminId, userId);
         return Ok(new { success = true, user_id = userId, role = user.Role, scope = "tenant", message = "Tenant admin role granted" });
     }
 
     [HttpPut("users/{userId:int}/global-super-admin")]
     public async Task<IActionResult> SetGlobalSuperAdmin(int userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null)
-            return NotFound(new { error = "User not found" });
+        var adminId = GetCurrentUserId();
+        if (IsLaravelV2Request && adminId == userId)
+            return LaravelError("VALIDATION_ERROR", "Cannot modify your own super admin status", StatusCodes.Status422UnprocessableEntity);
 
-        user.Role = "admin";
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
+
+        var grant = await ReadGrantFlagAsync(defaultValue: !IsLaravelV2Request);
+        if (grant)
+            user.Role = "admin";
         user.UpdatedAt = DateTime.UtcNow;
 
         var globalAdminIds = await GetGlobalSuperAdminIdsAsync();
-        globalAdminIds.Add(userId);
+        if (grant)
+            globalAdminIds.Add(userId);
+        else
+            globalAdminIds.Remove(userId);
         await SaveGlobalSuperAdminIdsAsync(globalAdminIds);
 
-        _logger.LogWarning("Admin {AdminId} marked user {UserId} as global super-admin compatibility metadata", GetCurrentUserId(), userId);
+        if (IsLaravelV2Request)
+        {
+            _logger.LogWarning("Admin {AdminId} set global super-admin grant={Grant} for user {UserId} through compatibility metadata", adminId, grant, userId);
+            return LaravelData(new { id = userId, is_super_admin = grant });
+        }
+
+        _logger.LogWarning("Admin {AdminId} marked user {UserId} as global super-admin compatibility metadata", adminId, userId);
         return Ok(new { success = true, user_id = userId, role = user.Role, scope = "global", message = "Global super-admin compatibility flag recorded" });
     }
 

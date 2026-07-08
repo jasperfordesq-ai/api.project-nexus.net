@@ -805,6 +805,77 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminUsersSuperAdminTogglesV2_ReturnLaravelDataEnvelopesAndTenantScopedErrors()
+    {
+        int userId;
+        int otherTenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("super-admin-toggle");
+            var otherTenant = NewAdminParityUser("super-admin-toggle-other", tenantId: TestData.Tenant2.Id);
+            db.Users.AddRange(user, otherTenant);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var grantTenant = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/super-admin", new { grant = true });
+        grantTenant.StatusCode.Should().Be(HttpStatusCode.OK);
+        var grantTenantJson = await grantTenant.Content.ReadFromJsonAsync<JsonElement>();
+        grantTenantJson.TryGetProperty("success", out _).Should().BeFalse();
+        var grantTenantData = grantTenantJson.GetProperty("data");
+        grantTenantData.GetProperty("id").GetInt32().Should().Be(userId);
+        grantTenantData.GetProperty("is_tenant_super_admin").GetBoolean().Should().BeTrue();
+
+        using (var verifyScope = Factory.Services.CreateScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId);
+            user.Role.Should().Be("tenant_admin");
+        }
+
+        var revokeTenant = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/super-admin", new { grant = false });
+        revokeTenant.StatusCode.Should().Be(HttpStatusCode.OK);
+        var revokeTenantJson = await revokeTenant.Content.ReadFromJsonAsync<JsonElement>();
+        revokeTenantJson.GetProperty("data").GetProperty("is_tenant_super_admin").GetBoolean().Should().BeFalse();
+
+        var grantGlobal = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/global-super-admin", new { grant = true });
+        grantGlobal.StatusCode.Should().Be(HttpStatusCode.OK);
+        var grantGlobalJson = await grantGlobal.Content.ReadFromJsonAsync<JsonElement>();
+        grantGlobalJson.TryGetProperty("success", out _).Should().BeFalse();
+        var grantGlobalData = grantGlobalJson.GetProperty("data");
+        grantGlobalData.GetProperty("id").GetInt32().Should().Be(userId);
+        grantGlobalData.GetProperty("is_super_admin").GetBoolean().Should().BeTrue();
+
+        using (var verifyScope = Factory.Services.CreateScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var config = await verifyDb.TenantConfigs.IgnoreQueryFilters().SingleAsync(c => c.Key == "super_admins.global_user_ids");
+            config.Value.Should().Contain(userId.ToString());
+        }
+
+        var revokeGlobal = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/global-super-admin", new { grant = false });
+        revokeGlobal.StatusCode.Should().Be(HttpStatusCode.OK);
+        var revokeGlobalJson = await revokeGlobal.Content.ReadFromJsonAsync<JsonElement>();
+        revokeGlobalJson.GetProperty("data").GetProperty("is_super_admin").GetBoolean().Should().BeFalse();
+
+        using (var verifyScope = Factory.Services.CreateScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var config = await verifyDb.TenantConfigs.IgnoreQueryFilters().SingleAsync(c => c.Key == "super_admins.global_user_ids");
+            config.Value.Should().NotContain(userId.ToString());
+        }
+
+        var otherTenantResponse = await Client.PutAsJsonAsync($"/api/v2/admin/users/{otherTenantId}/super-admin", new { grant = true });
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
     public async Task AdminListingsDeleteV2_RemovesTenantListingWithLaravelReactContract()
     {
         int listingId;
