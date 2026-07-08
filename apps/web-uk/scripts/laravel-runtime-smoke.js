@@ -389,6 +389,8 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/blog/timebank-ireland', text: 'Back to the blog' },
   { path: '/blog/timebank-ireland/comments', text: 'Blog discussion' },
   { path: '/podcasts', text: 'Podcasts' },
+  { path: '/podcasts/studio', text: 'Podcast studio' },
+  { path: '/podcasts/studio/new', text: 'Create a podcast' },
   { path: '/reviews', text: 'Reviews' },
   { path: '/search', text: 'Search' },
   { path: '/search/advanced', text: 'Advanced search' },

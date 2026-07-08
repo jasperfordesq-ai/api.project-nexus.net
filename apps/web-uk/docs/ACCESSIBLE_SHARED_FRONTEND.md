@@ -549,11 +549,20 @@ run passed with `8/8` checks and `0` failures. The body-text-only default smoke
 scope was recertified in 8 chunks against the same port, covering all 257
 body-text contract checks with `305/305` executed checks including repeated
 auth/health setup checks and `0` failures.
-The default scope now contains `604` checks:
+The signed podcast studio pages `/podcasts/studio` and `/podcasts/studio/new`
+returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6238`; the studio marker tracks the
+Laravel-backed `Podcast studio` heading, and the create marker tracks the
+`Create a podcast` heading. The targeted run passed with `8/8` checks and `0`
+failures. The body-text-only default smoke scope was recertified in 8 chunks
+against the same port, covering all 259 body-text contract checks with
+`307/307` executed checks including repeated auth/health setup checks and `0`
+failures.
+The default scope now contains `606` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 257 body-text contract checks, and the 6
+content-type contract checks, 259 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
