@@ -497,11 +497,18 @@ targeted run passed with `11/11` checks and `0` failures. The body-text-only
 default smoke scope was recertified in 8 chunks against the same port, covering
 all 240 body-text contract checks with `288/288` executed checks including
 repeated auth/health setup checks and `0` failures.
-The default scope now contains `587` checks:
+The signed message pages `/messages/groups`, `/messages/groups/new`,
+`/messages/77`, and `/messages/new/77` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6234`. The targeted run passed with `10/10`
+checks and `0` failures. The body-text-only default smoke scope was recertified
+in 8 chunks against the same port, covering all 244 body-text contract checks
+with `292/292` executed checks including repeated auth/health setup checks and
+`0` failures.
+The default scope now contains `591` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 240 body-text contract checks, and the 6
+content-type contract checks, 244 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
