@@ -1161,6 +1161,73 @@ async function rateExchange(token, id, data = {}) {
   });
 }
 
+// AI chat
+async function getAiChatStarters(token) {
+  return request('/api/ai/chat/starters', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendAiChatMessage(token, data = {}) {
+  return request('/api/ai/chat', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function sendAiChatFeedback(token, data = {}) {
+  return request('/api/ai/chat/feedback', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getAiConversations(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset) query.set('offset', params.offset);
+
+  const queryString = query.toString();
+  return request(`/api/ai/conversations${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiConversation(token, id) {
+  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createAiConversation(token, data = {}) {
+  return request('/api/ai/conversations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteAiConversation(token, id) {
+  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiProviders(token) {
+  return request('/api/ai/providers', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiLimits(token) {
+  return request('/api/ai/limits', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Helper to invalidate all cached data for a user (e.g., on logout)
 function invalidateUserCache(token) {
   const prefix = token.substring(0, 40);
@@ -1505,6 +1572,16 @@ module.exports = {
   confirmExchange,
   cancelExchange,
   rateExchange,
+  // AI chat
+  getAiChatStarters,
+  sendAiChatMessage,
+  sendAiChatFeedback,
+  getAiConversations,
+  getAiConversation,
+  createAiConversation,
+  deleteAiConversation,
+  getAiProviders,
+  getAiLimits,
   // Admin
   adminGetDashboard,
   adminGetUsers,

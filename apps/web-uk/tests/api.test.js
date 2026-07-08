@@ -710,6 +710,120 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('AI chat', () => {
+    it('should call the Laravel AI chat starter endpoint with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: {
+            starters: ['How do I find a gardener?']
+          }
+        })
+      });
+
+      const result = await api.getAiChatStarters('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/ai/chat/starters',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.data.starters[0]).toBe('How do I find a gardener?');
+    });
+
+    it('should send chat messages to the Laravel AI chat endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: {
+            success: true,
+            conversation_id: 12,
+            message: {
+              id: 33,
+              role: 'assistant',
+              content: 'You can search the listings directory.'
+            }
+          }
+        })
+      });
+
+      const result = await api.sendAiChatMessage('test-token', {
+        conversation_id: 12,
+        message: 'How do I find help?'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/ai/chat',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            conversation_id: 12,
+            message: 'How do I find help?'
+          })
+        })
+      );
+      expect(result.data.conversation_id).toBe(12);
+    });
+
+    it('should call conversation and limits endpoints used by the accessible chat page', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: [{ id: 12, title: 'Gardening help' }] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: { id: 12, messages: [] } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: { limits: { allowed: true } } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: { providers: ['gemini'], default: 'gemini', enabled: true } })
+        });
+
+      await api.getAiConversations('test-token', { limit: 20 });
+      await api.getAiConversation('test-token', 12);
+      await api.getAiLimits('test-token');
+      await api.getAiProviders('test-token');
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/ai/conversations?limit=20',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/ai/conversations/12',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/ai/limits',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        4,
+        'http://localhost:5000/api/ai/providers',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+    });
+  });
+
   describe('getVolunteerOrganisations', () => {
     it('should call the Laravel volunteering organisations endpoint with search and per_page params', async () => {
       mockFetch.mockResolvedValueOnce({

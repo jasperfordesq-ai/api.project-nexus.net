@@ -76,10 +76,6 @@ const pages = {
     title: 'Cookie policy',
     body: 'Cookie policy content will be supplied from the shared legal document contract.'
   },
-  '/chat': {
-    title: 'AI assistant',
-    body: 'AI assistant pages will be wired after the backend contract and feature gates are compatible.'
-  },
   '/skills': {
     title: 'Skills',
     body: 'Skills pages will follow the Laravel accessible frontend contract.'
