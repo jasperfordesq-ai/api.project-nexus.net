@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace/mine">Back to my listings</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace/mine') }}">Back to my listings</a>
 
   {% if status %}
     <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
@@ -23,7 +23,7 @@
   <h1 class="govuk-heading-xl">{% if isEdit %}Edit your listing{% else %}Create a listing{% endif %}</h1>
   <p class="govuk-body-l">Add a clear title, an honest description and a price so buyers know what to expect.</p>
 
-  <form method="post" action="{{ action }}" enctype="multipart/form-data" novalidate>
+  <form method="post" action="{{ urlFor(action) }}" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <fieldset class="govuk-fieldset">
@@ -158,7 +158,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
-      <a class="govuk-link" href="/marketplace/mine">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/mine') }}">Cancel</a>
     </div>
   </form>
 {% endblock %}

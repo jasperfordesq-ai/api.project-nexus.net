@@ -7,7 +7,7 @@
 
 {% block mainContent %}
   {% if backHref %}
-    <a class="govuk-back-link" href="{{ backHref }}">{{ backLabel or 'Back to marketplace' }}</a>
+    <a class="govuk-back-link" href="{{ urlFor(backHref) }}">{{ backLabel or 'Back to marketplace' }}</a>
   {% endif %}
 
   {% include "marketplace/_nav.njk" %}
@@ -18,7 +18,7 @@
   <p class="govuk-body-l">{{ description }}</p>
 
   {% if mode == 'category' %}
-    <form method="get" action="/marketplace/category/{{ category.slug }}" class="govuk-!-margin-bottom-6">
+    <form method="get" action="{{ urlFor('/marketplace/category/' + category.slug) }}" class="govuk-!-margin-bottom-6">
       <div class="govuk-form-group">
         <label class="govuk-label" for="q">Search within this category</label>
         <div id="q-hint" class="govuk-hint">Find an item by name or keyword.</div>
@@ -37,7 +37,7 @@
       {% for item in listings %}
         {% include "marketplace/_listing-card.njk" %}
         {% if mode == 'saved' %}
-          <form method="post" action="/marketplace/{{ item.id }}/unsave" class="govuk-!-margin-bottom-6">
+          <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/unsave') }}" class="govuk-!-margin-bottom-6">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="redirect_to" value="saved">
             <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Remove from saved</button>

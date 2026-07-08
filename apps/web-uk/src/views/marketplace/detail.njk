@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace">Back to marketplace</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">Back to marketplace</a>
 
   {% if status %}
     <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
@@ -69,15 +69,15 @@
 
   {% if item.id and not item.isOwnItem %}
     <div class="govuk-button-group govuk-!-margin-top-4">
-      <a class="govuk-button" href="/marketplace/{{ item.id }}/buy" role="button" draggable="false" data-module="govuk-button">Buy this item</a>
-      <a class="govuk-button govuk-button--secondary" href="/marketplace/{{ item.id }}/offer" role="button" draggable="false" data-module="govuk-button">Make an offer</a>
-      <form method="post" action="/marketplace/{{ item.id }}/save">
+      <a class="govuk-button" href="{{ urlFor('/marketplace/' + (item.id | string) + '/buy') }}" role="button" draggable="false" data-module="govuk-button">Buy this item</a>
+      <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/marketplace/' + (item.id | string) + '/offer') }}" role="button" draggable="false" data-module="govuk-button">Make an offer</a>
+      <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/save') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Save this item</button>
       </form>
     </div>
     <p class="govuk-body">
-      <a class="govuk-link" href="/marketplace/{{ item.id }}/report">Report this item</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string) + '/report') }}">Report this item</a>
     </p>
   {% endif %}
 {% endblock %}

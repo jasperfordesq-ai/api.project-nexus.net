@@ -69,9 +69,11 @@ cluster roots use Laravel SEO h1/intro copy plus `tenant_switcher` communities.
 Parent-domain child tenant routing and host-root runtime smoke have focused
 Laravel-backed proof; event detail, account hub, activity, achievements/
 gamification, leaderboard/NEXUS score, profile/settings, group/listing/member
-detail, report-link, and marketplace offer/manage source templates now use
-`urlFor()` for their focused local links/forms, but full template helper
-conversion is still open.
+detail, report-link, marketplace offer/manage, and marketplace browse/detail/
+buyer-action/search/seller/onboarding source templates now use `urlFor()` for
+their focused local links/forms, but full template helper conversion is still
+open. Marketplace coupon, order, and pickup-slot management templates remain
+the next commerce source-conversion gap.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the

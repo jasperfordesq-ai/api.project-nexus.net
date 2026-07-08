@@ -123,7 +123,13 @@ Current gaps:
   review actions. The latest focused source conversion covers marketplace
   offers and my-listings management templates, including offer tabs, dynamic
   listing links, offer decision forms, my-listings tabs, create/view/edit
-  links, and renew/delete forms.
+  links, and renew/delete forms. The latest focused source conversion also
+  covers marketplace browse, detail, buyer-action, search, seller profile, and
+  onboarding templates, including browse tabs, listing/card/category links,
+  search and category filter forms, listing detail buy/offer/save/report
+  controls, buyer buy/offer/report forms, listing create/edit form actions,
+  seller profile links, and seller onboarding controls. Marketplace coupon,
+  order, and pickup-slot management templates still need the same conversion.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -283,6 +289,19 @@ links, and accept/decline/withdraw forms through `urlFor()`;
 links, and renew/delete forms through `urlFor()`. A source-level regression
 plus focused marketplace render tests prove the flat `/marketplace/offers` and
 `/marketplace/mine` output remains unchanged.
+
+The eighteenth template-helper source slice extends direct `urlFor()`
+conversion into the marketplace browse, detail, buyer-action, search, seller
+profile, and onboarding templates. `src/views/marketplace/_nav.njk`,
+`_listing-card.njk`, `index.njk`, `listing-list.njk`, `detail.njk`,
+`buy.njk`, `offer.njk`, `report.njk`, `form.njk`, `search.njk`, `seller.njk`,
+and `onboarding.njk` now route browse tabs, listing/card/category links, search
+and category filter forms, listing detail buy/offer/save/report controls,
+buyer buy/offer/report forms, listing create/edit form actions, seller profile
+links, and seller onboarding controls through `urlFor()`. A source-level
+regression plus focused marketplace render tests prove the flat marketplace
+output remains unchanged. The remaining marketplace source-template conversion
+work is narrowed to coupon, order, and pickup-slot management templates.
 
 Verification command:
 

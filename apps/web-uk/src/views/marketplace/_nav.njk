@@ -8,34 +8,34 @@
   <h2 class="govuk-tabs__title">Marketplace</h2>
   <ul class="govuk-tabs__list">
     <li class="govuk-tabs__list-item{% if active == 'browse' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace" {% if active == 'browse' %}aria-current="page"{% endif %}>Browse</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace') }}" {% if active == 'browse' %}aria-current="page"{% endif %}>Browse</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'saved' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/saved" {% if active == 'saved' %}aria-current="page"{% endif %}>Saved</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/saved') }}" {% if active == 'saved' %}aria-current="page"{% endif %}>Saved</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'offers' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/offers" {% if active == 'offers' %}aria-current="page"{% endif %}>Offers</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/offers') }}" {% if active == 'offers' %}aria-current="page"{% endif %}>Offers</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'orders' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/orders" {% if active == 'orders' %}aria-current="page"{% endif %}>My orders</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/orders') }}" {% if active == 'orders' %}aria-current="page"{% endif %}>My orders</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'pickups' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/pickups" {% if active == 'pickups' %}aria-current="page"{% endif %}>My collections</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/pickups') }}" {% if active == 'pickups' %}aria-current="page"{% endif %}>My collections</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'sales' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/sales" {% if active == 'sales' %}aria-current="page"{% endif %}>Sales</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/sales') }}" {% if active == 'sales' %}aria-current="page"{% endif %}>Sales</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'mine' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/mine" {% if active == 'mine' %}aria-current="page"{% endif %}>My listings</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/mine') }}" {% if active == 'mine' %}aria-current="page"{% endif %}>My listings</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'sell' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/create" {% if active == 'sell' %}aria-current="page"{% endif %}>Sell an item</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/create') }}" {% if active == 'sell' %}aria-current="page"{% endif %}>Sell an item</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'slots' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/slots" {% if active == 'slots' %}aria-current="page"{% endif %}>Pickup slots</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/slots') }}" {% if active == 'slots' %}aria-current="page"{% endif %}>Pickup slots</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'coupons' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/marketplace/coupons" {% if active == 'coupons' %}aria-current="page"{% endif %}>Coupons</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/coupons') }}" {% if active == 'coupons' %}aria-current="page"{% endif %}>Coupons</a>
     </li>
   </ul>
 </nav>

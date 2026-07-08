@@ -169,4 +169,35 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
   });
+
+  it('keeps marketplace browse, detail, and buyer action controls behind urlFor()', () => {
+    const templates = [
+      path.join('marketplace', '_listing-card.njk'),
+      path.join('marketplace', '_nav.njk'),
+      path.join('marketplace', 'buy.njk'),
+      path.join('marketplace', 'detail.njk'),
+      path.join('marketplace', 'form.njk'),
+      path.join('marketplace', 'index.njk'),
+      path.join('marketplace', 'listing-list.njk'),
+      path.join('marketplace', 'offer.njk'),
+      path.join('marketplace', 'onboarding.njk'),
+      path.join('marketplace', 'report.njk'),
+      path.join('marketplace', 'search.njk'),
+      path.join('marketplace', 'seller.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/marketplace/);
+      expect(template).not.toMatch(/action="\/marketplace/);
+      expect(template).not.toContain('href="{{ item.href }}"');
+      expect(template).not.toContain('href="{{ category.href }}"');
+      expect(template).not.toContain('href="{{ backHref }}"');
+      expect(template).not.toContain('action="{{ action }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
+  });
 });

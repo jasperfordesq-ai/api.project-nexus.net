@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace/{{ item.id }}">Back to listing</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">Back to listing</a>
 
   {% if status %}
     <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
@@ -30,7 +30,7 @@
     </div>
   </dl>
 
-  <form method="post" action="/marketplace/{{ item.id }}/report" novalidate>
+  <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/report') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if status and status.type == 'error' %} govuk-form-group--error{% endif %}">
@@ -60,7 +60,7 @@
 
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Send report</button>
-      <a class="govuk-link" href="/marketplace/{{ item.id }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">Cancel</a>
     </div>
   </form>
 {% endblock %}

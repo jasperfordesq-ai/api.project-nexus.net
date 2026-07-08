@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/marketplace">Back to marketplace</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">Back to marketplace</a>
   {% include "marketplace/_nav.njk" %}
   {% include "marketplace/_status-banner.njk" %}
 
@@ -29,7 +29,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="/marketplace/onboarding" novalidate>
+  <form method="post" action="{{ urlFor('/marketplace/onboarding') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <fieldset class="govuk-fieldset">
@@ -102,7 +102,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">Save and finish</button>
-      <a class="govuk-link" href="/marketplace">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace') }}">Cancel</a>
     </div>
   </form>
 {% endblock %}

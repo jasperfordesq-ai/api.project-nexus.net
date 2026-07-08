@@ -8,12 +8,12 @@
 {% block mainContent %}
   <nav class="govuk-!-margin-bottom-5" aria-label="Marketplace">
     <ul class="govuk-list nexus-alpha-inline-list">
-      <li><a class="govuk-link" href="/marketplace">Browse</a></li>
-      <li><a class="govuk-link" href="/marketplace/mine">My listings</a></li>
-      <li><a class="govuk-link" href="/marketplace/saved">Saved</a></li>
-      <li><a class="govuk-link" href="/marketplace/offers">Offers</a></li>
-      <li><a class="govuk-link" href="/marketplace/orders">My orders</a></li>
-      <li><a class="govuk-link" href="/marketplace/create">Sell an item</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace') }}">Browse</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace/mine') }}">My listings</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace/saved') }}">Saved</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace/offers') }}">Offers</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace/orders') }}">My orders</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/marketplace/create') }}">Sell an item</a></li>
     </ul>
   </nav>
 
@@ -32,7 +32,7 @@
   <h1 class="govuk-heading-xl">Marketplace</h1>
   <p class="govuk-body-l">Buy, sell and swap goods and services with your community.</p>
 
-  <form method="get" action="/marketplace" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/marketplace') }}" class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
         <h2 class="govuk-fieldset__heading">Filter listings</h2>
@@ -61,7 +61,7 @@
       </div>
     </fieldset>
     <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
-    <a class="govuk-link govuk-!-margin-left-3" href="/marketplace/search">Advanced search</a>
+    <a class="govuk-link govuk-!-margin-left-3" href="{{ urlFor('/marketplace/search') }}">Advanced search</a>
   </form>
 
   {% if categories.length %}
@@ -69,7 +69,7 @@
     <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-6">
       {% for category in categories %}
         {% if category.href %}
-          <li><a class="govuk-link" href="{{ category.href }}">{{ category.name }}</a></li>
+          <li><a class="govuk-link" href="{{ urlFor(category.href) }}">{{ category.name }}</a></li>
         {% endif %}
       {% endfor %}
     </ul>
@@ -91,7 +91,7 @@
             {% endif %}
             <div class="nexus-alpha-listing-row__body">
               <div class="nexus-alpha-module-row">
-                <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a></h2>
+                <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a></h2>
                 <strong class="govuk-tag {{ item.priceTagClass }}">{{ item.priceLabel }}</strong>
               </div>
               {% if item.summary %}
