@@ -143,8 +143,18 @@ public class GamificationController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var tenantId = await _db.Users
+            .Where(u => u.Id == userId.Value)
+            .Select(u => (int?)u.TenantId)
+            .FirstOrDefaultAsync();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var earned = await _db.UserBadges
+            .Where(ub => ub.UserId == userId.Value && ub.TenantId == tenantId.Value)
+            .ToDictionaryAsync(ub => ub.BadgeId, ub => ub.EarnedAt);
+
         var badges = await _db.Badges
-            .Where(b => b.IsActive)
+            .Where(b => b.TenantId == tenantId.Value && b.IsActive)
             .OrderBy(b => b.SortOrder)
             .ThenBy(b => b.Name)
             .Select(b => new
@@ -155,25 +165,132 @@ public class GamificationController : ControllerBase
                 b.Description,
                 b.Icon,
                 b.XpReward,
-                is_earned = b.UserBadges.Any(ub => ub.UserId == userId),
-                earned_at = b.UserBadges
-                    .Where(ub => ub.UserId == userId)
-                    .Select(ub => (DateTime?)ub.EarnedAt)
-                    .FirstOrDefault()
+                b.CreatedAt
             })
             .ToListAsync();
 
-        var earnedCount = badges.Count(b => b.is_earned);
+        var rows = badges.Select(b =>
+        {
+            var isEarned = earned.TryGetValue(b.Id, out var earnedAt);
+            var type = BadgeTypeFromSlug(b.Slug);
+
+            return new
+            {
+                id = b.Id,
+                key = b.Slug,
+                badge_key = b.Slug,
+                slug = b.Slug,
+                name = b.Name,
+                description = b.Description ?? string.Empty,
+                icon = b.Icon ?? "medal",
+                type,
+                threshold = b.XpReward,
+                xp_value = b.XpReward,
+                xp_reward = b.XpReward,
+                earned = isEarned,
+                is_earned = isEarned,
+                earned_at = isEarned ? earnedAt : (DateTime?)null,
+                is_showcased = false,
+                created_at = b.CreatedAt
+            };
+        }).ToList();
+
+        var availableTypes = rows
+            .Select(b => b.type)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t)
+            .ToArray();
+        var earnedCount = rows.Count(b => b.earned);
 
         return Ok(new
         {
-            data = badges,
+            success = true,
+            data = rows,
+            meta = new
+            {
+                total = rows.Count,
+                available_types = availableTypes,
+                base_url = $"{Request.Scheme}://{Request.Host}"
+            },
             summary = new
             {
-                total = badges.Count,
+                total = rows.Count,
                 earned = earnedCount,
-                progress_percent = badges.Count > 0 ? Math.Round((double)earnedCount / badges.Count * 100, 1) : 0
+                progress_percent = rows.Count > 0 ? Math.Round((double)earnedCount / rows.Count * 100, 1) : 0
             }
+        });
+    }
+
+    /// <summary>
+    /// GET /api/gamification/badges/{key} - Get a badge definition by Laravel badge key.
+    /// </summary>
+    [HttpGet("badges/{key}")]
+    public async Task<IActionResult> GetBadgeByKey(string key)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = await _db.Users
+            .Where(u => u.Id == userId.Value)
+            .Select(u => (int?)u.TenantId)
+            .FirstOrDefaultAsync();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var badge = await _db.Badges
+            .Where(b => b.TenantId == tenantId.Value && b.Slug == key && b.IsActive)
+            .Select(b => new
+            {
+                b.Id,
+                b.Slug,
+                b.Name,
+                b.Description,
+                b.Icon,
+                b.XpReward,
+                b.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        if (badge == null)
+        {
+            return NotFound(new
+            {
+                errors = new[]
+                {
+                    new { code = "RESOURCE_NOT_FOUND", message = "Badge not found" }
+                },
+                meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+            });
+        }
+
+        var earnedAt = await _db.UserBadges
+            .Where(ub => ub.UserId == userId.Value && ub.TenantId == tenantId.Value && ub.BadgeId == badge.Id)
+            .Select(ub => (DateTime?)ub.EarnedAt)
+            .FirstOrDefaultAsync();
+        var isEarned = earnedAt.HasValue;
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id = badge.Id,
+                key = badge.Slug,
+                badge_key = badge.Slug,
+                slug = badge.Slug,
+                name = badge.Name,
+                description = badge.Description ?? string.Empty,
+                icon = badge.Icon ?? "medal",
+                type = BadgeTypeFromSlug(badge.Slug),
+                threshold = badge.XpReward,
+                xp_value = badge.XpReward,
+                xp_reward = badge.XpReward,
+                earned = isEarned,
+                is_earned = isEarned,
+                earned_at = earnedAt,
+                is_showcased = false,
+                created_at = badge.CreatedAt
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
         });
     }
 
@@ -433,6 +550,13 @@ public class GamificationController : ControllerBase
                 pages = totalPages
             }
         });
+    }
+
+    private static string BadgeTypeFromSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return "general";
+        var separator = slug.IndexOf('_', StringComparison.Ordinal);
+        return separator > 0 ? slug[..separator] : "general";
     }
 
     private int? GetCurrentUserId() => User.GetUserId();

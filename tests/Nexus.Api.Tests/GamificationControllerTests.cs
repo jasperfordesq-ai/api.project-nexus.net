@@ -115,6 +115,41 @@ public class GamificationControllerTests : IntegrationTestBase
         content.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
     }
 
+    [Fact]
+    public async Task LaravelReactBadgesV2Alias_UsesBadgeKeyListAndStringDetailShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var list = await Client.GetAsync("/api/v2/gamification/badges");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var listJson = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+        listJson.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var badges = listJson.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        badges.Should().NotBeEmpty();
+        listJson.RootElement.GetProperty("meta").GetProperty("available_types").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var badge = badges[0];
+        badge.GetProperty("badge_key").GetString().Should().NotBeNullOrWhiteSpace();
+        badge.GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        badge.GetProperty("description").GetString().Should().NotBeNull();
+        badge.GetProperty("icon").GetString().Should().NotBeNull();
+        badge.GetProperty("type").GetString().Should().NotBeNullOrWhiteSpace();
+        badge.GetProperty("earned").GetBoolean().Should().BeFalse();
+        badge.GetProperty("is_showcased").GetBoolean().Should().BeFalse();
+
+        var detail = await Client.GetAsync($"/api/v2/gamification/badges/{badge.GetProperty("badge_key").GetString()}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var detailJson = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+        detailJson.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.RootElement.GetProperty("data");
+        detailData.GetProperty("key").GetString().Should().Be(badge.GetProperty("badge_key").GetString());
+        detailData.GetProperty("badge_key").GetString().Should().Be(badge.GetProperty("badge_key").GetString());
+        detailData.GetProperty("earned").GetBoolean().Should().BeFalse();
+        detailData.GetProperty("is_showcased").GetBoolean().Should().BeFalse();
+    }
+
     #endregion
 
     #region Leaderboard Tests
