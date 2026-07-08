@@ -463,11 +463,19 @@ against `WEB_UK_BASE_URL=http://127.0.0.1:6229`. The targeted run passed with
 `15/15` checks and `0` failures. The body-text-only default smoke scope passed
 against the same port with `219/219` total checks, including 213 body-text
 contract checks, and `0` failures.
-The default scope now contains `560` checks:
+The signed listing pages `/listings/new`, `/listings/90992/edit`,
+`/listings/42/report`, `/listings/42/exchange-request`,
+`/listings/42/comments`, `/listings/90967/report`,
+`/listings/90967/exchange-request`, and `/listings/90967/comments` returned
+expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6230`. The
+targeted run passed with `14/14` checks and `0` failures. The body-text-only
+default smoke scope passed against the same port with `227/227` total checks,
+including 221 body-text contract checks, and `0` failures.
+The default scope now contains `568` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 213 body-text contract checks, and the 6
+content-type contract checks, 221 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
