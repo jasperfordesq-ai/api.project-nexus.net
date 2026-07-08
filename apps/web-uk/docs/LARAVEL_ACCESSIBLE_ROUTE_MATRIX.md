@@ -355,8 +355,14 @@ to `/events/6/edit`, `/groups/484/edit` to `/groups/484`,
 `/courses/42/certificate` to `/courses/42?status=certificate-failed`, and
 `/federation/messages/conversation/77` to `/federation/messages`,
 `/courses/1/learn` to `/courses/1?status=enrol-required`,
-`/courses/2/learn` to `/courses/2?status=enrol-required`, and
-`/federation/messages/conversation/353` to `/federation/messages`. A targeted
+and `/federation/messages/conversation/353` to `/federation/messages`.
+Direct Laravel API checks on 2026-07-08 showed the E2E user has completed
+course 2, so `/courses/2/learn` and `/courses/2/certificate` are now treated
+as signed 2xx module-page fixtures rather than signed redirect fixtures. A
+focused live smoke against `WEB_UK_BASE_URL=http://127.0.0.1:6351` and
+`LARAVEL_BASE_URL=http://127.0.0.1:8092` passed `12/12` checks for the two
+course 2 module pages, and the isolated current redirect sweep passed `29/29`
+checks with `19` signed redirects. A targeted
 live run against `WEB_UK_BASE_URL=http://127.0.0.1:5336`, started with
 `TENANT_ID=2`, passed on 2026-07-07: `28/28` checks, `0` failures. A full
 default Laravel-backed run against a temporary web-uk process at
@@ -412,10 +418,10 @@ The default scope now additionally covers `/events/14`, `/events/14/map`,
 `/groups/482/invite`, `/groups/482/notifications`, `/groups/482/image`,
 `/marketplace/6`, `/marketplace/6/buy`, `/marketplace/6/offer`,
 `/marketplace/6/report`, `/marketplace/6/edit`, `/polls/8`, `/polls/4`,
-`/feed/item/listing/90967`, and `/blog/64/likers/1` as signed 2xx routes;
+`/feed/item/listing/90967`, `/courses/2/learn`, `/courses/2/certificate`,
+and `/blog/64/likers/1` as signed 2xx routes;
 plus redirects from `/events/14/recurring-edit` to `/events/14/edit`,
-`/groups/482/edit` to `/groups/482`, `/courses/2/certificate` to
-`/courses/2?status=certificate-failed`, `/onboarding/interests` to
+`/groups/482/edit` to `/groups/482`, `/onboarding/interests` to
 `/dashboard`, `/onboarding/safeguarding` to `/dashboard`, and
 `/onboarding/confirm` to `/dashboard`. A targeted live run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5339`, started with `TENANT_ID=2`, passed on
@@ -764,12 +770,13 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
-Laravel-backed body-text markers. The module-page/body-text marker gap is now
-0: `279` module-page checks and `283` body-text contract checks.
+Laravel-backed body-text markers. The core module-page/body-text marker gap is
+0; the current default smoke scope has `281` module-page checks and `283`
+body-text contract checks.
 The default scope now contains `634` checks:
-`279`
+`281`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
+redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.

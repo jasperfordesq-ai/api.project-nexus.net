@@ -603,6 +603,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/volunteering/organisations/636/wallet',
       '/courses/1',
       '/courses/2',
+      '/courses/2/learn',
+      '/courses/2/certificate',
       '/courses/instructor/1/edit',
       '/courses/instructor/2/edit',
       '/federation/partners/1',
@@ -848,12 +850,10 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/federation/messages/conversation/77', '/federation/messages'],
       ['/jobs/90764/applications/export.csv', '/jobs/90764/applications?status=export-failed'],
       ['/courses/1/learn', '/courses/1?status=enrol-required'],
-      ['/courses/2/learn', '/courses/2?status=enrol-required'],
       ['/federation/messages/conversation/353', '/federation/messages'],
       ['/onboarding/profile', '/dashboard'],
       ['/events/14/recurring-edit', '/events/14/edit'],
       ['/groups/482/edit', '/groups/482'],
-      ['/courses/2/certificate', '/courses/2?status=certificate-failed'],
       ['/groups/484/files/1/download', '/groups/484/files?status=file-not-found'],
       ['/onboarding/interests', '/dashboard'],
       ['/onboarding/safeguarding', '/dashboard'],
@@ -1125,8 +1125,20 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
-      { path: '/courses/2/learn', location: '/courses/2?status=enrol-required' },
       { path: '/federation/messages/conversation/353', location: '/federation/messages' }
+    ]));
+  });
+
+  it('does not treat the completed course 2 fixture as a signed redirect outcome', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/courses/2/learn',
+      '/courses/2/certificate'
+    ]));
+    expect(options.redirectPagePaths).not.toEqual(expect.arrayContaining([
+      { path: '/courses/2/learn', location: '/courses/2?status=enrol-required' },
+      { path: '/courses/2/certificate', location: '/courses/2?status=certificate-failed' }
     ]));
   });
 
@@ -1209,12 +1221,13 @@ describe('Laravel runtime smoke harness', () => {
       '/polls/8',
       '/polls/4',
       '/feed/item/listing/90967',
+      '/courses/2/learn',
+      '/courses/2/certificate',
       '/blog/timebank-ireland/likers/like'
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/events/14/recurring-edit', location: '/events/14/edit' },
       { path: '/groups/482/edit', location: '/groups/482' },
-      { path: '/courses/2/certificate', location: '/courses/2?status=certificate-failed' },
       { path: '/onboarding/interests', location: '/dashboard' },
       { path: '/onboarding/safeguarding', location: '/dashboard' },
       { path: '/onboarding/confirm', location: '/dashboard' }
@@ -2024,9 +2037,10 @@ describe('Laravel runtime smoke harness', () => {
       'redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed': true,
       'redirect-page-federation-messages-conversation-77-redirects-federation-messages': true,
       'redirect-page-courses-1-learn-redirects-courses-1-status-enrol-required': true,
-      'redirect-page-courses-2-learn-redirects-courses-2-status-enrol-required': true,
       'redirect-page-federation-messages-conversation-353-redirects-federation-messages': true,
       'redirect-page-premium-manage-redirects-premium-status-no-subscription': true,
+      'module-page-courses-2-learn-renders': true,
+      'module-page-courses-2-certificate-renders': true,
       'module-page-resources-library-renders': true,
       'module-page-resources-upload-renders': true,
       'module-page-reviews-renders': true,
@@ -2059,7 +2073,6 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed'].location).toBe('/courses/42?status=certificate-failed');
     expect(checkByName['redirect-page-federation-messages-conversation-77-redirects-federation-messages'].location).toBe('/federation/messages');
     expect(checkByName['redirect-page-courses-1-learn-redirects-courses-1-status-enrol-required'].location).toBe('/courses/1?status=enrol-required');
-    expect(checkByName['redirect-page-courses-2-learn-redirects-courses-2-status-enrol-required'].location).toBe('/courses/2?status=enrol-required');
     expect(checkByName['redirect-page-federation-messages-conversation-353-redirects-federation-messages'].location).toBe('/federation/messages');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
