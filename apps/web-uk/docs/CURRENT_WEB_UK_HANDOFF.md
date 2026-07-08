@@ -423,11 +423,18 @@ and owner subpages `/volunteering/accessibility`, `/volunteering/certificates`,
 `/volunteering/my-organisations`, and `/volunteering/recommended-shifts`
 returned expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6215`;
 `/volunteering/opportunities/create` now follows the Laravel Blade title
-`Post a volunteer opportunity`. The default scope now contains `452` checks:
+`Post a volunteer opportunity`. The signed jobs account subpages `/jobs/saved`,
+`/jobs/applications`, `/jobs/mine`, `/jobs/create`, `/jobs/alerts`,
+`/jobs/responses`, and `/jobs/employer-onboarding` returned expected body
+markers against `WEB_UK_BASE_URL=http://127.0.0.1:6216` and now carry default
+body-marker coverage for their Laravel Blade titles and stable action text. The
+full default smoke scope then passed against
+`WEB_UK_BASE_URL=http://127.0.0.1:6218` with `459/459` checks and `0` failures.
+The default scope now contains `459` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 105 body-text contract checks, and the 6
+content-type contract checks, 112 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against
