@@ -6,7 +6,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/profile">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/profile') }}">Back to profile</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -50,14 +50,14 @@
         <ul class="nexus-alpha-card-list">
           {% for item in settingsLinks %}
             <li class="nexus-alpha-card">
-              <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a></h2>
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a></h2>
               <p class="govuk-body govuk-!-margin-bottom-0">{{ item.text }}</p>
             </li>
           {% endfor %}
         </ul>
       </nav>
 
-      <form method="post" action="/profile/settings" enctype="multipart/form-data" novalidate>
+      <form method="post" action="{{ urlFor('/profile/settings') }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <section id="avatar" aria-labelledby="profile-photo-heading">
@@ -179,7 +179,7 @@
                 {% if skill.is_offering %}<strong class="govuk-tag govuk-tag--green">I can offer this</strong>{% endif %}
                 {% if skill.is_requesting %}<strong class="govuk-tag govuk-tag--blue">I am looking for this</strong>{% endif %}
                 <p class="govuk-body govuk-!-margin-top-2">{{ skill.endorsement_count }} endorsements</p>
-                <form method="post" action="/profile/skills/remove">
+                <form method="post" action="{{ urlFor('/profile/skills/remove') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="user_skill_id" value="{{ skill.id }}">
                   <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Remove skill</button>
@@ -191,7 +191,7 @@
           <p class="govuk-body">You have not added any skills yet.</p>
         {% endif %}
 
-        <form method="post" action="/profile/skills/add" novalidate>
+        <form method="post" action="{{ urlFor('/profile/skills/add') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="skill_name">Add a skill</label>
@@ -217,11 +217,11 @@
         <h2 class="govuk-heading-l" id="security-heading">Security</h2>
         <h3 class="govuk-heading-m">Two-step verification</h3>
         <p class="govuk-body">Add an authenticator app as a second step when you sign in.</p>
-        <p class="govuk-body"><a class="govuk-link" href="/profile/two-factor">Set up or manage two-step verification</a></p>
-        <p class="govuk-body"><a class="govuk-link" href="/profile/blocked-members">Manage blocked members</a></p>
+        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/two-factor') }}">Set up or manage two-step verification</a></p>
+        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked-members') }}">Manage blocked members</a></p>
 
         <h3 class="govuk-heading-m">Email address</h3>
-        <form method="post" action="/profile/email" novalidate>
+        <form method="post" action="{{ urlFor('/profile/email') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="email">Email address</label>
@@ -235,7 +235,7 @@
         </form>
 
         <h3 class="govuk-heading-m">Password</h3>
-        <form method="post" action="/profile/password" novalidate>
+        <form method="post" action="{{ urlFor('/profile/password') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="current_password_for_password">Current password</label>
@@ -259,14 +259,14 @@
               <li class="nexus-alpha-card govuk-!-margin-bottom-3">
                 <h4 class="govuk-heading-s govuk-!-margin-bottom-1">{{ passkey.device_name }}</h4>
                 <p class="govuk-body">{{ passkey.authenticator_type }}{% if passkey.last_used_label %}, last used {{ passkey.last_used_label }}{% endif %}</p>
-                <form method="post" action="/profile/passkeys/rename" class="govuk-!-margin-bottom-2">
+                <form method="post" action="{{ urlFor('/profile/passkeys/rename') }}" class="govuk-!-margin-bottom-2">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
                   <label class="govuk-label" for="passkey-name-{{ loop.index }}">Rename passkey</label>
                   <input class="govuk-input govuk-!-width-two-thirds" id="passkey-name-{{ loop.index }}" name="device_name" type="text" value="{{ passkey.device_name }}">
                   <button class="govuk-button govuk-button--secondary govuk-!-margin-top-2" data-module="govuk-button">Save passkey name</button>
                 </form>
-                <form method="post" action="/profile/passkeys/remove">
+                <form method="post" action="{{ urlFor('/profile/passkeys/remove') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
                   <button class="govuk-button govuk-button--warning" data-module="govuk-button">Remove passkey</button>
@@ -309,7 +309,7 @@
       <section id="language" aria-labelledby="language-heading">
         <h2 class="govuk-heading-l" id="language-heading">Language</h2>
         <p class="govuk-body">Current language: {{ currentLanguageLabel }}</p>
-        <form method="post" action="/profile/language">
+        <form method="post" action="{{ urlFor('/profile/language') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="language_select">Choose a language</label>
@@ -327,7 +327,7 @@
 
       <section id="notifications" aria-labelledby="notifications-heading">
         <h2 class="govuk-heading-l" id="notifications-heading">Email and notifications</h2>
-        <form method="post" action="/profile/notifications">
+        <form method="post" action="{{ urlFor('/profile/notifications') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {% for group in notificationGroups %}
             <fieldset class="govuk-fieldset govuk-!-margin-bottom-5">
@@ -359,7 +359,7 @@
 
       <section id="match-preferences" aria-labelledby="match-preferences-heading">
         <h2 class="govuk-heading-l" id="match-preferences-heading">Match notifications</h2>
-        <form method="post" action="/profile/match-preferences">
+        <form method="post" action="{{ urlFor('/profile/match-preferences') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="notification_frequency">How often should we send match notifications?</label>
@@ -388,7 +388,7 @@
 
       <section id="personalisation" aria-labelledby="personalisation-heading">
         <h2 class="govuk-heading-l" id="personalisation-heading">Personalisation and translation</h2>
-        <form method="post" action="/profile/personalisation">
+        <form method="post" action="{{ urlFor('/profile/personalisation') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
@@ -423,7 +423,7 @@
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ option.label }}</h3>
                 <p class="govuk-body">{{ option.description }}</p>
                 <strong class="govuk-tag">{{ option.activation_label }}</strong>
-                <form method="post" action="/profile/safeguarding/revoke" class="govuk-!-margin-top-3">
+                <form method="post" action="{{ urlFor('/profile/safeguarding/revoke') }}" class="govuk-!-margin-top-3">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="option_id" value="{{ option.option_id }}">
                   <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Remove safeguarding preference</button>
@@ -443,13 +443,13 @@
         <p class="govuk-body">Under data protection law you can ask for a copy of the personal information we hold about you, or ask us to delete your account.</p>
         <h3 class="govuk-heading-m">Get a copy of your data</h3>
         <p class="govuk-body">Request a downloadable copy of your personal information. We will prepare it and contact you when it is ready.</p>
-        <form method="post" action="/profile/data-export">
+        <form method="post" action="{{ urlFor('/profile/data-export') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Request your data</button>
         </form>
         <h3 class="govuk-heading-m">Delete your account</h3>
         <p class="govuk-body">Deleting your account removes your profile and personal information from this community. This cannot be undone.</p>
-        <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/profile/delete-account">Delete your account</a>
+        <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/profile/delete-account') }}">Delete your account</a>
       </section>
     </div>
   </div>

@@ -9,7 +9,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
+      { text: "Home", href: urlFor("/") },
       { text: "Your profile" }
     ]
   }) }}
@@ -34,7 +34,7 @@
             value: { text: ((profile.first_name or profile.firstName or "") + " " + (profile.last_name or profile.lastName or "")).trim() or "Not set" },
             actions: {
               items: [
-                { href: "/profile/settings", text: "Change", visuallyHiddenText: "name" }
+                { href: urlFor("/profile/settings"), text: "Change", visuallyHiddenText: "name" }
               ]
             }
           },
@@ -43,7 +43,7 @@
             value: { text: profile.email or "Not set" },
             actions: {
               items: [
-                { href: "/profile/settings", text: "Change", visuallyHiddenText: "email address" }
+                { href: urlFor("/profile/settings"), text: "Change", visuallyHiddenText: "email address" }
               ]
             }
           },
@@ -52,7 +52,7 @@
             value: { text: profile.phone or "Not set" },
             actions: {
               items: [
-                { href: "/profile/settings", text: "Change", visuallyHiddenText: "phone number" }
+                { href: urlFor("/profile/settings"), text: "Change", visuallyHiddenText: "phone number" }
               ]
             }
           }
@@ -67,15 +67,15 @@
       <h2 class="govuk-heading-m govuk-!-margin-top-8">Account</h2>
       <ul class="govuk-list">
         <li>
-          <a href="/achievements" class="govuk-link">Achievements and rewards</a>
+          <a href="{{ urlFor('/achievements') }}" class="govuk-link">Achievements and rewards</a>
         </li>
         <li>
-          <a href="/leaderboard" class="govuk-link">Leaderboard</a>
+          <a href="{{ urlFor('/leaderboard') }}" class="govuk-link">Leaderboard</a>
         </li>
       </ul>
 
       <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/dashboard" class="govuk-link">Back to dashboard</a>
+        <a href="{{ urlFor('/dashboard') }}" class="govuk-link">Back to dashboard</a>
       </p>
 
     </div>

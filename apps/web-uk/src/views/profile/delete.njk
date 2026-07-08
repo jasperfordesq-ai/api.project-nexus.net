@@ -6,7 +6,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/profile/settings">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to profile</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -38,7 +38,7 @@
       <h2 class="govuk-heading-m">What happens when you delete your account</h2>
       <p class="govuk-body">Your profile, messages and personal details will be deleted or anonymised. We may keep some records where the law requires it.</p>
 
-      <form method="post" action="/profile/delete-account" novalidate>
+      <form method="post" action="{{ urlFor('/profile/delete-account') }}" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <div class="govuk-form-group{% if passwordError %} govuk-form-group--error{% endif %}">
@@ -73,7 +73,7 @@
 
         <div class="govuk-button-group">
           <button class="govuk-button govuk-button--warning" data-module="govuk-button" type="submit">Delete my account</button>
-          <a class="govuk-link" href="/profile/settings">Cancel and keep my account</a>
+          <a class="govuk-link" href="{{ urlFor('/profile/settings') }}">Cancel and keep my account</a>
         </div>
       </form>
     </div>

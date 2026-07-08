@@ -26,7 +26,7 @@
     </p>
 
     {% if relationship.relationshipId > 0 and mode == "parent" and isPending %}
-      <form method="post" action="/settings/linked-accounts/approve" class="govuk-!-display-inline-block govuk-!-margin-right-2">
+      <form method="post" action="{{ urlFor('/settings/linked-accounts/approve') }}" class="govuk-!-display-inline-block govuk-!-margin-right-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
         <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Approve link<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
@@ -34,7 +34,7 @@
     {% endif %}
 
     {% if relationship.relationshipId > 0 and mode == "child" %}
-      <form method="post" action="/settings/linked-accounts/permissions">
+      <form method="post" action="{{ urlFor('/settings/linked-accounts/permissions') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
         <fieldset class="govuk-fieldset govuk-!-margin-bottom-2">
@@ -61,7 +61,7 @@
     {% endif %}
 
     {% if relationship.relationshipId > 0 %}
-      <form method="post" action="/settings/linked-accounts/revoke" class="govuk-!-display-inline-block">
+      <form method="post" action="{{ urlFor('/settings/linked-accounts/revoke') }}" class="govuk-!-display-inline-block">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
         <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Remove link<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
@@ -73,7 +73,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/profile/settings">Back to settings</a>
+      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to settings</a>
 
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="linked-status-title">
@@ -138,7 +138,7 @@
         <p class="govuk-body">Enter the email address of the member you want to link. They must already have an account in this community.</p>
         <p class="govuk-body-s nexus-alpha-meta">You can manage up to {{ maxChildren }} linked accounts.</p>
 
-        <form method="post" action="/settings/linked-accounts/request">
+        <form method="post" action="{{ urlFor('/settings/linked-accounts/request') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <div class="govuk-form-group{% if status == 'link-email-invalid' or status == 'link-user-not-found' %} govuk-form-group--error{% endif %}">

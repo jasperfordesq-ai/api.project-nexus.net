@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/account">Back to account settings</a>
+  <a class="govuk-back-link" href="{{ urlFor('/account') }}">Back to account settings</a>
 
   <span class="govuk-caption-xl">Account settings</span>
   <h1 class="govuk-heading-xl">Your availability</h1>
@@ -33,7 +33,7 @@
 
   <div class="govuk-inset-text" id="availability">Add one or more time slots for each day. Leave a slot blank to skip it. The end time must be after the start time.</div>
 
-  <form method="post" action="/settings/availability" novalidate>
+  <form method="post" action="{{ urlFor('/settings/availability') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     {% for backendDay in displayDays %}

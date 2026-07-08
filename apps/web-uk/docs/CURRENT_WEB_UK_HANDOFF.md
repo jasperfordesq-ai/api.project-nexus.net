@@ -70,7 +70,12 @@ account hub's card links and CSRF logout form, the activity dashboard/insights
 navigation links, and the achievements/gamification tabs, back links, forms,
 and badge links, plus the leaderboard/NEXUS score tabs, back links, forms,
 load-more links, tier link, and profile links with `urlFor()`; most other
-templates still need the same source-level conversion. A tenant-home parity slice now replaces the old
+templates still need the same source-level conversion. A follow-up
+profile/settings slice now routes the profile summary links, settings hub
+cards, profile/security/privacy forms, two-step verification actions, blocked
+member unblock forms, delete-account controls, and settings appearance,
+availability, data-rights, linked-account, and insurance forms through
+`urlFor()`. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A
@@ -101,8 +106,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `980/1000` implementation/certification parity |
-| Green confidence estimate | about `964/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `982/1000` implementation/certification parity |
+| Green confidence estimate | about `965/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -120,7 +125,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 710 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 711 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -177,19 +182,25 @@ purchase/showcase forms, badge collection links, and view-all links through
 `urlFor()`. `src/views/leaderboard/*.njk` and
 `src/views/nexus-score/*.njk` now route leaderboard tabs, back links, filter
 forms, load-more links, NEXUS tier links, and member profile links through
-`urlFor()`. Source-level regressions in `tests/template-source.test.js` guard
-these pages from drifting back to literal root-relative local links/forms.
+`urlFor()`. `src/views/profile/{index,settings,two-factor,blocked,delete}.njk`
+and `src/views/settings/{appearance,availability,data-rights,insurance,linked-accounts}.njk`
+now route profile summary links, settings card links, profile/security/privacy
+forms, two-step verification actions, blocked member unblock forms,
+delete-account controls, and settings form actions through `urlFor()`.
+Source-level regressions in `tests/template-source.test.js` guard these pages
+from drifting back to literal root-relative local links/forms.
 Verification for the account, activity, achievements, and leaderboard/NEXUS
 slices included deliberate failing source-test runs before the template fixes,
 then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
-passed `5/5`,
+passed `6/6`,
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "account hub"`
 passed `2/2` selected account tests, and
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity"`
 passed `4/4` selected activity tests. The focused achievements/gamification
 render check passed `15/15` selected tests. The focused leaderboard/NEXUS score
-render check passed `7/7` selected tests. The earlier event-focused render
+render check passed `7/7` selected tests. The focused profile/settings render
+check passed `11/11` selected tests. The earlier event-focused render
 check also passed:
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
 passed `23/23` selected tests.

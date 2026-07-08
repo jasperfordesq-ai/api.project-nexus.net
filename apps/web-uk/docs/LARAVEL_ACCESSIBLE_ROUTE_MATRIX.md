@@ -68,9 +68,9 @@ when the host matches Laravel's `accessible_domain` or `domain`. Master and
 cluster roots use Laravel SEO h1/intro copy plus `tenant_switcher` communities.
 Parent-domain child tenant routing and host-root runtime smoke have focused
 Laravel-backed proof; event detail, account hub, activity, achievements/
-gamification, and leaderboard/NEXUS score source templates now use `urlFor()`
-for their focused local links/forms, but full template helper conversion is
-still open.
+gamification, leaderboard/NEXUS score, and profile/settings source templates
+now use `urlFor()` for their focused local links/forms, but full template
+helper conversion is still open.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the

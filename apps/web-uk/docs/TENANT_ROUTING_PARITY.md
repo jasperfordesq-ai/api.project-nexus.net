@@ -111,7 +111,12 @@ Current gaps:
   reward/challenge/purchase/showcase forms, badge collection links, and badge
   detail links. The newest focused source conversion covers the leaderboard
   and NEXUS score templates, including tabs, back links, filter forms,
-  load-more links, tier links, and member profile links.
+  load-more links, tier links, and member profile links. The latest focused
+  source conversion covers the profile and settings templates, including
+  profile summary links, settings card links, profile/security/privacy forms,
+  two-step verification actions, blocked member unblock forms, delete-account
+  controls, and settings appearance, availability, data-rights,
+  linked-account, and insurance form actions.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -244,6 +249,15 @@ ladder templates now pass tabs, back links, filter form actions, load-more
 links, tier links, and data-driven member profile links through `urlFor()`. A
 source-level regression plus focused leaderboard/NEXUS score render tests prove
 the flat `/leaderboard` and `/nexus-score` family output remains unchanged.
+
+The fifteenth template-helper source slice extends the same direct `urlFor()`
+conversion into the profile and settings pages. The profile summary, profile
+settings, two-step verification, blocked-members, delete-account, appearance,
+availability, data-rights, linked-accounts, and insurance templates now pass
+their local links and form actions through `urlFor()`, including settings hub
+card links and dynamic member unblock forms. A source-level regression plus
+focused profile/settings render tests prove the flat `/profile` and
+`/settings/*` output remains unchanged.
 
 Verification command:
 

@@ -93,4 +93,38 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toContain("urlFor('/leaderboard");
     expect(templates.join('\n')).toContain("urlFor('/nexus-score");
   });
+
+  it('keeps profile and settings links and forms behind urlFor()', () => {
+    const profileTemplates = [
+      'index.njk',
+      'settings.njk',
+      'two-factor.njk',
+      'blocked.njk',
+      'delete.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'profile', file),
+      'utf8'
+    ));
+    const settingsTemplates = [
+      'appearance.njk',
+      'availability.njk',
+      'data-rights.njk',
+      'insurance.njk',
+      'linked-accounts.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'settings', file),
+      'utf8'
+    ));
+    const templates = [...profileTemplates, ...settingsTemplates];
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:profile|settings|account|dashboard|achievements|leaderboard)/);
+      expect(template).not.toMatch(/action="\/(?:profile|settings|members)/);
+      expect(template).not.toContain('href: "/profile');
+    }
+
+    expect(templates.join('\n')).not.toContain('href="{{ item.href }}"');
+    expect(templates.join('\n')).toContain("urlFor('/profile");
+    expect(templates.join('\n')).toContain("urlFor('/settings");
+  });
 });
