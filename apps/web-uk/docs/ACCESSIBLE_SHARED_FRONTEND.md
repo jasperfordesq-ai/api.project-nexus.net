@@ -1349,10 +1349,15 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 642 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 35 local-only routes. These
+accessible route declarations, 639 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 32 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local generic reports pages are intentionally not exposed. Laravel's
+accessible route set uses dedicated report surfaces such as
+`/listings/{id}/report` and the `/report-a-problem` support-report flow, so the
+old GET/POST `/reports/new` and GET `/reports/my` paths are absent.
 
 Legacy local search suggestions are intentionally not exposed as an accessible
 frontend route. Laravel's accessible GOV.UK route set does not include GET

@@ -295,6 +295,28 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('legacy generic report routes should return not found', async () => {
+      for (const path of ['/reports/new?type=user&id=77&return_to=/members/77', '/reports/my']) {
+        const response = await request(app).get(path);
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const response = await agent
+        .post('/reports/new')
+        .type('form')
+        .send({ _csrf: csrfMatch[1], content_type: 'user', content_id: '77', reason: 'other' });
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 

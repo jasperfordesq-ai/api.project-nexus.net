@@ -40,7 +40,6 @@ const ideationRoutes = require('./routes/ideation');
 const ideationActionRoutes = require('./routes/ideation-actions');
 const groupExchangeRoutes = require('./routes/group-exchanges');
 const groupExchangeActionRoutes = require('./routes/group-exchange-actions');
-const reportsRoutes = require('./routes/reports');
 const matchesRoutes = require('./routes/matches');
 const exchangeRoutes = require('./routes/exchanges');
 const searchRoutes = require('./routes/search');
@@ -1135,7 +1134,6 @@ app.use('/marketplace', doubleCsrfProtection, postOnly(formLimiter), marketplace
 app.use('/volunteering', doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);
 app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
 app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
-app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
 app.use('/matches', doubleCsrfProtection, postOnly(formLimiter), matchesRoutes);
 app.use('/achievements', doubleCsrfProtection, postOnly(formLimiter), achievementsRoutes);
 app.use('/leaderboard', doubleCsrfProtection, leaderboardRoutes);

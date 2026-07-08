@@ -7,6 +7,11 @@
   - reportId: ID of the content to report
   - returnTo: URL to return to after reporting (optional, defaults to current page)
 #}
-<a href="/reports/new?type={{ reportType }}&id={{ reportId }}&return_to={{ returnTo | urlencode if returnTo else '' }}" class="govuk-link govuk-body-s app-report-link">
+{% if reportType == "listing" %}
+  {% set reportHref = "/listings/" + (reportId | string) + "/report" %}
+{% else %}
+  {% set reportHref = "/report-a-problem?return=" + (returnTo | urlencode if returnTo else "") %}
+{% endif %}
+<a href="{{ reportHref }}" class="govuk-link govuk-body-s app-report-link">
   Report
 </a>

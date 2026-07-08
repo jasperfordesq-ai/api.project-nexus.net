@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `642` |
+| Web UK routes | `639` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `35` |
+| Extra Web UK routes | `32` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused reports route slice: legacy local GET `/reports/new`, POST
+`/reports/new`, and GET `/reports/my` were removed. Generic report links now
+use Laravel-backed surfaces: listing reports point to `/listings/{id}/report`,
+and other page/content reporting points to `/report-a-problem`.
 
 Latest focused search route slice: legacy local GET `/search/suggestions` was
 removed. Laravel exposes search suggestions as an API route, not as a GOV.UK

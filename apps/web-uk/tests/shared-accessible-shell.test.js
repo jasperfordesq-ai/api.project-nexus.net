@@ -1033,6 +1033,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('href="/profile/edit"');
     expect(signed.text).toContain('href="/achievements"');
     expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).not.toContain('href="/reports/my"');
     expect(signed.text).not.toContain('href="/progress"');
     expect(signed.text).not.toContain('href="/progress/leaderboard"');
     expect(legacyEdit.status).toBe(404);
@@ -7438,6 +7439,8 @@ describe('shared accessible frontend shell', () => {
     expect(profileResponse.text).toContain('Ada Lovelace');
     expect(profileResponse.text).toContain('action="/members/77/connection"');
     expect(profileResponse.text).toContain('name="action" value="connect"');
+    expect(profileResponse.text).toContain('href="/report-a-problem?return=%2Fmembers%2F77"');
+    expect(profileResponse.text).not.toContain('/reports/new');
     expect(profileResponse.text).not.toContain('action="/members/77/connect"');
   });
 
