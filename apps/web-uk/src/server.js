@@ -1105,7 +1105,6 @@ app.post('/login/two-factor', authLimiter, doubleCsrfProtection, authRoutes);
 app.post('/login/resend-verification', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/register', authRoutes);
 app.post('/register', authLimiter, doubleCsrfProtection, authRoutes);
-app.get('/logout', authRoutes);
 app.post('/logout', doubleCsrfProtection, authRoutes);
 app.get('/login/forgot-password', authRoutes);
 app.post('/login/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);

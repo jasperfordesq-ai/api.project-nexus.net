@@ -355,29 +355,6 @@ router.post('/logout', asyncRoute(async (req, res) => {
   res.redirect('/login');
 }));
 
-// GET /logout revokes tokens server-side then clears cookies
-router.get('/logout', asyncRoute(async (req, res) => {
-  const token = req.signedCookies.token;
-
-  if (token) {
-    try {
-      await logout(token);
-    } catch (error) {
-      // Ignore errors - still clear local cookies
-      console.error('Logout API error:', error.message);
-    }
-
-    invalidateUserCache(token);
-  }
-
-  if (req.session) {
-    req.session.destroy((err) => { if (err) console.error('Session destroy error:', err); });
-  }
-
-  clearAuthCookies(res);
-  res.redirect('/login');
-}));
-
 // Forgot password
 function renderForgotPassword(req, res) {
   const status = req.query.status || '';

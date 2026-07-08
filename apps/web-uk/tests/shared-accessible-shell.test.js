@@ -4622,6 +4622,13 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login');
   });
 
+  it('does not expose legacy GET logout because Laravel logout is POST-only', async () => {
+    const response = await request(app).get('/logout');
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('Page not found');
+  });
+
   it('renders the Blade-style account hub when signed in', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

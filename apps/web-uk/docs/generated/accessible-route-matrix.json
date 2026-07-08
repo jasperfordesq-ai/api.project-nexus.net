@@ -1,13 +1,13 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T20:43:00.404Z",
+    "generatedAt": "2026-07-08T09:34:12.337Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 690,
+    "webUkRoutes": 689,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 83,
+    "extraWebUkRoutes": 82,
     "familyCounts": {
       "admin": {
         "matched": 0,
@@ -51,11 +51,6 @@
       },
       "listings": {
         "matched": 19,
-        "missing": 0,
-        "extraWebUk": 1
-      },
-      "logout": {
-        "matched": 1,
         "missing": 0,
         "extraWebUk": 1
       },
@@ -286,6 +281,11 @@
       },
       "login": {
         "matched": 7,
+        "missing": 0,
+        "extraWebUk": 0
+      },
+      "logout": {
+        "matched": 1,
         "missing": 0,
         "extraWebUk": 0
       },
@@ -1308,25 +1308,6 @@
       "webUkPath": "/listings/{param}/delete",
       "webUkView": "listings/delete",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
-    },
-    {
-      "method": "GET",
-      "path": "/logout",
-      "family": "logout",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/logout",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",

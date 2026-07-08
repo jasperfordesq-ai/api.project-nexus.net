@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `690` |
+| Web UK routes | `689` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `83` |
+| Extra Web UK routes | `82` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused logout route slice: legacy local `GET /logout` was removed so
+the `logout` route family now matches Laravel's POST-only accessible logout
+declaration with `0` extra local logout routes. The account hub still renders a
+CSRF-protected POST sign-out form.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
