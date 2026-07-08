@@ -106,7 +106,10 @@ Current gaps:
   `src/views/account.njk`, including account card links and the CSRF-protected
   logout form action. The following focused source conversion covers the
   activity dashboard and insights templates, including the detailed-insights
-  link and back-to-activity links.
+  link and back-to-activity links. The latest focused source conversion covers
+  the achievements/gamification templates, including tabs, back links, daily
+  reward/challenge/purchase/showcase forms, badge collection links, and badge
+  detail links.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -222,6 +225,15 @@ detailed-insights link through `urlFor('/activity/insights')`, and
 `urlFor('/activity')`. A source-level regression plus focused activity render
 tests prove the flat `/activity` and `/activity/insights` output remains
 unchanged.
+
+The thirteenth template-helper source slice extends the same direct `urlFor()`
+conversion into the achievements and gamification pages. The achievements
+index, XP shop, collections, engagement history, showcase, and badge detail
+templates now pass their tabs, back links, daily reward form, challenge claim
+forms, shop purchase form, showcase save form, collection badge links, and
+view-all links through `urlFor()`. A source-level regression plus focused
+achievements/gamification render tests prove the flat `/achievements` family
+output remains unchanged.
 
 Verification command:
 

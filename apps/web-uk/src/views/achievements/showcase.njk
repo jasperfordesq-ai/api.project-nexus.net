@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
 
   <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">Showcase badges</h1>
@@ -15,16 +15,16 @@
     <h2 class="govuk-tabs__title">Achievements and rewards</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/shop">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">XP shop</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/collections">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/achievements/showcase" aria-current="page">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}" aria-current="page">Showcase badges</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/engagement">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">Engagement history</a>
       </li>
     </ul>
   </nav>
@@ -62,7 +62,7 @@
   {% endif %}
 
   {% if earnedBadges.length %}
-    <form method="post" action="/achievements/showcase">
+    <form method="post" action="{{ urlFor('/achievements/showcase') }}">
       <fieldset class="govuk-fieldset" id="showcase-badges" aria-describedby="showcase-hint">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Select up to 5 badges to showcase</legend>
         <div id="showcase-hint" class="govuk-hint">Tick a badge to show it on your profile. You can change this at any time.</div>

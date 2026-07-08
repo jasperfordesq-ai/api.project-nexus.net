@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
 
   <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">XP shop</h1>
@@ -15,16 +15,16 @@
     <h2 class="govuk-tabs__title">Achievements and rewards</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/achievements/shop" aria-current="page">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}" aria-current="page">XP shop</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/collections">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/showcase">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">Showcase badges</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/engagement">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">Engagement history</a>
       </li>
     </ul>
   </nav>
@@ -82,7 +82,7 @@
           {% if item.owned %}
             <strong class="govuk-tag govuk-tag--green">Owned</strong>
           {% elif item.canPurchase %}
-            <form method="post" action="/achievements/shop/purchase">
+            <form method="post" action="{{ urlFor('/achievements/shop/purchase') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="item_id" value="{{ item.id }}">
               <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Buy for {{ item.costLabel }}</button>

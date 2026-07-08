@@ -41,4 +41,25 @@ describe('tenant-aware template helper conversion', () => {
     expect(insightsTemplate).toContain('href="{{ urlFor(\'/activity\') }}"');
     expect(insightsTemplate).not.toContain('href="/activity"');
   });
+
+  it('keeps achievements navigation and forms behind urlFor()', () => {
+    const templates = [
+      'index.njk',
+      'shop.njk',
+      'collections.njk',
+      'engagement.njk',
+      'showcase.njk',
+      'badge.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'achievements', file),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/achievements/);
+      expect(template).not.toMatch(/action="\/achievements/);
+    }
+
+    expect(templates.join('\n')).toContain("urlFor('/achievements");
+  });
 });

@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
 
   <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">{% if badge.icon %}{{ badge.icon }} {% endif %}{{ badge.name }}</h1>
@@ -58,6 +58,6 @@
   {% endif %}
 
   <p class="govuk-body govuk-!-margin-top-4">
-    <a class="govuk-link" href="/achievements">View all achievements</a>
+    <a class="govuk-link" href="{{ urlFor('/achievements') }}">View all achievements</a>
   </p>
 {% endblock %}

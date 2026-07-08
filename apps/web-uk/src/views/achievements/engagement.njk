@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/achievements">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
 
   <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
   <h1 class="govuk-heading-xl">Engagement history</h1>
@@ -15,16 +15,16 @@
     <h2 class="govuk-tabs__title">Achievements and rewards</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/shop">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">XP shop</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/collections">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/achievements/showcase">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">Showcase badges</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/achievements/engagement" aria-current="page">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}" aria-current="page">Engagement history</a>
       </li>
     </ul>
   </nav>
