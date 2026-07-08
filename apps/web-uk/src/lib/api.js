@@ -38,6 +38,36 @@ class ApiOfflineError extends Error {
   }
 }
 
+function hasTenantContextHeader(headers) {
+  return Object.keys(headers).some((name) => {
+    const normalized = name.toLowerCase();
+    return normalized === 'x-tenant-id' || normalized === 'x-tenant-slug';
+  });
+}
+
+function tenantSlugHeader(tenantSlug) {
+  const slug = String(tenantSlug || '').trim();
+  return slug ? { 'X-Tenant-Slug': slug } : {};
+}
+
+function hasAuthorizationHeader(headers) {
+  return Object.keys(headers).some((name) => name.toLowerCase() === 'authorization');
+}
+
+function apiErrorMessage(data) {
+  if (data && typeof data === 'object') {
+    if (data.error) return data.error;
+    if (data.message) return data.message;
+    if (data.title) return data.title;
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      const firstError = data.errors[0];
+      if (firstError && typeof firstError === 'object' && firstError.message) return firstError.message;
+      if (typeof firstError === 'string') return firstError;
+    }
+  }
+  return 'API request failed';
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -46,8 +76,9 @@ async function request(endpoint, options = {}) {
     ...options.headers
   };
 
-  // Include X-Tenant-ID header for tenant resolution (required for unauthenticated requests)
-  if (TENANT_ID) {
+  // Include default tenant context for unauthenticated requests only. Laravel
+  // authenticated routes resolve tenant from the token unless a slug is explicit.
+  if (TENANT_ID && !hasAuthorizationHeader(headers) && !hasTenantContextHeader(headers)) {
     headers['X-Tenant-ID'] = TENANT_ID;
   }
 
@@ -77,7 +108,7 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(
-      data.error || data.message || data.title || 'API request failed',
+      apiErrorMessage(data),
       response.status,
       data
     );
@@ -88,12 +119,14 @@ async function request(endpoint, options = {}) {
 
 // Auth
 async function login(email, password, tenantSlug) {
+  const normalizedTenantSlug = String(tenantSlug || '').trim();
   return request('/api/auth/login', {
     method: 'POST',
+    headers: tenantSlugHeader(normalizedTenantSlug),
     body: JSON.stringify({
       email,
       password,
-      tenant_slug: tenantSlug
+      tenant_slug: normalizedTenantSlug
     })
   });
 }
@@ -107,6 +140,7 @@ async function validateToken(token) {
 async function register(data) {
   return request('/api/auth/register', {
     method: 'POST',
+    headers: tenantSlugHeader(data?.tenant_slug),
     body: JSON.stringify(data)
   });
 }
@@ -134,11 +168,13 @@ async function verify2fa(token, code) {
 }
 
 async function forgotPassword(email, tenantSlug) {
+  const normalizedTenantSlug = String(tenantSlug || '').trim();
   return request('/api/auth/forgot-password', {
     method: 'POST',
+    headers: tenantSlugHeader(normalizedTenantSlug),
     body: JSON.stringify({
       email,
-      tenant_slug: tenantSlug
+      tenant_slug: normalizedTenantSlug
     })
   });
 }
@@ -195,14 +231,12 @@ async function updateProfile(token, data) {
   });
 }
 
-async function getUsers(token) {
-  return request('/api/users', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+async function getUsers(token, params = {}) {
+  return getMembers(token, params);
 }
 
 async function getUser(token, id) {
-  return request(`/api/users/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/users/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -216,9 +250,17 @@ async function getListings(token, params = {}) {
   if (params.page) query.set('page', params.page);
   if (params.limit) query.set('limit', params.limit);
   if (params.search) query.set('search', params.search);
+  if (params.category_id) query.set('category_id', params.category_id);
+  if (params.hours) query.set('hours', params.hours);
+  if (params.service) query.set('service', params.service);
+  if (params.posted) query.set('posted', params.posted);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.near) query.set('near', params.near);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page) query.set('per_page', params.per_page);
 
   const queryString = query.toString();
-  const endpoint = `/api/listings${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/listings${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -226,8 +268,14 @@ async function getListings(token, params = {}) {
 }
 
 async function getListing(token, id) {
-  return request(`/api/listings/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPublicListing(id, tenantSlug) {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
+    headers: tenantSlugHeader(tenantSlug)
   });
 }
 
@@ -436,19 +484,25 @@ async function markConversationRead(token, conversationId) {
 // Connections
 async function getConnections(token, status = null) {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`/api/connections${query}`, {
+  return request(`/api/v2/connections${query}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getPendingConnections(token) {
-  return request('/api/connections/pending', {
+  return request('/api/v2/connections/pending', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getConnectionStatus(token, userId) {
+  return request(`/api/v2/connections/status/${encodeURIComponent(userId)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function sendConnectionRequest(token, userId) {
-  return request('/api/connections', {
+  return request('/api/v2/connections/request', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ user_id: parseInt(userId, 10) })
@@ -456,21 +510,21 @@ async function sendConnectionRequest(token, userId) {
 }
 
 async function acceptConnection(token, connectionId) {
-  return request(`/api/connections/${encodeURIComponent(connectionId)}/accept`, {
-    method: 'PUT',
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/accept`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function declineConnection(token, connectionId) {
-  return request(`/api/connections/${encodeURIComponent(connectionId)}/decline`, {
-    method: 'PUT',
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/decline`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function removeConnection(token, connectionId) {
-  return request(`/api/connections/${encodeURIComponent(connectionId)}`, {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -653,14 +707,14 @@ async function transferGroupOwnership(token, groupId, newOwnerId) {
 // Events
 async function getEvents(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
+  if (params.page && String(params.page) !== '1') query.set('cursor', params.page);
+  if (params.limit) query.set('per_page', params.limit);
   if (params.group_id) query.set('group_id', params.group_id);
-  if (params.upcoming_only) query.set('upcoming_only', 'true');
-  if (params.search) query.set('search', params.search);
+  if (params.upcoming_only) query.set('when', 'upcoming');
+  if (params.search) query.set('q', params.search);
 
   const queryString = query.toString();
-  const endpoint = `/api/events${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/events${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -674,13 +728,13 @@ async function getMyEvents(token) {
 }
 
 async function getEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function createEvent(token, data) {
-  return request('/api/events', {
+  return request('/api/v2/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -688,7 +742,7 @@ async function createEvent(token, data) {
 }
 
 async function updateEvent(token, id, data) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -696,28 +750,31 @@ async function updateEvent(token, id, data) {
 }
 
 async function cancelEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}/cancel`, {
-    method: 'PUT',
+  return request(`/api/v2/events/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function deleteEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getEventRsvps(token, eventId, status = null) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`/api/events/${encodeURIComponent(eventId)}/rsvps${query}`, {
+  const params = new URLSearchParams();
+  params.set('status', status || 'all');
+  params.set('per_page', '20');
+
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/attendees?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function rsvpToEvent(token, eventId, status) {
-  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ status })
@@ -725,7 +782,7 @@ async function rsvpToEvent(token, eventId, status) {
 }
 
 async function removeEventRsvp(token, eventId) {
-  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -737,9 +794,13 @@ async function getFeedPosts(token, params = {}) {
   if (params.page) query.set('page', params.page);
   if (params.limit) query.set('limit', params.limit);
   if (params.group_id) query.set('group_id', params.group_id);
+  if (params.type) query.set('type', params.type);
+  if (params.mode) query.set('mode', params.mode);
+  if (params.subtype) query.set('subtype', params.subtype);
+  if (params.cursor) query.set('cursor', params.cursor);
 
   const queryString = query.toString();
-  const endpoint = `/api/feed${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/feed${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -915,14 +976,23 @@ async function searchSuggestions(token, query, limit = 5) {
   });
 }
 
-async function getMembers(token, query = '', page = 1, limit = 20) {
+async function getMembers(token, filters = {}, page = 1, limit = 20) {
   const params = new URLSearchParams();
-  if (query) params.set('q', query);
-  if (page) params.set('page', page);
-  if (limit) params.set('limit', limit);
+  if (typeof filters === 'string') {
+    if (filters) params.set('q', filters);
+    if (page) params.set('page', page);
+    if (limit) params.set('limit', limit);
+  } else {
+    if (filters.q) params.set('q', filters.q);
+    if (filters.search) params.set('q', filters.search);
+    if (filters.sort) params.set('sort', filters.sort);
+    if (filters.order) params.set('order', filters.order);
+    if (filters.limit) params.set('limit', filters.limit);
+    if (filters.offset !== undefined && filters.offset !== null) params.set('offset', filters.offset);
+  }
 
   const queryString = params.toString();
-  return request(`/api/users${queryString ? `?${queryString}` : ''}`, {
+  return request(`/api/v2/users${queryString ? `?${queryString}` : ''}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -930,20 +1000,23 @@ async function getMembers(token, query = '', page = 1, limit = 20) {
 // Reviews
 async function getUserReviews(token, userId, page = 1, limit = 20) {
   const params = new URLSearchParams();
-  if (page) params.set('page', page);
-  if (limit) params.set('limit', limit);
+  if (limit) params.set('per_page', limit);
+  if (page && String(page) !== '1') params.set('cursor', page);
 
   const queryString = params.toString();
-  return request(`/api/users/${encodeURIComponent(userId)}/reviews${queryString ? `?${queryString}` : ''}`, {
+  return request(`/api/v2/reviews/user/${encodeURIComponent(userId)}${queryString ? `?${queryString}` : ''}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function createUserReview(token, userId, data) {
-  return request(`/api/users/${encodeURIComponent(userId)}/reviews`, {
+  return request('/api/v2/reviews', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
+    body: JSON.stringify({
+      receiver_id: parseInt(userId, 10),
+      ...data
+    })
   });
 }
 
@@ -967,7 +1040,7 @@ async function createListingReview(token, listingId, data) {
 }
 
 async function getReview(token, reviewId) {
-  return request(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+  return request(`/api/v2/reviews/${encodeURIComponent(reviewId)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -981,9 +1054,110 @@ async function updateReview(token, reviewId, data) {
 }
 
 async function deleteReview(token, reviewId) {
-  return request(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+  return request(`/api/v2/reviews/${encodeURIComponent(reviewId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+// Exchanges
+async function getExchangeConfig(token) {
+  return request('/api/v2/exchanges/config', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function checkExchangeForListing(token, listingId) {
+  return request(`/api/v2/exchanges/check?listing_id=${encodeURIComponent(listingId)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchanges(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.status) query.set('status', params.status);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  return request(`/api/v2/exchanges${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createExchangeRequest(token, listingId, data = {}) {
+  return request('/api/v2/exchanges', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      listing_id: parseInt(listingId, 10),
+      ...data
+    })
+  });
+}
+
+async function acceptExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function declineExchange(token, id, data = {}) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/decline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function startExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/start`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function completeExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/complete`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function confirmExchange(token, id, data = {}) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/confirm`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function cancelExchange(token, id, data = {}) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getExchangeRatings(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/ratings`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function rateExchange(token, id, data = {}) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/rate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
 }
 
@@ -1218,6 +1392,7 @@ module.exports = {
   // Listings
   getListings,
   getListing,
+  getPublicListing,
   createListing,
   updateListing,
   deleteListing,
@@ -1246,6 +1421,7 @@ module.exports = {
   // Connections
   getConnections,
   getPendingConnections,
+  getConnectionStatus,
   sendConnectionRequest,
   acceptConnection,
   declineConnection,
@@ -1315,6 +1491,20 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
+  // Exchanges
+  getExchangeConfig,
+  checkExchangeForListing,
+  getExchanges,
+  getExchange,
+  getExchangeRatings,
+  createExchangeRequest,
+  acceptExchange,
+  declineExchange,
+  startExchange,
+  completeExchange,
+  confirmExchange,
+  cancelExchange,
+  rateExchange,
   // Admin
   adminGetDashboard,
   adminGetUsers,

@@ -34,7 +34,18 @@ jest.mock('../src/lib/api', () => ({
   register: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
+  getMembers: jest.fn(),
+  getUser: jest.fn(),
+  getConnections: jest.fn().mockResolvedValue({ data: [] }),
+  getConnectionStatus: jest.fn(),
+  sendConnectionRequest: jest.fn(),
+  getGamificationProfileByUserId: jest.fn(),
+  getUserReviews: jest.fn(),
+  createUserReview: jest.fn(),
   getListings: jest.fn(),
+  getListing: jest.fn(),
+  getPublicListing: jest.fn(),
+  getListingReviews: jest.fn(),
   getBlogPosts: jest.fn(),
   getBlogPost: jest.fn(),
   getGoals: jest.fn(),
@@ -49,6 +60,26 @@ jest.mock('../src/lib/api', () => ({
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getTransactions: jest.fn(),
+  getFeedPosts: jest.fn(),
+  getMyEvents: jest.fn(),
+  getEvents: jest.fn(),
+  getEvent: jest.fn(),
+  getEventRsvps: jest.fn(),
+  getExchangeConfig: jest.fn(),
+  checkExchangeForListing: jest.fn(),
+  getExchanges: jest.fn(),
+  getExchange: jest.fn(),
+  getExchangeRatings: jest.fn(),
+  createExchangeRequest: jest.fn(),
+  acceptExchange: jest.fn(),
+  declineExchange: jest.fn(),
+  startExchange: jest.fn(),
+  completeExchange: jest.fn(),
+  confirmExchange: jest.fn(),
+  cancelExchange: jest.fn(),
+  rateExchange: jest.fn(),
+  getGamificationProfile: jest.fn(),
+  getAllBadges: jest.fn(),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
@@ -226,6 +257,699 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/logout"');
     expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel Blade-style member dashboard when signed in', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({
+      first_name: 'E2E',
+      hours_given: 4.5,
+      hours_received: 2,
+      listings_count: 3,
+      onboarding_completed: true
+    });
+    api.getBalance.mockResolvedValueOnce({ balance: 12.5 });
+    api.getFeedPosts.mockResolvedValueOnce({
+      items: [
+        {
+          id: 10,
+          type: 'post',
+          title: 'Community update',
+          content: 'A short update for members of the community.',
+          author: { name: 'Aisha Khan' }
+        }
+      ]
+    });
+    api.getListings.mockResolvedValueOnce({
+      items: [
+        {
+          id: 22,
+          type: 'offer',
+          title: 'Gardening help',
+          description: 'Offering help with a community garden.'
+        }
+      ]
+    });
+    api.getMyEvents.mockResolvedValueOnce({
+      items: [
+        {
+          id: 7,
+          title: 'Community lunch',
+          start_time: '2026-08-01T12:00:00Z',
+          location: 'Town hall'
+        }
+      ]
+    });
+    api.getGamificationProfile.mockResolvedValueOnce({
+      profile: {
+        level: 2,
+        level_name: 'Helper',
+        xp: 340,
+        level_progress: { progress_percentage: 45 },
+        badges_count: 1
+      }
+    });
+    api.getAllBadges.mockResolvedValueOnce({
+      badges: [
+        { icon: '*', name: 'First exchange' }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/dashboard')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Dashboard');
+    expect(response.text).toContain('Welcome back, E2E.');
+    expect(response.text).toContain('Create a listing');
+    expect(response.text).toContain('Your time bank');
+    expect(response.text).toContain('class="nexus-alpha-stat-grid"');
+    expect(response.text).toContain('Time-credit balance');
+    expect(response.text).toContain('12.5 hours');
+    expect(response.text).toContain('Hours given');
+    expect(response.text).toContain('Hours received');
+    expect(response.text).toContain('Active listings');
+    expect(response.text).toContain('Your progress');
+    expect(response.text).toContain('Level 2');
+    expect(response.text).toContain('45% of the way to the next level');
+    expect(response.text).toContain('Badges (1)');
+    expect(response.text).toContain('First exchange');
+    expect(response.text).toContain('Upcoming events');
+    expect(response.text).toContain('Community lunch');
+    expect(response.text).toContain('Quick links');
+    expect(response.text).toContain('View your profile');
+    expect(response.text).toContain('Edit your profile');
+    expect(response.text).toContain('View all feed items');
+    expect(response.text).toContain('Recent feed');
+    expect(response.text).toContain('Community update');
+    expect(response.text).toContain('Recent listings');
+    expect(response.text).toContain('Gardening help');
+    expect(response.text).not.toContain('Wallet balance');
+    expect(response.text).not.toContain('Your recent listings');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel Blade-style feed page when feed items cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockClear();
+    api.getFeedPosts.mockRejectedValueOnce(new api.ApiOfflineError());
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/feed?type=listings&mode=recent&subtype=offer&per_page=5')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', {
+      limit: 5,
+      type: 'listings',
+      mode: 'recent',
+      subtype: 'offer',
+      cursor: null
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Feed');
+    expect(response.text).toContain('Community updates, conversations and activity.');
+    expect(response.text).toContain('Write a post');
+    expect(response.text).toContain('Share a short update with your community.');
+    expect(response.text).toContain('Filter the feed');
+    expect(response.text).toContain('Feed type');
+    expect(response.text).toContain('value="listings" selected');
+    expect(response.text).toContain('Feed order');
+    expect(response.text).toContain('value="recent" selected');
+    expect(response.text).toContain('Listing subtype');
+    expect(response.text).toContain('value="offer" selected');
+    expect(response.text).toContain('Feed items could not be loaded. Try again.');
+    expect(response.text).not.toContain('Sorry, the service is unavailable');
+    expect(response.text).not.toContain('Create a post');
+    expect(response.text).not.toContain('Filter by group');
+  });
+
+  it('renders the Laravel-backed event detail page from the v2 event envelope', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getEvent.mockClear();
+    api.getEventRsvps.mockClear();
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 6,
+        user_id: 110,
+        group_id: 479,
+        title: 'Community Meetup 3',
+        description: 'Third monthly gathering',
+        location: 'Skibbereen Town Hall',
+        start_time: '2026-08-01T14:00:00.000000Z',
+        start_date: '2026-08-01T14:00:00+00:00',
+        end_time: '2026-08-01T16:00:00.000000Z',
+        max_attendees: null,
+        status: 'active',
+        user_rsvp: null,
+        rsvp_counts: { going: 1, interested: 0, not_going: 0 }
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({
+      data: [
+        { id: 26554, first_name: 'E2E', last_name: 'UserA', status: 'going' }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/events/6')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getEvent).toHaveBeenCalledWith('test-token', '6');
+    expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '6', 'all');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Community Meetup 3');
+    expect(response.text).toContain('Third monthly gathering');
+    expect(response.text).toContain('Skibbereen Town Hall');
+    expect(response.text).toContain('Upcoming');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders the Laravel Blade-style listings page even when profile lookup is unavailable', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getListings.mockClear();
+    api.getProfile.mockClear();
+    api.getListings.mockResolvedValueOnce({
+      data: [
+        {
+          id: 90992,
+          type: 'offer',
+          title: 'E2E Fixture Listing - Gardening Help',
+          description: 'Deterministic E2E fixture listing owned by E2E User A.',
+          author_name: 'E2E User A',
+          category_name: 'Gardening',
+          hours_estimate: 2,
+          location: 'Skibbereen'
+        }
+      ],
+      meta: { total_items: 1, has_more: false }
+    });
+    api.getProfile.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/listings?q=garden&type=offer&sort=newest')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getListings).toHaveBeenCalledWith('test-token', {
+      search: 'garden',
+      type: 'offer',
+      category_id: '',
+      hours: 'any',
+      service: 'any',
+      posted: 'any',
+      sort: 'newest',
+      near: 'any',
+      cursor: '',
+      per_page: 20
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Listings');
+    expect(response.text).toContain('Find offers and requests from your community.');
+    expect(response.text).toContain('Filter listings');
+    expect(response.text).toContain('Results');
+    expect(response.text).toContain('1 listing shown');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).toContain('Skibbereen');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders the Laravel Blade-style listing detail page from the v2 detail envelope', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getListing.mockClear();
+    api.getListingReviews.mockClear();
+    api.getProfile.mockClear();
+    api.getListing.mockResolvedValueOnce({
+      data: {
+        id: 90992,
+        user_id: 26554,
+        type: 'offer',
+        status: 'active',
+        title: 'E2E Fixture Listing - Gardening Help',
+        description: 'Deterministic E2E fixture listing owned by E2E User A.',
+        author_name: 'E2E User A',
+        author_tagline: 'Community helper',
+        category_name: 'Gardening',
+        hours_estimate: 2,
+        location: 'Skibbereen',
+        created_at: '2026-07-06T18:36:08.000000Z',
+        comments_count: 3,
+        likes_count: 4
+      }
+    });
+    api.getListingReviews.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    api.getProfile.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/listings/90992')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getListing).toHaveBeenCalledWith('test-token', '90992');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to listings');
+    expect(response.text).toContain('Listing details');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).toContain('Deterministic E2E fixture listing owned by E2E User A.');
+    expect(response.text).toContain('E2E User A');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('Skibbereen');
+    expect(response.text).toContain('Share link');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders the Laravel Blade-style members directory when signed in', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getMembers.mockClear();
+    api.getMembers.mockResolvedValueOnce({
+      data: [
+        {
+          id: 26554,
+          name: 'E2E User A',
+          avatar: '',
+          tagline: 'Community helper',
+          location: 'Skibbereen',
+          total_hours_given: 4,
+          total_hours_received: 2,
+          rating: 4.8,
+          identity_verified: true,
+          connection_state: 'none'
+        }
+      ],
+      meta: { total_items: 1, offset: 0, per_page: 20, has_more: false }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/members?q=e2e&sort=joined&order=DESC')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getMembers).toHaveBeenCalledWith('test-token', {
+      q: 'e2e',
+      sort: 'joined',
+      order: 'DESC',
+      limit: 20,
+      offset: 0
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Community members');
+    expect(response.text).toContain('Find and connect with members of your community.');
+    expect(response.text).toContain('Filter members');
+    expect(response.text).toContain('Results');
+    expect(response.text).toContain('1 member found');
+    expect(response.text).toContain('E2E User A');
+    expect(response.text).toContain('Community helper');
+    expect(response.text).toContain('Skibbereen');
+    expect(response.text).toContain('View profile');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('keeps the members directory usable when member data cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getMembers.mockClear();
+    api.getMembers.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/members')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community members');
+    expect(response.text).toContain('Members could not be loaded. Try again.');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders the member profile from the Laravel v2 profile envelope', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUser.mockClear();
+    api.getConnections.mockClear();
+    api.getConnectionStatus.mockClear();
+    api.getGamificationProfileByUserId.mockClear();
+    api.getUserReviews.mockClear();
+    api.getProfile.mockClear();
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Aisha Khan',
+        first_name: 'Aisha',
+        last_name: 'Khan',
+        email: 'aisha@example.test',
+        created_at: '2026-07-01T10:00:00Z'
+      }
+    });
+    api.getConnections.mockResolvedValueOnce({ data: [] });
+    api.getConnectionStatus.mockResolvedValueOnce({ data: { status: 'none', connection_id: null } });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({ profile: { level: 3, totalXp: 420 } });
+    api.getUserReviews.mockResolvedValueOnce({ data: [], summary: null });
+    api.getProfile.mockResolvedValueOnce({ id: 26554 });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/members/2')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getUser).toHaveBeenCalledWith('test-token', '2');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Aisha Khan');
+    expect(response.text).toContain('aisha@example.test');
+    expect(response.text).toContain('Level 3');
+    expect(response.text).toContain('Send connection request');
+    expect(response.text).not.toContain('Sorry, there is a problem with the service');
+  });
+
+  it('renders pending sent connection status from the Laravel status endpoint', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUser.mockClear();
+    api.getConnections.mockClear();
+    api.getConnectionStatus.mockClear();
+    api.getGamificationProfileByUserId.mockClear();
+    api.getUserReviews.mockClear();
+    api.getProfile.mockClear();
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Aisha Khan',
+        first_name: 'Aisha',
+        last_name: 'Khan',
+        email: 'aisha@example.test'
+      }
+    });
+    api.getConnections.mockResolvedValueOnce({ data: [] });
+    api.getConnectionStatus.mockResolvedValueOnce({
+      data: { status: 'pending_sent', connection_id: 73, direction: 'sent' }
+    });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({ profile: null });
+    api.getUserReviews.mockResolvedValueOnce({ data: [], summary: null });
+    api.getProfile.mockResolvedValueOnce({ id: 26554 });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/members/2')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getConnectionStatus).toHaveBeenCalledWith('test-token', '2');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Request sent');
+    expect(response.text).toContain('Cancel request');
+    expect(response.text).not.toContain('Send connection request');
+  });
+
+  it('posts member connection requests through the Laravel-backed helper', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUser.mockClear();
+    api.getConnections.mockClear();
+    api.getConnectionStatus.mockClear();
+    api.getGamificationProfileByUserId.mockClear();
+    api.getUserReviews.mockClear();
+    api.getProfile.mockClear();
+    api.sendConnectionRequest.mockClear();
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Aisha Khan',
+        first_name: 'Aisha',
+        last_name: 'Khan',
+        email: 'aisha@example.test'
+      }
+    });
+    api.getConnections.mockResolvedValueOnce({ data: [] });
+    api.getConnectionStatus.mockResolvedValueOnce({ data: { status: 'none', connection_id: null } });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({ profile: null });
+    api.getUserReviews.mockResolvedValueOnce({ data: [], summary: null });
+    api.getProfile.mockResolvedValueOnce({ id: 26554 });
+    api.sendConnectionRequest.mockResolvedValueOnce({
+      data: { id: 77, status: 'pending' },
+      message: 'Connection request sent'
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const profile = await agent
+      .get('/members/2')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+    const csrfMatch = profile.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/members/2/connect')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(api.sendConnectionRequest).toHaveBeenCalledWith('test-token', '2');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/2');
+  });
+
+  it('posts member reviews through the Laravel-backed helper', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUser.mockClear();
+    api.getConnections.mockClear();
+    api.getConnectionStatus.mockClear();
+    api.getGamificationProfileByUserId.mockClear();
+    api.getUserReviews.mockClear();
+    api.getProfile.mockClear();
+    api.createUserReview.mockClear();
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 267,
+        name: 'Austin',
+        first_name: 'Austin',
+        email: 'austin@example.test'
+      }
+    });
+    api.getConnections.mockResolvedValueOnce({ data: [] });
+    api.getConnectionStatus.mockResolvedValueOnce({
+      data: { status: 'pending_sent', connection_id: 73, direction: 'sent' }
+    });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({ profile: null });
+    api.getUserReviews.mockResolvedValueOnce({ data: [], summary: null });
+    api.getProfile.mockResolvedValueOnce({ id: 26554 });
+    api.createUserReview.mockResolvedValueOnce({
+      data: { id: 91, receiver_id: 267, rating: 4 }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const profile = await agent
+      .get('/members/267')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+    const csrfMatch = profile.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/reviews/user/267')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        rating: '4',
+        comment: 'Helpful exchange',
+        return_url: '/members/267'
+      });
+
+    expect(api.createUserReview).toHaveBeenCalledWith('test-token', '267', {
+      rating: 4,
+      comment: 'Helpful exchange'
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/267');
+  });
+
+  it('renders the Laravel Blade-style exchanges list when signed in', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getExchangeConfig.mockClear();
+    api.getExchanges.mockClear();
+    api.getExchangeConfig.mockResolvedValueOnce({
+      data: { exchange_workflow_enabled: true, direct_messaging_enabled: true }
+    });
+    api.getExchanges.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          listing_id: 90992,
+          status: 'pending_provider',
+          proposed_hours: 2,
+          created_at: '2026-07-08T10:00:00Z',
+          listing: { id: 90992, title: 'E2E Fixture Listing - Gardening Help' },
+          requester: { id: 26554, name: 'E2E User A' },
+          provider: { id: 267, name: 'Austin' }
+        }
+      ],
+      meta: { has_more: false }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/exchanges?tab=active')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
+    expect(api.getExchanges).toHaveBeenCalledWith('test-token', {
+      status: 'active',
+      per_page: 20,
+      cursor: ''
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Exchanges');
+    expect(response.text).toContain('Review exchange requests and track time-credit work.');
+    expect(response.text).toContain('All');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('Needs confirmation');
+    expect(response.text).toContain('Completed');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).toContain('Pending provider');
+    expect(response.text).toContain('View exchange');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(response.text).not.toContain('contract parity before use');
+  });
+
+  it('renders the Laravel Blade-style exchange request form for a listing', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getListing.mockClear();
+    api.getPublicListing.mockClear();
+    api.checkExchangeForListing.mockClear();
+    api.getListing.mockResolvedValueOnce({
+      data: {
+        id: 90992,
+        type: 'offer',
+        title: 'E2E Fixture Listing - Gardening Help',
+        category_name: 'Gardening',
+        location: 'Skibbereen',
+        hours_estimate: 2,
+        author_name: 'E2E User A'
+      }
+    });
+    api.checkExchangeForListing.mockResolvedValueOnce({ data: null });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/exchanges/request/90992')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getListing).toHaveBeenCalledWith('test-token', '90992');
+    expect(api.checkExchangeForListing).toHaveBeenCalledWith('test-token', '90992');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to listings');
+    expect(response.text).toContain('Request exchange');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).toContain('Proposed hours');
+    expect(response.text).toContain('Preparation time');
+    expect(response.text).toContain('Message');
+    expect(response.text).toContain('action="/exchanges/request/90992"');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders the Laravel Blade-style exchange detail page from the v2 envelope', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getExchange.mockClear();
+    api.getExchangeRatings.mockClear();
+    api.getProfile.mockClear();
+    api.getExchange.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        listing_id: 90992,
+        requester_id: 26554,
+        provider_id: 267,
+        status: 'pending_provider',
+        proposed_hours: 2,
+        risk_level: 'low',
+        created_at: '2026-07-08T10:00:00Z',
+        message: 'I can help with this.',
+        listing: { id: 90992, title: 'E2E Fixture Listing - Gardening Help' },
+        requester: { id: 26554, name: 'E2E User A' },
+        provider: { id: 267, name: 'Austin' },
+        status_history: [
+          {
+            new_status: 'pending_provider',
+            actor_name: 'E2E User A',
+            notes: 'Request created',
+            created_at: '2026-07-08T10:00:00Z'
+          }
+        ]
+      }
+    });
+    api.getExchangeRatings.mockResolvedValueOnce({ data: { ratings: [], has_rated: false } });
+    api.getProfile.mockResolvedValueOnce({ id: 267 });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/exchanges/42')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getExchange).toHaveBeenCalledWith('test-token', '42');
+    expect(api.getExchangeRatings).toHaveBeenCalledWith('test-token', '42');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Exchange details');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).toContain('You are the provider for this exchange.');
+    expect(response.text).toContain('Pending provider');
+    expect(response.text).toContain('Summary');
+    expect(response.text).toContain('Accept');
+    expect(response.text).toContain('Decline');
+    expect(response.text).toContain('Timeline');
+    expect(response.text).not.toContain('Page not found');
+  });
+
+  it('falls back to tenant-aware public listing detail when the authenticated lookup is unavailable', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getListing.mockClear();
+    api.getPublicListing.mockClear();
+    api.getListingReviews.mockClear();
+    api.getProfile.mockClear();
+    api.getListing.mockRejectedValueOnce(new api.ApiOfflineError());
+    api.getPublicListing.mockResolvedValueOnce({
+      data: {
+        id: 90992,
+        user_id: 26554,
+        type: 'offer',
+        status: 'active',
+        title: 'E2E Fixture Listing - Gardening Help',
+        description: 'Deterministic E2E fixture listing owned by E2E User A.',
+        author_name: 'E2E User A',
+        category_name: 'Gardening',
+        hours_estimate: 2,
+        location: 'Skibbereen'
+      }
+    });
+    api.getListingReviews.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    api.getProfile.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+    const signedToken = `s:${cookieSignature.sign('stale-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/listings/90992')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getListing).toHaveBeenCalledWith('stale-token', '90992');
+    expect(api.getPublicListing).toHaveBeenCalledWith('90992', 'hour-timebank');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Listing details');
+    expect(response.text).toContain('E2E Fixture Listing - Gardening Help');
+    expect(response.text).not.toContain('Sorry, the service is unavailable');
   });
 
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {

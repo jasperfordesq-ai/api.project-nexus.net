@@ -32,6 +32,7 @@ const reportsRoutes = require('./routes/reports');
 const gamificationRoutes = require('./routes/gamification');
 const searchRoutes = require('./routes/search');
 const reviewsRoutes = require('./routes/reviews');
+const exchangesRoutes = require('./routes/exchanges');
 const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
@@ -1004,6 +1005,7 @@ app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
 app.use('/progress', doubleCsrfProtection, gamificationRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
+app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangesRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
