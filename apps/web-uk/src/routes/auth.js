@@ -188,7 +188,7 @@ async function verifyTurnstile(token, remoteIp) {
 // Registration
 router.get('/register', (req, res) => {
   res.render('register', {
-    title: 'Create an account',
+    title: 'Register',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -218,7 +218,7 @@ router.post('/register', asyncRoute(async (req, res) => {
   const turnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
   if (!(await verifyTurnstile(turnstileToken, req.ip))) {
     return res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
       fieldErrors: {},
       values: req.body || {},
@@ -270,7 +270,7 @@ router.post('/register', asyncRoute(async (req, res) => {
 
   if (errors.length > 0) {
     return res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors,
       fieldErrors,
       values: { email, first_name, last_name, tenant_slug },
@@ -320,7 +320,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     }
 
     res.render('register', {
-      title: 'Create an account',
+      title: 'Register',
       errors: [{ text: errorMessage }],
       fieldErrors: error.data?.errors || {},
       values: { email, first_name, last_name, tenant_slug },
@@ -458,7 +458,7 @@ function renderResetPassword(req, res) {
   }
 
   res.render('reset-password', {
-    title: 'Set a new password',
+    title: 'Choose a new password',
     resetToken: token,
     formAction: req.path === '/password/reset' ? '/password/reset' : '/reset-password',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -496,7 +496,7 @@ async function handleResetPasswordPost(req, res) {
 
   if (errors.length > 0) {
     return res.render('reset-password', {
-      title: 'Set a new password',
+      title: 'Choose a new password',
       errors,
       fieldErrors,
       resetToken: token,
@@ -524,7 +524,7 @@ async function handleResetPasswordPost(req, res) {
     }
 
     res.render('reset-password', {
-      title: 'Set a new password',
+      title: 'Choose a new password',
       errors: [{ text: errorMessage }],
       fieldErrors: {},
       resetToken: token,

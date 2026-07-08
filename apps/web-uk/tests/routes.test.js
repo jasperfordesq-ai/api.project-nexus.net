@@ -81,7 +81,7 @@ describe('Public Routes', () => {
       const response = await request(app).get('/register');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Create an account');
+      expect(response.text).toContain('<h1 class="govuk-heading-xl">Register</h1>');
     });
   });
 

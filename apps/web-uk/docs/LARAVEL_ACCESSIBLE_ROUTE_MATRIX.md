@@ -555,11 +555,17 @@ failures. The body-text-only default smoke scope was recertified in 8 chunks
 against the same port, covering all 259 body-text contract checks with
 `307/307` executed checks including repeated auth/health setup checks and `0`
 failures.
-The default scope now contains `606` checks:
+The public auth pages `/login`, `/login/forgot-password`,
+`/password/reset?token=reset-token`, and `/register` now track the Laravel
+headings `Sign in`, `Reset your password`, `Choose a new password`, and
+`Register`. A direct runtime assertion pass against
+`WEB_UK_BASE_URL=http://127.0.0.1:6238` checked `/health` plus those four page
+headings with `5/5` assertions and `0` failures.
+The default scope now contains `610` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 259 body-text contract checks, and the 6
+content-type contract checks, 263 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

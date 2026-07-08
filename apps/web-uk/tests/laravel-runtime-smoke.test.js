@@ -77,12 +77,19 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const publicAuthFixtures = new Map([
+      ['/login', 'Sign in'],
+      ['/login/forgot-password', 'Reset your password'],
+      ['/password/reset?token=reset-token', 'Choose a new password'],
+      ['/register', 'Register']
+    ]);
+
     if (req.method === 'GET' && req.url === '/login') {
       res.writeHead(200, {
         'content-type': 'text/html',
         'set-cookie': 'nexus.csrf=csrf-cookie; Path=/; HttpOnly'
       });
-      res.end('<form method="post"><input type="hidden" name="_csrf" value="csrf-token"></form>');
+      res.end('<h1>Sign in</h1><form method="post"><input type="hidden" name="_csrf" value="csrf-token"></form>');
       return;
     }
 
@@ -93,7 +100,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     ]);
     if (req.method === 'GET' && signedPublicAuthPages.has(req.url)) {
       res.writeHead(200, { 'content-type': 'text/html' });
-      res.end(`<h1>${req.url}</h1>`);
+      res.end(`<h1>${publicAuthFixtures.get(req.url)}</h1>`);
       return;
     }
 
@@ -193,6 +200,10 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/organisations/browse', 'Browse organisations'],
       ['/organisations/manage', 'Manage my organisations'],
       ['/organisations/register', 'Register a volunteer organisation'],
+      ['/login', 'Sign in'],
+      ['/login/forgot-password', 'Reset your password'],
+      ['/password/reset?token=reset-token', 'Choose a new password'],
+      ['/register', 'Register'],
       ['/organisations/636', 'About this organisation'],
       ['/organisations/636/jobs', 'Open roles posted by this organisation'],
       ['/organisations/opportunities/307/apply', 'Apply for this opportunity'],
@@ -1265,6 +1276,10 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/organisations/browse', text: 'Browse organisations' },
       { path: '/organisations/manage', text: 'Manage my organisations' },
       { path: '/organisations/register', text: 'Register a volunteer organisation' },
+      { path: '/login', text: 'Sign in' },
+      { path: '/login/forgot-password', text: 'Reset your password' },
+      { path: '/password/reset?token=reset-token', text: 'Choose a new password' },
+      { path: '/register', text: 'Register' },
       { path: '/organisations/636', text: 'About this organisation' },
       { path: '/organisations/636/jobs', text: 'Open roles posted by this organisation' },
       { path: '/organisations/opportunities/307/apply', text: 'Apply for this opportunity' },
@@ -2018,6 +2033,10 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-organisations-browse-contains-browse-organisations': true,
       'body-text-page-organisations-manage-contains-manage-my-organisations': true,
       'body-text-page-organisations-register-contains-register-a-volunteer-organisation': true,
+      'body-text-page-login-contains-sign-in': true,
+      'body-text-page-login-forgot-password-contains-reset-your-password': true,
+      'body-text-page-password-reset-token-reset-token-contains-choose-a-new-password': true,
+      'body-text-page-register-contains-register': true,
       'body-text-page-organisations-636-contains-about-this-organisation': true,
       'body-text-page-organisations-636-jobs-contains-open-roles-posted-by-this-organisation': true,
       'body-text-page-organisations-opportunities-307-apply-contains-apply-for-this-opportunity': true,

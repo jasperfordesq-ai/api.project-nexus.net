@@ -4281,7 +4281,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/password/reset?token=reset-token');
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Set a new password');
+    expect(response.text).toContain('<h1 class="govuk-heading-xl">Choose a new password</h1>');
     expect(response.text).toContain('method="post" action="/password/reset"');
     expect(response.text).toContain('name="token" value="reset-token"');
     expect(response.text).toContain('name="password_confirmation"');
@@ -4383,10 +4383,10 @@ describe('shared accessible frontend shell', () => {
 
   it('keeps Laravel public auth pages renderable for signed-in visitors', async () => {
     const cases = [
-      { path: '/login', text: 'Sign in' },
-      { path: '/login/forgot-password', text: 'Reset your password' },
-      { path: '/password/reset?token=reset-token', text: 'Set a new password' },
-      { path: '/register', text: 'Create an account' }
+      { path: '/login', text: '<h1 class="govuk-heading-xl">Sign in</h1>' },
+      { path: '/login/forgot-password', text: '<h1 class="govuk-heading-xl">Reset your password</h1>' },
+      { path: '/password/reset?token=reset-token', text: '<h1 class="govuk-heading-xl">Choose a new password</h1>' },
+      { path: '/register', text: '<h1 class="govuk-heading-xl">Register</h1>' }
     ];
 
     for (const authPage of cases) {
