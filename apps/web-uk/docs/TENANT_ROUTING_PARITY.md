@@ -64,18 +64,22 @@ Current implemented slice:
 - Shared root `/` renders the Laravel-style tenant chooser backed by
   `/api/v2/tenants` without `include_master`, excludes the master tenant, and
   links communities to the cleaner `/{tenantSlug}/accessible` mount.
+- Non-local Host values are resolved through Laravel
+  `/api/v2/tenant/bootstrap`; when Laravel returns a tenant whose
+  `accessible_domain` matches the request host, Web UK treats the request as a
+  slugless custom accessible-domain route.
+- Dedicated accessible-domain root `/` renders the resolved tenant home and
+  keeps generated local links flat, matching Laravel's custom-domain behavior
+  without exposing either `/alpha` or `/{tenantSlug}/accessible`.
 
 Current gaps:
 
-- Custom accessible-domain host resolution is not implemented in Web UK yet.
-- Web UK does not yet call Laravel tenant bootstrap during request routing to
-  resolve `accessible_domain` or `parent_domain`.
 - Most individual templates still contain direct root-relative paths. Shared
   tenant-mount rendering now protects those links at response time, but the
   templates still need gradual conversion to `urlFor()` or equivalent helpers
   so custom-domain and flat-host modes remain easier to audit.
-- Dedicated accessible-domain root `/` is not yet certified to render the
-  resolved tenant's home.
+- Custom accessible-domain routing is covered by Jest for a host-resolved
+  root request, but it is not yet certified by live Laravel runtime smoke.
 - Parent-domain child-tenant paths are audited from Laravel but not implemented
   in Web UK.
 
@@ -98,6 +102,11 @@ and rendered login-page form/link targets remain under
 The third shared-root slice verifies that `/` renders Laravel's tenant chooser,
 excludes the master tenant, and links active communities to
 `/{tenantSlug}/accessible` instead of Laravel's legacy alpha mount.
+
+The fourth tenant-domain slice verifies that a non-local Host resolved by
+Laravel tenant bootstrap as `accessible_domain` renders the tenant home at
+slugless `/`, does not render the tenant chooser, and does not leak
+`/{tenantSlug}/accessible` or `/{tenantSlug}/alpha` into root-page links.
 
 Verification command:
 

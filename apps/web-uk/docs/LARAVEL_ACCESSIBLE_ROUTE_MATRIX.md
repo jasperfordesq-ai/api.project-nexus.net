@@ -61,10 +61,12 @@ responses now also rewrite local redirects plus rendered HTML `href` and
 `action` targets back under the active `/{tenantSlug}/accessible` prefix while
 leaving asset/API/infrastructure URLs flat. Shared root `/` now renders the
 Laravel-style tenant chooser from `/api/v2/tenants`, excludes the master tenant,
-and links active communities to the clean `/{tenantSlug}/accessible` mount.
-Custom accessible-domain resolution, parent-domain child tenant routing,
-custom-domain root home behavior, and full template helper conversion are still
-open.
+and links active communities to the clean `/{tenantSlug}/accessible` mount. Web
+UK now also resolves non-local Host values through Laravel
+`/api/v2/tenant/bootstrap` and renders the tenant home at slugless `/` when the
+host matches Laravel's `accessible_domain`. Parent-domain child tenant routing,
+full template helper conversion, and live Laravel custom-domain smoke
+certification are still open.
 
 The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
 no longer exposed. Laravel's accessible source uses GET/POST

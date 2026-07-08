@@ -367,7 +367,7 @@ function normalizeTenantChooserCommunities(result) {
 
 // Public routes (no CSRF needed for GET)
 app.get('/', async (req, res) => {
-  if (req.accessibleRouting?.mode === 'shared') {
+  if (req.accessibleRouting?.mode) {
     return res.render('home', { title: 'Home' });
   }
 

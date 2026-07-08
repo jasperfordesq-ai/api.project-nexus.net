@@ -20,6 +20,7 @@ const UNPREFIXED_PATHS = [
   '/uploads',
   '/v2'
 ];
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
 
 function withQuery(path, queryIndex, originalUrl) {
   if (queryIndex === -1) return path;
@@ -91,6 +92,71 @@ function installSharedMountResponseRewriter(res, prefix) {
   };
 }
 
+function isUnprefixedPath(pathname) {
+  return UNPREFIXED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+function normalizeHost(host) {
+  const raw = String(host || '').trim().toLowerCase();
+  if (!raw) {
+    return '';
+  }
+
+  const withoutProtocol = raw.replace(/^https?:\/\//, '');
+  const withoutPath = withoutProtocol.split('/')[0];
+  const withoutPort = withoutPath.startsWith('[')
+    ? withoutPath.replace(/^\[|\](?::\d+)?$/g, '')
+    : withoutPath.split(':')[0];
+
+  return withoutPort.replace(/^www\./, '');
+}
+
+function shouldResolveCustomAccessibleDomain(host) {
+  if (!host || LOCAL_HOSTS.has(host)) {
+    return false;
+  }
+
+  return !host.endsWith('.localhost');
+}
+
+function tenantDataMatchesAccessibleHost(data, host) {
+  return data?.slug && normalizeHost(data.accessible_domain) === host;
+}
+
+async function resolveCustomAccessibleDomain(req, pathname) {
+  if (isUnprefixedPath(pathname)) {
+    return;
+  }
+
+  const host = normalizeHost(req.headers.host);
+  if (!shouldResolveCustomAccessibleDomain(host)) {
+    return;
+  }
+
+  const { ApiError, ApiOfflineError, getTenantBootstrap } = require('../lib/api');
+
+  try {
+    const result = await getTenantBootstrap({ host });
+    const tenant = result?.data || result?.tenant || result;
+
+    if (tenantDataMatchesAccessibleHost(tenant, host)) {
+      req.accessibleRouting = {
+        mode: 'custom-domain',
+        tenantSlug: tenant.slug,
+        tenant,
+        prefix: '',
+        routePath: pathname || '/'
+      };
+    }
+  } catch (error) {
+    if (error instanceof ApiOfflineError || (error instanceof ApiError && error.status === 404)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
 function tenantRouting(req, res, next) {
   const originalUrl = req.url || '/';
   const queryIndex = originalUrl.indexOf('?');
@@ -98,7 +164,10 @@ function tenantRouting(req, res, next) {
   const match = pathname.match(SHARED_MOUNT_RE);
 
   if (!match) {
-    return next();
+    resolveCustomAccessibleDomain(req, pathname)
+      .then(() => next())
+      .catch(next);
+    return;
   }
 
   const [, tenantSlug, mount] = match;

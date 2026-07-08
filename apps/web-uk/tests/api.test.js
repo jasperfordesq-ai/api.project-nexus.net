@@ -200,6 +200,44 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getTenantBootstrap', () => {
+    it('should ask Laravel to resolve tenant bootstrap data from the supplied host', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 2, slug: 'acme', accessible_domain: 'acme-accessible.test' } })
+      });
+
+      const result = await api.getTenantBootstrap({ host: 'acme-accessible.test:5180' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/tenant/bootstrap',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Host: 'acme-accessible.test'
+          })
+        })
+      );
+      expect(result.data.slug).toBe('acme');
+    });
+
+    it('should ask Laravel to resolve tenant bootstrap data from an explicit slug', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 2, slug: 'acme' } })
+      });
+
+      await api.getTenantBootstrap({ slug: 'acme' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/tenant/bootstrap?slug=acme',
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('getListings', () => {
     it('should send auth header', async () => {
       mockFetch.mockResolvedValueOnce({

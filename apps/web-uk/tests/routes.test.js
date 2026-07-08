@@ -34,7 +34,8 @@ jest.mock('../src/lib/api', () => ({
   getBalance: jest.fn(),
   getUnreadCount: jest.fn(),
   getTransactions: jest.fn(),
-  getTenants: jest.fn()
+  getTenants: jest.fn(),
+  getTenantBootstrap: jest.fn()
 }));
 
 // Set required env vars
@@ -112,6 +113,37 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('action="/login"');
       expect(response.text).not.toContain('href="/login/forgot-password"');
       expect(response.text).not.toContain('href="/register"');
+    });
+  });
+
+  describe('custom accessible domains', () => {
+    it('serves the tenant home at the slugless root when Laravel resolves the host accessible domain', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 2,
+          name: 'Acme Timebank',
+          slug: 'acme',
+          accessible_domain: 'acme-accessible.test'
+        }
+      });
+
+      const response = await request(app)
+        .get('/')
+        .set('Host', 'acme-accessible.test');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Welcome to Project NEXUS Community');
+      expect(response.text).toContain('href="/"');
+      expect(response.text).toContain('href="/login"');
+      expect(response.text).toContain('href="/register"');
+      expect(response.text).not.toContain('Choose a community');
+      expect(response.text).not.toContain('/acme/accessible');
+      expect(response.text).not.toContain('/acme/alpha');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'acme-accessible.test' });
+      expect(api.getTenants).not.toHaveBeenCalled();
     });
   });
 

@@ -47,10 +47,12 @@ redirects plus rendered HTML `href` and `action` targets inside the active
 flat root paths during shared-host tenant browsing. A shared-root slice now
 renders the Laravel-style tenant chooser at `/`, backed by Laravel
 `/api/v2/tenants` with the master tenant excluded and community links using the
-cleaner `/{tenantSlug}/accessible` mount. This is not full tenant-domain parity
-yet: custom accessible-domain resolution, parent-domain child tenant routing,
-custom-domain root home behavior, template-helper conversion, and Laravel
-runtime smoke certification still need work.
+cleaner `/{tenantSlug}/accessible` mount. A custom accessible-domain root slice
+now asks Laravel `/api/v2/tenant/bootstrap` to resolve non-local Host values and
+renders the resolved tenant home at slugless `/` when the host matches
+`accessible_domain`. This is not full tenant-domain parity yet: parent-domain
+child tenant routing, template-helper conversion, and Laravel runtime smoke
+certification still need work.
 
 ## Non-Negotiable Rules
 
@@ -73,7 +75,7 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Item | Last observed state |
 | --- | --- |
 | Branch | `main` |
-| Head commit | `f7c80d32` at the 2026-07-08 consolidation checkpoint; rerun `git rev-parse --short HEAD` before editing because `main` may move. |
+| Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
 | Working estimate | about `965/1000` implementation/certification parity |
 | Green confidence estimate | about `925/1000`, mainly gated by full live Laravel runtime smoke and visual/manual parity certification |
@@ -110,6 +112,19 @@ not expose Laravel's legacy alpha slug. Tenant-mounted
 `/{tenantSlug}/accessible` roots still render the tenant home page. Verification
 for this slice: `npm --prefix apps/web-uk test -- --runInBand` passed with
 `683/683` tests, `npm --prefix apps/web-uk run lint` passed, and
+`npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
+accessible routes matched, `0` missing, `2` extra Web UK routes, and `3`
+ignored infrastructure routes.
+
+Latest focused custom accessible-domain root slice: Web UK now resolves
+non-local Host values through Laravel `/api/v2/tenant/bootstrap`. When Laravel
+returns a tenant whose `accessible_domain` matches the request host, slugless
+root `/` renders the tenant home rather than the tenant chooser, keeps links
+flat for the dedicated domain, and does not expose either Laravel's legacy
+`/alpha` mount or Web UK's shared `/{tenantSlug}/accessible` mount. Verification
+for this slice: focused `routes.test.js` passed `31/31`, focused
+`api.test.js` passed `154/154`, full Web UK Jest passed `686/686`,
+`npm --prefix apps/web-uk run lint` passed, and
 `npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
 accessible routes matched, `0` missing, `2` extra Web UK routes, and `3`
 ignored infrastructure routes.

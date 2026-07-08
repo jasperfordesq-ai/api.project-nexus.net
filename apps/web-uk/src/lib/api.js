@@ -207,6 +207,32 @@ async function getTenants(options = {}) {
   return request(`/api/v2/tenants${queryString ? `?${queryString}` : ''}`);
 }
 
+function normalizeTenantHost(host) {
+  const raw = String(host || '').trim().toLowerCase();
+  if (!raw) {
+    return '';
+  }
+
+  const withoutProtocol = raw.replace(/^https?:\/\//, '');
+  const withoutPath = withoutProtocol.split('/')[0];
+  const withoutPort = withoutPath.includes(':') ? withoutPath.split(':')[0] : withoutPath;
+  return withoutPort.replace(/^www\./, '');
+}
+
+async function getTenantBootstrap(options = {}) {
+  const query = new URLSearchParams();
+  if (options.slug) {
+    query.set('slug', String(options.slug));
+  }
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/tenant/bootstrap${queryString ? `?${queryString}` : ''}`;
+  const host = options.slug ? '' : normalizeTenantHost(options.host);
+  const headers = host ? { Host: host } : {};
+
+  return request(endpoint, { headers });
+}
+
 async function verify2fa(token, code) {
   return request('/api/auth/2fa/verify', {
     method: 'POST',
@@ -3056,6 +3082,7 @@ module.exports = {
   logout,
   submitContact,
   getTenants,
+  getTenantBootstrap,
   forgotPassword,
   resetPassword,
   resendVerification,
