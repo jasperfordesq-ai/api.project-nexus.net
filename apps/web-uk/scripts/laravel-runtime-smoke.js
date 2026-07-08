@@ -865,6 +865,14 @@ function cookieConsentPostCheckName() {
   return 'cookie-consent-post-stores-essential-choice';
 }
 
+function cookieConsentAllPostCheckName() {
+  return 'cookie-consent-post-stores-all-choice';
+}
+
+function cookieSettingsSaveCheckName() {
+  return 'cookie-settings-post-saves-analytics-choice';
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
@@ -1108,6 +1116,108 @@ async function runLaravelRuntimeSmoke(options = {}) {
     }
   } catch (error) {
     addCheck(checks, cookieConsentPostCheckName(), false, error.message);
+  }
+
+  try {
+    const acceptCookieJar = new CookieJar();
+    const response = await smokeRequest({
+      fetchImpl: config.fetchImpl,
+      timeoutMs: config.timeoutMs,
+      cookieJar: acceptCookieJar,
+      url: joinUrl(config.webBaseUrl, '/')
+    });
+    const html = await readTextSafely(response);
+    const csrfToken = extractCsrfToken(html);
+
+    if (!response.ok || !csrfToken) {
+      addCheck(
+        checks,
+        cookieConsentAllPostCheckName(),
+        false,
+        `expected home page cookie banner with CSRF token, got ${response.status}`,
+        { status: response.status }
+      );
+    } else {
+      const form = new URLSearchParams({
+        _csrf: csrfToken,
+        cookies: 'accept',
+        return: '/cookies'
+      });
+      const postResponse = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar: acceptCookieJar,
+        url: joinUrl(config.webBaseUrl, '/cookie-consent'),
+        options: {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: form.toString()
+        }
+      });
+      const ok = isRedirectTo(postResponse, '/cookies') && acceptCookieJar.get(ALPHA_COOKIE_NAME) === 'all';
+      addCheck(
+        checks,
+        cookieConsentAllPostCheckName(),
+        ok,
+        ok
+          ? 'No-JS cookie consent POST stored the analytics-enabled Laravel-compatible choice.'
+          : `expected redirect to /cookies and ${ALPHA_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${acceptCookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: acceptCookieJar.get(ALPHA_COOKIE_NAME) }
+      );
+    }
+  } catch (error) {
+    addCheck(checks, cookieConsentAllPostCheckName(), false, error.message);
+  }
+
+  try {
+    const settingsCookieJar = new CookieJar();
+    const response = await smokeRequest({
+      fetchImpl: config.fetchImpl,
+      timeoutMs: config.timeoutMs,
+      cookieJar: settingsCookieJar,
+      url: joinUrl(config.webBaseUrl, '/cookies')
+    });
+    const html = await readTextSafely(response);
+    const csrfToken = extractCsrfToken(html);
+
+    if (!response.ok || !csrfToken) {
+      addCheck(
+        checks,
+        cookieSettingsSaveCheckName(),
+        false,
+        `expected cookie settings form with CSRF token, got ${response.status}`,
+        { status: response.status }
+      );
+    } else {
+      const form = new URLSearchParams({
+        _csrf: csrfToken,
+        cookies: 'save',
+        analytics: 'yes'
+      });
+      const postResponse = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar: settingsCookieJar,
+        url: joinUrl(config.webBaseUrl, '/cookie-consent'),
+        options: {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: form.toString()
+        }
+      });
+      const ok = isRedirectTo(postResponse, '/cookies?status=saved') && settingsCookieJar.get(ALPHA_COOKIE_NAME) === 'all';
+      addCheck(
+        checks,
+        cookieSettingsSaveCheckName(),
+        ok,
+        ok
+          ? 'Cookie settings POST saved the analytics-enabled Laravel-compatible choice.'
+          : `expected redirect to /cookies?status=saved and ${ALPHA_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${settingsCookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: settingsCookieJar.get(ALPHA_COOKIE_NAME) }
+      );
+    }
+  } catch (error) {
+    addCheck(checks, cookieSettingsSaveCheckName(), false, error.message);
   }
 
   for (const path of config.unsignedAuthRequiredPagePaths) {

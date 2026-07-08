@@ -572,12 +572,12 @@ Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `283` body-text contract checks. `/dashboard`
 now carries stable body-text checks for `Welcome back`, `Your time bank`,
 `Quick links`, `Recent feed`, and `Recent listings`.
-The default scope now contains `631` checks:
+The default scope now contains `633` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 1 cookie-consent
-POST workflow check, and the 6 auth/health checks.
+content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+POST workflow checks, and the 6 auth/health checks.
 A targeted live dashboard marker smoke on 2026-07-08 against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and
@@ -613,8 +613,9 @@ readiness.
 candidates. They render the Laravel-style analytics settings form and set the
 same first-party `nexus_alpha_cookie_consent` values (`all` or `essential`) used
 by Laravel's accessible frontend. The Laravel runtime smoke now verifies the
-no-JS reject POST by fetching a CSRF token, posting to `/cookie-consent`, and
-asserting the `/cookies` redirect plus `nexus_alpha_cookie_consent=essential`.
+no-JS reject, accept, and settings-save POSTs by fetching CSRF tokens, posting
+to `/cookie-consent`, and asserting the expected `/cookies` redirects plus
+`nexus_alpha_cookie_consent` values.
 They do not certify Laravel `cookie_consents` audit persistence, tenant-scoped
 consent behavior, localized copy, report-a-problem workflows, or ASP.NET backend
 readiness.

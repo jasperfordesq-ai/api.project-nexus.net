@@ -633,13 +633,14 @@ The public support pages `/contact`, `/cookies`, `/newsletter/unsubscribe`,
 `/verify-email`, and `/report-a-problem` now carry Laravel-backed body-text
 markers, with `/contact` and `/report-a-problem` copy realigned to the Laravel
 Blade strings before certification.
-The no-JS cookie consent POST is now part of the default Laravel runtime smoke
-scope: it fetches the home-page CSRF token, posts `cookies=reject` to
-`/cookie-consent`, and asserts the redirect to `/cookies` plus the
-Laravel-compatible `nexus_alpha_cookie_consent=essential` cookie. A targeted
-live run on 2026-07-08 against `WEB_UK_BASE_URL=http://127.0.0.1:6241`,
-started with `TENANT_ID=2`, passed `7/7` checks including this POST workflow,
-auth, and signed `/account`.
+The no-JS cookie consent POST flows are now part of the default Laravel runtime
+smoke scope: the harness fetches CSRF tokens, posts banner reject, banner accept,
+and settings-save analytics choices to `/cookie-consent`, and asserts the
+Laravel-compatible `nexus_alpha_cookie_consent=essential` or `all` cookie plus
+the expected `/cookies` redirects. A targeted live run on 2026-07-08 against
+`WEB_UK_BASE_URL=http://127.0.0.1:6242`, started with `TENANT_ID=2`, passed
+`9/9` checks including all three cookie POST workflows, auth, and signed
+`/account`.
 The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
@@ -648,12 +649,12 @@ Laravel-backed body-text markers. The module-page/body-text marker gap is now
 0: `279` module-page checks and `283` body-text contract checks. `/dashboard`
 now carries stable body-text checks for `Welcome back`, `Your time bank`,
 `Quick links`, `Recent feed`, and `Recent listings`.
-The default scope now contains `631` checks:
+The default scope now contains `633` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 1 cookie-consent
-POST workflow check, and the 6 auth/health checks.
+content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+POST workflow checks, and the 6 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against
 `WEB_UK_BASE_URL=http://127.0.0.1:5354`, confirming the default
