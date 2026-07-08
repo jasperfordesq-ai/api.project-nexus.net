@@ -27,6 +27,23 @@ public class PostShare : ITenantEntity
     public int PostId { get; set; }
 
     /// <summary>
+    /// Laravel-compatible polymorphic feed item type.
+    /// </summary>
+    [MaxLength(50)]
+    public string OriginalType { get; set; } = "post";
+
+    /// <summary>
+    /// Laravel-compatible polymorphic feed item id.
+    /// </summary>
+    public int OriginalPostId { get; set; }
+
+    /// <summary>
+    /// Optional repost/share comment.
+    /// </summary>
+    [MaxLength(1000)]
+    public string? Comment { get; set; }
+
+    /// <summary>
     /// Where the post was shared to: "internal", "external", or "copy_link".
     /// </summary>
     [MaxLength(50)]

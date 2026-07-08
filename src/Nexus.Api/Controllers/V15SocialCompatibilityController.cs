@@ -46,6 +46,19 @@ public class V15SocialCompatibilityController : ControllerBase
         "blog",
         "discussion"
     };
+    private static readonly HashSet<string> LaravelShareableTargetTypes = new(StringComparer.Ordinal)
+    {
+        "post",
+        "listing",
+        "event",
+        "poll",
+        "job",
+        "blog",
+        "discussion",
+        "goal",
+        "challenge",
+        "volunteer"
+    };
     private static readonly string[] LaravelNotificationPreferenceKeys =
     [
         "email_messages",
@@ -388,40 +401,79 @@ public class V15SocialCompatibilityController : ControllerBase
     public async Task<IActionResult> SharePost(int? id, [FromBody] JsonElement body)
     {
         var postId = id ?? ReadRequiredInt(body, "post_id", "postId", "id");
-        var share = new PostShare
-        {
-            TenantId = TenantId(),
-            UserId = RequireUserId(),
-            PostId = postId,
-            SharedTo = ReadString(body, "shared_to", "channel") ?? PostShare.Channels.Internal
-        };
+        return await ToggleLaravelShareAsync("post", postId, ReadString(body, "comment"));
+    }
 
-        _db.PostShares.Add(share);
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, data = share });
+    [HttpPost("/api/v2/shares")]
+    public async Task<IActionResult> Share([FromBody] JsonElement body)
+    {
+        var type = ReadString(body, "type")?.Trim() ?? string.Empty;
+        var id = ReadInt(body, "id") ?? 0;
+        var comment = ReadString(body, "comment");
+        if (string.IsNullOrWhiteSpace(type) || id <= 0)
+        {
+            return LaravelShareError("INVALID_INPUT", "Invalid input.", 422);
+        }
+
+        return await ToggleLaravelShareAsync(type, id, comment);
     }
 
     [HttpDelete("/api/v2/feed/posts/{id:int}/share")]
     public async Task<IActionResult> UnsharePost(int id)
     {
-        var share = await _db.PostShares.FirstOrDefaultAsync(s => s.PostId == id && s.UserId == RequireUserId());
-        if (share != null)
+        return await UnshareLaravelTargetAsync("post", id);
+    }
+
+    [HttpDelete("/api/v2/shares")]
+    public async Task<IActionResult> Unshare([FromBody] JsonElement body)
+    {
+        var type = ReadString(body, "type")?.Trim() ?? string.Empty;
+        var id = ReadInt(body, "id") ?? 0;
+        if (string.IsNullOrWhiteSpace(type) || id <= 0)
         {
-            _db.PostShares.Remove(share);
-            await _db.SaveChangesAsync();
+            return LaravelShareError("INVALID_INPUT", "Invalid input.", 422);
         }
 
-        return Ok(new { success = true });
+        return await UnshareLaravelTargetAsync(type, id);
     }
 
     [HttpGet("/api/v2/feed/posts/{id:int}/sharers")]
     public async Task<IActionResult> Sharers(int id)
     {
-        var data = await _db.PostShares
-            .Where(s => s.PostId == id)
-            .Select(s => new { id = s.UserId, name = s.User == null ? null : (s.User.FirstName + " " + s.User.LastName).Trim(), shared_to = s.SharedTo, created_at = s.CreatedAt })
+        var type = Request.Query.TryGetValue("type", out var rawType) && LaravelShareableTargetTypes.Contains(rawType.ToString())
+            ? rawType.ToString()
+            : "post";
+
+        if (!await FeedTrackingTargetExistsAsync(type, id))
+        {
+            return LaravelShareError("NOT_FOUND", "Target not found.", 404);
+        }
+
+        var userId = User.GetUserId();
+        var shareCount = await ShareCountAsync(type, id);
+        var sharers = await _db.PostShares
+            .Where(s => s.OriginalType == type && s.OriginalPostId == id)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(20)
+            .Select(s => new
+            {
+                id = s.UserId,
+                first_name = s.User == null ? null : s.User.FirstName,
+                last_name = s.User == null ? null : s.User.LastName,
+                name = s.User == null ? null : (s.User.FirstName + " " + s.User.LastName).Trim(),
+                avatar_url = s.User == null ? null : s.User.AvatarUrl,
+                comment = s.Comment,
+                created_at = s.CreatedAt
+            })
             .ToListAsync();
-        return Ok(new { data });
+        return LaravelShareData(new
+        {
+            sharers,
+            share_count = shareCount,
+            has_shared = userId.HasValue && await _db.PostShares.AnyAsync(s => s.UserId == userId.Value && s.OriginalType == type && s.OriginalPostId == id),
+            type,
+            id
+        });
     }
 
     [HttpPost("/api/social/likers")]
@@ -1779,6 +1831,174 @@ public class V15SocialCompatibilityController : ControllerBase
     private int RequireUserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
 
     private int TenantId() => _tenantContext.GetTenantIdOrThrow();
+
+    private async Task<IActionResult> ToggleLaravelShareAsync(string type, int id, string? comment = null)
+    {
+        if (!LaravelShareableTargetTypes.Contains(type))
+        {
+            return LaravelShareError("INVALID_INPUT", "Invalid shareable type.", 422);
+        }
+
+        if (!await FeedTrackingTargetExistsAsync(type, id))
+        {
+            return LaravelShareError("NOT_FOUND", "Target not found.", 404);
+        }
+
+        var userId = RequireUserId();
+        var existing = await _db.PostShares.FirstOrDefaultAsync(s =>
+            s.UserId == userId &&
+            s.OriginalType == type &&
+            s.OriginalPostId == id);
+
+        if (existing != null)
+        {
+            _db.PostShares.Remove(existing);
+            await _db.SaveChangesAsync();
+            return LaravelShareData(new
+            {
+                shared = false,
+                count = await ShareCountAsync(type, id),
+                share_id = (int?)null,
+                type,
+                id
+            });
+        }
+
+        var ownerId = await ResolveLaravelShareOwnerIdAsync(type, id);
+        if (ownerId == userId)
+        {
+            return LaravelShareError("SELF_SHARE", "Cannot share your own post.", 422);
+        }
+
+        var share = new PostShare
+        {
+            TenantId = TenantId(),
+            UserId = userId,
+            PostId = type == "post" ? id : 0,
+            OriginalType = type,
+            OriginalPostId = id,
+            Comment = SanitizeShareComment(comment),
+            SharedTo = PostShare.Channels.Internal,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.PostShares.Add(share);
+        await _db.SaveChangesAsync();
+
+        return LaravelShareData(new
+        {
+            shared = true,
+            count = await ShareCountAsync(type, id),
+            share_id = (int?)share.Id,
+            type,
+            id
+        }, StatusCodes.Status201Created);
+    }
+
+    private async Task<IActionResult> UnshareLaravelTargetAsync(string type, int id)
+    {
+        if (!LaravelShareableTargetTypes.Contains(type))
+        {
+            return LaravelShareError("INVALID_INPUT", "Invalid shareable type.", 422);
+        }
+
+        var userId = RequireUserId();
+        var existing = await _db.PostShares.FirstOrDefaultAsync(s =>
+            s.UserId == userId &&
+            s.OriginalType == type &&
+            s.OriginalPostId == id);
+
+        if (existing != null)
+        {
+            _db.PostShares.Remove(existing);
+            await _db.SaveChangesAsync();
+        }
+
+        return LaravelShareData(new
+        {
+            shared = false,
+            count = await ShareCountAsync(type, id),
+            type,
+            id
+        });
+    }
+
+    private async Task<int> ShareCountAsync(string type, int id)
+    {
+        return await _db.PostShares.CountAsync(s => s.OriginalType == type && s.OriginalPostId == id);
+    }
+
+    private async Task<int?> ResolveLaravelShareOwnerIdAsync(string type, int id)
+    {
+        var tenantId = TenantId();
+        return type switch
+        {
+            "post" => await _db.FeedPosts.Where(p => p.TenantId == tenantId && p.Id == id).Select(p => (int?)p.UserId).FirstOrDefaultAsync(),
+            "listing" => await _db.Listings.Where(l => l.TenantId == tenantId && l.Id == id).Select(l => (int?)l.UserId).FirstOrDefaultAsync(),
+            "event" => await _db.Events.Where(e => e.TenantId == tenantId && e.Id == id).Select(e => (int?)e.CreatedById).FirstOrDefaultAsync(),
+            "poll" => await _db.Polls.Where(p => p.TenantId == tenantId && p.Id == id).Select(p => (int?)p.CreatedById).FirstOrDefaultAsync(),
+            "job" => await _db.JobVacancies.Where(j => j.TenantId == tenantId && j.Id == id).Select(j => (int?)j.PostedByUserId).FirstOrDefaultAsync(),
+            "blog" => await _db.BlogPosts.Where(b => b.TenantId == tenantId && b.Id == id).Select(b => (int?)b.AuthorId).FirstOrDefaultAsync(),
+            "discussion" => await _db.GroupDiscussions.Where(d => d.TenantId == tenantId && d.Id == id).Select(d => (int?)d.AuthorId).FirstOrDefaultAsync(),
+            "goal" => await _db.Goals.Where(g => g.TenantId == tenantId && g.Id == id).Select(g => (int?)g.UserId).FirstOrDefaultAsync(),
+            "volunteer" => await _db.VolunteerOpportunities.Where(v => v.TenantId == tenantId && v.Id == id).Select(v => (int?)v.OrganizerId).FirstOrDefaultAsync(),
+            "challenge" => await _db.Challenges.AnyAsync(c => c.TenantId == tenantId && c.Id == id) ? -1 : null,
+            _ => null
+        };
+    }
+
+    private IActionResult LaravelShareData(object data, int status = StatusCodes.Status200OK)
+    {
+        return StatusCode(status, new
+        {
+            data,
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
+    private IActionResult LaravelShareError(string code, string message, int status)
+    {
+        return StatusCode(status, new
+        {
+            errors = new[]
+            {
+                new { code, message }
+            }
+        });
+    }
+
+    private static string? SanitizeShareComment(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var chars = new List<char>(value.Length);
+        var insideTag = false;
+        foreach (var c in value)
+        {
+            if (c == '<')
+            {
+                insideTag = true;
+                continue;
+            }
+
+            if (c == '>')
+            {
+                insideTag = false;
+                continue;
+            }
+
+            if (!insideTag)
+            {
+                chars.Add(c);
+            }
+        }
+
+        var stripped = new string(chars.ToArray()).Trim();
+        return stripped.Length == 0 ? null : stripped[..Math.Min(stripped.Length, 1000)];
+    }
 
     private async Task<bool> FeedTrackingTargetExistsAsync(string targetType, int targetId)
     {

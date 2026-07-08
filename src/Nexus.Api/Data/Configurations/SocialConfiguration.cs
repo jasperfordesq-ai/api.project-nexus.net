@@ -181,11 +181,14 @@ public class SocialConfiguration : TenantScopedConfiguration
             entity.ToTable("post_shares");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.SharedTo).HasMaxLength(50);
+            entity.Property(e => e.OriginalType).HasMaxLength(50).HasDefaultValue("post");
+            entity.Property(e => e.Comment).HasMaxLength(1000);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.PostId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.OriginalType, e.OriginalPostId }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Post).WithMany().HasForeignKey(e => e.PostId).OnDelete(DeleteBehavior.Cascade);
+            entity.Ignore(e => e.Post);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
     }

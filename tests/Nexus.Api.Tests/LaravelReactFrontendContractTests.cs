@@ -4844,6 +4844,94 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task FeedSharesV2_UsesLaravelReactPolymorphicToggleDeleteAndSharersShape()
+    {
+        var postId = await SeedAdminFeedPostAsync("Laravel React shareable post", TestData.AdminUser.Id);
+        var listingId = await SeedAdminFeedListingAsync("Laravel React shareable listing", TestData.AdminUser.Id);
+        await AuthenticateAsMemberAsync();
+
+        var sharePost = await Client.PostAsJsonAsync("/api/v2/shares", new
+        {
+            type = "post",
+            id = postId,
+            comment = "<b>Great update</b>"
+        });
+
+        sharePost.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sharePostJson = await sharePost.Content.ReadFromJsonAsync<JsonElement>();
+        sharePostJson.TryGetProperty("success", out _).Should().BeFalse();
+        sharePostJson.GetProperty("data").GetProperty("shared").GetBoolean().Should().BeTrue();
+        sharePostJson.GetProperty("data").GetProperty("count").GetInt32().Should().Be(1);
+        sharePostJson.GetProperty("data").GetProperty("share_id").GetInt32().Should().BeGreaterThan(0);
+        sharePostJson.GetProperty("data").GetProperty("type").GetString().Should().Be("post");
+        sharePostJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(postId);
+        sharePostJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var sharers = await Client.GetAsync($"/api/v2/feed/posts/{postId}/sharers");
+
+        sharers.StatusCode.Should().Be(HttpStatusCode.OK);
+        var sharersJson = await sharers.Content.ReadFromJsonAsync<JsonElement>();
+        var sharersData = sharersJson.GetProperty("data");
+        sharersData.GetProperty("share_count").GetInt32().Should().Be(1);
+        sharersData.GetProperty("has_shared").GetBoolean().Should().BeTrue();
+        sharersData.GetProperty("type").GetString().Should().Be("post");
+        sharersData.GetProperty("id").GetInt32().Should().Be(postId);
+        sharersData.GetProperty("sharers").EnumerateArray().Should().ContainSingle();
+
+        var toggleOff = await Client.PostAsJsonAsync("/api/v2/shares", new
+        {
+            type = "post",
+            id = postId
+        });
+
+        toggleOff.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toggleOffJson = await toggleOff.Content.ReadFromJsonAsync<JsonElement>();
+        toggleOffJson.GetProperty("data").GetProperty("shared").GetBoolean().Should().BeFalse();
+        toggleOffJson.GetProperty("data").GetProperty("count").GetInt32().Should().Be(0);
+
+        var shareListing = await Client.PostAsJsonAsync("/api/v2/shares", new
+        {
+            type = "listing",
+            id = listingId
+        });
+
+        shareListing.StatusCode.Should().Be(HttpStatusCode.Created);
+        var shareListingJson = await shareListing.Content.ReadFromJsonAsync<JsonElement>();
+        shareListingJson.GetProperty("data").GetProperty("shared").GetBoolean().Should().BeTrue();
+        shareListingJson.GetProperty("data").GetProperty("count").GetInt32().Should().Be(1);
+        shareListingJson.GetProperty("data").GetProperty("type").GetString().Should().Be("listing");
+        shareListingJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(listingId);
+
+        using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, "/api/v2/shares")
+        {
+            Content = JsonContent.Create(new
+            {
+                type = "listing",
+                id = listingId
+            })
+        };
+        var deleteListing = await Client.SendAsync(deleteRequest);
+
+        deleteListing.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteListingJson = await deleteListing.Content.ReadFromJsonAsync<JsonElement>();
+        deleteListingJson.GetProperty("data").GetProperty("shared").GetBoolean().Should().BeFalse();
+        deleteListingJson.GetProperty("data").GetProperty("count").GetInt32().Should().Be(0);
+        deleteListingJson.GetProperty("data").GetProperty("type").GetString().Should().Be("listing");
+        deleteListingJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(listingId);
+
+        var invalidType = await Client.PostAsJsonAsync("/api/v2/shares", new
+        {
+            type = "level_up",
+            id = postId
+        });
+
+        invalidType.StatusCode.Should().Be((HttpStatusCode)422);
+        var invalidJson = await invalidType.Content.ReadFromJsonAsync<JsonElement>();
+        invalidJson.GetProperty("errors").EnumerateArray().Should().ContainSingle()
+            .Subject.GetProperty("code").GetString().Should().Be("INVALID_INPUT");
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();
