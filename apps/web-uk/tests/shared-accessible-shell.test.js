@@ -4592,6 +4592,8 @@ describe('shared accessible frontend shell', () => {
     const twoFactorPage = await agent.get('/login/two-factor');
     expect(twoFactorPage.status).toBe(200);
     expect(twoFactorPage.text).toContain('name="code"');
+    expect(twoFactorPage.text).toContain('action="/login/two-factor"');
+    expect(twoFactorPage.text).not.toContain('action="/verify-2fa"');
   });
 
   it('submits the Laravel resend-verification route through the email verification API helper', async () => {

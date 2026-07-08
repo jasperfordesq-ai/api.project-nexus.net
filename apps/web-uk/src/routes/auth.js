@@ -139,7 +139,6 @@ router.get('/login/two-factor', (req, res) => {
   });
 });
 
-router.post('/verify-2fa', asyncRoute(handleTwoFactorPost));
 router.post('/login/two-factor', asyncRoute(handleTwoFactorPost));
 
 router.post('/login/resend-verification', asyncRoute(async (req, res) => {

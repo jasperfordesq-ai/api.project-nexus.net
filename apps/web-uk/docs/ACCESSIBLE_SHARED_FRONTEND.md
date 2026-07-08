@@ -1356,10 +1356,14 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 635 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 28 local-only routes. These
+accessible route declarations, 634 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 27 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+Legacy local POST `/verify-2fa` is intentionally not exposed. The Laravel
+accessible sign-in challenge uses GET/POST `/login/two-factor`, and the local
+challenge form now submits to that canonical path.
 
 Legacy local generic reports pages are intentionally not exposed. Laravel's
 accessible route set uses dedicated report surfaces such as

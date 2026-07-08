@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `635` |
+| Web UK routes | `634` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `28` |
+| Extra Web UK routes | `27` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused login two-factor route slice: legacy local POST `/verify-2fa`
+was removed. The 2FA challenge form now submits Laravel's canonical POST
+`/login/two-factor` route, while GET `/login/two-factor` keeps the
+Laravel-style expired-session redirect when no pending challenge token exists.
 
 Latest focused reviews route slice: legacy local GET/POST
 `/reviews/{id}/edit`, POST `/reviews/user/{id}`, and POST

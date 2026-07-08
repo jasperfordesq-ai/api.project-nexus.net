@@ -339,6 +339,21 @@ describe('Protected Routes', () => {
         expect(response.text).toContain('Page not found');
       }
     });
+
+    it('legacy two-factor verification alias should return not found', async () => {
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const response = await agent
+        .post('/verify-2fa')
+        .type('form')
+        .send({ _csrf: csrfMatch[1], code: '123456' });
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 

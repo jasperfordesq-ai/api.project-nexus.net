@@ -43,15 +43,20 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 635 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 634 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 28 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
+| Extra `apps/web-uk` routes | 27 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
+
+The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
+no longer exposed. Laravel's accessible source uses GET/POST
+`/login/two-factor`, and the local two-factor challenge form now submits to
+that canonical route.
 
 The legacy local review edit and target-specific route family has been removed:
 GET/POST `/reviews/{id}/edit`, POST `/reviews/user/{id}`, and POST

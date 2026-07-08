@@ -1096,7 +1096,6 @@ app.get('/login/forgot-password', authRoutes);
 app.post('/login/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/password/reset', authRoutes);
 app.post('/password/reset', authLimiter, doubleCsrfProtection, authRoutes);
-app.post('/verify-2fa', authLimiter, doubleCsrfProtection, authRoutes);
 
 // Rate limit only on state-changing methods (POST/PUT/DELETE), not GET
 function postOnly(limiter) {
