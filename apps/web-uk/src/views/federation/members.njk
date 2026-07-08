@@ -15,7 +15,7 @@
   <a href="/federation" class="govuk-back-link">Back to Federation</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Federation members</h1>
+  <h1 class="govuk-heading-xl">Federated members</h1>
   <p class="govuk-body-l">Find people from partner communities who have chosen to appear in federation search.</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
@@ -34,7 +34,7 @@
 
   <form method="get" action="/federation/members" class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
-      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter federation members</legend>
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter federated members</legend>
 
       <div class="govuk-form-group">
         <label class="govuk-label" for="q">Search members</label>
@@ -121,7 +121,7 @@
         <p class="govuk-body govuk-!-margin-bottom-0">Partner communities will appear here when federation is available.</p>
       </div>
     {% else %}
-      <div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-0">No federation members match these filters.</p></div>
+      <div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-0">No federated members match these filters.</p></div>
     {% endif %}
   {% endif %}
 {% endblock %}

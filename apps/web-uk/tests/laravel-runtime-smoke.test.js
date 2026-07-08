@@ -173,7 +173,29 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/achievements', 'Achievements'],
       ['/leaderboard', 'Leaderboard'],
       ['/nexus-score', 'NEXUS score'],
-      ['/premium', 'Donate']
+      ['/premium', 'Donate'],
+      ['/profile/settings', 'Edit your profile'],
+      ['/settings/appearance', 'Appearance'],
+      ['/settings/data-rights', 'Your data rights'],
+      ['/profile/delete-account', 'Delete your account'],
+      ['/profile/two-factor', 'Authenticator app (two-step verification)'],
+      ['/profile/blocked', 'Blocked members'],
+      ['/settings/availability', 'Your availability'],
+      ['/settings/linked-accounts', 'Linked accounts'],
+      ['/settings/insurance', 'Insurance certificates'],
+      ['/activity/insights', 'Activity insights'],
+      ['/achievements/shop', 'XP shop'],
+      ['/achievements/collections', 'Badge collections'],
+      ['/achievements/engagement', 'Engagement history'],
+      ['/achievements/showcase', 'Showcase badges'],
+      ['/leaderboard/competitive', 'Competitive leaderboard'],
+      ['/leaderboard/seasons', 'Leaderboard seasons'],
+      ['/leaderboard/journey', 'My journey'],
+      ['/leaderboard/spotlight', 'Member spotlight'],
+      ['/nexus-score/tiers', 'NEXUS tier ladder'],
+      ['/federation/partners', 'Federation partners'],
+      ['/federation/members', 'Federated members'],
+      ['/federation/settings', 'Federation settings']
     ]);
 
     const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
@@ -1035,7 +1057,29 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/achievements', text: 'Achievements' },
       { path: '/leaderboard', text: 'Leaderboard' },
       { path: '/nexus-score', text: 'NEXUS score' },
-      { path: '/premium', text: 'Donate' }
+      { path: '/premium', text: 'Donate' },
+      { path: '/profile/settings', text: 'Edit your profile' },
+      { path: '/settings/appearance', text: 'Appearance' },
+      { path: '/settings/data-rights', text: 'Your data rights' },
+      { path: '/profile/delete-account', text: 'Delete your account' },
+      { path: '/profile/two-factor', text: 'Authenticator app (two-step verification)' },
+      { path: '/profile/blocked', text: 'Blocked members' },
+      { path: '/settings/availability', text: 'Your availability' },
+      { path: '/settings/linked-accounts', text: 'Linked accounts' },
+      { path: '/settings/insurance', text: 'Insurance certificates' },
+      { path: '/activity/insights', text: 'Activity insights' },
+      { path: '/achievements/shop', text: 'XP shop' },
+      { path: '/achievements/collections', text: 'Badge collections' },
+      { path: '/achievements/engagement', text: 'Engagement history' },
+      { path: '/achievements/showcase', text: 'Showcase badges' },
+      { path: '/leaderboard/competitive', text: 'Competitive leaderboard' },
+      { path: '/leaderboard/seasons', text: 'Leaderboard seasons' },
+      { path: '/leaderboard/journey', text: 'My journey' },
+      { path: '/leaderboard/spotlight', text: 'Member spotlight' },
+      { path: '/nexus-score/tiers', text: 'NEXUS tier ladder' },
+      { path: '/federation/partners', text: 'Federation partners' },
+      { path: '/federation/members', text: 'Federated members' },
+      { path: '/federation/settings', text: 'Federation settings' }
     ]));
   });
 
@@ -1594,7 +1638,29 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-achievements-contains-achievements': true,
       'body-text-page-leaderboard-contains-leaderboard': true,
       'body-text-page-nexus-score-contains-nexus-score': true,
-      'body-text-page-premium-contains-donate': true
+      'body-text-page-premium-contains-donate': true,
+      'body-text-page-profile-settings-contains-edit-your-profile': true,
+      'body-text-page-settings-appearance-contains-appearance': true,
+      'body-text-page-settings-data-rights-contains-your-data-rights': true,
+      'body-text-page-profile-delete-account-contains-delete-your-account': true,
+      'body-text-page-profile-two-factor-contains-authenticator-app-two-step-verification': true,
+      'body-text-page-profile-blocked-contains-blocked-members': true,
+      'body-text-page-settings-availability-contains-your-availability': true,
+      'body-text-page-settings-linked-accounts-contains-linked-accounts': true,
+      'body-text-page-settings-insurance-contains-insurance-certificates': true,
+      'body-text-page-activity-insights-contains-activity-insights': true,
+      'body-text-page-achievements-shop-contains-xp-shop': true,
+      'body-text-page-achievements-collections-contains-badge-collections': true,
+      'body-text-page-achievements-engagement-contains-engagement-history': true,
+      'body-text-page-achievements-showcase-contains-showcase-badges': true,
+      'body-text-page-leaderboard-competitive-contains-competitive-leaderboard': true,
+      'body-text-page-leaderboard-seasons-contains-leaderboard-seasons': true,
+      'body-text-page-leaderboard-journey-contains-my-journey': true,
+      'body-text-page-leaderboard-spotlight-contains-member-spotlight': true,
+      'body-text-page-nexus-score-tiers-contains-nexus-tier-ladder': true,
+      'body-text-page-federation-partners-contains-federation-partners': true,
+      'body-text-page-federation-members-contains-federated-members': true,
+      'body-text-page-federation-settings-contains-federation-settings': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');
@@ -1637,7 +1703,8 @@ describe('Laravel runtime smoke harness', () => {
     const result = await runLaravelRuntimeSmoke({
       laravelBaseUrl,
       webBaseUrl,
-      modulePagePaths: ['/profile/settings']
+      modulePagePaths: ['/profile/settings'],
+      bodyTextPagePaths: []
     });
     const profileSettingsCheck = result.checks.find((check) => check.name === 'module-page-profile-settings-renders');
 

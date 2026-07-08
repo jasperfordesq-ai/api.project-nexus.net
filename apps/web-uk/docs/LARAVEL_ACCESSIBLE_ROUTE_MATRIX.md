@@ -343,10 +343,21 @@ The signed `/explore`, `/chat`, `/account`, `/wallet`, `/messages`,
 `/federation`, `/notifications`, `/activity`, `/achievements`, `/leaderboard`,
 `/nexus-score`, and `/premium` returned expected body markers against
 `WEB_UK_BASE_URL=http://127.0.0.1:6211`; `/premium` now follows the Laravel
-Blade title `Donate`. The default scope now contains `399` checks: `279`
+Blade title `Donate`. The signed profile/settings/gamification/federation
+subpages `/profile/settings`, `/settings/appearance`, `/settings/data-rights`,
+`/profile/delete-account`, `/profile/two-factor`, `/profile/blocked`,
+`/settings/availability`, `/settings/linked-accounts`, `/settings/insurance`,
+`/activity/insights`, `/achievements/shop`, `/achievements/collections`,
+`/achievements/engagement`, `/achievements/showcase`,
+`/leaderboard/competitive`, `/leaderboard/seasons`, `/leaderboard/journey`,
+`/leaderboard/spotlight`, `/nexus-score/tiers`, `/federation/partners`,
+`/federation/members`, and `/federation/settings` returned expected body
+markers against `WEB_UK_BASE_URL=http://127.0.0.1:6212`; `/federation/members`
+now follows the Laravel Blade title `Federated members`. The default scope now
+contains `421` checks: `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 52 body-text contract checks, and the 6
+content-type contract checks, 74 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

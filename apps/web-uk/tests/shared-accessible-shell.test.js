@@ -2783,7 +2783,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members?q=repair&skills=sewing&partner_id=12&service_reach=remote_ok&cursor=abc');
     expect(response.text).toContain('href="/federation"');
-    expect(response.text).toContain('Federation members');
+    expect(response.text).toContain('Federated members');
     expect(response.text).toContain('value="repair"');
     expect(response.text).toContain('value="sewing"');
     expect(response.text).toContain('value="12" selected');
