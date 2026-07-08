@@ -601,7 +601,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/super/billing/grace-period")]
     [HttpPost("/api/v2/admin/super/billing/pause")]
     [HttpPost("/api/v2/admin/super/billing/resume")]
-    [HttpPost("/api/v2/admin/super/federation/partnerships/{id}/reactivate")]
     [HttpPost("/api/v2/admin/translation/glossary")]
     [HttpPost("/api/v2/admin/users/{id}/verification-badges")]
     [HttpPost("/api/v2/admin/users/bulk-approve")]

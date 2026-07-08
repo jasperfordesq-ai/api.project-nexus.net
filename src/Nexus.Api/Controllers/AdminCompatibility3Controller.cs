@@ -47,6 +47,14 @@ public class AdminCompatibility3Controller : ControllerBase
     private int? GetCurrentUserId() => User.GetUserId();
     private int GetTenantId() => _tenantContext.GetTenantIdOrThrow();
     private const string GlobalSuperAdminIdsKey = "super_admins.global_user_ids";
+    private const string FederationMaxLevelKey = "federation.max_federation_level";
+    private const string FederationProfilesKey = "federation.cross_tenant_profiles_enabled";
+    private const string FederationMessagingKey = "federation.cross_tenant_messaging_enabled";
+    private const string FederationTransactionsKey = "federation.cross_tenant_transactions_enabled";
+    private const string FederationListingsKey = "federation.cross_tenant_listings_enabled";
+    private const string FederationEventsKey = "federation.cross_tenant_events_enabled";
+    private const string FederationGroupsKey = "federation.cross_tenant_groups_enabled";
+    private const string FederationLockdownReasonKey = "federation.emergency_lockdown_reason";
 
     private IActionResult LaravelData(object data) => Ok(new
     {
@@ -958,10 +966,193 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/audit - Audit log.</summary>
     [HttpGet("super/audit")]
-    public IActionResult GetSuperAuditLog([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? action = null)
+    public async Task<IActionResult> GetSuperAuditLog(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0,
+        [FromQuery] string? action = null,
+        [FromQuery(Name = "action_type")] string? actionType = null,
+        [FromQuery(Name = "target_type")] string? targetType = null,
+        [FromQuery] string? search = null,
+        [FromQuery(Name = "date_from")] string? dateFrom = null,
+        [FromQuery(Name = "date_to")] string? dateTo = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+        var skip = offset > 0 ? offset : (page - 1) * limit;
+        var effectiveActionType = string.IsNullOrWhiteSpace(actionType) ? action : actionType;
+
+        var query = _db.AuditLogs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(effectiveActionType))
+        {
+            var actionFilter = effectiveActionType.Trim();
+            query = query.Where(a => a.Action == actionFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetType))
+        {
+            var targetFilter = targetType.Trim().ToLower();
+            query = query.Where(a => a.EntityType != null && a.EntityType.ToLower() == targetFilter);
+        }
+
+        if (DateTime.TryParse(dateFrom, out var parsedDateFrom))
+            query = query.Where(a => a.CreatedAt >= parsedDateFrom.ToUniversalTime());
+
+        if (DateTime.TryParse(dateTo, out var parsedDateTo))
+            query = query.Where(a => a.CreatedAt <= parsedDateTo.ToUniversalTime());
+
+        var logs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .ThenByDescending(a => a.Id)
+            .Take(1000)
+            .ToListAsync();
+
+        var actorIds = logs.Where(a => a.UserId.HasValue).Select(a => a.UserId!.Value).Distinct().ToList();
+        var targetUserIds = logs
+            .Where(a => string.Equals(a.EntityType, "user", StringComparison.OrdinalIgnoreCase) && a.EntityId.HasValue)
+            .Select(a => a.EntityId!.Value)
+            .Distinct()
+            .ToList();
+        var targetTenantIds = logs
+            .Where(a => string.Equals(a.EntityType, "tenant", StringComparison.OrdinalIgnoreCase) && a.EntityId.HasValue)
+            .Select(a => a.EntityId!.Value)
+            .Distinct()
+            .ToList();
+
+        var actorMap = actorIds.Count == 0
+            ? new Dictionary<int, User>()
+            : await _db.Users.IgnoreQueryFilters().AsNoTracking()
+                .Where(u => actorIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+        var targetUserMap = targetUserIds.Count == 0
+            ? new Dictionary<int, User>()
+            : await _db.Users.IgnoreQueryFilters().AsNoTracking()
+                .Where(u => targetUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+        var targetTenantMap = targetTenantIds.Count == 0
+            ? new Dictionary<int, Tenant>()
+            : await _db.Tenants.IgnoreQueryFilters().AsNoTracking()
+                .Where(t => targetTenantIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id);
+
+        var mapped = logs
+            .Select(log =>
+            {
+                var actor = log.UserId.HasValue && actorMap.TryGetValue(log.UserId.Value, out var actorUser)
+                    ? actorUser
+                    : null;
+                var targetLabel = ResolveAuditTargetLabel(log, targetUserMap, targetTenantMap);
+                var description = ResolveAuditDescription(log, targetLabel);
+
+                return new
+                {
+                    id = log.Id,
+                    action_type = log.Action,
+                    target_type = (log.EntityType ?? string.Empty).ToLowerInvariant(),
+                    target_id = log.EntityId,
+                    target_label = targetLabel,
+                    actor_id = log.UserId,
+                    actor_name = actor == null ? null : FormatUserName(actor),
+                    actor_email = actor?.Email,
+                    old_value = ParseAuditJsonValue(log.OldValues),
+                    new_value = ParseAuditJsonValue(log.NewValues),
+                    description,
+                    created_at = log.CreatedAt.ToUniversalTime().ToString("O")
+                };
+            })
+            .Where(row => string.IsNullOrWhiteSpace(search) || AuditRowMatchesSearch(row, search))
+            .Skip(skip)
+            .Take(limit)
+            .ToList();
+
+        return LaravelData(mapped);
     }
+
+    private static object? ParseAuditJsonValue(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(raw);
+        }
+        catch (JsonException)
+        {
+            return raw;
+        }
+    }
+
+    private static string ResolveAuditTargetLabel(
+        AuditLog log,
+        IReadOnlyDictionary<int, User> targetUserMap,
+        IReadOnlyDictionary<int, Tenant> targetTenantMap)
+    {
+        if (!log.EntityId.HasValue)
+            return log.EntityType ?? string.Empty;
+
+        if (string.Equals(log.EntityType, "user", StringComparison.OrdinalIgnoreCase) &&
+            targetUserMap.TryGetValue(log.EntityId.Value, out var user))
+            return FormatUserName(user);
+
+        if (string.Equals(log.EntityType, "tenant", StringComparison.OrdinalIgnoreCase) &&
+            targetTenantMap.TryGetValue(log.EntityId.Value, out var tenant))
+            return tenant.Name;
+
+        return string.IsNullOrWhiteSpace(log.EntityType)
+            ? log.EntityId.Value.ToString()
+            : $"{log.EntityType} {log.EntityId.Value}";
+    }
+
+    private static string ResolveAuditDescription(AuditLog log, string targetLabel)
+    {
+        var metadataDescription = TryReadAuditMetadataString(log.Metadata, "description");
+        if (!string.IsNullOrWhiteSpace(metadataDescription))
+            return metadataDescription;
+
+        return string.IsNullOrWhiteSpace(targetLabel)
+            ? log.Action
+            : $"{log.Action}: {targetLabel}";
+    }
+
+    private static string? TryReadAuditMetadataString(string? raw, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty(propertyName, out var value) &&
+                   value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static bool AuditRowMatchesSearch(dynamic row, string search)
+    {
+        var term = search.Trim();
+        return ContainsIgnoreCase(row.action_type, term) ||
+               ContainsIgnoreCase(row.target_type, term) ||
+               ContainsIgnoreCase(row.target_label, term) ||
+               ContainsIgnoreCase(row.actor_name, term) ||
+               ContainsIgnoreCase(row.actor_email, term) ||
+               ContainsIgnoreCase(row.description, term);
+    }
+
+    private static bool ContainsIgnoreCase(string? value, string term)
+        => !string.IsNullOrWhiteSpace(value) &&
+           value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     private async Task<HashSet<int>> GetGlobalSuperAdminIdsAsync(int tenantId)
     {
@@ -1041,6 +1232,214 @@ public class AdminCompatibility3Controller : ControllerBase
             await _db.SaveChangesAsync();
     }
 
+    private async Task<FederationSystemControl> GetFederationSystemControlAsync()
+    {
+        var control = await _db.FederationSystemControls
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == 1);
+
+        if (control != null)
+            return control;
+
+        control = new FederationSystemControl
+        {
+            Id = 1,
+            FederationEnabled = true,
+            EmergencyLockdown = false,
+            RequireTenantWhitelist = false,
+            MaxPartnersPerTenant = 100,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.FederationSystemControls.Add(control);
+        await _db.SaveChangesAsync();
+        return control;
+    }
+
+    private async Task<object> BuildFederationSystemControlsAsync(FederationSystemControl control)
+        => new
+        {
+            federation_enabled = control.FederationEnabled,
+            whitelist_mode_enabled = control.RequireTenantWhitelist,
+            max_federation_level = await GetSystemIntSettingAsync(FederationMaxLevelKey, 4),
+            cross_tenant_profiles_enabled = await GetSystemBoolSettingAsync(FederationProfilesKey, true),
+            cross_tenant_messaging_enabled = await GetSystemBoolSettingAsync(FederationMessagingKey, true),
+            cross_tenant_transactions_enabled = await GetSystemBoolSettingAsync(FederationTransactionsKey, true),
+            cross_tenant_listings_enabled = await GetSystemBoolSettingAsync(FederationListingsKey, true),
+            cross_tenant_events_enabled = await GetSystemBoolSettingAsync(FederationEventsKey, true),
+            cross_tenant_groups_enabled = await GetSystemBoolSettingAsync(FederationGroupsKey, true),
+            emergency_lockdown_active = control.EmergencyLockdown,
+            emergency_lockdown_reason = control.EmergencyLockdown
+                ? await GetSystemStringSettingAsync(FederationLockdownReasonKey)
+                : null,
+            updated_at = control.UpdatedAt.ToUniversalTime().ToString("O")
+        };
+
+    private async Task<bool> GetSystemBoolSettingAsync(string key, bool defaultValue)
+    {
+        var raw = await GetSystemStringSettingAsync(key);
+        return string.IsNullOrWhiteSpace(raw)
+            ? defaultValue
+            : bool.TryParse(raw, out var parsed)
+                ? parsed
+                : raw == "1";
+    }
+
+    private async Task<int> GetSystemIntSettingAsync(string key, int defaultValue)
+    {
+        var raw = await GetSystemStringSettingAsync(key);
+        return int.TryParse(raw, out var parsed) ? parsed : defaultValue;
+    }
+
+    private async Task<string?> GetSystemStringSettingAsync(string key)
+        => await _db.SystemSettings
+            .AsNoTracking()
+            .Where(s => s.Key == key)
+            .Select(s => s.Value)
+            .FirstOrDefaultAsync();
+
+    private async Task<bool> UpsertFederationBoolSettingIfPresentAsync(JsonElement root, string propertyName, string key)
+    {
+        if (!TryReadBoolProperty(root, propertyName, out var value))
+            return false;
+
+        await UpsertSystemSettingAsync(key, value ? "true" : "false", "federation", saveChanges: false);
+        return true;
+    }
+
+    private async Task UpsertSystemSettingAsync(string key, string value, string? category = null, bool saveChanges = true)
+    {
+        var now = DateTime.UtcNow;
+        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == key);
+        if (setting == null)
+        {
+            _db.SystemSettings.Add(new SystemSetting
+            {
+                Key = key,
+                Value = value,
+                Category = category,
+                UpdatedById = GetCurrentUserId(),
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            setting.Value = value;
+            setting.Category ??= category;
+            setting.UpdatedById = GetCurrentUserId();
+            setting.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+            await _db.SaveChangesAsync();
+    }
+
+    private static bool TryReadBoolProperty(JsonElement root, string propertyName, out bool value)
+    {
+        value = false;
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var element))
+            return false;
+
+        if (element.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            value = element.GetBoolean();
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var number))
+        {
+            value = number != 0;
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.String && bool.TryParse(element.GetString(), out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadIntProperty(JsonElement root, string propertyName, out int value)
+    {
+        value = 0;
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var element))
+            return false;
+
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var number))
+        {
+            value = number;
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.String && int.TryParse(element.GetString(), out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static object MapFederationPartnership(FederationPartner partnership, IReadOnlyDictionary<int, Tenant> tenants)
+    {
+        tenants.TryGetValue(partnership.TenantId, out var tenantOne);
+        tenants.TryGetValue(partnership.PartnerTenantId, out var tenantTwo);
+        var status = MapFederationPartnerStatus(partnership.Status);
+
+        return new
+        {
+            id = partnership.Id,
+            tenant_1_id = partnership.TenantId,
+            tenant_1_name = tenantOne?.Name ?? $"Tenant {partnership.TenantId}",
+            tenant_2_id = partnership.PartnerTenantId,
+            tenant_2_name = tenantTwo?.Name ?? $"Tenant {partnership.PartnerTenantId}",
+            status,
+            created_at = partnership.CreatedAt.ToUniversalTime().ToString("O"),
+            updated_at = partnership.UpdatedAt?.ToUniversalTime().ToString("O"),
+            tenant_id = partnership.TenantId,
+            partner_tenant_id = partnership.PartnerTenantId,
+            tenant_name = tenantOne?.Name,
+            tenant_domain = tenantOne?.Domain,
+            partner_name = tenantTwo?.Name,
+            partner_domain = tenantTwo?.Domain
+        };
+    }
+
+    private async Task<object> BuildFederationPartnershipStatsAsync(IReadOnlyDictionary<int, Tenant> tenantMap)
+    {
+        var all = await _db.FederationPartners
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToListAsync();
+        var recent = all
+            .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
+            .Take(5)
+            .Select(p => MapFederationPartnership(p, tenantMap))
+            .ToList();
+
+        return new
+        {
+            total = all.Count,
+            active = all.Count(p => p.Status == PartnerStatus.Active),
+            pending = all.Count(p => p.Status == PartnerStatus.Pending),
+            suspended = all.Count(p => p.Status == PartnerStatus.Suspended),
+            terminated = all.Count(p => p.Status == PartnerStatus.Revoked),
+            recent
+        };
+    }
+
+    private static string MapFederationPartnerStatus(PartnerStatus status)
+        => status switch
+        {
+            PartnerStatus.Active => "active",
+            PartnerStatus.Pending => "pending",
+            PartnerStatus.Suspended => "suspended",
+            PartnerStatus.Revoked => "terminated",
+            _ => status.ToString().ToLowerInvariant()
+        };
+
     /// <summary>GET /api/admin/super/federation - Federation status.</summary>
     [HttpGet("super/federation")]
     public IActionResult GetSuperFederation()
@@ -1050,72 +1449,285 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation/system-controls - System controls.</summary>
     [HttpGet("super/federation/system-controls")]
-    public IActionResult GetSuperFederationSystemControls()
+    public async Task<IActionResult> GetSuperFederationSystemControls()
     {
-        return Ok(new { federation_enabled = false, auto_approve = false, max_partners = 100, lockdown_active = false });
+        var control = await GetFederationSystemControlAsync();
+        return LaravelData(await BuildFederationSystemControlsAsync(control));
     }
 
     /// <summary>PUT /api/admin/super/federation/system-controls - Update system controls.</summary>
     [HttpPut("super/federation/system-controls")]
-    public IActionResult UpdateSuperFederationSystemControls()
+    public async Task<IActionResult> UpdateSuperFederationSystemControls()
     {
-        return Ok(new { success = true, message = "System controls updated" });
+        if (Request.ContentLength == 0)
+            return LaravelError("VALIDATION_ERROR", "No valid fields", StatusCodes.Status422UnprocessableEntity);
+
+        using var doc = await JsonDocument.ParseAsync(Request.Body);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return LaravelError("VALIDATION_ERROR", "No valid fields", StatusCodes.Status422UnprocessableEntity);
+
+        var root = doc.RootElement;
+        var control = await GetFederationSystemControlAsync();
+        var updated = false;
+        var now = DateTime.UtcNow;
+
+        if (TryReadBoolProperty(root, "federation_enabled", out var federationEnabled))
+        {
+            control.FederationEnabled = federationEnabled;
+            updated = true;
+        }
+
+        if (TryReadBoolProperty(root, "whitelist_mode_enabled", out var whitelistModeEnabled))
+        {
+            control.RequireTenantWhitelist = whitelistModeEnabled;
+            updated = true;
+        }
+
+        if (TryReadIntProperty(root, "max_federation_level", out var maxFederationLevel))
+        {
+            await UpsertSystemSettingAsync(FederationMaxLevelKey, Math.Clamp(maxFederationLevel, 0, 4).ToString(), "federation");
+            updated = true;
+        }
+
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_profiles_enabled", FederationProfilesKey);
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_messaging_enabled", FederationMessagingKey);
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_transactions_enabled", FederationTransactionsKey);
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_listings_enabled", FederationListingsKey);
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_events_enabled", FederationEventsKey);
+        updated |= await UpsertFederationBoolSettingIfPresentAsync(root, "cross_tenant_groups_enabled", FederationGroupsKey);
+
+        if (!updated)
+            return LaravelError("VALIDATION_ERROR", "No valid fields", StatusCodes.Status422UnprocessableEntity);
+
+        control.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { updated = true });
     }
 
     /// <summary>POST /api/admin/super/federation/emergency-lockdown - Emergency lockdown.</summary>
     [HttpPost("super/federation/emergency-lockdown")]
-    public IActionResult SuperFederationEmergencyLockdown()
+    public async Task<IActionResult> SuperFederationEmergencyLockdown()
     {
-        return Ok(new { success = true, message = "Federation emergency lockdown activated" });
+        var reason = "Emergency lockdown triggered via API";
+        if (Request.ContentLength > 0)
+        {
+            try
+            {
+                using var doc = await JsonDocument.ParseAsync(Request.Body);
+                var bodyReason = ReadStringProperty(doc.RootElement, "reason");
+                if (!string.IsNullOrWhiteSpace(bodyReason))
+                    reason = bodyReason.Trim();
+            }
+            catch (JsonException)
+            {
+                return LaravelError("VALIDATION_ERROR", "Invalid JSON body", StatusCodes.Status422UnprocessableEntity);
+            }
+        }
+
+        var control = await GetFederationSystemControlAsync();
+        control.EmergencyLockdown = true;
+        control.UpdatedAt = DateTime.UtcNow;
+        await UpsertSystemSettingAsync(FederationLockdownReasonKey, reason, "federation", saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { lockdown = true, message = "Federation emergency lockdown activated" });
     }
 
     /// <summary>POST /api/admin/super/federation/lift-lockdown - Lift lockdown.</summary>
     [HttpPost("super/federation/lift-lockdown")]
-    public IActionResult SuperFederationLiftLockdown()
+    public async Task<IActionResult> SuperFederationLiftLockdown()
     {
-        return Ok(new { success = true, message = "Federation lockdown lifted" });
+        var control = await GetFederationSystemControlAsync();
+        control.EmergencyLockdown = false;
+        control.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { lockdown = false, message = "Federation lockdown lifted" });
     }
 
     /// <summary>GET /api/admin/super/federation/whitelist - Whitelist.</summary>
     [HttpGet("super/federation/whitelist")]
-    public IActionResult GetSuperFederationWhitelist()
+    public async Task<IActionResult> GetSuperFederationWhitelist()
     {
-        return Ok(new { data = Array.Empty<object>(), total = 0 });
+        var rows = await _db.FederationTenantWhitelists
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(w => w.IsEnabled)
+            .Join(
+                _db.Tenants.IgnoreQueryFilters().AsNoTracking(),
+                whitelist => whitelist.TenantId,
+                tenant => tenant.Id,
+                (whitelist, tenant) => new { whitelist, tenant })
+            .OrderByDescending(row => row.whitelist.ApprovedAt)
+            .Select(row => new
+            {
+                tenant_id = row.whitelist.TenantId,
+                tenant_name = row.tenant.Name,
+                tenant_domain = row.tenant.Domain,
+                added_by = row.whitelist.ApprovedByUserId ?? 0,
+                added_at = row.whitelist.ApprovedAt.ToUniversalTime().ToString("O"),
+                notes = row.whitelist.Notes
+            })
+            .ToListAsync();
+
+        return LaravelData(rows);
     }
 
     /// <summary>POST /api/admin/super/federation/whitelist - Add to whitelist.</summary>
     [HttpPost("super/federation/whitelist")]
-    public IActionResult AddToSuperFederationWhitelist()
+    public async Task<IActionResult> AddToSuperFederationWhitelist()
     {
-        return Ok(new { success = true, message = "Added to federation whitelist" });
+        if (Request.ContentLength == 0)
+            return LaravelError("VALIDATION_ERROR", "tenant_id is required", StatusCodes.Status422UnprocessableEntity);
+
+        int tenantId;
+        string? notes = null;
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(Request.Body);
+            tenantId = ReadIntProperty(doc.RootElement, "tenant_id");
+            notes = ReadStringProperty(doc.RootElement, "notes");
+        }
+        catch (JsonException)
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid JSON body", StatusCodes.Status422UnprocessableEntity);
+        }
+
+        if (tenantId <= 0)
+            return LaravelError("VALIDATION_ERROR", "tenant_id is required", StatusCodes.Status422UnprocessableEntity);
+
+        var tenantExists = await _db.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Id == tenantId);
+        if (!tenantExists)
+            return LaravelError("NOT_FOUND", "Tenant not found", StatusCodes.Status404NotFound);
+
+        var now = DateTime.UtcNow;
+        var whitelist = await _db.FederationTenantWhitelists
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(w => w.TenantId == tenantId);
+        if (whitelist == null)
+        {
+            _db.FederationTenantWhitelists.Add(new FederationTenantWhitelist
+            {
+                TenantId = tenantId,
+                IsEnabled = true,
+                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes,
+                ApprovedByUserId = GetCurrentUserId(),
+                ApprovedAt = now
+            });
+        }
+        else
+        {
+            whitelist.IsEnabled = true;
+            whitelist.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes;
+            whitelist.ApprovedByUserId = GetCurrentUserId();
+            whitelist.ApprovedAt = now;
+        }
+
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { added = true, tenant_id = tenantId });
     }
 
     /// <summary>DELETE /api/admin/super/federation/whitelist/{tenantId} - Remove from whitelist.</summary>
     [HttpDelete("super/federation/whitelist/{tenantId}")]
-    public IActionResult RemoveFromSuperFederationWhitelist(int tenantId)
+    public async Task<IActionResult> RemoveFromSuperFederationWhitelist(int tenantId)
     {
-        return Ok(new { success = true, message = "Removed from federation whitelist", tenant_id = tenantId });
+        if (tenantId <= 0)
+            return LaravelError("VALIDATION_ERROR", "Invalid tenant_id", StatusCodes.Status400BadRequest);
+
+        var rows = await _db.FederationTenantWhitelists
+            .IgnoreQueryFilters()
+            .Where(w => w.TenantId == tenantId)
+            .ToListAsync();
+        if (rows.Count > 0)
+            _db.FederationTenantWhitelists.RemoveRange(rows);
+
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { removed = true, tenant_id = tenantId });
     }
 
     /// <summary>GET /api/admin/super/federation/partnerships - Partnerships.</summary>
     [HttpGet("super/federation/partnerships")]
-    public IActionResult GetSuperFederationPartnerships([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public async Task<IActionResult> GetSuperFederationPartnerships([FromQuery] int page = 1, [FromQuery] int limit = 100)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        limit = Math.Clamp(limit, 1, 100);
+        var partnerships = await _db.FederationPartners
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(limit)
+            .ToListAsync();
+        var tenantIds = partnerships
+            .SelectMany(p => new[] { p.TenantId, p.PartnerTenantId })
+            .Distinct()
+            .ToList();
+        var tenants = tenantIds.Count == 0
+            ? new Dictionary<int, Tenant>()
+            : await _db.Tenants.IgnoreQueryFilters().AsNoTracking()
+                .Where(t => tenantIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id);
+
+        var rows = partnerships.Select(p => MapFederationPartnership(p, tenants)).ToList();
+        var stats = await BuildFederationPartnershipStatsAsync(tenants);
+
+        return LaravelData(new
+        {
+            partnerships = rows,
+            stats
+        });
     }
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/suspend - Suspend partnership.</summary>
     [HttpPost("super/federation/partnerships/{id:int}/suspend")]
-    public IActionResult SuspendSuperFederationPartnership(int id)
+    public async Task<IActionResult> SuspendSuperFederationPartnership(int id)
     {
-        return Ok(new { success = true, message = "Partnership suspended", id });
+        var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+        if (partnership == null)
+            return LaravelError("NOT_FOUND", "Partnership not found", StatusCodes.Status404NotFound);
+
+        if (partnership.Status != PartnerStatus.Active)
+            return LaravelError("VALIDATION_ERROR", "Can only suspend active partnerships", StatusCodes.Status422UnprocessableEntity);
+
+        partnership.Status = PartnerStatus.Suspended;
+        partnership.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { suspended = true, partnership_id = id });
     }
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/terminate - Terminate partnership.</summary>
     [HttpPost("super/federation/partnerships/{id:int}/terminate")]
-    public IActionResult TerminateSuperFederationPartnership(int id)
+    public async Task<IActionResult> TerminateSuperFederationPartnership(int id)
     {
-        return Ok(new { success = true, message = "Partnership terminated", id });
+        var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+        if (partnership == null)
+            return LaravelError("NOT_FOUND", "Partnership not found", StatusCodes.Status404NotFound);
+
+        partnership.Status = PartnerStatus.Revoked;
+        partnership.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { terminated = true, partnership_id = id });
+    }
+
+    /// <summary>POST /api/admin/super/federation/partnerships/{id}/reactivate - Reactivate partnership.</summary>
+    [HttpPost("super/federation/partnerships/{id:int}/reactivate")]
+    public async Task<IActionResult> ReactivateSuperFederationPartnership(int id)
+    {
+        var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+        if (partnership == null)
+            return LaravelError("NOT_FOUND", "Partnership not found", StatusCodes.Status404NotFound);
+
+        if (partnership.Status != PartnerStatus.Suspended)
+            return LaravelError("VALIDATION_ERROR", "Can only reactivate suspended partnerships", StatusCodes.Status422UnprocessableEntity);
+
+        partnership.Status = PartnerStatus.Active;
+        partnership.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new { reactivated = true, partnership_id = id });
     }
 
     /// <summary>GET /api/admin/super/federation/tenant/{tenantId}/features - Tenant features.</summary>
