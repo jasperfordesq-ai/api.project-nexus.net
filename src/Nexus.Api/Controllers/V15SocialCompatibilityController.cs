@@ -354,6 +354,31 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/social/comments")]
     public async Task<IActionResult> Comments([FromBody] JsonElement body)
     {
+        var action = ReadString(body, "action")?.Trim().ToLowerInvariant();
+        var rawTargetType = ReadString(body, "target_type", "type");
+        if (!string.IsNullOrWhiteSpace(action) || !string.IsNullOrWhiteSpace(rawTargetType))
+        {
+            var targetType = ThreadedCommentService.NormalizeTargetType(rawTargetType);
+            var targetId = ReadInt(body, "target_id", "post_id", "postId", "id") ?? 0;
+            if (string.IsNullOrWhiteSpace(targetType) || targetId <= 0)
+            {
+                return BadRequest(new
+                {
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid target." } }
+                });
+            }
+
+            return action switch
+            {
+                "fetch" or "fetch_comments" => await LegacySocialCommentsFetch(targetType, targetId),
+                "submit" or "submit_comment" => await LegacySocialCommentsSubmit(body, targetType, targetId),
+                _ => BadRequest(new
+                {
+                    errors = new[] { new { code = "INVALID_INPUT", message = "Invalid action.", field = "action" } }
+                })
+            };
+        }
+
         var postId = ReadRequiredInt(body, "post_id", "postId", "id");
         var data = await _db.PostComments
             .Where(c => c.PostId == postId && c.ParentCommentId == null)
@@ -408,6 +433,11 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/v2/posts/{id:int}/reactions")]
     public async Task<IActionResult> ToggleReaction(int? id, [FromBody] JsonElement body)
     {
+        if (id == null && (ReadInt(body, "comment_id") is > 0 || ReadInt(body, "target_id") is > 0))
+        {
+            return await ToggleLegacyCommentReaction(body);
+        }
+
         var postId = id ?? ReadRequiredInt(body, "post_id", "postId", "id");
         var type = ReadString(body, "type", "reaction", "reaction_type") ?? PostReaction.Types.Like;
         if (!PostReaction.Types.All.Contains(type)) return BadRequest(new { error = "Unsupported reaction type" });
@@ -552,22 +582,53 @@ public class V15SocialCompatibilityController : ControllerBase
 
         if (!string.Equals(targetType, "post", StringComparison.Ordinal))
         {
+            var genericQuery = _db.ContentLikes
+                .AsNoTracking()
+                .Where(l => l.TenantId == tenantId && l.TargetType == targetType && l.TargetId == targetId)
+                .OrderByDescending(l => l.CreatedAt);
+
+            var totalGenericCount = await genericQuery.CountAsync();
+            var genericLikerRows = await genericQuery
+                .Skip(offset)
+                .Take(limit)
+                .Select(l => new
+                {
+                    id = l.UserId,
+                    first_name = l.User == null ? null : l.User.FirstName,
+                    last_name = l.User == null ? null : l.User.LastName,
+                    avatar_url = l.User == null ? null : l.User.AvatarUrl,
+                    liked_at = l.CreatedAt
+                })
+                .ToListAsync();
+            var genericLikers = genericLikerRows
+                .Select(l => new
+                {
+                    l.id,
+                    name = DisplayName(l.first_name, l.last_name),
+                    avatar_url = string.IsNullOrWhiteSpace(l.avatar_url)
+                        ? "/assets/img/defaults/default_avatar.png"
+                        : l.avatar_url,
+                    liked_at = l.liked_at,
+                    liked_at_formatted = l.liked_at.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)
+                })
+                .ToList();
+
             return Ok(new
             {
                 success = true,
                 data = new
                 {
-                    likers = Array.Empty<object>(),
-                    total_count = 0,
+                    likers = genericLikers,
+                    total_count = totalGenericCount,
                     page,
-                    has_more = false
+                    has_more = offset + genericLikers.Count < totalGenericCount
                 }
             });
         }
 
-        var query = _db.PostLikes
+        var query = _db.ContentLikes
             .AsNoTracking()
-            .Where(l => l.TenantId == tenantId && l.PostId == targetId)
+            .Where(l => l.TenantId == tenantId && l.TargetType == "post" && l.TargetId == targetId)
             .OrderByDescending(l => l.CreatedAt);
 
         var totalCount = await query.CountAsync();
@@ -849,13 +910,32 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/social/mention-search")]
     public async Task<IActionResult> MentionSearch([FromBody] JsonElement body)
     {
-        var q = ReadString(body, "q", "query", "term") ?? string.Empty;
+        _ = RequireUserId();
+        var q = (ReadString(body, "q", "query", "term") ?? string.Empty).Trim();
+        if (q.Length < 1)
+        {
+            return Ok(new { success = true, data = new { users = Array.Empty<object>() } });
+        }
+
+        var tenantId = TenantId();
         var data = await _db.Users
-            .Where(u => (u.FirstName + " " + u.LastName).Contains(q) || u.Email.Contains(q))
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && u.IsActive)
+            .Where(u =>
+                ((u.FirstName + " " + u.LastName).Contains(q)) ||
+                u.FirstName.Contains(q) ||
+                u.Email.Contains(q))
             .Take(10)
-            .Select(u => new { id = u.Id, name = (u.FirstName + " " + u.LastName).Trim(), avatar_url = u.AvatarUrl })
+            .Select(u => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                first_name = u.FirstName,
+                username = u.Email,
+                avatar_url = u.AvatarUrl
+            })
             .ToListAsync();
-        return Ok(new { data });
+        return Ok(new { success = true, data = new { users = data } });
     }
 
     [HttpGet("/api/social/test")]
@@ -1661,19 +1741,40 @@ public class V15SocialCompatibilityController : ControllerBase
     {
         var userId = RequireUserId();
         var tenantId = TenantId();
-        var existing = await _db.PostLikes.FirstOrDefaultAsync(l => l.TenantId == tenantId && l.PostId == postId && l.UserId == userId);
+        var existing = await _db.ContentLikes.FirstOrDefaultAsync(l =>
+            l.TenantId == tenantId &&
+            l.TargetType == "post" &&
+            l.TargetId == postId &&
+            l.UserId == userId);
         var liked = existing == null;
         if (existing == null)
         {
-            _db.PostLikes.Add(new PostLike { TenantId = tenantId, PostId = postId, UserId = userId });
+            _db.ContentLikes.Add(new ContentLike
+            {
+                TenantId = tenantId,
+                TargetType = "post",
+                TargetId = postId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (!await _db.PostLikes.AnyAsync(l => l.TenantId == tenantId && l.PostId == postId && l.UserId == userId))
+            {
+                _db.PostLikes.Add(new PostLike { TenantId = tenantId, PostId = postId, UserId = userId });
+            }
         }
         else
         {
-            _db.PostLikes.Remove(existing);
+            _db.ContentLikes.Remove(existing);
+
+            var legacyRows = await _db.PostLikes
+                .Where(l => l.TenantId == tenantId && l.PostId == postId && l.UserId == userId)
+                .ToListAsync();
+            _db.PostLikes.RemoveRange(legacyRows);
         }
 
         await _db.SaveChangesAsync();
-        var count = await _db.PostLikes.CountAsync(l => l.TenantId == tenantId && l.PostId == postId);
+        var count = await _db.ContentLikes.CountAsync(l => l.TenantId == tenantId && l.TargetType == "post" && l.TargetId == postId);
         var action = liked ? "liked" : "unliked";
         return LaravelLikeData(action, count, liked);
     }
@@ -1728,6 +1829,234 @@ public class V15SocialCompatibilityController : ControllerBase
                 likes_count = likesCount
             }
         });
+    }
+
+    private async Task<IActionResult> LegacySocialCommentsFetch(string targetType, int targetId)
+    {
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var rows = await _db.ThreadedComments
+            .AsNoTracking()
+            .Include(c => c.Author)
+            .Where(c => c.TenantId == tenantId &&
+                c.TargetType == targetType &&
+                c.TargetId == targetId &&
+                !c.IsDeleted)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+
+        var comments = BuildLegacySocialCommentTree(rows, userId);
+        return Ok(new
+        {
+            data = new
+            {
+                comments,
+                available_reactions = LaravelReactionTypes
+            }
+        });
+    }
+
+    private async Task<IActionResult> LegacySocialCommentsSubmit(JsonElement body, string targetType, int targetId)
+    {
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var content = ReadString(body, "content", "body", "comment", "message")?.Trim();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Comment cannot be empty.", field = "content" } }
+            });
+        }
+
+        if (!await FeedTrackingTargetExistsAsync(targetType, targetId))
+        {
+            return Ok(new
+            {
+                data = new
+                {
+                    success = false,
+                    error = "Target not found."
+                }
+            });
+        }
+
+        var parentId = ReadInt(body, "parent_id", "parent_comment_id");
+        if (parentId.HasValue)
+        {
+            var parentExists = await _db.ThreadedComments.AnyAsync(c =>
+                c.TenantId == tenantId &&
+                c.Id == parentId.Value &&
+                c.TargetType == targetType &&
+                c.TargetId == targetId &&
+                !c.IsDeleted);
+            if (!parentExists)
+            {
+                return Ok(new
+                {
+                    data = new
+                    {
+                        success = false,
+                        error = "Parent comment not found."
+                    }
+                });
+            }
+        }
+
+        var comment = new ThreadedComment
+        {
+            TenantId = tenantId,
+            TargetType = targetType,
+            TargetId = targetId,
+            ParentId = parentId,
+            AuthorId = userId,
+            Content = content,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.ThreadedComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var saved = await _db.ThreadedComments
+            .AsNoTracking()
+            .Include(c => c.Author)
+            .FirstAsync(c => c.Id == comment.Id);
+
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                status = "success",
+                comment = MapLegacySocialComment(saved, userId, Array.Empty<ThreadedComment>()),
+                is_reply = parentId.HasValue
+            }
+        });
+    }
+
+    private async Task<IActionResult> ToggleLegacyCommentReaction(JsonElement body)
+    {
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var commentId = ReadInt(body, "target_id") ?? ReadInt(body, "comment_id") ?? 0;
+        var reactionType = ReadString(body, "emoji", "reaction_type", "type", "reaction") ?? string.Empty;
+
+        if (commentId <= 0 || string.IsNullOrWhiteSpace(reactionType))
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid reaction." } }
+            });
+        }
+
+        if (!LaravelReactionTypes.Contains(reactionType, StringComparer.Ordinal))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid reaction." } }
+            });
+        }
+
+        var commentExists = await _db.ThreadedComments.AnyAsync(c =>
+            c.TenantId == tenantId &&
+            c.Id == commentId &&
+            !c.IsDeleted);
+        if (!commentExists)
+        {
+            return NotFound(new
+            {
+                errors = new[] { new { code = "NOT_FOUND", message = "Comment not found." } }
+            });
+        }
+
+        var action = "added";
+        var existing = await _db.CommentReactions.FirstOrDefaultAsync(r =>
+            r.TenantId == tenantId &&
+            r.CommentId == commentId &&
+            r.UserId == userId);
+        if (existing != null && existing.ReactionType == reactionType)
+        {
+            _db.CommentReactions.Remove(existing);
+            action = "removed";
+        }
+        else if (existing != null)
+        {
+            existing.ReactionType = reactionType;
+            existing.UpdatedAt = DateTime.UtcNow;
+            action = "updated";
+        }
+        else
+        {
+            _db.CommentReactions.Add(new CommentReaction
+            {
+                TenantId = tenantId,
+                CommentId = commentId,
+                UserId = userId,
+                ReactionType = reactionType,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        var reactions = await _db.CommentReactions
+            .Where(r => r.TenantId == tenantId && r.CommentId == commentId)
+            .GroupBy(r => r.ReactionType)
+            .Select(g => new { ReactionType = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(r => r.ReactionType, r => r.Count);
+
+        return Ok(new
+        {
+            data = new
+            {
+                action,
+                reactions
+            }
+        });
+    }
+
+    private static readonly string[] LaravelReactionTypes =
+    {
+        "love", "like", "laugh", "wow", "sad", "celebrate", "clap", "time_credit"
+    };
+
+    private static List<object> BuildLegacySocialCommentTree(IReadOnlyList<ThreadedComment> rows, int userId)
+    {
+        var children = rows
+            .Where(c => c.ParentId.HasValue)
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ThreadedComment>)g.OrderBy(c => c.CreatedAt).ToList());
+
+        return rows
+            .Where(c => c.ParentId == null)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => MapLegacySocialComment(c, userId, children.TryGetValue(c.Id, out var replies) ? replies : Array.Empty<ThreadedComment>()))
+            .ToList();
+    }
+
+    private static object MapLegacySocialComment(ThreadedComment c, int userId, IReadOnlyList<ThreadedComment> replies)
+    {
+        var authorName = c.Author == null ? null : DisplayName(c.Author.FirstName, c.Author.LastName);
+        if (string.IsNullOrWhiteSpace(authorName)) authorName = c.Author?.Email ?? "Unknown user";
+
+        return new
+        {
+            id = c.Id,
+            user_id = c.AuthorId,
+            content = c.Content,
+            parent_id = c.ParentId,
+            created_at = c.CreatedAt,
+            updated_at = c.UpdatedAt ?? c.CreatedAt,
+            author_name = authorName,
+            author_avatar = string.IsNullOrWhiteSpace(c.Author?.AvatarUrl)
+                ? "/assets/img/defaults/default_avatar.png"
+                : c.Author.AvatarUrl,
+            reactions = new Dictionary<string, int>(),
+            user_reactions = Array.Empty<string>(),
+            is_owner = c.AuthorId == userId,
+            is_edited = c.UpdatedAt.HasValue && c.UpdatedAt.Value != c.CreatedAt,
+            replies = replies.Select(r => MapLegacySocialComment(r, userId, Array.Empty<ThreadedComment>()))
+        };
     }
 
     private async Task<IActionResult> MuteUserCore(int mutedUserId)
