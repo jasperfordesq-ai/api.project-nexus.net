@@ -390,11 +390,17 @@ The signed member discovery pages `/members/discover`, `/members/nearby`, and
 `WEB_UK_BASE_URL=http://127.0.0.1:6221` and now carry default body-marker
 coverage for their Laravel Blade headings. The body-text-only default smoke
 scope passed against the same port with `127/127` checks and `0` failures. The
-default scope now contains `468` checks:
+signed organisation pages `/organisations/manage`, `/organisations/register`,
+`/organisations/636`, `/organisations/636/jobs`, and
+`/organisations/opportunities/307/apply` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6222` and now carry default body-marker
+coverage for their Laravel Blade headings and section text. The body-text-only
+default smoke scope passed against the same port with `132/132` checks and `0`
+failures. The default scope now contains `473` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 121 body-text contract checks, and the 6
+content-type contract checks, 126 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
