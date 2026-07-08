@@ -5,6 +5,7 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -509,6 +510,295 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         welcomeJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(userId);
 
         var otherTenantResponse = await Client.PostAsync($"/api/v2/admin/users/{otherTenantId}/send-password-reset", null);
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AdminUsersConsentsV2_ReturnLaravelDataEnvelopeAndTenantScopedRows()
+    {
+        int userId;
+        int otherTenantId;
+        var grantedAt = DateTime.UtcNow.AddDays(-4);
+        var revokedAt = DateTime.UtcNow.AddDays(-1);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("consents");
+            var otherTenant = NewAdminParityUser("consents-other", tenantId: TestData.Tenant2.Id);
+            db.Users.AddRange(user, otherTenant);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+
+            db.ConsentRecords.AddRange(
+                new ConsentRecord
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    UserId = userId,
+                    ConsentType = "terms_of_service",
+                    IsGranted = true,
+                    GrantedAt = grantedAt,
+                    CreatedAt = grantedAt
+                },
+                new ConsentRecord
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    UserId = userId,
+                    ConsentType = "marketing_emails",
+                    IsGranted = false,
+                    GrantedAt = grantedAt.AddDays(-2),
+                    RevokedAt = revokedAt,
+                    CreatedAt = grantedAt.AddDays(-2),
+                    UpdatedAt = revokedAt
+                },
+                new ConsentRecord
+                {
+                    TenantId = TestData.Tenant2.Id,
+                    UserId = otherTenantId,
+                    ConsentType = "privacy_policy",
+                    IsGranted = true,
+                    GrantedAt = grantedAt,
+                    CreatedAt = grantedAt
+                });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync($"/api/v2/admin/users/{userId}/consents");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("user_id", out _).Should().BeFalse();
+        var data = json.GetProperty("data").EnumerateArray().ToArray();
+        data.Should().HaveCount(2);
+        data.Select(row => row.GetProperty("consent_type").GetString())
+            .Should().BeEquivalentTo(new[] { "terms_of_service", "marketing_emails" });
+        data.Should().OnlyContain(row => HasProperty(row, "name")
+            && HasProperty(row, "description")
+            && HasProperty(row, "category")
+            && HasProperty(row, "is_required")
+            && HasProperty(row, "consent_given")
+            && HasProperty(row, "consent_version")
+            && HasProperty(row, "given_at")
+            && HasProperty(row, "withdrawn_at"));
+        data.Single(row => row.GetProperty("consent_type").GetString() == "terms_of_service")
+            .GetProperty("consent_given").GetBoolean().Should().BeTrue();
+        data.Single(row => row.GetProperty("consent_type").GetString() == "marketing_emails")
+            .GetProperty("consent_given").GetBoolean().Should().BeFalse();
+
+        var otherTenantResponse = await Client.GetAsync($"/api/v2/admin/users/{otherTenantId}/consents");
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AdminUsersImportV2_AcceptsLaravelReactMultipartCsvAndReturnsDataEnvelope()
+    {
+        await AuthenticateAsAdminAsync();
+        var marker = Guid.NewGuid().ToString("N")[..10];
+        var validEmail = $"csv-import-{marker}@example.test";
+        var csv = string.Join("\n", new[]
+        {
+            "first_name,last_name,email,phone,role",
+            $"Csv,Imported,{validEmail},+15551234567,broker",
+            "Broken,Row,not-an-email,,member"
+        });
+        using var form = new MultipartFormDataContent();
+        using var file = new ByteArrayContent(Encoding.UTF8.GetBytes(csv));
+        file.Headers.ContentType = new("text/csv");
+        form.Add(file, "csv_file", "users.csv");
+        form.Add(new StringContent("member"), "default_role");
+
+        var response = await Client.PostAsync("/api/v2/admin/users/import", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("imported", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("imported").GetInt32().Should().Be(1);
+        data.GetProperty("skipped").GetInt32().Should().Be(1);
+        data.GetProperty("total_rows").GetInt32().Should().Be(2);
+        data.GetProperty("errors").EnumerateArray().Select(e => e.GetString())
+            .Should().Contain(e => e!.Contains("Invalid email", StringComparison.OrdinalIgnoreCase));
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var imported = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Email == validEmail);
+        imported.TenantId.Should().Be(TestData.Tenant1.Id);
+        imported.FirstName.Should().Be("Csv");
+        imported.LastName.Should().Be("Imported");
+        imported.Role.Should().Be("broker");
+        imported.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminUsersBadgeRecheckV2_ReturnsLaravelDataEnvelopeWithBadges()
+    {
+        int userId;
+        int otherTenantId;
+        string badgeSlug;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("badge-recheck");
+            var otherTenant = NewAdminParityUser("badge-recheck-other", tenantId: TestData.Tenant2.Id);
+            var badge = new Badge
+            {
+                TenantId = TestData.Tenant1.Id,
+                Slug = $"manual_recheck_{Guid.NewGuid():N}",
+                Name = "Manual Recheck",
+                Description = "Seeded for admin badge recheck parity.",
+                Icon = "award",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            db.Users.AddRange(user, otherTenant);
+            db.Badges.Add(badge);
+            await db.SaveChangesAsync();
+
+            db.UserBadges.Add(new UserBadge
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = user.Id,
+                BadgeId = badge.Id,
+                EarnedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+            badgeSlug = badge.Slug;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsync($"/api/v2/admin/users/{userId}/badges/recheck", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("badges_awarded", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("rechecked").GetBoolean().Should().BeTrue();
+        data.GetProperty("user_id").GetInt32().Should().Be(userId);
+        var badges = data.GetProperty("badges").EnumerateArray().ToArray();
+        badges.Should().Contain(row =>
+            row.GetProperty("slug").GetString() == badgeSlug
+            && row.GetProperty("name").GetString() == "Manual Recheck"
+            && row.GetProperty("awarded_at").ValueKind != JsonValueKind.Null);
+
+        var otherTenantResponse = await Client.PostAsync($"/api/v2/admin/users/{otherTenantId}/badges/recheck", null);
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AdminUsersBadgeAddRemoveV2_ReturnLaravelDataEnvelopesAndTenantScopedErrors()
+    {
+        int userId;
+        int otherTenantId;
+        string badgeSlug;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("badge-add-remove");
+            var otherTenant = NewAdminParityUser("badge-add-remove-other", tenantId: TestData.Tenant2.Id);
+            var badge = new Badge
+            {
+                TenantId = TestData.Tenant1.Id,
+                Slug = $"manual_add_{Guid.NewGuid():N}",
+                Name = "Manual Add",
+                Description = "Seeded for admin badge add/remove parity.",
+                Icon = "award",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            db.Users.AddRange(user, otherTenant);
+            db.Badges.Add(badge);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+            badgeSlug = badge.Slug;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var addResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{userId}/badges", new
+        {
+            badge_slug = badgeSlug
+        });
+
+        addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var addJson = await addResponse.Content.ReadFromJsonAsync<JsonElement>();
+        addJson.TryGetProperty("success", out _).Should().BeFalse();
+        var addData = addJson.GetProperty("data");
+        addData.GetProperty("awarded").GetBoolean().Should().BeTrue();
+        addData.GetProperty("user_id").GetInt32().Should().Be(userId);
+        addData.GetProperty("badge_slug").GetString().Should().Be(badgeSlug);
+
+        int userBadgeId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            userBadgeId = await db.UserBadges
+                .IgnoreQueryFilters()
+                .Where(ub => ub.UserId == userId && ub.Badge!.Slug == badgeSlug)
+                .Select(ub => ub.Id)
+                .SingleAsync();
+        }
+
+        var removeResponse = await Client.DeleteAsync($"/api/v2/admin/users/{userId}/badges/{userBadgeId}");
+        removeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var removeJson = await removeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        removeJson.TryGetProperty("success", out _).Should().BeFalse();
+        var removeData = removeJson.GetProperty("data");
+        removeData.GetProperty("removed").GetBoolean().Should().BeTrue();
+        removeData.GetProperty("user_id").GetInt32().Should().Be(userId);
+        removeData.GetProperty("badge_id").GetInt32().Should().Be(userBadgeId);
+
+        var otherTenantResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{otherTenantId}/badges", new
+        {
+            badge_slug = badgeSlug
+        });
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AdminUsersImpersonateV2_ReturnsLaravelDataTokenAndTenantScopedErrors()
+    {
+        int userId;
+        int otherTenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("impersonate-v2");
+            var otherTenant = NewAdminParityUser("impersonate-v2-other", tenantId: TestData.Tenant2.Id);
+            db.Users.AddRange(user, otherTenant);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsync($"/api/v2/admin/users/{userId}/impersonate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("access_token", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("token").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("user_id").GetInt32().Should().Be(userId);
+        data.GetProperty("user_name").GetString().Should().Be("Admin Parity");
+        data.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        data.GetProperty("tenant_slug").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var otherTenantResponse = await Client.PostAsync($"/api/v2/admin/users/{otherTenantId}/impersonate", null);
         otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
         otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");

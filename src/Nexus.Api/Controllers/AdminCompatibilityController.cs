@@ -86,6 +86,12 @@ public class AdminCompatibilityController : ControllerBase
         meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
     });
 
+    private IActionResult LaravelData(object data, int statusCode) => StatusCode(statusCode, new
+    {
+        data,
+        meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+    });
+
     private IActionResult LaravelError(string code, string message, int status)
     {
         var payload = new { errors = new[] { new { code, message } } };
@@ -109,6 +115,30 @@ public class AdminCompatibilityController : ControllerBase
 
     private static bool IsProtectedAdmin(User user)
         => user.Role is "admin" or "tenant_admin" or "super_admin" or "god";
+
+    private static string FormatConsentName(string consentType)
+        => string.Join(' ', consentType.Split('_', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
+
+    private async Task<List<object>> GetLaravelUserBadgesAsync(int tenantId, int userId)
+    {
+        var rows = await _db.UserBadges
+            .AsNoTracking()
+            .Include(ub => ub.Badge)
+            .Where(ub => ub.TenantId == tenantId && ub.UserId == userId)
+            .OrderByDescending(ub => ub.EarnedAt)
+            .ToListAsync();
+
+        return rows.Select(ub => new
+        {
+            id = ub.Id,
+            name = ub.Badge?.Name ?? string.Empty,
+            slug = ub.Badge?.Slug ?? string.Empty,
+            description = ub.Badge?.Description ?? string.Empty,
+            icon = ub.Badge?.Icon,
+            awarded_at = ub.EarnedAt
+        }).Cast<object>().ToList();
+    }
 
     // ──────────────────────────────────────────────
     // Dashboard (3 endpoints)
@@ -473,20 +503,38 @@ public class AdminCompatibilityController : ControllerBase
         if (adminId == null)
             return Unauthorized(new { error = "Invalid token" });
 
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (IsLaravelV2Request && !await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == tenantId))
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
         var badgeId = request.BadgeId;
+        Badge? badge = null;
         if (!badgeId.HasValue && !string.IsNullOrWhiteSpace(request.BadgeSlug))
         {
-            badgeId = await _db.Badges
-                .Where(b => b.Slug == request.BadgeSlug && b.IsActive)
-                .Select(b => (int?)b.Id)
+            badge = await _db.Badges
+                .FirstOrDefaultAsync(b => b.Slug == request.BadgeSlug && b.IsActive && (!IsLaravelV2Request || b.TenantId == tenantId));
+            badgeId = badge?.Id;
+        }
+        else if (badgeId.HasValue && IsLaravelV2Request)
+        {
+            badge = await _db.Badges
+                .FirstOrDefaultAsync(b => b.Id == badgeId.Value && b.IsActive && b.TenantId == tenantId);
+            badgeId = badge?.Id;
+        }
+        else if (badgeId.HasValue)
+        {
+            badge = await _db.Badges
+                .Where(b => b.Id == badgeId.Value && b.IsActive)
                 .FirstOrDefaultAsync();
         }
 
         if (!badgeId.HasValue)
-            return BadRequest(new { error = "badge_id or badge_slug is required" });
+            return IsLaravelV2Request
+                ? LaravelValidationError("Badge slug is required", "badge_slug")
+                : BadRequest(new { error = "badge_id or badge_slug is required" });
 
         var (userBadge, error) = await _gamification.AwardBadgeManuallyAsync(
-            _tenant.GetTenantIdOrThrow(),
+            tenantId,
             userId,
             badgeId.Value,
             adminId.Value);
@@ -495,12 +543,24 @@ public class AdminCompatibilityController : ControllerBase
         {
             if (error.Contains("User not found", StringComparison.OrdinalIgnoreCase) ||
                 error.Contains("Badge not found", StringComparison.OrdinalIgnoreCase))
-                return NotFound(new { error });
+                return IsLaravelV2Request
+                    ? LaravelError("NOT_FOUND", error, StatusCodes.Status404NotFound)
+                    : NotFound(new { error });
 
-            return Conflict(new { error });
+            return IsLaravelV2Request
+                ? LaravelError("CONFLICT", error, StatusCodes.Status409Conflict)
+                : Conflict(new { error });
         }
 
         _logger.LogInformation("Admin {AdminId} added badge {BadgeId} to user {UserId}", adminId, badgeId.Value, userId);
+        if (IsLaravelV2Request)
+            return LaravelData(new
+            {
+                awarded = true,
+                user_id = userId,
+                badge_slug = badge?.Slug ?? request.BadgeSlug ?? string.Empty
+            }, StatusCodes.Status201Created);
+
         return Ok(new { success = true, message = "Badge added", badge_id = badgeId.Value, user_id = userId, earned_at = userBadge!.EarnedAt });
     }
 
@@ -510,6 +570,27 @@ public class AdminCompatibilityController : ControllerBase
         var adminId = GetCurrentUserId();
         if (adminId == null)
             return Unauthorized(new { error = "Invalid token" });
+
+        if (IsLaravelV2Request)
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            var userBadge = await _db.UserBadges
+                .FirstOrDefaultAsync(ub => ub.Id == badgeId && ub.UserId == userId && ub.TenantId == tenantId);
+            if (userBadge == null)
+                return LaravelError("NOT_FOUND", "Badge not found", StatusCodes.Status404NotFound);
+
+            var routeBadgeId = userBadge.Id;
+            var (removed, removeError) = await _gamification.RevokeBadgeAsync(
+                tenantId,
+                userId,
+                userBadge.BadgeId,
+                adminId.Value);
+            if (!removed)
+                return LaravelError("NOT_FOUND", removeError ?? "Badge not found", StatusCodes.Status404NotFound);
+
+            _logger.LogInformation("Admin {AdminId} removed user badge {UserBadgeId} from user {UserId}", adminId, routeBadgeId, userId);
+            return LaravelData(new { removed = true, user_id = userId, badge_id = routeBadgeId });
+        }
 
         var (success, error) = await _gamification.RevokeBadgeAsync(
             _tenant.GetTenantIdOrThrow(),
@@ -554,16 +635,43 @@ public class AdminCompatibilityController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
 
         if (adminId.Value == userId)
-            return BadRequest(new { error = "Cannot impersonate yourself" });
+            return IsLaravelV2Request
+                ? LaravelValidationError("Cannot impersonate yourself", "user_id")
+                : BadRequest(new { error = "Cannot impersonate yourself" });
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var tenantId = _tenant.TenantId;
+        var user = IsLaravelV2Request && tenantId.HasValue
+            ? await _db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId.Value)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
+        if (IsLaravelV2Request && IsProtectedAdmin(user))
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot impersonate super admin", StatusCodes.Status403Forbidden);
         if (!user.IsActive)
-            return Conflict(new { error = "Cannot impersonate inactive user" });
+            return IsLaravelV2Request
+                ? LaravelError("CONFLICT", "Cannot impersonate inactive user", StatusCodes.Status409Conflict)
+                : Conflict(new { error = "Cannot impersonate inactive user" });
 
         var accessToken = _tokenService.GenerateJwt(user);
         _logger.LogWarning("Admin {AdminId} generated bounded impersonation access token for user {UserId}", adminId, userId);
+
+        if (IsLaravelV2Request)
+        {
+            var tenantSlug = await _db.Tenants
+                .Where(t => t.Id == user.TenantId)
+                .Select(t => t.Slug)
+                .FirstOrDefaultAsync();
+            return LaravelData(new
+            {
+                token = accessToken,
+                user_id = user.Id,
+                user_name = GetDisplayName(user),
+                tenant_id = user.TenantId,
+                tenant_slug = tenantSlug
+            });
+        }
 
         return Ok(new
         {
@@ -621,18 +729,62 @@ public class AdminCompatibilityController : ControllerBase
     [HttpPost("users/{userId:int}/badges/recheck")]
     public async Task<IActionResult> RecheckUserBadges(int userId)
     {
-        var (newlyEarned, error) = await _gamification.RecheckAllBadgesAsync(_tenant.GetTenantIdOrThrow(), userId);
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (IsLaravelV2Request && !await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == tenantId))
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        var (newlyEarned, error) = await _gamification.RecheckAllBadgesAsync(tenantId, userId);
         if (error != null)
-            return NotFound(new { error });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", error, StatusCodes.Status404NotFound)
+                : NotFound(new { error });
 
         _logger.LogInformation("Admin {AdminId} rechecked badges for user {UserId}; awarded {Awarded}", GetCurrentUserId(), userId, newlyEarned.Count);
+        if (IsLaravelV2Request)
+        {
+            var badges = await GetLaravelUserBadgesAsync(tenantId, userId);
+            return LaravelData(new { rechecked = true, user_id = userId, badges });
+        }
+
         return Ok(new { success = true, message = "Badge recheck completed", badges_awarded = newlyEarned.Count });
     }
 
     [HttpGet("users/{userId:int}/consents")]
-    public IActionResult GetUserConsents(int userId)
+    public async Task<IActionResult> GetUserConsents(int userId)
     {
-        return Ok(new { data = Array.Empty<object>(), user_id = userId });
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
+
+        var tenantId = IsLaravelV2Request
+            ? _tenant.TenantId ?? user.TenantId
+            : user.TenantId;
+        var consentRecords = await _db.ConsentRecords
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && c.TenantId == tenantId)
+            .OrderBy(c => c.ConsentType)
+            .ToListAsync();
+        var consents = consentRecords.Select(c => new
+        {
+            consent_type = c.ConsentType,
+            name = FormatConsentName(c.ConsentType),
+            description = (string?)null,
+            category = (string?)null,
+            is_required = c.ConsentType == "terms_of_service" || c.ConsentType == "privacy_policy",
+            consent_given = c.IsGranted,
+            consent_version = (string?)null,
+            given_at = c.GrantedAt,
+            withdrawn_at = c.RevokedAt
+        }).ToList();
+
+        if (IsLaravelV2Request)
+            return LaravelData(consents);
+
+        return Ok(new { data = consents, user_id = userId });
     }
 
     [HttpPost("users/{userId:int}/password")]
@@ -775,7 +927,28 @@ public class AdminCompatibilityController : ControllerBase
     }
 
     [HttpPost("users/import")]
-    public async Task<IActionResult> ImportUsers([FromBody] JsonElement request)
+    public async Task<IActionResult> ImportUsers()
+    {
+        if (Request.HasFormContentType)
+            return await ImportUsersFromMultipartCsv();
+
+        JsonDocument doc;
+        try
+        {
+            doc = await JsonDocument.ParseAsync(Request.Body);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { error = "Invalid import payload" });
+        }
+
+        using (doc)
+        {
+            return await ImportUsersFromJson(doc.RootElement);
+        }
+    }
+
+    private async Task<IActionResult> ImportUsersFromJson(JsonElement request)
     {
         var users = ExtractImportUsers(request);
         if (users.Count == 0)
@@ -796,7 +969,7 @@ public class AdminCompatibilityController : ControllerBase
                 continue;
             }
 
-            if (await _db.Users.AnyAsync(u => u.Email.ToLower() == email))
+            if (await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Email.ToLower() == email))
             {
                 errors.Add(new { email, error = "User already exists" });
                 continue;
@@ -823,6 +996,109 @@ public class AdminCompatibilityController : ControllerBase
 
         _logger.LogInformation("Admin {AdminId} imported {Imported} users with {Errors} errors", GetCurrentUserId(), imported, errors.Count);
         return Ok(new { success = true, imported, errors = errors.Count, error_details = errors });
+    }
+
+    private async Task<IActionResult> ImportUsersFromMultipartCsv()
+    {
+        var form = await Request.ReadFormAsync();
+        var file = form.Files["csv_file"];
+        if (file == null || file.Length == 0)
+            return LaravelError("VALIDATION_ERROR", "CSV file is required", StatusCodes.Status400BadRequest);
+
+        var contentType = file.ContentType?.ToLowerInvariant() ?? string.Empty;
+        var allowedTypes = new[] { "text/csv", "application/vnd.ms-excel", "application/csv", "text/plain" };
+        if (!allowedTypes.Contains(contentType))
+            return LaravelError("VALIDATION_ERROR", "CSV file type is invalid", StatusCodes.Status400BadRequest);
+
+        string csv;
+        await using (var stream = file.OpenReadStream())
+        using (var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
+        {
+            csv = await reader.ReadToEndAsync();
+        }
+
+        var records = ParseCsvRecords(csv);
+        if (records.Count == 0)
+            return LaravelError("VALIDATION_ERROR", "CSV file is empty", StatusCodes.Status400BadRequest);
+
+        var header = records[0]
+            .Select(h => h.Trim().Replace(" ", "_").Replace("-", "_").ToLowerInvariant())
+            .ToArray();
+        var requiredColumns = new[] { "first_name", "last_name", "email" };
+        var missing = requiredColumns.Where(c => !header.Contains(c)).ToArray();
+        if (missing.Length > 0)
+            return LaravelError("VALIDATION_ERROR", $"CSV is missing required columns: {string.Join(", ", missing)}", StatusCodes.Status400BadRequest);
+
+        var columnMap = header.Select((name, index) => new { name, index })
+            .ToDictionary(x => x.name, x => x.index, StringComparer.OrdinalIgnoreCase);
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var defaultRole = NormalizeImportRole(form.TryGetValue("default_role", out var requestedDefaultRole)
+            ? requestedDefaultRole.ToString()
+            : "member");
+        var imported = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+
+        for (var index = 1; index < records.Count; index++)
+        {
+            var rowNumber = index + 1;
+            var row = records[index];
+            if (row.Count != header.Length)
+            {
+                errors.Add($"Row {rowNumber}: Column count mismatch");
+                skipped++;
+                continue;
+            }
+
+            var email = CsvValue(row, columnMap, "email").Trim().ToLowerInvariant();
+            var firstName = CsvValue(row, columnMap, "first_name").Trim();
+            var lastName = CsvValue(row, columnMap, "last_name").Trim();
+            if (!IsValidEmail(email))
+            {
+                errors.Add($"Row {rowNumber}: Invalid email '{email}'");
+                skipped++;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+            {
+                errors.Add($"Row {rowNumber}: First name and last name are required");
+                skipped++;
+                continue;
+            }
+
+            if (await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Email.ToLower() == email))
+            {
+                errors.Add($"Row {rowNumber}: User with email '{email}' already exists");
+                skipped++;
+                continue;
+            }
+
+            var role = NormalizeImportRole(CsvValue(row, columnMap, "role"), defaultRole);
+            _db.Users.Add(new User
+            {
+                TenantId = tenantId,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                Role = role,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Convert.ToHexString(RandomNumberGenerator.GetBytes(16))),
+                IsActive = true,
+                EmailVerified = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            imported++;
+        }
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Admin {AdminId} imported {Imported} users from CSV with {Skipped} skipped", GetCurrentUserId(), imported, skipped);
+        return LaravelData(new
+        {
+            imported,
+            skipped,
+            errors = errors.Take(50).ToArray(),
+            total_rows = Math.Max(0, records.Count - 1)
+        });
     }
 
     // ──────────────────────────────────────────────
@@ -3247,6 +3523,73 @@ public class AdminCompatibilityController : ControllerBase
 
         return result;
     }
+
+    private static List<List<string>> ParseCsvRecords(string csv)
+    {
+        var records = new List<List<string>>();
+        var row = new List<string>();
+        var field = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < csv.Length; i++)
+        {
+            var ch = csv[i];
+            if (ch == '"')
+            {
+                if (inQuotes && i + 1 < csv.Length && csv[i + 1] == '"')
+                {
+                    field.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+                continue;
+            }
+
+            if (ch == ',' && !inQuotes)
+            {
+                row.Add(field.ToString());
+                field.Clear();
+                continue;
+            }
+
+            if ((ch == '\n' || ch == '\r') && !inQuotes)
+            {
+                if (ch == '\r' && i + 1 < csv.Length && csv[i + 1] == '\n')
+                    i++;
+                row.Add(field.ToString());
+                field.Clear();
+                if (row.Any(value => !string.IsNullOrWhiteSpace(value)))
+                    records.Add(row);
+                row = [];
+                continue;
+            }
+
+            field.Append(ch);
+        }
+
+        row.Add(field.ToString());
+        if (row.Any(value => !string.IsNullOrWhiteSpace(value)))
+            records.Add(row);
+
+        return records;
+    }
+
+    private static string CsvValue(IReadOnlyList<string> row, IReadOnlyDictionary<string, int> columnMap, string name)
+        => columnMap.TryGetValue(name, out var index) && index >= 0 && index < row.Count
+            ? row[index]
+            : string.Empty;
+
+    private static string NormalizeImportRole(string? role, string fallback = "member")
+    {
+        var normalized = role?.Trim().ToLowerInvariant();
+        return normalized is "member" or "admin" or "broker" ? normalized : fallback;
+    }
+
+    private static bool IsValidEmail(string email)
+        => Regex.IsMatch(email, "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private static List<string> ExtractStringArray(JsonElement request, params string[] names)
     {
