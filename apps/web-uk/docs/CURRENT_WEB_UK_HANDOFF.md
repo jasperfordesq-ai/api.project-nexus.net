@@ -138,6 +138,17 @@ Scoped live Laravel smoke against temporary Web UK
 The smoke also reran the base Laravel API, Web UK health, cookie, login,
 account, and logout checks green.
 
+Latest focused group/course runtime-smoke slice: a clean targeted Laravel-backed
+run on 2026-07-08 against temporary Web UK `http://127.0.0.1:6350` and Laravel
+`http://127.0.0.1:8091`, started with `ACCESSIBLE_BACKEND_TARGET=laravel` and
+`TENANT_ID=2`, passed `16/16` checks. The run disabled unrelated page sweeps and
+verified Laravel API reachability, Web UK health, unsigned `/account`, no-JS
+cookie consent/settings POST flows, login/logout, module renders for
+`/groups/484`, `/courses/1`, and `/courses/2`, plus body markers
+`/groups/484=>Group events`, `/courses/1=>Ratings and reviews`, and
+`/courses/2=>Ratings and reviews`. This certifies the current group/course
+fallback slice; it does not replace the still-needed full chunked smoke refresh.
+
 Latest focused runtime-smoke refresh slice: the chunked body-text smoke exposed
 an expired-access-token redirect on signed `/feed/item/listing/{id}` after a
 long live Laravel run. `feed.js` now uses the existing `withTokenRefresh`

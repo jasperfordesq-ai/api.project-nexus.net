@@ -628,6 +628,10 @@ redirect checks. A full default 634-check run exceeded the 15-minute command
 wrapper after progressing through module pages and into body-text checks; use
 `SMOKE_MODULE_PAGE_CHUNK=N/M`, `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M`, or targeted
 smoke scopes for full local recertification.
+On the same date, a focused group/course smoke against temporary Web UK
+`http://127.0.0.1:6350` and Laravel `http://127.0.0.1:8091`, started with
+`TENANT_ID=2`, passed `16/16` checks for the base auth/cookie flow plus
+`/groups/484`, `/courses/1`, and `/courses/2` module renders and body markers.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 

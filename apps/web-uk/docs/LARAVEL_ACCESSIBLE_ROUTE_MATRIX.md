@@ -264,6 +264,16 @@ health, cookie, login, account, and logout checks plus these body markers:
 Web UK Jest (`697/697`), lint, and route matrix (`608/608` matched, `0`
 missing, `0` extra Web UK routes).
 
+Focused group/course evidence from 2026-07-08: a targeted Laravel-backed smoke
+against temporary Web UK `http://127.0.0.1:6350`, Laravel
+`http://127.0.0.1:8091`, and `TENANT_ID=2` passed `16/16` checks. It covered
+base Laravel API/Web UK health, cookie POSTs, login/account/logout, module page
+renders for `/groups/484`, `/courses/1`, and `/courses/2`, and body markers
+`/groups/484=>Group events`, `/courses/1=>Ratings and reviews`, and
+`/courses/2=>Ratings and reviews`. This is focused runtime proof for the
+current group/course Laravel fallback slice, not a substitute for the full
+chunked recertification.
+
 Earlier local evidence from 2026-07-07: the harness passes end-to-end when
 web-uk is started with Laravel tenant context `TENANT_ID=2`, using the local E2E
 fixture credentials (`e2e.user.a@project-nexus.local` /
