@@ -586,6 +586,14 @@ redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
+While recertifying the chunked scope on 2026-07-08, the Laravel E2E fixture
+returned `403` for optional `/api/v2/federation/activity` while
+`/api/v2/federation/status` and `/api/v2/federation/partners` returned `200`.
+The web-uk `/federation` hub now renders from the available status/partner data
+with an empty activity list in that permission-limited state. A targeted
+Laravel runtime smoke against `WEB_UK_BASE_URL=http://127.0.0.1:6260`, started
+with `TENANT_ID=2`, passed `11/11` checks including
+`module-page-federation-renders`.
 A targeted live dashboard marker smoke on 2026-07-08 against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and

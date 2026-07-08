@@ -221,6 +221,15 @@ body-text checks. The smoke harness now supports both
 agents can recertify the full default scope in repeatable chunks instead of
 manually splitting body-text page lists.
 
+Latest focused federation live-smoke slice: while recertifying chunked smoke
+against a temporary web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6260`,
+Laravel returned `403` for the optional `/api/v2/federation/activity` feed even
+though `/api/v2/federation/status` and `/api/v2/federation/partners` returned
+`200`. The `/federation` hub now treats that activity-feed `403` as an empty
+activity list instead of rendering `503`. A targeted Laravel runtime smoke on
+2026-07-08 passed `11/11` checks, including `module-page-federation-renders`
+with status `200`.
+
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
 Laravel-compatible profile, onboarding status, wallet balance, gamification

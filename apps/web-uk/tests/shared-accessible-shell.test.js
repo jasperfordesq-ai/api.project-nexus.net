@@ -2822,6 +2822,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Federation pages will follow the Laravel accessible frontend contract.');
   });
 
+  it('renders the Federation hub when Laravel denies the optional activity feed', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/status') {
+        return {
+          data: {
+            enabled: true,
+            tenant_federation_enabled: true,
+            federation_optin: true,
+            partnerships_count: 1,
+            messages_count: 0,
+            transactions_count: 0
+          }
+        };
+      }
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              tagline: 'Neighbouring community exchange'
+            }
+          ],
+          meta: { total: 1 }
+        };
+      }
+      if (pathValue === '/activity') {
+        throw new api.ApiError('Forbidden', 403, {});
+      }
+      return { data: {} };
+    });
+
+    const response = await request(app)
+      .get('/federation')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/status');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/activity');
+    expect(response.text).toContain('Federation');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).not.toContain('Service unavailable');
+  });
+
   it('renders the Laravel-backed Federation partners list', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

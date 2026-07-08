@@ -657,6 +657,17 @@ function renderFederationError(error, res) {
   return false;
 }
 
+async function optionalFederationActivity(token) {
+  try {
+    return await callFederationApi(token, 'GET', '/activity');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return { data: [] };
+    }
+    throw error;
+  }
+}
+
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
@@ -669,7 +680,7 @@ router.get('/', asyncRoute(async (req, res) => {
   try {
     statusResult = await callFederationApi(token, 'GET', '/status');
     partnersResult = await callFederationApi(token, 'GET', '/partners');
-    activityResult = await callFederationApi(token, 'GET', '/activity');
+    activityResult = await optionalFederationActivity(token);
   } catch (error) {
     if (renderFederationError(error, res)) return undefined;
     throw error;
