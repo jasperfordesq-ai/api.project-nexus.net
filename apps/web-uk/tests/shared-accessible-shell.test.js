@@ -4399,6 +4399,24 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="_csrf"');
   });
 
+  it('links to the Laravel forgot-password alias from the login page', async () => {
+    const response = await request(app).get('/login');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/login/forgot-password"');
+    expect(response.text).not.toContain('href="/forgot-password"');
+  });
+
+  it('does not expose legacy top-level password reset aliases', async () => {
+    const forgotResponse = await request(app).get('/forgot-password');
+    const resetResponse = await request(app).get('/reset-password?token=reset-token');
+
+    expect(forgotResponse.status).toBe(404);
+    expect(forgotResponse.text).toContain('Page not found');
+    expect(resetResponse.status).toBe(404);
+    expect(resetResponse.text).toContain('Page not found');
+  });
+
   it('submits the Laravel forgot-password alias through the existing reset API helper', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);

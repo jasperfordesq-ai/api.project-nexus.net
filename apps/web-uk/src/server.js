@@ -1108,12 +1108,8 @@ app.post('/register', authLimiter, doubleCsrfProtection, authRoutes);
 app.post('/logout', doubleCsrfProtection, authRoutes);
 app.get('/login/forgot-password', authRoutes);
 app.post('/login/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
-app.get('/forgot-password', authRoutes);
-app.post('/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/password/reset', authRoutes);
 app.post('/password/reset', authLimiter, doubleCsrfProtection, authRoutes);
-app.get('/reset-password', authRoutes);
-app.post('/reset-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.post('/verify-2fa', authLimiter, doubleCsrfProtection, authRoutes);
 
 // Rate limit only on state-changing methods (POST/PUT/DELETE), not GET

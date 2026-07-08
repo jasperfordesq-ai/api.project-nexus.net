@@ -1349,10 +1349,15 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 689 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 82 local-only routes. These
+accessible route declarations, 685 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 78 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
+
+`/forgot-password` and `/reset-password` are intentionally not exposed as
+top-level local aliases: Laravel's accessible auth flow uses
+`/login/forgot-password` and `/password/reset`, and the login page links to the
+Laravel forgot-password path.
 
 `GET /logout` is intentionally not exposed locally: Laravel's accessible
 logout route is POST-only, and the account hub keeps using the CSRF-protected

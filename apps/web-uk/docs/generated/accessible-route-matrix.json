@@ -1,13 +1,13 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T09:34:12.337Z",
+    "generatedAt": "2026-07-08T09:42:21.009Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 689,
+    "webUkRoutes": 685,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 82,
+    "extraWebUkRoutes": 78,
     "familyCounts": {
       "admin": {
         "matched": 0,
@@ -33,11 +33,6 @@
         "matched": 22,
         "missing": 0,
         "extraWebUk": 10
-      },
-      "forgot-password": {
-        "matched": 0,
-        "missing": 0,
-        "extraWebUk": 2
       },
       "groups": {
         "matched": 36,
@@ -83,11 +78,6 @@
         "matched": 0,
         "missing": 0,
         "extraWebUk": 3
-      },
-      "reset-password": {
-        "matched": 0,
-        "missing": 0,
-        "extraWebUk": 2
       },
       "reviews": {
         "matched": 7,
@@ -1121,44 +1111,6 @@
     },
     {
       "method": "GET",
-      "path": "/forgot-password",
-      "family": "forgot-password",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/forgot-password",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
-    },
-    {
-      "method": "POST",
-      "path": "/forgot-password",
-      "family": "forgot-password",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/forgot-password",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
-    },
-    {
-      "method": "GET",
       "path": "/groups/{param}/members",
       "family": "groups",
       "status": "extra-web-uk",
@@ -1555,44 +1507,6 @@
       "webUkPath": "/reports/new",
       "webUkView": "reports/new",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\reports.js"
-    },
-    {
-      "method": "GET",
-      "path": "/reset-password",
-      "family": "reset-password",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/reset-password",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
-    },
-    {
-      "method": "POST",
-      "path": "/reset-password",
-      "family": "reset-password",
-      "status": "extra-web-uk",
-      "laravelRouteName": "",
-      "laravelHandler": "",
-      "laravelView": "",
-      "laravelRouteFile": "",
-      "laravelControllerFile": "",
-      "laravelMiddleware": "",
-      "auth": "",
-      "tenantScoped": "",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "/reset-password",
-      "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",

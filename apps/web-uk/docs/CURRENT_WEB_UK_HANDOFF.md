@@ -67,11 +67,17 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `689` |
+| Web UK routes | `685` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `82` |
+| Extra Web UK routes | `78` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused auth-alias route slice: legacy local top-level password-reset
+aliases `/forgot-password` and `/reset-password` were removed for both GET and
+POST so the login and reset flows now expose only Laravel's accessible
+`/login/forgot-password` and `/password/reset` paths. The login page now links
+directly to `/login/forgot-password`.
 
 Latest focused logout route slice: legacy local `GET /logout` was removed so
 the `logout` route family now matches Laravel's POST-only accessible logout

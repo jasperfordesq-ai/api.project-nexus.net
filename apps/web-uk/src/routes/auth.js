@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { login, register, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
-const { redirectIfAuthenticated, setAuthCookies, clearAuthCookies } = require('../middleware/auth');
+const { setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -364,17 +364,16 @@ function renderForgotPassword(req, res) {
     successMessage: status === 'forgot-sent'
       ? 'If an account exists with this email, we have sent password reset instructions.'
       : (req.flash ? req.flash('success')[0] : null),
-    formAction: req.path === '/login/forgot-password' ? '/login/forgot-password' : '/forgot-password',
+    formAction: '/login/forgot-password',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
 }
 
-router.get('/forgot-password', redirectIfAuthenticated, renderForgotPassword);
 router.get('/login/forgot-password', renderForgotPassword);
 
 async function handleForgotPasswordPost(req, res) {
   const { email, tenant_slug } = req.body;
-  const formAction = req.path === '/login/forgot-password' ? '/login/forgot-password' : '/forgot-password';
+  const formAction = '/login/forgot-password';
 
   // Turnstile gate intentionally removed from forgot-password (2026-05-15).
   // It was silently rejecting legitimate reset requests, so users saw the
@@ -420,10 +419,9 @@ async function handleForgotPasswordPost(req, res) {
   if (req.flash) {
     req.flash('success', 'If an account exists with this email, we have sent password reset instructions.');
   }
-  res.redirect(req.path === '/login/forgot-password' ? '/login/forgot-password?status=forgot-sent' : '/forgot-password');
+  res.redirect('/login/forgot-password?status=forgot-sent');
 }
 
-router.post('/forgot-password', asyncRoute(handleForgotPasswordPost));
 router.post('/login/forgot-password', asyncRoute(handleForgotPasswordPost));
 
 // Reset password (with token from email)
@@ -431,25 +429,24 @@ function renderResetPassword(req, res) {
   const { token } = req.query;
 
   if (!token) {
-    return res.redirect(req.path === '/password/reset' ? '/login/forgot-password' : '/forgot-password');
+    return res.redirect('/login/forgot-password');
   }
 
   res.render('reset-password', {
     title: 'Choose a new password',
     resetToken: token,
-    formAction: req.path === '/password/reset' ? '/password/reset' : '/reset-password',
+    formAction: '/password/reset',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }
 
-router.get('/reset-password', redirectIfAuthenticated, renderResetPassword);
 router.get('/password/reset', renderResetPassword);
 
 async function handleResetPasswordPost(req, res) {
   const token = req.body.token;
   const password = req.body.password;
   const confirmPassword = req.body.password_confirmation || req.body.confirm_password;
-  const formAction = req.path === '/password/reset' ? '/password/reset' : '/reset-password';
+  const formAction = '/password/reset';
 
   const errors = [];
   const fieldErrors = {};
@@ -512,7 +509,6 @@ async function handleResetPasswordPost(req, res) {
   }
 }
 
-router.post('/reset-password', asyncRoute(handleResetPasswordPost));
 router.post('/password/reset', asyncRoute(handleResetPasswordPost));
 
 module.exports = router;
