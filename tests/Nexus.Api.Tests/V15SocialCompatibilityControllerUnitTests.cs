@@ -449,6 +449,89 @@ public sealed class V15SocialCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task HashtagPostsV2_ReturnsLaravelReactCollectionEnvelopeWithCursorAndVisibleTenantPosts()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?per_page=1");
+
+        db.Users.Add(new User
+        {
+            Id = 2,
+            TenantId = 1,
+            Email = "member@example.test",
+            PasswordHash = "hash",
+            FirstName = "Member",
+            LastName = "User",
+            Role = "member",
+            IsActive = true
+        });
+        db.Hashtags.AddRange(
+            new Hashtag { Id = 1, TenantId = 1, Tag = "alpha", UsageCount = 4, LastUsedAt = DateTime.UtcNow },
+            new Hashtag { Id = 2, TenantId = 2, Tag = "alpha", UsageCount = 1, LastUsedAt = DateTime.UtcNow });
+        db.FeedPosts.AddRange(
+            new FeedPost
+            {
+                Id = 10,
+                TenantId = 1,
+                UserId = 2,
+                Content = "Older visible alpha post",
+                CreatedAt = DateTime.UtcNow.AddHours(-2)
+            },
+            new FeedPost
+            {
+                Id = 20,
+                TenantId = 1,
+                UserId = 2,
+                Content = "Hidden alpha post",
+                IsHidden = true,
+                CreatedAt = DateTime.UtcNow.AddHours(-1)
+            },
+            new FeedPost
+            {
+                Id = 30,
+                TenantId = 1,
+                UserId = 2,
+                Content = "Newest visible alpha post",
+                CreatedAt = DateTime.UtcNow
+            },
+            new FeedPost
+            {
+                Id = 40,
+                TenantId = 2,
+                UserId = 2,
+                Content = "Other tenant alpha post",
+                CreatedAt = DateTime.UtcNow.AddMinutes(1)
+            });
+        db.HashtagUsages.AddRange(
+            new HashtagUsage { TenantId = 1, HashtagId = 1, TargetType = "post", TargetId = 10, CreatedById = 2 },
+            new HashtagUsage { TenantId = 1, HashtagId = 1, TargetType = "post", TargetId = 20, CreatedById = 2 },
+            new HashtagUsage { TenantId = 1, HashtagId = 1, TargetType = "post", TargetId = 30, CreatedById = 2 },
+            new HashtagUsage { TenantId = 2, HashtagId = 2, TargetType = "post", TargetId = 40, CreatedById = 2 },
+            new HashtagUsage { TenantId = 1, HashtagId = 1, TargetType = "listing", TargetId = 50, CreatedById = 2 });
+        await db.SaveChangesAsync();
+
+        var result = await controller.HashtagPosts("#alpha");
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var rows = document.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        rows.Should().ContainSingle();
+        rows[0].GetProperty("id").GetInt32().Should().Be(30);
+        rows[0].GetProperty("type").GetString().Should().Be("post");
+        rows[0].GetProperty("content").GetString().Should().Be("Newest visible alpha post");
+
+        var meta = document.RootElement.GetProperty("meta");
+        meta.GetProperty("per_page").GetInt32().Should().Be(1);
+        meta.GetProperty("limit").GetInt32().Should().Be(1);
+        meta.GetProperty("total_items").GetInt32().Should().Be(2);
+        meta.GetProperty("has_more").GetBoolean().Should().BeTrue();
+        meta.GetProperty("cursor").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public async Task Likers_ReturnsLaravelReactLikersResultShape()
     {
         var tenant = CreateTenantContext();

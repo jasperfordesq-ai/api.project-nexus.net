@@ -6,6 +6,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -930,10 +931,88 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpGet("/api/v2/feed/hashtags/{tag}")]
     public async Task<IActionResult> HashtagPosts(string tag)
     {
-        var clean = tag.TrimStart('#').ToLowerInvariant();
-        var postIds = _db.HashtagUsages.Where(u => u.TargetType == "post" && u.Hashtag != null && u.Hashtag.Tag == clean).Select(u => u.TargetId);
-        var data = await _db.FeedPosts.Where(p => postIds.Contains(p.Id)).OrderByDescending(p => p.CreatedAt).ToListAsync();
-        return Ok(new { data });
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var clean = tag.Trim().TrimStart('#').ToLowerInvariant();
+        var limitFallback = ReadQueryInt("limit", 20, 1, 100);
+        var perPage = ReadQueryInt("per_page", limitFallback, 1, 100);
+        var cursor = Request.Query.TryGetValue("cursor", out var cursorValues)
+            ? cursorValues.FirstOrDefault()
+            : null;
+        var cursorId = DecodeFeedCursor(cursor);
+
+        var hashtag = await _db.Hashtags
+            .AsNoTracking()
+            .FirstOrDefaultAsync(h => h.TenantId == tenantId && h.Tag == clean);
+
+        if (hashtag == null)
+        {
+            return Ok(new
+            {
+                success = true,
+                data = Array.Empty<object>(),
+                meta = new { cursor = (string?)null, next_cursor = (string?)null, per_page = perPage, limit = perPage, has_more = false, total_items = 0 }
+            });
+        }
+
+        var baseQuery =
+            from usage in _db.HashtagUsages.AsNoTracking()
+            join post in _db.FeedPosts.AsNoTracking() on usage.TargetId equals post.Id
+            where usage.TenantId == tenantId
+                && usage.HashtagId == hashtag.Id
+                && usage.TargetType == "post"
+                && post.TenantId == tenantId
+                && !post.IsHidden
+            select post.Id;
+
+        var totalItems = await baseQuery.Distinct().CountAsync();
+        var pageQuery = baseQuery.Distinct();
+        if (cursorId.HasValue)
+        {
+            pageQuery = pageQuery.Where(id => id < cursorId.Value);
+        }
+
+        var postIds = await pageQuery
+            .OrderByDescending(id => id)
+            .Take(perPage + 1)
+            .ToListAsync();
+        var hasMore = postIds.Count > perPage;
+        if (hasMore)
+        {
+            postIds.RemoveAt(postIds.Count - 1);
+        }
+
+        var data = await _db.FeedPosts
+            .AsNoTracking()
+            .Where(p => postIds.Contains(p.Id))
+            .OrderByDescending(p => p.Id)
+            .Select(p => new
+            {
+                id = p.Id,
+                type = "post",
+                content = p.Content,
+                image_url = p.ImageUrl,
+                group_id = p.GroupId,
+                user_id = p.UserId,
+                author = p.User == null ? null : new { id = p.User.Id, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
+                likes_count = p.Likes.Count,
+                comments_count = p.Comments.Count,
+                is_liked = p.Likes.Any(l => l.UserId == userId),
+                created_at = p.CreatedAt,
+                updated_at = p.UpdatedAt
+            })
+            .ToListAsync();
+
+        var nextCursor = hasMore && postIds.Count > 0
+            ? EncodeFeedCursor(postIds[^1])
+            : null;
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            meta = new { cursor = nextCursor, next_cursor = nextCursor, per_page = perPage, limit = perPage, has_more = hasMore, total_items = totalItems }
+        });
     }
 
     [HttpGet("/api/v2/feed/sidebar")]
@@ -2849,6 +2928,31 @@ public class V15SocialCompatibilityController : ControllerBase
     }
 
     private static object PageMeta(int page, int limit, int total) => new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) };
+
+    private static int? DecodeFeedCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+        {
+            return null;
+        }
+
+        if (int.TryParse(cursor, out var directId))
+        {
+            return directId;
+        }
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static string EncodeFeedCursor(int id) => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
 
     private async Task<IActionResult> UpdateLaravelNotificationSettings(JsonElement body)
     {
