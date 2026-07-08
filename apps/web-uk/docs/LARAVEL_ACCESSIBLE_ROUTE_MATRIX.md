@@ -43,10 +43,10 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 634 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 610 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 27 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
+| Extra `apps/web-uk` routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
@@ -165,6 +165,13 @@ page links to `/login/forgot-password`.
 The legacy local `GET /logout` route has been removed from `apps/web-uk`, so
 the logout family now has one exact POST match and `0` extra local logout
 routes, matching Laravel's CSRF-protected POST-only logout declaration.
+
+The legacy local `/admin` route family has been removed from `apps/web-uk`:
+GET `/admin`, admin category/config/moderation/role/user pages, and their local
+POST actions are no longer exposed. Laravel's scanned GOV.UK accessible route
+set does not expose an untenanted `/admin` family; admin-only workflows
+remain on their canonical module routes, such as `/jobs/bias-audit`. The local
+jobs bias-audit page no longer links back to the removed `/admin` surface.
 
 ## Runtime Smoke Evidence
 

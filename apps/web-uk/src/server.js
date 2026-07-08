@@ -44,7 +44,6 @@ const matchesRoutes = require('./routes/matches');
 const exchangeRoutes = require('./routes/exchanges');
 const searchRoutes = require('./routes/search');
 const reviewsRoutes = require('./routes/reviews');
-const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
 const kbRoutes = require('./routes/kb');
@@ -1141,7 +1140,6 @@ app.use('/onboarding', doubleCsrfProtection, postOnly(formLimiter), onboardingPo
 app.use('/me/collections', doubleCsrfProtection, postOnly(formLimiter), savedCollectionRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
-app.use('/admin', doubleCsrfProtection, adminRoutes);
 app.use('/federation', doubleCsrfProtection, postOnly(formLimiter), federationActionRoutes);
 app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);

@@ -354,6 +354,56 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('legacy local admin route family should return not found', async () => {
+      for (const path of [
+        '/admin',
+        '/admin/categories',
+        '/admin/categories/42/edit',
+        '/admin/categories/new',
+        '/admin/config',
+        '/admin/moderation',
+        '/admin/roles',
+        '/admin/roles/7/edit',
+        '/admin/roles/new',
+        '/admin/users',
+        '/admin/users/77',
+        '/admin/users/77/edit'
+      ]) {
+        const response = await request(app).get(path);
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      for (const path of [
+        '/admin/categories/42/delete',
+        '/admin/categories/42/edit',
+        '/admin/categories/new',
+        '/admin/config',
+        '/admin/moderation/42/approve',
+        '/admin/moderation/42/reject',
+        '/admin/roles/7/delete',
+        '/admin/roles/7/edit',
+        '/admin/roles/new',
+        '/admin/users/77/activate',
+        '/admin/users/77/edit',
+        '/admin/users/77/suspend'
+      ]) {
+        const response = await agent
+          .post(path)
+          .type('form')
+          .send({ _csrf: csrfMatch[1] });
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+    });
   });
 });
 

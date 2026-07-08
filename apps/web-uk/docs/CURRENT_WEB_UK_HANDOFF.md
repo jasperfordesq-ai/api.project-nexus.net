@@ -1,6 +1,6 @@
 # Current Web UK Accessible Frontend Handoff
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-07-08
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The branch is actively being
@@ -59,7 +59,7 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `940/1000` implementation/certification parity |
+| Working estimate | about `942/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -67,10 +67,10 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `634` |
+| Web UK routes | `610` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `27` |
+| Extra Web UK routes | `3` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Latest focused login two-factor route slice: legacy local POST `/verify-2fa`
@@ -178,6 +178,14 @@ Latest focused logout route slice: legacy local `GET /logout` was removed so
 the `logout` route family now matches Laravel's POST-only accessible logout
 declaration with `0` extra local logout routes. The account hub still renders a
 CSRF-protected POST sign-out form.
+
+Latest focused admin route slice: legacy local `/admin` pages and POST actions
+were removed from `apps/web-uk`. Laravel's scanned GOV.UK accessible route set
+does not expose an untenanted `/admin` route family; admin-only accessible
+workflows remain in their canonical module pages such as `/jobs/bias-audit`.
+The jobs bias-audit back link no longer points at the removed local `/admin`
+surface. The generated matrix now reports only three extra local routes:
+`GET /health`, `GET /service-unavailable`, and `POST /session/touch`.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
@@ -889,7 +897,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `940/1000`.
+Current working estimate at this handoff: `942/1000`.
 
 ## Final Handoff Checklist
 

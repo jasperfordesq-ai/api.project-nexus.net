@@ -12002,6 +12002,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('6');
     expect(response.text).toContain('Source effectiveness');
     expect(response.text).toContain('Direct');
+    expect(response.text).not.toContain('href="/admin"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 

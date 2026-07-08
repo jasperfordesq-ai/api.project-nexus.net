@@ -1356,10 +1356,11 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 634 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 27 local-only routes. These
-counts include generated Laravel GET preparation pages and are backlog evidence
-only; they do not certify workflow parity.
+accessible route declarations, 610 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 3 local-only
+infrastructure/helper routes. These counts include generated Laravel GET
+preparation pages and are backlog evidence only; they do not certify workflow
+parity.
 
 Legacy local POST `/verify-2fa` is intentionally not exposed. The Laravel
 accessible sign-in challenge uses GET/POST `/login/two-factor`, and the local
@@ -1456,6 +1457,13 @@ Laravel forgot-password path.
 `GET /logout` is intentionally not exposed locally: Laravel's accessible
 logout route is POST-only, and the account hub keeps using the CSRF-protected
 POST sign-out form.
+
+The legacy local `/admin` route family is intentionally not exposed as an
+untenanted local route surface. Laravel's scanned GOV.UK accessible route set
+does not include GET `/admin` or the old local admin category/config/moderation,
+role, and user pages/actions. Admin-only accessible workflows remain on their
+canonical module routes, and the jobs bias-audit page no longer links back to
+the removed `/admin` surface.
 
 ## Before Extraction To Its Own Repo
 
