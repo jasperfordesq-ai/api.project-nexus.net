@@ -152,4 +152,21 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/report-a-problem/);
   });
+
+  it('keeps marketplace offer and management controls behind urlFor()', () => {
+    const templates = [
+      path.join('marketplace', 'offers.njk'),
+      path.join('marketplace', 'manage.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/marketplace/);
+      expect(template).not.toMatch(/action="\/marketplace/);
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
+  });
 });

@@ -120,7 +120,10 @@ Current gaps:
   conversion covers group detail, listing detail, member profile, and the
   shared report-link partial, including breadcrumbs, action controls, report
   return targets, listing report links, member connection controls, and member
-  review actions.
+  review actions. The latest focused source conversion covers marketplace
+  offers and my-listings management templates, including offer tabs, dynamic
+  listing links, offer decision forms, my-listings tabs, create/view/edit
+  links, and renew/delete forms.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -271,6 +274,15 @@ member connection controls, and member review form targets through `urlFor()`.
 A source-level regression plus focused group/listing/member/report render tests
 prove the flat `/groups`, `/listings`, `/members`, and `/report-a-problem`
 output remains unchanged.
+
+The seventeenth template-helper source slice extends the same direct `urlFor()`
+conversion into the marketplace offer and my-listings management pages.
+`src/views/marketplace/offers.njk` now passes offer tabs, dynamic listing
+links, and accept/decline/withdraw forms through `urlFor()`;
+`src/views/marketplace/manage.njk` now passes my-listings tabs, create/view/edit
+links, and renew/delete forms through `urlFor()`. A source-level regression
+plus focused marketplace render tests prove the flat `/marketplace/offers` and
+`/marketplace/mine` output remains unchanged.
 
 Verification command:
 

@@ -78,7 +78,9 @@ availability, data-rights, linked-account, and insurance forms through
 `urlFor()`. A follow-up detail/report slice now routes group detail,
 listing detail, member profile, and report-link partial breadcrumbs, action
 controls, report returns, listing report links, member connection controls, and
-review form actions through `urlFor()`. A tenant-home parity slice now replaces the old
+review form actions through `urlFor()`. A follow-up marketplace slice now
+routes marketplace offer tabs, listing links, offer decision forms, my-listings
+tabs, create/view/edit links, and renew/delete forms through `urlFor()`. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A
@@ -128,7 +130,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 712 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 713 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -195,14 +197,18 @@ delete-account controls, and settings form actions through `urlFor()`.
 route group/listing/member detail breadcrumbs and actions, report return
 targets, listing report links, member connection controls, and member review
 actions through `urlFor()`.
+`src/views/marketplace/offers.njk` and `src/views/marketplace/manage.njk` now
+route offer tabs, dynamic listing links, accept/decline/withdraw forms,
+my-listings tabs, create/view/edit links, and renew/delete forms through
+`urlFor()`.
 Source-level regressions in `tests/template-source.test.js` guard these pages
 from drifting back to literal root-relative local links/forms.
-Verification for the account, activity, achievements, leaderboard/NEXUS, and
-detail/report slices included deliberate failing source-test runs before the
-template fixes,
+Verification for the account, activity, achievements, leaderboard/NEXUS,
+detail/report, and marketplace slices included deliberate failing source-test
+runs before the template fixes,
 then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
-passed `7/7`,
+passed `8/8`,
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "account hub"`
 passed `2/2` selected account tests, and
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity"`
@@ -210,7 +216,9 @@ passed `4/4` selected activity tests. The focused achievements/gamification
 render check passed `15/15` selected tests. The focused leaderboard/NEXUS score
 render check passed `7/7` selected tests. The focused profile/settings render
 check passed `11/11` selected tests. The focused detail/report render check
-passed `10/10` selected tests. The earlier event-focused render
+passed `10/10` selected tests. The focused marketplace offers/action render
+check passed `2/2` selected tests, and the focused marketplace my-listings
+render check passed `1/1` selected test. The earlier event-focused render
 check also passed:
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
 passed `23/23` selected tests.
