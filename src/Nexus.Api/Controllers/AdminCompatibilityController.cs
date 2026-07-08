@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -77,6 +78,37 @@ public class AdminCompatibilityController : ControllerBase
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
+    private bool IsLaravelV2Request => Request.Path.StartsWithSegments("/api/v2");
+
+    private IActionResult LaravelData(object data) => Ok(new
+    {
+        data,
+        meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+    });
+
+    private IActionResult LaravelError(string code, string message, int status)
+    {
+        var payload = new { errors = new[] { new { code, message } } };
+        return status switch
+        {
+            StatusCodes.Status403Forbidden => StatusCode(StatusCodes.Status403Forbidden, payload),
+            StatusCodes.Status404NotFound => NotFound(payload),
+            _ => StatusCode(status, payload)
+        };
+    }
+
+    private IActionResult LaravelValidationError(string message, string field)
+        => UnprocessableEntity(new { errors = new[] { new { code = "VALIDATION_ERROR", message, field } } });
+
+    private async Task<User?> FindTenantUserAsync(int id)
+    {
+        var tenantId = _tenant.TenantId;
+        if (!tenantId.HasValue) return null;
+        return await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId.Value);
+    }
+
+    private static bool IsProtectedAdmin(User user)
+        => user.Role is "admin" or "tenant_admin" or "super_admin" or "god";
 
     // ──────────────────────────────────────────────
     // Dashboard (3 endpoints)
@@ -164,6 +196,11 @@ public class AdminCompatibilityController : ControllerBase
     [HttpPost("users")]
     public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserRequest request)
     {
+        if (IsLaravelV2Request)
+        {
+            return await CreateLaravelUser(request);
+        }
+
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { error = "Email is required" });
 
@@ -191,98 +228,210 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { success = true, id = user.Id, email = user.Email });
     }
 
+    private async Task<IActionResult> CreateLaravelUser(AdminCreateUserRequest request)
+    {
+        var tenantId = _tenant.TenantId;
+        if (!tenantId.HasValue)
+            return LaravelError("NOT_FOUND", "Tenant not found", StatusCodes.Status404NotFound);
+
+        var firstName = request.FirstName?.Trim() ?? string.Empty;
+        var lastName = request.LastName?.Trim() ?? string.Empty;
+        var email = request.Email.Trim().ToLowerInvariant();
+        var password = string.IsNullOrWhiteSpace(request.Password)
+            ? Convert.ToHexString(RandomNumberGenerator.GetBytes(12)).ToLowerInvariant()
+            : request.Password;
+        var role = string.IsNullOrWhiteSpace(request.Role) ? "member" : request.Role.Trim();
+        var allowedRoles = new[] { "member", "admin", "broker", "moderator", "newsletter_admin" };
+        var errors = new List<object>();
+
+        if (string.IsNullOrWhiteSpace(firstName))
+            errors.Add(new { code = "VALIDATION_ERROR", message = "First name is required", field = "first_name" });
+        if (string.IsNullOrWhiteSpace(lastName))
+            errors.Add(new { code = "VALIDATION_ERROR", message = "Last name is required", field = "last_name" });
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            errors.Add(new { code = "VALIDATION_ERROR", message = "A valid email is required", field = "email" });
+        if (password.Length < 8)
+            errors.Add(new { code = "VALIDATION_ERROR", message = "Password must be at least 8 characters", field = "password" });
+        if (!allowedRoles.Contains(role))
+            errors.Add(new { code = "VALIDATION_ERROR", message = "Invalid role", field = "role" });
+
+        if (errors.Count > 0)
+            return UnprocessableEntity(new { errors });
+
+        var exists = await _db.Users.AnyAsync(u => u.Email.ToLower() == email);
+        if (exists)
+            return UnprocessableEntity(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Email already exists", field = "email" } } });
+
+        var user = new User
+        {
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            Role = role,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            TenantId = tenantId.Value,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} created Laravel v2 user {UserId} ({Email})", GetCurrentUserId(), user.Id, user.Email);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                id = user.Id,
+                name = $"{user.FirstName} {user.LastName}".Trim(),
+                email = user.Email,
+                role = user.Role,
+                status = "active"
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
     [HttpDelete("users/{id:int}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null)
-            return NotFound(new { error = "User not found" });
+        var adminId = GetCurrentUserId();
+        if (id == adminId)
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot delete your own account", StatusCodes.Status403Forbidden);
 
-        // Soft delete: deactivate
-        user.IsActive = false;
-        user.SuspendedAt = DateTime.UtcNow;
-        user.SuspensionReason = "Deleted by admin";
-        user.SuspendedByUserId = GetCurrentUserId();
+        var user = await FindTenantUserAsync(id);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (IsProtectedAdmin(user))
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot delete super admin", StatusCodes.Status403Forbidden);
+
+        _db.Users.Remove(user);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Admin {AdminId} soft-deleted user {UserId}", GetCurrentUserId(), id);
+        _logger.LogInformation("Admin {AdminId} deleted user {UserId}", GetCurrentUserId(), id);
 
-        return Ok(new { success = true });
+        return LaravelData(new { deleted = true, id });
     }
 
     [HttpPost("users/{id:int}/approve")]
     public async Task<IActionResult> ApproveUser(int id)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var user = await FindTenantUserAsync(id);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        var alreadyApproved = user.IsActive && user.SuspendedAt == null;
 
         user.IsActive = true;
         user.SuspendedAt = null;
         user.SuspensionReason = null;
         user.SuspendedByUserId = null;
+        user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} approved user {UserId}", GetCurrentUserId(), id);
 
-        return Ok(new { success = true, message = "User approved" });
+        return LaravelData(alreadyApproved
+            ? new { approved = true, id, already_approved = true }
+            : new { approved = true, id, email_sent = false, welcome_credits = 0 });
+    }
+
+    [HttpPost("users/{id:int}/suspend")]
+    public async Task<IActionResult> SuspendUser(int id, [FromBody] AdminBanUserRequest? request)
+    {
+        var adminId = GetCurrentUserId();
+        if (id == adminId)
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot suspend your own account", StatusCodes.Status403Forbidden);
+
+        var user = await FindTenantUserAsync(id);
+        if (user == null)
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (IsProtectedAdmin(user))
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot suspend super admin", StatusCodes.Status403Forbidden);
+
+        user.IsActive = false;
+        user.SuspendedAt = DateTime.UtcNow;
+        user.SuspensionReason = string.IsNullOrWhiteSpace(request?.Reason) ? "Suspended by admin" : request!.Reason;
+        user.SuspendedByUserId = adminId;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} suspended user {UserId}", adminId, id);
+
+        return LaravelData(new { suspended = true, id });
     }
 
     [HttpPost("users/{id:int}/ban")]
     public async Task<IActionResult> BanUser(int id, [FromBody] AdminBanUserRequest? request)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var adminId = GetCurrentUserId();
+        if (id == adminId)
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot ban your own account", StatusCodes.Status403Forbidden);
+
+        var user = await FindTenantUserAsync(id);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (IsProtectedAdmin(user))
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot ban super admin", StatusCodes.Status403Forbidden);
 
         user.IsActive = false;
         user.SuspendedAt = DateTime.UtcNow;
         user.SuspensionReason = request?.Reason ?? "Banned by admin";
-        user.SuspendedByUserId = GetCurrentUserId();
+        user.SuspendedByUserId = adminId;
+        user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} banned user {UserId}", GetCurrentUserId(), id);
 
-        return Ok(new { success = true, message = "User banned" });
+        return LaravelData(new { banned = true, id });
     }
 
     [HttpPost("users/{id:int}/reactivate")]
     public async Task<IActionResult> ReactivateUser(int id)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var user = await FindTenantUserAsync(id);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
         user.IsActive = true;
         user.SuspendedAt = null;
         user.SuspensionReason = null;
         user.SuspendedByUserId = null;
+        user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} reactivated user {UserId}", GetCurrentUserId(), id);
 
-        return Ok(new { success = true, message = "User reactivated" });
+        return LaravelData(new { reactivated = true, id, email_sent = false });
     }
 
     [HttpPost("users/{id:int}/reset-2fa")]
     public async Task<IActionResult> ResetUser2fa(int id)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var adminId = GetCurrentUserId();
+        var user = await FindTenantUserAsync(id);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
+
+        if (id != adminId && IsProtectedAdmin(user))
+            return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Insufficient permissions", StatusCodes.Status403Forbidden);
 
         user.TwoFactorEnabled = false;
         user.TotpSecretEncrypted = null;
         user.TwoFactorEnabledAt = null;
         user.UpdatedAt = DateTime.UtcNow;
 
-        var backupCodes = await _db.TotpBackupCodes.Where(c => c.UserId == id).ToListAsync();
+        var backupCodes = await _db.TotpBackupCodes.Where(c => c.UserId == id && c.TenantId == user.TenantId).ToListAsync();
         _db.TotpBackupCodes.RemoveRange(backupCodes);
 
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} reset 2FA for user {UserId}", GetCurrentUserId(), id);
-        return Ok(new { success = true, message = "2FA reset successfully", backup_codes_removed = backupCodes.Count });
+        return LaravelData(new { reset = true, id, backup_codes_removed = backupCodes.Count });
     }
 
     [HttpGet("users/{userId:int}/badges")]
@@ -491,13 +640,21 @@ public class AdminCompatibilityController : ControllerBase
     {
         var password = request.Password ?? request.NewPassword ?? request.TemporaryPassword;
         if (string.IsNullOrWhiteSpace(password))
-            return BadRequest(new { error = "Password is required" });
+            return IsLaravelV2Request
+                ? LaravelValidationError("Password is required", "password")
+                : BadRequest(new { error = "Password is required" });
         if (password.Length < 8)
-            return BadRequest(new { error = "Password must be at least 8 characters" });
+            return IsLaravelV2Request
+                ? LaravelValidationError("Password must be at least 8 characters", "password")
+                : BadRequest(new { error = "Password must be at least 8 characters" });
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
         user.UpdatedAt = DateTime.UtcNow;
@@ -522,15 +679,22 @@ public class AdminCompatibilityController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} set password for user {UserId}; revoked {RefreshTokenCount} refresh tokens", GetCurrentUserId(), userId, refreshTokens.Count);
+        if (IsLaravelV2Request)
+            return LaravelData(new { password_set = true, id = userId });
+
         return Ok(new { success = true, message = "Password updated", refresh_tokens_revoked = refreshTokens.Count, reset_tokens_invalidated = resetTokens.Count });
     }
 
     [HttpPost("users/{userId:int}/send-password-reset")]
     public async Task<IActionResult> SendPasswordReset(int userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
 
         var existingTokens = await _db.PasswordResetTokens
             .Where(t => t.UserId == userId && t.UsedAt == null)
@@ -575,15 +739,22 @@ public class AdminCompatibilityController : ControllerBase
         if (IsDevelopmentLikeEnvironment())
             response["reset_token"] = resetToken;
 
+        if (IsLaravelV2Request)
+            return LaravelData(new { sent = true, id = userId });
+
         return Ok(response);
     }
 
     [HttpPost("users/{userId:int}/send-welcome-email")]
     public async Task<IActionResult> SendWelcomeEmail(int userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = IsLaravelV2Request
+            ? await FindTenantUserAsync(userId)
+            : await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
 
         var tenantName = await _db.Tenants
             .Where(t => t.Id == user.TenantId)
@@ -597,6 +768,9 @@ public class AdminCompatibilityController : ControllerBase
             HttpContext.RequestAborted);
 
         _logger.LogInformation("Admin {AdminId} sent welcome email to user {UserId}; email sent={EmailSent}", GetCurrentUserId(), userId, emailSent);
+        if (IsLaravelV2Request)
+            return LaravelData(new { sent = true, id = userId });
+
         return Ok(new { success = true, message = "Welcome email processed", email_sent = emailSent });
     }
 
@@ -3957,6 +4131,9 @@ public class AdminCreateUserRequest
 
     [JsonPropertyName("role")]
     public string? Role { get; set; }
+
+    [JsonPropertyName("password")]
+    public string? Password { get; set; }
 }
 
 public class AdminBanUserRequest

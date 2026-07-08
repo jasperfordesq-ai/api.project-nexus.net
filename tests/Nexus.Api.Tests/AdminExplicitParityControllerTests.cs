@@ -168,6 +168,353 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminUsersSingleStatusActions_ReturnLaravelDataEnvelopesAndUpdateTenantUsers()
+    {
+        int approveId;
+        int suspendId;
+        int banId;
+        int reactivateId;
+        int reset2faId;
+        int deleteId;
+        int otherTenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var approve = NewAdminParityUser("single-approve", isActive: false);
+            var suspend = NewAdminParityUser("single-suspend");
+            var ban = NewAdminParityUser("single-ban");
+            var reactivate = NewAdminParityUser("single-reactivate", isActive: false);
+            reactivate.SuspendedAt = DateTime.UtcNow.AddDays(-3);
+            reactivate.SuspensionReason = "Previous suspension";
+            var reset2fa = NewAdminParityUser("single-reset-2fa");
+            reset2fa.TwoFactorEnabled = true;
+            reset2fa.TotpSecretEncrypted = "encrypted-secret";
+            reset2fa.TwoFactorEnabledAt = DateTime.UtcNow.AddDays(-7);
+            var delete = NewAdminParityUser("single-delete");
+            var otherTenant = NewAdminParityUser("single-other-tenant", tenantId: TestData.Tenant2.Id);
+
+            db.Users.AddRange(approve, suspend, ban, reactivate, reset2fa, delete, otherTenant);
+            await db.SaveChangesAsync();
+            db.TotpBackupCodes.Add(new TotpBackupCode
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = reset2fa.Id,
+                CodeHash = "hashed-backup-code",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            });
+            await db.SaveChangesAsync();
+
+            approveId = approve.Id;
+            suspendId = suspend.Id;
+            banId = ban.Id;
+            reactivateId = reactivate.Id;
+            reset2faId = reset2fa.Id;
+            deleteId = delete.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var approveResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{approveId}/approve", new { });
+        approveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approveJson = await approveResponse.Content.ReadFromJsonAsync<JsonElement>();
+        approveJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        approveJson.GetProperty("data").GetProperty("approved").GetBoolean().Should().BeTrue();
+        approveJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(approveId);
+
+        var suspendResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{suspendId}/suspend", new { reason = "Policy review" });
+        suspendResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var suspendJson = await suspendResponse.Content.ReadFromJsonAsync<JsonElement>();
+        suspendJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        suspendJson.GetProperty("data").GetProperty("suspended").GetBoolean().Should().BeTrue();
+        suspendJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(suspendId);
+
+        var banResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{banId}/ban", new { reason = "Spam" });
+        banResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var banJson = await banResponse.Content.ReadFromJsonAsync<JsonElement>();
+        banJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        banJson.GetProperty("data").GetProperty("banned").GetBoolean().Should().BeTrue();
+        banJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(banId);
+
+        var reactivateResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{reactivateId}/reactivate", new { });
+        reactivateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reactivateJson = await reactivateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        reactivateJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        reactivateJson.GetProperty("data").GetProperty("reactivated").GetBoolean().Should().BeTrue();
+        reactivateJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(reactivateId);
+
+        var reset2faResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{reset2faId}/reset-2fa", new { reason = "Lost phone" });
+        reset2faResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reset2faJson = await reset2faResponse.Content.ReadFromJsonAsync<JsonElement>();
+        reset2faJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        reset2faJson.GetProperty("data").GetProperty("reset").GetBoolean().Should().BeTrue();
+        reset2faJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(reset2faId);
+
+        var deleteResponse = await Client.DeleteAsync($"/api/v2/admin/users/{deleteId}");
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await deleteResponse.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(deleteId);
+
+        var otherTenantResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{otherTenantId}/suspend", new { reason = "Wrong tenant" });
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var users = await verifyDb.Users
+            .IgnoreQueryFilters()
+            .Where(u => new[] { approveId, suspendId, banId, reactivateId, reset2faId, otherTenantId }.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        users[approveId].IsActive.Should().BeTrue();
+        users[approveId].SuspendedAt.Should().BeNull();
+        users[suspendId].IsActive.Should().BeFalse();
+        users[suspendId].SuspensionReason.Should().Be("Policy review");
+        users[banId].IsActive.Should().BeFalse();
+        users[banId].SuspensionReason.Should().Be("Spam");
+        users[reactivateId].IsActive.Should().BeTrue();
+        users[reactivateId].SuspendedAt.Should().BeNull();
+        users[reset2faId].TwoFactorEnabled.Should().BeFalse();
+        users[reset2faId].TotpSecretEncrypted.Should().BeNull();
+        users[otherTenantId].IsActive.Should().BeTrue();
+
+        var backupCodesRemain = await verifyDb.TotpBackupCodes
+            .IgnoreQueryFilters()
+            .AnyAsync(c => c.UserId == reset2faId);
+        backupCodesRemain.Should().BeFalse();
+
+        var deletedExists = await verifyDb.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Id == deleteId);
+        deletedExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AdminUsersListDetailAndUpdateV2_ReturnLaravelReactEnvelopesAndTenantScopedRows()
+    {
+        int userOneId;
+        int userTwoId;
+        int otherTenantId;
+        var marker = Guid.NewGuid().ToString("N")[..10];
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var userOne = NewAdminParityUser($"list-one-{marker}");
+            userOne.FirstName = "List";
+            userOne.LastName = "One";
+            userOne.Email = $"list-one-{marker}@example.test";
+            userOne.Bio = "Seeded for Laravel React list/detail parity.";
+            userOne.TwoFactorEnabled = true;
+            var userTwo = NewAdminParityUser($"list-two-{marker}", isActive: false);
+            userTwo.FirstName = "List";
+            userTwo.LastName = "Two";
+            userTwo.Email = $"list-two-{marker}@example.test";
+            var otherTenant = NewAdminParityUser($"list-other-{marker}", tenantId: TestData.Tenant2.Id);
+            otherTenant.Email = $"list-other-{marker}@example.test";
+
+            db.Users.AddRange(userOne, userTwo, otherTenant);
+            await db.SaveChangesAsync();
+            userOneId = userOne.Id;
+            userTwoId = userTwo.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var listResponse = await Client.GetAsync($"/api/v2/admin/users?search={marker}&page=1&limit=10&sort=email&order=asc");
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.TryGetProperty("pagination", out _).Should().BeFalse();
+        var listData = listJson.GetProperty("data").EnumerateArray().ToArray();
+        listData.Select(row => row.GetProperty("id").GetInt32()).Should().BeEquivalentTo(new[] { userOneId, userTwoId });
+        listData.Should().OnlyContain(row => HasProperty(row, "name")
+            && HasProperty(row, "status")
+            && HasProperty(row, "balance")
+            && HasProperty(row, "has_2fa_enabled")
+            && row.GetProperty("tenant_id").GetInt32() == TestData.Tenant1.Id);
+        var listMeta = listJson.GetProperty("meta");
+        listMeta.GetProperty("current_page").GetInt32().Should().Be(1);
+        listMeta.GetProperty("per_page").GetInt32().Should().Be(10);
+        listMeta.GetProperty("total").GetInt32().Should().Be(2);
+        listMeta.GetProperty("total_pages").GetInt32().Should().Be(1);
+        listMeta.GetProperty("has_more").GetBoolean().Should().BeFalse();
+
+        var detailResponse = await Client.GetAsync($"/api/v2/admin/users/{userOneId}");
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detailResponse.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.TryGetProperty("user", out _).Should().BeFalse();
+        var detail = detailJson.GetProperty("data");
+        detail.GetProperty("id").GetInt32().Should().Be(userOneId);
+        detail.GetProperty("name").GetString().Should().Be("List One");
+        detail.GetProperty("bio").GetString().Should().Be("Seeded for Laravel React list/detail parity.");
+        detail.GetProperty("has_2fa_enabled").GetBoolean().Should().BeTrue();
+        detail.GetProperty("badges").ValueKind.Should().Be(JsonValueKind.Array);
+        detail.GetProperty("roles").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var updateResponse = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userOneId}", new
+        {
+            first_name = "Updated",
+            last_name = "Member",
+            email = $"updated-{marker}@example.test",
+            role = "moderator"
+        });
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await updateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.TryGetProperty("success", out _).Should().BeFalse();
+        var updated = updateJson.GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(userOneId);
+        updated.GetProperty("name").GetString().Should().Be("Updated Member");
+        updated.GetProperty("email").GetString().Should().Be($"updated-{marker}@example.test");
+        updated.GetProperty("role").GetString().Should().Be("moderator");
+
+        var otherTenantResponse = await Client.GetAsync($"/api/v2/admin/users/{otherTenantId}");
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AdminUsersCreateV2_ReturnsLaravelCreatedEnvelopeAndValidationErrors()
+    {
+        await AuthenticateAsAdminAsync();
+        var marker = Guid.NewGuid().ToString("N")[..10];
+        var email = $"created-{marker}@example.test";
+
+        var createResponse = await Client.PostAsJsonAsync("/api/v2/admin/users", new
+        {
+            first_name = "Created",
+            last_name = "Member",
+            email,
+            password = "Created123!",
+            role = "moderator",
+            send_welcome_email = false
+        });
+
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.TryGetProperty("success", out _).Should().BeFalse();
+        var data = createJson.GetProperty("data");
+        data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("name").GetString().Should().Be("Created Member");
+        data.GetProperty("email").GetString().Should().Be(email);
+        data.GetProperty("role").GetString().Should().Be("moderator");
+        data.GetProperty("status").GetString().Should().Be("active");
+        createJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var created = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Email == email);
+            created.TenantId.Should().Be(TestData.Tenant1.Id);
+            created.FirstName.Should().Be("Created");
+            created.LastName.Should().Be("Member");
+            created.Role.Should().Be("moderator");
+            created.IsActive.Should().BeTrue();
+            created.PasswordHash.Should().NotBe("NEEDS_RESET");
+        }
+
+        var duplicateResponse = await Client.PostAsJsonAsync("/api/v2/admin/users", new
+        {
+            first_name = "Created",
+            last_name = "Duplicate",
+            email,
+            password = "Created123!",
+            role = "member"
+        });
+        duplicateResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var duplicateJson = await duplicateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        duplicateJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+        duplicateJson.GetProperty("errors")[0].GetProperty("field").GetString().Should().Be("email");
+
+        var invalidResponse = await Client.PostAsJsonAsync("/api/v2/admin/users", new
+        {
+            first_name = "",
+            last_name = "",
+            email = "not-an-email",
+            password = "short",
+            role = "god"
+        });
+        invalidResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var invalidJson = await invalidResponse.Content.ReadFromJsonAsync<JsonElement>();
+        invalidJson.GetProperty("errors").GetArrayLength().Should().BeGreaterThan(1);
+    }
+
+    [Fact]
+    public async Task AdminUsersPasswordAndEmailHelpersV2_ReturnLaravelDataEnvelopesAndTenantScopedErrors()
+    {
+        int userId;
+        int otherTenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = NewAdminParityUser("password-helper");
+            var otherTenant = NewAdminParityUser("password-helper-other", tenantId: TestData.Tenant2.Id);
+            db.Users.AddRange(user, otherTenant);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+            otherTenantId = otherTenant.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var passwordResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{userId}/password", new
+        {
+            password = "Changed123!"
+        });
+        passwordResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var passwordJson = await passwordResponse.Content.ReadFromJsonAsync<JsonElement>();
+        passwordJson.TryGetProperty("success", out _).Should().BeFalse();
+        passwordJson.GetProperty("data").GetProperty("password_set").GetBoolean().Should().BeTrue();
+        passwordJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(userId);
+
+        using (var verifyScope = Factory.Services.CreateScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var updated = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId);
+            BCrypt.Net.BCrypt.Verify("Changed123!", updated.PasswordHash).Should().BeTrue();
+        }
+
+        var shortPasswordResponse = await Client.PostAsJsonAsync($"/api/v2/admin/users/{userId}/password", new
+        {
+            password = "short"
+        });
+        shortPasswordResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var shortPasswordJson = await shortPasswordResponse.Content.ReadFromJsonAsync<JsonElement>();
+        shortPasswordJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+        shortPasswordJson.GetProperty("errors")[0].GetProperty("field").GetString().Should().Be("password");
+
+        var resetResponse = await Client.PostAsync($"/api/v2/admin/users/{userId}/send-password-reset", null);
+        resetResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resetJson = await resetResponse.Content.ReadFromJsonAsync<JsonElement>();
+        resetJson.TryGetProperty("success", out _).Should().BeFalse();
+        resetJson.GetProperty("data").GetProperty("sent").GetBoolean().Should().BeTrue();
+        resetJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(userId);
+
+        using (var verifyScope = Factory.Services.CreateScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var hasResetToken = await db.PasswordResetTokens.IgnoreQueryFilters()
+                .AnyAsync(t => t.UserId == userId && t.UsedAt == null);
+            hasResetToken.Should().BeTrue();
+        }
+
+        var welcomeResponse = await Client.PostAsync($"/api/v2/admin/users/{userId}/send-welcome-email", null);
+        welcomeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var welcomeJson = await welcomeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        welcomeJson.TryGetProperty("success", out _).Should().BeFalse();
+        welcomeJson.GetProperty("data").GetProperty("sent").GetBoolean().Should().BeTrue();
+        welcomeJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(userId);
+
+        var otherTenantResponse = await Client.PostAsync($"/api/v2/admin/users/{otherTenantId}/send-password-reset", null);
+        otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var otherTenantJson = await otherTenantResponse.Content.ReadFromJsonAsync<JsonElement>();
+        otherTenantJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
     public async Task AdminListingsDeleteV2_RemovesTenantListingWithLaravelReactContract()
     {
         int listingId;
@@ -1096,6 +1443,22 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             .FirstAsync();
         audit.RequestBody.Should().Contain("explicit parity test");
     }
+
+    private User NewAdminParityUser(string prefix, int? tenantId = null, bool isActive = true)
+        => new()
+        {
+            TenantId = tenantId ?? TestData.Tenant1.Id,
+            Email = $"{prefix}-{Guid.NewGuid():N}@example.test",
+            PasswordHash = TestDataSeeder.TestPasswordHash,
+            FirstName = "Admin",
+            LastName = "Parity",
+            Role = "member",
+            IsActive = isActive,
+            CreatedAt = DateTime.UtcNow.AddDays(-3)
+        };
+
+    private static bool HasProperty(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out _);
 
     private async Task SeedSupportReportsAsync()
     {

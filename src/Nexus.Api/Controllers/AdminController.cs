@@ -53,6 +53,72 @@ public class AdminController : ControllerBase
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
+    private bool IsLaravelV2Request => Request.Path.StartsWithSegments("/api/v2");
+
+    private IActionResult LaravelData(object data) => Ok(new
+    {
+        data,
+        meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+    });
+
+    private IActionResult LaravelError(string code, string message, int status)
+    {
+        var payload = new { errors = new[] { new { code, message } } };
+        return status switch
+        {
+            StatusCodes.Status400BadRequest => BadRequest(payload),
+            StatusCodes.Status403Forbidden => StatusCode(StatusCodes.Status403Forbidden, payload),
+            StatusCodes.Status404NotFound => NotFound(payload),
+            StatusCodes.Status422UnprocessableEntity => UnprocessableEntity(payload),
+            _ => StatusCode(status, payload)
+        };
+    }
+
+    private string FormatAdminUserStatus(User user)
+    {
+        if (user.IsActive && user.SuspendedAt == null) return "active";
+        if (user.SuspendedAt != null && (user.SuspensionReason?.Contains("ban", StringComparison.OrdinalIgnoreCase) ?? false)) return "banned";
+        if (user.SuspendedAt != null) return "suspended";
+        return "pending";
+    }
+
+    private object MapLaravelAdminUser(User user, int listingCount = 0) => new
+    {
+        id = user.Id,
+        name = $"{user.FirstName} {user.LastName}".Trim(),
+        first_name = user.FirstName,
+        last_name = user.LastName,
+        email = user.Email,
+        avatar_url = user.AvatarUrl,
+        location = (string?)null,
+        bio = user.Bio,
+        tagline = (string?)null,
+        phone = (string?)null,
+        role = user.Role,
+        status = FormatAdminUserStatus(user),
+        is_super_admin = user.Role is "super_admin" or "god",
+        is_god = user.Role == "god",
+        is_tenant_super_admin = user.Role is "tenant_admin",
+        is_admin = user.Role is "admin" or "tenant_admin",
+        balance = 0m,
+        listing_count = listingCount,
+        profile_type = "individual",
+        organization_name = (string?)null,
+        tenant_id = user.TenantId,
+        tenant_name = user.Tenant?.Name ?? "Unknown",
+        has_2fa_enabled = user.TwoFactorEnabled,
+        is_approved = user.IsActive,
+        email_verified_at = user.EmailVerifiedAt,
+        is_verified = user.EmailVerified,
+        vetting_status = "none",
+        insurance_status = "none",
+        created_at = user.CreatedAt,
+        last_active_at = user.LastLoginAt,
+        last_login_at = user.LastLoginAt,
+        onboarding_completed = true,
+        badges = Array.Empty<object>(),
+        roles = Array.Empty<string>()
+    };
 
     #region Dashboard
 
@@ -149,40 +215,98 @@ public class AdminController : ControllerBase
         [FromQuery] int limit = 20,
         [FromQuery] string? role = null,
         [FromQuery] string? status = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? order = null)
     {
         if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 
-        var query = _db.Users.AsQueryable();
+        var tenantId = _tenantContext.TenantId;
+        var query = _db.Users.Include(u => u.Tenant).AsQueryable();
+
+        if (tenantId.HasValue)
+        {
+            query = query.Where(u => u.TenantId == tenantId.Value);
+        }
 
         if (!string.IsNullOrEmpty(role))
         {
             query = query.Where(u => u.Role == role);
         }
 
-        if (!string.IsNullOrEmpty(status))
+        if (!string.IsNullOrEmpty(status) && !string.Equals(status, "all", StringComparison.OrdinalIgnoreCase))
         {
-            var isActive = status.ToLower() == "active";
-            query = query.Where(u => u.IsActive == isActive);
+            query = status.ToLowerInvariant() switch
+            {
+                "active" => query.Where(u => u.IsActive && u.SuspendedAt == null),
+                "pending" => query.Where(u => !u.IsActive && u.SuspendedAt == null),
+                "suspended" => query.Where(u => !u.IsActive && u.SuspendedAt != null && (u.SuspensionReason == null || !u.SuspensionReason.ToLower().Contains("ban"))),
+                "banned" => query.Where(u => !u.IsActive && u.SuspendedAt != null && u.SuspensionReason != null && u.SuspensionReason.ToLower().Contains("ban")),
+                "never_logged_in" => query.Where(u => u.IsActive && u.LastLoginAt == null),
+                "onboarding_incomplete" => query.Where(u => !u.IsActive),
+                _ => query
+            };
         }
 
         if (!string.IsNullOrEmpty(search))
         {
             var searchLower = search.ToLower();
+            var isNumericSearch = int.TryParse(search, out var searchedId);
             query = query.Where(u =>
                 u.Email.ToLower().Contains(searchLower) ||
                 u.FirstName.ToLower().Contains(searchLower) ||
-                u.LastName.ToLower().Contains(searchLower));
+                u.LastName.ToLower().Contains(searchLower) ||
+                (u.FirstName + " " + u.LastName).ToLower().Contains(searchLower) ||
+                (isNumericSearch && u.Id == searchedId));
         }
 
         var total = await query.CountAsync();
 
-        var users = await query
-            .OrderByDescending(u => u.CreatedAt)
+        var descending = !string.Equals(order, "asc", StringComparison.OrdinalIgnoreCase);
+        query = (sort?.ToLowerInvariant()) switch
+        {
+            "name" => descending
+                ? query.OrderByDescending(u => u.FirstName).ThenByDescending(u => u.LastName)
+                : query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName),
+            "email" => descending ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
+            "role" => descending ? query.OrderByDescending(u => u.Role) : query.OrderBy(u => u.Role),
+            "status" => descending ? query.OrderByDescending(u => u.IsActive) : query.OrderBy(u => u.IsActive),
+            _ => descending ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt)
+        };
+
+        var userEntities = await query
             .Skip(skip)
             .Take(limit)
+            .ToListAsync();
+
+        var userIds = userEntities.Select(u => u.Id).ToArray();
+        var listingCounts = await _db.Listings
+            .Where(l => userIds.Contains(l.UserId) && l.Status == ListingStatus.Active)
+            .GroupBy(l => l.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+
+        if (IsLaravelV2Request)
+        {
+            var totalPages = total > 0 ? (int)Math.Ceiling((double)total / limit) : 0;
+            return Ok(new
+            {
+                data = userEntities.Select(u => MapLaravelAdminUser(u, listingCounts.GetValueOrDefault(u.Id))).ToArray(),
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}",
+                    current_page = page,
+                    per_page = limit,
+                    total,
+                    total_pages = totalPages,
+                    has_more = page < totalPages
+                }
+            });
+        }
+
+        var users = userEntities
             .Select(u => new
             {
                 id = u.Id,
@@ -196,7 +320,7 @@ public class AdminController : ControllerBase
                 suspended_at = u.SuspendedAt,
                 suspension_reason = u.SuspensionReason
             })
-            .ToListAsync();
+            .ToList();
 
         return Ok(new
         {
@@ -217,8 +341,30 @@ public class AdminController : ControllerBase
     [HttpGet("users/{id:int}")]
     public async Task<IActionResult> GetUser(int id)
     {
+        var tenantId = _tenantContext.TenantId;
+        var query = _db.Users.Include(u => u.Tenant).Where(u => u.Id == id);
+        if (tenantId.HasValue)
+        {
+            query = query.Where(u => u.TenantId == tenantId.Value);
+        }
+
+        var userEntity = await query.FirstOrDefaultAsync();
+
+        if (userEntity == null)
+        {
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
+        }
+
+        if (IsLaravelV2Request)
+        {
+            var v2ListingCount = await _db.Listings.CountAsync(l => l.UserId == id && l.Status == ListingStatus.Active);
+            return LaravelData(MapLaravelAdminUser(userEntity, v2ListingCount));
+        }
+
         var user = await _db.Users
-            .Where(u => u.Id == id)
+            .Where(u => u.Id == id && (!tenantId.HasValue || u.TenantId == tenantId.Value))
             .Select(u => new
             {
                 id = u.Id,
@@ -236,11 +382,6 @@ public class AdminController : ControllerBase
                 level = u.Level
             })
             .FirstOrDefaultAsync();
-
-        if (user == null)
-        {
-            return NotFound(new { error = "User not found" });
-        }
 
         // Get activity stats
         var listingCount = await _db.Listings.CountAsync(l => l.UserId == id);
@@ -269,16 +410,22 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == id);
+        var tenantId = _tenantContext.TenantId;
+        var user = await _db.Users.Include(u => u.Tenant)
+            .FirstOrDefaultAsync(x => x.Id == id && (!tenantId.HasValue || x.TenantId == tenantId.Value));
         if (user == null)
         {
-            return NotFound(new { error = "User not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "User not found" });
         }
 
         // Prevent admin from demoting themselves
         if (id == adminUserId && request.Role != null && request.Role != "admin")
         {
-            return BadRequest(new { error = "Cannot change your own admin role" });
+            return IsLaravelV2Request
+                ? LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot change your own admin role", StatusCodes.Status403Forbidden)
+                : BadRequest(new { error = "Cannot change your own admin role" });
         }
 
         // Input validation
@@ -298,7 +445,13 @@ public class AdminController : ControllerBase
         {
             if (request.Role != "admin" && request.Role != "member")
             {
-                return BadRequest(new { error = "Role must be 'admin' or 'member'" });
+                var allowedRoles = new[] { "member", "admin", "broker", "moderator", "newsletter_admin" };
+                if (!IsLaravelV2Request || !allowedRoles.Contains(request.Role))
+                {
+                    return IsLaravelV2Request
+                        ? LaravelError("VALIDATION_ERROR", "Invalid role", StatusCodes.Status422UnprocessableEntity)
+                        : BadRequest(new { error = "Role must be 'admin' or 'member'" });
+                }
             }
             user.Role = request.Role;
             updated = true;
@@ -344,6 +497,11 @@ public class AdminController : ControllerBase
             });
         }
 
+        if (IsLaravelV2Request)
+        {
+            return LaravelData(MapLaravelAdminUser(user));
+        }
+
         return Ok(new
         {
             success = true,
@@ -363,7 +521,6 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Suspend a user.
     /// </summary>
-    [HttpPost("users/{id:int}/suspend")]
     [HttpPut("users/{id:int}/suspend")]
     public async Task<IActionResult> SuspendUser(int id, [FromBody] SuspendUserRequest request)
     {
