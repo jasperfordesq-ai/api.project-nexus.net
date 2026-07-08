@@ -17,9 +17,9 @@ const CONTACT_VALIDATION_ERRORS = {
 };
 
 const CONTACT_STATUS_MESSAGES = {
-  'contact-failed': 'We could not send your message. Please try again.',
-  'contact-rate-limited': 'You have sent too many messages. Try again later.',
-  'contact-turnstile-failed': 'Complete the anti-spam check and try again.'
+  'contact-failed': 'Failed to send message. Please try again.',
+  'contact-rate-limited': 'Too many contact form attempts. Please wait and try again.',
+  'contact-turnstile-failed': 'The security check failed. Refresh the page and try again.'
 };
 
 const SUPPORT_IMPACTS = ['blocked', 'major', 'minor', 'cosmetic'];
@@ -81,12 +81,12 @@ router.get('/contact', (req, res) => {
     name: '',
     email: '',
     subject: problemUrl ? 'technical' : '',
-    message: problemUrl ? `I am reporting a problem with ${problemUrl}\n\n` : '',
+    message: problemUrl ? `I found a problem on this page: ${problemUrl}\n\n` : '',
     ...(stored.values || {})
   };
 
   res.render('contact', {
-    title: 'Contact us',
+    title: 'Contact Us',
     activeNav: 'contact',
     status,
     values,

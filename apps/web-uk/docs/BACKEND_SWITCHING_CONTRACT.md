@@ -560,11 +560,15 @@ headings `Sign in`, `Reset your password`, `Choose a new password`, and
 `Register`. A direct runtime assertion pass against
 `WEB_UK_BASE_URL=http://127.0.0.1:6238` checked `/health` plus those four page
 headings with `5/5` assertions and `0` failures.
-The default scope now contains `610` checks:
+The public support pages `/contact`, `/cookies`, `/newsletter/unsubscribe`,
+`/verify-email`, and `/report-a-problem` now carry Laravel-backed body-text
+markers, with `/contact` and `/report-a-problem` copy realigned to the Laravel
+Blade strings before certification.
+The default scope now contains `615` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 263 body-text contract checks, and the 6
+content-type contract checks, 268 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

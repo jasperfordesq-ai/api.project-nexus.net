@@ -4084,14 +4084,15 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/contact?problem_url=/explore');
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Contact us');
+    expect(response.text).toContain('<h1 class="govuk-heading-xl">Contact Us</h1>');
+    expect(response.text).toContain("Have a question about Project NEXUS Accessible? We'd love to hear from you.");
     expect(response.text).toContain('method="post" action="/contact"');
     expect(response.text).toContain('name="_csrf"');
     expect(response.text).toContain('id="name" name="name"');
     expect(response.text).toContain('id="email" name="email"');
     expect(response.text).toContain('id="subject" name="subject"');
     expect(response.text).toContain('value="technical" selected');
-    expect(response.text).toContain('I am reporting a problem with /explore');
+    expect(response.text).toContain('I found a problem on this page: /explore');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
@@ -4169,6 +4170,12 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Report a problem with this page');
+    expect(response.text).toContain('Use this form to tell us about a problem you found on this page. Do not include personal or financial information, like your password.');
+    expect(response.text).toContain('Page you are reporting');
+    expect(response.text).toContain('What is the problem?');
+    expect(response.text).toContain('Describe what happened');
+    expect(response.text).toContain('How much did this affect you?');
+    expect(response.text).toContain('I could not complete what I was doing');
     expect(response.text).toContain('method="post" action="/report-a-problem"');
     expect(response.text).toContain('name="page_url" value="/explore"');
     expect(response.text).toContain('id="summary" name="summary"');

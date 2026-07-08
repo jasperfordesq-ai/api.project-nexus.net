@@ -9,9 +9,9 @@
   {% set hasErrors = errors and (errors.name or errors.email or errors.message) %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">Contact {{ tenantName }}</span>
-      <h1 class="govuk-heading-xl">Contact us</h1>
-      <p class="govuk-body-l">Use this form if you need help with this service or want to give feedback.</p>
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Contact Us</h1>
+      <p class="govuk-body-l">Have a question about {{ tenantName }}? We'd love to hear from you.</p>
 
       {% if status == 'contact-sent' %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="contact-success-title">
@@ -19,10 +19,10 @@
             <h2 class="govuk-notification-banner__title" id="contact-success-title">Success</h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-notification-banner__heading">Your message has been sent</p>
-            <p class="govuk-body">We will review your message and respond if a reply is needed.</p>
+            <p class="govuk-notification-banner__heading">Message Sent!</p>
+            <p class="govuk-body">We'll get back to you as soon as possible.</p>
             <p class="govuk-body govuk-!-margin-bottom-0">
-              <a class="govuk-link" href="/">Back to home</a>
+              <a class="govuk-link" href="/">Back to accessible home</a>
             </p>
           </div>
         </div>
@@ -74,13 +74,13 @@
             </div>
 
             <div class="govuk-form-group">
-              <label class="govuk-label" for="subject">What do you need help with?</label>
+              <label class="govuk-label" for="subject">Subject</label>
               <select class="govuk-select" id="subject" name="subject">
-                <option value="">Select a subject</option>
-                <option value="general" {% if values.subject == 'general' %}selected{% endif %}>General enquiry</option>
-                <option value="account" {% if values.subject == 'account' %}selected{% endif %}>Account help</option>
-                <option value="technical" {% if values.subject == 'technical' %}selected{% endif %}>Technical problem</option>
-                <option value="feedback" {% if values.subject == 'feedback' %}selected{% endif %}>Feedback</option>
+                <option value="">What is this about?</option>
+                <option value="general" {% if values.subject == 'general' %}selected{% endif %}>General Inquiry</option>
+                <option value="account" {% if values.subject == 'account' %}selected{% endif %}>Account Help</option>
+                <option value="technical" {% if values.subject == 'technical' %}selected{% endif %}>Technical Issue</option>
+                <option value="feedback" {% if values.subject == 'feedback' %}selected{% endif %}>Feedback / Suggestion</option>
                 <option value="other" {% if values.subject == 'other' %}selected{% endif %}>Other</option>
               </select>
             </div>
@@ -94,11 +94,11 @@
             </div>
           </fieldset>
 
-          <button class="govuk-button" data-module="govuk-button" type="submit">Send message</button>
+          <button class="govuk-button" data-module="govuk-button" type="submit">Send Message</button>
 
           {% if not isAuthenticated %}
             <p class="govuk-body-s">
-              You can also <a class="govuk-link" href="/login">sign in</a> before contacting us.
+              Already have an account? <a class="govuk-link" href="/login">Log in</a> for faster support.
             </p>
           {% endif %}
         </form>

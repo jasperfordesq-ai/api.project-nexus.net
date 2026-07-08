@@ -20,7 +20,7 @@
           {% endif %}
         </div>
         <p class="govuk-body govuk-!-margin-top-6">
-          <a class="govuk-link" href="/">Back to home</a>
+          <a class="govuk-link" href="/">Return to the page</a>
         </p>
       {% else %}
         {% if hasErrors %}
@@ -47,20 +47,20 @@
           </div>
         {% endif %}
 
-        <p class="govuk-body-l">Use this form to tell us about an accessibility, content, or service problem on this page.</p>
+        <p class="govuk-body-l">Use this form to tell us about a problem you found on this page. Do not include personal or financial information, like your password.</p>
 
         <form method="post" action="/report-a-problem" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="page_url" value="{{ pageUrl }}">
 
           <p class="govuk-body">
-            Page:
+            Page you are reporting:
             <span class="govuk-!-font-weight-bold">{{ pageUrl }}</span>
           </p>
 
           <div class="govuk-form-group{% if errors.summary %} govuk-form-group--error{% endif %}">
-            <label class="govuk-label govuk-label--s" for="summary">Summarise the problem</label>
-            <div id="summary-hint" class="govuk-hint">Use 3 to 180 characters.</div>
+            <label class="govuk-label govuk-label--s" for="summary">What is the problem?</label>
+            <div id="summary-hint" class="govuk-hint">Give a short summary, for example "The Accept button does nothing".</div>
             {% if errors.summary %}
               <p id="summary-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.summary }}</p>
             {% endif %}
@@ -68,8 +68,8 @@
           </div>
 
           <div class="govuk-form-group{% if errors.description %} govuk-form-group--error{% endif %}">
-            <label class="govuk-label govuk-label--s" for="description">Give details</label>
-            <div id="description-hint" class="govuk-hint">Use 10 to 5000 characters.</div>
+            <label class="govuk-label govuk-label--s" for="description">Describe what happened</label>
+            <div id="description-hint" class="govuk-hint">Tell us what you were trying to do, what you expected, and what went wrong.</div>
             {% if errors.description %}
               <p id="description-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.description }}</p>
             {% endif %}
@@ -78,7 +78,7 @@
 
           <div class="govuk-form-group{% if errors.impact %} govuk-form-group--error{% endif %}">
             <fieldset class="govuk-fieldset" aria-describedby="{% if errors.impact %}impact-error{% endif %}">
-              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">How does this affect you?</legend>
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">How much did this affect you?</legend>
               {% if errors.impact %}
                 <p id="impact-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.impact }}</p>
               {% endif %}
@@ -87,7 +87,7 @@
                   <div class="govuk-radios__item">
                     <input class="govuk-radios__input" id="impact-{{ impact }}" name="impact" type="radio" value="{{ impact }}" {% if values.impact == impact %}checked{% endif %}>
                     <label class="govuk-label govuk-radios__label" for="impact-{{ impact }}">
-                      {% if impact == 'blocked' %}I cannot continue{% elif impact == 'major' %}It causes a serious problem{% elif impact == 'minor' %}It causes a minor problem{% else %}It is cosmetic{% endif %}
+                      {% if impact == 'blocked' %}I could not complete what I was doing{% elif impact == 'major' %}It caused a major problem{% elif impact == 'minor' %}It caused a minor problem{% else %}It looked wrong but I could continue{% endif %}
                     </label>
                   </div>
                 {% endfor %}
