@@ -46,7 +46,8 @@ npm run route:matrix
 | ASP.NET `apps/web-uk` | 610 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
+| Extra `apps/web-uk` routes | 0 | True unmatched accessible route declarations. |
+| Ignored `apps/web-uk` infrastructure routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set and are not page parity gaps: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
@@ -172,6 +173,12 @@ POST actions are no longer exposed. Laravel's scanned GOV.UK accessible route
 set does not expose an untenanted `/admin` family; admin-only workflows
 remain on their canonical module routes, such as `/jobs/bias-audit`. The local
 jobs bias-audit page no longer links back to the removed `/admin` surface.
+
+The route-matrix generator now separates local infrastructure helpers from
+true extra accessible route declarations. `GET /health`,
+`GET /service-unavailable`, and `POST /session/touch` remain available for
+health checks, error rendering, and session keep-alive behavior, but they are
+classified as ignored infrastructure rather than route parity gaps.
 
 ## Runtime Smoke Evidence
 

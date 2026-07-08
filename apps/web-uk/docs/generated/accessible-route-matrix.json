@@ -1,353 +1,422 @@
 {
   "summary": {
-    "generatedAt": "2026-07-08T12:11:30.945Z",
+    "generatedAt": "2026-07-08T12:30:55.686Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
     "webUkRoutes": 610,
     "matchedRoutes": 608,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 3,
+    "extraWebUkRoutes": 0,
+    "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
       "health": {
         "matched": 0,
         "missing": 0,
-        "extraWebUk": 1
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 1
       },
       "service-unavailable": {
         "matched": 0,
         "missing": 0,
-        "extraWebUk": 1
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 1
       },
       "session": {
         "matched": 0,
         "missing": 0,
-        "extraWebUk": 1
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 1
       },
       "about": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "accessibility": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "account": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "achievements": {
         "matched": 10,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "activity": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "appreciations": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "blog": {
         "matched": 12,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "chat": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "clubs": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "connections": {
         "matched": 5,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "contact": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "cookie-consent": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "cookies": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "coupons": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "courses": {
         "matched": 26,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "dashboard": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "events": {
         "matched": 21,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "exchanges": {
         "matched": 4,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "explore": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "faq": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "features": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "federation": {
         "matched": 28,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "feed": {
         "matched": 22,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "goals": {
         "matched": 27,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "group-exchanges": {
         "matched": 9,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "groups": {
         "matched": 36,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "guide": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "help": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "home": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "ideation": {
         "matched": 34,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "jobs": {
         "matched": 38,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "kb": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "leaderboard": {
         "matched": 5,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "legal": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "listings": {
         "matched": 19,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "login": {
         "matched": 7,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "logout": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "marketplace": {
         "matched": 48,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "matches": {
         "matched": 4,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "me": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "members": {
         "matched": 11,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "messages": {
         "matched": 18,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "newsletter": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "nexus-score": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "notifications": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "onboarding": {
         "matched": 4,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "organisations": {
         "matched": 9,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "password": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "podcasts": {
         "matched": 14,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "polls": {
         "matched": 13,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "premium": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "profile": {
         "matched": 21,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "register": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "report-a-problem": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "resources": {
         "matched": 12,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "reviews": {
         "matched": 7,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "saved": {
         "matched": 2,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "search": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "settings": {
         "matched": 13,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "skills": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "trust-and-safety": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "users": {
         "matched": 3,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "verify-email": {
         "matched": 1,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "volunteering": {
         "matched": 52,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       },
       "wallet": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
       }
     }
   },
@@ -356,7 +425,7 @@
       "method": "GET",
       "path": "/health",
       "family": "health",
-      "status": "extra-web-uk",
+      "status": "ignored-web-uk-infrastructure",
       "laravelRouteName": "",
       "laravelHandler": "",
       "laravelView": "",
@@ -370,13 +439,14 @@
       "apiNeeds": "",
       "webUkPath": "/health",
       "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": "infrastructure"
     },
     {
       "method": "GET",
       "path": "/service-unavailable",
       "family": "service-unavailable",
-      "status": "extra-web-uk",
+      "status": "ignored-web-uk-infrastructure",
       "laravelRouteName": "",
       "laravelHandler": "",
       "laravelView": "",
@@ -390,13 +460,14 @@
       "apiNeeds": "",
       "webUkPath": "/service-unavailable",
       "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": "infrastructure"
     },
     {
       "method": "POST",
       "path": "/session/touch",
       "family": "session",
-      "status": "extra-web-uk",
+      "status": "ignored-web-uk-infrastructure",
       "laravelRouteName": "",
       "laravelHandler": "",
       "laravelView": "",
@@ -410,7 +481,8 @@
       "apiNeeds": "",
       "webUkPath": "/session/touch",
       "webUkView": "",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": "infrastructure"
     },
     {
       "method": "GET",

@@ -1357,10 +1357,10 @@ Additional preparation docs:
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
 accessible route declarations, 610 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 3 local-only
-infrastructure/helper routes. These counts include generated Laravel GET
-preparation pages and are backlog evidence only; they do not certify workflow
-parity.
+method/path matches, 0 missing Laravel routes, 0 true extra local route
+declarations, and 3 ignored local infrastructure/helper routes. These counts
+include generated Laravel GET preparation pages and are backlog evidence only;
+they do not certify workflow parity.
 
 Legacy local POST `/verify-2fa` is intentionally not exposed. The Laravel
 accessible sign-in challenge uses GET/POST `/login/two-factor`, and the local
@@ -1464,6 +1464,11 @@ does not include GET `/admin` or the old local admin category/config/moderation,
 role, and user pages/actions. Admin-only accessible workflows remain on their
 canonical module routes, and the jobs bias-audit page no longer links back to
 the removed `/admin` surface.
+
+`GET /health`, `GET /service-unavailable`, and `POST /session/touch` are kept
+as local infrastructure helpers and are intentionally ignored by the route
+matrix's true-extra count. They are not Laravel accessible page declarations
+and are not treated as page parity gaps.
 
 ## Before Extraction To Its Own Repo
 

@@ -6,6 +6,12 @@
 const fs = require('fs');
 const path = require('path');
 
+const LOCAL_INFRASTRUCTURE_ROUTES = new Set([
+  'GET|/health',
+  'GET|/service-unavailable',
+  'POST|/session/touch'
+]);
+
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
 }
@@ -561,11 +567,12 @@ function buildMatrix(laravelRoutes, webUkRoutes, methodDetails) {
       continue;
     }
 
+    const isInfrastructureRoute = LOCAL_INFRASTRUCTURE_ROUTES.has(key);
     matrix.push({
       method: target.method,
       path: target.path,
       family: routeFamily(target.path),
-      status: 'extra-web-uk',
+      status: isInfrastructureRoute ? 'ignored-web-uk-infrastructure' : 'extra-web-uk',
       laravelRouteName: '',
       laravelHandler: '',
       laravelView: '',
@@ -579,7 +586,8 @@ function buildMatrix(laravelRoutes, webUkRoutes, methodDetails) {
       apiNeeds: '',
       webUkPath: target.path,
       webUkView: target.webUkView,
-      webUkFile: target.webUkFile
+      webUkFile: target.webUkFile,
+      webUkRouteKind: isInfrastructureRoute ? 'infrastructure' : ''
     });
   }
 
@@ -597,7 +605,7 @@ function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot) {
 
   for (const row of matrix) {
     if (!familyCounts[row.family]) {
-      familyCounts[row.family] = { matched: 0, missing: 0, extraWebUk: 0 };
+      familyCounts[row.family] = { matched: 0, missing: 0, extraWebUk: 0, ignoredInfrastructure: 0 };
     }
 
     if (row.status === 'matched') {
@@ -606,6 +614,8 @@ function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot) {
       familyCounts[row.family].missing += 1;
     } else if (row.status === 'extra-web-uk') {
       familyCounts[row.family].extraWebUk += 1;
+    } else if (row.status === 'ignored-web-uk-infrastructure') {
+      familyCounts[row.family].ignoredInfrastructure += 1;
     }
   }
 
@@ -618,6 +628,7 @@ function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot) {
     matchedRoutes: count('matched'),
     missingRoutes: count('missing'),
     extraWebUkRoutes: count('extra-web-uk'),
+    ignoredInfrastructureRoutes: count('ignored-web-uk-infrastructure'),
     familyCounts
   };
 }
@@ -645,6 +656,7 @@ function writeCsv(rows, filePath) {
     'gates',
     'apiNeeds',
     'webUkView',
+    'webUkRouteKind',
     'laravelRouteFile',
     'laravelControllerFile',
     'webUkFile',
@@ -661,10 +673,16 @@ function writeCsv(rows, filePath) {
 function writeMarkdown(summary, matrix, filePath) {
   const familyRows = Object.entries(summary.familyCounts)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([family, counts]) => `| ${family} | ${counts.matched} | ${counts.missing} | ${counts.extraWebUk} |`);
+    .map(([family, counts]) => `| ${family} | ${counts.matched} | ${counts.missing} | ${counts.extraWebUk} | ${counts.ignoredInfrastructure} |`);
   const missingRows = matrix
     .filter((row) => row.status === 'missing')
     .map((row) => `| ${row.method} | \`${row.path}\` | ${row.family} | ${row.laravelHandler || ''} | ${row.laravelView || ''} | ${row.auth || ''} | ${row.gates || ''} |`);
+  const extraRows = matrix
+    .filter((row) => row.status === 'extra-web-uk')
+    .map((row) => `| ${row.method} | \`${row.path}\` | ${row.family} | ${row.webUkView || ''} | ${row.webUkFile || ''} |`);
+  const ignoredRows = matrix
+    .filter((row) => row.status === 'ignored-web-uk-infrastructure')
+    .map((row) => `| ${row.method} | \`${row.path}\` | ${row.family} | ${row.webUkRouteKind || ''} |`);
 
   const lines = [
     '# Generated Laravel Accessible Route Matrix',
@@ -678,11 +696,12 @@ function writeMarkdown(summary, matrix, filePath) {
     `| Matched routes | ${summary.matchedRoutes} |`,
     `| Missing routes | ${summary.missingRoutes} |`,
     `| Extra web-uk routes | ${summary.extraWebUkRoutes} |`,
+    `| Ignored web-uk infrastructure routes | ${summary.ignoredInfrastructureRoutes} |`,
     '',
     '## Family Counts',
     '',
-    '| Family | Matched | Missing | Extra web-uk |',
-    '| --- | ---: | ---: | ---: |',
+    '| Family | Matched | Missing | Extra web-uk | Ignored infrastructure |',
+    '| --- | ---: | ---: | ---: | ---: |',
     ...familyRows,
     '',
     '## Missing Laravel Routes',
@@ -690,6 +709,18 @@ function writeMarkdown(summary, matrix, filePath) {
     '| Method | Path | Family | Handler | Blade view | Auth | Gates |',
     '| --- | --- | --- | --- | --- | --- | --- |',
     ...(missingRows.length ? missingRows : ['| - | - | - | - | - | - | - |']),
+    '',
+    '## Extra Web UK Routes',
+    '',
+    '| Method | Path | Family | Web UK view | Web UK file |',
+    '| --- | --- | --- | --- | --- |',
+    ...(extraRows.length ? extraRows : ['| - | - | - | - | - |']),
+    '',
+    '## Ignored Web UK Infrastructure Routes',
+    '',
+    '| Method | Path | Family | Kind |',
+    '| --- | --- | --- | --- |',
+    ...(ignoredRows.length ? ignoredRows : ['| - | - | - | - |']),
     ''
   ];
 
@@ -747,6 +778,7 @@ if (require.main === module) {
   console.log(`matched: ${report.summary.matchedRoutes}`);
   console.log(`missing: ${report.summary.missingRoutes}`);
   console.log(`extra web-uk: ${report.summary.extraWebUkRoutes}`);
+  console.log(`ignored web-uk infrastructure: ${report.summary.ignoredInfrastructureRoutes}`);
 }
 
 module.exports = {

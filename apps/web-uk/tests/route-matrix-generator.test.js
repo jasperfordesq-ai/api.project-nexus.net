@@ -332,4 +332,44 @@ module.exports = router;
       webUkFile: expect.stringContaining('groups.js')
     }));
   });
+
+  it('separates local infrastructure helpers from true route parity extras', () => {
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'server.js'), `
+const express = require('express');
+const dashboardRoutes = require('./routes/dashboard');
+const app = express();
+
+app.get('/health', (req, res) => res.type('text/plain').send('OK'));
+app.get('/service-unavailable', (req, res) => res.status(503).render('errors/503'));
+app.post('/session/touch', (req, res) => res.json({ ok: true }));
+app.get('/local-only-page', (req, res) => res.render('local-only'));
+app.use('/dashboard', dashboardRoutes);
+`);
+
+    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const byPath = (method, routePath) => report.matrix.find(
+      (row) => row.method === method && row.path === routePath
+    );
+
+    expect(report.summary.webUkRoutes).toBe(5);
+    expect(report.summary.extraWebUkRoutes).toBe(1);
+    expect(report.summary.ignoredInfrastructureRoutes).toBe(3);
+
+    expect(byPath('GET', '/health')).toEqual(expect.objectContaining({
+      status: 'ignored-web-uk-infrastructure',
+      webUkRouteKind: 'infrastructure'
+    }));
+    expect(byPath('GET', '/service-unavailable')).toEqual(expect.objectContaining({
+      status: 'ignored-web-uk-infrastructure',
+      webUkRouteKind: 'infrastructure'
+    }));
+    expect(byPath('POST', '/session/touch')).toEqual(expect.objectContaining({
+      status: 'ignored-web-uk-infrastructure',
+      webUkRouteKind: 'infrastructure'
+    }));
+    expect(byPath('GET', '/local-only-page')).toEqual(expect.objectContaining({
+      status: 'extra-web-uk',
+      webUkRouteKind: ''
+    }));
+  });
 });

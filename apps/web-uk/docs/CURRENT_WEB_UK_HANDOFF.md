@@ -59,7 +59,7 @@ Regenerate before trusting it.
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `942/1000` implementation/certification parity |
+| Working estimate | about `944/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -70,7 +70,8 @@ The latest generated route matrix at this handoff reported:
 | Web UK routes | `610` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `3` |
+| Extra Web UK routes | `0` |
+| Ignored Web UK infrastructure routes | `3` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Latest focused login two-factor route slice: legacy local POST `/verify-2fa`
@@ -184,8 +185,15 @@ were removed from `apps/web-uk`. Laravel's scanned GOV.UK accessible route set
 does not expose an untenanted `/admin` route family; admin-only accessible
 workflows remain in their canonical module pages such as `/jobs/bias-audit`.
 The jobs bias-audit back link no longer points at the removed local `/admin`
-surface. The generated matrix now reports only three extra local routes:
-`GET /health`, `GET /service-unavailable`, and `POST /session/touch`.
+surface.
+
+Latest focused route-matrix evidence slice: the generator now separates
+documented local infrastructure helpers from true accessible route extras.
+Static route parity now reports `608` matched Laravel routes, `0` missing
+Laravel routes, and `0` true extra `apps/web-uk` routes. The local-only
+`GET /health`, `GET /service-unavailable`, and `POST /session/touch` helpers
+remain available but are classified as ignored infrastructure instead of
+accessible route parity gaps.
 
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
@@ -897,7 +905,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `942/1000`.
+Current working estimate at this handoff: `944/1000`.
 
 ## Final Handoff Checklist
 
