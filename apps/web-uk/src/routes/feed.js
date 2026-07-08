@@ -27,26 +27,141 @@ const router = express.Router();
 
 router.use(requireAuth);
 
+function allowed(value, choices, fallback) {
+  return choices.includes(value) ? value : fallback;
+}
+
+function intQuery(value, fallback, min, max) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function unwrapList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
+  if (payload.data && Array.isArray(payload.data.data)) return payload.data.data;
+  return [];
+}
+
+function firstPresent(...values) {
+  return values.find(value => value !== undefined && value !== null && value !== '');
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function truncate(value, maxLength = 500) {
+  const clean = stripHtml(value);
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, maxLength - 3).trim()}...`;
+}
+
+function itemTypeLabel(type) {
+  const labels = {
+    post: 'Post',
+    listing: 'Listing',
+    event: 'Event',
+    goal: 'Goal',
+    poll: 'Poll',
+    review: 'Review',
+    job: 'Job',
+    challenge: 'Challenge',
+    volunteer: 'Volunteering',
+    blog: 'Blog',
+    discussion: 'Discussion',
+    resource: 'Resource'
+  };
+  return labels[type] || 'Activity';
+}
+
+function itemTypeClass(type) {
+  if (type === 'listing') return 'govuk-tag--blue';
+  if (type === 'event') return 'govuk-tag--green';
+  if (type === 'goal') return 'govuk-tag--purple';
+  if (type === 'poll') return 'govuk-tag--yellow';
+  return 'govuk-tag--grey';
+}
+
+function detailUrlFor(item) {
+  const id = item.id;
+  if (!id) return null;
+  if (item.type === 'listing') return `/listings/${id}`;
+  if (item.type === 'event') return `/events/${id}`;
+  if (item.type === 'volunteer') return `/volunteering/opportunities/${id}`;
+  if (item.type === 'goal') return `/goals/${id}`;
+  if (item.type === 'job') return `/jobs/${id}`;
+  if (item.type === 'challenge') return `/ideation/${id}`;
+  return item.type === 'post' ? `/feed/${id}` : null;
+}
+
+function normalizeFeedItem(item) {
+  const type = firstPresent(item.type, item.item_type, 'post');
+  const author = item.author || item.user || {};
+  const media = Array.isArray(item.media) ? item.media : [];
+  const title = firstPresent(item.title, item.name, itemTypeLabel(type));
+  return {
+    id: item.id,
+    type,
+    typeLabel: itemTypeLabel(type),
+    typeClass: itemTypeClass(type),
+    title,
+    detailUrl: detailUrlFor({ id: item.id, type }),
+    authorName: firstPresent(author.name, author.full_name, author.firstName, author.first_name, item.author_name, 'Community member'),
+    authorAvatar: firstPresent(author.avatar_url, author.avatarUrl),
+    createdAt: firstPresent(item.created_at, item.createdAt),
+    content: truncate(firstPresent(item.content, item.body, item.description, '')),
+    imageUrl: firstPresent(item.image_url, item.imageUrl, media[0]?.thumbnail_url, media[0]?.file_url),
+    likesCount: Number(firstPresent(item.likes_count, item.like_count, item.likeCount, 0)),
+    commentsCount: Number(firstPresent(item.comments_count, item.comment_count, item.commentCount, 0))
+  };
+}
+
 // List feed posts
 router.get('/', asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = 20;
-  const groupId = req.query.group_id || null;
+  const typeOptions = ['all', 'following', 'saved', 'posts', 'listings', 'events', 'goals', 'polls', 'jobs', 'challenges', 'volunteering', 'blogs', 'discussions'];
+  const selectedType = allowed(req.query.type, typeOptions, 'all');
+  const selectedMode = allowed(req.query.mode, ['ranking', 'recent'], 'ranking');
+  const selectedSubtype = selectedType === 'listings' ? allowed(req.query.subtype, ['offer', 'request'], '') : '';
+  const perPage = intQuery(req.query.per_page, 10, 1, 50);
+  const cursor = typeof req.query.cursor === 'string' && req.query.cursor.trim() ? req.query.cursor.trim() : null;
 
-  const [feedResult, myGroupsResult] = await Promise.all([
-    getFeedPosts(req.token, { page, limit, group_id: groupId }),
-    getMyGroups(req.token).catch(() => ({ data: [] }))
-  ]);
+  let feedResult = { items: [], has_more: false, cursor: null };
+  let error = null;
+  try {
+    feedResult = await getFeedPosts(req.token, {
+      limit: perPage,
+      type: selectedType,
+      mode: selectedMode === 'recent' ? 'recent' : 'ranked',
+      subtype: selectedSubtype || null,
+      cursor
+    });
+  } catch (feedError) {
+    error = 'Feed items could not be loaded. Try again.';
+  }
 
-  const posts = feedResult.data || [];
-  const myGroups = myGroupsResult.data || [];
+  const items = unwrapList(feedResult).map(normalizeFeedItem);
+  const hasMore = Boolean(firstPresent(feedResult.has_more, feedResult.hasMore, feedResult.meta?.has_more, false));
+  const nextCursor = firstPresent(feedResult.cursor, feedResult.meta?.cursor, null);
 
   res.render('feed/index', {
     title: 'Feed',
-    posts,
-    myGroups,
-    groupId,
-    pagination: feedResult.pagination || { page, total_pages: 1 },
+    activeNav: 'feed',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible',
+    items,
+    typeOptions,
+    selectedType,
+    selectedMode,
+    selectedSubtype,
+    perPage,
+    meta: { hasMore, cursor: nextCursor },
+    error,
+    status: req.query.status || null,
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });

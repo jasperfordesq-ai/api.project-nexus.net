@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+// Copyright (c) 2024-2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -9,13 +9,10 @@ const {
   getProfile,
   getBalance,
   getListings,
-  getUnreadCount,
-  getTransactions,
-  getNotifications,
   getFeedPosts,
   getMyEvents,
-  getMyGroups,
-  getGamificationProfile
+  getGamificationProfile,
+  getAllBadges
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -23,106 +20,180 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-// Dashboard
+function unwrapList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
+  if (payload.data && Array.isArray(payload.data.data)) return payload.data.data;
+  return [];
+}
+
+function unwrapObject(payload) {
+  if (!payload || typeof payload !== 'object') return {};
+  return payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
+    ? payload.data
+    : payload;
+}
+
+function firstPresent(...values) {
+  return values.find(value => value !== undefined && value !== null && value !== '');
+}
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function formatDecimal(value, places = 1) {
+  return toNumber(value).toFixed(places);
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function truncate(value, maxLength = 180) {
+  const clean = stripHtml(value);
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, maxLength - 3).trim()}...`;
+}
+
+function normalizeFeedItem(item) {
+  const type = firstPresent(item.type, item.item_type, 'post');
+  const author = item.author || item.user || {};
+  const media = Array.isArray(item.media) ? item.media : [];
+  const title = firstPresent(item.title, item.name, type === 'post' ? 'Post' : 'Activity');
+
+  return {
+    id: item.id,
+    type,
+    typeLabel: type === 'request' ? 'Request' : type === 'offer' ? 'Offer' : type === 'event' ? 'Event' : type === 'listing' ? 'Listing' : 'Post',
+    title,
+    url: '/feed',
+    authorName: firstPresent(author.name, author.full_name, author.firstName, author.first_name, item.author_name, 'Unknown author'),
+    authorAvatar: firstPresent(author.avatar_url, author.avatarUrl),
+    content: truncate(firstPresent(item.content, item.body, item.description, ''), 180),
+    imageUrl: firstPresent(item.image_url, item.imageUrl, media[0]?.thumbnail_url, media[0]?.file_url)
+  };
+}
+
+function normalizeListing(listing) {
+  const type = firstPresent(listing.type, listing.listing_type, 'offer') === 'request' ? 'request' : 'offer';
+
+  return {
+    id: listing.id,
+    type,
+    typeLabel: type === 'request' ? 'Request' : 'Offer',
+    typeClass: type === 'request' ? 'govuk-tag--purple' : 'govuk-tag--blue',
+    title: firstPresent(listing.title, listing.name, 'Untitled listing'),
+    description: truncate(firstPresent(listing.description, listing.summary, ''), 180),
+    imageUrl: firstPresent(listing.image_url, listing.imageUrl)
+  };
+}
+
+function normalizeEvent(event) {
+  return {
+    id: event.id,
+    title: firstPresent(event.title, event.name, 'Untitled event'),
+    startsAt: firstPresent(event.start_time, event.starts_at, event.startsAt, event.date),
+    location: firstPresent(event.location, event.venue, event.address)
+  };
+}
+
+function normalizeBadge(badge) {
+  return {
+    icon: firstPresent(badge.icon, badge.emoji, ''),
+    name: firstPresent(badge.name, badge.title, 'Badge')
+  };
+}
+
 router.get('/', asyncRoute(async (req, res) => {
-  // Fetch all data in parallel
   const [
-    profile,
+    profileData,
     balanceData,
     listingsData,
-    unreadData,
-    transactionsData,
-    notificationsData,
     feedData,
     eventsData,
-    groupsData,
-    gamificationData
+    gamificationData,
+    badgesData
   ] = await Promise.all([
-    getProfile(req.token),
+    getProfile(req.token).catch(() => ({})),
     getBalance(req.token).catch(() => ({ balance: 0 })),
     getListings(req.token, { limit: 5 }).catch(() => ({ data: [] })),
-    getUnreadCount(req.token).catch(() => ({ unreadCount: 0 })),
-    getTransactions(req.token, { limit: 5 }).catch(() => ({ data: [] })),
-    getNotifications(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getFeedPosts(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getMyEvents(req.token).catch(() => ({ data: [] })),
-    getMyGroups(req.token).catch(() => ({ data: [] })),
-    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, total_xp: 0, totalXp: 0 } }))
+    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, xp: 0 } })),
+    getAllBadges(req.token).catch(() => ({ badges: [] }))
   ]);
 
-  // Build activity feed from various sources
-  const activityItems = [];
-
-  // Add recent notifications (with null checks)
-  const notifications = (notificationsData && (notificationsData.items || notificationsData.data)) || [];
-  if (Array.isArray(notifications)) {
-    notifications.slice(0, 3).forEach(n => {
-      if (!n) return;
-      activityItems.push({
-        type: 'notification',
-        icon: '🔔',
-        content: n.message || n.content || '',
-        link: n.link || '/notifications',
-        time: n.createdAt || n.created_at,
-        read: (n.readAt || n.read_at) != null
-      });
-    });
-  }
-
-  // Add recent feed posts (with null checks)
-  const posts = (feedData && (feedData.items || feedData.data)) || [];
-  if (Array.isArray(posts)) {
-    posts.slice(0, 3).forEach(p => {
-      if (!p) return;
-      const postContent = p.content || '';
-      activityItems.push({
-        type: 'post',
-        icon: '📝',
-        content: `${p.user?.firstName || p.user?.first_name || 'Someone'} posted: "${postContent.substring(0, 50)}${postContent.length > 50 ? '...' : ''}"`,
-        link: `/feed/${p.id}`,
-        time: p.createdAt || p.created_at
-      });
-    });
-  }
-
-  // Sort by time, most recent first
-  activityItems.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
-
-  // Get upcoming events (next 3) with null checks
-  const events = (eventsData && (eventsData.items || eventsData.data)) || [];
+  const profile = unwrapObject(profileData);
+  const profileStats = profile.stats || {};
+  const walletBalance = balanceData != null ? firstPresent(balanceData.balance, balanceData.wallet_balance, balanceData) : 0;
+  const gamification = unwrapObject(gamificationData.profile || gamificationData);
+  const progress = gamification.level_progress || gamification.levelProgress || {};
+  const progressPercent = Math.max(0, Math.min(100, Math.round(toNumber(firstPresent(
+    progress.progress_percentage,
+    progress.progressPercentage
+  )))));
+  const badges = unwrapList(firstPresent(badgesData.badges, badgesData.items, badgesData.data, badgesData))
+    .map(normalizeBadge)
+    .slice(0, 8);
+  const firstName = firstPresent(profile.first_name, profile.firstName, profile.name, profile.email);
   const now = new Date();
-  const upcomingEvents = Array.isArray(events) ? events
-    .filter(e => {
-      if (!e) return false;
-      const startsAt = e.starts_at || e.startsAt;
-      const isPast = startsAt ? new Date(startsAt) < now : false;
-      // my_rsvp is a string from backend (e.g. "Going"), not an object
-      const rsvpValue = e.my_rsvp || e.myRsvp;
-      const rsvpStatus = (typeof rsvpValue === 'string')
-        ? rsvpValue
-        : (rsvpValue && rsvpValue.status) || '';
-      return !isPast && rsvpStatus.toLowerCase() === 'going';
-    })
-    .slice(0, 3) : [];
-
-  const safeBalance = balanceData != null ? (balanceData.balance ?? balanceData) : 0;
-  const safeListings = (listingsData && (listingsData.items || listingsData.data)) || (Array.isArray(listingsData) ? listingsData : []);
-  const safeUnreadCount = unreadData != null ? (unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0) : 0;
-  const safeTransactions = (transactionsData && (transactionsData.items || transactionsData.data)) || (Array.isArray(transactionsData) ? transactionsData : []);
-  const safeGroups = (groupsData && (groupsData.items || groupsData.data)) || [];
-  const safeGamification = (gamificationData && gamificationData.profile) || { level: 1, total_xp: 0, totalXp: 0, xp_to_next_level: 0, xpToNextLevel: 0, streak_days: 0 };
 
   res.render('dashboard/index', {
     title: 'Dashboard',
-    profile: profile || {},
-    balance: safeBalance,
-    listings: safeListings,
-    unreadCount: safeUnreadCount,
-    recentTransactions: safeTransactions,
-    activityItems: activityItems.slice(0, 5),
-    upcomingEvents,
-    myGroups: Array.isArray(safeGroups) ? safeGroups.slice(0, 3) : [],
-    gamification: safeGamification,
+    activeNav: 'dashboard',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible',
+    firstName,
+    profile,
+    profileStats: {
+      hoursGiven: formatDecimal(firstPresent(
+        profileStats.hours_given,
+        profileStats.hoursGiven,
+        profile.hours_given,
+        profile.hoursGiven
+      )),
+      hoursReceived: formatDecimal(firstPresent(
+        profileStats.hours_received,
+        profileStats.hoursReceived,
+        profile.hours_received,
+        profile.hoursReceived
+      )),
+      listingsCount: Math.round(toNumber(firstPresent(
+        profileStats.listings_count,
+        profileStats.listingsCount,
+        profile.listings_count,
+        profile.listingsCount
+      )))
+    },
+    wallet: {
+      balance: formatDecimal(walletBalance)
+    },
+    listings: unwrapList(listingsData).map(normalizeListing).slice(0, 5),
+    feedItems: unwrapList(feedData).map(normalizeFeedItem).slice(0, 5),
+    upcomingEvents: unwrapList(eventsData)
+      .map(normalizeEvent)
+      .filter(event => !event.startsAt || new Date(event.startsAt) >= now)
+      .slice(0, 3),
+    endorsements: [],
+    gamification: {
+      level: Math.round(toNumber(gamification.level, 1)),
+      levelName: firstPresent(gamification.level_name, gamification.levelName, ''),
+      xp: Math.round(toNumber(firstPresent(gamification.xp, gamification.total_xp, gamification.totalXp))),
+      progressPercent,
+      badgesCount: Math.round(toNumber(firstPresent(
+        gamification.badges_count,
+        gamification.badgesCount,
+        badges.length
+      ), badges.length))
+    },
+    badges,
+    onboardingCompleted: firstPresent(profile.onboarding_completed, profile.onboardingCompleted, true) !== false,
+    exchangeAttentionCount: 0,
+    status: req.query.status,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));

@@ -12,7 +12,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const refreshLocks = new Map();
 
 // Helper to set auth cookies
-function setAuthCookies(res, accessToken, refreshTokenValue) {
+function setAuthCookies(res, accessToken, refreshTokenValue, tenantSlug = '') {
   res.cookie('token', accessToken, {
     httpOnly: true,
     signed: true,
@@ -30,12 +30,24 @@ function setAuthCookies(res, accessToken, refreshTokenValue) {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
   }
+
+  const normalizedTenantSlug = String(tenantSlug || '').trim();
+  if (normalizedTenantSlug) {
+    res.cookie('tenant_slug', normalizedTenantSlug, {
+      httpOnly: true,
+      signed: true,
+      secure: NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+  }
 }
 
 // Helper to clear auth cookies
 function clearAuthCookies(res) {
   res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
   res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
+  res.clearCookie('tenant_slug', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
 }
 
 // Middleware to require authentication

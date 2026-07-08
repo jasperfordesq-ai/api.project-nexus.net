@@ -1,161 +1,259 @@
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/input/macro.njk" import govukInput %}
-{% from "govuk/components/select/macro.njk" import govukSelect %}
-{% from "govuk/components/pagination/macro.njk" import govukPagination %}
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
-
-{% block beforeContent %}
-  {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: "Home", href: "/" },
-      { text: "Listings" }
-    ]
-  }) }}
-{% endblock %}
-
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full">
+  {% if successMessage %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="listing-success-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="listing-success-title">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
+      </div>
+    </div>
+  {% endif %}
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
+  <span class="govuk-caption-l">{{ communityName }}</span>
+  <h1 class="govuk-heading-xl">Listings</h1>
+  <p class="govuk-body-l">Find offers and requests from your community.</p>
 
-      <h1 class="govuk-heading-xl">Listings</h1>
+  {% if moduleDisabled %}
+    <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="listings-disabled-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="listings-disabled-title">There is a problem</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">This module is not available.</p>
+        <p class="govuk-body">Listings are not available for this community yet.</p>
+      </div>
+    </div>
+  {% else %}
+    {% if isAuthenticated %}
+      <p class="govuk-body">
+        <a class="govuk-button" href="/listings/new" role="button" draggable="false" data-module="govuk-button">Create listing</a>
+      </p>
+    {% else %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">
+          <a class="govuk-link" href="/login?status=auth-required">Sign in to create a listing.</a>
+        </p>
+      </div>
+    {% endif %}
 
-      <div class="govuk-grid-row govuk-!-margin-bottom-6">
-        <div class="govuk-grid-column-full">
-          <form method="get" action="/listings" class="app-filter-form">
+    <form method="get" action="/listings" class="govuk-!-margin-bottom-7">
+      <fieldset class="govuk-fieldset" aria-describedby="listings-filter-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">Filter listings</h2>
+        </legend>
+        <div id="listings-filter-hint" class="govuk-hint">Choose the offers and requests you want to find.</div>
+
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-half">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="q">Search</label>
+              <div id="q-hint" class="govuk-hint">Search listing titles and descriptions.</div>
+              <input class="govuk-input" id="q" name="q" type="search" value="{{ filters.search or '' }}" aria-describedby="q-hint">
+            </div>
+          </div>
+          <div class="govuk-grid-column-one-quarter">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="type">Type</label>
+              <select class="govuk-select" id="type" name="type">
+                <option value="" {% if not filters.type %}selected{% endif %}>All types</option>
+                <option value="offer" {% if filters.type == 'offer' %}selected{% endif %}>Offer</option>
+                <option value="request" {% if filters.type == 'request' %}selected{% endif %}>Request</option>
+              </select>
+            </div>
+          </div>
+          <div class="govuk-grid-column-one-quarter">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="category_id">Category</label>
+              <select class="govuk-select" id="category_id" name="category_id">
+                <option value="" {% if not filters.category_id %}selected{% endif %}>All categories</option>
+                {% for category in categories %}
+                  <option value="{{ category.id }}" {% if filters.category_id == (category.id | string) %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-quarter">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="sort">Sort by</label>
+              <select class="govuk-select" id="sort" name="sort">
+                <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
+                <option value="recommended" {% if filters.sort == 'recommended' %}selected{% endif %}>Recommended</option>
+              </select>
+            </div>
+          </div>
+          <div class="govuk-grid-column-one-quarter">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="near">Near me</label>
+              <select class="govuk-select" id="near" name="near">
+                <option value="any" {% if filters.near == 'any' %}selected{% endif %}>Anywhere</option>
+                <option value="5" {% if filters.near == '5' %}selected{% endif %}>Within 5 km</option>
+                <option value="10" {% if filters.near == '10' %}selected{% endif %}>Within 10 km</option>
+                <option value="25" {% if filters.near == '25' %}selected{% endif %}>Within 25 km</option>
+                <option value="50" {% if filters.near == '50' %}selected{% endif %}>Within 50 km</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <details class="govuk-details" data-module="govuk-details" {% if filters.hours != 'any' or filters.service != 'any' or filters.posted != 'any' %}open{% endif %}>
+          <summary class="govuk-details__summary">
+            <span class="govuk-details__summary-text">Advanced filters</span>
+          </summary>
+          <div class="govuk-details__text">
             <div class="govuk-grid-row">
               <div class="govuk-grid-column-one-third">
-                {{ govukInput({
-                  label: { text: "Search" },
-                  id: "search",
-                  name: "search",
-                  value: filters.search or ""
-                }) }}
+                <div class="govuk-form-group">
+                  <label class="govuk-label" for="hours">Time needed</label>
+                  <select class="govuk-select" id="hours" name="hours">
+                    <option value="any" {% if filters.hours == 'any' %}selected{% endif %}>Any time</option>
+                    <option value="quick" {% if filters.hours == 'quick' %}selected{% endif %}>Quick task</option>
+                    <option value="short" {% if filters.hours == 'short' %}selected{% endif %}>Short task</option>
+                    <option value="half_day" {% if filters.hours == 'half_day' %}selected{% endif %}>Half day</option>
+                    <option value="full_day" {% if filters.hours == 'full_day' %}selected{% endif %}>Full day</option>
+                  </select>
+                </div>
               </div>
               <div class="govuk-grid-column-one-third">
-                {{ govukSelect({
-                  id: "status",
-                  name: "status",
-                  label: { text: "Status" },
-                  items: [
-                    { value: "", text: "All statuses", selected: not filters.status },
-                    { value: "draft", text: "Draft", selected: filters.status == "draft" },
-                    { value: "active", text: "Active", selected: filters.status == "active" },
-                    { value: "inactive", text: "Inactive", selected: filters.status == "inactive" }
-                  ]
-                }) }}
+                <div class="govuk-form-group">
+                  <label class="govuk-label" for="service">Service type</label>
+                  <select class="govuk-select" id="service" name="service">
+                    <option value="any" {% if filters.service == 'any' %}selected{% endif %}>Any service type</option>
+                    <option value="remote" {% if filters.service == 'remote' %}selected{% endif %}>Remote</option>
+                    <option value="in_person" {% if filters.service == 'in_person' %}selected{% endif %}>In person</option>
+                  </select>
+                </div>
               </div>
-              <div class="govuk-grid-column-one-third app-filter-buttons">
-                {{ govukButton({
-                  text: "Filter",
-                  classes: "govuk-button--secondary"
-                }) }}
-                {% if filters.search or filters.status %}
-                  <a href="/listings" class="govuk-link govuk-!-margin-left-2">Clear</a>
-                {% endif %}
+              <div class="govuk-grid-column-one-third">
+                <div class="govuk-form-group">
+                  <label class="govuk-label" for="posted">Posted</label>
+                  <select class="govuk-select" id="posted" name="posted">
+                    <option value="any" {% if filters.posted == 'any' %}selected{% endif %}>Any time</option>
+                    <option value="1" {% if filters.posted == '1' %}selected{% endif %}>Last day</option>
+                    <option value="7" {% if filters.posted == '7' %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if filters.posted == '30' %}selected{% endif %}>Last 30 days</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </form>
+          </div>
+        </details>
+
+        <div class="govuk-button-group">
+          <button class="govuk-button" data-module="govuk-button">Search</button>
+          {% if hasFilters %}
+            <a class="govuk-link" href="/listings">Clear filters</a>
+          {% endif %}
+        </div>
+      </fieldset>
+    </form>
+
+    <h2 class="govuk-heading-l">Results</h2>
+    <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
+      {% if meta.total_items == 1 %}
+        1 listing shown
+      {% else %}
+        {{ meta.total_items }} listings shown
+      {% endif %}
+    </p>
+
+    {% if error %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <p>Listings could not be loaded. Try again.</p>
+          </div>
         </div>
       </div>
-
-      <p class="govuk-body">
-        <a href="/listings/new" class="govuk-button">Create listing</a>
-      </p>
-
-      {% if listings and listings.length > 0 %}
-        <table class="govuk-table">
-          <thead class="govuk-table__head">
-            <tr class="govuk-table__row">
-              <th scope="col" class="govuk-table__header">Title</th>
-              <th scope="col" class="govuk-table__header">Status</th>
-              <th scope="col" class="govuk-table__header">Created</th>
-              <th scope="col" class="govuk-table__header">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="govuk-table__body">
-            {% for listing in listings %}
-              {% if listing.status == "active" %}
-                {% set tagColour = "green" %}
-              {% elif listing.status == "draft" %}
-                {% set tagColour = "grey" %}
-              {% else %}
-                {% set tagColour = "red" %}
+    {% elif not items or items.length == 0 %}
+      <div class="govuk-inset-text">
+        <h2 class="govuk-heading-m">Nothing to show yet</h2>
+        <p class="govuk-body">There are no listings to show.</p>
+        {% if hasFilters %}
+          <p class="govuk-body">
+            <a class="govuk-link" href="/listings">Clear filters</a>
+          </p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="nexus-alpha-card-list">
+        {% for listing in items %}
+          <article class="nexus-alpha-card">
+            <div class="nexus-alpha-listing-row">
+              {% if listing.imageUrl %}
+                <div class="nexus-alpha-listing-row__media">
+                  <img class="nexus-alpha-card-thumb" src="{{ listing.imageUrl }}" alt="Image for {{ listing.title }}" width="120" height="90" loading="lazy" decoding="async">
+                </div>
               {% endif %}
-              <tr class="govuk-table__row">
-                <td class="govuk-table__cell">
-                  <a href="/listings/{{ listing.id }}" class="govuk-link">
-                    {{ listing.title or listing.name or "Untitled" }}
-                  </a>
-                </td>
-                <td class="govuk-table__cell">
-                  <strong class="govuk-tag govuk-tag--{{ tagColour }}">
-                    {{ listing.status or "N/A" }}
-                  </strong>
-                </td>
-                <td class="govuk-table__cell">{{ (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }}</td>
-                <td class="govuk-table__cell">
-                  {% if listing.can_edit or (currentUser and ((listing.user and (listing.user.id | string) == (currentUser.id | string)) or (listing.user_id | string) == (currentUser.id | string))) %}
-                    <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
-                    <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
+              <div class="nexus-alpha-listing-row__body">
+                <strong class="govuk-tag {{ listing.typeClass }}">{{ listing.typeLabel }}</strong>
+                {% if listing.isFeatured %}
+                  <strong class="govuk-tag govuk-tag--yellow">Featured</strong>
+                {% endif %}
+                {% if listing.serviceTypeLabel %}
+                  <strong class="govuk-tag govuk-tag--turquoise">{{ listing.serviceTypeLabel }}</strong>
+                {% endif %}
+                <h3 class="govuk-heading-m govuk-!-margin-top-2 govuk-!-margin-bottom-2">
+                  <a class="govuk-link" href="/listings/{{ listing.id }}">{{ listing.title }}</a>
+                </h3>
+                {% if listing.authorName %}
+                  <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Posted by {{ listing.authorName }}</p>
+                {% endif %}
+                {% if listing.description %}
+                  <p class="govuk-body">{{ listing.description }}</p>
+                {% endif %}
+                <dl class="nexus-alpha-inline-list">
+                  {% if listing.categoryName %}
+                    <div>
+                      <dt>Category</dt>
+                      <dd>{{ listing.categoryName }}</dd>
+                    </div>
                   {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+                  {% if listing.location %}
+                    <div>
+                      <dt>Location</dt>
+                      <dd>{{ listing.location }}</dd>
+                    </div>
+                  {% endif %}
+                  {% if listing.hoursEstimate %}
+                    <div>
+                      <dt>Hours</dt>
+                      <dd>{{ listing.hoursEstimate }}</dd>
+                    </div>
+                  {% endif %}
+                </dl>
+              </div>
+              <div class="nexus-alpha-listing-row__action">
+                <a class="govuk-link govuk-link--no-visited-state" href="/listings/{{ listing.id }}">
+                  View details
+                  <span class="govuk-visually-hidden"> for {{ listing.title }}</span>
+                </a>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
 
-        {% if pagination and pagination.totalPages > 1 %}
-          {% set paginationItems = [] %}
-          {% for i in range(1, pagination.totalPages + 1) %}
-            {% set paginationItems = (paginationItems.push({
-              number: i,
-              href: "/listings?page=" + i + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else ""),
-              current: i == pagination.currentPage
-            }), paginationItems) %}
-          {% endfor %}
-
-          {{ govukPagination({
-            previous: { href: "/listings?page=" + (pagination.currentPage - 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage > 1 else undefined,
-            next: { href: "/listings?page=" + (pagination.currentPage + 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage < pagination.totalPages else undefined,
-            items: paginationItems
-          }) }}
-        {% endif %}
-
-      {% else %}
-        {% if filters.search or filters.status %}
-          {% set emptyState = {
-            icon: "🔍",
-            heading: "No results found",
-            message: "No listings match your search criteria.",
-            action: {
-              text: "Clear filters",
-              href: "/listings"
-            }
-          } %}
-        {% else %}
-          {% set emptyState = {
-            icon: "📦",
-            heading: "No listings yet",
-            message: "Create your first listing to share with the community.",
-            action: {
-              text: "Create listing",
-              href: "/listings/new",
-              isButton: true
-            }
-          } %}
-        {% endif %}
-        {% include "partials/empty-state.njk" %}
+      {% if meta.has_more and meta.cursor %}
+        <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Listings pagination">
+          <div class="govuk-pagination__next">
+            <a class="govuk-link govuk-pagination__link" href="/listings?q={{ filters.search | urlencode }}&type={{ filters.type | urlencode }}&category_id={{ filters.category_id | urlencode }}&hours={{ filters.hours | urlencode }}&service={{ filters.service | urlencode }}&posted={{ filters.posted | urlencode }}&sort={{ filters.sort | urlencode }}&near={{ filters.near | urlencode }}&cursor={{ meta.cursor | urlencode }}" rel="next">
+              <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+              </svg>
+              <span class="govuk-pagination__link-title">Load more</span>
+              <span class="govuk-visually-hidden">:</span>
+              <span class="govuk-pagination__link-label">More listing results</span>
+            </a>
+          </div>
+        </nav>
       {% endif %}
-
-    </div>
-  </div>
+    {% endif %}
+  {% endif %}
 {% endblock %}

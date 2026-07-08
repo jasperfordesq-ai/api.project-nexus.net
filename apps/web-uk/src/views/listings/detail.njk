@@ -1,212 +1,231 @@
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
-{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
-{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
-
-{% block beforeContent %}
-  {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: "Home", href: "/" },
-      { text: "Listings", href: "/listings" },
-      { text: listing.title or listing.name or "Listing details" }
-    ]
-  }) }}
-{% endblock %}
-
 {% block mainContent %}
-  {% if listing.status == "active" %}
-    {% set tagColour = "green" %}
-  {% elif listing.status == "draft" %}
-    {% set tagColour = "grey" %}
-  {% else %}
-    {% set tagColour = "red" %}
+  <a class="govuk-back-link" href="/listings">Back to listings</a>
+
+  {% if successMessage %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="listing-success-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="listing-success-title">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
+      </div>
+    </div>
   {% endif %}
-  {% set statusHtml %}<strong class="govuk-tag govuk-tag--{{ tagColour }}">{{ listing.status or "N/A" }}</strong>{% endset %}
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Listing details</span>
+      <h1 class="govuk-heading-xl">{{ listing.title }}</h1>
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
+      <p class="nexus-alpha-actions govuk-!-margin-bottom-4">
+        <strong class="govuk-tag {{ listing.typeClass }}">{{ listing.typeLabel }}</strong>
+        {% if listing.isFeatured %}
+          <strong class="govuk-tag govuk-tag--yellow">Featured</strong>
+        {% endif %}
+        {% if listing.serviceTypeLabel %}
+          <strong class="govuk-tag govuk-tag--turquoise">{{ listing.serviceTypeLabel }}</strong>
+        {% endif %}
+      </p>
+
+      {% if listing.imageUrl %}
+        <figure class="nexus-alpha-detail-hero">
+          <img src="{{ listing.imageUrl }}" alt="Image for {{ listing.title }}" width="640" height="360" decoding="async">
+        </figure>
       {% endif %}
 
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = "" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">Description</h2>
+      <p class="govuk-body">{{ listing.description }}</p>
 
-      <h1 class="govuk-heading-xl">{{ listing.title or listing.name or "Listing details" }}</h1>
-
-      {# Rating summary if available #}
-      {% if reviewSummary and reviewSummary.average_rating %}
-        <p class="govuk-body-l govuk-!-margin-bottom-6">
-          <span class="app-star-display" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
-            {% for i in [1, 2, 3, 4, 5] %}
-              <svg class="app-star-display__star {% if i <= reviewSummary.average_rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            {% endfor %}
-          </span>
-          <span class="govuk-!-margin-left-2">
-            {{ reviewSummary.average_rating | round(1) }} ({{ reviewSummary.total_reviews }} review{% if reviewSummary.total_reviews != 1 %}s{% endif %})
-          </span>
-        </p>
-      {% endif %}
-
-      {{ govukSummaryList({
-        rows: [
-          {
-            key: { text: "ID" },
-            value: { text: listing.id }
-          },
-          {
-            key: { text: "Title" },
-            value: { text: listing.title or listing.name or "N/A" }
-          },
-          {
-            key: { text: "Type" },
-            value: { text: listing.type or listing.listingType or "N/A" }
-          },
-          {
-            key: { text: "Description" },
-            value: { text: listing.description or "N/A" }
-          },
-          {
-            key: { text: "Status" },
-            value: { html: statusHtml }
-          },
-          {
-            key: { text: "Created" },
-            value: { text: (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }
-          },
-          {
-            key: { text: "Updated" },
-            value: { text: (listing.updatedAt or listing.updated_at) | formatDate if listing.updatedAt or listing.updated_at else "N/A" }
-          }
-        ]
-      }) }}
-
-      {% if listing.can_edit %}
-        <div class="govuk-button-group">
-          {{ govukButton({
-            text: "Edit",
-            href: "/listings/" + listing.id + "/edit",
-            classes: "govuk-button--secondary"
-          }) }}
-          {{ govukButton({
-            text: "Delete",
-            href: "/listings/" + listing.id + "/delete",
-            classes: "govuk-button--warning"
-          }) }}
-        </div>
-      {% else %}
-        <p class="govuk-body">
-          {% set reportType = "listing" %}
-          {% set reportId = listing.id %}
-          {% set returnTo = "/listings/" + (listing.id | string) %}
-          {% include "partials/report-link.njk" %}
-        </p>
-      {% endif %}
-
-      {# Reviews Section #}
-      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
-
-      <h2 class="govuk-heading-l">Reviews</h2>
-
-      {% if reviews and reviews.length > 0 %}
-        <ul class="govuk-list app-reviews-list">
-          {% for review in reviews %}
-            <li class="app-review govuk-!-margin-bottom-6">
-              <div class="app-review__header">
-                <span class="app-star-display" aria-label="{{ review.rating }} out of 5 stars">
-                  {% for i in [1, 2, 3, 4, 5] %}
-                    <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  {% endfor %}
-                </span>
-                <strong class="govuk-!-margin-left-2">
-                  {% if review.reviewer %}
-                    {{ review.reviewer.first_name or review.reviewer.firstName }} {{ review.reviewer.last_name or review.reviewer.lastName }}
-                  {% else %}
-                    Anonymous
-                  {% endif %}
-                </strong>
-                <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
-                  {{ (review.createdAt or review.created_at) | formatDate }}
-                </span>
-              </div>
-              {% if review.comment %}
-                <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-                  {{ review.comment }}
-                </p>
-              {% endif %}
+      {% if listing.images and listing.images.length > 0 %}
+        <h2 class="govuk-heading-m">Gallery</h2>
+        <ul class="nexus-alpha-thumb-list">
+          {% for image in listing.images %}
+            <li>
+              <a href="{{ image.url }}" target="_blank" rel="noopener noreferrer">
+                <span class="govuk-visually-hidden">Opens in a new tab</span>
+                <img src="{{ image.url }}" alt="{{ image.alt_text or ('Image for ' + listing.title) }}" loading="lazy" decoding="async">
+              </a>
             </li>
           {% endfor %}
         </ul>
-      {% else %}
-        <p class="govuk-body">No reviews yet. Be the first to leave a review!</p>
       {% endif %}
 
-      {# Leave a Review Form (only if not own listing) #}
-      {% if not listing.can_edit %}
-        <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
-        <form method="post" action="/reviews/listing/{{ listing.id }}" class="govuk-!-margin-bottom-6">
-          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <input type="hidden" name="return_url" value="/listings/{{ listing.id }}">
-
-          <div class="govuk-form-group">
-            <fieldset class="govuk-fieldset">
-              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
-                Your rating
-              </legend>
-              <div class="app-star-rating" id="rating">
-                {% for i in [1, 2, 3, 4, 5] %}
-                  <input type="radio" name="rating" id="listing-rating-{{ i }}" value="{{ i }}"
-                         class="app-star-rating__input" required>
-                  <label for="listing-rating-{{ i }}" class="app-star-rating__label">
-                    <span class="govuk-visually-hidden">{{ i }} star{% if i != 1 %}s{% endif %}</span>
-                    <svg class="app-star-rating__star" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </label>
-                {% endfor %}
-              </div>
-            </fieldset>
-          </div>
-
-          {{ govukTextarea({
-            name: "comment",
-            id: "comment",
-            label: {
-              text: "Your review (optional)"
-            },
-            hint: {
-              text: "Share details about your experience"
-            },
-            attributes: {
-              maxlength: "2000"
-            },
-            rows: 3
-          }) }}
-
-          {{ govukButton({
-            text: "Submit review"
-          }) }}
-        </form>
+      {% if listing.skillTags and listing.skillTags.length > 0 %}
+        <h2 class="govuk-heading-m">Skills</h2>
+        <ul class="govuk-list nexus-alpha-actions govuk-!-margin-bottom-6">
+          {% for skill in listing.skillTags %}
+            <li><strong class="govuk-tag govuk-tag--grey">{{ skill }}</strong></li>
+          {% endfor %}
+        </ul>
       {% endif %}
+    </div>
 
-      <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/listings" class="govuk-link">Back to listings</a>
-      </p>
-
+    <div class="govuk-grid-column-one-third">
+      <div class="govuk-inset-text">
+        This is an {{ listing.typeLabel | lower }} from a member of this community.
+      </div>
     </div>
   </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-heading-l">Summary</h2>
+      <dl class="govuk-summary-list">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Type</dt>
+          <dd class="govuk-summary-list__value">
+            <strong class="govuk-tag {{ listing.typeClass }}">{{ listing.typeLabel }}</strong>
+          </dd>
+        </div>
+        {% if listing.serviceTypeLabel %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Service type</dt>
+            <dd class="govuk-summary-list__value">{{ listing.serviceTypeLabel }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.statusValue %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Status</dt>
+            <dd class="govuk-summary-list__value">{{ listing.statusLabel }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.categoryName %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Category</dt>
+            <dd class="govuk-summary-list__value">{{ listing.categoryName }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.location %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Location</dt>
+            <dd class="govuk-summary-list__value">{{ listing.location }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.hoursEstimate %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Hours</dt>
+            <dd class="govuk-summary-list__value">{{ listing.hoursEstimate }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.createdAt %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Created</dt>
+            <dd class="govuk-summary-list__value">{{ listing.createdAt | formatDate }}</dd>
+          </div>
+        {% endif %}
+        {% if listing.expiresAt %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Expires</dt>
+            <dd class="govuk-summary-list__value">{{ listing.expiresAt | formatDate }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+
+      {% if listing.authorName %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-6">Member</h2>
+        <div class="nexus-alpha-summary govuk-!-margin-bottom-7">
+          <div>
+            {% if listing.authorAvatar %}
+              <img class="nexus-alpha-avatar nexus-alpha-avatar--large" src="{{ listing.authorAvatar }}" alt="" width="64" height="64" loading="lazy" decoding="async">
+            {% else %}
+              <span class="nexus-alpha-avatar nexus-alpha-avatar--large nexus-alpha-avatar--placeholder" aria-hidden="true">{{ listing.authorName | first | upper }}</span>
+            {% endif %}
+          </div>
+          <div>
+            <p class="govuk-body govuk-!-margin-bottom-1">
+              <strong>{{ listing.authorName }}</strong>
+              {% if listing.authorVerified %}
+                <strong class="govuk-tag govuk-tag--green govuk-!-margin-left-1">Verified</strong>
+              {% endif %}
+            </p>
+            {% if listing.authorTagline %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ listing.authorTagline }}</p>
+            {% endif %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
+              <span>{{ listing.authorReviewsCount }} reviews</span>
+              <span aria-hidden="true"> - </span>
+              <span>{{ listing.authorExchangesCount }} exchanges</span>
+            </p>
+            {% if listing.authorId %}
+              <p class="govuk-body-s govuk-!-margin-bottom-0">
+                <a class="govuk-link" href="/members/{{ listing.authorId }}">View profile<span class="govuk-visually-hidden"> for {{ listing.authorName }}</span></a>
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div id="like" class="govuk-!-margin-top-4 govuk-!-margin-bottom-2">
+        <span class="govuk-body-s nexus-alpha-meta">{{ listing.likesCount }} likes</span>
+      </div>
+
+      <div class="govuk-button-group govuk-!-margin-top-4 govuk-!-margin-bottom-2">
+        {% if isAuthenticated %}
+          <a class="govuk-link" href="/listings/{{ listing.id }}/comments">
+            {% if listing.commentsCount > 0 %}
+              {{ listing.commentsCount }} comments
+            {% else %}
+              Comments
+            {% endif %}
+          </a>
+        {% endif %}
+        {% if isAuthenticated and not isOwner %}
+          <a class="govuk-link" href="/listings/{{ listing.id }}/report">Report this listing</a>
+        {% endif %}
+      </div>
+
+      <div class="govuk-inset-text govuk-!-margin-bottom-7">
+        <p class="govuk-body govuk-!-margin-bottom-1"><strong>Share link</strong></p>
+        <p class="govuk-body nexus-alpha-share-url govuk-!-margin-bottom-0">{{ shareUrl }}</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="govuk-!-margin-top-7 govuk-!-margin-bottom-8" aria-labelledby="listing-exchange-title">
+    <h2 class="govuk-heading-l" id="listing-exchange-title">Exchange</h2>
+
+    {% if isOwner %}
+      <div class="govuk-inset-text">This is your listing.</div>
+      <div class="govuk-button-group">
+        <a class="govuk-button govuk-button--secondary" href="/listings/{{ listing.id }}/edit" role="button" draggable="false" data-module="govuk-button">Edit listing</a>
+      </div>
+    {% elif exchangeWorkflowEnabled %}
+      <p class="govuk-body">Request an exchange for this listing.</p>
+      <a class="govuk-button" href="/exchanges/request/{{ listing.id }}" role="button" draggable="false" data-module="govuk-button">Request exchange</a>
+    {% elif directMessagingEnabled and listing.authorId %}
+      <p class="govuk-body">Contact the member about this listing.</p>
+      <a class="govuk-button" href="/messages/new?user={{ listing.authorId }}&listing={{ listing.id }}" role="button" draggable="false" data-module="govuk-button">Send message</a>
+    {% else %}
+      <div class="govuk-inset-text">Messaging is not available for this listing.</div>
+    {% endif %}
+  </section>
+
+  {% if reviews and reviews.length > 0 %}
+    <section class="govuk-!-margin-top-7" aria-labelledby="listing-reviews-title">
+      <h2 class="govuk-heading-l" id="listing-reviews-title">Reviews</h2>
+      <ul class="govuk-list govuk-list--spaced">
+        {% for review in reviews %}
+          <li>
+            <strong>{{ review.rating }} out of 5</strong>
+            {% if review.comment %}
+              <p class="govuk-body">{{ review.comment }}</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
 {% endblock %}

@@ -44,6 +44,7 @@ router.post('/login', asyncRoute(async (req, res) => {
     if (result.requires_2fa) {
       if (req.session) {
         req.session.pending2faToken = result.temp_token || result.access_token;
+        req.session.pending2faTenantSlug = String(tenant_slug || '').trim();
       }
       return res.render('login', {
         title: 'Sign in',
@@ -57,7 +58,7 @@ router.post('/login', asyncRoute(async (req, res) => {
       throw new Error('No access token received');
     }
 
-    setAuthCookies(res, result.access_token, result.refresh_token);
+    setAuthCookies(res, result.access_token, result.refresh_token, tenant_slug);
 
     res.redirect('/dashboard');
   } catch (error) {
@@ -104,12 +105,14 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
 
   try {
     const result = await verify2fa(pendingToken, code.trim());
+    const tenantSlug = req.signedCookies.tenant_slug || req.session?.pending2faTenantSlug || '';
 
     // Clear pending token from session
     delete req.session.pending2faToken;
+    delete req.session.pending2faTenantSlug;
 
     const accessToken = result.access_token || pendingToken;
-    setAuthCookies(res, accessToken, result.refresh_token);
+    setAuthCookies(res, accessToken, result.refresh_token, tenantSlug);
 
     res.redirect('/dashboard');
   } catch (error) {
@@ -265,7 +268,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     const result = await login(email.trim().toLowerCase(), password, tenant_slug.trim());
 
     if (result.access_token) {
-      setAuthCookies(res, result.access_token, result.refresh_token);
+      setAuthCookies(res, result.access_token, result.refresh_token, tenant_slug.trim());
 
       if (req.flash) {
         req.flash('success', 'Account created successfully. Welcome!');

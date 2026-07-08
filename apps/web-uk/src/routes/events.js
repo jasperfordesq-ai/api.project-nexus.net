@@ -26,6 +26,42 @@ const router = express.Router();
 
 router.use(requireAuth);
 
+function firstPresent(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== '') || null;
+}
+
+function normalizeEvent(event = {}) {
+  const startsAt = firstPresent(event.startsAt, event.starts_at, event.start_time, event.start_date);
+  const endsAt = firstPresent(event.endsAt, event.ends_at, event.end_time, event.end_date);
+  const attendeeCount = firstPresent(
+    event.attendeeCount,
+    event.attendee_count,
+    event.rsvp_counts?.going,
+    event.rsvp_counts?.attending,
+    0
+  );
+  const status = firstPresent(event.status, 'active');
+  const organizer = firstPresent(event.createdBy, event.created_by, event.organizer, event.user);
+
+  return {
+    ...event,
+    startsAt,
+    starts_at: startsAt,
+    endsAt,
+    ends_at: endsAt,
+    attendeeCount,
+    attendee_count: attendeeCount,
+    isCancelled: event.isCancelled || event.is_cancelled || status === 'cancelled',
+    is_cancelled: event.is_cancelled || event.isCancelled || status === 'cancelled',
+    isPast: event.isPast || event.is_past || (startsAt ? new Date(startsAt) < new Date() : false),
+    is_past: event.is_past || event.isPast || (startsAt ? new Date(startsAt) < new Date() : false),
+    createdBy: organizer,
+    created_by: organizer,
+    myRsvp: firstPresent(event.myRsvp, event.my_rsvp, event.user_rsvp),
+    my_rsvp: firstPresent(event.my_rsvp, event.myRsvp, event.user_rsvp)
+  };
+}
+
 // List events
 router.get('/', asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
@@ -177,11 +213,11 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
   const [eventResult, rsvpsResult] = await Promise.all([
     getEvent(req.token, id),
-    getEventRsvps(req.token, id).catch(() => ({ data: [] }))
+    getEventRsvps(req.token, id, 'all').catch(() => ({ data: [] }))
   ]);
 
-  const event = eventResult.event || eventResult;
-  const myRsvp = eventResult.myRsvp || eventResult.my_rsvp;
+  const event = normalizeEvent(eventResult.data || eventResult.event || eventResult);
+  const myRsvp = event.myRsvp || event.my_rsvp || eventResult.myRsvp || eventResult.my_rsvp;
   const rsvps = rsvpsResult.data || [];
 
   // Group RSVPs by status
@@ -196,6 +232,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     event,
     myRsvp,
     rsvpsByStatus,
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });

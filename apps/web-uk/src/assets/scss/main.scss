@@ -110,6 +110,106 @@
   color: $govuk-secondary-text-colour;
 }
 
+.nexus-alpha-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: govuk-spacing(3);
+  margin-bottom: govuk-spacing(6);
+}
+
+.nexus-alpha-stat {
+  padding: govuk-spacing(3);
+  border: 1px solid $govuk-border-colour;
+}
+
+.nexus-alpha-stat dt {
+  @include govuk-font($size: 16);
+  color: $govuk-secondary-text-colour;
+}
+
+.nexus-alpha-stat dd {
+  @include govuk-font($size: 36, $weight: bold);
+  margin: govuk-spacing(1) 0 0;
+}
+
+.nexus-alpha-actions,
+.nexus-alpha-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(2);
+  padding-left: 0;
+  list-style: none;
+}
+
+.nexus-alpha-card-thumb {
+  display: block;
+  max-width: 120px;
+  height: auto;
+  margin-top: govuk-spacing(2);
+}
+
+.nexus-alpha-detail-hero {
+  margin: govuk-spacing(4) 0;
+}
+
+.nexus-alpha-detail-hero img {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border: 1px solid $govuk-border-colour;
+}
+
+.nexus-alpha-thumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(3);
+  padding-left: 0;
+  list-style: none;
+}
+
+.nexus-alpha-thumb-list img {
+  display: block;
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid $govuk-border-colour;
+}
+
+.nexus-alpha-summary {
+  display: flex;
+  gap: govuk-spacing(3);
+  align-items: flex-start;
+}
+
+.nexus-alpha-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: govuk-colour("black", $variant: "tint-95");
+  color: $govuk-text-colour;
+  font-weight: bold;
+}
+
+.nexus-alpha-avatar--small {
+  width: 32px;
+  height: 32px;
+  margin-right: govuk-spacing(1);
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.nexus-alpha-avatar--large {
+  width: 64px;
+  height: 64px;
+}
+
+.nexus-alpha-share-url {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .nexus-alpha-linkform {
   display: inline;
 }
