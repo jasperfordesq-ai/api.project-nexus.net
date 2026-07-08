@@ -67,11 +67,19 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `639` |
+| Web UK routes | `635` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `32` |
+| Extra Web UK routes | `28` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused reviews route slice: legacy local GET/POST
+`/reviews/{id}/edit`, POST `/reviews/user/{id}`, and POST
+`/reviews/listing/{id}` were removed. Member profile review forms now submit
+Laravel's canonical POST `/members/{id}/review` route, and listing detail pages
+no longer expose the unsupported listing-specific review form. The reviews
+family now reports `7` matched routes, `0` missing routes, and `0` extra local
+routes.
 
 Latest focused reports route slice: legacy local GET `/reports/new`, POST
 `/reports/new`, and GET `/reports/my` were removed. Generic report links now

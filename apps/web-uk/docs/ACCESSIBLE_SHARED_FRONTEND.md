@@ -1326,6 +1326,13 @@ review, comment, and reaction APIs. This remains partial: feature gates,
 moderation/deletion display, threaded reply depth, localization, live runtime
 behavior, and ASP.NET backend compatibility are not certified.
 
+Legacy local review edit and target-specific submission routes are intentionally
+not exposed. Laravel's accessible source uses POST `/members/{id}/review` for
+member profile reviews, POST `/reviews` for pending exchange reviews, and POST
+`/reviews/{id}/delete` for delete actions; the old GET/POST
+`/reviews/{id}/edit`, POST `/reviews/user/{id}`, and POST
+`/reviews/listing/{id}` paths are absent.
+
 The public about and guide pages now replace the static About, Guide, Features,
 and FAQ placeholders. `/about` renders the Blade-style community intro,
 four-step how-it-works list, values, contributor credits, open-source links, and
@@ -1349,8 +1356,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 639 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, and 32 local-only routes. These
+accessible route declarations, 635 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 28 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

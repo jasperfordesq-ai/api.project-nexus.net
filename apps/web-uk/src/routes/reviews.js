@@ -6,10 +6,6 @@
 const express = require('express');
 const {
   getProfile,
-  createUserReview,
-  createListingReview,
-  getReview,
-  updateReview,
   deleteReview,
   callReviewApi,
   createReview,
@@ -302,9 +298,7 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
   return res.redirect(commentsRedirect(id, status, '#review-reactions'));
 }));
 
-router.use(requireAuth);
-
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const profile = dataFrom(await getProfile(req.token || tokenFrom(req)));
   const userId = profile && (profile.id || profile.user_id || profile.userId);
 
@@ -331,7 +325,7 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/list', asyncRoute(async (req, res) => {
+router.get('/list', requireAuth, asyncRoute(async (req, res) => {
   const tab = req.query.tab === 'given' ? 'given' : 'received';
   const cursor = trimmed(req.query.cursor);
   const token = req.token || tokenFrom(req);
@@ -358,7 +352,7 @@ router.get('/list', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)/comments', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const token = req.token || tokenFrom(req);
   const [reviewResult, commentsResult, reactionsResult] = await Promise.all([
@@ -388,162 +382,8 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   });
 }, { notFoundTitle: 'Review not found' }));
 
-// Create review for a user
-router.post('/user/:userId', audit.reviewCreate(), asyncRoute(async (req, res) => {
-  const { userId } = req.params;
-  const { rating, comment, return_url } = req.body;
-  const safeReturnUrl = validateReturnUrl(return_url, `/members/${userId}`);
-
-  const errors = [];
-  const ratingNum = parseInt(rating, 10);
-
-  if (!rating || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-    errors.push({ text: 'Rating must be between 1 and 5', href: '#rating' });
-  }
-
-  if (errors.length > 0) {
-    if (req.flash) {
-      req.flash('error', errors[0].text);
-    }
-    return res.redirect(safeReturnUrl);
-  }
-
-  try {
-    await createUserReview(req.token, userId, {
-      rating: ratingNum,
-      comment: comment ? comment.trim() : null
-    });
-
-    if (req.flash) {
-      req.flash('success', 'Review submitted successfully');
-    }
-    res.redirect(safeReturnUrl);
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message);
-      }
-      return res.redirect(safeReturnUrl);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
-
-// Create review for a listing
-router.post('/listing/:listingId', audit.reviewCreate(), asyncRoute(async (req, res) => {
-  const { listingId } = req.params;
-  const { rating, comment, return_url } = req.body;
-  const safeReturnUrl = validateReturnUrl(return_url, `/listings/${listingId}`);
-
-  const errors = [];
-  const ratingNum = parseInt(rating, 10);
-
-  if (!rating || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-    errors.push({ text: 'Rating must be between 1 and 5', href: '#rating' });
-  }
-
-  if (errors.length > 0) {
-    if (req.flash) {
-      req.flash('error', errors[0].text);
-    }
-    return res.redirect(safeReturnUrl);
-  }
-
-  try {
-    await createListingReview(req.token, listingId, {
-      rating: ratingNum,
-      comment: comment ? comment.trim() : null
-    });
-
-    if (req.flash) {
-      req.flash('success', 'Review submitted successfully');
-    }
-    res.redirect(safeReturnUrl);
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message);
-      }
-      return res.redirect(safeReturnUrl);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
-
-// Edit review page
-router.get('/:id/edit', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-  const { return_url } = req.query;
-  const safeReturnUrl = validateReturnUrl(return_url, '/dashboard');
-
-  const review = await getReview(req.token, id);
-
-  res.render('reviews/form', {
-    title: 'Edit review',
-    review,
-    isEdit: true,
-    returnUrl: safeReturnUrl,
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}, { notFoundTitle: 'Review not found' }));
-
-// Update review
-router.post('/:id/edit', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-  const { rating, comment, return_url } = req.body;
-  const safeReturnUrl = validateReturnUrl(return_url, '/dashboard');
-
-  const errors = [];
-  const ratingNum = parseInt(rating, 10);
-
-  if (!rating || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-    errors.push({ text: 'Rating must be between 1 and 5', href: '#rating' });
-  }
-
-  if (errors.length > 0) {
-    try {
-      const review = await getReview(req.token, id);
-      return res.render('reviews/form', {
-        title: 'Edit review',
-        review,
-        isEdit: true,
-        errors,
-        returnUrl: safeReturnUrl
-      });
-    } catch (error) {
-      if (req.flash) {
-        req.flash('error', errors[0].text);
-      }
-      return res.redirect(safeReturnUrl);
-    }
-  }
-
-  try {
-    await updateReview(req.token, id, {
-      rating: ratingNum,
-      comment: comment ? comment.trim() : null
-    });
-
-    if (req.flash) {
-      req.flash('success', 'Review updated successfully');
-    }
-    res.redirect(safeReturnUrl);
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message);
-      }
-      return res.redirect(safeReturnUrl);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
-
 // Delete review
-router.post('/:id/delete', audit.reviewDelete(), asyncRoute(async (req, res) => {
+router.post('/:id/delete', requireAuth, audit.reviewDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { return_url } = req.body;
   const safeReturnUrl = validateReturnUrl(return_url, '/dashboard');

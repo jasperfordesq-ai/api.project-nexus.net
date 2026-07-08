@@ -7439,6 +7439,8 @@ describe('shared accessible frontend shell', () => {
     expect(profileResponse.text).toContain('Ada Lovelace');
     expect(profileResponse.text).toContain('action="/members/77/connection"');
     expect(profileResponse.text).toContain('name="action" value="connect"');
+    expect(profileResponse.text).toContain('action="/members/77/review"');
+    expect(profileResponse.text).not.toContain('action="/reviews/user/77"');
     expect(profileResponse.text).toContain('href="/report-a-problem?return=%2Fmembers%2F77"');
     expect(profileResponse.text).not.toContain('/reports/new');
     expect(profileResponse.text).not.toContain('action="/members/77/connect"');
@@ -15714,6 +15716,27 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('href="/listings/42/edit"');
     expect(detail.text).toContain('method="post" action="/listings/42/delete"');
     expect(detail.text).not.toContain('href="/listings/42/delete"');
+  });
+
+  it('does not render the legacy listing-specific review route on listing detail pages', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.getListing.mockResolvedValueOnce({
+      id: 42,
+      title: 'Borrow a ladder',
+      description: 'Useful for painting',
+      status: 'active',
+      type: 'offer',
+      user_id: 77,
+      user: { id: 77, name: 'Avery Stone' }
+    });
+
+    const detail = await request(app)
+      .get('/listings/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).not.toContain('action="/reviews/listing/42"');
   });
 
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {

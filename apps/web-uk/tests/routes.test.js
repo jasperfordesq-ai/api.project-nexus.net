@@ -317,6 +317,28 @@ describe('Protected Routes', () => {
       expect(response.status).toBe(404);
       expect(response.text).toContain('Page not found');
     });
+
+    it('legacy review edit and target-specific routes should return not found', async () => {
+      const getResponse = await request(app).get('/reviews/91/edit');
+
+      expect(getResponse.status).toBe(404);
+      expect(getResponse.text).toContain('Page not found');
+
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      for (const path of ['/reviews/91/edit', '/reviews/user/77', '/reviews/listing/42']) {
+        const response = await agent
+          .post(path)
+          .type('form')
+          .send({ _csrf: csrfMatch[1], rating: '5', comment: 'Helpful' });
+
+        expect(response.status).toBe(404);
+        expect(response.text).toContain('Page not found');
+      }
+    });
   });
 });
 
