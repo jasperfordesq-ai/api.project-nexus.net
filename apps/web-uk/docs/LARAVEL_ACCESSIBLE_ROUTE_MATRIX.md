@@ -440,11 +440,19 @@ returned expected body markers against
 checks and `0` failures. The body-text-only default smoke scope passed against
 the same port with `192/192` total checks, including 183 body-text contract
 checks, and `0` failures.
-The default scope now contains `530` checks:
+The signed goals pages `/goals/buddying`, `/goals/discover`,
+`/goals/templates`, `/goals/162`, `/goals/162/edit`, `/goals/162/checkin`,
+`/goals/162/reminder`, `/goals/162/buddy-actions`, `/goals/162/insights`,
+`/goals/162/history`, and `/goals/162/social` returned expected body markers
+against `WEB_UK_BASE_URL=http://127.0.0.1:6227`. The targeted run passed with
+`20/20` checks and `0` failures. The body-text-only default smoke scope passed
+against the same port with `203/203` total checks, including 194 body-text
+contract checks, and `0` failures.
+The default scope now contains `541` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 183 body-text contract checks, and the 6
+content-type contract checks, 194 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
