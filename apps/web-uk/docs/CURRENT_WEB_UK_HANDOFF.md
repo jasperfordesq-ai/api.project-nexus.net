@@ -67,11 +67,16 @@ The latest generated route matrix at this handoff reported:
 | Metric | Last observed result |
 | --- | --- |
 | Laravel accessible routes | `608` |
-| Web UK routes | `644` |
+| Web UK routes | `643` |
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
-| Extra Web UK routes | `37` |
+| Extra Web UK routes | `36` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+
+Latest focused member route slice: legacy local POST `/members/{id}/connect`
+was removed. Member index/profile connection controls now submit Laravel's
+canonical POST `/members/{id}/connection` route with `action=connect`, and the
+members family now reports `0` extra local routes.
 
 Latest focused listing route slice: legacy local GET
 `/listings/{id}/delete` was removed. Listing index/detail owner controls now

@@ -12,7 +12,6 @@ const {
   getMembersV2,
   getMembersNearby,
   getConnections,
-  sendConnectionRequest,
   getMemberConnectionStatus,
   sendMemberConnectionRequest,
   acceptMemberConnection,
@@ -547,10 +546,8 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
   }
 }));
 
-router.use(requireAuth);
-
 // Members directory - list all users in tenant
-router.get('/', asyncRoute(async (req, res) => {
+router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const searchQuery = req.query.search ? req.query.search.trim() : '';
@@ -628,7 +625,7 @@ router.get('/', asyncRoute(async (req, res) => {
 }));
 
 // View single user profile
-router.get('/:id', asyncRoute(async (req, res) => {
+router.get('/:id', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
   const [user, connectionsResult, gamificationResult, reviewsResult, currentProfile] = await Promise.all([
@@ -671,28 +668,5 @@ router.get('/:id', asyncRoute(async (req, res) => {
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }, { notFoundTitle: 'User not found' }));
-
-// Send connection request from member profile
-router.post('/:id/connect', asyncRoute(async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await sendConnectionRequest(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', result.message || 'Connection request sent');
-    }
-    res.redirect(`/members/${id}`);
-  } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message);
-      }
-      return res.redirect(`/members/${id}`);
-    }
-    throw error; // Re-throw for asyncRoute to handle 401/503
-  }
-}));
 
 module.exports = router;

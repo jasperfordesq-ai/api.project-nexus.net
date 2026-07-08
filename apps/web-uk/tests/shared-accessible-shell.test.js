@@ -61,6 +61,8 @@ jest.mock('../src/lib/api', () => ({
   getUser: jest.fn(),
   getUserV2: jest.fn(),
   getMemberVerificationBadges: jest.fn(),
+  getGamificationProfileByUserId: jest.fn().mockResolvedValue({ profile: null }),
+  getUserReviews: jest.fn().mockResolvedValue({ data: [], summary: null }),
   searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
   getMembersV2: jest.fn(),
   getMembersNearby: jest.fn(),
@@ -295,6 +297,8 @@ describe('shared accessible frontend shell', () => {
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.getUserV2.mockReset();
     api.getMemberVerificationBadges.mockReset();
+    api.getGamificationProfileByUserId.mockReset().mockResolvedValue({ profile: null });
+    api.getUserReviews.mockReset().mockResolvedValue({ data: [], summary: null });
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
@@ -7395,6 +7399,46 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('No members found');
     expect(response.text).toContain('Sorry, there is a problem loading members.');
     expect(response.text).not.toContain('Page not found');
+  });
+
+  it('renders member connection controls against the Laravel connection route', async () => {
+    const api = require('../src/lib/api');
+
+    api.getUsers.mockResolvedValueOnce({
+      data: [
+        {
+          id: 77,
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+          email: 'ada@example.test'
+        }
+      ]
+    });
+    api.getUser.mockResolvedValueOnce({
+      id: 77,
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      email: 'ada@example.test'
+    });
+
+    const indexResponse = await request(app)
+      .get('/members')
+      .set('Cookie', signedCookieHeader());
+    const profileResponse = await request(app)
+      .get('/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(indexResponse.status).toBe(200);
+    expect(indexResponse.text).toContain('Community members');
+    expect(indexResponse.text).toContain('action="/members/77/connection"');
+    expect(indexResponse.text).toContain('name="action" value="connect"');
+    expect(indexResponse.text).not.toContain('action="/members/77/connect"');
+
+    expect(profileResponse.status).toBe(200);
+    expect(profileResponse.text).toContain('Ada Lovelace');
+    expect(profileResponse.text).toContain('action="/members/77/connection"');
+    expect(profileResponse.text).toContain('name="action" value="connect"');
+    expect(profileResponse.text).not.toContain('action="/members/77/connect"');
   });
 
   it('renders the Laravel members discovery page for signed-in members', async () => {

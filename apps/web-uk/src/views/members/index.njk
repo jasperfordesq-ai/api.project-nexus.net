@@ -102,8 +102,9 @@
                 <td class="govuk-table__cell">
                   <a href="/members/{{ user.id }}" class="govuk-link govuk-!-margin-right-3">View profile</a>
                   {% if not conn %}
-                    <form action="/members/{{ user.id }}/connect" method="post" style="display: inline;">
+                    <form action="/members/{{ user.id }}/connection" method="post" style="display: inline;">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <input type="hidden" name="action" value="connect">
                       <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">
                         Connect
                       </button>

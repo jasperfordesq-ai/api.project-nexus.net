@@ -43,15 +43,22 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 644 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| ASP.NET `apps/web-uk` | 643 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
 | Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 37 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
+| Extra `apps/web-uk` routes | 36 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
+
+The legacy local member connection route has been removed: POST
+`/members/{id}/connect` is no longer exposed. Laravel's accessible source uses
+POST `/members/{id}/connection` with an action field for connection state
+transitions, and local member index/profile controls now submit that canonical
+route with `action=connect`. The members family now reports `11` matched
+routes, `0` missing routes, and `0` extra local routes.
 
 The legacy local listing delete confirmation route has been removed: GET
 `/listings/{id}/delete` is no longer exposed. Listing index/detail owner

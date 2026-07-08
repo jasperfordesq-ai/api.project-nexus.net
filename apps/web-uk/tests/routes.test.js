@@ -273,6 +273,21 @@ describe('Protected Routes', () => {
         expect(response.text).toContain('Page not found');
       }
     });
+
+    it('legacy member connect route should return not found', async () => {
+      const agent = request.agent(app);
+      const csrfPage = await agent.get('/login');
+      const csrfMatch = csrfPage.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const response = await agent
+        .post('/members/77/connect')
+        .type('form')
+        .send({ _csrf: csrfMatch[1] });
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+    });
   });
 });
 
