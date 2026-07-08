@@ -1,0 +1,40 @@
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Choose a community</h1>
+
+      <p class="govuk-body-l">
+        Select the community you want to use with Project NEXUS Accessible.
+      </p>
+
+      {% if tenantLoadError %}
+        <div class="govuk-inset-text">
+          We could not load the available communities. Try again later.
+        </div>
+      {% endif %}
+
+      {% if tenants and tenants.length %}
+        <ul class="nexus-alpha-card-list">
+          {% for community in tenants %}
+            <li class="nexus-alpha-card">
+              <h2 class="govuk-heading-m nexus-alpha-card__title">
+                <a class="govuk-link" href="{{ community.href }}">{{ community.name }}</a>
+              </h2>
+
+              {% if community.tagline %}
+                <p class="govuk-body">{{ community.tagline }}</p>
+              {% endif %}
+
+              <p class="govuk-body-s govuk-!-margin-bottom-0">Community link: {{ community.slug }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <h2 class="govuk-heading-m">Nothing to show yet</h2>
+        <p class="govuk-body">No active communities are available.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

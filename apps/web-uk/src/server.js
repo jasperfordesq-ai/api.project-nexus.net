@@ -346,9 +346,53 @@ app.use(async (req, res, next) => {
   next();
 });
 
+function normalizeTenantChooserCommunities(result) {
+  const records = Array.isArray(result?.data)
+    ? result.data
+    : (Array.isArray(result) ? result : []);
+
+  return records
+    .filter((tenant) => tenant && tenant.id !== 1 && tenant.slug)
+    .map((tenant) => {
+      const slug = String(tenant.slug);
+      return {
+        id: tenant.id,
+        name: tenant.name || slug,
+        slug,
+        tagline: tenant.tagline || '',
+        href: `/${encodeURIComponent(slug)}/accessible`
+      };
+    });
+}
+
 // Public routes (no CSRF needed for GET)
-app.get('/', (req, res) => {
-  res.render('home', { title: 'Home' });
+app.get('/', async (req, res) => {
+  if (req.accessibleRouting?.mode === 'shared') {
+    return res.render('home', { title: 'Home' });
+  }
+
+  const { ApiOfflineError, getTenants } = require('./lib/api');
+
+  try {
+    const result = await getTenants({ includeMaster: false });
+    return res.render('tenant-chooser', {
+      title: 'Choose a community',
+      activeNav: '',
+      tenants: normalizeTenantChooserCommunities(result),
+      tenantLoadError: false
+    });
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.render('tenant-chooser', {
+        title: 'Choose a community',
+        activeNav: '',
+        tenants: [],
+        tenantLoadError: true
+      });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
 });
 
 app.get('/health', (req, res) => {

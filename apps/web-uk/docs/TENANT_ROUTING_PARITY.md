@@ -61,6 +61,9 @@ Current implemented slice:
   `href` and `action` attributes to the active `/{tenantSlug}/accessible`
   prefix while leaving assets, API paths, health checks, service-worker paths,
   uploads, and other infrastructure URLs unprefixed.
+- Shared root `/` renders the Laravel-style tenant chooser backed by
+  `/api/v2/tenants` without `include_master`, excludes the master tenant, and
+  links communities to the cleaner `/{tenantSlug}/accessible` mount.
 
 Current gaps:
 
@@ -71,8 +74,6 @@ Current gaps:
   tenant-mount rendering now protects those links at response time, but the
   templates still need gradual conversion to `urlFor()` or equivalent helpers
   so custom-domain and flat-host modes remain easier to audit.
-- Shared root `/` still renders the local home page, not Laravel's tenant
-  chooser.
 - Dedicated accessible-domain root `/` is not yet certified to render the
   resolved tenant's home.
 - Parent-domain child-tenant paths are audited from Laravel but not implemented
@@ -93,6 +94,10 @@ shell links and that `/acme/alpha/login?status=auth-required` redirects to
 The second shared-mount runtime slice verifies that protected-route redirects
 and rendered login-page form/link targets remain under
 `/acme/accessible/...` instead of escaping to flat root paths.
+
+The third shared-root slice verifies that `/` renders Laravel's tenant chooser,
+excludes the master tenant, and links active communities to
+`/{tenantSlug}/accessible` instead of Laravel's legacy alpha mount.
 
 Verification command:
 

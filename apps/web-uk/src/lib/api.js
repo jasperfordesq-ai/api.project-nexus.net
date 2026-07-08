@@ -197,6 +197,16 @@ async function submitContact(data) {
   });
 }
 
+async function getTenants(options = {}) {
+  const query = new URLSearchParams();
+  if (options.includeMaster) {
+    query.set('include_master', '1');
+  }
+
+  const queryString = query.toString();
+  return request(`/api/v2/tenants${queryString ? `?${queryString}` : ''}`);
+}
+
 async function verify2fa(token, code) {
   return request('/api/auth/2fa/verify', {
     method: 'POST',
@@ -3045,6 +3055,7 @@ module.exports = {
   refreshToken,
   logout,
   submitContact,
+  getTenants,
   forgotPassword,
   resetPassword,
   resendVerification,

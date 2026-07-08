@@ -163,6 +163,43 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getTenants', () => {
+    it('should call the Laravel tenant list endpoint without master by default', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: [{ id: 2, slug: 'acme' }] })
+      });
+
+      const result = await api.getTenants();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/tenants',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data[0].slug).toBe('acme');
+    });
+
+    it('should opt in to the Laravel master tenant list parameter', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: [{ id: 1, slug: 'master' }] })
+      });
+
+      await api.getTenants({ includeMaster: true });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/tenants?include_master=1',
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('getListings', () => {
     it('should send auth header', async () => {
       mockFetch.mockResolvedValueOnce({

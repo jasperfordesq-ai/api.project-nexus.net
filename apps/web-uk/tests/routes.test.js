@@ -33,7 +33,8 @@ jest.mock('../src/lib/api', () => ({
   getListings: jest.fn(),
   getBalance: jest.fn(),
   getUnreadCount: jest.fn(),
-  getTransactions: jest.fn()
+  getTransactions: jest.fn(),
+  getTenants: jest.fn()
 }));
 
 // Set required env vars
@@ -50,11 +51,28 @@ describe('Public Routes', () => {
   });
 
   describe('GET /', () => {
-    it('should return 200 and render home page', async () => {
+    it('renders the Laravel tenant chooser on the shared root', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockResolvedValueOnce({
+        data: [
+          { id: 2, name: 'Acme Timebank', slug: 'acme', tagline: 'Neighbours helping neighbours' },
+          { id: 3, name: 'Dunmanway Timebank', slug: 'dunmanway' }
+        ]
+      });
+
       const response = await request(app).get('/');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Project NEXUS Community');
+      expect(response.text).toContain('Choose a community');
+      expect(response.text).toContain('Select the community you want to use with Project NEXUS Accessible.');
+      expect(response.text).toContain('Acme Timebank');
+      expect(response.text).toContain('Neighbours helping neighbours');
+      expect(response.text).toContain('Community link: acme');
+      expect(response.text).toContain('href="/acme/accessible"');
+      expect(response.text).toContain('Dunmanway Timebank');
+      expect(response.text).toContain('href="/dunmanway/accessible"');
+      expect(response.text).not.toContain('Project NEXUS master tenant');
+      expect(api.getTenants).toHaveBeenCalledWith({ includeMaster: false });
     });
   });
 

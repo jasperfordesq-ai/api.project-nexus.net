@@ -44,10 +44,13 @@ mount, and legacy `/{tenantSlug}/alpha` requests redirect to the cleaner
 `/{tenantSlug}/accessible` path. A follow-up shared-mount slice keeps local
 redirects plus rendered HTML `href` and `action` targets inside the active
 `/{tenantSlug}/accessible` mount, so individual templates no longer escape to
-flat root paths during shared-host tenant browsing. This is not full
-tenant-domain parity yet: custom accessible-domain resolution, parent-domain
-child tenant routing, root tenant chooser behavior, template-helper conversion,
-and Laravel runtime smoke certification still need work.
+flat root paths during shared-host tenant browsing. A shared-root slice now
+renders the Laravel-style tenant chooser at `/`, backed by Laravel
+`/api/v2/tenants` with the master tenant excluded and community links using the
+cleaner `/{tenantSlug}/accessible` mount. This is not full tenant-domain parity
+yet: custom accessible-domain resolution, parent-domain child tenant routing,
+custom-domain root home behavior, template-helper conversion, and Laravel
+runtime smoke certification still need work.
 
 ## Non-Negotiable Rules
 
@@ -97,6 +100,19 @@ Latest consolidation verification on 2026-07-08:
 - `npm --prefix apps/web-uk run smoke:laravel` was attempted but timed out
   after 304 seconds, so live Laravel runtime smoke remains the main
   certification gap.
+
+Latest focused shared-root tenant chooser slice: the bare shared root `/` now
+renders the Laravel accessible tenant chooser instead of the tenant home page.
+It calls Laravel `/api/v2/tenants` without `include_master`, excludes the
+master tenant locally as a guard, shows the Laravel copy and empty state, and
+links communities to `/{tenantSlug}/accessible` so the public Web UK mount does
+not expose Laravel's legacy alpha slug. Tenant-mounted
+`/{tenantSlug}/accessible` roots still render the tenant home page. Verification
+for this slice: `npm --prefix apps/web-uk test -- --runInBand` passed with
+`683/683` tests, `npm --prefix apps/web-uk run lint` passed, and
+`npm --prefix apps/web-uk run route:matrix` still reports `608/608` Laravel
+accessible routes matched, `0` missing, `2` extra Web UK routes, and `3`
+ignored infrastructure routes.
 
 Latest focused login two-factor route slice: legacy local POST `/verify-2fa`
 was removed. The 2FA challenge form now submits Laravel's canonical POST

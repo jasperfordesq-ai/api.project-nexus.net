@@ -37,6 +37,11 @@ jest.mock('../src/lib/api', () => ({
   resendVerification: jest.fn().mockResolvedValue({}),
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
+  getTenants: jest.fn().mockResolvedValue({
+    data: [
+      { id: 2, name: 'Acme Timebank', slug: 'acme', tagline: 'Neighbours helping neighbours' }
+    ]
+  }),
   getProfile: jest.fn(),
   verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
@@ -461,6 +466,11 @@ describe('shared accessible frontend shell', () => {
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
     api.login.mockReset();
     api.verify2fa.mockReset();
+    api.getTenants.mockReset().mockResolvedValue({
+      data: [
+        { id: 2, name: 'Acme Timebank', slug: 'acme', tagline: 'Neighbours helping neighbours' }
+      ]
+    });
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.deleteFeedPostV2.mockReset().mockResolvedValue({ data: { deleted: true } });
@@ -481,6 +491,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('class="nexus-alpha-header"');
     expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Choose a community');
+    expect(response.text).toContain('href="/acme/accessible"');
     expect(response.text).toContain('class="govuk-service-navigation"');
     expect(response.text).toContain('Beta');
     expect(response.text).toContain('Give feedback');
