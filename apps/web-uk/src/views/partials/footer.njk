@@ -42,7 +42,7 @@
         {% if isAuthenticated %}
           <ul class="govuk-footer__inline-list">
             <li class="govuk-footer__inline-list-item">
-              <form method="post" action="/logout" class="nexus-alpha-linkform">
+              <form method="post" action="{{ urlFor('/logout') }}" class="nexus-alpha-linkform">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button type="submit" class="govuk-footer__link nexus-alpha-linkbutton">Sign out</button>
               </form>

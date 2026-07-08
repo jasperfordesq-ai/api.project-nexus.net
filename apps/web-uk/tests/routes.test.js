@@ -58,6 +58,26 @@ describe('Public Routes', () => {
     });
   });
 
+  describe('shared tenant accessible mount', () => {
+    it('serves the flat app below /{tenantSlug}/accessible and prefixes shell links', async () => {
+      const response = await request(app).get('/acme/accessible');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Project NEXUS Community');
+      expect(response.text).toContain('href="/acme/accessible"');
+      expect(response.text).toContain('href="/acme/accessible/login"');
+      expect(response.text).toContain('href="/acme/accessible/register"');
+      expect(response.text).not.toContain('/acme/alpha');
+    });
+
+    it('canonicalizes Laravel legacy alpha mount paths to the cleaner accessible mount', async () => {
+      const response = await request(app).get('/acme/alpha/login?status=auth-required');
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    });
+  });
+
   describe('GET /health', () => {
     it('should return OK', async () => {
       const response = await request(app).get('/health');

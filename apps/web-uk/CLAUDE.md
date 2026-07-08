@@ -26,6 +26,7 @@ Route and backend preparation docs live beside this app:
 - `docs/CURRENT_WEB_UK_HANDOFF.md`
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
+- `docs/TENANT_ROUTING_PARITY.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
 
 If an agent is resuming this work after an interrupted session, start with
@@ -43,6 +44,14 @@ npm run route:matrix
 Treat those generated counts as backlog evidence only. They do not certify
 workflow parity, tenant routing, auth behavior, API contracts, localization, or
 production readiness.
+
+Tenant-routing parity evidence and the current `/accessible` shared-mount
+contract live in `docs/TENANT_ROUTING_PARITY.md`. Laravel still names its route
+set `govuk-alpha` and mounts shared-host accessible routes at
+`/{tenantSlug}/alpha`, but Web UK must use the cleaner public
+`/{tenantSlug}/accessible` mount while preserving Laravel-compatible behavior.
+Legacy `/{tenantSlug}/alpha` paths should canonicalize to `/accessible` rather
+than becoming new public links.
 
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness

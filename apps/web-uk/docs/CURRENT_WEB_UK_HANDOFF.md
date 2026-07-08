@@ -37,6 +37,15 @@ toward Laravel's accessible contracts.
 
 The Laravel repo is read-only reference material from this workspace.
 
+Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
+first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
+routes through the flat Express app, shell/home links use the active shared
+mount, and legacy `/{tenantSlug}/alpha` requests redirect to the cleaner
+`/{tenantSlug}/accessible` path. This is not full tenant-domain parity yet:
+custom accessible-domain resolution, parent-domain child tenant routing, root
+tenant chooser behavior, and template-wide link rewriting still need runtime
+work and Laravel smoke certification.
+
 ## Non-Negotiable Rules
 
 - Keep the stack as Express, Nunjucks, GOV.UK Frontend, SSR HTML.

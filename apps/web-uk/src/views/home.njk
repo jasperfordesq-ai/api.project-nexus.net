@@ -19,11 +19,11 @@
         <div class="govuk-button-group">
           {{ govukButton({
             text: "Go to Dashboard",
-            href: "/dashboard"
+            href: urlFor("/dashboard")
           }) }}
           {{ govukButton({
             text: "Browse Listings",
-            href: "/listings",
+            href: urlFor("/listings"),
             classes: "govuk-button--secondary"
           }) }}
         </div>
@@ -31,11 +31,11 @@
         <div class="govuk-button-group">
           {{ govukButton({
             text: "Sign in",
-            href: "/login"
+            href: urlFor("/login")
           }) }}
           {{ govukButton({
             text: "Create an account",
-            href: "/register",
+            href: urlFor("/register"),
             classes: "govuk-button--secondary"
           }) }}
         </div>

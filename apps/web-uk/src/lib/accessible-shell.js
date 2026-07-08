@@ -213,28 +213,58 @@ function buildNavItems({ isAuthenticated = false } = {}) {
   });
 }
 
+function prefixLocalPath(pathname, prefix = '') {
+  const path = typeof pathname === 'string' && pathname ? pathname : '/';
+  if (!prefix || !path.startsWith('/') || path.startsWith('//')) return path;
+  if (path === '/') return prefix;
+  return `${prefix}${path}`;
+}
+
+function prefixNavItems(items, prefix) {
+  return items.map((item) => ({
+    ...item,
+    href: prefixLocalPath(item.href, prefix)
+  }));
+}
+
+function prefixFooterColumns(columns, prefix) {
+  return columns.map((column) => ({
+    ...column,
+    links: column.links.map((link) => ({
+      ...link,
+      href: prefixLocalPath(link.href, prefix)
+    }))
+  }));
+}
+
 function buildShellLocals(req, isAuthenticated) {
   const tenantName = process.env.ACCESSIBLE_TENANT_NAME || serviceName;
   const currentLocale = typeof req.query.locale === 'string' ? req.query.locale : 'en';
-  const currentPath = req.path || '/';
+  const routePrefix = req.accessibleRouting?.prefix || '';
+  const visiblePath = req.originalUrl ? req.originalUrl.split('?')[0] : (req.path || '/');
+  const currentPath = visiblePath || '/';
   const currentUrl = req.originalUrl || currentPath;
+  const urlFor = (pathname) => prefixLocalPath(pathname, routePrefix);
 
   return {
     serviceName,
     phaseText,
     tenantName,
+    tenantSlug: req.accessibleRouting?.tenantSlug || '',
+    accessibleRoutePrefix: routePrefix,
+    urlFor,
     alphaCurrentLocale: currentLocale,
     alphaLocaleOptions: localeOptions,
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
-    alphaNavItems: buildNavItems({ isAuthenticated }),
+    alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated }), routePrefix),
     alphaActiveNav: activeNavForPath(req.path),
-    alphaFooterColumns: footerColumns,
+    alphaFooterColumns: prefixFooterColumns(footerColumns, routePrefix),
     alphaExploreLinks: exploreLinks,
     currentPath,
     currentUrl,
     feedbackUrl,
-    reportProblemUrl: `/report-a-problem?return=${encodeURIComponent(currentUrl)}`,
-    cookieSettingsUrl: '/cookies',
+    reportProblemUrl: `${urlFor('/report-a-problem')}?return=${encodeURIComponent(currentUrl)}`,
+    cookieSettingsUrl: urlFor('/cookies'),
     mainSiteUrl: process.env.MAIN_FRONTEND_URL || 'https://app.project-nexus.ie',
     sourceCodeUrl,
     sharedAccessibleStatus: 'candidate_not_certified'
@@ -249,5 +279,6 @@ module.exports = {
   footerColumns,
   localeOptions,
   phaseText,
+  prefixLocalPath,
   serviceName
 };

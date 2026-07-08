@@ -74,6 +74,7 @@ const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { buildShellLocals } = require('./lib/accessible-shell');
 const { parseMultipartForm } = require('./middleware/multipart');
+const { tenantRouting } = require('./middleware/tenant-routing');
 
 const app = express();
 
@@ -189,6 +190,8 @@ app.set('view engine', 'njk');
 
 // Trust proxy for rate limiting behind reverse proxy
 app.set('trust proxy', 1);
+
+app.use(tenantRouting);
 
 // Security headers with Helmet
 app.use(helmet({

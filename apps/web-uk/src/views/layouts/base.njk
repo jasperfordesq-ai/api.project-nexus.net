@@ -37,7 +37,7 @@
 {% block header %}
   <header class="nexus-alpha-header" role="banner">
     <div class="govuk-width-container nexus-alpha-header__container">
-      <a class="nexus-alpha-header__brand govuk-!-font-size-24" href="/">
+      <a class="nexus-alpha-header__brand govuk-!-font-size-24" href="{{ urlFor('/') }}">
         {{ tenantName or serviceName }}
       </a>
 
@@ -55,7 +55,7 @@
         {% endif %}
 
         {% if isAuthenticated %}
-          <a class="nexus-alpha-header__link" href="/account" {% if (activeNav or alphaActiveNav) == 'account' %}aria-current="page"{% endif %}>
+          <a class="nexus-alpha-header__link" href="{{ urlFor('/account') }}" {% if (activeNav or alphaActiveNav) == 'account' %}aria-current="page"{% endif %}>
             My account
             {% if unreadMessageCount > 0 %}
               <span class="nexus-alpha-nav-badge" aria-hidden="true">{{ unreadMessageCount if unreadMessageCount < 100 else '99+' }}</span>
@@ -88,10 +88,10 @@
             {% endfor %}
             {% if not isAuthenticated %}
               <li class="govuk-service-navigation__item {% if (activeNav or alphaActiveNav) == 'login' %}govuk-service-navigation__item--active{% endif %}">
-                <a class="govuk-service-navigation__link" href="/login" {% if (activeNav or alphaActiveNav) == 'login' %}aria-current="page"{% endif %}>Sign in</a>
+                <a class="govuk-service-navigation__link" href="{{ urlFor('/login') }}" {% if (activeNav or alphaActiveNav) == 'login' %}aria-current="page"{% endif %}>Sign in</a>
               </li>
               <li class="govuk-service-navigation__item {% if (activeNav or alphaActiveNav) == 'register' %}govuk-service-navigation__item--active{% endif %}">
-                <a class="govuk-service-navigation__link" href="/register" {% if (activeNav or alphaActiveNav) == 'register' %}aria-current="page"{% endif %}>Register</a>
+                <a class="govuk-service-navigation__link" href="{{ urlFor('/register') }}" {% if (activeNav or alphaActiveNav) == 'register' %}aria-current="page"{% endif %}>Register</a>
               </li>
             {% endif %}
           </ul>

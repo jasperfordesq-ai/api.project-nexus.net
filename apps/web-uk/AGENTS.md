@@ -25,6 +25,7 @@ Preparation docs that future agents must keep current:
 
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
+- `docs/TENANT_ROUTING_PARITY.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
