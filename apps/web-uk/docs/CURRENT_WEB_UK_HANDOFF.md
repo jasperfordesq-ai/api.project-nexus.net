@@ -66,8 +66,9 @@ yet: template-helper conversion, visual/manual tenant checks, and ASP.NET
 backend switching certification still need work. Focused template-helper
 conversion slices now cover the event detail page's breadcrumbs, group/member
 links, RSVP/admin forms, attendee links, and report return path plus the
-account hub's card links and CSRF logout form with `urlFor()`; most other
-templates still need the same source-level conversion. A tenant-home parity slice now replaces the old
+account hub's card links and CSRF logout form, and the activity dashboard/
+insights navigation links with `urlFor()`; most other templates still need the
+same source-level conversion. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A
@@ -117,7 +118,7 @@ The latest generated route matrix at this handoff reported:
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.
-- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 707 tests.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 708 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel
   accessible routes matched and 0 missing.
 - Chunked `npm --prefix apps/web-uk run smoke:laravel` passed against local
@@ -165,14 +166,19 @@ breadcrumbs, summary-list group/organiser links, report return URL, RSVP forms,
 admin edit/cancel/delete controls, and attendee links so shared-mount source is
 less dependent on response-time rewriting. `src/views/account.njk` now also
 uses `urlFor()` for account card links supplied by `accountLinks` and for the
-CSRF-protected `/logout` form action. Source-level regressions in
+CSRF-protected `/logout` form action. `src/views/activity/index.njk` and
+`src/views/activity/insights.njk` now route the detailed-insights link and
+back-to-activity links through `urlFor()`. Source-level regressions in
 `tests/template-source.test.js` guard these pages from drifting back to literal
-root-relative local links/forms. Verification for the account slice included a
-deliberate failing source-test run before the template fix, then:
+root-relative local links/forms. Verification for the account and activity
+slices included deliberate failing source-test runs before the template fixes,
+then:
 `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath`
-passed `2/2`, and
+passed `3/3`,
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "account hub"`
-passed `2/2` selected account tests. The earlier event-focused render check
+passed `2/2` selected account tests, and
+`npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity"`
+passed `4/4` selected activity tests. The earlier event-focused render check
 also passed:
 `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"`
 passed `23/23` selected tests.

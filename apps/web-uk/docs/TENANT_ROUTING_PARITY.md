@@ -104,7 +104,9 @@ Current gaps:
   breadcrumbs, group/member links, RSVP/admin forms, attendee links, and the
   report return path. The next focused source conversion covers
   `src/views/account.njk`, including account card links and the CSRF-protected
-  logout form action.
+  logout form action. The following focused source conversion covers the
+  activity dashboard and insights templates, including the detailed-insights
+  link and back-to-activity links.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -212,6 +214,14 @@ passes `accountLinks` card targets and the `/logout` form action through
 `urlFor()`, with a source-level regression in
 `tests/template-source.test.js` plus a focused account render test proving the
 flat `/account` output remains unchanged.
+
+The twelfth template-helper source slice extends the same direct `urlFor()`
+conversion into activity pages. `src/views/activity/index.njk` now passes the
+detailed-insights link through `urlFor('/activity/insights')`, and
+`src/views/activity/insights.njk` passes both back-to-activity links through
+`urlFor('/activity')`. A source-level regression plus focused activity render
+tests prove the flat `/activity` and `/activity/insights` output remains
+unchanged.
 
 Verification command:
 
