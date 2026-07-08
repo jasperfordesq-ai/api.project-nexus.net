@@ -722,20 +722,19 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize]
     public IActionResult PopularIdeationTags()
     {
-        var tags = new[] { "community", "accessibility", "events", "volunteering", "timebanking" };
-        return Ok(new { data = tags, tags });
+        var data = IdeationBootstrapCompatibility.PopularTags;
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("api/ideation-templates")]
     [Authorize]
     public IActionResult IdeationTemplates()
     {
-        var templates = new[]
-        {
-            new { id = "community-project", title = "Community project", category = "community" },
-            new { id = "service-improvement", title = "Service improvement", category = "platform" }
-        };
-        return Ok(new { data = templates, templates });
+        var data = IdeationBootstrapCompatibility.Templates
+            .OrderBy(template => template.Title)
+            .ToArray();
+
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("api/ideation-outcomes/dashboard")]
@@ -3349,7 +3348,18 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize]
     public IActionResult IdeationTemplateData(int id)
     {
-        return Ok(new { data = new { id, fields = Array.Empty<object>() } });
+        var data = IdeationBootstrapCompatibility.FindTemplateData(id);
+        return data == null
+            ? NotFound(new
+            {
+                success = false,
+                error = new
+                {
+                    code = "RESOURCE_NOT_FOUND",
+                    message = "Template not found"
+                }
+            })
+            : Ok(new { success = true, data });
     }
 
     [HttpGet("api/admin/crm/export/{id:int}")]

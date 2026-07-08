@@ -827,19 +827,14 @@ public class CompatibilityController : ControllerBase
     /// Returns distinct category values used in ideas.
     /// </summary>
     [HttpGet("api/ideation-categories")]
-    public async Task<IActionResult> GetIdeationCategories()
+    public IActionResult GetIdeationCategories()
     {
-        var categories = await _db.Ideas
-            .AsNoTracking()
-            .Where(i => i.Category != null && i.Category != "")
-            .Select(i => i.Category!)
-            .Distinct()
-            .OrderBy(c => c)
-            .ToListAsync();
+        var data = IdeationBootstrapCompatibility.Categories
+            .OrderBy(category => category.SortOrder)
+            .ThenBy(category => category.Name)
+            .ToArray();
 
-        var data = categories.Select((c, idx) => new { id = idx + 1, name = c, slug = c.ToLower().Replace(" ", "-") });
-
-        return Ok(new { data, total = categories.Count });
+        return Ok(new { success = true, data });
     }
 
     /// <summary>

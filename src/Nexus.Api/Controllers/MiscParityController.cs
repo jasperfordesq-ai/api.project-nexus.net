@@ -522,7 +522,15 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("ideation-tags")]
     [Authorize]
-    public IActionResult IdeationTags() => Ok(new { data = Array.Empty<object>() });
+    public IActionResult IdeationTags([FromQuery(Name = "type")] string? tagType = null)
+    {
+        var data = IdeationBootstrapCompatibility.Tags
+            .Where(tag => string.IsNullOrWhiteSpace(tagType) || string.Equals(tag.TagType, tagType, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(tag => tag.Name)
+            .ToArray();
+
+        return Ok(new { success = true, data });
+    }
 
     [HttpPost("ideation-tags")]
     [Authorize]
@@ -538,7 +546,21 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("ideation-templates/{id:int}")]
     [Authorize]
-    public IActionResult IdeationTemplate(int id) => Ok(new { data = new { id } });
+    public IActionResult IdeationTemplate(int id)
+    {
+        var data = IdeationBootstrapCompatibility.FindTemplate(id);
+        return data == null
+            ? NotFound(new
+            {
+                success = false,
+                error = new
+                {
+                    code = "RESOURCE_NOT_FOUND",
+                    message = "Template not found"
+                }
+            })
+            : Ok(new { success = true, data });
+    }
 
     [HttpPut("ideation-templates/{id:int}")]
     [Authorize]

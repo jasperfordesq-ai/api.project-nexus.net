@@ -4709,6 +4709,141 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IdeationBootstrapV2_UsesLaravelReactCategoriesTagsAndTemplatesShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var categories = await Client.GetAsync("/api/v2/ideation-categories");
+
+        categories.StatusCode.Should().Be(HttpStatusCode.OK);
+        var categoriesJson = await categories.Content.ReadFromJsonAsync<JsonElement>();
+        categoriesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var category = categoriesJson.GetProperty("data")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle(item => item.GetProperty("slug").GetString() == "community-impact")
+            .Subject;
+        category.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        category.GetProperty("name").GetString().Should().Be("Community Impact");
+        category.GetProperty("icon").GetString().Should().NotBeNullOrWhiteSpace();
+        category.GetProperty("color").GetString().Should().NotBeNullOrWhiteSpace();
+        category.GetProperty("sort_order").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var popularTags = await Client.GetAsync("/api/v2/ideation-tags/popular");
+
+        popularTags.StatusCode.Should().Be(HttpStatusCode.OK);
+        var popularTagsJson = await popularTags.Content.ReadFromJsonAsync<JsonElement>();
+        popularTagsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var popularTag = popularTagsJson.GetProperty("data")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle(item => item.GetProperty("tag").GetString() == "community")
+            .Subject;
+        popularTag.GetProperty("count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var tags = await Client.GetAsync("/api/v2/ideation-tags?type=general");
+
+        tags.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tagsJson = await tags.Content.ReadFromJsonAsync<JsonElement>();
+        tagsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tag = tagsJson.GetProperty("data")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle(item => item.GetProperty("slug").GetString() == "community")
+            .Subject;
+        tag.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        tag.GetProperty("name").GetString().Should().Be("community");
+        tag.GetProperty("tag_type").GetString().Should().Be("general");
+
+        var templates = await Client.GetAsync("/api/v2/ideation-templates");
+
+        templates.StatusCode.Should().Be(HttpStatusCode.OK);
+        var templatesJson = await templates.Content.ReadFromJsonAsync<JsonElement>();
+        templatesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var template = templatesJson.GetProperty("data")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle(item => item.GetProperty("title").GetString() == "Community project")
+            .Subject;
+        var templateId = template.GetProperty("id").GetInt32();
+        templateId.Should().BeGreaterThan(0);
+        template.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        template.GetProperty("default_category_id").GetInt32().Should().BeGreaterThan(0);
+        template.GetProperty("category_name").GetString().Should().Be("Community Impact");
+        template.GetProperty("default_tags").ValueKind.Should().Be(JsonValueKind.Array);
+        template.GetProperty("evaluation_criteria").ValueKind.Should().Be(JsonValueKind.Array);
+        template.GetProperty("creator").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+
+        var detail = await Client.GetAsync($"/api/v2/ideation-templates/{templateId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        detailJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(templateId);
+
+        var templateData = await Client.GetAsync($"/api/v2/ideation-templates/{templateId}/data");
+
+        templateData.StatusCode.Should().Be(HttpStatusCode.OK);
+        var templateDataJson = await templateData.Content.ReadFromJsonAsync<JsonElement>();
+        templateDataJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = templateDataJson.GetProperty("data");
+        data.GetProperty("title").GetString().Should().Be("Community project");
+        data.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("category_id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("tags").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("evaluation_criteria").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("prize_description").ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        data.GetProperty("max_ideas_per_user").GetInt32().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task FeedTrackingV2_UsesLaravelReactRecordedEnvelopeAndValidation()
+    {
+        var postId = await SeedAdminFeedPostAsync("Laravel React feed tracking post");
+        await AuthenticateAsMemberAsync();
+
+        var legacyImpression = await Client.PostAsJsonAsync($"/api/v2/feed/posts/{postId}/impression", new { });
+
+        legacyImpression.StatusCode.Should().Be(HttpStatusCode.OK);
+        var legacyJson = await legacyImpression.Content.ReadFromJsonAsync<JsonElement>();
+        legacyJson.GetProperty("data").GetProperty("recorded").GetBoolean().Should().BeTrue();
+        legacyJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+        legacyJson.TryGetProperty("success", out _).Should().BeFalse();
+
+        var polymorphicImpression = await Client.PostAsJsonAsync("/api/v2/feed/impression", new
+        {
+            target_type = "post",
+            target_id = postId
+        });
+
+        polymorphicImpression.StatusCode.Should().Be(HttpStatusCode.OK);
+        var impressionJson = await polymorphicImpression.Content.ReadFromJsonAsync<JsonElement>();
+        impressionJson.GetProperty("data").GetProperty("recorded").GetBoolean().Should().BeTrue();
+
+        var polymorphicClick = await Client.PostAsJsonAsync("/api/v2/feed/click", new
+        {
+            target_type = "listing",
+            target_id = TestData.Listing1.Id
+        });
+
+        polymorphicClick.StatusCode.Should().Be(HttpStatusCode.OK);
+        var clickJson = await polymorphicClick.Content.ReadFromJsonAsync<JsonElement>();
+        clickJson.GetProperty("data").GetProperty("recorded").GetBoolean().Should().BeTrue();
+
+        var invalidType = await Client.PostAsJsonAsync("/api/v2/feed/impression", new
+        {
+            target_type = "level_up",
+            target_id = postId
+        });
+
+        invalidType.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var invalidJson = await invalidType.Content.ReadFromJsonAsync<JsonElement>();
+        var error = invalidJson.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+        error.GetProperty("field").GetString().Should().Be("target_type");
+    }
+
+    [Fact]
     public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
     {
         await AuthenticateAsAdminAsync();

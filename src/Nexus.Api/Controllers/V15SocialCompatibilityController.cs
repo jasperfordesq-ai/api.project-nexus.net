@@ -30,6 +30,22 @@ public class V15SocialCompatibilityController : ControllerBase
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true
     };
+    private static readonly HashSet<string> LaravelFeedTrackingTargetTypes = new(StringComparer.Ordinal)
+    {
+        "post",
+        "comment",
+        "listing",
+        "event",
+        "goal",
+        "poll",
+        "review",
+        "volunteer",
+        "challenge",
+        "resource",
+        "job",
+        "blog",
+        "discussion"
+    };
     private static readonly string[] LaravelNotificationPreferenceKeys =
     [
         "email_messages",
@@ -424,9 +440,65 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/v2/feed/posts/{id:int}/impression")]
     [HttpPost("/api/v2/feed/click")]
     [HttpPost("/api/v2/feed/impression")]
-    public IActionResult TrackFeedEvent(int? id, [FromBody] JsonElement body)
+    public async Task<IActionResult> TrackFeedEvent(int? id, [FromBody] JsonElement body)
     {
-        return Ok(new { success = true, post_id = id ?? ReadInt(body, "post_id", "postId", "id"), tracked_at = DateTime.UtcNow });
+        var targetType = id.HasValue
+            ? NormalizeLegacyFeedTrackingType(ReadString(body, "type", "target_type"))
+            : (ReadString(body, "target_type") ?? "post").Trim();
+        var targetId = id ?? ReadInt(body, "target_id", "post_id", "postId", "id") ?? 0;
+
+        if (!LaravelFeedTrackingTargetTypes.Contains(targetType))
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "Invalid target type.",
+                        field = "target_type"
+                    }
+                }
+            });
+        }
+
+        if (targetId <= 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "Invalid target.",
+                        field = "target_id"
+                    }
+                }
+            });
+        }
+
+        if (!await FeedTrackingTargetExistsAsync(targetType, targetId))
+        {
+            return NotFound(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "RESOURCE_NOT_FOUND",
+                        message = "Target not found."
+                    }
+                }
+            });
+        }
+
+        return Ok(new
+        {
+            data = new { recorded = true },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     [HttpPost("/api/v2/feed/polls")]
@@ -1707,6 +1779,38 @@ public class V15SocialCompatibilityController : ControllerBase
     private int RequireUserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
 
     private int TenantId() => _tenantContext.GetTenantIdOrThrow();
+
+    private async Task<bool> FeedTrackingTargetExistsAsync(string targetType, int targetId)
+    {
+        var tenantId = TenantId();
+
+        return targetType switch
+        {
+            "post" => await _db.FeedPosts.AnyAsync(p => p.TenantId == tenantId && p.Id == targetId && !p.IsHidden),
+            "comment" => await _db.PostComments.AnyAsync(c => c.TenantId == tenantId && c.Id == targetId),
+            "listing" => await _db.Listings.AnyAsync(l => l.TenantId == tenantId && l.Id == targetId),
+            "event" => await _db.Events.AnyAsync(e => e.TenantId == tenantId && e.Id == targetId && !e.IsCancelled),
+            "goal" => await _db.Goals.AnyAsync(g => g.TenantId == tenantId && g.Id == targetId),
+            "poll" => await _db.Polls.AnyAsync(p => p.TenantId == tenantId && p.Id == targetId),
+            "review" => await _db.Reviews.AnyAsync(r => r.TenantId == tenantId && r.Id == targetId),
+            "volunteer" => await _db.VolunteerOpportunities.AnyAsync(v => v.TenantId == tenantId && v.Id == targetId),
+            "challenge" => await _db.Challenges.AnyAsync(c => c.TenantId == tenantId && c.Id == targetId),
+            "resource" => await _db.Resources.AnyAsync(r => r.TenantId == tenantId && r.Id == targetId),
+            "job" => await _db.JobVacancies.AnyAsync(j => j.TenantId == tenantId && j.Id == targetId),
+            "blog" => await _db.BlogPosts.AnyAsync(b => b.TenantId == tenantId && b.Id == targetId),
+            "discussion" => await _db.GroupDiscussions.AnyAsync(d => d.TenantId == tenantId && d.Id == targetId),
+            _ => false
+        };
+    }
+
+    private static string NormalizeLegacyFeedTrackingType(string? targetType)
+    {
+        var normalized = string.IsNullOrWhiteSpace(targetType)
+            ? "post"
+            : targetType.Trim();
+
+        return LaravelFeedTrackingTargetTypes.Contains(normalized) ? normalized : "post";
+    }
 
     private async Task<User> CurrentUserAsync()
     {
