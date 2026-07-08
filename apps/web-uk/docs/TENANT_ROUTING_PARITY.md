@@ -102,7 +102,9 @@ Current gaps:
   so custom-domain and flat-host modes remain easier to audit. The first
   focused source conversion covers `src/views/events/detail.njk`, including
   breadcrumbs, group/member links, RSVP/admin forms, attendee links, and the
-  report return path.
+  report return path. The next focused source conversion covers
+  `src/views/account.njk`, including account card links and the CSRF-protected
+  logout form action.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -203,6 +205,13 @@ tenant context is present. A focused smoke on 2026-07-08 against temporary Web
 UK `http://127.0.0.1:6426` and Laravel `http://127.0.0.1:8088` passed
 `SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across
 Borders`, emitting `tenant-domain-page-timebank-global-home-renders`.
+
+The eleventh template-helper source slice extends the direct `urlFor()`
+conversion from event detail into the account hub. `src/views/account.njk` now
+passes `accountLinks` card targets and the `/logout` form action through
+`urlFor()`, with a source-level regression in
+`tests/template-source.test.js` plus a focused account render test proving the
+flat `/account` output remains unchanged.
 
 Verification command:
 

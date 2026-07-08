@@ -13,4 +13,16 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).not.toContain('href: "/events/"');
     expect(template).toContain('urlFor(');
   });
+
+  it('keeps account hub links and logout form behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'account.njk'),
+      'utf8'
+    );
+
+    expect(template).toContain('href="{{ urlFor(item.href) }}"');
+    expect(template).toContain('action="{{ urlFor(\'/logout\') }}"');
+    expect(template).not.toContain('href="{{ item.href }}"');
+    expect(template).not.toContain('action="/logout"');
+  });
 });
