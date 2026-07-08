@@ -116,6 +116,339 @@ public sealed class V15SocialCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task HideFeedItemV2_AcceptsLaravelReactPolymorphicHideAndNotInterestedPayloads()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Users.Add(new User
+        {
+            Id = 2,
+            TenantId = 1,
+            Email = "member@example.test",
+            PasswordHash = "hash",
+            FirstName = "Member",
+            LastName = "User",
+            Role = "member",
+            IsActive = true
+        });
+        db.Listings.Add(new Listing
+        {
+            Id = 20,
+            TenantId = 1,
+            UserId = 2,
+            Title = "React hideable listing",
+            Description = "Listing hidden through the Laravel React feed API",
+            Type = ListingType.Offer,
+            Status = ListingStatus.Active
+        });
+        await db.SaveChangesAsync();
+
+        var hide = await controller.HidePost(20, JsonDocument.Parse("""
+        {
+          "type": "listing"
+        }
+        """).RootElement);
+
+        var hideOk = hide.Should().BeOfType<OkObjectResult>().Subject;
+        using var hideDocument = JsonDocument.Parse(JsonSerializer.Serialize(hideOk.Value));
+        var hideData = hideDocument.RootElement.GetProperty("data");
+        hideData.GetProperty("hidden").GetBoolean().Should().BeTrue();
+        hideData.GetProperty("post_id").GetInt32().Should().Be(20);
+
+        var notInterested = await controller.NotInterested(20, JsonDocument.Parse("""
+        {
+          "type": "listing"
+        }
+        """).RootElement);
+
+        var notInterestedOk = notInterested.Should().BeOfType<OkObjectResult>().Subject;
+        using var notInterestedDocument = JsonDocument.Parse(JsonSerializer.Serialize(notInterestedOk.Value));
+        var notInterestedData = notInterestedDocument.RootElement.GetProperty("data");
+        notInterestedData.GetProperty("success").GetBoolean().Should().BeTrue();
+        notInterestedData.GetProperty("post_id").GetInt32().Should().Be(20);
+        db.HiddenPosts.Count(h => h.TenantId == 1 && h.PostId == 20 && h.UserId == 2).Should().Be(0);
+        db.TenantConfigs.Count(c => c.TenantId == 1 && c.Key == "feed.hidden.2.listing.20").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ReportFeedItemV2_PersistsLaravelReactPolymorphicReport()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Users.Add(new User
+        {
+            Id = 2,
+            TenantId = 1,
+            Email = "member@example.test",
+            PasswordHash = "hash",
+            FirstName = "Member",
+            LastName = "User",
+            Role = "member",
+            IsActive = true
+        });
+        db.Listings.Add(new Listing
+        {
+            Id = 20,
+            TenantId = 1,
+            UserId = 1,
+            Title = "React reportable listing",
+            Description = "Listing reported through the Laravel React feed API",
+            Type = ListingType.Offer,
+            Status = ListingStatus.Active
+        });
+        await db.SaveChangesAsync();
+
+        var result = await controller.ReportFeedItem("listing", 20, JsonDocument.Parse("""
+        {
+          "reason": "spam"
+        }
+        """).RootElement);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("reported").GetBoolean().Should().BeTrue();
+        data.GetProperty("target_type").GetString().Should().Be("listing");
+        data.GetProperty("target_id").GetInt32().Should().Be(20);
+        db.ContentReports.Count(r =>
+            r.TenantId == 1 &&
+            r.ReporterId == 2 &&
+            r.ContentType == "listing" &&
+            r.ContentId == 20 &&
+            r.Reason == ReportReason.Spam).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DeletePostV2_ReturnsLaravelReactDeletedEnvelopeAndForbiddenErrors()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Users.Add(new User
+        {
+            Id = 2,
+            TenantId = 1,
+            Email = "member@example.test",
+            PasswordHash = "hash",
+            FirstName = "Member",
+            LastName = "User",
+            Role = "member",
+            IsActive = true
+        });
+        db.FeedPosts.AddRange(
+            new FeedPost
+            {
+                Id = 10,
+                TenantId = 1,
+                UserId = 2,
+                Content = "Owned post to delete"
+            },
+            new FeedPost
+            {
+                Id = 11,
+                TenantId = 1,
+                UserId = 1,
+                Content = "Other user post"
+            });
+        await db.SaveChangesAsync();
+
+        var deleted = await controller.DeletePost(10);
+
+        var deletedOk = deleted.Should().BeOfType<OkObjectResult>().Subject;
+        using var deletedDocument = JsonDocument.Parse(JsonSerializer.Serialize(deletedOk.Value));
+        deletedDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var deletedData = deletedDocument.RootElement.GetProperty("data");
+        deletedData.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deletedData.GetProperty("id").GetInt32().Should().Be(10);
+        db.FeedPosts.Any(p => p.TenantId == 1 && p.Id == 10).Should().BeFalse();
+
+        var forbidden = await controller.DeletePost(11);
+
+        var forbiddenResult = forbidden.Should().BeOfType<ObjectResult>().Subject;
+        forbiddenResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        using var forbiddenDocument = JsonDocument.Parse(JsonSerializer.Serialize(forbiddenResult.Value));
+        forbiddenDocument.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+        forbiddenDocument.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("FORBIDDEN");
+        db.FeedPosts.Any(p => p.TenantId == 1 && p.Id == 11).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MuteUserV2_ReturnsLaravelReactEnvelopeAndRejectsSelfMute()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = 2,
+                TenantId = 1,
+                Email = "member@example.test",
+                PasswordHash = "hash",
+                FirstName = "Member",
+                LastName = "User",
+                Role = "member",
+                IsActive = true
+            },
+            new User
+            {
+                Id = 3,
+                TenantId = 1,
+                Email = "other@example.test",
+                PasswordHash = "hash",
+                FirstName = "Other",
+                LastName = "User",
+                Role = "member",
+                IsActive = true
+            });
+        await db.SaveChangesAsync();
+
+        var muted = await controller.MuteUserV2(3);
+
+        var ok = muted.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("muted").GetBoolean().Should().BeTrue();
+        data.GetProperty("user_id").GetInt32().Should().Be(3);
+        db.MutedUsers.Count(m => m.TenantId == 1 && m.UserId == 2 && m.MutedUserId == 3).Should().Be(1);
+
+        var selfMute = await controller.MuteUserV2(2);
+
+        var invalid = selfMute.Should().BeOfType<ObjectResult>().Subject;
+        invalid.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        using var invalidDocument = JsonDocument.Parse(JsonSerializer.Serialize(invalid.Value));
+        invalidDocument.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+        invalidDocument.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("INVALID_INPUT");
+        db.MutedUsers.Count(m => m.TenantId == 1 && m.UserId == 2 && m.MutedUserId == 2).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TrendingHashtagsV2_HonorsLaravelReactLimitAndTenantScope()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?limit=2");
+        var now = DateTime.UtcNow;
+
+        db.Hashtags.AddRange(
+            new Hashtag
+            {
+                Id = 1,
+                TenantId = 1,
+                Tag = "alpha",
+                UsageCount = 5,
+                LastUsedAt = now.AddHours(-2)
+            },
+            new Hashtag
+            {
+                Id = 2,
+                TenantId = 1,
+                Tag = "beta",
+                UsageCount = 10,
+                LastUsedAt = now.AddHours(-3)
+            },
+            new Hashtag
+            {
+                Id = 3,
+                TenantId = 1,
+                Tag = "gamma",
+                UsageCount = 3,
+                LastUsedAt = now.AddHours(-1)
+            },
+            new Hashtag
+            {
+                Id = 4,
+                TenantId = 2,
+                Tag = "other-tenant",
+                UsageCount = 999,
+                LastUsedAt = now
+            });
+        await db.SaveChangesAsync();
+
+        var result = await controller.TrendingHashtags();
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var rows = document.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        rows.Should().HaveCount(2);
+        rows[0].GetProperty("tag").GetString().Should().Be("beta");
+        rows[0].GetProperty("post_count").GetInt32().Should().Be(10);
+        rows[1].GetProperty("tag").GetString().Should().Be("alpha");
+        rows.Select(row => row.GetProperty("tag").GetString()).Should().NotContain("other-tenant");
+    }
+
+    [Fact]
+    public async Task SearchHashtagsV2_HonorsLaravelReactQueryLimitAndTenantScope()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Hashtags.AddRange(
+            new Hashtag
+            {
+                Id = 1,
+                TenantId = 1,
+                Tag = "alpha",
+                UsageCount = 5,
+                LastUsedAt = DateTime.UtcNow
+            },
+            new Hashtag
+            {
+                Id = 2,
+                TenantId = 1,
+                Tag = "alpine",
+                UsageCount = 10,
+                LastUsedAt = DateTime.UtcNow
+            },
+            new Hashtag
+            {
+                Id = 3,
+                TenantId = 1,
+                Tag = "beta",
+                UsageCount = 50,
+                LastUsedAt = DateTime.UtcNow
+            },
+            new Hashtag
+            {
+                Id = 4,
+                TenantId = 2,
+                Tag = "atlas",
+                UsageCount = 999,
+                LastUsedAt = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var empty = await controller.SearchHashtags();
+
+        var emptyOk = empty.Should().BeOfType<OkObjectResult>().Subject;
+        using var emptyDocument = JsonDocument.Parse(JsonSerializer.Serialize(emptyOk.Value));
+        emptyDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        emptyDocument.RootElement.GetProperty("data").EnumerateArray().Should().BeEmpty();
+
+        controller.ControllerContext.HttpContext.Request.QueryString = new QueryString("?limit=1");
+        var result = await controller.SearchHashtags("a%_");
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var rows = document.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        rows.Should().ContainSingle();
+        rows[0].GetProperty("tag").GetString().Should().Be("alpine");
+        rows[0].GetProperty("post_count").GetInt32().Should().Be(10);
+    }
+
+    [Fact]
     public async Task Likers_ReturnsLaravelReactLikersResultShape()
     {
         var tenant = CreateTenantContext();

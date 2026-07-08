@@ -46,6 +46,21 @@ public class V15SocialCompatibilityController : ControllerBase
         "blog",
         "discussion"
     };
+    private static readonly HashSet<string> LaravelFeedHideTargetTypes = new(StringComparer.Ordinal)
+    {
+        "post",
+        "listing",
+        "event",
+        "poll",
+        "goal",
+        "review",
+        "job",
+        "challenge",
+        "volunteer",
+        "resource",
+        "blog",
+        "discussion"
+    };
     private static readonly HashSet<string> LaravelShareableTargetTypes = new(StringComparer.Ordinal)
     {
         "post",
@@ -228,11 +243,36 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/v2/feed/posts/{id:int}/delete")]
     public async Task<IActionResult> DeletePost(int id)
     {
-        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.UserId == RequireUserId());
-        if (post == null) return NotFound(new { error = "Post not found" });
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == id);
+        if (post == null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "RESOURCE_NOT_FOUND", message = "Post not found." }
+                }
+            });
+        }
+
+        if (post.UserId != userId)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "FORBIDDEN", message = "You can only delete your own posts." }
+                }
+            });
+        }
+
         _db.FeedPosts.Remove(post);
         await _db.SaveChangesAsync();
-        return Ok(new { success = true });
+        return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
     [HttpPost("/api/social/delete")]
@@ -295,21 +335,12 @@ public class V15SocialCompatibilityController : ControllerBase
 
     [HttpPost("/api/v2/feed/posts/{id:int}/hide")]
     [HttpPost("/api/feed/hide")]
-    public async Task<IActionResult> HidePost(int? id, [FromBody] JsonElement body)
-    {
-        var postId = id ?? ReadRequiredInt(body, "post_id", "postId", "id");
-        var userId = RequireUserId();
-        if (!await _db.HiddenPosts.AnyAsync(h => h.PostId == postId && h.UserId == userId))
-        {
-            _db.HiddenPosts.Add(new HiddenPost { TenantId = TenantId(), PostId = postId, UserId = userId });
-            await _db.SaveChangesAsync();
-        }
-
-        return Ok(new { success = true });
-    }
+    public Task<IActionResult> HidePost(int? id, [FromBody] JsonElement body) =>
+        HideFeedItem(id, body, includeHiddenFlag: true);
 
     [HttpPost("/api/v2/feed/posts/{id:int}/not-interested")]
-    public Task<IActionResult> NotInterested(int id, [FromBody] JsonElement body) => HidePost(id, body);
+    public Task<IActionResult> NotInterested(int id, [FromBody] JsonElement body) =>
+        HideFeedItem(id, body, includeHiddenFlag: false);
 
     [HttpPost("/api/v2/feed/users/{id:int}/mute")]
     public async Task<IActionResult> MuteUserV2(int id)
@@ -326,30 +357,15 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/feed/report")]
     [HttpPost("/api/v2/feed/posts/{id:int}/report")]
     [HttpPost("/api/v2/feed/items/post/{id:int}/report")]
-    public async Task<IActionResult> ReportPost(int? id, [FromBody] JsonElement body)
-    {
-        var postId = id ?? ReadRequiredInt(body, "post_id", "postId", "id");
-        var report = new FeedReport
-        {
-            TenantId = TenantId(),
-            PostId = postId,
-            ReporterId = RequireUserId(),
-            Reason = ReadString(body, "reason") ?? "other",
-            Details = ReadString(body, "details", "description")
-        };
-
-        _db.FeedReports.Add(report);
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, data = report });
-    }
+    public Task<IActionResult> ReportPost(int? id, [FromBody] JsonElement body) =>
+        ReportFeedTarget(
+            NormalizeLegacyFeedReportType(ReadString(body, "target_type", "type")),
+            id ?? ReadRequiredInt(body, "post_id", "postId", "target_id", "id"),
+            body);
 
     [HttpPost("/api/v2/feed/items/{type}/{id:int}/report")]
-    public Task<IActionResult> ReportFeedItem(string type, int id, [FromBody] JsonElement body)
-    {
-        return type.Equals("post", StringComparison.OrdinalIgnoreCase)
-            ? ReportPost(id, body)
-            : Task.FromResult<IActionResult>(Ok(new { success = true, item_type = type, item_id = id }));
-    }
+    public Task<IActionResult> ReportFeedItem(string type, int id, [FromBody] JsonElement body) =>
+        ReportFeedTarget(NormalizeLegacyFeedReportType(type), id, body);
 
     [HttpPost("/api/social/comments")]
     public async Task<IActionResult> Comments([FromBody] JsonElement body)
@@ -863,20 +879,52 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpGet("/api/v2/feed/hashtags/trending")]
     public async Task<IActionResult> TrendingHashtags()
     {
-        var data = await _db.Hashtags.OrderByDescending(h => h.UsageCount).ThenByDescending(h => h.LastUsedAt).Take(20).ToListAsync();
-        return Ok(new { data });
+        var limit = ReadQueryInt("limit", 20, 1, 50);
+        var days = ReadQueryInt("days", 7, 1, 90);
+        var since = DateTime.UtcNow.AddDays(-days);
+        var data = await _db.Hashtags
+            .AsNoTracking()
+            .Where(h => h.TenantId == TenantId() && h.UsageCount > 0 && h.LastUsedAt >= since)
+            .OrderByDescending(h => h.UsageCount)
+            .ThenByDescending(h => h.LastUsedAt)
+            .Take(limit)
+            .Select(h => new
+            {
+                id = h.Id,
+                tag = h.Tag,
+                post_count = h.UsageCount,
+                last_used_at = h.LastUsedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("/api/v2/feed/hashtags/search")]
     public async Task<IActionResult> SearchHashtags([FromQuery] string? q = null)
     {
-        var needle = (q ?? string.Empty).Trim().TrimStart('#').ToLowerInvariant();
+        var limit = ReadQueryInt("limit", 10, 1, 50);
+        var needle = (q ?? string.Empty).Trim().TrimStart('#').Replace("%", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+        if (needle.Length < 1)
+        {
+            return Ok(new { success = true, data = Array.Empty<object>() });
+        }
+
         var data = await _db.Hashtags
-            .Where(h => needle == string.Empty || h.Tag.Contains(needle))
+            .AsNoTracking()
+            .Where(h => h.TenantId == TenantId() && h.Tag.StartsWith(needle))
             .OrderByDescending(h => h.UsageCount)
-            .Take(20)
+            .ThenBy(h => h.Tag)
+            .Take(limit)
+            .Select(h => new
+            {
+                id = h.Id,
+                tag = h.Tag,
+                post_count = h.UsageCount
+            })
             .ToListAsync();
-        return Ok(new { data });
+
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("/api/v2/feed/hashtags/{tag}")]
@@ -2061,14 +2109,46 @@ public class V15SocialCompatibilityController : ControllerBase
 
     private async Task<IActionResult> MuteUserCore(int mutedUserId)
     {
+        var tenantId = TenantId();
         var userId = RequireUserId();
-        if (!await _db.MutedUsers.AnyAsync(m => m.UserId == userId && m.MutedUserId == mutedUserId))
+        if (mutedUserId <= 0 || mutedUserId == userId)
         {
-            _db.MutedUsers.Add(new MutedUser { TenantId = TenantId(), UserId = userId, MutedUserId = mutedUserId });
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "INVALID_INPUT", message = "Invalid user." }
+                }
+            });
+        }
+
+        var targetExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == mutedUserId);
+        if (!targetExists)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "RESOURCE_NOT_FOUND", message = "User not found." }
+                }
+            });
+        }
+
+        if (!await _db.MutedUsers.AnyAsync(m => m.TenantId == tenantId && m.UserId == userId && m.MutedUserId == mutedUserId))
+        {
+            _db.MutedUsers.Add(new MutedUser
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                MutedUserId = mutedUserId,
+                MutedAt = DateTime.UtcNow
+            });
             await _db.SaveChangesAsync();
         }
 
-        return Ok(new { success = true });
+        return Ok(new { success = true, data = new { muted = true, user_id = mutedUserId } });
     }
 
     private async Task<object> ReactionSummary(int postId)
@@ -2512,6 +2592,172 @@ public class V15SocialCompatibilityController : ControllerBase
         return stripped.Length == 0 ? null : stripped[..Math.Min(stripped.Length, 1000)];
     }
 
+    private async Task<IActionResult> HideFeedItem(int? id, JsonElement body, bool includeHiddenFlag)
+    {
+        var targetId = id ?? ReadRequiredInt(body, "post_id", "postId", "target_id", "id");
+        var targetType = NormalizeLegacyFeedHideType(ReadString(body, "type", "target_type"));
+
+        if (targetId <= 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "Invalid target.", field = "target_id" }
+                }
+            });
+        }
+
+        if (!await FeedTrackingTargetExistsAsync(targetType, targetId))
+        {
+            return NotFound(new
+            {
+                errors = new[]
+                {
+                    new { code = "RESOURCE_NOT_FOUND", message = "Target not found." }
+                }
+            });
+        }
+
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        if (targetType == "post")
+        {
+            if (!await _db.HiddenPosts.AnyAsync(h => h.TenantId == tenantId && h.PostId == targetId && h.UserId == userId))
+            {
+                _db.HiddenPosts.Add(new HiddenPost
+                {
+                    TenantId = tenantId,
+                    PostId = targetId,
+                    UserId = userId,
+                    HiddenAt = DateTime.UtcNow
+                });
+            }
+        }
+        else
+        {
+            await UpsertTenantConfig(
+                FeedHiddenKey(userId, targetType, targetId),
+                JsonSerializer.Serialize(new
+                {
+                    user_id = userId,
+                    target_type = targetType,
+                    target_id = targetId,
+                    created_at = DateTime.UtcNow
+                }, StoreJsonOptions));
+        }
+
+        await _db.SaveChangesAsync();
+
+        return includeHiddenFlag
+            ? Ok(new { success = true, data = new { hidden = true, post_id = targetId } })
+            : Ok(new { success = true, data = new { success = true, post_id = targetId } });
+    }
+
+    private async Task<IActionResult> ReportFeedTarget(string targetType, int targetId, JsonElement body)
+    {
+        if (!LaravelFeedTrackingTargetTypes.Contains(targetType))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "Invalid target type.", field = "target_type" }
+                }
+            });
+        }
+
+        if (targetId <= 0 || !await FeedTrackingTargetExistsAsync(targetType, targetId))
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "RESOURCE_NOT_FOUND", message = "Target not found." }
+                }
+            });
+        }
+
+        var reasonText = ReadString(body, "reason")?.Trim();
+        if (string.IsNullOrWhiteSpace(reasonText))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "VALIDATION_REQUIRED_FIELD", message = "Reason is required.", field = "reason" }
+                }
+            });
+        }
+
+        reasonText = reasonText[..Math.Min(reasonText.Length, 1000)];
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var alreadyReported = await _db.ContentReports.AnyAsync(r =>
+            r.TenantId == tenantId &&
+            r.ReporterId == userId &&
+            r.ContentType == targetType &&
+            r.ContentId == targetId &&
+            r.Status != ReportStatus.Dismissed);
+
+        if (alreadyReported)
+        {
+            return Conflict(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "DUPLICATE", message = "Already reported." }
+                }
+            });
+        }
+
+        _db.ContentReports.Add(new ContentReport
+        {
+            TenantId = tenantId,
+            ReporterId = userId,
+            ContentType = targetType,
+            ContentId = targetId,
+            Reason = NormalizeContentReportReason(reasonText),
+            Description = ReadString(body, "details", "description"),
+            Status = ReportStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (targetType == "post" && !await _db.FeedReports.AnyAsync(r =>
+                r.TenantId == tenantId &&
+                r.ReporterId == userId &&
+                r.PostId == targetId))
+        {
+            _db.FeedReports.Add(new FeedReport
+            {
+                TenantId = tenantId,
+                PostId = targetId,
+                ReporterId = userId,
+                Reason = reasonText,
+                Details = ReadString(body, "details", "description"),
+                Status = "pending",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                reported = true,
+                target_type = targetType,
+                target_id = targetId
+            }
+        });
+    }
+
     private async Task<bool> FeedTrackingTargetExistsAsync(string targetType, int targetId)
     {
         var tenantId = TenantId();
@@ -2539,9 +2785,48 @@ public class V15SocialCompatibilityController : ControllerBase
     {
         var normalized = string.IsNullOrWhiteSpace(targetType)
             ? "post"
-            : targetType.Trim();
+            : targetType.Trim().ToLowerInvariant();
 
         return LaravelFeedTrackingTargetTypes.Contains(normalized) ? normalized : "post";
+    }
+
+    private static string NormalizeLegacyFeedHideType(string? targetType)
+    {
+        var normalized = string.IsNullOrWhiteSpace(targetType)
+            ? "post"
+            : targetType.Trim().ToLowerInvariant();
+
+        if (normalized == "volunteering")
+        {
+            normalized = "volunteer";
+        }
+
+        return LaravelFeedHideTargetTypes.Contains(normalized) ? normalized : "post";
+    }
+
+    private static string NormalizeLegacyFeedReportType(string? targetType)
+    {
+        var normalized = string.IsNullOrWhiteSpace(targetType)
+            ? "post"
+            : targetType.Trim().ToLowerInvariant();
+
+        return normalized == "volunteering" ? "volunteer" : normalized;
+    }
+
+    private static string FeedHiddenKey(int userId, string targetType, int targetId) =>
+        $"feed.hidden.{userId}.{targetType}.{targetId}";
+
+    private static ReportReason NormalizeContentReportReason(string reason)
+    {
+        return reason.Trim().ToLowerInvariant() switch
+        {
+            "spam" => ReportReason.Spam,
+            "harassment" or "abuse" => ReportReason.Harassment,
+            "inappropriate" or "offensive" => ReportReason.Inappropriate,
+            "fraud" or "scam" => ReportReason.Fraud,
+            "safety" or "safety_concern" => ReportReason.SafetyConcern,
+            _ => ReportReason.Other
+        };
     }
 
     private async Task<User> CurrentUserAsync()
@@ -2861,6 +3146,16 @@ public class V15SocialCompatibilityController : ControllerBase
     private static int ReadRequiredInt(JsonElement body, params string[] names)
     {
         return ReadInt(body, names) ?? throw new BadHttpRequestException($"{string.Join("/", names)} is required");
+    }
+
+    private int ReadQueryInt(string name, int defaultValue, int min, int max)
+    {
+        if (!Request.Query.TryGetValue(name, out var raw) || !int.TryParse(raw.ToString(), out var value))
+        {
+            value = defaultValue;
+        }
+
+        return Math.Clamp(value, min, max);
     }
 
     private static bool? ReadBool(JsonElement body, params string[] names)
