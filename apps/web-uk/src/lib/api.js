@@ -1439,6 +1439,12 @@ async function getExchangeConfig(token) {
   });
 }
 
+async function getExchangeAttentionCount(token) {
+  return request('/api/v2/exchanges/needs-attention-count', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getExchanges(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -1833,6 +1839,12 @@ async function removeMemberEndorsement(token, userId, skillName) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ skill_name: skillName })
+  });
+}
+
+async function getMemberEndorsements(token, userId) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorsements`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
 }
 
@@ -3050,6 +3062,7 @@ module.exports = {
   callMatchesApi,
   dismissMatch,
   getExchangeConfig,
+  getExchangeAttentionCount,
   getExchanges,
   getExchange,
   getExchangeRatings,
@@ -3095,6 +3108,7 @@ module.exports = {
   unblockMember,
   endorseMemberSkill,
   removeMemberEndorsement,
+  getMemberEndorsements,
   acceptConnection,
   declineConnection,
   removeConnection,

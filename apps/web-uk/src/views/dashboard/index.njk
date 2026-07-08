@@ -30,6 +30,20 @@
     </div>
   {% endif %}
 
+  {% if exchangeAttention and exchangeAttention.count > 0 %}
+    <div class="govuk-notification-banner" role="region" aria-labelledby="dashboard-reviews-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="dashboard-reviews-title">Exchanges need your attention</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ exchangeAttention.body }}</p>
+        <p class="govuk-body">
+          <a class="govuk-notification-banner__link" href="/exchanges">View your exchanges</a>
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
   <div class="govuk-button-group govuk-!-margin-bottom-6">
     <a class="govuk-button" data-module="govuk-button" href="/listings/new">Create a listing</a>
   </div>
@@ -78,6 +92,18 @@
         </ul>
       {% else %}
         <p class="govuk-body">You have not earned any badges yet. Take part in your community to start earning them.</p>
+      {% endif %}
+
+      {% if endorsements and endorsements.length %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-7">Your skill endorsements</h2>
+        <ul class="govuk-list nexus-alpha-skill-list">
+          {% for endorsement in endorsements %}
+            <li>
+              <span class="govuk-!-font-weight-bold">{{ endorsement.skillName }}</span>
+              <strong class="govuk-tag govuk-tag--green">{{ endorsement.countLabel }}</strong>
+            </li>
+          {% endfor %}
+        </ul>
       {% endif %}
 
       {% if upcomingEvents and upcomingEvents.length %}

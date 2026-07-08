@@ -76,12 +76,13 @@ The latest generated route matrix at this handoff reported:
 Latest focused dashboard slice: signed `/dashboard` now has a targeted shared
 shell test for the Laravel Blade dashboard contract. The route calls
 Laravel-compatible profile, onboarding status, wallet balance, gamification
-profile, badges, listings, feed, and member events helpers, and the Nunjucks
-view renders the Blade-style welcome, onboarding banner, create-listing CTA,
-time-bank stat grid, progress/badges, quick links, recent feed/listings, and
-upcoming events. Remaining dashboard gaps are exchange-attention count,
-endorsements, tenant/module/feature gates, exact localization, live Laravel
-runtime certification, and ASP.NET backend compatibility.
+profile, badges, listings, feed, member events, exchange-attention count, and
+member endorsements helpers, and the Nunjucks view renders the Blade-style
+welcome, onboarding banner, exchange-attention banner, create-listing CTA,
+time-bank stat grid, progress/badges, skill endorsements, quick links, recent
+feed/listings, and upcoming events. Remaining dashboard gaps are
+tenant/module/feature gates, exact localization, live Laravel runtime
+certification, and ASP.NET backend compatibility.
 
 Focused runtime-smoke harness test: `npm test --
 tests/laravel-runtime-smoke.test.js --runInBand` passed with `17/17` tests

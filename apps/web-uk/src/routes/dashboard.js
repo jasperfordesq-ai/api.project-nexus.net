@@ -13,7 +13,9 @@ const {
   getMyEvents,
   getGamificationProfile,
   getMyBadges,
-  getOnboardingStatus
+  getOnboardingStatus,
+  getExchangeAttentionCount,
+  getMemberEndorsements
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -58,6 +60,11 @@ function displayName(profile) {
   const last = String(profile && (profile.last_name || profile.lastName || '')).trim();
   const combined = [first, last].filter(Boolean).join(' ').trim();
   return combined || String(profile && (profile.display_name || profile.displayName || profile.name || 'User')).trim();
+}
+
+function profileId(profile) {
+  const id = Number(profile && (profile.id ?? profile.user_id ?? profile.userId));
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 function firstName(profile) {
@@ -158,6 +165,45 @@ function normalizeEvent(event) {
   };
 }
 
+function normalizeExchangeAttention(result) {
+  const data = dataFrom(result) || {};
+  const count = integerFrom(data.count ?? data.total);
+  const items = collectionFrom(data.items ? { data: data.items } : data)
+    .slice(0, 5)
+    .map((item) => ({
+      id: item && item.id,
+      title: String(item && (item.listing_title || item.listingTitle || item.title || item.description || 'Exchange')).trim()
+    }));
+
+  return {
+    count,
+    items,
+    body: count === 1
+      ? 'You have 1 exchange that needs your attention.'
+      : `You have ${formatInteger(count)} exchanges that need your attention.`
+  };
+}
+
+function normalizeEndorsements(result) {
+  const data = dataFrom(result) || {};
+  const endorsements = Array.isArray(data.endorsements)
+    ? data.endorsements
+    : collectionFrom(data);
+
+  return endorsements
+    .map((endorsement) => {
+      const skillName = String(endorsement && (endorsement.skill_name || endorsement.skillName || endorsement.name || endorsement.skill || '')).trim();
+      const count = integerFrom(endorsement && (endorsement.count ?? endorsement.endorsement_count ?? endorsement.endorsements_count));
+      return {
+        skillName,
+        count,
+        countLabel: count === 1 ? '1 endorsement' : `${formatInteger(count)} endorsements`
+      };
+    })
+    .filter((endorsement) => endorsement.skillName && endorsement.count > 0)
+    .slice(0, 6);
+}
+
 function isGoingEvent(event) {
   const rsvp = event && (event.my_rsvp || event.myRsvp);
   if (!rsvp) return true;
@@ -189,6 +235,13 @@ router.get('/', asyncRoute(async (req, res) => {
   const safeProfile = dataFrom(profile) || {};
   const badges = collectionFrom(badgesData).slice(0, 8);
   const balance = walletBalance(balanceData);
+  const currentProfileId = profileId(safeProfile);
+  const [exchangeAttentionData, endorsementsData] = await Promise.all([
+    getExchangeAttentionCount(req.token).catch(() => ({ data: { count: 0, items: [] } })),
+    currentProfileId
+      ? getMemberEndorsements(req.token, currentProfileId).catch(() => ({ data: { endorsements: [] } }))
+      : Promise.resolve({ data: { endorsements: [] } })
+  ]);
 
   res.render('dashboard/index', {
     title: 'Dashboard',
@@ -200,6 +253,8 @@ router.get('/', asyncRoute(async (req, res) => {
     balance,
     balanceLabel: `${formatOneDecimal(balance)} hours`,
     onboardingCompleted: onboardingCompleted(onboardingData),
+    exchangeAttention: normalizeExchangeAttention(exchangeAttentionData),
+    endorsements: normalizeEndorsements(endorsementsData),
     gamification: normalizedGamification(gamificationData, badges),
     badges,
     listings: collectionFrom(listingsData).slice(0, 5).map(normalizeListing),

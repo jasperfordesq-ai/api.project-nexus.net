@@ -2453,6 +2453,23 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should fetch member endorsements through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { endorsements: [] } })
+      });
+
+      await api.getMemberEndorsements('test-token', 77);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/members/77/endorsements',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
     it('should transfer wallet credits through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -3136,6 +3153,23 @@ describe('API Request Functions', () => {
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
           })
+        })
+      );
+    });
+
+    it('should fetch exchange attention count through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { count: 2, items: [] } })
+      });
+
+      await api.getExchangeAttentionCount('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/exchanges/needs-attention-count',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
         })
       );
     });

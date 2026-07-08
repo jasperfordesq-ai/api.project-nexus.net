@@ -149,6 +149,7 @@ jest.mock('../src/lib/api', () => ({
   dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
   getExchangeConfig: jest.fn().mockResolvedValue({ data: { workflow_enabled: true } }),
   getExchanges: jest.fn().mockResolvedValue({ data: [] }),
+  getExchangeAttentionCount: jest.fn().mockResolvedValue({ data: { count: 0, items: [] } }),
   getExchange: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   getExchangeRatings: jest.fn().mockResolvedValue({ data: { ratings: [], has_rated: false } }),
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
@@ -195,6 +196,7 @@ jest.mock('../src/lib/api', () => ({
   unblockMember: jest.fn().mockResolvedValue({ data: { success: true } }),
   endorseMemberSkill: jest.fn().mockResolvedValue({ data: { endorsement_id: 33 } }),
   removeMemberEndorsement: jest.fn().mockResolvedValue({ data: { message: 'removed' } }),
+  getMemberEndorsements: jest.fn().mockResolvedValue({ data: { endorsements: [] } }),
   transferWalletCredits: jest.fn().mockResolvedValue({ data: { transaction_id: 99 } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
@@ -320,6 +322,7 @@ describe('shared accessible frontend shell', () => {
     api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
     api.getExchangeConfig.mockReset().mockResolvedValue({ data: { workflow_enabled: true } });
     api.getExchanges.mockReset().mockResolvedValue({ data: [] });
+    api.getExchangeAttentionCount.mockReset().mockResolvedValue({ data: { count: 0, items: [] } });
     api.getExchange.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.getExchangeRatings.mockReset().mockResolvedValue({ data: { ratings: [], has_rated: false } });
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
@@ -388,6 +391,7 @@ describe('shared accessible frontend shell', () => {
     api.unblockMember.mockReset().mockResolvedValue({ data: { success: true } });
     api.endorseMemberSkill.mockReset().mockResolvedValue({ data: { endorsement_id: 33 } });
     api.removeMemberEndorsement.mockReset().mockResolvedValue({ data: { message: 'removed' } });
+    api.getMemberEndorsements.mockReset().mockResolvedValue({ data: { endorsements: [] } });
     api.transferWalletCredits.mockReset().mockResolvedValue({ data: { transaction_id: 99 } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
@@ -538,6 +542,23 @@ describe('shared accessible frontend shell', () => {
         { id: 44, title: 'Garden morning', starts_at: '2026-08-01T10:00:00Z', my_rsvp: 'Going' }
       ]
     });
+    api.getExchangeAttentionCount.mockResolvedValue({
+      data: {
+        count: 2,
+        items: [
+          { id: 88, listing_title: 'Repair help' },
+          { id: 89, listing_title: 'Garden swap' }
+        ]
+      }
+    });
+    api.getMemberEndorsements.mockResolvedValue({
+      data: {
+        endorsements: [
+          { skill_name: 'Gardening', count: 3 },
+          { skill_name: 'Bike repair', count: 1 }
+        ]
+      }
+    });
 
     const unsigned = await request(app).get('/dashboard');
     expect(unsigned.status).toBe(302);
@@ -556,9 +577,14 @@ describe('shared accessible frontend shell', () => {
     expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { limit: 5 });
     expect(api.getListings).toHaveBeenCalledWith('test-token', { limit: 5 });
     expect(api.getMyEvents).toHaveBeenCalledWith('test-token');
+    expect(api.getExchangeAttentionCount).toHaveBeenCalledWith('test-token');
+    expect(api.getMemberEndorsements).toHaveBeenCalledWith('test-token', 101);
     expect(response.text).toContain('Dashboard');
     expect(response.text).toContain('Welcome back, Ada.');
     expect(response.text).toContain('Finish setting up your profile');
+    expect(response.text).toContain('Exchanges need your attention');
+    expect(response.text).toContain('You have 2 exchanges that need your attention.');
+    expect(response.text).toContain('View your exchanges');
     expect(response.text).toContain('Your time bank');
     expect(response.text).toContain('Time-credit balance');
     expect(response.text).toContain('8.5 hours');
@@ -571,6 +597,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('65% of the way to the next level');
     expect(response.text).toContain('Badges (2)');
     expect(response.text).toContain('Community helper');
+    expect(response.text).toContain('Your skill endorsements');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('3 endorsements');
+    expect(response.text).toContain('Bike repair');
+    expect(response.text).toContain('1 endorsement');
     expect(response.text).toContain('Upcoming events');
     expect(response.text).toContain('Garden morning');
     expect(response.text).toContain('Quick links');
