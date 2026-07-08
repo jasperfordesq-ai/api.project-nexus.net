@@ -294,4 +294,31 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/group-exchanges/);
     expect(templates.join('\n')).not.toContain('href="{{ tab.href }}"');
   });
+
+  it('keeps direct and group message links and forms behind urlFor()', () => {
+    const templates = [
+      path.join('messages', 'index.njk'),
+      path.join('messages', 'conversation.njk'),
+      path.join('messages', 'direct-conversation.njk'),
+      path.join('messages', 'groups.njk'),
+      path.join('messages', 'group-create.njk'),
+      path.join('messages', 'group-conversation.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:messages|members|connections|listings)/);
+      expect(template).not.toMatch(/action="\/messages/);
+      expect(template).not.toMatch(/href:\s*"\/(?:members|connections|messages)/);
+    }
+
+    const source = templates.join('\n');
+    expect(source).not.toContain('href="{{ olderHref }}"');
+    expect(source).toMatch(/urlFor\(["']\/messages/);
+    expect(source).toMatch(/urlFor\(["']\/members/);
+    expect(source).toMatch(/urlFor\(["']\/connections/);
+    expect(source).toMatch(/urlFor\(["']\/listings/);
+  });
 });

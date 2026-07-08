@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/messages">Back to direct messages</a>
+  <a class="govuk-back-link" href="{{ urlFor('/messages') }}">Back to direct messages</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -30,13 +30,13 @@
 
       <nav class="govuk-!-margin-bottom-6" aria-label="Message views">
         <ul class="govuk-list govuk-list--inline">
-          <li><a class="govuk-link" href="/messages">Direct messages</a></li>
-          <li><a class="govuk-link govuk-!-font-weight-bold" href="/messages/groups" aria-current="page">Groups</a></li>
+          <li><a class="govuk-link" href="{{ urlFor('/messages') }}">Direct messages</a></li>
+          <li><a class="govuk-link govuk-!-font-weight-bold" href="{{ urlFor('/messages/groups') }}" aria-current="page">Groups</a></li>
         </ul>
       </nav>
 
       <p class="govuk-body">
-        <a class="govuk-button" href="/messages/groups/new">Start a group conversation</a>
+        <a class="govuk-button" href="{{ urlFor('/messages/groups/new') }}">Start a group conversation</a>
       </p>
 
       {% if error %}
@@ -48,7 +48,7 @@
           {% for group in groups %}
             <article class="nexus-alpha-card">
               <h2 class="govuk-heading-m">
-                <a class="govuk-link" href="/messages/groups/{{ group.id }}">{{ group.displayName }}</a>
+                <a class="govuk-link" href="{{ urlFor('/messages/groups/' + (group.id | string)) }}">{{ group.displayName }}</a>
               </h2>
               <p class="govuk-hint govuk-!-margin-bottom-2">
                 {{ group.participant_count or group.participantCount or 0 }} members

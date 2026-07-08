@@ -8,7 +8,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
+      { text: "Home", href: urlFor("/") },
       { text: "Messages" }
     ]
   }) }}
@@ -35,7 +35,7 @@
         <ul class="govuk-list app-conversation-list">
           {% for conversation in conversations %}
             <li class="app-conversation-item{% if (conversation.unreadCount or conversation.unread_count) > 0 %} app-conversation-item--unread{% endif %}">
-              <a href="/messages/{{ conversation.id }}" class="govuk-link app-conversation-link">
+              <a href="{{ urlFor('/messages/' + (conversation.id | string)) }}" class="govuk-link app-conversation-link">
                 <div class="app-conversation-header">
                   <div class="app-member-cell">
                     {% set otherUserName = conversation.other_user_name or conversation.otherUserName or "Unknown user" %}
@@ -69,11 +69,11 @@
           message: "Start a conversation with one of your connections to begin messaging.",
           action: {
             text: "Browse community members",
-            href: "/members"
+            href: urlFor("/members")
           },
           secondaryAction: {
             text: "View your connections",
-            href: "/connections"
+            href: urlFor("/connections")
           }
         } %}
         {% include "partials/empty-state.njk" %}

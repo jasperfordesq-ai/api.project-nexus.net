@@ -347,6 +347,17 @@ source-level regression first failed on the raw `/group-exchanges` links and
 actions, then passed after conversion; a source scan for group-exchange-local
 raw `href`/`action` strings returns no matches.
 
+The twenty-second template-helper source slice extends direct `urlFor()`
+conversion into messages. `src/views/messages/index.njk`, `conversation.njk`,
+`direct-conversation.njk`, `groups.njk`, `group-create.njk`, and
+`group-conversation.njk` now route direct-message breadcrumbs, conversation
+links, listing/member/connection links, empty-state CTAs, older-message
+pagination, direct reply/edit/delete/voice/archive forms, group-message tabs,
+group create/search/member/reaction forms, and leave-group controls through
+`urlFor()`. The source-level regression first failed on raw `/messages`,
+`/members`, and `/connections` targets, then passed after conversion; a source
+scan for message-local raw `href`/`action` strings returns no matches.
+
 Verification command:
 
 ```powershell

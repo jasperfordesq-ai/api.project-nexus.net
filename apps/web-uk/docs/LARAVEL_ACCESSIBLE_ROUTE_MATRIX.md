@@ -82,7 +82,11 @@ and action targets. Notifications index source templates now also use
 values, pagination, and the unread empty-state CTA. Group-exchange
 list/create/detail source templates now also use `urlFor()` for the create CTA,
 status tabs, detail links, create form, participant add/remove/search forms,
-confirmation form, and complete/cancel actions.
+confirmation form, and complete/cancel actions. Message index, direct
+conversation, and group conversation source templates now also use `urlFor()`
+for breadcrumbs, direct and group message links, listing/member/connection
+links, older-message pagination, search forms, reply/edit/delete/voice/archive
+forms, group create/search/member/reaction forms, and leave-group controls.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the

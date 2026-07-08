@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/messages/groups">Back to group conversations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/messages/groups') }}">Back to group conversations</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -46,7 +46,7 @@
       </div>
 
       <div class="nexus-alpha-card govuk-!-margin-bottom-6">
-        <form method="get" action="/messages/groups/new">
+        <form method="get" action="{{ urlFor('/messages/groups/new') }}">
           {% if groupName %}
             <input type="hidden" name="name" value="{{ groupName }}">
           {% endif %}
@@ -67,7 +67,7 @@
               {% for result in searchResults %}
                 <li class="govuk-!-margin-bottom-2">
                   <span>{{ result.displayName }}</span>
-                  <form method="get" action="/messages/groups/new" class="govuk-!-display-inline">
+                  <form method="get" action="{{ urlFor('/messages/groups/new') }}" class="govuk-!-display-inline">
                     {% if groupName %}
                       <input type="hidden" name="name" value="{{ groupName }}">
                     {% endif %}
@@ -86,7 +86,7 @@
         {% endif %}
       </div>
 
-      <form method="post" action="/messages/groups">
+      <form method="post" action="{{ urlFor('/messages/groups') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         {% if selectedIds and selectedIds.length %}
           {% for selectedId in selectedIds %}

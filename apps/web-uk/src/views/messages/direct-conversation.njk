@@ -15,8 +15,8 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
-      { text: "Messages", href: "/messages" },
+      { text: "Home", href: urlFor("/") },
+      { text: "Messages", href: urlFor("/messages") },
       { text: conversation.otherUser.name }
     ]
   }) }}
@@ -26,7 +26,7 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <p class="govuk-body">
-        <a href="/messages" class="govuk-back-link">Back to messages</a>
+        <a href="{{ urlFor('/messages') }}" class="govuk-back-link">Back to messages</a>
       </p>
 
       {% if statusMessage %}
@@ -48,7 +48,7 @@
       {% if listing %}
         <div class="govuk-inset-text">
           About:
-          <a class="govuk-link" href="/listings/{{ listing.id }}">{{ listing.title or listing.name or "Listing" }}</a>
+          <a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ listing.title or listing.name or "Listing" }}</a>
         </div>
       {% endif %}
 
@@ -70,7 +70,7 @@
         </div>
       {% endif %}
 
-      <form method="get" action="/messages/new/{{ conversation.id }}" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/messages/new/' + (conversation.id | string)) }}" class="govuk-!-margin-bottom-6">
         {% if listingId %}
           <input type="hidden" name="listing" value="{{ listingId }}">
         {% endif %}
@@ -89,7 +89,7 @@
 
       {% if meta.hasMore and olderHref %}
         <p class="govuk-body">
-          <a class="govuk-link" href="{{ olderHref }}">Show older messages</a>
+          <a class="govuk-link" href="{{ urlFor(olderHref) }}">Show older messages</a>
         </p>
       {% endif %}
 
@@ -129,7 +129,7 @@
                       <span class="govuk-details__summary-text">Message actions</span>
                     </summary>
                     <div class="govuk-details__text">
-                      <form method="post" action="/messages/{{ conversation.id }}/m/{{ message.id }}/edit" class="govuk-!-margin-bottom-3">
+                      <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/m/' + (message.id | string) + '/edit') }}" class="govuk-!-margin-bottom-3">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukTextarea({
                           label: { text: "Edit message", classes: "govuk-label--s" },
@@ -140,7 +140,7 @@
                         }) }}
                         {{ govukButton({ text: "Save message", classes: "govuk-button--secondary" }) }}
                       </form>
-                      <form method="post" action="/messages/{{ conversation.id }}/m/{{ message.id }}/delete">
+                      <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/m/' + (message.id | string) + '/delete') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         <input type="hidden" name="scope" value="everyone">
                         {{ govukButton({ text: "Delete message", classes: "govuk-button--warning" }) }}
@@ -159,7 +159,7 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <h2 class="govuk-heading-m">Reply</h2>
-      <form method="post" action="/messages/{{ conversation.id }}" enctype="multipart/form-data" novalidate>
+      <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string)) }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         {% if listingId %}
           <input type="hidden" name="context_type" value="listing">
@@ -180,7 +180,7 @@
       </form>
 
       <h2 class="govuk-heading-m govuk-!-margin-top-6">Voice note</h2>
-      <form method="post" action="/messages/{{ conversation.id }}/voice" enctype="multipart/form-data">
+      <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/voice') }}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label govuk-label--s" for="voice">Upload a voice note</label>
@@ -189,7 +189,7 @@
         {{ govukButton({ text: "Send voice note", classes: "govuk-button--secondary" }) }}
       </form>
 
-      <form method="post" action="/messages/{{ conversation.id }}/archive" class="govuk-!-margin-top-6">
+      <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/archive') }}" class="govuk-!-margin-top-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         {{ govukButton({ text: "Archive conversation", classes: "govuk-button--warning" }) }}
       </form>

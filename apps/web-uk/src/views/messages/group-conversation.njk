@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/messages/groups">Back to group conversations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/messages/groups') }}">Back to group conversations</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -42,7 +42,7 @@
               <strong class="govuk-tag govuk-tag--turquoise">Online</strong>
             {% endif %}
             {% if isAdmin and participant.id != currentUserId %}
-              <form method="post" action="/messages/groups/{{ conversation.id }}/members/{{ participant.id }}/remove" class="govuk-!-display-inline">
+              <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/members/' + (participant.id | string) + '/remove') }}" class="govuk-!-display-inline">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button type="submit" class="govuk-link app-link-button">Remove from group<span class="govuk-visually-hidden"> {{ participant.displayName }}</span></button>
               </form>
@@ -52,7 +52,7 @@
       </ul>
 
       <div class="nexus-alpha-card govuk-!-margin-bottom-4">
-        <form method="get" action="/messages/groups/{{ conversation.id }}">
+        <form method="get" action="{{ urlFor('/messages/groups/' + (conversation.id | string)) }}">
           <div class="govuk-form-group govuk-!-margin-bottom-2">
             <label class="govuk-label" for="group-conv-search">Search this conversation</label>
             <div id="group-conv-search-hint" class="govuk-hint">Show only messages that contain these words.</div>
@@ -61,7 +61,7 @@
           <div class="govuk-button-group">
             <button type="submit" class="govuk-button govuk-button--secondary">Search messages</button>
             {% if searchQuery %}
-              <a class="govuk-link" href="/messages/groups/{{ conversation.id }}">Clear search</a>
+              <a class="govuk-link" href="{{ urlFor('/messages/groups/' + (conversation.id | string)) }}">Clear search</a>
             {% endif %}
           </div>
         </form>
@@ -73,7 +73,7 @@
       {% if not searchQuery and meta.hasMore and meta.cursor %}
         <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-bottom-4" aria-label="Older messages">
           <div class="govuk-pagination__prev">
-            <a class="govuk-link govuk-pagination__link" href="/messages/groups/{{ conversation.id }}?cursor={{ meta.cursor }}" rel="prev">
+            <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/messages/groups/' + (conversation.id | string) + '?cursor=' + (meta.cursor | string)) }}" rel="prev">
               <span class="govuk-pagination__link-title">Show older messages</span>
             </a>
           </div>
@@ -102,7 +102,7 @@
                   <div class="govuk-details__text">
                     <div class="govuk-button-group">
                       {% for emoji in reactionEmojis %}
-                        <form method="post" action="/messages/groups/{{ conversation.id }}/m/{{ message.id }}/react" class="govuk-!-display-inline">
+                        <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/m/' + (message.id | string) + '/react') }}" class="govuk-!-display-inline">
                           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                           <input type="hidden" name="emoji" value="{{ emoji }}">
                           <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">
@@ -125,7 +125,7 @@
       {% endif %}
 
       {% if canSend %}
-        <form method="post" action="/messages/groups/{{ conversation.id }}" class="govuk-!-margin-top-6">
+        <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string)) }}" class="govuk-!-margin-top-6">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label govuk-label--m" for="group-body">Write a message</label>
@@ -139,7 +139,7 @@
       {% if isAdmin and canSend %}
         <div class="nexus-alpha-card govuk-!-margin-top-6">
           <h2 class="govuk-heading-m">Manage members</h2>
-          <form method="post" action="/messages/groups/{{ conversation.id }}/members">
+          <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/members') }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <fieldset class="govuk-fieldset">
               <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Add a member</legend>
@@ -149,7 +149,7 @@
                 <input class="govuk-input govuk-input--width-10" id="add-user-id" name="user_id" type="number" min="1" inputmode="numeric" aria-describedby="add-user-hint" required>
               </div>
               <p class="govuk-body govuk-!-margin-bottom-2">
-                <a class="govuk-link" href="/members">Find a member to add</a>
+                <a class="govuk-link" href="{{ urlFor('/members') }}">Find a member to add</a>
               </p>
               <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">Add member</button>
             </fieldset>
@@ -168,7 +168,7 @@
             If you leave, you will no longer receive messages from this group.
           </strong>
         </div>
-        <form method="post" action="/messages/groups/{{ conversation.id }}/members/{{ currentUserId }}/remove">
+        <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/members/' + (currentUserId | string) + '/remove') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="self_leave" value="1">
           <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0">Leave group</button>

@@ -9,8 +9,8 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
-      { text: "Messages", href: "/messages" },
+      { text: "Home", href: urlFor("/") },
+      { text: "Messages", href: urlFor("/messages") },
       { text: conversation.other_user_name or conversation.otherUserName or "Conversation" }
     ]
   }) }}
@@ -46,7 +46,7 @@
 
       {% if conversation.listing %}
         <p class="govuk-body-s govuk-!-margin-bottom-6">
-          Regarding: <a href="/listings/{{ conversation.listing.id }}" class="govuk-link">{{ conversation.listing.title }}</a>
+          Regarding: <a href="{{ urlFor('/listings/' + (conversation.listing.id | string)) }}" class="govuk-link">{{ conversation.listing.title }}</a>
         </p>
       {% endif %}
 
@@ -120,7 +120,7 @@
       </form>
 
       <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/messages" class="govuk-link">Back to messages</a>
+        <a href="{{ urlFor('/messages') }}" class="govuk-link">Back to messages</a>
       </p>
 
     </div>
