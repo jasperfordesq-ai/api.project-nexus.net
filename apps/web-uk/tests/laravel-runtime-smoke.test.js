@@ -289,6 +289,13 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/feed/item/listing/90964', 'View listing'],
       ['/feed/item/listing/90963', 'View listing'],
       ['/feed/item/listing/90962', 'View listing'],
+      ['/blog/feed.xml', '<rss version="2.0">'],
+      ['/blog/test-sitemap-blog-post/likers/like', 'Blog reactions'],
+      ['/blog/timebank-ireland/likers/like', 'Blog reactions'],
+      ['/blog/test-sitemap-blog-post', 'Back to the blog'],
+      ['/blog/test-sitemap-blog-post/comments', 'Blog discussion'],
+      ['/blog/timebank-ireland', 'Back to the blog'],
+      ['/blog/timebank-ireland/comments', 'Blog discussion'],
       ['/podcasts', 'Podcasts'],
       ['/reviews', 'Reviews'],
       ['/search', 'Search'],
@@ -495,7 +502,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/267/offer',
       '/marketplace/267/report',
       '/marketplace/267/edit',
-      '/blog/90001/likers/1',
+      '/blog/test-sitemap-blog-post/likers/like',
       '/events/14',
       '/events/14/map',
       '/events/14/polls',
@@ -533,7 +540,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/feed/item/listing/90962',
       '/users/14/appreciations',
       '/jobs/employers/14',
-      '/blog/64/likers/1',
+      '/blog/timebank-ireland/likers/like',
       '/blog/test-sitemap-blog-post',
       '/blog/test-sitemap-blog-post/comments',
       '/blog/timebank-ireland',
@@ -639,12 +646,6 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       }
 
       if ((req.headers.cookie || '').includes('token=signed-token')) {
-        if (bodyTextFixtures.has(req.url)) {
-          res.writeHead(200, { 'content-type': 'text/html' });
-          res.end(`<h1>${bodyTextFixtures.get(req.url)}</h1>`);
-          return;
-        }
-
         if (req.url === '/blog/feed.xml') {
           res.writeHead(200, { 'content-type': 'application/rss+xml; charset=utf-8' });
           res.end('<rss version="2.0"></rss>');
@@ -654,6 +655,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
         if (req.url === '/wallet/export.csv') {
           res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8' });
           res.end('date,description,amount\n');
+          return;
+        }
+
+        if (bodyTextFixtures.has(req.url)) {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          res.end(`<h1>${bodyTextFixtures.get(req.url)}</h1>`);
           return;
         }
 
@@ -1021,7 +1028,7 @@ describe('Laravel runtime smoke harness', () => {
       '/marketplace/267/offer',
       '/marketplace/267/report',
       '/marketplace/267/edit',
-      '/blog/90001/likers/1'
+      '/blog/test-sitemap-blog-post/likers/like'
     ]));
   });
 
@@ -1050,7 +1057,7 @@ describe('Laravel runtime smoke harness', () => {
       '/polls/8',
       '/polls/4',
       '/feed/item/listing/90967',
-      '/blog/64/likers/1'
+      '/blog/timebank-ireland/likers/like'
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/events/14/recurring-edit', location: '/events/14/edit' },
@@ -1317,6 +1324,13 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/feed/item/listing/90964', text: 'View listing' },
       { path: '/feed/item/listing/90963', text: 'View listing' },
       { path: '/feed/item/listing/90962', text: 'View listing' },
+      { path: '/blog/feed.xml', text: '<rss version="2.0">' },
+      { path: '/blog/test-sitemap-blog-post/likers/like', text: 'Blog reactions' },
+      { path: '/blog/timebank-ireland/likers/like', text: 'Blog reactions' },
+      { path: '/blog/test-sitemap-blog-post', text: 'Back to the blog' },
+      { path: '/blog/test-sitemap-blog-post/comments', text: 'Blog discussion' },
+      { path: '/blog/timebank-ireland', text: 'Back to the blog' },
+      { path: '/blog/timebank-ireland/comments', text: 'Blog discussion' },
       { path: '/podcasts', text: 'Podcasts' },
       { path: '/reviews', text: 'Reviews' },
       { path: '/search', text: 'Search' },
@@ -2052,6 +2066,13 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-feed-item-listing-90964-contains-view-listing': true,
       'body-text-page-feed-item-listing-90963-contains-view-listing': true,
       'body-text-page-feed-item-listing-90962-contains-view-listing': true,
+      'body-text-page-blog-feed-xml-contains-rss-version-2-0': true,
+      'body-text-page-blog-test-sitemap-blog-post-likers-like-contains-blog-reactions': true,
+      'body-text-page-blog-timebank-ireland-likers-like-contains-blog-reactions': true,
+      'body-text-page-blog-test-sitemap-blog-post-contains-back-to-the-blog': true,
+      'body-text-page-blog-test-sitemap-blog-post-comments-contains-blog-discussion': true,
+      'body-text-page-blog-timebank-ireland-contains-back-to-the-blog': true,
+      'body-text-page-blog-timebank-ireland-comments-contains-blog-discussion': true,
       'body-text-page-podcasts-contains-podcasts': true,
       'body-text-page-reviews-contains-reviews': true,
       'body-text-page-search-contains-search': true,

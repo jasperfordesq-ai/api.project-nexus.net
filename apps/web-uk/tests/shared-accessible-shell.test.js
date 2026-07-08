@@ -8312,6 +8312,18 @@ describe('shared accessible frontend shell', () => {
     expect(likers.text).toContain('Grace Hopper');
     expect(likers.text).toContain('Alan Turing');
     expect(likers.text).not.toContain('Laravel Blade route');
+
+    const numericLikers = await request(app)
+      .get('/blog/community-news/likers/1?page=1')
+      .set('Cookie', signedCookieHeader());
+
+    expect(numericLikers.status).toBe(200);
+    expect(api.getReactors).toHaveBeenLastCalledWith('test-token', 'blog', 42, 'like', {
+      page: 1,
+      per_page: 20
+    });
+    expect(numericLikers.text).toContain('Blog reactions');
+    expect(numericLikers.text).not.toContain('Laravel Blade route');
   });
 
   it('submits the Laravel blog comment route through the blog and comments API helpers', async () => {

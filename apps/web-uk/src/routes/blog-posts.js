@@ -278,7 +278,7 @@ router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/:slug([a-zA-Z0-9_-]+)/likers/:reaction([a-z]+)', asyncRoute(async (req, res) => {
+router.get('/:slug([a-zA-Z0-9_-]+)/likers/:reaction([a-zA-Z0-9_]+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect('/login?status=auth-required');
 

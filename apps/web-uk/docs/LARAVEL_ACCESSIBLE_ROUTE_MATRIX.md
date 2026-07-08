@@ -479,11 +479,21 @@ The signed poll pages `/polls`, `/polls/parity/create`,
 checks and `0` failures. The body-text-only default smoke scope passed against
 the same port with `234/234` total checks, including 228 body-text contract
 checks, and `0` failures.
-The default scope now contains `575` checks:
+The blog feed, detail, comments, and reaction pages `/blog/feed.xml`,
+`/blog/test-sitemap-blog-post/likers/like`,
+`/blog/timebank-ireland/likers/like`, `/blog/test-sitemap-blog-post`,
+`/blog/test-sitemap-blog-post/comments`, `/blog/timebank-ireland`, and
+`/blog/timebank-ireland/comments` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6232`. The targeted run passed with `13/13`
+checks and `0` failures. The body-text-only default smoke scope was
+recertified in 8 chunks against the same port, covering all 235 body-text
+contract checks with `283/283` executed checks including repeated auth/health
+setup checks and `0` failures.
+The default scope now contains `582` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 228 body-text contract checks, and the 6
+content-type contract checks, 235 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
