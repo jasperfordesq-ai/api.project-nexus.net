@@ -127,6 +127,9 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/chat', 'AI assistant'],
       ['/account', 'My account'],
       ['/wallet', 'Wallet'],
+      ['/wallet/export.csv', 'Date,Type,Description'],
+      ['/wallet/manage', 'Manage credits'],
+      ['/wallet/recipients', 'results'],
       ['/messages', 'Messages'],
       ['/messages/groups', 'Group conversations'],
       ['/messages/groups/new', 'Start a group conversation'],
@@ -666,7 +669,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
 
         if (req.url === '/wallet/export.csv') {
           res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8' });
-          res.end('date,description,amount\n');
+          res.end('Date,Type,Description,Other Party,Debit,Credit,Status\n');
           return;
         }
 
@@ -1186,6 +1189,9 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/chat', text: 'AI assistant' },
       { path: '/account', text: 'My account' },
       { path: '/wallet', text: 'Wallet' },
+      { path: '/wallet/export.csv', text: 'Date,Type,Description' },
+      { path: '/wallet/manage', text: 'Manage credits' },
+      { path: '/wallet/recipients', text: 'results' },
       { path: '/messages', text: 'Messages' },
       { path: '/messages/groups', text: 'Group conversations' },
       { path: '/messages/groups/new', text: 'Start a group conversation' },
@@ -1927,6 +1933,9 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-chat-contains-ai-assistant': true,
       'body-text-page-account-contains-my-account': true,
       'body-text-page-wallet-contains-wallet': true,
+      'body-text-page-wallet-export-csv-contains-date-type-description': true,
+      'body-text-page-wallet-manage-contains-manage-credits': true,
+      'body-text-page-wallet-recipients-contains-results': true,
       'body-text-page-messages-contains-messages': true,
       'body-text-page-messages-groups-contains-group-conversations': true,
       'body-text-page-messages-groups-new-contains-start-a-group-conversation': true,

@@ -511,11 +511,20 @@ checks and `0` failures. The body-text-only default smoke scope was recertified
 in 8 chunks against the same port, covering all 247 body-text contract checks
 with `295/295` executed checks including repeated auth/health setup checks and
 `0` failures.
-The default scope now contains `594` checks:
+The signed wallet responses `/wallet/export.csv`, `/wallet/manage`, and
+`/wallet/recipients` returned expected response markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6236`; the CSV export marker tracks the
+Laravel-backed statement header `Date,Type,Description`, and the recipients
+route marker tracks the JSON `results` key. The targeted run passed with `9/9`
+checks and `0` failures. The body-text-only default smoke scope was recertified
+in 8 chunks against the same port, covering all 250 body-text contract checks
+with `298/298` executed checks including repeated auth/health setup checks and
+`0` failures.
+The default scope now contains `597` checks:
 `279`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 22 gated-status checks, and 21 signed redirect checks, plus 2
-content-type contract checks, 247 body-text contract checks, and the 6
+content-type contract checks, 250 body-text contract checks, and the 6
 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
