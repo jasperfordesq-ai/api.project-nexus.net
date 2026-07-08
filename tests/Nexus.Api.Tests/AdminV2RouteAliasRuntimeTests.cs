@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -12,6 +13,45 @@ namespace Nexus.Api.Tests;
 public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
 {
     public AdminV2RouteAliasRuntimeTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    [Fact]
+    public async Task LaravelReactLinkPreviewV2_GetAndPost_ReturnSuccessDataEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var getResponse = await Client.GetAsync("/api/v2/link-preview?url=https%3A%2F%2Fexample.com%2Fwelcome");
+        var postResponse = await Client.PostAsJsonAsync("/api/v2/link-preview", new { url = "https://example.com/welcome" });
+
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        postResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var getJson = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
+        using var postJson = JsonDocument.Parse(await postResponse.Content.ReadAsStringAsync());
+
+        foreach (var json in new[] { getJson.RootElement, postJson.RootElement })
+        {
+            json.GetProperty("success").GetBoolean().Should().BeTrue();
+            var data = json.GetProperty("data");
+            data.GetProperty("url").GetString().Should().Be("https://example.com/welcome");
+            data.GetProperty("title").GetString().Should().NotBeNullOrWhiteSpace();
+            data.GetProperty("description").GetString().Should().NotBeNull();
+            data.GetProperty("site_name").GetString().Should().Be("example.com");
+            data.TryGetProperty("image", out _).Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task LaravelReactLinkPreviewV2_PostRejectsNonHttpUrlWithLaravelErrorEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/link-preview", new { url = "ftp://example.com/file.txt" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+    }
 
     [Theory]
     [InlineData("/api/v2/admin/categories")]

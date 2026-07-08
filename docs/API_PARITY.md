@@ -201,6 +201,14 @@ public SSO provider discovery/redirect, OAuth callback-code exchange errors, OS
 Places lookup, exchange attention count, given reviews, goal insights, goal
 buddy nudge, typed match dismissals, and coordinator assistance requests.
 
+The Laravel React link-preview compose hook now has focused runtime coverage for
+`GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
+now returns Laravel-style `success/data` envelopes with `url`, `title`,
+`description`, `site_name`, and `image`, and rejects non-HTTP(S) POST payloads
+with `success=false` plus `errors[].code=VALIDATION_ERROR`. Full OpenGraph
+fetching, caching, remote timeout handling, and provider-grade metadata fidelity
+remain deeper parity gaps beyond the deterministic local fallback.
+
 ## Known High-Risk API Gaps
 
 | Area | Laravel source | .NET source | Gap |

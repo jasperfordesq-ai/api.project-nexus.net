@@ -1720,23 +1720,19 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/link-preview")]
-    [AllowAnonymous]
+    [HttpGet("api/v2/link-preview")]
+    [Authorize]
     public IActionResult LinkPreview([FromQuery] string? url)
     {
-        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var parsed))
-            return BadRequest(new { error = "A valid absolute url is required" });
+        var decoded = string.IsNullOrWhiteSpace(url) ? null : Uri.UnescapeDataString(url);
+        return BuildLinkPreviewResponse(decoded);
+    }
 
-        return Ok(new
-        {
-            data = new
-            {
-                url,
-                title = parsed.Host,
-                description = parsed.AbsoluteUri,
-                site_name = parsed.Host,
-                image = (string?)null
-            }
-        });
+    [HttpPost("api/v2/link-preview")]
+    [Authorize]
+    public IActionResult FetchLinkPreview([FromBody] JsonElement body)
+    {
+        return BuildLinkPreviewResponse(ReadString(body, "url"));
     }
 
     [HttpGet("api/listings/tags/popular")]
@@ -5042,6 +5038,37 @@ public class ReactFrontendCompatibilityController : ControllerBase
         created_at = document.CreatedAt,
         updated_at = document.UpdatedAt
     };
+
+    private static IActionResult BuildLinkPreviewResponse(string? url)
+    {
+        var normalized = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+        if (string.IsNullOrWhiteSpace(normalized) ||
+            !Uri.TryCreate(normalized, UriKind.Absolute, out var parsed) ||
+            (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+        {
+            return new BadRequestObjectResult(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "A valid HTTP or HTTPS URL is required.", field = "url" }
+                }
+            });
+        }
+
+        return new OkObjectResult(new
+        {
+            success = true,
+            data = new
+            {
+                url = parsed.AbsoluteUri,
+                title = parsed.Host,
+                description = parsed.AbsoluteUri,
+                site_name = parsed.Host,
+                image = (string?)null
+            }
+        });
+    }
 
     private static Dictionary<string, object[]> BuildDefaultMenusByLocation() => new()
     {
