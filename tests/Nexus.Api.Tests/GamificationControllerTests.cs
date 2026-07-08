@@ -40,6 +40,34 @@ public class GamificationControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelReactProfileV2Alias_UsesSuccessDataEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/gamification/profile");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var data = json.RootElement.GetProperty("data");
+        data.GetProperty("user").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("user").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("xp").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("level").GetInt32().Should().BeGreaterOrEqualTo(1);
+        data.GetProperty("level_progress").GetProperty("current_xp").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("level_progress").GetProperty("xp_for_current_level").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("level_progress").GetProperty("xp_for_next_level").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("level_progress").GetProperty("progress_percentage").GetDouble().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("badges_count").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("showcased_badges").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("is_own_profile").GetBoolean().Should().BeTrue();
+        data.GetProperty("xp_values").ValueKind.Should().Be(JsonValueKind.Object);
+        data.GetProperty("level_thresholds").ValueKind.Should().Be(JsonValueKind.Object);
+        json.RootElement.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public async Task GetProfile_Unauthenticated_ReturnsUnauthorized()
     {
         // Act

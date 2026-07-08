@@ -22,6 +22,19 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class GamificationController : ControllerBase
 {
+    private static readonly IReadOnlyDictionary<string, int> XpValues = new Dictionary<string, int>
+    {
+        ["listing_created"] = 10,
+        ["connection_made"] = 5,
+        ["transaction_completed"] = 20,
+        ["event_created"] = 15,
+        ["review_left"] = 10
+    };
+
+    private static readonly IReadOnlyDictionary<int, int> LevelThresholds = Enumerable
+        .Range(1, Nexus.Api.Entities.User.MaxLevel)
+        .ToDictionary(level => level, Nexus.Api.Entities.User.GetXpRequiredForLevel);
+
     private readonly NexusDbContext _db;
     private readonly ILogger<GamificationController> _logger;
 
@@ -78,8 +91,7 @@ public class GamificationController : ControllerBase
         var currentXp = user.TotalXp - user.xp_required_for_current_level;
         var nextLevelSpan = Math.Max(1, user.xp_required_for_next_level - user.xp_required_for_current_level);
         var progressPercent = Math.Clamp(currentXp / (double)nextLevelSpan * 100, 0, 100);
-
-        return Ok(new
+        var profileData = new
         {
             user = new
             {
@@ -99,8 +111,26 @@ public class GamificationController : ControllerBase
             badges_count = user.badges_earned,
             showcased_badges = Array.Empty<object>(),
             is_own_profile = true,
+            xp_values = XpValues,
+            level_thresholds = LevelThresholds
+        };
+
+        return Ok(new
+        {
+            success = true,
+            data = profileData,
+            profileData.user,
+            profileData.xp,
+            profileData.level,
+            profileData.level_progress,
+            profileData.badges_count,
+            profileData.showcased_badges,
+            profileData.is_own_profile,
+            profileData.xp_values,
+            profileData.level_thresholds,
             profile = user,
-            recent_xp = recentXp
+            recent_xp = recentXp,
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
         });
     }
 
