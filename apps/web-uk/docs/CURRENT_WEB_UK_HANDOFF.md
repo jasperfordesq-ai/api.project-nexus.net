@@ -372,7 +372,10 @@ shared-mount response rewriter.
 The latest clubs source slice now routes the clubs search form through
 `urlFor('/clubs')` and the unsigned clubs redirect through `res.locals.urlFor`,
 so the clubs directory stays inside the active tenant mount without relying
-only on the shared-mount response rewriter.
+only on the shared-mount response rewriter. The latest active-club evidence
+slice now also mirrors Laravel's Clubs route gate: signed empty unfiltered club
+responses return `404`, while searched empty results can still render the Clubs
+page when a minimal unfiltered probe proves the tenant has active clubs.
 The latest skills source slice now routes the skills category/member/search
 links and search form through `urlFor()`, routes the unsigned skills redirect
 through `res.locals.urlFor`, and makes shared `asyncRoute` 401/error redirects
@@ -423,8 +426,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `997/1000` implementation/certification parity |
-| Green confidence estimate | about `988/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific workflow gates such as active-club evidence and broker workflow behavior, and ASP.NET backend switching certification |
+| Working estimate | about `998/1000` implementation/certification parity |
+| Green confidence estimate | about `990/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific workflow gates such as Explore-card active-club sourcing and broker workflow behavior, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -741,8 +744,37 @@ feature gates:
   basics and that the enabled Laravel fixture still renders `/events/6/map`,
   `/organisations/636/jobs`, and `/messages/groups/new`.
 - This closes the proven maps, organisation-jobs, and group-message compound
-  gate slice. It does not prove active-club evidence, broker workflow gating,
-  visual/manual Blade parity, or ASP.NET backend compatibility.
+  gate slice. It does not prove broker workflow gating, visual/manual Blade
+  parity, or ASP.NET backend compatibility; route-level active-club proof is
+  documented in the later active-club evidence slice.
+
+Latest focused verification on 2026-07-09 for the active-club evidence route
+gate slice:
+
+- Laravel source checked: `AlphaController::clubs()` aborts with `404` after
+  auth when the tenant has no active `vol_organizations` row with
+  `org_type = 'club'` and `status = 'active'`; `explore.blade.php` uses the
+  same existence check before showing the Clubs card.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand -t "clubs"` first failed because signed `/clubs` returned `200` for an empty unfiltered club list and the searched-empty case did not perform an unfiltered proof call.
+- `src/routes/clubs.js` now returns the shared 404 page when the unfiltered
+  Laravel-backed club list is empty. When a search query returns no rows, it
+  performs a minimal unfiltered `getClubs({ per_page: 1 })` probe and renders
+  the empty search page only if that probe proves active clubs exist.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand -t "clubs"` passed 4 selected tests.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand` passed 473/473 tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed 12/12 suites and 837/837 tests.
+- A current-code temporary Web UK process on `http://127.0.0.1:6613` with
+  `TENANT_ID=2`, Laravel `http://127.0.0.1:8088`, and
+  `SMOKE_GATED_PAGE_PATHS=/clubs:404` passed the focused Laravel runtime smoke.
+  The local `hour-timebank` fixture has no active clubs, so the expected live
+  result is `404`. A stale `/clubs=>Clubs` body-text smoke was intentionally
+  replaced for this fixture.
+- This certifies the route-level no-active-club behavior. Explore-card
+  active-club sourcing still needs a Laravel-backed source beyond the current
+  bootstrap `has_clubs` placeholder, and visual/manual Blade parity plus
+  ASP.NET backend switching remain open.
 
 Latest focused verification on 2026-07-09 for the message translation policy
 slice:
@@ -867,8 +899,8 @@ live-content link slice:
 - `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "Explore live-content|search forms|event index"` passed: 3 selected tests.
 - `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand -t "Explore hub"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with only `/explore=>Explore` in `SMOKE_BODY_TEXT_PAGE_PATHS` and large route lists disabled passed 11/11 checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
-- The slice pins Blade Explore card gates from tenant bootstrap: Exchanges require `listings` plus broker `exchange_workflow`, AI assistant/Polls/Groups/Goals/Organisations/Blog/Resources/Marketplace/Jobs/Courses/Podcasts/Coupons/Premium/Ideation/Federation use their Blade feature keys, Search and Skills remain card-visible, and Clubs require an explicit tenant `has_clubs` flag until active-club detection has a runtime source.
-- This also routes Explore listing/event live-content links and view-all links through `urlFor()` for shared mounts and custom-domain roots. It does not certify live Laravel broker workflow data, active-club detection, visual/manual Blade parity, localization, or ASP.NET backend compatibility.
+- The slice pins Blade Explore card gates from tenant bootstrap: Exchanges require `listings` plus broker `exchange_workflow`, AI assistant/Polls/Groups/Goals/Organisations/Blog/Resources/Marketplace/Jobs/Courses/Podcasts/Coupons/Premium/Ideation/Federation use their Blade feature keys, Search and Skills remain card-visible, and Clubs require an explicit tenant `has_clubs` flag until Explore-card active-club detection has a Laravel-backed runtime source.
+- This also routes Explore listing/event live-content links and view-all links through `urlFor()` for shared mounts and custom-domain roots. It does not certify live Laravel broker workflow data, Explore-card active-club sourcing, visual/manual Blade parity, localization, or ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
@@ -2157,8 +2189,8 @@ ASP.NET switching proof over adding more skeleton pages.
 4. Add remaining route-specific workflow gate proof beyond the broad
    route-level module/feature gates. Maps, organisation jobs, group-message
    connection gates, and message translation policy now have focused Jest
-   proof; active-club evidence and broker workflow gating still need
-   certification.
+   proof, and the Clubs route now has active-club 404 proof. Explore-card
+   active-club sourcing and broker workflow gating still need certification.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -2178,13 +2210,13 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `997/1000`.
-Green confidence estimate: `988/1000`, because the consolidated code, static
+Current working estimate at this handoff: `998/1000`.
+Green confidence estimate: `990/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
 full default Laravel runtime-smoke coverage via chunked/bucketed runs are
-strong, while visual/manual Blade parity spot-checks, active-club and broker
-workflow gate proof, and ASP.NET backend switching proof still need final
-certification.
+strong, while visual/manual Blade parity spot-checks, Explore-card active-club
+sourcing, broker workflow gate proof, and ASP.NET backend switching proof still
+need final certification.
 
 ## Final Handoff Checklist
 

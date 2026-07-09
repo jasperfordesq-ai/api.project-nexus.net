@@ -33,6 +33,10 @@ function dataList(result) {
   return [];
 }
 
+function renderNoActiveClubs(res) {
+  return res.status(404).render('errors/404', { title: 'Clubs' });
+}
+
 function truncate(value, length) {
   const text = trimmed(value);
   if (text.length <= length) return text;
@@ -79,6 +83,17 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const result = await getClubs(params);
   const clubs = asList(dataList(result)).map(normalizeClub);
+
+  if (!clubs.length) {
+    if (!clubsQuery) {
+      return renderNoActiveClubs(res);
+    }
+
+    const evidence = asList(dataList(await getClubs({ per_page: 1 })));
+    if (!evidence.length) {
+      return renderNoActiveClubs(res);
+    }
+  }
 
   return res.render('clubs/index', {
     title: 'Clubs',

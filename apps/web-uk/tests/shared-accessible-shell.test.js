@@ -11419,8 +11419,15 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
 
     api.getClubs.mockResolvedValueOnce({
-      data: [],
-      meta: { total: 0, page: 1, per_page: 50 }
+      data: [
+        {
+          id: 9,
+          name: 'Tenant Velo Club',
+          description: 'Active club evidence for the tenant.',
+          member_count: 8
+        }
+      ],
+      meta: { total: 1, page: 1, per_page: 50 }
     });
 
     const unsigned = await request(app).get('/acme/accessible/clubs');
@@ -11433,6 +11440,48 @@ describe('shared accessible frontend shell', () => {
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('action="/acme/accessible/clubs"');
     expect(api.getClubs).toHaveBeenCalledWith({ search: 'velo', per_page: 50 });
+  });
+
+  it('returns Laravel-style 404 for signed clubs when the tenant has no active club evidence', async () => {
+    const api = require('../src/lib/api');
+
+    api.getClubs.mockResolvedValueOnce({
+      data: [],
+      meta: { total: 0, page: 1, per_page: 50 }
+    });
+
+    const response = await request(app)
+      .get('/clubs')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('Page not found');
+    expect(response.text).not.toContain('There are no clubs yet.');
+    expect(api.getClubs).toHaveBeenCalledWith({ per_page: 50 });
+  });
+
+  it('renders an empty clubs search when an unfiltered probe proves the tenant has active clubs', async () => {
+    const api = require('../src/lib/api');
+
+    api.getClubs
+      .mockResolvedValueOnce({
+        data: [],
+        meta: { total: 0, page: 1, per_page: 50 }
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 7, name: 'Velo Club', member_count: 24 }],
+        meta: { total: 1, page: 1, per_page: 1 }
+      });
+
+    const response = await request(app)
+      .get('/clubs?q=missing')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('There are no clubs yet.');
+    expect(response.text).toContain('value="missing"');
+    expect(api.getClubs).toHaveBeenNthCalledWith(1, { search: 'missing', per_page: 50 });
+    expect(api.getClubs).toHaveBeenNthCalledWith(2, { per_page: 1 });
   });
 
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {

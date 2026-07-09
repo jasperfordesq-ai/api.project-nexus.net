@@ -95,8 +95,8 @@ smoke against temporary Web UK `http://127.0.0.1:6535`, Laravel
 `/hour-timebank/accessible/dashboard`, `/wallet`, and `/members` body markers
 plus the five default-off `/acme/accessible/*` `403` checks. This is not yet
 live runtime proof of a real Laravel tenant with disabled core modules, broker
-workflow, active-club detection, every route-specific workflow gate, or full
-enabled-tenant depth behavior. A follow-up compound-gate slice now stacks all
+workflow, Explore-card active-club sourcing, every route-specific workflow
+gate, or full enabled-tenant depth behavior. A follow-up compound-gate slice now stacks all
 matching route gates and blocks `/events/{id}/map` when `maps` is disabled,
 `/organisations/{id}/jobs` when `job_vacancies` is disabled, and
 `/messages/groups...` when `connections` is disabled while the broader route
@@ -107,7 +107,12 @@ all-matching gate evaluation. A scoped Laravel runtime smoke against temporary
 Web UK `http://127.0.0.1:6601`, Laravel `http://127.0.0.1:8088`, and
 `TENANT_ID=2` passed `13/13` checks, proving the enabled local Laravel fixture
 still renders `/events/6/map`, `/organisations/636/jobs`, and
-`/messages/groups/new` after the gate change.
+`/messages/groups/new` after the gate change. A follow-up active-club evidence
+slice now matches Laravel's `/clubs` route gate: signed empty unfiltered club
+responses return `404`, while an empty search result can still render the Clubs
+page when a minimal unfiltered probe proves the tenant has active clubs.
+Focused Jest first failed on signed `/clubs` returning `200`, then passed once
+`src/routes/clubs.js` added the no-active-clubs 404 and searched-empty probe.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
@@ -203,7 +208,10 @@ network access and accept/decline/remove POST results, keeping connections
 workflow redirects inside the active shared accessible mount.
 Clubs source now also uses `urlFor('/clubs')` for the search form and
 `res.locals.urlFor` for the unsigned auth-required redirect, keeping the clubs
-directory inside the active shared accessible mount.
+directory inside the active shared accessible mount. The route now mirrors
+Laravel's tenant-has-clubs gate by returning `404` when the Laravel-backed club
+list proves the tenant has no active clubs; searched empty results remain
+renderable when an unfiltered probe proves active clubs exist.
 Skills source now also uses `urlFor()` for category/member/search links and the
 search form, uses `res.locals.urlFor` for the unsigned auth-required redirect,
 and routes shared `asyncRoute` 401/error redirects through the active URL
@@ -232,7 +240,8 @@ ideation, jobs, polls, resources, reviews, and search. Route declarations still
 do not prove every route-specific workflow-disabled response. Maps,
 organisation jobs, and group-message connection gates now have focused
 middleware proof. Message translation policy now has focused shared-mount
-render/action proof for disabled tenants; active-club evidence and broker
+render/action proof for disabled tenants, and the Clubs route now has
+route-level active-club 404 proof; Explore-card active-club sourcing and broker
 workflow gating still need certification.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
@@ -1203,7 +1212,7 @@ fell from 28 to 0.
 | Premium | `/premium` | `/premium` | Partial Laravel-backed candidate: pricing, manage, and return GET pages require signed auth like Laravel, call `/api/v2/member-premium/tiers` and `/api/v2/member-premium/me`, and render Blade-style tier cards, current plan notices, billing/cancel forms, and checkout-return states. POST `/premium/subscribe`, `/premium/portal`, and `/premium/cancel` call Laravel `/api/v2/member-premium/*` endpoints and preserve Laravel success/failure redirects. Premium links/forms, auth/status redirects, checkout return URL payloads, and billing-portal return URL payloads now route through `urlFor()`/`res.locals.urlFor` with source regression and focused shared-mount payload coverage. Stripe runtime behavior, feature gates, localization, exact billing date/status wording, and ASP.NET backend compatibility are not certified. |
 | Ideation | `/ideation`, `/ideation/new`, `/ideation/{id}`, `/ideation/{id}/edit`, `/ideation/{id}/manage`, `/ideation/{id}/outcome`, `/ideation/{id}/drafts`, `/ideation/{id}/ideas/{ideaId}`, `/ideation/tags`, `/ideation/campaigns`, `/ideation/campaigns/{id}`, `/ideation/outcomes` | `/ideation`, `/ideation/new`, `/ideation/:id`, `/ideation/:id/edit`, `/ideation/:id/manage`, `/ideation/:id/outcome`, `/ideation/:id/drafts`, `/ideation/:id/ideas/:ideaId`, `/ideation/tags`, `/ideation/campaigns`, `/ideation/campaigns/:id`, `/ideation/outcomes` | Partial Laravel-backed candidate: unsigned visitors redirect to `/login?status=auth-required`; signed GET requests call Laravel `/api/v2/ideation-challenges`, `/api/v2/ideation-categories`, `/api/v2/ideation-templates`, `/api/v2/ideation-challenges/{id}`, `/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, `/api/v2/ideation-challenges/{id}/ideas?limit=100&sort=votes`, `/api/v2/ideation-challenges/{id}/ideas/drafts`, `/api/v2/ideation-challenges/{id}/outcome`, `/api/v2/ideation-ideas/{ideaId}`, `/api/v2/ideation-ideas/{ideaId}/comments?per_page=30`, `/api/v2/ideation-ideas/{ideaId}/media`, `/api/v2/ideation-tags/popular`, `/api/v2/ideation-campaigns`, `/api/v2/ideation-campaigns/{id}`, and `/api/v2/ideation-outcomes/dashboard`, then render Blade-style search/status filters, challenge cards, create/edit form fields, category/template choices, manage lifecycle/campaign/favourite/duplicate/delete controls, outcome edit form fields, draft edit/publish forms, idea detail/comment/media/admin/convert/delete controls, status tags, idea counts, success/error banners, challenge metadata, prize inset, idea cards, vote forms, submit-idea form, popular tags, selected-tag challenge matches, tag empty states, ideation tabs, campaign cards/detail metadata, campaign status tags, linked challenge cards, challenge counts, creator metadata, outcome stats, and outcome tables. Ideation source templates now route local tabs, filters, links, and form actions through `urlFor()`. POST aliases call Laravel v2 ideation APIs for challenge, idea, outcome, vote, media, conversion, and campaign actions, and their redirects now route through `res.locals.urlFor` so shared-mounted tenant paths stay under `/{tenantSlug}/accessible`. Admin authorization depth, tenant/feature gates, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Federation | `/federation` | `/federation` | Partial Laravel-backed candidate: the protected hub redirects unsigned visitors to `/login?status=auth-required`, calls Laravel `/api/v2/federation/status`, `/api/v2/federation/partners`, and `/api/v2/federation/activity`, and renders Blade-style status banners, network stats, partner preview, recent activity, and quick links. The protected `/federation/partners` index, `/federation/partners/{id}` detail, `/federation/members` index, `/federation/members/{id}` detail, `/federation/members/{id}/transfer` confirm form, `/federation/settings` form, `/federation/opt-in` preferences form, `/federation/opt-out` confirmation form, `/federation/onboarding` wizard, `/federation/listings` browse page, `/federation/listings/{tenantId}/{id}` detail page, `/federation/groups` browse page, `/federation/events` browse page, `/federation/connections` tabbed list, `/federation/messages` conversation index, and `/federation/messages/conversation/{id}` conversation detail now call Laravel-compatible endpoints and render Blade-style federation depth pages. Tenant federation policy, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
-| Clubs | `/clubs` | `/clubs` | Partial Laravel-backed candidate: unsigned visitors redirect to `/login?status=auth-required`; signed-in visitors call Laravel-compatible `/api/v2/clubs?search=...&per_page=50` and render Blade-style club search, empty state, logo, member count, schedule, contact, and external website cards. Laravel's tenant-has-clubs 404 gate, exact tenant caption, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
+| Clubs | `/clubs` | `/clubs` | Partial Laravel-backed candidate: unsigned visitors redirect to `/login?status=auth-required`; signed-in visitors call Laravel-compatible `/api/v2/clubs?search=...&per_page=50` and render Blade-style club search, empty state, logo, member count, schedule, contact, and external website cards. The route now returns Laravel-style `404` when an unfiltered club list proves no active clubs exist, and preserves searched empty results when a minimal unfiltered probe proves the tenant has active clubs. Exact tenant caption, localization, live Laravel runtime behavior, Explore-card active-club sourcing, and ASP.NET backend compatibility are not certified. |
 | Public info pages | `/about`, `/guide`, `/features`, `/faq` | `/about`, `/guide`, `/features`, `/faq` | Partial Blade-style candidate: `/about` renders Laravel's community intro, ordered four-step flow, values, contributor credits, open-source links, and signed-in/signed-out CTA group; `/guide` renders Laravel's timebanking explanation, equal-time principle, ordered three-step flow, getting-started copy, and signed-in/signed-out CTA group; `/features` renders Laravel's feature list and guide CTA; `/faq` renders Laravel's five-question GOV.UK accordion. Tenant-domain routing, module-gated CTA visibility, localization, live platform stats, runtime behavior, and ASP.NET backend compatibility are not certified. |
 
 ## Remaining Certification Families
