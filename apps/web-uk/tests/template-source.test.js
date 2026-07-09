@@ -322,6 +322,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('res.locals.urlFor');
   });
 
+  it('keeps server-level redirects behind the active tenant URL helper', () => {
+    const server = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'server.js'),
+      'utf8'
+    );
+
+    expect(server).not.toMatch(/res\.redirect\(['"`]\/(?:cookies|login|organisations)/);
+    expect(server).not.toMatch(/res\.redirect\((?:invalidRedirect|failedRedirect)\)/);
+    expect(server).toContain('redirectTo(res,');
+    expect(server).toContain('res.locals.urlFor');
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),

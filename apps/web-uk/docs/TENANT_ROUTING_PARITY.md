@@ -815,9 +815,37 @@ credential viability beyond the smoke fixture, two-factor persistence,
 registration delivery, password reset email delivery, visual Blade parity,
 localization, every route redirect family, or ASP.NET backend compatibility.
 
+The fifty-third source slice extends route-level redirect cleanup into core
+server handlers. `src/server.js` now sends deterministic cookie settings,
+account login, organisation registration status, and organisation-detail auth
+redirects through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. User-provided safe return
+URLs still use the existing safe-local redirect path to avoid double-prefixing
+already-mounted return targets. The focused source regression first failed on
+raw `/cookies`, `/login`, `/organisations`, `invalidRedirect`, and
+`failedRedirect` redirects, then passed after conversion. Focused shared-mount
+tests prove `/acme/accessible/cookie-consent` redirects to
+`/acme/accessible/cookies?status=saved` and
+`/acme/accessible/organisations/42` redirects to
+`/acme/accessible/login?status=auth-required`. Full source tests, focused
+shared-mount tests, lint, route matrix, the full Web UK Jest suite with 768/768
+tests passing across 11 suites, and a scoped live Laravel cookie/organisation
+smoke with 12/12 checks also passed. This is server-level route-redirect
+evidence only; it does not newly certify every route redirect family,
+user-return URL prefixing, full organisation workflow persistence, visual Blade
+parity, localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "server-level redirects"
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "server-level"
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "shared tenant accessible mount"
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk test -- --runInBand
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = '/organisations/42'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/cookies=>Cookies'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "auth route redirects"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "auth POST redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js

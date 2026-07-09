@@ -609,7 +609,7 @@ app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
   });
 
   if (choice === 'save') {
-    return res.redirect('/cookies?status=saved');
+    return redirectTo(res, '/cookies?status=saved');
   }
 
   if (req.session) {
@@ -623,7 +623,7 @@ app.get('/account', (req, res) => {
   const token = req.signedCookies.token;
 
   if (!token) {
-    return res.redirect('/login');
+    return redirectTo(res, '/login');
   }
 
   res.render('account', {
@@ -984,7 +984,7 @@ function organisationRegistrationStatus(payload, agreedTerms) {
 async function handleOrganisationRegistrationPost(req, res, options = {}) {
   const token = req.signedCookies.token;
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const payload = buildOrganisationRegistrationPayload(req.body);
@@ -997,7 +997,7 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
     const invalidRedirect = options.coarseInvalid
       ? '/organisations?status=org-invalid'
       : `/organisations/register?status=${invalidStatus}`;
-    return res.redirect(invalidRedirect);
+    return redirectTo(res, invalidRedirect);
   }
 
   const { ApiOfflineError, createVolunteerOrganisation } = require('./lib/api');
@@ -1016,10 +1016,10 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
     const failedRedirect = options.coarseInvalid
       ? '/organisations?status=org-failed'
       : '/organisations/register?status=org-failed';
-    return res.redirect(failedRedirect);
+    return redirectTo(res, failedRedirect);
   }
 
-  return res.redirect('/organisations?status=org-submitted');
+  return redirectTo(res, '/organisations?status=org-submitted');
 }
 
 app.post('/organisations', formLimiter, doubleCsrfProtection, (req, res) => {
@@ -1191,7 +1191,7 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
 app.get('/organisations/:id(\\d+)', (req, res) => {
   const token = req.signedCookies.token || '';
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const {
@@ -1336,6 +1336,11 @@ function safeLocalPath(input, fallback = '/') {
     return value;
   }
   return fallback;
+}
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
 }
 
 // Protected routes with CSRF and rate limiting

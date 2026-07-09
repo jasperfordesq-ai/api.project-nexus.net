@@ -208,6 +208,32 @@ describe('Public Routes', () => {
       expect(response.headers.location).toBe('/acme/accessible/dashboard');
       expect(api.login).toHaveBeenCalledWith('member@acme.test', 'Test123!', 'acme');
     });
+
+    it('keeps server-level cookie redirects inside the active shared accessible mount', async () => {
+      const agent = request.agent(app);
+      const first = await agent.get('/acme/accessible/cookies');
+      const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const response = await agent
+        .post('/acme/accessible/cookie-consent')
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          cookies: 'save',
+          analytics: 'yes'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/cookies?status=saved');
+    });
+
+    it('keeps server-level organisation auth redirects inside the active shared accessible mount', async () => {
+      const response = await request(app).get('/acme/accessible/organisations/42');
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    });
   });
 
   describe('custom accessible domains', () => {
