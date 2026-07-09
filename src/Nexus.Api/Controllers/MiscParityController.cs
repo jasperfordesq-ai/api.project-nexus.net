@@ -929,11 +929,85 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("safeguarding/my-preferences")]
     [Authorize]
-    public IActionResult SafeguardingPreferences() => Ok(new { data = new { enabled = false } });
+    public async Task<IActionResult> SafeguardingPreferences()
+    {
+        var tenantId = TenantId();
+        var userId = UserId();
+        var now = DateTime.UtcNow;
+
+        await _db.UserSafeguardingPreferences
+            .Where(p => p.TenantId == tenantId
+                && p.UserId == userId
+                && p.RevokedAt == null
+                && p.ReviewReminderSentAt != null
+                && p.ReviewConfirmedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.ReviewConfirmedAt, now));
+
+        var rows = await _db.UserSafeguardingPreferences
+            .AsNoTracking()
+            .Include(p => p.Option)
+            .Where(p => p.TenantId == tenantId
+                && p.UserId == userId
+                && p.RevokedAt == null
+                && p.Option != null
+                && p.Option.IsActive)
+            .OrderBy(p => p.Option!.SortOrder)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var preferences = rows.Select(p => new
+        {
+            preference_id = p.Id,
+            option_id = p.OptionId,
+            option_key = p.Option?.OptionKey ?? string.Empty,
+            label = p.Option?.Label ?? string.Empty,
+            description = p.Option?.Description,
+            selected_value = p.SelectedValue,
+            consent_given_at = p.ConsentGivenAt,
+            created_at = p.CreatedAt,
+            activations = SafeguardingActivations(p.Option?.TriggersJson)
+        }).ToList();
+
+        return LaravelData(new
+        {
+            preferences,
+            count = preferences.Count
+        });
+    }
 
     [HttpPost("safeguarding/revoke")]
     [Authorize]
-    public IActionResult RevokeSafeguarding() => Ok(new { data = new { revoked = true } });
+    public async Task<IActionResult> RevokeSafeguarding([FromBody] JsonElement body)
+    {
+        var optionId = Int(body, "option_id");
+        if (optionId is null or <= 0)
+        {
+            return LaravelError("VALIDATION_ERROR", "The option_id field is required.", "option_id", StatusCodes.Status422UnprocessableEntity);
+        }
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var now = DateTime.UtcNow;
+        var affected = await _db.UserSafeguardingPreferences
+            .Where(p => p.TenantId == tenantId
+                && p.UserId == userId
+                && p.OptionId == optionId.Value
+                && p.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.RevokedAt, now)
+                .SetProperty(p => p.UpdatedAt, now));
+
+        if (affected == 0)
+        {
+            return LaravelError("NOT_FOUND", "Safeguarding preference could not be revoked.", "option_id", StatusCodes.Status404NotFound);
+        }
+
+        return LaravelData(new
+        {
+            revoked = true,
+            option_id = optionId.Value
+        });
+    }
 
     [HttpPost("search/saved/{id:int}/run")]
     [Authorize]
@@ -1089,6 +1163,67 @@ public class MiscParityController : ControllerBase
         JsonValueKind.Object => value.EnumerateObject().Any(),
         _ => false
     };
+
+    private static object SafeguardingActivations(string? triggersJson)
+    {
+        var requiresBrokerApproval = false;
+        var restrictsMessaging = false;
+        var restrictsMatching = false;
+        var requiresVettedInteraction = false;
+        string? vettingTypeRequired = null;
+
+        if (!string.IsNullOrWhiteSpace(triggersJson))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(triggersJson);
+                var root = document.RootElement;
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    requiresBrokerApproval = JsonBool(root, "requires_broker_approval");
+                    restrictsMessaging = JsonBool(root, "restricts_messaging");
+                    restrictsMatching = JsonBool(root, "restricts_matching");
+                    requiresVettedInteraction = JsonBool(root, "requires_vetted_interaction");
+                    vettingTypeRequired = root.TryGetProperty("vetting_type_required", out var vetting)
+                        && vetting.ValueKind == JsonValueKind.String
+                            ? vetting.GetString()
+                            : null;
+                }
+            }
+            catch (JsonException)
+            {
+                // Laravel treats malformed trigger JSON as an empty trigger set.
+            }
+        }
+
+        return new
+        {
+            requires_broker_approval = requiresBrokerApproval,
+            restricts_messaging = restrictsMessaging,
+            restricts_matching = restrictsMatching,
+            requires_vetted_interaction = requiresVettedInteraction,
+            vetting_type_required = vettingTypeRequired
+        };
+    }
+
+    private static bool JsonBool(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var value))
+        {
+            return false;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False or JsonValueKind.Null or JsonValueKind.Undefined => false,
+            JsonValueKind.Number => value.TryGetInt32(out var number) && number != 0,
+            JsonValueKind.String => bool.TryParse(value.GetString(), out var parsed)
+                ? parsed
+                : value.GetString() is "1" or "yes" or "on",
+            _ => false
+        };
+    }
 
     private async Task<bool> ReactionTargetExistsAsync(string targetType, int targetId)
     {

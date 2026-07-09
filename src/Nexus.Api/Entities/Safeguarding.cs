@@ -41,6 +41,36 @@ public class SafeguardingOption : ITenantEntity
     public Tenant? Tenant { get; set; }
 }
 
+public class UserSafeguardingPreference : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int UserId { get; set; }
+    public int OptionId { get; set; }
+
+    [MaxLength(120)]
+    public string SelectedValue { get; set; } = "true";
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
+    public DateTime? ConsentGivenAt { get; set; }
+
+    [MaxLength(64)]
+    public string? ConsentIp { get; set; }
+
+    public DateTime? RevokedAt { get; set; }
+    public DateTime? ReviewReminderSentAt { get; set; }
+    public DateTime? ReviewConfirmedAt { get; set; }
+    public DateTime? ReviewEscalatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+    public User? User { get; set; }
+    public SafeguardingOption? Option { get; set; }
+}
+
 public class SafeguardingAssignment : ITenantEntity
 {
     public int Id { get; set; }

@@ -395,6 +395,7 @@ public class NexusDbContext : DbContext
     public DbSet<BrokerAssignment> BrokerAssignments => Set<BrokerAssignment>();
     public DbSet<BrokerNote> BrokerNotes => Set<BrokerNote>();
     public DbSet<SafeguardingOption> SafeguardingOptions => Set<SafeguardingOption>();
+    public DbSet<UserSafeguardingPreference> UserSafeguardingPreferences => Set<UserSafeguardingPreference>();
     public DbSet<SafeguardingAssignment> SafeguardingAssignments => Set<SafeguardingAssignment>();
     public DbSet<SafeguardingMessageReview> SafeguardingMessageReviews => Set<SafeguardingMessageReview>();
     public DbSet<SafeguardingReport> SafeguardingReports => Set<SafeguardingReport>();

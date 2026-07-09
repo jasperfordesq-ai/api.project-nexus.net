@@ -56,6 +56,21 @@ public class BrokerEnterpriseConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<UserSafeguardingPreference>(entity =>
+        {
+            entity.ToTable("user_safeguarding_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SelectedValue).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.ConsentIp).HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.OptionId, e.RevokedAt });
+            entity.HasIndex(e => new { e.TenantId, e.ReviewReminderSentAt });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Option).WithMany().HasForeignKey(e => e.OptionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<SafeguardingAssignment>(entity =>
         {
             entity.ToTable("safeguarding_assignments");

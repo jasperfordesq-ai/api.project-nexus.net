@@ -11,9 +11,9 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Controllers | 309 | 225 |
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
-| Migrations | 323 | 100 EF migration classes excluding designers/snapshot |
-| OpenAPI operations | 891 | 4,293 static controller operations from parity script |
-| Schema tables | 361 Laravel source tables | 316 .NET static table names |
+| Migrations | 323 | 102 EF migration classes excluding designers/snapshot |
+| OpenAPI operations | 891 | 4,295 static controller operations from parity script |
+| Schema tables | 361 Laravel source tables | 324 .NET static table names |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
@@ -30,9 +30,9 @@ comparator. Regenerate the artifact before using the numbers for implementation
 planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
-`artifacts/parity/schema/schema-parity.json` on 2026-07-05 with 361 Laravel
-source tables, 316 .NET table names, 126 exact matches, 235 missing Laravel-side
-names, and 190 .NET-only names. The artifact is ignored by git; regenerate it
+`artifacts/parity/schema/schema-parity.json` on 2026-07-09 with 361 Laravel
+source tables, 324 .NET table names, 131 exact matches, 230 missing Laravel-side
+names, and 193 .NET-only names. The artifact is ignored by git; regenerate it
 before using the numbers for schema implementation planning.
 
 `scripts/compare-laravel-frontend-parity.ps1` generated

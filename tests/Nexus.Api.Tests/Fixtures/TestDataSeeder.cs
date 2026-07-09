@@ -324,7 +324,8 @@ public static class TestDataSeeder
                     'job_interview_slots','job_interviews',
                     'job_vacancy_team_members','job_templates','job_saved_profiles',
                     'legal_document_acceptances','legal_documents',
-                    'knowledge_articles','user_preferences',
+                    'knowledge_articles','user_safeguarding_preferences',
+                    'safeguarding_options','user_preferences',
                     'saved_jobs','job_applications','job_vacancies'
                 ];
             BEGIN

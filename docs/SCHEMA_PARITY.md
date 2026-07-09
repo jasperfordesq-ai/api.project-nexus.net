@@ -12,14 +12,14 @@ Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-09.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 323 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 101 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
+| ASP.NET EF migrations | 102 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 361 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 323 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
-| Exact matched tables | 130 | Static name matches only; `user_blocks` is now represented for Laravel React blocked-users settings parity. |
-| Missing Laravel tables | 231 | Laravel source tables with no exact .NET table name. |
+| ASP.NET tables | 324 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
+| Exact matched tables | 131 | Static name matches only; `user_blocks` and `user_safeguarding_preferences` are now represented for Laravel React settings parity. |
+| Missing Laravel tables | 230 | Laravel source tables with no exact .NET table name. |
 | Extra ASP.NET tables | 193 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -52,7 +52,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
-| `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, and `safeguarding_report_actions` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
+| `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
 | `vol_*` | 19 | `vol_logs` is now represented for Caring recipient-circle and KPI inputs; the rest of volunteering may include renamed .NET equivalents and still requires alias mapping. |
 | `federation_*` | 17 | Federation and partner/network schema needs detailed reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
