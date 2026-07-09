@@ -5446,6 +5446,54 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('keeps Laravel saved collection redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const missingName = await agent
+      .post('/acme/accessible/me/collections')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], name: ' ' });
+    const created = await agent
+      .post('/acme/accessible/me/collections')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], name: 'Useful links' });
+    const updateMissingName = await agent
+      .post('/acme/accessible/me/collections/12/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], name: ' ' });
+    const removed = await agent
+      .post('/acme/accessible/me/collections/12/items/99/remove')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(missingName.status).toBe(302);
+    expect(missingName.headers.location).toBe('/acme/accessible/me/collections?status=collection-name-required');
+    expect(created.status).toBe(302);
+    expect(created.headers.location).toBe('/acme/accessible/me/collections?status=collection-created');
+    expect(updateMissingName.status).toBe(302);
+    expect(updateMissingName.headers.location).toBe('/acme/accessible/me/collections/12?status=collection-name-required');
+    expect(removed.status).toBe(302);
+    expect(removed.headers.location).toBe('/acme/accessible/me/collections/12?status=item-removed');
+    expect(api.createSavedCollection).toHaveBeenCalledWith('test-token', {
+      name: 'Useful links',
+      description: null,
+      is_public: false
+    });
+    expect(api.deleteSavedItem).toHaveBeenCalledWith('test-token', 99);
+  });
+
   it('submits the Laravel saved collection update route through the collections API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -10871,6 +10919,52 @@ describe('shared accessible frontend shell', () => {
       context_type: 'general',
       is_public: true
     });
+  });
+
+  it('keeps Laravel saved appreciation redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/account')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const missingMessage = await agent
+      .post('/acme/accessible/users/77/appreciations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], message: ' ' });
+    const sent = await agent
+      .post('/acme/accessible/users/77/appreciations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], message: 'Thank you for helping' });
+    const reacted = await agent
+      .post('/acme/accessible/appreciations/55/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        owner_id: '77',
+        reaction_type: 'heart'
+      });
+
+    expect(missingMessage.status).toBe(302);
+    expect(missingMessage.headers.location).toBe('/acme/accessible/users/77/appreciations?status=appreciation-message-required');
+    expect(sent.status).toBe(302);
+    expect(sent.headers.location).toBe('/acme/accessible/users/77/appreciations?status=appreciation-sent');
+    expect(reacted.status).toBe(302);
+    expect(reacted.headers.location).toBe('/acme/accessible/users/77/appreciations?status=reaction-updated#appreciation-55');
+    expect(api.sendAppreciation).toHaveBeenCalledWith('test-token', {
+      receiver_id: 77,
+      message: 'Thank you for helping',
+      context_type: 'general',
+      is_public: true
+    });
+    expect(api.reactToAppreciation).toHaveBeenCalledWith('test-token', 55, 'heart');
   });
 
   it('submits the Laravel appreciation reaction route through the reaction API helper', async () => {

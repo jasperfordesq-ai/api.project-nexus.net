@@ -555,6 +555,24 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/appreciations/);
   });
 
+  it('keeps saved collection and appreciation route redirects behind the active tenant URL helper', () => {
+    const routes = [
+      'saved-collections.js',
+      'saved-social.js'
+    ].map((routePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', routePath),
+      'utf8'
+    )).join('\n');
+
+    expect(routes).toContain('function redirectTo(res, pathname)');
+    expect(routes).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(routes).not.toMatch(/res\.redirect\(['"`]\/(?:saved|me\/collections|users|appreciations)/);
+    expect(routes).not.toMatch(/res\.redirect\(`\/(?:saved|me\/collections|users|appreciations)/);
+    expect(routes).toMatch(/redirectTo\(res,\s*loginRedirect\(\)/);
+    expect(routes).toMatch(/redirectTo\(res,\s*collection/);
+    expect(routes).toMatch(/redirectTo\(res,\s*appreciation/);
+  });
+
   it('keeps listing index and form controls behind urlFor()', () => {
     const templates = [
       path.join('listings', 'index.njk'),

@@ -26,6 +26,19 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
+function collectionRedirect(status) {
+  return `/me/collections?status=${encodeURIComponent(status)}`;
+}
+
+function collectionDetailRedirect(id, status) {
+  return `/me/collections/${id}?status=${encodeURIComponent(status)}`;
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -215,7 +228,7 @@ function isNotFound(error) {
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const status = trimmed(req.query.status);
   const collections = collectionRows(await getSavedCollections(token))
@@ -234,7 +247,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const page = Math.max(1, Number(req.query.page || 1));
@@ -259,7 +272,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
 router.post('/', requireAuth, asyncRoute(async (req, res) => {
   const payload = collectionPayload(req.body);
   if (!payload.name) {
-    return res.redirect('/me/collections?status=collection-name-required');
+    return redirectTo(res, collectionRedirect('collection-name-required'));
   }
 
   let status = 'collection-created';
@@ -270,14 +283,14 @@ router.post('/', requireAuth, asyncRoute(async (req, res) => {
     status = 'collection-failed';
   }
 
-  return res.redirect(`/me/collections?status=${status}`);
+  return redirectTo(res, collectionRedirect(status));
 }));
 
 router.post('/:id(\\d+)/update', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = collectionPayload(req.body);
   if (!payload.name) {
-    return res.redirect(`/me/collections/${id}?status=collection-name-required`);
+    return redirectTo(res, collectionDetailRedirect(id, 'collection-name-required'));
   }
 
   let status = 'collection-updated';
@@ -288,7 +301,7 @@ router.post('/:id(\\d+)/update', requireAuth, asyncRoute(async (req, res) => {
     status = 'collection-failed';
   }
 
-  return res.redirect(`/me/collections/${id}?status=${status}`);
+  return redirectTo(res, collectionDetailRedirect(id, status));
 }));
 
 router.post('/:id(\\d+)/delete', requireAuth, asyncRoute(async (req, res) => {
@@ -302,7 +315,7 @@ router.post('/:id(\\d+)/delete', requireAuth, asyncRoute(async (req, res) => {
     status = 'collection-failed';
   }
 
-  return res.redirect(`/me/collections?status=${status}`);
+  return redirectTo(res, collectionRedirect(status));
 }));
 
 router.post('/:id(\\d+)/items/:itemId(\\d+)/remove', requireAuth, asyncRoute(async (req, res) => {
@@ -317,7 +330,7 @@ router.post('/:id(\\d+)/items/:itemId(\\d+)/remove', requireAuth, asyncRoute(asy
     status = 'item-remove-failed';
   }
 
-  return res.redirect(`/me/collections/${id}?status=${status}`);
+  return redirectTo(res, collectionDetailRedirect(id, status));
 }));
 
 module.exports = router;

@@ -183,7 +183,12 @@ through `res.locals.urlFor`, matching Laravel's named-route redirect behavior
 under shared mounts and custom-domain contexts. The latest saved source slice now routes saved-item filters,
 bookmark links/removal, collection list/detail pagination and CRUD controls,
 public collection links, and appreciation send/react/pagination controls
-through `urlFor()`. The latest jobs source slice now routes jobs tabs,
+through `urlFor()`. The latest saved route-redirect slice now routes saved
+collection auth handoffs, collection create/update/delete/item-remove results,
+saved-item removal results, appreciation send results, and appreciation
+reaction anchors through `res.locals.urlFor`, so saved-family POST outcomes
+stay inside the active shared tenant mount or custom-domain context instead of
+falling back to flat `/saved`, `/me/collections`, or `/users/...` paths. The latest jobs source slice now routes jobs tabs,
 browse filters, saved/application/owner links, alerts, responses, detail
 actions, employer pages, talent search/profile links, CSV/CV downloads,
 pagination, and job POST forms through `urlFor()`. The latest podcast source
@@ -464,6 +469,13 @@ slice:
 - `Select-String -Path apps\web-uk\src\views\saved\*.njk,apps\web-uk\src\views\saved-collections\*.njk,apps\web-uk\src\views\saved-social\*.njk -Pattern 'href="/saved','action="/saved','href="/me','action="/me','href="/members','href="/users','action="/users','action="/appreciations','href="{{ item.href }}' -SimpleMatch` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved"` passed: 20 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:50823` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 16 checks: base API/health, cookie, login, account, logout, signed `/saved`, `/me/collections`, and `/users/14/appreciations`, plus body markers `Saved items`, `My collections`, and `Appreciation`.
+
+Latest focused verification on 2026-07-09 for the saved route-redirect
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved collection and appreciation route redirects|saved collection redirects inside|saved appreciation redirects inside"` first failed because the saved route files still emitted direct `res.redirect(...)` targets, then passed after routing saved collection, saved item, and appreciation redirects through `res.locals.urlFor`.
+- Shared-mount behavior coverage proves signed POST outcomes under `/acme/accessible/me/collections`, `/acme/accessible/users/{id}/appreciations`, and `/acme/accessible/appreciations/{id}/react` redirect back under `/acme/accessible`.
+- A scoped Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed 16 checks for base API/health, cookie, login/account/logout, signed `/saved`, `/me/collections`, and `/users/14/appreciations`, plus body markers `Saved items`, `My collections`, and `Appreciation`.
 
 Latest focused verification on 2026-07-09 for the jobs template-helper
 slice:

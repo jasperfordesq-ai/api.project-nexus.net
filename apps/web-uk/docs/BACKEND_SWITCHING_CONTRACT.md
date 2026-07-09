@@ -887,6 +887,16 @@ through the active tenant URL helper. It must not emit flat `/login` or
 `/goals` locations when the request is served from `/{tenantSlug}/accessible`,
 a custom accessible domain, or a parent-domain child path.
 
+The saved route-redirect slice adds the same backend-neutral requirement for
+saved item, saved collection, and appreciation workflows. Future ASP.NET mode
+must preserve Laravel-compatible saved item removal, collection create/update/
+delete/item-remove, appreciation send, appreciation reaction, and auth-required
+status redirects through the active tenant URL helper, including anchors such
+as `#appreciation-{id}`. It must not emit flat `/saved`, `/me/collections`,
+`/users/{id}/appreciations`, or `/login` locations when the request is served
+from `/{tenantSlug}/accessible`, a custom accessible domain, or a parent-domain
+child path.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

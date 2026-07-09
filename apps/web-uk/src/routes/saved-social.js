@@ -42,6 +42,20 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
+function savedRedirect(status) {
+  return `/saved?status=${encodeURIComponent(status)}`;
+}
+
+function appreciationRedirect(userId, status, fragment = '') {
+  const target = `/users/${userId}/appreciations?status=${encodeURIComponent(status)}`;
+  return fragment ? `${target}${fragment}` : target;
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -215,7 +229,7 @@ function appreciationStatus(error) {
 
 router.get('/saved', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const type = selectedSavedType(req.query.type);
   const status = trimmed(req.query.status);
@@ -242,7 +256,7 @@ router.get('/saved', asyncRoute(async (req, res) => {
 
 router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const [ownerResult, collectionsResult] = await Promise.all([
@@ -264,7 +278,7 @@ router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
 
 router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const page = Math.max(1, Number(req.query.page || 1));
@@ -312,7 +326,7 @@ router.post('/saved/destroy', requireAuth, asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(`/saved?status=${ok ? 'bookmark-removed' : 'bookmark-failed'}`);
+  return redirectTo(res, savedRedirect(ok ? 'bookmark-removed' : 'bookmark-failed'));
 }));
 
 router.post('/users/:userId(\\d+)/appreciations', requireAuth, asyncRoute(async (req, res) => {
@@ -323,7 +337,7 @@ router.post('/users/:userId(\\d+)/appreciations', requireAuth, asyncRoute(async 
     : ['1', 'on', 'true'].includes(String(req.body.is_public).toLowerCase());
 
   if (!message) {
-    return res.redirect(`/users/${userId}/appreciations?status=appreciation-message-required`);
+    return redirectTo(res, appreciationRedirect(userId, 'appreciation-message-required'));
   }
 
   let status = 'appreciation-sent';
@@ -339,7 +353,7 @@ router.post('/users/:userId(\\d+)/appreciations', requireAuth, asyncRoute(async 
     status = appreciationStatus(error);
   }
 
-  return res.redirect(`/users/${userId}/appreciations?status=${status}`);
+  return redirectTo(res, appreciationRedirect(userId, status));
 }));
 
 router.post('/appreciations/:id(\\d+)/react', requireAuth, asyncRoute(async (req, res) => {
@@ -347,10 +361,14 @@ router.post('/appreciations/:id(\\d+)/react', requireAuth, asyncRoute(async (req
   const ownerId = Number(req.body.owner_id);
   const reaction = String(req.body.reaction_type || '').trim();
   const returnOwnerId = Number.isInteger(ownerId) && ownerId > 0 ? ownerId : 0;
-  const basePath = returnOwnerId > 0 ? `/users/${returnOwnerId}/appreciations` : '/saved';
 
   if (!APPRECIATION_REACTIONS.has(reaction)) {
-    return res.redirect(`${basePath}?status=reaction-failed#appreciation-${id}`);
+    return redirectTo(
+      res,
+      returnOwnerId > 0
+        ? appreciationRedirect(returnOwnerId, 'reaction-failed', `#appreciation-${id}`)
+        : `${savedRedirect('reaction-failed')}#appreciation-${id}`
+    );
   }
 
   let status = 'reaction-updated';
@@ -362,7 +380,12 @@ router.post('/appreciations/:id(\\d+)/react', requireAuth, asyncRoute(async (req
     status = 'reaction-failed';
   }
 
-  return res.redirect(`${basePath}?status=${status}#appreciation-${id}`);
+  return redirectTo(
+    res,
+    returnOwnerId > 0
+      ? appreciationRedirect(returnOwnerId, status, `#appreciation-${id}`)
+      : `${savedRedirect(status)}#appreciation-${id}`
+  );
 }));
 
 module.exports = router;

@@ -593,6 +593,17 @@ smoke against temporary in-process Web UK `http://127.0.0.1:50823`, Laravel
 cookie, login, account, and logout checks plus `/saved`, `/me/collections`,
 and `/users/14/appreciations` module rendering and body markers.
 
+The seventy-fifth route-redirect slice extends route-level tenant awareness
+into saved collection and saved social workflows. `src/routes/saved-collections.js`
+and `src/routes/saved-social.js` now route signed-out saved handoffs, saved item
+removal, collection create/update/delete/item-remove outcomes, appreciation send
+outcomes, and appreciation reaction anchors through `res.locals.urlFor`. The
+focused source regression first failed because those routes still emitted
+direct flat `res.redirect(...)` targets, then passed after conversion.
+Shared-mount behavior coverage proves signed POST outcomes under
+`/acme/accessible/me/collections`, `/acme/accessible/users/{id}/appreciations`,
+and `/acme/accessible/appreciations/{id}/react` stay under `/acme/accessible`.
+
 The thirty-fifth template-helper source slice extends direct `urlFor()`
 conversion into jobs pages. `src/views/jobs/alerts.njk`,
 `analytics.njk`, `applicants.njk`, `application-history.njk`,
