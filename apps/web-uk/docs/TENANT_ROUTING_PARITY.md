@@ -1266,6 +1266,17 @@ only; it does not newly certify feature gates, exact open/closed list parity,
 owner authorization, localization, runtime persistence, visual Blade parity, or
 ASP.NET backend compatibility.
 
+A follow-up poll source slice converts the rendered poll templates themselves.
+`src/views/polls/index.njk`, `create.njk`, `detail.njk`, `manage.njk`, and
+`rank.njk` now route poll browse filters, create/manage links, inline create
+form, detail/rank back links, vote/rank/delete/like/comment forms, discussion
+links, and CSV export links through `urlFor()`. The focused source regression
+first failed on literal `href="/polls...` and `action="/polls...` template
+targets, then passed after conversion. This is source/template routing evidence
+only; it does not newly certify poll feature gates, exact list parity, owner
+authorization, localization, runtime persistence, visual Blade parity, or
+ASP.NET backend compatibility.
+
 The seventy-second source slice extends route-level redirect cleanup into
 reviews. `src/routes/reviews.js` now sends auth-required review creation,
 comment validation/result, reaction result, and Laravel-401 handoffs through

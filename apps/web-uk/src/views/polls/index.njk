@@ -44,7 +44,7 @@
 
       <div class="govuk-inset-text">You can vote once on each open poll. To keep things fair, the results stay hidden until a poll closes.</div>
 
-      <form method="get" action="/polls" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/polls') }}" class="govuk-!-margin-bottom-6">
         {% if categories.length %}
           <div class="govuk-form-group">
             <label class="govuk-label" for="category">Category</label>
@@ -68,14 +68,14 @@
       </form>
 
       <div class="govuk-button-group">
-        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="/polls/parity/create">Create a poll</a>
-        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="/polls/parity/manage">Manage my polls</a>
+        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/polls/parity/create') }}">Create a poll</a>
+        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/polls/parity/manage') }}">Manage my polls</a>
       </div>
 
       <details class="govuk-details govuk-!-margin-bottom-6" data-module="govuk-details">
         <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Create a poll</span></summary>
         <div class="govuk-details__text">
-          <form method="post" action="/polls" novalidate>
+          <form method="post" action="{{ urlFor('/polls') }}" novalidate>
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group">
               <label class="govuk-label govuk-label--s" for="poll-question">Poll question</label>
@@ -116,11 +116,11 @@
               {% if poll.description %}<p class="govuk-body">{{ poll.description }}</p>{% endif %}
 
               {% if poll.pollType == "ranked" %}
-                <a class="govuk-button" data-module="govuk-button" role="button" href="/polls/{{ poll.id }}/rank">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
+                <a class="govuk-button" data-module="govuk-button" role="button" href="{{ urlFor('/polls/' + (poll.id | string) + '/rank') }}">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
               {% elif not poll.options.length %}
                 <div class="govuk-inset-text"><p class="govuk-body">This poll has no options.</p></div>
               {% elif not poll.hasVoted %}
-                <form method="post" action="/polls/{{ poll.id }}/vote">
+                <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/vote') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <fieldset class="govuk-fieldset" aria-describedby="poll-{{ poll.id }}-hint">
                     <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Choose one option</legend>
@@ -140,9 +140,9 @@
                 <div class="govuk-inset-text">You have voted. The results will be shown when this poll closes.</div>
               {% endif %}
 
-              <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="/polls/{{ poll.id }}">View and discuss</a></p>
+              <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string)) }}">View and discuss</a></p>
               {% if poll.isCreator %}
-                <form method="post" action="/polls/{{ poll.id }}/delete" class="govuk-!-margin-top-3">
+                <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}" class="govuk-!-margin-top-3">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete poll</button>
                 </form>
@@ -171,7 +171,7 @@
               {% else %}
                 <div class="govuk-inset-text">Results will be shown once voting closes or once you have voted.</div>
               {% endif %}
-              <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="/polls/{{ poll.id }}">View and discuss</a></p>
+              <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string)) }}">View and discuss</a></p>
             </article>
           {% endif %}
         {% endfor %}

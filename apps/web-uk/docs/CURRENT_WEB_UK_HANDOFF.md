@@ -277,6 +277,10 @@ The latest poll action redirect slice now routes auth-required, create, vote,
 rank, delete, like, and comment POST outcomes through `res.locals.urlFor`, with
 shared-mount coverage proving `/acme/accessible/polls/42/vote` stays under the
 active tenant mount when redirecting to auth-required login.
+The latest poll source slice now routes poll browse filters, create/manage
+links, inline create form, detail/rank back links, vote/rank/delete/like/comment
+forms, discussion links, and CSV export links through `urlFor()`, with source
+regression coverage guarding against raw `/polls` template targets returning.
 The latest review action redirect slice now routes auth-required, comment,
 reaction, and Laravel-401 review workflow redirects through `res.locals.urlFor`,
 with shared-mount coverage proving `/acme/accessible/reviews` stays under the

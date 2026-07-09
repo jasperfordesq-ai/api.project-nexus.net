@@ -28,7 +28,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/polls">Back to polls</a>
+      <a class="govuk-back-link" href="{{ urlFor('/polls') }}">Back to polls</a>
 
       <span class="govuk-caption-xl">Polls at this community</span>
       <div class="nexus-alpha-module-row">
@@ -55,9 +55,9 @@
       {% if poll.description %}<p class="govuk-body">{{ poll.description }}</p>{% endif %}
 
       {% if poll.pollType == "ranked" %}
-        <a class="govuk-button" data-module="govuk-button" role="button" href="/polls/{{ poll.id }}/rank">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
+        <a class="govuk-button" data-module="govuk-button" role="button" href="{{ urlFor('/polls/' + (poll.id | string) + '/rank') }}">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
       {% elif poll.status == "open" and not poll.hasVoted and poll.options.length %}
-        <form method="post" action="/polls/{{ poll.id }}/vote">
+        <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/vote') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <fieldset class="govuk-fieldset" aria-describedby="poll-detail-{{ poll.id }}-hint">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Vote on this poll</legend>
@@ -97,7 +97,7 @@
       </p>
 
       <div class="nexus-alpha-actions govuk-!-margin-bottom-4">
-        <form method="post" action="/polls/{{ poll.id }}/like">
+        <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/like') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-pressed="{% if poll.hasLiked %}true{% else %}false{% endif %}">
             {% if poll.hasLiked %}Unlike{% else %}Like{% endif %}
@@ -116,7 +116,7 @@
         <p class="govuk-body">No comments yet. Be the first to comment.</p>
       {% endif %}
 
-      <form method="post" action="/polls/{{ poll.id }}/comment">
+      <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/comment') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="poll-comment-{{ poll.id }}">Add a comment</label>

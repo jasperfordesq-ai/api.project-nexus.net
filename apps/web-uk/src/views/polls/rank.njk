@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/polls">Back to polls</a>
+      <a class="govuk-back-link" href="{{ urlFor('/polls') }}">Back to polls</a>
 
       <span class="govuk-caption-xl">Polls at this community</span>
       <div class="nexus-alpha-module-row">
@@ -53,7 +53,7 @@
         {% endif %}
       {% else %}
         <div class="govuk-inset-text">Put the options in your order of preference, with your favourite first.</div>
-        <form method="post" action="/polls/{{ poll.id }}/rank">
+        <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/rank') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <fieldset class="govuk-fieldset">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Rank the options in order of preference</legend>

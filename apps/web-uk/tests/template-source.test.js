@@ -67,6 +67,23 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps poll browse, create, manage, rank, and detail controls behind urlFor()', () => {
+    const templates = [
+      path.join('polls', 'index.njk'),
+      path.join('polls', 'create.njk'),
+      path.join('polls', 'detail.njk'),
+      path.join('polls', 'manage.njk'),
+      path.join('polls', 'rank.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/(?:href|action)="\/polls/);
+    expect(source).toMatch(/urlFor\(["']\/polls/);
+  });
+
   it('keeps account hub links and logout form behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'account.njk'),

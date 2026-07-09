@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/polls">Back to polls</a>
+      <a class="govuk-back-link" href="{{ urlFor('/polls') }}">Back to polls</a>
 
       <span class="govuk-caption-xl">Polls at this community</span>
       <h1 class="govuk-heading-xl">Manage my polls</h1>
@@ -25,7 +25,7 @@
         </div>
       {% endif %}
 
-      <p class="govuk-body"><a class="govuk-link" href="/polls/parity/create">Create a poll</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/polls/parity/create') }}">Create a poll</a></p>
 
       {% if not polls.length %}
         <div class="govuk-inset-text"><p class="govuk-body">You have not created any polls yet.</p></div>
@@ -44,9 +44,9 @@
             </p>
             <div class="nexus-alpha-actions govuk-button-group">
               {% if poll.pollType == "ranked" %}
-                <a class="govuk-link" href="/polls/{{ poll.id }}/rank">View ranked results</a>
+                <a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string) + '/rank') }}">View ranked results</a>
               {% endif %}
-              <a class="govuk-link" href="/polls/{{ poll.id }}/export">Export results (CSV)</a>
+              <a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string) + '/export') }}">Export results (CSV)</a>
             </div>
             <details class="govuk-details govuk-!-margin-top-3" data-module="govuk-details">
               <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Delete poll</span></summary>
@@ -58,7 +58,7 @@
                     Deleting a poll removes it and all of its votes permanently. This cannot be undone.
                   </strong>
                 </div>
-                <form method="post" action="/polls/{{ poll.id }}/delete">
+                <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete poll</button>
                 </form>
