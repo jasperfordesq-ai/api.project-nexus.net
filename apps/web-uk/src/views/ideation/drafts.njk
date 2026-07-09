@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/ideation/{{ challenge.id }}" class="govuk-back-link">Back to challenge</a>
+  <a href="{{ urlFor('/ideation/' ~ challenge.id) }}" class="govuk-back-link">Back to challenge</a>
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -49,7 +49,7 @@
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Started {{ draft.createdAt }}</p>
           {% endif %}
 
-          <form method="post" action="/ideation/{{ challenge.id }}/drafts/{{ draft.id }}">
+          <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/drafts/' ~ draft.id) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-2">Edit draft</h3>
             <div class="govuk-form-group{% if status == 'draft-invalid' %} govuk-form-group--error{% endif %}">

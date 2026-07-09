@@ -6,13 +6,13 @@
   <h2 class="govuk-tabs__title">Ideation</h2>
   <ul class="govuk-tabs__list">
     <li class="govuk-tabs__list-item{% if activeTab == 'challenges' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/ideation"{% if activeTab == 'challenges' %} aria-current="page"{% endif %}>Challenges</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/ideation') }}"{% if activeTab == 'challenges' %} aria-current="page"{% endif %}>Challenges</a>
     </li>
     <li class="govuk-tabs__list-item{% if activeTab == 'campaigns' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/ideation/campaigns"{% if activeTab == 'campaigns' %} aria-current="page"{% endif %}>Campaigns</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/ideation/campaigns') }}"{% if activeTab == 'campaigns' %} aria-current="page"{% endif %}>Campaigns</a>
     </li>
     <li class="govuk-tabs__list-item{% if activeTab == 'outcomes' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/ideation/outcomes"{% if activeTab == 'outcomes' %} aria-current="page"{% endif %}>Outcomes</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/ideation/outcomes') }}"{% if activeTab == 'outcomes' %} aria-current="page"{% endif %}>Outcomes</a>
     </li>
   </ul>
 </div>

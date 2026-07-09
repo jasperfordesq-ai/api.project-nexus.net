@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/ideation/campaigns" class="govuk-back-link">Campaigns</a>
+  <a href="{{ urlFor('/ideation/campaigns') }}" class="govuk-back-link">Campaigns</a>
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -47,7 +47,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/ideation/{{ challenge.id }}">{{ challenge.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">{{ challenge.title }}</a>
             </h3>
           </div>
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ challenge.ideasCountText }}</p>

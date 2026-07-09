@@ -49,7 +49,7 @@
         {% for outcome in outcomes %}
           <tr class="govuk-table__row">
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="/ideation/{{ outcome.challengeId }}">{{ outcome.challengeTitle }}</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ outcome.challengeId) }}">{{ outcome.challengeTitle }}</a>
             </td>
             <td class="govuk-table__cell">{{ outcome.ideaTitle }}</td>
             <td class="govuk-table__cell">

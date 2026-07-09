@@ -13,7 +13,7 @@
   ] %}
   {% set currentStatus = outcome.status or "not_started" %}
 
-  <a href="/ideation/{{ challenge.id }}" class="govuk-back-link">Back to challenge</a>
+  <a href="{{ urlFor('/ideation/' ~ challenge.id) }}" class="govuk-back-link">Back to challenge</a>
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -38,7 +38,7 @@
   <h1 class="govuk-heading-xl">Record challenge outcome</h1>
   <p class="govuk-body-l">Capture the winning idea, how far it has been implemented, and the impact it had.</p>
 
-  <form method="post" action="/ideation/{{ challenge.id }}/outcome">
+  <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/outcome') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">

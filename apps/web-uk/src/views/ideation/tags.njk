@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/ideation" class="govuk-back-link">Back to all challenges</a>
+  <a href="{{ urlFor('/ideation') }}" class="govuk-back-link">Back to all challenges</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Browse by tag</h1>
@@ -18,7 +18,7 @@
     <ul class="govuk-list nexus-alpha-inline-list">
       {% for tag in tags %}
         <li>
-          <a class="govuk-link{% if selectedTag and tag.name | lower == selectedTag | lower %} govuk-!-font-weight-bold{% endif %}" href="/ideation/tags?tag={{ tag.name | urlencode }}">
+          <a class="govuk-link{% if selectedTag and tag.name | lower == selectedTag | lower %} govuk-!-font-weight-bold{% endif %}" href="{{ urlFor('/ideation/tags?tag=' ~ (tag.name | urlencode)) }}">
             {{ tag.name }} ({{ tag.countText }})
           </a>
         </li>
@@ -30,7 +30,7 @@
     <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
     <div class="nexus-alpha-module-row">
       <h2 class="govuk-heading-m govuk-!-margin-bottom-2">Challenges tagged "{{ selectedTag }}"</h2>
-      <a class="govuk-link" href="/ideation/tags">Clear tag</a>
+      <a class="govuk-link" href="{{ urlFor('/ideation/tags') }}">Clear tag</a>
     </div>
 
     {% if not matches.length %}
@@ -41,7 +41,7 @@
           <article class="nexus-alpha-card">
             <div class="nexus-alpha-module-row">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/ideation/{{ challenge.id }}">{{ challenge.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">{{ challenge.title }}</a>
               </h3>
               <strong class="govuk-tag {{ challenge.statusClass }}">{{ challenge.statusLabel }}</strong>
             </div>
@@ -49,7 +49,7 @@
               <p class="govuk-body govuk-!-margin-bottom-1">{{ challenge.description }}</p>
             {% endif %}
             <p class="govuk-body-s nexus-alpha-actions govuk-!-margin-bottom-0">
-              <a class="govuk-link" href="/ideation/{{ challenge.id }}">View challenge</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">View challenge</a>
             </p>
           </article>
         {% endfor %}

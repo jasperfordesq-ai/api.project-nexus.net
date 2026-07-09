@@ -10,7 +10,7 @@
   <h1 class="govuk-heading-xl">Ideas</h1>
   <p class="govuk-body-l">Share ideas and vote on suggestions for the community.</p>
 
-  <form method="get" action="/ideation" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/ideation') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group govuk-!-margin-bottom-4">
       <label class="govuk-label" for="ideation-q">Search challenges</label>
       <input class="govuk-input govuk-input--width-30" id="ideation-q" name="q" type="search" value="{{ activeQuery }}">
@@ -37,7 +37,7 @@
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
       {% if activeStatus or activeQuery %}
-        <a class="govuk-link" href="/ideation">Clear filters</a>
+        <a class="govuk-link" href="{{ urlFor('/ideation') }}">Clear filters</a>
       {% endif %}
     </div>
   </form>
@@ -48,7 +48,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/ideation/{{ challenge.id }}">{{ challenge.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">{{ challenge.title }}</a>
             </h2>
             <strong class="govuk-tag {{ challenge.statusClass }}">{{ challenge.statusLabel }}</strong>
           </div>

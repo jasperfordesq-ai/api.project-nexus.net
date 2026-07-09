@@ -1065,9 +1065,24 @@ authorization depth, media upload proxying, team conversion runtime behavior,
 feature gates, localization, broader Laravel runtime behavior, or ASP.NET
 backend compatibility.
 
+The sixty-ninth source slice extends template-helper cleanup into the ideation
+template family. The ideation tabs, campaign links, challenge list filter form,
+clear link, challenge detail links, create/edit/manage/outcome/draft form
+targets, idea detail controls, tag browser links, campaign detail links, and
+outcome challenge links now call `urlFor()` rather than embedding flat
+`/ideation` paths. The focused source regression first failed on the raw
+`/ideation` tab links, then passed after conversion, and focused ideation
+render/action coverage passed for the Laravel-backed flat routes. This is
+source-template tenant-helper evidence only; it does not newly certify full
+visual Blade parity, ideation authorization depth, media upload proxying,
+feature gates, localization, broader Laravel runtime behavior, or ASP.NET
+backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation template links"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation action"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange action redirects"

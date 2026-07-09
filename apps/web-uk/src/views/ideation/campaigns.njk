@@ -37,7 +37,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/ideation/campaigns/{{ campaign.id }}">{{ campaign.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/campaigns/' ~ campaign.id) }}">{{ campaign.title }}</a>
             </h2>
             <strong class="govuk-tag {{ campaign.statusClass }}">{{ campaign.statusLabel }}</strong>
           </div>

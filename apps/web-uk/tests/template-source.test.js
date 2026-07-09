@@ -768,6 +768,32 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps ideation template links and forms behind urlFor()', () => {
+    const templates = [
+      path.join('ideation', '_nav.njk'),
+      path.join('ideation', 'campaign-detail.njk'),
+      path.join('ideation', 'campaigns.njk'),
+      path.join('ideation', 'challenge-form.njk'),
+      path.join('ideation', 'detail.njk'),
+      path.join('ideation', 'drafts.njk'),
+      path.join('ideation', 'idea-detail.njk'),
+      path.join('ideation', 'index.njk'),
+      path.join('ideation', 'manage.njk'),
+      path.join('ideation', 'outcome-form.njk'),
+      path.join('ideation', 'outcomes.njk'),
+      path.join('ideation', 'tags.njk')
+    ];
+
+    for (const templateName of templates) {
+      const template = fs.readFileSync(
+        path.join(__dirname, '..', 'src', 'views', templateName),
+        'utf8'
+      );
+      expect(template).not.toMatch(/(?:href|action)="\/ideation/);
+      expect(template).not.toContain('"/ideation');
+    }
+  });
+
   it('keeps group exchange tabs, links, and forms behind urlFor()', () => {
     const templates = [
       path.join('group-exchanges', 'index.njk'),

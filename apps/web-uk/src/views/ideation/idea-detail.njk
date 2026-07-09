@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/ideation/{{ challenge.id }}" class="govuk-back-link">Back to challenge</a>
+  <a href="{{ urlFor('/ideation/' ~ challenge.id) }}" class="govuk-back-link">Back to challenge</a>
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -48,7 +48,7 @@
   {% endif %}
 
   {% if idea.canVote or idea.hasVoted %}
-    <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/toggle-vote" class="govuk-!-margin-bottom-4">
+    <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/toggle-vote') }}" class="govuk-!-margin-bottom-4">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button type="submit" class="govuk-button{% if idea.hasVoted %} govuk-button--secondary{% endif %} govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Vote for idea: {{ idea.title }}">
         {{ "Remove your vote" if idea.hasVoted else "Vote for this idea" }}
@@ -76,7 +76,7 @@
     <details class="govuk-details" data-module="govuk-details">
       <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Add an attachment</span></summary>
       <div class="govuk-details__text">
-        <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/media">
+        <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/media') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label" for="media_type">Attachment type</label>
@@ -108,7 +108,7 @@
   {% if idea.isAdmin %}
     <h2 class="govuk-heading-l govuk-!-margin-top-6">Admin controls</h2>
     <p class="govuk-body">Shortlist promising ideas, or mark the winning idea once judging is complete.</p>
-    <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/status">
+    <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/status') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group">
         <fieldset class="govuk-fieldset">
@@ -134,7 +134,7 @@
       <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
       <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">Warning</span>This creates a new group linked to this idea. It cannot be undone.</strong>
     </div>
-    <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/convert">
+    <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/convert') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group">
         <label class="govuk-label" for="group_name">Group name</label>
@@ -175,7 +175,7 @@
           <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
           <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">Warning</span>Deleting this idea cannot be undone. Its votes and comments will be removed.</strong>
         </div>
-        <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/delete">
+        <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/delete') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Yes, delete this idea</button>
         </form>
@@ -193,7 +193,7 @@
           {% endif %}
           <div class="govuk-body govuk-!-margin-bottom-1">{{ comment.body | nl2br | safe }}</div>
           {% if idea.isAdmin %}
-            <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/comments/{{ comment.id }}/delete">
+            <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/comments/' ~ comment.id ~ '/delete') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Delete comment</button>
             </form>
@@ -207,7 +207,7 @@
 
   {% if idea.canComment %}
     <h3 class="govuk-heading-m govuk-!-margin-top-4">Add a comment</h3>
-    <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/comments">
+    <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/comments') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if status == 'comment-invalid' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label" for="comment_body">Your comment</label>

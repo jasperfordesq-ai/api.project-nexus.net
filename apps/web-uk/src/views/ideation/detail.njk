@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/ideation" class="govuk-back-link">Back to challenges</a>
+  <a href="{{ urlFor('/ideation') }}" class="govuk-back-link">Back to challenges</a>
 
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="idea-status">
@@ -124,9 +124,9 @@
           {% if idea.authorName %}
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Suggested by {{ idea.authorName }}</p>
           {% endif %}
-          <p class="govuk-body-s govuk-!-margin-bottom-2"><a class="govuk-link" href="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}">Idea</a></p>
+          <p class="govuk-body-s govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id) }}">Idea</a></p>
           {% if challenge.isOpenForVotes %}
-            <form method="post" action="/ideation/{{ challenge.id }}/ideas/{{ idea.id }}/vote">
+            <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/vote') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-describedby="idea-{{ idea.id }}-title" aria-label="Vote for idea: {{ idea.title }}">Vote</button>
             </form>
@@ -142,7 +142,7 @@
 
   {% if challenge.isOpenForIdeas %}
     <h2 class="govuk-heading-l govuk-!-margin-top-6" id="submit">Submit an idea</h2>
-    <form method="post" action="/ideation/{{ challenge.id }}/ideas">
+    <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if status == 'idea-invalid' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label" for="idea_title">Your idea</label>

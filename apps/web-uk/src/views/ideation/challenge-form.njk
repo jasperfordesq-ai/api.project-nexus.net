@@ -6,8 +6,8 @@
 
 {% block content %}
   {% set isEdit = mode == "edit" %}
-  {% set backHref = isEdit and challenge.id and ("/ideation/" ~ challenge.id) or "/ideation" %}
-  {% set formAction = isEdit and challenge.id and ("/ideation/" ~ challenge.id ~ "/edit") or "/ideation/new" %}
+  {% set backHref = isEdit and challenge.id and urlFor('/ideation/' ~ challenge.id) or urlFor('/ideation') %}
+  {% set formAction = isEdit and challenge.id and urlFor('/ideation/' ~ challenge.id ~ '/edit') or urlFor('/ideation/new') %}
   {% set currentStatus = challenge.status or "draft" %}
   {% set isInvalid = status == "challenge-invalid" %}
   {% set statusOptions = ["draft", "open", "voting", "evaluating", "closed", "archived"] %}
