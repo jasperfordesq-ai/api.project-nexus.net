@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Controllers;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Tests;
@@ -254,6 +255,40 @@ public sealed class CoursesCompatibilityControllerUnitTests
         authoredCourse.GetProperty("status").GetString().Should().Be("draft");
         authoredCourse.GetProperty("moderation_status").GetString().Should().Be("pending");
         authoredCourse.GetProperty("visibility").GetString().Should().Be("members");
+    }
+
+    [Fact]
+    public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
+    {
+        var tenant = CreateTenantContext(44);
+        await using var db = CreateDbContext(tenant);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = "courses.moderation_enabled",
+            Value = "true"
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, tenant, userId: 9003);
+        var created = await controller.Store(new CourseCompatCourseRequest
+        {
+            Title = "Moderated course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        var published = await controller.Publish(courseId, CancellationToken.None);
+
+        using var publishedDocument = JsonDocument.Parse(JsonSerializer.Serialize(published.Should().BeOfType<OkObjectResult>().Subject.Value));
+        var course = publishedDocument.RootElement.GetProperty("data");
+        course.GetProperty("status").GetString().Should().Be("published");
+        course.GetProperty("moderation_status").GetString().Should().Be("pending");
+        course.GetProperty("published_at").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     private static CoursesCompatibilityController CreateController(

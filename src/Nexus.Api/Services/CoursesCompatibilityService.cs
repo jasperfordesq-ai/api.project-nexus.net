@@ -163,11 +163,15 @@ public sealed class CoursesCompatibilityService
     {
         var state = await LoadAsync(tenantId, ct);
         var existing = EnsureCourse(state, id);
+        var moderationEnabled = published && await IsCourseModerationEnabledAsync(tenantId, ct);
+        var moderationStatus = published
+            ? moderationEnabled && existing.ModerationStatus != "approved" ? "pending" : "approved"
+            : existing.ModerationStatus;
         var updated = existing with
         {
             Status = published ? "published" : "draft",
-            ModerationStatus = published ? "approved" : existing.ModerationStatus,
-            PublishedAt = published ? DateTime.UtcNow : null,
+            ModerationStatus = moderationStatus,
+            PublishedAt = published && moderationStatus == "approved" ? existing.PublishedAt ?? DateTime.UtcNow : null,
             UpdatedAt = DateTime.UtcNow
         };
         Replace(state.Courses, existing, updated);
@@ -690,6 +694,17 @@ public sealed class CoursesCompatibilityService
         row.Value = JsonSerializer.Serialize(state, JsonOptions);
         row.UpdatedAt = now;
         await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task<bool> IsCourseModerationEnabledAsync(int tenantId, CancellationToken ct)
+    {
+        var value = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(config => config.TenantId == tenantId && config.Key == "courses.moderation_enabled")
+            .Select(config => config.Value)
+            .FirstOrDefaultAsync(ct);
+
+        return bool.TryParse(value, out var enabled) && enabled;
     }
 
     private CourseCompatDto HydrateCourse(CourseCompatibilityState state, CourseCompatDto course, int? userId)
