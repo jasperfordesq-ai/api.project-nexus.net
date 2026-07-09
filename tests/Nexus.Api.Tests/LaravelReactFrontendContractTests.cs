@@ -2128,6 +2128,90 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminMatchingConfigV2_ReturnsLaravelReactSmartMatchingShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/matching/config");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("category_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("skill_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("proximity_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("freshness_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("reciprocity_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("quality_weight").GetDouble().Should().BeGreaterThan(0);
+        data.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        data.GetProperty("broker_approval_enabled").GetBoolean().Should().BeTrue();
+        data.GetProperty("max_distance_km").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("min_match_score").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("hot_match_threshold").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("proximity_bands").EnumerateArray().Should().HaveCount(5);
+        data.GetProperty("gates").GetProperty("missing_coords_mode").GetString().Should().Be("remote_only");
+        data.GetProperty("ai").GetProperty("semantic_signal").GetBoolean().Should().BeTrue();
+        data.GetProperty("ai").GetProperty("available").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+    }
+
+    [Fact]
+    public async Task AdminMatchingConfigV2_PersistsLaravelReactSmartMatchingShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/matching/config", new
+        {
+            category_weight = 0.30m,
+            skill_weight = 0.18m,
+            proximity_weight = 0.22m,
+            freshness_weight = 0.10m,
+            reciprocity_weight = 0.14m,
+            quality_weight = 0.06m,
+            proximity_bands = new[]
+            {
+                new { distance_km = 3, score = 1.0m },
+                new { distance_km = 12, score = 0.9m },
+                new { distance_km = 25, score = 0.7m },
+                new { distance_km = 45, score = 0.5m },
+                new { distance_km = 90, score = 0.2m }
+            },
+            gates = new
+            {
+                geo_hard_gate = false,
+                missing_coords_mode = "tenant_wide",
+                dormancy_days = 120,
+                owner_dismissal_threshold = 4
+            },
+            engine_version = 2,
+            pillars = new { relevance = 0.50m, feasibility = 0.30m, trust = 0.20m },
+            adjustments = new { mutual_bonus = 9m, freshness_max = 5m, semantic_boost = 7m, knn_boost = 4m },
+            ai = new { semantic_signal = false, llm_explanations = true, explanation_top_n = 4 }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var get = await Client.GetAsync("/api/v2/admin/matching/config");
+
+        get.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await get.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("category_weight").GetDecimal().Should().Be(0.30m);
+        data.GetProperty("skill_weight").GetDecimal().Should().Be(0.18m);
+        data.GetProperty("proximity_weight").GetDecimal().Should().Be(0.22m);
+        data.GetProperty("gates").GetProperty("geo_hard_gate").GetBoolean().Should().BeFalse();
+        data.GetProperty("gates").GetProperty("missing_coords_mode").GetString().Should().Be("tenant_wide");
+        data.GetProperty("gates").GetProperty("dormancy_days").GetInt32().Should().Be(120);
+        data.GetProperty("pillars").GetProperty("relevance").GetDecimal().Should().Be(0.50m);
+        data.GetProperty("adjustments").GetProperty("mutual_bonus").GetDecimal().Should().Be(9m);
+        data.GetProperty("ai").GetProperty("semantic_signal").GetBoolean().Should().BeFalse();
+        data.GetProperty("ai").GetProperty("explanation_top_n").GetInt32().Should().Be(4);
+        data.GetProperty("proximity_bands").EnumerateArray().Select(item => item.GetProperty("distance_km").GetInt32())
+            .Should().Equal(3, 12, 25, 45, 90);
+    }
+
+    [Fact]
     public async Task AdminLanguageConfigV2_AcceptsAndReturnsLaravelReactSupportedLanguagesShape()
     {
         await AuthenticateAsAdminAsync();

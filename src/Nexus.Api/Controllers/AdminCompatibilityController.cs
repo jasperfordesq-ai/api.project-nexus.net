@@ -2844,6 +2844,187 @@ public class AdminCompatibilityController : ControllerBase
         }
     }
 
+    private static IReadOnlyDictionary<string, object?> ReadConfigObject(
+        IReadOnlyDictionary<string, object?> config,
+        string key)
+    {
+        if (config.TryGetValue(key, out var raw) && raw is IReadOnlyDictionary<string, object?> dictionary)
+            return dictionary;
+
+        return new Dictionary<string, object?>();
+    }
+
+    private static object?[] ReadConfigArray(IReadOnlyDictionary<string, object?> config, string key)
+    {
+        if (!config.TryGetValue(key, out var raw) || raw is null)
+            return [];
+
+        return raw switch
+        {
+            object?[] array => array,
+            IEnumerable<object?> enumerable => enumerable.ToArray(),
+            _ => []
+        };
+    }
+
+    private static decimal ReadConfigDecimal(
+        IReadOnlyDictionary<string, object?> config,
+        string key,
+        decimal fallback)
+        => config.TryGetValue(key, out var raw) && TryConvertDecimal(raw, out var value) ? value : fallback;
+
+    private static decimal ReadConfigDecimal(
+        IReadOnlyDictionary<string, object?> config,
+        string topLevelKey,
+        IReadOnlyDictionary<string, object?> nested,
+        string nestedKey,
+        decimal fallback)
+    {
+        if (config.TryGetValue(topLevelKey, out var topLevel) && TryConvertDecimal(topLevel, out var topLevelValue))
+            return topLevelValue;
+        return ReadConfigDecimal(nested, nestedKey, fallback);
+    }
+
+    private static int ReadConfigInt(IReadOnlyDictionary<string, object?> config, string key, int fallback)
+    {
+        if (!config.TryGetValue(key, out var raw) || raw is null)
+            return fallback;
+
+        return raw switch
+        {
+            int intValue => intValue,
+            long longValue => (int)longValue,
+            decimal decimalValue => (int)decimalValue,
+            double doubleValue => (int)doubleValue,
+            string stringValue when int.TryParse(stringValue, out var parsed) => parsed,
+            _ => fallback
+        };
+    }
+
+    private static bool ReadConfigBool(IReadOnlyDictionary<string, object?> config, string key, bool fallback)
+    {
+        if (!config.TryGetValue(key, out var raw) || raw is null)
+            return fallback;
+
+        return raw switch
+        {
+            bool boolValue => boolValue,
+            string stringValue when bool.TryParse(stringValue, out var parsed) => parsed,
+            int intValue => intValue != 0,
+            long longValue => longValue != 0,
+            _ => fallback
+        };
+    }
+
+    private static string ReadConfigString(
+        IReadOnlyDictionary<string, object?> config,
+        string key,
+        string fallback,
+        params string[] allowed)
+    {
+        var value = config.TryGetValue(key, out var raw) ? raw?.ToString() : null;
+        if (string.IsNullOrWhiteSpace(value))
+            return fallback;
+
+        if (allowed.Length > 0 && !allowed.Contains(value, StringComparer.OrdinalIgnoreCase))
+            return fallback;
+
+        return value;
+    }
+
+    private static decimal ClampDecimal(decimal value, decimal min, decimal max)
+        => Math.Min(Math.Max(value, min), max);
+
+    private static decimal ReadJsonDecimal(JsonElement root, string propertyName, decimal fallback)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return fallback;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetDecimal(out var number) => number,
+            JsonValueKind.String when decimal.TryParse(value.GetString(), out var parsed) => parsed,
+            _ => fallback
+        };
+    }
+
+    private static int ReadJsonInt(JsonElement root, string propertyName, int fallback)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return fallback;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetInt32(out var number) => number,
+            JsonValueKind.String when int.TryParse(value.GetString(), out var parsed) => parsed,
+            _ => fallback
+        };
+    }
+
+    private static bool ReadJsonBool(JsonElement root, string propertyName, bool fallback)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+            return fallback;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(value.GetString(), out var parsed) => parsed,
+            JsonValueKind.Number when value.TryGetInt32(out var number) => number != 0,
+            _ => fallback
+        };
+    }
+
+    private static decimal ReadNestedJsonDecimal(
+        JsonElement root,
+        string objectName,
+        string propertyName,
+        decimal fallback)
+        => root.ValueKind == JsonValueKind.Object
+           && root.TryGetProperty(objectName, out var nested)
+           && nested.ValueKind == JsonValueKind.Object
+            ? ReadJsonDecimal(nested, propertyName, fallback)
+            : fallback;
+
+    private static int ReadNestedJsonInt(JsonElement root, string objectName, string propertyName, int fallback)
+        => root.ValueKind == JsonValueKind.Object
+           && root.TryGetProperty(objectName, out var nested)
+           && nested.ValueKind == JsonValueKind.Object
+            ? ReadJsonInt(nested, propertyName, fallback)
+            : fallback;
+
+    private static bool ReadNestedJsonBool(JsonElement root, string objectName, string propertyName, bool fallback)
+        => root.ValueKind == JsonValueKind.Object
+           && root.TryGetProperty(objectName, out var nested)
+           && nested.ValueKind == JsonValueKind.Object
+            ? ReadJsonBool(nested, propertyName, fallback)
+            : fallback;
+
+    private static string ReadNestedJsonString(
+        JsonElement root,
+        string objectName,
+        string propertyName,
+        string fallback,
+        params string[] allowed)
+    {
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty(objectName, out var nested)
+            || nested.ValueKind != JsonValueKind.Object
+            || !nested.TryGetProperty(propertyName, out var value)
+            || value.ValueKind != JsonValueKind.String)
+            return fallback;
+
+        var text = value.GetString();
+        if (string.IsNullOrWhiteSpace(text))
+            return fallback;
+
+        if (allowed.Length > 0 && !allowed.Contains(text, StringComparer.OrdinalIgnoreCase))
+            return fallback;
+
+        return text;
+    }
+
     // ──────────────────────────────────────────────
     // Gamification - Extended (8 endpoints)
     // ──────────────────────────────────────────────
@@ -3020,20 +3201,87 @@ public class AdminCompatibilityController : ControllerBase
     [HttpGet("matching/config")]
     public async Task<IActionResult> GetMatchingConfig()
     {
-        return Ok(await GetJsonConfigAsync("matching.config", new Dictionary<string, object?>
+        var config = await GetJsonConfigAsync("matching.config", LegacyMatchingConfigDefaults());
+        if (IsLaravelV2Request)
+            return LaravelData(BuildLaravelMatchingConfig(config));
+
+        return Ok(config);
+    }
+
+    private static Dictionary<string, object?> LegacyMatchingConfigDefaults() => new()
+    {
+        ["enabled"] = true,
+        ["min_score"] = 0.3m,
+        ["max_results"] = 20,
+        ["algorithm"] = "weighted",
+        ["weights"] = new Dictionary<string, object?>
         {
-            ["enabled"] = true,
-            ["min_score"] = 0.3m,
-            ["max_results"] = 20,
-            ["algorithm"] = "weighted",
-            ["weights"] = new Dictionary<string, object?>
+            ["skills"] = 0.4m,
+            ["location"] = 0.3m,
+            ["availability"] = 0.2m,
+            ["rating"] = 0.1m
+        }
+    };
+
+    private static Dictionary<string, object?> BuildLaravelMatchingConfig(IReadOnlyDictionary<string, object?> stored)
+    {
+        var weights = ReadConfigObject(stored, "weights");
+        var proximity = ReadConfigObject(stored, "proximity");
+        var gates = ReadConfigObject(stored, "gates");
+        var pillars = ReadConfigObject(stored, "pillars");
+        var adjustments = ReadConfigObject(stored, "adjustments");
+        var ai = ReadConfigObject(stored, "ai");
+
+        return new Dictionary<string, object?>
+        {
+            ["category_weight"] = ReadConfigDecimal(stored, "category_weight", weights, "category", 0.25m),
+            ["skill_weight"] = ReadConfigDecimal(stored, "skill_weight", weights, "skill", 0.20m),
+            ["proximity_weight"] = ReadConfigDecimal(stored, "proximity_weight", weights, "proximity", 0.25m),
+            ["freshness_weight"] = ReadConfigDecimal(stored, "freshness_weight", weights, "freshness", 0.10m),
+            ["reciprocity_weight"] = ReadConfigDecimal(stored, "reciprocity_weight", weights, "reciprocity", 0.15m),
+            ["quality_weight"] = ReadConfigDecimal(stored, "quality_weight", weights, "quality", 0.05m),
+            ["proximity_bands"] = new[]
             {
-                ["skills"] = 0.4m,
-                ["location"] = 0.3m,
-                ["availability"] = 0.2m,
-                ["rating"] = 0.1m
+                new Dictionary<string, object?> { ["distance_km"] = ReadConfigInt(proximity, "walking_km", 5), ["score"] = 1.0m },
+                new Dictionary<string, object?> { ["distance_km"] = ReadConfigInt(proximity, "local_km", 15), ["score"] = 0.9m },
+                new Dictionary<string, object?> { ["distance_km"] = ReadConfigInt(proximity, "city_km", 30), ["score"] = 0.7m },
+                new Dictionary<string, object?> { ["distance_km"] = ReadConfigInt(proximity, "regional_km", 50), ["score"] = 0.5m },
+                new Dictionary<string, object?> { ["distance_km"] = ReadConfigInt(proximity, "max_km", ReadConfigInt(stored, "max_distance_km", 100)), ["score"] = 0.2m }
+            },
+            ["enabled"] = ReadConfigBool(stored, "enabled", true),
+            ["broker_approval_enabled"] = ReadConfigBool(stored, "broker_approval_enabled", true),
+            ["max_distance_km"] = ReadConfigInt(stored, "max_distance_km", 50),
+            ["min_match_score"] = ReadConfigInt(stored, "min_match_score", 40),
+            ["hot_match_threshold"] = ReadConfigInt(stored, "hot_match_threshold", 80),
+            ["gates"] = new Dictionary<string, object?>
+            {
+                ["geo_hard_gate"] = ReadConfigBool(gates, "geo_hard_gate", true),
+                ["missing_coords_mode"] = ReadConfigString(gates, "missing_coords_mode", "remote_only", "remote_only", "tenant_wide"),
+                ["dormancy_days"] = ReadConfigInt(gates, "dormancy_days", 90),
+                ["owner_dismissal_threshold"] = ReadConfigInt(gates, "owner_dismissal_threshold", 3)
+            },
+            ["engine_version"] = ReadConfigInt(stored, "engine_version", 2) is 1 ? 1 : 2,
+            ["pillars"] = new Dictionary<string, object?>
+            {
+                ["relevance"] = ReadConfigDecimal(pillars, "relevance", 0.45m),
+                ["feasibility"] = ReadConfigDecimal(pillars, "feasibility", 0.35m),
+                ["trust"] = ReadConfigDecimal(pillars, "trust", 0.20m)
+            },
+            ["adjustments"] = new Dictionary<string, object?>
+            {
+                ["mutual_bonus"] = ReadConfigDecimal(adjustments, "mutual_bonus", 8m),
+                ["freshness_max"] = ReadConfigDecimal(adjustments, "freshness_max", 4m),
+                ["semantic_boost"] = ReadConfigDecimal(adjustments, "semantic_boost", 8m),
+                ["knn_boost"] = ReadConfigDecimal(adjustments, "knn_boost", 6m)
+            },
+            ["ai"] = new Dictionary<string, object?>
+            {
+                ["semantic_signal"] = ReadConfigBool(ai, "semantic_signal", true),
+                ["llm_explanations"] = ReadConfigBool(ai, "llm_explanations", true),
+                ["explanation_top_n"] = ReadConfigInt(ai, "explanation_top_n", 5),
+                ["available"] = ReadConfigBool(ai, "available", false)
             }
-        }));
+        };
     }
 
     [HttpPut("matching/config")]
@@ -3042,11 +3290,113 @@ public class AdminCompatibilityController : ControllerBase
         if (request.ValueKind != JsonValueKind.Object)
             return BadRequest(new { error = "Matching config object is required" });
 
+        if (IsLaravelV2Request)
+        {
+            var existing = await GetJsonConfigAsync("matching.config", LegacyMatchingConfigDefaults());
+            var updated = BuildLaravelMatchingStorageConfig(existing, request);
+            await UpsertTenantConfigAsync("matching.config", JsonSerializer.Serialize(updated));
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Admin {AdminId} updated Laravel matching config", GetCurrentUserId());
+            return LaravelData(new { message = "Matching configuration updated" });
+        }
+
         await UpsertTenantConfigAsync("matching.config", request.GetRawText());
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} updated matching config", GetCurrentUserId());
         return Ok(new { success = true, message = "Matching config updated", data = await GetJsonConfigAsync("matching.config", new()) });
+    }
+
+    private static Dictionary<string, object?> BuildLaravelMatchingStorageConfig(
+        IReadOnlyDictionary<string, object?> existing,
+        JsonElement request)
+    {
+        var current = BuildLaravelMatchingConfig(existing);
+        var gates = ReadConfigObject(current, "gates");
+        var pillars = ReadConfigObject(current, "pillars");
+        var adjustments = ReadConfigObject(current, "adjustments");
+        var ai = ReadConfigObject(current, "ai");
+
+        return new Dictionary<string, object?>
+        {
+            ["enabled"] = ReadJsonBool(request, "enabled", ReadConfigBool(current, "enabled", true)),
+            ["broker_approval_enabled"] = ReadJsonBool(request, "broker_approval_enabled", ReadConfigBool(current, "broker_approval_enabled", true)),
+            ["max_distance_km"] = ReadJsonInt(request, "max_distance_km", ReadConfigInt(current, "max_distance_km", 50)),
+            ["min_match_score"] = ReadJsonInt(request, "min_match_score", ReadConfigInt(current, "min_match_score", 40)),
+            ["hot_match_threshold"] = ReadJsonInt(request, "hot_match_threshold", ReadConfigInt(current, "hot_match_threshold", 80)),
+            ["engine_version"] = ReadJsonInt(request, "engine_version", ReadConfigInt(current, "engine_version", 2)) is 1 ? 1 : 2,
+            ["weights"] = new Dictionary<string, object?>
+            {
+                ["category"] = ReadJsonDecimal(request, "category_weight", ReadConfigDecimal(current, "category_weight", 0.25m)),
+                ["skill"] = ReadJsonDecimal(request, "skill_weight", ReadConfigDecimal(current, "skill_weight", 0.20m)),
+                ["proximity"] = ReadJsonDecimal(request, "proximity_weight", ReadConfigDecimal(current, "proximity_weight", 0.25m)),
+                ["freshness"] = ReadJsonDecimal(request, "freshness_weight", ReadConfigDecimal(current, "freshness_weight", 0.10m)),
+                ["reciprocity"] = ReadJsonDecimal(request, "reciprocity_weight", ReadConfigDecimal(current, "reciprocity_weight", 0.15m)),
+                ["quality"] = ReadJsonDecimal(request, "quality_weight", ReadConfigDecimal(current, "quality_weight", 0.05m))
+            },
+            ["proximity"] = BuildLaravelMatchingProximity(request, current),
+            ["gates"] = new Dictionary<string, object?>
+            {
+                ["geo_hard_gate"] = ReadNestedJsonBool(request, "gates", "geo_hard_gate", ReadConfigBool(gates, "geo_hard_gate", true)),
+                ["missing_coords_mode"] = ReadNestedJsonString(request, "gates", "missing_coords_mode", ReadConfigString(gates, "missing_coords_mode", "remote_only", "remote_only", "tenant_wide"), "remote_only", "tenant_wide"),
+                ["dormancy_days"] = Math.Clamp(ReadNestedJsonInt(request, "gates", "dormancy_days", ReadConfigInt(gates, "dormancy_days", 90)), 0, 3650),
+                ["owner_dismissal_threshold"] = Math.Clamp(ReadNestedJsonInt(request, "gates", "owner_dismissal_threshold", ReadConfigInt(gates, "owner_dismissal_threshold", 3)), 1, 100)
+            },
+            ["pillars"] = new Dictionary<string, object?>
+            {
+                ["relevance"] = ClampDecimal(ReadNestedJsonDecimal(request, "pillars", "relevance", ReadConfigDecimal(pillars, "relevance", 0.45m)), 0m, 1m),
+                ["feasibility"] = ClampDecimal(ReadNestedJsonDecimal(request, "pillars", "feasibility", ReadConfigDecimal(pillars, "feasibility", 0.35m)), 0m, 1m),
+                ["trust"] = ClampDecimal(ReadNestedJsonDecimal(request, "pillars", "trust", ReadConfigDecimal(pillars, "trust", 0.20m)), 0m, 1m)
+            },
+            ["adjustments"] = new Dictionary<string, object?>
+            {
+                ["mutual_bonus"] = ReadNestedJsonDecimal(request, "adjustments", "mutual_bonus", ReadConfigDecimal(adjustments, "mutual_bonus", 8m)),
+                ["freshness_max"] = ReadNestedJsonDecimal(request, "adjustments", "freshness_max", ReadConfigDecimal(adjustments, "freshness_max", 4m)),
+                ["semantic_boost"] = ReadNestedJsonDecimal(request, "adjustments", "semantic_boost", ReadConfigDecimal(adjustments, "semantic_boost", 8m)),
+                ["knn_boost"] = ReadNestedJsonDecimal(request, "adjustments", "knn_boost", ReadConfigDecimal(adjustments, "knn_boost", 6m))
+            },
+            ["ai"] = new Dictionary<string, object?>
+            {
+                ["semantic_signal"] = ReadNestedJsonBool(request, "ai", "semantic_signal", ReadConfigBool(ai, "semantic_signal", true)),
+                ["llm_explanations"] = ReadNestedJsonBool(request, "ai", "llm_explanations", ReadConfigBool(ai, "llm_explanations", true)),
+                ["explanation_top_n"] = Math.Clamp(ReadNestedJsonInt(request, "ai", "explanation_top_n", ReadConfigInt(ai, "explanation_top_n", 5)), 1, 10),
+                ["available"] = ReadConfigBool(ai, "available", false)
+            }
+        };
+    }
+
+    private static Dictionary<string, object?> BuildLaravelMatchingProximity(
+        JsonElement request,
+        IReadOnlyDictionary<string, object?> current)
+    {
+        var bands = ReadConfigArray(current, "proximity_bands");
+        var requestBands = request.ValueKind == JsonValueKind.Object && request.TryGetProperty("proximity_bands", out var value) && value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.Object)
+                .OrderBy(item => ReadJsonInt(item, "distance_km", 0))
+                .ToArray()
+            : Array.Empty<JsonElement>();
+
+        int DistanceAt(int index, int fallback)
+        {
+            if (requestBands.Length > index)
+                return ReadJsonInt(requestBands[index], "distance_km", fallback);
+
+            if (bands.Length > index && bands[index] is IReadOnlyDictionary<string, object?> band)
+                return ReadConfigInt(band, "distance_km", fallback);
+
+            return fallback;
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["walking_km"] = DistanceAt(0, 5),
+            ["local_km"] = DistanceAt(1, 15),
+            ["city_km"] = DistanceAt(2, 30),
+            ["regional_km"] = DistanceAt(3, 50),
+            ["max_km"] = DistanceAt(4, 100)
+        };
     }
 
     [HttpGet("matching/approvals")]
