@@ -258,6 +258,28 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseEndpoints_RespectLaravelCoursesFeatureFlag()
+    {
+        var tenant = CreateTenantContext(50);
+        await using var db = CreateDbContext(tenant);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = "features.courses",
+            Value = "false"
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, tenant, userId: 9011, role: "member");
+
+        AssertFeatureDisabled(await controller.Index(ct: CancellationToken.None));
+        AssertFeatureDisabled(await controller.Store(new CourseCompatCourseRequest
+        {
+            Title = "Disabled course"
+        }, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task ReactCourseCreate_RespectsLaravelRestrictedAuthoringPolicy()
     {
         var tenant = CreateTenantContext(46);
@@ -467,6 +489,15 @@ public sealed class CoursesCompatibilityControllerUnitTests
             .Options;
 
         return new NexusDbContext(options, tenant);
+    }
+
+    private static void AssertFeatureDisabled(IActionResult result)
+    {
+        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("FEATURE_DISABLED");
     }
 
     private static ControllerContext ControllerContextFor(int userId, int tenantId, string role)

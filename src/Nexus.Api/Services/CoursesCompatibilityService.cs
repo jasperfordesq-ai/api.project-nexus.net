@@ -668,6 +668,17 @@ public sealed class CoursesCompatibilityService
         return !bool.TryParse(value, out var allowed) || allowed;
     }
 
+    public async Task<bool> IsCoursesFeatureEnabledAsync(int tenantId, CancellationToken ct)
+    {
+        var value = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(config => config.TenantId == tenantId && config.Key == "features.courses")
+            .Select(config => config.Value)
+            .FirstOrDefaultAsync(ct);
+
+        return !IsExplicitlyDisabled(value);
+    }
+
     public async Task<bool> HasInstructorGrantAsync(int tenantId, int userId, CancellationToken ct)
     {
         return await _db.TenantConfigs
@@ -681,6 +692,20 @@ public sealed class CoursesCompatibilityService
     {
         var state = await LoadAsync(tenantId, ct);
         return EnsureCourse(state, courseId).AuthorUserId;
+    }
+
+    private static bool IsExplicitlyDisabled(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return false;
+        }
+
+        return string.Equals(normalized, "false", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "0", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "no", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "off", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<CourseCompatibilityState> LoadAsync(int tenantId, CancellationToken ct)
@@ -938,3 +963,4 @@ public sealed class CourseCompatGradeAttemptRequest { [JsonPropertyName("score_p
 public sealed class CoursesCompatibilityValidationException : Exception { public CoursesCompatibilityValidationException(string message) : base(message) { } }
 public sealed class CoursesCompatibilityNotFoundException : Exception { public CoursesCompatibilityNotFoundException(string message) : base(message) { } }
 public sealed class CoursesCompatibilityForbiddenException : Exception { public CoursesCompatibilityForbiddenException(string message) : base(message) { } }
+public sealed class CoursesCompatibilityFeatureDisabledException : Exception { public CoursesCompatibilityFeatureDisabledException(string message) : base(message) { } }

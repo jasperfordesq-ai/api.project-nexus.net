@@ -35,7 +35,13 @@ public sealed class CoursesCompatibilityController : ControllerBase
         [FromQuery] string? level = null,
         CancellationToken ct = default)
     {
-        var result = await _courses.BrowseAsync(_tenant.GetTenantIdOrThrow(), page, perPage, q, categoryId, level, ct);
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _courses.IsCoursesFeatureEnabledAsync(tenantId, ct))
+        {
+            return FeatureDisabled();
+        }
+
+        var result = await _courses.BrowseAsync(tenantId, page, perPage, q, categoryId, level, ct);
         var totalPages = result.PerPage <= 0 ? 0 : (int)Math.Ceiling(result.Total / (double)result.PerPage);
         return Ok(new
         {
@@ -54,8 +60,16 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [AllowAnonymous]
     [HttpGet("api/courses/categories")]
     [HttpGet("api/v2/courses/categories")]
-    public async Task<IActionResult> Categories(CancellationToken ct) =>
-        Ok(new { data = await _courses.CategoriesAsync(_tenant.GetTenantIdOrThrow(), ct) });
+    public async Task<IActionResult> Categories(CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _courses.IsCoursesFeatureEnabledAsync(tenantId, ct))
+        {
+            return FeatureDisabled();
+        }
+
+        return Ok(new { data = await _courses.CategoriesAsync(tenantId, ct) });
+    }
 
     [AllowAnonymous]
     [HttpGet("api/courses/{idOrSlug}")]
@@ -380,10 +394,15 @@ public sealed class CoursesCompatibilityController : ControllerBase
     {
         try
         {
+            await EnsureCoursesFeatureAsync();
             var data = await action();
             return successStatus == StatusCodes.Status200OK
                 ? Ok(new { data })
                 : StatusCode(successStatus, new { data });
+        }
+        catch (CoursesCompatibilityFeatureDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, LaravelError("FEATURE_DISABLED", ex.Message));
         }
         catch (CoursesCompatibilityValidationException ex)
         {
@@ -396,6 +415,15 @@ public sealed class CoursesCompatibilityController : ControllerBase
         catch (CoursesCompatibilityNotFoundException ex)
         {
             return StatusCode(StatusCodes.Status404NotFound, LaravelError("RESOURCE_NOT_FOUND", ex.Message));
+        }
+    }
+
+    private async Task EnsureCoursesFeatureAsync()
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _courses.IsCoursesFeatureEnabledAsync(tenantId, HttpContext?.RequestAborted ?? CancellationToken.None))
+        {
+            throw new CoursesCompatibilityFeatureDisabledException("Courses feature is not enabled for this tenant.");
         }
     }
 
@@ -463,4 +491,10 @@ public sealed class CoursesCompatibilityController : ControllerBase
             new { code, message }
         }
     };
+
+    private static ObjectResult FeatureDisabled() =>
+        new(LaravelError("FEATURE_DISABLED", "Courses feature is not enabled for this tenant."))
+        {
+            StatusCode = StatusCodes.Status403Forbidden
+        };
 }
