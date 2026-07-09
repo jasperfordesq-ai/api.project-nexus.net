@@ -546,6 +546,22 @@ Focused Laravel runtime smoke against temporary Web UK
 `/jobs/alerts`, `/jobs/responses`, and `/jobs/employer-onboarding` body
 markers.
 
+The thirty-sixth template-helper source slice extends direct `urlFor()`
+conversion into member directory pages. `src/views/members/index.njk`,
+`discover.njk`, `nearby.njk`, and `insights.njk` now route the member directory
+search form, clear links, empty-state action, profile links, connection form,
+pending-response link, pagination base URL, discovery and nearby filter nav,
+search forms, load-more links, profile/settings link, and insights back links
+through `urlFor()`. The source-level regression first failed on raw `/members`
+links/actions, then passed after conversion; a source scan for member-local raw
+`href`, `action`, pagination, and `nextHref` strings returns no matches.
+Focused members render tests pass for 42 selected tests. Focused Laravel
+runtime smoke against temporary in-process Web UK
+`http://127.0.0.1:64511`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed 18 checks across auth/cookie/logout plus signed `/members`,
+`/members/discover`, `/members/nearby`, and `/members/77/insights` body
+markers.
+
 Verification command:
 
 ```powershell

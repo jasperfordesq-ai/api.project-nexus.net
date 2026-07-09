@@ -141,7 +141,10 @@ public collection links, and appreciation send/react/pagination controls
 through `urlFor()`. The latest jobs source slice now routes jobs tabs,
 browse filters, saved/application/owner links, alerts, responses, detail
 actions, employer pages, talent search/profile links, CSV/CV downloads, and
-job POST forms through `urlFor()`.
+job POST forms through `urlFor()`. The latest members source slice now routes
+the member directory search/clear/profile/connection controls, discovery and
+nearby filter navigation/forms/member links/load-more links, and insights
+profile back links through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -166,8 +169,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `985/1000` implementation/certification parity |
-| Green confidence estimate | about `968/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `986/1000` implementation/certification parity |
+| Green confidence estimate | about `970/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -218,6 +221,14 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 27 tests.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "jobs|job"` passed: 28 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:60268`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 24 checks: base API/health, cookie, login, account, logout, signed `/jobs/saved`, `/jobs/applications`, `/jobs/mine`, `/jobs/create`, `/jobs/alerts`, `/jobs/responses`, and `/jobs/employer-onboarding`, plus body markers `Saved opportunities`, `My applications`, `My postings`, `Post an opportunity`, `Job alerts`, `Interview invitations`, and `Welcome to posting opportunities`.
+
+Latest focused verification on 2026-07-09 for the members template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member directory"` first failed on raw `/members` links/actions, then passed after conversion.
+- `Get-ChildItem -Path apps\web-uk\src\views\members -Filter *.njk | Select-String -SimpleMatch -Pattern 'href="/members','action="/members','href="/connections','href="/profile','href: "/members','baseUrl: "/members','href="{{ nextHref }}'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "members"` passed: 42 selected tests.
+- A focused exported Laravel runtime smoke against temporary in-process Web UK `http://127.0.0.1:64511`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 18 checks: base API/health, cookie, login, account, logout, signed `/members`, `/members/discover`, `/members/nearby`, and `/members/77/insights`, plus body markers `Community members`, `Recommended members`, `Members near me`, and `Reputation and recognition`.
 
 Latest focused verification on 2026-07-09 for the groups index/form
 template-helper slice:
@@ -1447,8 +1458,8 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `985/1000`.
-Green confidence estimate: `968/1000`, because the consolidated code, static
+Current working estimate at this handoff: `986/1000`.
+Green confidence estimate: `970/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
 remaining template-helper conversion, and ASP.NET backend switching proof still

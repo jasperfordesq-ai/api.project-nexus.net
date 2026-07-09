@@ -24,7 +24,7 @@
 
       <p class="govuk-body">Browse members of your community and send connection requests.</p>
 
-      <form action="/members" method="get" class="govuk-!-margin-bottom-6">
+      <form action="{{ urlFor('/members') }}" method="get" class="govuk-!-margin-bottom-6">
         <div class="app-search-form">
           {{ govukInput({
             id: "search",
@@ -43,7 +43,7 @@
             Search
           </button>
           {% if searchQuery %}
-            <a href="/members" class="govuk-link govuk-!-margin-left-3">Clear</a>
+            <a href="{{ urlFor('/members') }}" class="govuk-link govuk-!-margin-left-3">Clear</a>
           {% endif %}
         </div>
       </form>
@@ -55,7 +55,7 @@
           message: "No members match \"" + searchQuery + "\". Try a different search term.",
           action: {
             text: "Clear search",
-            href: "/members"
+            href: urlFor("/members")
           }
         } %}
         {% include "partials/empty-state.njk" %}
@@ -76,7 +76,7 @@
                 <td class="govuk-table__cell">
                   <div class="app-member-cell">
                     {% include "partials/avatar.njk" %}
-                    <a href="/members/{{ user.id }}" class="govuk-link">
+                    <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
                       {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
                     </a>
                   </div>
@@ -100,9 +100,9 @@
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  <a href="/members/{{ user.id }}" class="govuk-link govuk-!-margin-right-3">View profile</a>
+                  <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link govuk-!-margin-right-3">View profile</a>
                   {% if not conn %}
-                    <form action="/members/{{ user.id }}/connection" method="post" style="display: inline;">
+                    <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post" style="display: inline;">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <input type="hidden" name="action" value="connect">
                       <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">
@@ -110,7 +110,7 @@
                       </button>
                     </form>
                   {% elif conn.status == 'pending' and not conn.is_requester %}
-                    <a href="/connections/network?tab=pending_received" class="govuk-link">Respond</a>
+                    <a href="{{ urlFor('/connections/network?tab=pending_received') }}" class="govuk-link">Respond</a>
                   {% endif %}
                 </td>
               </tr>
@@ -129,7 +129,7 @@
       {# Pagination #}
       {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
-          baseUrl: "/members",
+          baseUrl: urlFor("/members"),
           page: pagination.page,
           totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { search: searchQuery }

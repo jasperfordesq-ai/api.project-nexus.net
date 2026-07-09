@@ -779,6 +779,14 @@ tenant-prefixed routing, auth redirects, volunteering feature gates,
 job-vacancy feature gates, registration runtime persistence, organisation apply
 POST workflow, localization, and runtime smoke tests.
 
+The member directory, discovery, nearby, and insights templates are
+Laravel-backed candidates whose local links/forms now route through `urlFor()`
+for shared-mount and custom-domain tenant contexts. This source-level helper
+conversion does not certify ASP.NET backend switching: ASP.NET must still match
+Laravel's user search, community ranking, nearby-member, visibility/privacy,
+verification badge, connection, tenant, feature-gate, localization, and redirect
+contracts before these pages can be called backend-neutral.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

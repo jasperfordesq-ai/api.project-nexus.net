@@ -174,6 +174,28 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/report-a-problem/);
   });
 
+  it('keeps member directory, discovery, nearby, and insights controls behind urlFor()', () => {
+    const templates = [
+      path.join('members', 'index.njk'),
+      path.join('members', 'discover.njk'),
+      path.join('members', 'nearby.njk'),
+      path.join('members', 'insights.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:members|connections|profile)/);
+      expect(template).not.toMatch(/action="\/members/);
+      expect(template).not.toContain('href: "/members');
+      expect(template).not.toContain('baseUrl: "/members"');
+      expect(template).not.toContain('href="{{ nextHref }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),

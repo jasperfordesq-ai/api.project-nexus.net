@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
-      <a class="govuk-back-link" href="/members/{{ memberId }}">Back to profile</a>
+      <a class="govuk-back-link" href="{{ urlFor('/members/' + (memberId | string)) }}">Back to profile</a>
 
       <span class="govuk-caption-l">{{ displayName }}</span>
       <h1 class="govuk-heading-xl">Reputation and recognition</h1>
@@ -122,7 +122,7 @@
       {% endif %}
 
       <p class="govuk-body govuk-!-margin-top-7">
-        <a class="govuk-link" href="/members/{{ memberId }}">Back to profile</a>
+        <a class="govuk-link" href="{{ urlFor('/members/' + (memberId | string)) }}">Back to profile</a>
       </p>
     </div>
   </div>

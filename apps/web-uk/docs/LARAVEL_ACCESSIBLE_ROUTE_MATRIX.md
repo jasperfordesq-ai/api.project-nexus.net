@@ -125,6 +125,13 @@ Jobs source templates now also use `urlFor()` for jobs tabs, browse filters,
 saved/application/owner links, alerts, responses, detail actions, employer
 pages, talent search/profile links, CSV/CV downloads, pagination, and job POST
 forms.
+Member source templates now also use `urlFor()` for member directory search,
+clear, profile, connection, response, and pagination controls; discovery and
+nearby filter navigation, forms, profile links, and load-more links; and
+member-insights profile back links. Focused Laravel runtime smoke for the
+members source slice passed against Laravel `http://127.0.0.1:8088`, covering
+signed `/members`, `/members/discover`, `/members/nearby`, and
+`/members/77/insights` module renders and body markers.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the
