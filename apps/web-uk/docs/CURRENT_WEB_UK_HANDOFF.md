@@ -318,9 +318,9 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `988/1000` implementation/certification parity |
-| Green confidence estimate | about `973/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
-| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
+| Working estimate | about `992/1000` implementation/certification parity |
+| Green confidence estimate | about `982/1000`, mainly gated by visual/manual Laravel Blade parity, page-level feature-disabled behavior, and ASP.NET backend switching certification |
+| Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -342,6 +342,32 @@ slice:
 - `node -e "const r=require('./apps/web-uk/src/routes/laravel-prep-pages'); console.log(r.prepPages.length)"` reported `0` current runtime preparation pages.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes after the loader cleanup.
 - A scoped live `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, with module/page sweeps disabled, passed 10/10 checks for Laravel API reachability, Web UK health, cookie-consent POST workflows, login CSRF, login POST, signed `/account`, and logout. This is core runtime proof only, not the required full 634-check smoke.
+
+Latest full default Laravel runtime-smoke recertification on 2026-07-09:
+
+- Started a dedicated local Web UK process at `http://127.0.0.1:6510` with
+  `TENANT_ID=2`, `ACCESSIBLE_BACKEND_TARGET=laravel`, and
+  `LARAVEL_BASE_URL=http://127.0.0.1:8088` so public fixture routes resolve the
+  same tenant as the Laravel E2E account.
+- `npm --prefix apps/web-uk run route:matrix` passed immediately before the
+  smoke work with 608/608 Laravel accessible routes matched, 0 missing, 0 extra
+  Web UK routes, and 3 ignored infrastructure routes.
+- The module-page default sweep passed in eight deterministic chunks with body,
+  gated, redirect, content-type, and tenant-domain buckets disabled:
+  `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8` covered all `281` module-page
+  checks with `0` failures.
+- The body-text default sweep passed in eight deterministic chunks with module,
+  gated, redirect, content-type, and tenant-domain buckets disabled:
+  `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8` covered all `283` body-text
+  checks with `0` failures.
+- The core non-page buckets passed as explicit smaller groups: unsigned
+  auth-required redirects, unsigned login redirects, content-type checks,
+  all `22` signed gated-status checks, and all `19` signed redirect checks.
+- A single all-in-one core run on this local stack still produced a transient
+  mixed-sequence failure for `/listings/42/analytics`, but the same signed Web
+  session sequence and the focused/split gated smoke returned the Laravel-truth
+  `403`. Use the chunked/bucketed shape above for current full-scope local
+  certification rather than treating an unchunked wrapper run as authoritative.
 
 Latest focused verification on 2026-07-09 for the events index/form
 template-helper slice:
@@ -1810,19 +1836,19 @@ A route family is not complete until all of these are true:
 
 ## Known Remaining Work
 
-Prioritize replacing generated prep pages and certifying runtime behavior over
-adding more skeleton pages.
+Prioritize visual/manual Blade parity, page-level feature-disabled behavior, and
+ASP.NET switching proof over adding more skeleton pages.
 
 1. Rerun the refresh protocol and confirm whether the current web-uk process has
    Laravel tenant context (`TENANT_ID=2` for the local E2E fixture).
    If `http://127.0.0.1:8088` times out, start or repair local Laravel before
    treating live smoke status as current evidence.
-2. Keep expanding runtime smoke coverage from auth/account into module families
-   that are currently only mocked.
+2. Keep the full default Laravel smoke scope green with chunked/bucketed runs
+   when local Laravel is too slow or stateful for one all-in-one command.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
-4. Add runtime smoke coverage against local Laravel for page-level tenant/auth/
-   feature-gate behavior.
+4. Add page-level tenant/auth/feature-disabled proof beyond route-level and
+   shell-level gating.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -1842,12 +1868,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `988/1000`.
-Green confidence estimate: `973/1000`, because the consolidated code, static
-tests, route matrix, and focused host-domain smoke are strong, while
-visual/manual Blade parity spot-checks, full unchunked runtime certification,
-page-level feature-disabled behavior, and ASP.NET backend switching proof still
-need final certification.
+Current working estimate at this handoff: `992/1000`.
+Green confidence estimate: `982/1000`, because the consolidated code, static
+tests, route matrix, tenant-domain proof, and full default Laravel runtime
+smoke coverage via chunked/bucketed runs are strong, while visual/manual Blade
+parity spot-checks, page-level feature-disabled behavior, and ASP.NET backend
+switching proof still need final certification.
 
 ## Final Handoff Checklist
 

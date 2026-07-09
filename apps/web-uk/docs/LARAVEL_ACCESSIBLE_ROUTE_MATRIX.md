@@ -54,6 +54,16 @@ set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
 
+Runtime note, 2026-07-09: after this matrix was refreshed green, the full
+default Laravel runtime-smoke scope was recertified against a dedicated
+tenant-correct Web UK process at `http://127.0.0.1:6510` with `TENANT_ID=2`.
+Module chunks `1/8` through `8/8` covered all `281` module checks, body chunks
+`1/8` through `8/8` covered all `283` body-text checks, and split core buckets
+covered unsigned redirects, content types, all `22` gated statuses, all `19`
+signed redirects, cookie POSTs, logout, and base auth/health with no failed
+checks. This is runtime evidence only; it does not prove visual/manual Blade
+parity or ASP.NET backend switching.
+
 The Explore route has additional source-level parity coverage beyond static
 method/path matching: its shared card list now consumes tenant bootstrap
 modules/features using Laravel Blade candidate gates, keeps Search and Skills

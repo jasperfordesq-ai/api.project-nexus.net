@@ -657,6 +657,19 @@ redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
 content-type contract checks, 283 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
+On 2026-07-09, the same full default scope was recertified against a dedicated
+local Web UK process at `WEB_UK_BASE_URL=http://127.0.0.1:6510`, started with
+`TENANT_ID=2`, `ACCESSIBLE_BACKEND_TARGET=laravel`, and
+`LARAVEL_BASE_URL=http://127.0.0.1:8088`. Because the local all-in-one command
+can mix slow Laravel page sweeps with stateful gated checks, the certification
+was split by bucket: `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8` covered all
+`281` module-page checks, `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`
+covered all `283` body-text checks, and explicit core groups covered the 14
+unsigned auth-required redirects, 3 unsigned login redirects, 2 content-type
+checks, 22 signed gated-status checks, 19 signed redirects, 3 cookie-consent
+POST workflows, logout, and the base Laravel/API/auth checks. All bucketed
+runs exited `0` with no failed checks. This is Laravel-runtime evidence only;
+it does not certify ASP.NET backend switching.
 While recertifying the chunked scope on 2026-07-08, the Laravel E2E fixture
 returned `403` for optional `/api/v2/federation/activity` while
 `/api/v2/federation/status` and `/api/v2/federation/partners` returned `200`.
