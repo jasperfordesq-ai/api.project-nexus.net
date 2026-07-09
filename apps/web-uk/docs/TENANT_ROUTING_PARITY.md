@@ -1103,6 +1103,21 @@ only; it does not newly certify feature gates, exact open/closed list parity,
 owner authorization, localization, runtime persistence, visual Blade parity, or
 ASP.NET backend compatibility.
 
+The seventy-second source slice extends route-level redirect cleanup into
+reviews. `src/routes/reviews.js` now sends auth-required review creation,
+comment validation/result, reaction result, and Laravel-401 handoffs through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell locals
+are available. Review helper URLs for comments and paginated review lists now
+build from a shared `/reviews` constant instead of raw root-relative returns.
+The focused source regression first failed on raw `/login` and `/reviews`
+redirect targets plus raw review helper return strings, then passed after
+conversion. Focused shared-mount coverage proves unsigned
+`/acme/accessible/reviews` redirects to
+`/acme/accessible/login?status=auth-required`. This is review redirect evidence
+only; it does not newly certify exact moderation/deletion display, threaded
+reply depth, feature gates, localization, runtime persistence, visual Blade
+parity, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
@@ -1118,6 +1133,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed action validation redirects"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "poll action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "poll action redirects inside|Laravel poll"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "review action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "review action redirects inside|Laravel review"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "premium links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "premium"

@@ -22,6 +22,8 @@ const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
 
+const REVIEWS_PATH = '/reviews';
+const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
 const LARAVEL_REVIEW_REACTIONS = ['like', 'love', 'laugh', 'wow', 'sad', 'celebrate'];
 const LARAVEL_REVIEW_REACTION_SET = new Set(LARAVEL_REVIEW_REACTIONS);
 const LARAVEL_REVIEW_REACTION_LABELS = {
@@ -52,13 +54,18 @@ function trimmed(value, limit = null) {
   return limit === null ? text : text.slice(0, limit);
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function commentsRedirect(id, status, fragment = '') {
-  return `/reviews/${id}/comments?status=${encodeURIComponent(status)}${fragment}`;
+  return `${REVIEWS_PATH}/${id}/comments?status=${encodeURIComponent(status)}${fragment}`;
 }
 
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return true;
   }
   return false;
@@ -181,7 +188,7 @@ function listHref(tab, cursor = '') {
   const params = new URLSearchParams();
   params.set('tab', tab);
   if (cursor) params.set('cursor', cursor);
-  return `/reviews/list?${params.toString()}`;
+  return `${REVIEWS_PATH}/list?${params.toString()}`;
 }
 
 function reviewStatusMessage(status) {
@@ -210,7 +217,7 @@ function commentStatusMessage(status) {
 router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const transactionId = positiveInteger(req.body.transaction_id);
@@ -236,13 +243,13 @@ router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(`/reviews?status=${status}`);
+  return redirectTo(res, `${REVIEWS_PATH}?status=${status}`);
 }));
 
 router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const id = Number(req.params.id);
@@ -250,7 +257,7 @@ router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const parentId = positiveInteger(req.body.parent_id);
 
   if (body === '') {
-    return res.redirect(commentsRedirect(id, 'comment-invalid'));
+    return redirectTo(res, commentsRedirect(id, 'comment-invalid'));
   }
 
   let status = parentId !== null ? 'reply-added' : 'comment-added';
@@ -267,13 +274,13 @@ router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
     status = 'comment-failed';
   }
 
-  return res.redirect(commentsRedirect(id, status));
+  return redirectTo(res, commentsRedirect(id, status));
 }));
 
 router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const id = Number(req.params.id);
@@ -295,7 +302,7 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(commentsRedirect(id, status, '#review-reactions'));
+  return redirectTo(res, commentsRedirect(id, status, '#review-reactions'));
 }));
 
 router.get('/', requireAuth, asyncRoute(async (req, res) => {

@@ -10467,6 +10467,28 @@ describe('shared accessible frontend shell', () => {
     expect(api.votePoll).not.toHaveBeenCalled();
   });
 
+  it('keeps signed-out Laravel review action redirects inside the shared accessible mount', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/acme/accessible/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/reviews')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        receiver_id: '77',
+        rating: '5',
+        comment: 'Great exchange',
+        transaction_id: '22'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(api.createReview).not.toHaveBeenCalled();
+  });
+
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

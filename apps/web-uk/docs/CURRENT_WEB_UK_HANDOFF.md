@@ -203,6 +203,10 @@ The latest poll action redirect slice now routes auth-required, create, vote,
 rank, delete, like, and comment POST outcomes through `res.locals.urlFor`, with
 shared-mount coverage proving `/acme/accessible/polls/42/vote` stays under the
 active tenant mount when redirecting to auth-required login.
+The latest review action redirect slice now routes auth-required, comment,
+reaction, and Laravel-401 review workflow redirects through `res.locals.urlFor`,
+with shared-mount coverage proving `/acme/accessible/reviews` stays under the
+active tenant mount when redirecting to auth-required login.
 The latest group-exchange action redirect slice now sends auth-required,
 validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed
@@ -1030,7 +1034,8 @@ Latest focused reviews route slice: legacy local GET/POST
 Laravel's canonical POST `/members/{id}/review` route, and listing detail pages
 no longer expose the unsupported listing-specific review form. The reviews
 family now reports `7` matched routes, `0` missing routes, and `0` extra local
-routes.
+routes. Review route-level auth, comment, reaction, and Laravel-401 redirects
+now generate tenant-aware targets through `res.locals.urlFor`.
 
 Latest focused reports route slice: legacy local GET `/reports/new`, POST
 `/reports/new`, and GET `/reports/my` were removed. Generic report links now
