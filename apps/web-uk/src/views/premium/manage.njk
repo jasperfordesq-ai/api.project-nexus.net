@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/premium" class="govuk-back-link">Back to support tiers</a>
+  <a href="{{ urlFor('/premium') }}" class="govuk-back-link">Back to support tiers</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Manage your support</h1>
@@ -53,7 +53,7 @@
     </ul>
   {% endif %}
 
-  <form method="post" action="/premium/portal" class="govuk-!-margin-bottom-4">
+  <form method="post" action="{{ urlFor('/premium/portal') }}" class="govuk-!-margin-bottom-4">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Manage billing</button>
   </form>
@@ -64,7 +64,7 @@
       <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
       <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">Notice</span> Your support will stay active until the end of the current billing period.</strong>
     </div>
-    <form method="post" action="/premium/cancel">
+    <form method="post" action="{{ urlFor('/premium/cancel') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Cancel support</button>
     </form>

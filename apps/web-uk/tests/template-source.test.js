@@ -1082,6 +1082,32 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/coupons/);
   });
 
+  it('keeps premium links, forms, redirects, and billing return URLs behind the active tenant URL helper', () => {
+    const templates = [
+      path.join('premium', 'index.njk'),
+      path.join('premium', 'manage.njk'),
+      path.join('premium', 'return.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'premium.js'),
+      'utf8'
+    );
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/premium/);
+      expect(template).not.toMatch(/action="\/premium/);
+    }
+
+    expect(route).toContain('function localUrl(res, pathname)');
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).not.toMatch(/res\.redirect\(\s*['"`]\/(?:login|premium)/);
+    expect(route).not.toMatch(/return_url:\s*['"`]\/premium/);
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/premium/);
+  });
+
   it('keeps the shared pagination partial default behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'partials', 'pagination.njk'),

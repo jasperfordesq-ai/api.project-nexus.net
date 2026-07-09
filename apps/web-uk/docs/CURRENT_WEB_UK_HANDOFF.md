@@ -218,6 +218,12 @@ latest public fallback-link slice now routes newsletter-unsubscribe and error
 page home links through `urlFor('/')`, matching Laravel's
 `govuk-alpha.home` route usage and keeping fallback links tenant/custom-domain
 aware.
+The latest premium source/return-url slice now routes pricing, management, and
+return-page premium links/forms through `urlFor()`, sends premium auth/status
+redirects through `res.locals.urlFor`, and builds checkout plus billing-portal
+`return_url` payloads from the active tenant URL helper. This matches Laravel's
+named-route callback behavior for shared mounts and custom-domain contexts
+without rewriting external Stripe or billing-portal destinations.
 The latest AI chat and matches source slice now routes AI chat back links,
 conversation links, new-conversation links, chat form actions, matches filters,
 board links, listing/group/event links, dismiss forms, empty-state CTAs, and

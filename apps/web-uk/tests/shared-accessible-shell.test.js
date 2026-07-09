@@ -6947,6 +6947,43 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('keeps premium checkout and portal return URLs inside the active shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    await agent
+      .post('/acme/accessible/premium/subscribe')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        tier_id: '7',
+        interval: 'monthly'
+      });
+
+    await agent
+      .post('/acme/accessible/premium/portal')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(api.createMemberPremiumCheckout).toHaveBeenLastCalledWith('test-token', {
+      tier_id: 7,
+      interval: 'monthly',
+      return_url: '/acme/accessible/premium/return?status=success'
+    });
+    expect(api.createMemberPremiumPortal).toHaveBeenLastCalledWith('test-token', {
+      return_url: '/acme/accessible/premium/manage'
+    });
+  });
+
   it('submits the Laravel premium cancel route through the cancel API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

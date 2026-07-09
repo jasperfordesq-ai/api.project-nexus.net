@@ -21,6 +21,15 @@ function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
 
+function localUrl(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return urlFor(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(localUrl(res, pathname));
+}
+
 function loginRedirect() {
   return '/login?status=auth-required';
 }
@@ -28,7 +37,7 @@ function loginRedirect() {
 function requireToken(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return null;
   }
 
@@ -37,7 +46,7 @@ function requireToken(req, res) {
 
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -196,7 +205,7 @@ router.get('/manage', asyncRoute(async (req, res) => {
     const me = premiumMe(await getMemberPremiumMe(token));
     const subscription = normalizeSubscription(me.subscription);
     if (subscription === null) {
-      return res.redirect('/premium?status=no-subscription');
+      return redirectTo(res, '/premium?status=no-subscription');
     }
 
     return res.render('premium/manage', {
@@ -237,19 +246,19 @@ router.get('/return', asyncRoute(async (req, res) => {
 router.post('/subscribe', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const tierId = positiveInteger(req.body.tier_id);
   if (tierId === null) {
-    return res.redirect('/premium?status=subscribe-failed');
+    return redirectTo(res, '/premium?status=subscribe-failed');
   }
 
   try {
     const result = await createMemberPremiumCheckout(token, {
       tier_id: tierId,
       interval: normaliseInterval(req.body.interval),
-      return_url: '/premium/return?status=success'
+      return_url: localUrl(res, '/premium/return?status=success')
     });
     const checkoutUrl = externalUrlFrom(result, 'checkout_url');
     if (checkoutUrl !== '') {
@@ -259,18 +268,18 @@ router.post('/subscribe', asyncRoute(async (req, res) => {
     if (redirectAuthIfNeeded(error, res)) return undefined;
   }
 
-  return res.redirect('/premium?status=subscribe-failed');
+  return redirectTo(res, '/premium?status=subscribe-failed');
 }));
 
 router.post('/portal', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
     const result = await createMemberPremiumPortal(token, {
-      return_url: '/premium/manage'
+      return_url: localUrl(res, '/premium/manage')
     });
     const portalUrl = externalUrlFrom(result, 'portal_url');
     if (portalUrl !== '') {
@@ -280,13 +289,13 @@ router.post('/portal', asyncRoute(async (req, res) => {
     if (redirectAuthIfNeeded(error, res)) return undefined;
   }
 
-  return res.redirect('/premium/manage?status=portal-failed');
+  return redirectTo(res, '/premium/manage?status=portal-failed');
 }));
 
 router.post('/cancel', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let status = 'cancel-scheduled';
@@ -297,7 +306,7 @@ router.post('/cancel', asyncRoute(async (req, res) => {
     status = 'cancel-failed';
   }
 
-  return res.redirect(`/premium/manage?status=${status}`);
+  return redirectTo(res, `/premium/manage?status=${status}`);
 }));
 
 module.exports = router;

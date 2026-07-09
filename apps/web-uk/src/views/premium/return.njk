@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/premium" class="govuk-back-link">Back to Donate</a>
+  <a href="{{ urlFor('/premium') }}" class="govuk-back-link">Back to Donate</a>
 
   {% if returnStatus == 'success' %}
     <div class="govuk-panel govuk-panel--confirmation">
@@ -19,11 +19,11 @@
         {% endif %}
       </div>
     </div>
-    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Manage your support</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">Manage your support</a></p>
   {% elif returnStatus == 'pending' %}
     <h1 class="govuk-heading-l">Payment pending</h1>
     <div class="govuk-inset-text"><p class="govuk-body">Your payment is being processed. Check back shortly.</p></div>
-    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Check your support status</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">Check your support status</a></p>
   {% else %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
@@ -34,6 +34,6 @@
       </div>
     </div>
     <h1 class="govuk-heading-l">Donation setup failed</h1>
-    <p class="govuk-body"><a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="/premium">Donate</a></p>
+    <p class="govuk-body"><a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/premium') }}">Donate</a></p>
   {% endif %}
 {% endblock %}

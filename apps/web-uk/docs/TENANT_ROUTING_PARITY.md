@@ -1002,9 +1002,25 @@ is search redirect evidence only; it does not newly certify live saved-search
 persistence, tenant feature gates, visual Blade parity, localization, broader
 runtime behavior, or ASP.NET backend compatibility.
 
+The sixty-fifth source slice extends tenant-aware return handling into premium
+billing. `src/views/premium/*.njk` now routes pricing, management, and return
+page links/forms through `urlFor()`, and `src/routes/premium.js` now uses
+`localUrl(res, ...)`/`redirectTo(res, ...)` for premium auth/status redirects
+and Laravel member-premium checkout plus billing-portal `return_url` payloads.
+The focused source regression first failed on raw premium links/forms and flat
+`/premium` return URLs, then passed after conversion. Focused shared-mount
+coverage proves signed POSTs to `/acme/accessible/premium/subscribe` and
+`/acme/accessible/premium/portal` send Laravel payload return URLs under
+`/acme/accessible`. This is premium URL-routing evidence only; it does not
+newly certify external Stripe checkout/portal runtime behavior, tenant premium
+feature gates, localization, exact billing status wording, or ASP.NET backend
+compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "premium links"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "premium"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet action redirects"
