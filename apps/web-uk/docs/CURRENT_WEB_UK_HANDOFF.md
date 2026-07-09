@@ -189,6 +189,13 @@ latest public fallback-link slice now routes newsletter-unsubscribe and error
 page home links through `urlFor('/')`, matching Laravel's
 `govuk-alpha.home` route usage and keeping fallback links tenant/custom-domain
 aware.
+The latest shell tenant-gating slice now mirrors Laravel
+`AlphaController::alphaNavItems()` and `alphaFooterColumns()` for shared shell
+links: Dashboard, Feed, Listings, Members, Events, Volunteering, and footer
+Blog are filtered from tenant bootstrap `modules`/`features`, and the footer
+Platform column is removed when no platform links are enabled. This is shell
+visibility parity only; page-level disabled-state behavior still needs
+module-by-module certification.
 
 ## Non-Negotiable Rules
 
@@ -349,6 +356,25 @@ query-preservation slice:
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 750 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with only `/login?status=auth-required&return=%2Fexplore&locale=ga=>Sign in` as the body-text page passed 11/11 checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 - This mirrors Laravel Blade's `request()->except(['locale'])` scalar query behavior for the global language selector. It does not newly certify localization depth, tenant feature gates, runtime locale persistence, or ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for the shell tenant module/feature
+gating slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/accessible-shell.test.js` passed: 3 tests.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand` passed: 443 tests.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/routes.test.js --runInBand` passed: 40 tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 11 suites and 753 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- The focused test pins Laravel Blade shell semantics for tenant bootstrap
+  `modules`/`features`: signed-out service navigation hides disabled Dashboard,
+  Feed, Members, and Events while preserving enabled Listings and Volunteering;
+  signed-in service navigation hides anonymous Home and disabled Dashboard; and
+  footer Platform links are filtered and prefixed through the active tenant
+  mount.
+- This does not certify page-level feature-disabled redirects/errors, account
+  hub feature cards, Explore card gating, runtime Laravel tenant fixtures, or
+  ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
@@ -1589,8 +1615,8 @@ adding more skeleton pages.
    that are currently only mocked.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
-4. Add runtime smoke coverage against local Laravel for tenant/auth/feature-gate
-   behavior.
+4. Add runtime smoke coverage against local Laravel for page-level tenant/auth/
+   feature-gate behavior.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -1614,7 +1640,7 @@ Current working estimate at this handoff: `988/1000`.
 Green confidence estimate: `973/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
-remaining template-helper conversion, and ASP.NET backend switching proof still
+page-level feature-disabled behavior, and ASP.NET backend switching proof still
 need final certification.
 
 ## Final Handoff Checklist

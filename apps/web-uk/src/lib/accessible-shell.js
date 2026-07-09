@@ -32,12 +32,12 @@ const localeOptions = [
 
 const navItems = [
   { key: 'home', label: 'Home', href: '/', anonymousOnly: true },
-  { key: 'dashboard', label: 'Dashboard', href: '/dashboard', authenticatedOnly: true },
-  { key: 'feed', label: 'Feed', href: '/feed' },
-  { key: 'listings', label: 'Listings', href: '/listings' },
-  { key: 'members', label: 'Members', href: '/members' },
-  { key: 'events', label: 'Events', href: '/events' },
-  { key: 'volunteering', label: 'Volunteering', href: '/volunteering' },
+  { key: 'dashboard', label: 'Dashboard', href: '/dashboard', authenticatedOnly: true, moduleKey: 'dashboard' },
+  { key: 'feed', label: 'Feed', href: '/feed', moduleKey: 'feed' },
+  { key: 'listings', label: 'Listings', href: '/listings', moduleKey: 'listings' },
+  { key: 'members', label: 'Members', href: '/members', featureKey: 'connections' },
+  { key: 'events', label: 'Events', href: '/events', featureKey: 'events' },
+  { key: 'volunteering', label: 'Volunteering', href: '/volunteering', featureKey: 'volunteering' },
   { key: 'explore', label: 'Explore', href: '/explore', authenticatedOnly: true }
 ];
 
@@ -46,11 +46,11 @@ const footerColumns = [
     key: 'platform',
     heading: 'Platform',
     links: [
-      { key: 'listings', label: 'Listings', href: '/listings' },
-      { key: 'members', label: 'Members', href: '/members' },
-      { key: 'events', label: 'Events', href: '/events' },
-      { key: 'volunteering', label: 'Volunteering', href: '/volunteering' },
-      { key: 'blog', label: 'Blog', href: '/blog' }
+      { key: 'listings', label: 'Listings', href: '/listings', moduleKey: 'listings' },
+      { key: 'members', label: 'Members', href: '/members', featureKey: 'connections' },
+      { key: 'events', label: 'Events', href: '/events', featureKey: 'events' },
+      { key: 'volunteering', label: 'Volunteering', href: '/volunteering', featureKey: 'volunteering' },
+      { key: 'blog', label: 'Blog', href: '/blog', featureKey: 'blog' }
     ]
   },
   {
@@ -205,12 +205,44 @@ function activeNavForPath(pathname = '/') {
   return '';
 }
 
-function buildNavItems({ isAuthenticated = false } = {}) {
+function flagEnabled(tenant = {}, key, source, fallback = true) {
+  if (!key) return true;
+  const primary = tenant[source] && typeof tenant[source] === 'object' ? tenant[source] : {};
+  const secondarySource = source === 'modules' ? 'features' : 'modules';
+  const secondary = tenant[secondarySource] && typeof tenant[secondarySource] === 'object'
+    ? tenant[secondarySource]
+    : {};
+
+  if (Object.prototype.hasOwnProperty.call(primary, key)) return Boolean(primary[key]);
+  if (Object.prototype.hasOwnProperty.call(secondary, key)) return Boolean(secondary[key]);
+  return fallback;
+}
+
+function itemEnabledForTenant(item, tenant = {}) {
+  if (item.moduleKey) return flagEnabled(tenant, item.moduleKey, 'modules', true);
+  if (item.featureKey) return flagEnabled(tenant, item.featureKey, 'features', true);
+  return true;
+}
+
+function buildNavItems({ isAuthenticated = false, tenant = {} } = {}) {
   return navItems.filter((item) => {
     if (item.authenticatedOnly && !isAuthenticated) return false;
     if (item.anonymousOnly && isAuthenticated) return false;
+    if (!itemEnabledForTenant(item, tenant)) return false;
     return true;
   });
+}
+
+function buildFooterColumns({ tenant = {} } = {}) {
+  return footerColumns
+    .map((column) => {
+      if (column.key !== 'platform') return column;
+      return {
+        ...column,
+        links: column.links.filter((link) => itemEnabledForTenant(link, tenant))
+      };
+    })
+    .filter((column) => column.key !== 'platform' || column.links.length > 0);
 }
 
 function prefixLocalPath(pathname, prefix = '') {
@@ -272,9 +304,9 @@ function buildShellLocals(req, isAuthenticated) {
     alphaLocaleOptions: localeOptions,
     alphaLanguageQueryParams: buildLanguageQueryParams(req.query),
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
-    alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated }), routePrefix),
+    alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated, tenant: routedTenant }), routePrefix),
     alphaActiveNav: activeNavForPath(req.path),
-    alphaFooterColumns: prefixFooterColumns(footerColumns, routePrefix),
+    alphaFooterColumns: prefixFooterColumns(buildFooterColumns({ tenant: routedTenant }), routePrefix),
     alphaExploreLinks: exploreLinks,
     currentPath,
     currentUrl,
@@ -289,6 +321,7 @@ function buildShellLocals(req, isAuthenticated) {
 
 module.exports = {
   activeNavForPath,
+  buildFooterColumns,
   buildLanguageQueryParams,
   buildNavItems,
   buildShellLocals,

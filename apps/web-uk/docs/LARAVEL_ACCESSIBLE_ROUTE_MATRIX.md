@@ -104,6 +104,13 @@ The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values
 survive locale changes.
+The shared service navigation and footer Platform column now consume Laravel
+tenant bootstrap `modules`/`features` with the same IA gates used by
+`AlphaController::alphaNavItems()` and `alphaFooterColumns()`: Dashboard,
+Feed, Listings, Members, Events, Volunteering, and footer Blog visibility are
+filtered before tenant/custom-domain prefixes are applied. This is shell-level
+visibility evidence only; route declarations still do not prove page-level
+feature-disabled behavior.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.

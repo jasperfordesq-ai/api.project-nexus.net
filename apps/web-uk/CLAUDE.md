@@ -221,6 +221,9 @@ Follow the Laravel Blade accessible frontend for:
 - lean GOV.UK service navigation;
 - no-JS language selector, including preserving scalar non-`locale` query
   parameters as hidden inputs like the Blade layout;
+- tenant bootstrap module/feature gates for shared service navigation and the
+  footer Platform column, matching Laravel Blade's Dashboard, Feed, Listings,
+  Members, Events, Volunteering, and Blog visibility rules;
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
