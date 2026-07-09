@@ -309,6 +309,41 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
   });
 
+  it('keeps group depth templates behind urlFor()', () => {
+    const templates = [
+      path.join('groups', 'announcement-edit.njk'),
+      path.join('groups', 'discussion-create.njk'),
+      path.join('groups', 'discussion-detail.njk'),
+      path.join('groups', 'discussions.njk'),
+      path.join('groups', 'image.njk'),
+      path.join('groups', 'invite.njk'),
+      path.join('groups', 'manage.njk'),
+      path.join('groups', 'notifications.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/href="\/(?:groups|members)/);
+    expect(source).not.toMatch(/action="\/groups/);
+    expect(source).toMatch(/urlFor\(["']\/groups/);
+    expect(source).toMatch(/urlFor\(["']\/members/);
+  });
+
+  it('keeps group route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'groups.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(`\/groups/);
+    expect(route).not.toMatch(/res\.redirect\(['"]\/groups/);
+    expect(route).not.toMatch(/statusRedirect\(`\/groups/);
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps public volunteering links, filters, and apply CTAs behind urlFor()', () => {
     const templates = [
       'volunteering.njk',

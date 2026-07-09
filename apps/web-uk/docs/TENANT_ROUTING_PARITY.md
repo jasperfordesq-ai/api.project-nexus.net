@@ -171,10 +171,13 @@ Current gaps:
   transfer templates. Federation POST action redirects now send connection,
   message, translation, transfer, onboarding, opt-in/out, and settings outcomes
   through `res.locals.urlFor`.
-  The latest focused group/volunteering source conversion covers group
-  announcements, group files, and volunteering recommended shifts, including
-  announcement edit/pin/delete/create controls, file download/delete/upload
-  controls, and recommended opportunity links.
+  The latest focused group source conversion covers group announcement edit,
+  discussion, invite, image, notification, manage, member, and file local
+  links/forms through `urlFor()`, and group route-level redirects now resolve
+  through `res.locals.urlFor` so group POST outcomes stay inside shared tenant
+  mounts and custom-domain child paths. The latest focused group/volunteering
+  source conversion also covers volunteering recommended shifts, including
+  recommended opportunity links.
   The latest public volunteering source conversion covers the public
   volunteering landing/search template and opportunity detail template,
   including filters, organisation links, opportunity links, load-more links,

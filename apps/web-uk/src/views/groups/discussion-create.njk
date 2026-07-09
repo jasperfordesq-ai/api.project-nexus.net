@@ -7,7 +7,7 @@
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}/discussions">Back to discussions</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions') }}">Back to discussions</a>
 
   <span class="govuk-caption-l">{{ group.name }}</span>
   <h1 class="govuk-heading-xl">Start a discussion</h1>
@@ -25,7 +25,7 @@
     }) }}
   {% endif %}
 
-  <form method="post" action="/groups/{{ group.id }}/discussions/new" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/discussions/new') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">

@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
 
   <span class="govuk-caption-xl">Images for {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Group images</h1>
@@ -43,7 +43,7 @@
     <div class="govuk-inset-text"><p class="govuk-body">No avatar has been set.</p></div>
   {% endif %}
 
-  <form method="post" action="/groups/{{ group.id }}/image" enctype="multipart/form-data" class="govuk-!-margin-bottom-8" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/image') }}" enctype="multipart/form-data" class="govuk-!-margin-bottom-8" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <input type="hidden" name="type" value="avatar">
     <div class="govuk-form-group">
@@ -64,7 +64,7 @@
     <div class="govuk-inset-text"><p class="govuk-body">No cover image has been set.</p></div>
   {% endif %}
 
-  <form method="post" action="/groups/{{ group.id }}/image" enctype="multipart/form-data" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/image') }}" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <input type="hidden" name="type" value="cover">
     <div class="govuk-form-group">

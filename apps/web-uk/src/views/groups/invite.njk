@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
 
   <span class="govuk-caption-xl">Invite people to {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Invite members</h1>
@@ -44,7 +44,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="/groups/{{ group.id }}/invite/link" class="govuk-!-margin-bottom-8" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/invite/link') }}" class="govuk-!-margin-bottom-8" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group">
       <label class="govuk-label" for="expiry_days">Link expiry in days (optional)</label>
@@ -57,7 +57,7 @@
   <h2 class="govuk-heading-l">Invite by email</h2>
   <p class="govuk-body">Send invitations to one or more email addresses.</p>
 
-  <form method="post" action="/groups/{{ group.id }}/invite/email" class="govuk-!-margin-bottom-8" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/invite/email') }}" class="govuk-!-margin-bottom-8" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} govuk-form-group--error{% endif %}">
       <label class="govuk-label govuk-label--m" for="emails">Email addresses</label>
@@ -101,7 +101,7 @@
             <td class="govuk-table__cell">{{ invite.inviterName }}</td>
             <td class="govuk-table__cell">{{ invite.expiresAtLabel }}</td>
             <td class="govuk-table__cell">
-              <form method="post" action="/groups/{{ group.id }}/invite/{{ invite.id }}/revoke">
+              <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/invite/' + (invite.id | string) + '/revoke') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button class="govuk-button govuk-button--warning govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Revoke this invitation">Revoke</button>
               </form>

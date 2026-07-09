@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
 
   <span class="govuk-caption-xl">Notifications for {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Notification preferences</h1>
@@ -33,7 +33,7 @@
 
   <p class="govuk-body-l">Choose how often you hear about activity in this group and which channels are used.</p>
 
-  <form method="post" action="/groups/{{ group.id }}/notifications" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/notifications') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">

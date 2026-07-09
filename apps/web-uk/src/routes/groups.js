@@ -154,28 +154,32 @@ function collectionFrom(result) {
   return [];
 }
 
-function statusRedirect(path, status, fragment = '') {
-  return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+function urlFor(res, path) {
+  return typeof res?.locals?.urlFor === 'function' ? res.locals.urlFor(path) : path;
 }
 
-function groupRedirect(id, status, fragment = '') {
-  return statusRedirect(`/groups/${id}`, status, fragment);
+function statusRedirect(res, path, status, fragment = '') {
+  return `${urlFor(res, path)}?status=${encodeURIComponent(status)}${fragment}`;
 }
 
-function groupSubpageRedirect(id, segment, status, fragment = '') {
-  return statusRedirect(`/groups/${id}/${segment}`, status, fragment);
+function groupRedirect(res, id, status, fragment = '') {
+  return statusRedirect(res, `/groups/${id}`, status, fragment);
 }
 
-function announcementEditRedirect(id, annId, status) {
-  return statusRedirect(`/groups/${id}/announcements/${annId}/edit`, status);
+function groupSubpageRedirect(res, id, segment, status, fragment = '') {
+  return statusRedirect(res, `/groups/${id}/${segment}`, status, fragment);
 }
 
-function discussionRedirect(id, discussionId, status, fragment = '') {
-  return statusRedirect(`/groups/${id}/discussions/${discussionId}`, status, fragment);
+function announcementEditRedirect(res, id, annId, status) {
+  return statusRedirect(res, `/groups/${id}/announcements/${annId}/edit`, status);
 }
 
-function loginRedirect() {
-  return '/login?status=auth-required';
+function discussionRedirect(res, id, discussionId, status, fragment = '') {
+  return statusRedirect(res, `/groups/${id}/discussions/${discussionId}`, status, fragment);
+}
+
+function loginRedirect(res) {
+  return urlFor(res, '/login?status=auth-required');
 }
 
 function isAuthError(error) {
@@ -200,14 +204,14 @@ async function callGroup(token, method, path, data = undefined) {
 
 async function requireGroupAction(req, res, failureRedirect, action) {
   if (!req.token) {
-    return res.redirect(loginRedirect());
+    return res.redirect(loginRedirect(res));
   }
 
   try {
     return await action(req.token);
   } catch (error) {
     if (isAuthError(error)) {
-      return res.redirect(loginRedirect());
+      return res.redirect(loginRedirect(res));
     }
 
     return res.redirect(typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect);
@@ -693,7 +697,7 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
     }
 
     const groupId = result.group?.id || result.id;
-    res.redirect(`/groups/${groupId}`);
+    res.redirect(urlFor(res, `/groups/${groupId}`));
   } catch (error) {
     // Handle non-401 API errors by re-rendering form
     if (error instanceof ApiError && error.status !== 401) {
@@ -747,7 +751,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
     if (req.flash) {
       req.flash('error', 'You do not have permission to edit this group');
     }
-    return res.redirect(`/groups/${id}`);
+    return res.redirect(urlFor(res, `/groups/${id}`));
   }
 
   res.render('groups/edit', {
@@ -943,16 +947,16 @@ router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(as
     download = await downloadGroupFile(req.token, `/${id}/files/${fileId}/download`);
   } catch (error) {
     if (isAuthError(error)) {
-      return res.redirect(loginRedirect());
+      return res.redirect(loginRedirect(res));
     }
     if (error instanceof ApiError && error.status === 403) {
-      return res.redirect(groupSubpageRedirect(id, 'files', 'file-forbidden'));
+      return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-forbidden'));
     }
     if (error instanceof ApiError && error.status === 404) {
-      return res.redirect(groupSubpageRedirect(id, 'files', 'file-not-found'));
+      return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-not-found'));
     }
 
-    return res.redirect(groupSubpageRedirect(id, 'files', 'file-upload-failed'));
+    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-upload-failed'));
   }
 
   res.status(download.status || 200);
@@ -1055,14 +1059,14 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
       req.flash('success', 'Group updated successfully');
     }
 
-    res.redirect(`/groups/${id}`);
+    res.redirect(urlFor(res, `/groups/${id}`));
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to update group');
       }
-      return res.redirect(`/groups/${id}/edit`);
+      return res.redirect(urlFor(res, `/groups/${id}/edit`));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -1079,14 +1083,14 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.groupDelete(), asyncRoute(as
       req.flash('success', 'Group deleted successfully');
     }
 
-    res.redirect('/groups');
+    res.redirect(urlFor(res, '/groups'));
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to delete group');
       }
-      return res.redirect(`/groups/${id}`);
+      return res.redirect(urlFor(res, `/groups/${id}`));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -1108,12 +1112,12 @@ router.post('/:id(\\d+)/join', requireAuth, audit.groupJoin(), asyncRoute(async 
       if (req.flash) {
         req.flash('error', error.message || 'Unable to join group');
       }
-      return res.redirect(`/groups/${id}`);
+      return res.redirect(urlFor(res, `/groups/${id}`));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
 
-  res.redirect(`/groups/${id}`);
+  res.redirect(urlFor(res, `/groups/${id}`));
 }));
 
 // Leave group
@@ -1132,12 +1136,12 @@ router.post('/:id(\\d+)/leave', requireAuth, audit.groupLeave(), asyncRoute(asyn
       if (req.flash) {
         req.flash('error', error.message || 'Unable to leave group');
       }
-      return res.redirect(`/groups/${id}`);
+      return res.redirect(urlFor(res, `/groups/${id}`));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
 
-  res.redirect(`/groups/${id}`);
+  res.redirect(urlFor(res, `/groups/${id}`));
 }));
 
 router.post('/:id(\\d+)/invite/link', requireAuth, asyncRoute(async (req, res) => {
@@ -1147,9 +1151,9 @@ router.post('/:id(\\d+)/invite/link', requireAuth, asyncRoute(async (req, res) =
     expiry_days: expiryDays !== null && expiryDays <= 90 ? expiryDays : null
   };
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-link-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'invite', 'invite-link-failed'), async (token) => {
     await callGroup(token, 'POST', `/${id}/invites/link`, payload);
-    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-link-created'));
+    return res.redirect(groupSubpageRedirect(res, id, 'invite', 'invite-link-created'));
   });
 }));
 
@@ -1158,11 +1162,11 @@ router.post('/:id(\\d+)/invite/email', requireAuth, asyncRoute(async (req, res) 
   const emails = parseInviteEmails(req.body.emails);
 
   if (emails.length === 0) {
-    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-required'));
+    return res.redirect(groupSubpageRedirect(res, id, 'invite', 'invite-emails-required'));
   }
 
   if (emails.length > 50) {
-    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-too-many'));
+    return res.redirect(groupSubpageRedirect(res, id, 'invite', 'invite-emails-too-many'));
   }
 
   const payload = {
@@ -1170,9 +1174,9 @@ router.post('/:id(\\d+)/invite/email', requireAuth, asyncRoute(async (req, res) 
     message: optionalText(req.body.message, 5000)
   };
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-email-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'invite', 'invite-email-failed'), async (token) => {
     await callGroup(token, 'POST', `/${id}/invites/email`, payload);
-    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-sent'));
+    return res.redirect(groupSubpageRedirect(res, id, 'invite', 'invite-emails-sent'));
   });
 }));
 
@@ -1180,9 +1184,9 @@ router.post('/:id(\\d+)/invite/:inviteId(\\d+)/revoke', requireAuth, asyncRoute(
   const id = Number(req.params.id);
   const inviteId = Number(req.params.inviteId);
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-revoke-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'invite', 'invite-revoke-failed'), async (token) => {
     await callGroup(token, 'DELETE', `/${id}/invites/${inviteId}`);
-    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-revoked'));
+    return res.redirect(groupSubpageRedirect(res, id, 'invite', 'invite-revoked'));
   });
 }));
 
@@ -1194,9 +1198,9 @@ router.post('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res)
     push_enabled: checked(req.body.push_enabled)
   };
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'notifications', 'prefs-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'notifications', 'prefs-failed'), async (token) => {
     await callGroup(token, 'PUT', `/${id}/notification-prefs`, payload);
-    return res.redirect(groupSubpageRedirect(id, 'notifications', 'prefs-saved'));
+    return res.redirect(groupSubpageRedirect(res, id, 'notifications', 'prefs-saved'));
   });
 }));
 
@@ -1206,10 +1210,10 @@ router.post('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
   const file = uploadedFile(req, 'image');
 
   if (!file && !hasUploadedValue(req, 'image')) {
-    return res.redirect(groupSubpageRedirect(id, 'image', 'image-missing'));
+    return res.redirect(groupSubpageRedirect(res, id, 'image', 'image-missing'));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'image', 'image-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'image', 'image-failed'), async (token) => {
     try {
       if (!file) {
         await callGroup(token, 'POST', `/${id}/image?type=${encodeURIComponent(type)}`, {
@@ -1231,7 +1235,7 @@ router.post('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
     } finally {
       await removeUploadedFile(file);
     }
-    return res.redirect(groupSubpageRedirect(id, 'image', type === 'cover' ? 'cover-updated' : 'avatar-updated'));
+    return res.redirect(groupSubpageRedirect(res, id, 'image', type === 'cover' ? 'cover-updated' : 'avatar-updated'));
   });
 }));
 
@@ -1240,10 +1244,10 @@ router.post('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
   const file = uploadedFile(req, 'file');
 
   if (!file && !hasUploadedValue(req, 'file')) {
-    return res.redirect(groupSubpageRedirect(id, 'files', 'file-missing'));
+    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-missing'));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'files', 'file-upload-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'files', 'file-upload-failed'), async (token) => {
     try {
       if (!file) {
         await callGroup(token, 'POST', `/${id}/files`, {
@@ -1267,7 +1271,7 @@ router.post('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
     } finally {
       await removeUploadedFile(file);
     }
-    return res.redirect(groupSubpageRedirect(id, 'files', 'file-uploaded'));
+    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-uploaded'));
   });
 }));
 
@@ -1275,9 +1279,9 @@ router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', requireAuth, asyncRoute(asy
   const id = Number(req.params.id);
   const fileId = Number(req.params.fileId);
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'files', 'file-delete-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'files', 'file-delete-failed'), async (token) => {
     await callGroup(token, 'DELETE', `/${id}/files/${fileId}`);
-    return res.redirect(groupSubpageRedirect(id, 'files', 'file-deleted'));
+    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-deleted'));
   });
 }));
 
@@ -1286,12 +1290,12 @@ router.post('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res)
   const payload = announcementPayload(req.body);
 
   if (payload.error) {
-    return res.redirect(groupSubpageRedirect(id, 'announcements', payload.error));
+    return res.redirect(groupSubpageRedirect(res, id, 'announcements', payload.error));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-create-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'announcements', 'ann-create-failed'), async (token) => {
     await callGroup(token, 'POST', `/${id}/announcements`, payload);
-    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-created'));
+    return res.redirect(groupSubpageRedirect(res, id, 'announcements', 'ann-created'));
   });
 }));
 
@@ -1301,12 +1305,12 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRout
   const payload = announcementPayload(req.body);
 
   if (payload.error) {
-    return res.redirect(announcementEditRedirect(id, annId, payload.error));
+    return res.redirect(announcementEditRedirect(res, id, annId, payload.error));
   }
 
-  return requireGroupAction(req, res, announcementEditRedirect(id, annId, 'ann-update-failed'), async (token) => {
+  return requireGroupAction(req, res, announcementEditRedirect(res, id, annId, 'ann-update-failed'), async (token) => {
     await callGroup(token, 'PUT', `/${id}/announcements/${annId}`, payload);
-    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-updated'));
+    return res.redirect(groupSubpageRedirect(res, id, 'announcements', 'ann-updated'));
   });
 }));
 
@@ -1314,9 +1318,9 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/delete', requireAuth, asyncRo
   const id = Number(req.params.id);
   const annId = Number(req.params.annId);
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-delete-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'announcements', 'ann-delete-failed'), async (token) => {
     await callGroup(token, 'DELETE', `/${id}/announcements/${annId}`);
-    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-deleted'));
+    return res.redirect(groupSubpageRedirect(res, id, 'announcements', 'ann-deleted'));
   });
 }));
 
@@ -1325,9 +1329,9 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', requireAuth, asyncRoute
   const annId = Number(req.params.annId);
   const isPinned = checked(req.body.is_pinned);
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-pin-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'announcements', 'ann-pin-failed'), async (token) => {
     await callGroup(token, 'PUT', `/${id}/announcements/${annId}`, { is_pinned: isPinned });
-    return res.redirect(groupSubpageRedirect(id, 'announcements', isPinned ? 'ann-pinned' : 'ann-unpinned'));
+    return res.redirect(groupSubpageRedirect(res, id, 'announcements', isPinned ? 'ann-pinned' : 'ann-unpinned'));
   });
 }));
 
@@ -1336,15 +1340,15 @@ router.post('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, re
   const payload = discussionPayload(req.body);
 
   if (payload === null) {
-    return res.redirect(`/groups/${id}/discussions/new`);
+    return res.redirect(urlFor(res, `/groups/${id}/discussions/new`));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'discussions/new', 'discussion-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'discussions/new', 'discussion-failed'), async (token) => {
     const result = await callGroup(token, 'POST', `/${id}/discussions`, payload);
     const discussionId = resultId(result);
     const target = discussionId
-      ? discussionRedirect(id, discussionId, 'discussion-created')
-      : groupSubpageRedirect(id, 'discussions', 'discussion-created');
+      ? discussionRedirect(res, id, discussionId, 'discussion-created')
+      : groupSubpageRedirect(res, id, 'discussions', 'discussion-created');
     return res.redirect(target);
   });
 }));
@@ -1355,12 +1359,12 @@ router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', requireAuth, asy
   const content = trimmed(req.body.content, 20000);
 
   if (content === '') {
-    return res.redirect(`/groups/${id}/discussions/${discussionId}`);
+    return res.redirect(urlFor(res, `/groups/${id}/discussions/${discussionId}`));
   }
 
-  return requireGroupAction(req, res, discussionRedirect(id, discussionId, 'reply-failed', '#discussion-replies'), async (token) => {
+  return requireGroupAction(req, res, discussionRedirect(res, id, discussionId, 'reply-failed', '#discussion-replies'), async (token) => {
     await callGroup(token, 'POST', `/${id}/discussions/${discussionId}/messages`, { content });
-    return res.redirect(discussionRedirect(id, discussionId, 'reply-posted', '#discussion-replies'));
+    return res.redirect(discussionRedirect(res, id, discussionId, 'reply-posted', '#discussion-replies'));
   });
 }));
 
@@ -1369,16 +1373,16 @@ router.post('/:id(\\d+)/feed', requireAuth, asyncRoute(async (req, res) => {
   const content = trimmed(req.body.content, 20000);
 
   if (content === '') {
-    return res.redirect(groupRedirect(id, 'group-post-empty', '#group-feed'));
+    return res.redirect(groupRedirect(res, id, 'group-post-empty', '#group-feed'));
   }
 
-  return requireGroupAction(req, res, groupRedirect(id, 'group-post-failed', '#group-feed'), async (token) => {
+  return requireGroupAction(req, res, groupRedirect(res, id, 'group-post-failed', '#group-feed'), async (token) => {
     await createFeedPostV2(token, {
       content,
       visibility: 'public',
       group_id: id
     });
-    return res.redirect(groupRedirect(id, 'group-posted', '#group-feed'));
+    return res.redirect(groupRedirect(res, id, 'group-posted', '#group-feed'));
   });
 }));
 
@@ -1388,18 +1392,18 @@ router.post('/:id(\\d+)/members/:memberId(\\d+)', requireAuth, asyncRoute(async 
   const action = trimmed(req.body.action);
 
   if (!['promote', 'demote', 'remove'].includes(action)) {
-    return res.redirect(groupSubpageRedirect(id, 'manage', 'member-failed'));
+    return res.redirect(groupSubpageRedirect(res, id, 'manage', 'member-failed'));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'manage', 'member-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'manage', 'member-failed'), async (token) => {
     if (action === 'remove') {
       await callGroup(token, 'DELETE', `/${id}/members/${memberId}`);
-      return res.redirect(groupSubpageRedirect(id, 'manage', 'member-removed'));
+      return res.redirect(groupSubpageRedirect(res, id, 'manage', 'member-removed'));
     }
 
     const role = action === 'promote' ? 'admin' : 'member';
     await callGroup(token, 'PUT', `/${id}/members/${memberId}`, { role });
-    return res.redirect(groupSubpageRedirect(id, 'manage', action === 'promote' ? 'member-promoted' : 'member-demoted'));
+    return res.redirect(groupSubpageRedirect(res, id, 'manage', action === 'promote' ? 'member-promoted' : 'member-demoted'));
   });
 }));
 
@@ -1408,9 +1412,9 @@ router.post('/:id(\\d+)/requests/:requesterId(\\d+)', requireAuth, asyncRoute(as
   const requesterId = Number(req.params.requesterId);
   const action = trimmed(req.body.action) === 'reject' ? 'reject' : 'accept';
 
-  return requireGroupAction(req, res, groupSubpageRedirect(id, 'manage', 'request-failed'), async (token) => {
+  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'manage', 'request-failed'), async (token) => {
     await callGroup(token, 'POST', `/${id}/requests/${requesterId}`, { action });
-    return res.redirect(groupSubpageRedirect(id, 'manage', action === 'reject' ? 'request-rejected' : 'request-approved'));
+    return res.redirect(groupSubpageRedirect(res, id, 'manage', action === 'reject' ? 'request-rejected' : 'request-approved'));
   });
 }));
 

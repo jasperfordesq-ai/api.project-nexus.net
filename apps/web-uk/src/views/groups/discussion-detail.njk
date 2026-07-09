@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}/discussions">Back to discussions</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions') }}">Back to discussions</a>
 
   <span class="govuk-caption-l">{{ group.name }}</span>
   <h1 class="govuk-heading-xl">{{ discussion.title }}</h1>
@@ -57,7 +57,7 @@
     {% endfor %}
   {% endif %}
 
-  <form method="post" action="/groups/{{ group.id }}/discussions/{{ discussion.id }}/reply" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/discussions/' + (discussion.id | string) + '/reply') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group{% if statusBanner and statusBanner.type == 'error' %} govuk-form-group--error{% endif %}">
       <label class="govuk-label govuk-label--m" for="content">Your reply</label>

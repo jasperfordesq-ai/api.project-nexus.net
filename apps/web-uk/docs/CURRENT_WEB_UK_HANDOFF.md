@@ -206,10 +206,18 @@ The latest groups index/form source slice now
 routes group list create CTA, search form, clear links, group card links,
 pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
 links, and legacy my-groups source controls through `urlFor()`. The latest
-group depth/volunteering source slice now routes group announcement back,
-edit, pin, delete, and create targets, group file back/download/delete/upload
-targets, and volunteering recommended-shift back/opportunity links through
-`urlFor()`. The latest public volunteering source slice now routes the
+group depth source slice now routes group announcement edit, discussion,
+invite, image, notification, manage, member, and file local links/forms through
+`urlFor()`, and group route redirects now resolve through `res.locals.urlFor`
+so group POST outcomes stay under shared tenant mounts and custom-domain child
+paths. A scoped Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6611`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed `22/22` checks for base auth/cookie/logout plus `/groups/484/invite`,
+`/groups/484/notifications`, `/groups/484/image`, `/groups/484/manage`,
+`/groups/484/discussions`, and `/groups/484/discussions/new` module/body
+markers. The latest group/volunteering source slice also routes volunteering
+recommended-shift back/opportunity links through `urlFor()`. The latest public
+volunteering source slice now routes the
 volunteering landing/search form, organisation CTA, opportunity cards,
 load-more link, opportunity detail back/organisation/apply links, and clear
 filter links through `urlFor()`. Volunteering action redirects now route auth,

@@ -503,7 +503,16 @@ cancel links, and legacy my-groups source controls.
 Group announcement and file source templates now also use `urlFor()` for
 announcement edit/pin/delete/create controls, file download/delete/upload
 controls, and group back links. Volunteering recommended-shifts source links
-now use `urlFor()` for the volunteering back link and opportunity links.
+now use `urlFor()` for the volunteering back link and opportunity links. Group
+discussion, invite, image, notification, and manage source templates now also
+use `urlFor()` for their local group/member links and form actions, and group
+route-level redirects now resolve through `res.locals.urlFor` for shared
+tenant mounts and custom-domain child paths. A scoped Laravel runtime smoke
+against temporary Web UK `http://127.0.0.1:6611`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `22/22` checks for base
+auth/cookie/logout plus `/groups/484/invite`, `/groups/484/notifications`,
+`/groups/484/image`, `/groups/484/manage`, `/groups/484/discussions`, and
+`/groups/484/discussions/new` module/body markers.
 The public volunteering landing/search and opportunity detail source templates
 now also use `urlFor()` for volunteering filters, organisation links,
 opportunity cards, load-more links, and apply CTAs; volunteering action

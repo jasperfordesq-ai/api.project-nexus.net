@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
 
   <span class="govuk-caption-xl">{{ group.name }}</span>
   <h1 class="govuk-heading-xl">Manage group</h1>
@@ -43,7 +43,7 @@
             <div class="nexus-alpha-module-row">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-0">{{ requestItem.name }}</h3>
             </div>
-            <form method="post" action="/groups/{{ group.id }}/requests/{{ requestItem.id }}">
+            <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/requests/' + (requestItem.id | string)) }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-button-group govuk-!-margin-top-2">
                 <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="accept" data-module="govuk-button">Approve</button>
@@ -65,12 +65,12 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/members/{{ member.id }}">{{ member.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' + (member.id | string)) }}">{{ member.name }}</a>
             </h3>
             <strong class="govuk-tag {{ member.roleClass }}">{{ member.roleLabel }}</strong>
           </div>
           {% if not member.isOwner %}
-            <form method="post" action="/groups/{{ group.id }}/members/{{ member.id }}">
+            <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/members/' + (member.id | string)) }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-button-group govuk-!-margin-top-2">
                 {% if member.role == "admin" %}
