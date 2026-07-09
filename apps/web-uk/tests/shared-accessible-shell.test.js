@@ -770,6 +770,44 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Premium');
   });
 
+  it('returns Laravel-style 403 for tenant-mounted default-off feature pages', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          feed: true,
+          listings: true,
+          wallet: true
+        },
+        features: {
+          connections: true,
+          events: true,
+          volunteering: true
+        }
+      }
+    });
+
+    const paths = [
+      '/acme/accessible/marketplace',
+      '/acme/accessible/courses',
+      '/acme/accessible/podcasts',
+      '/acme/accessible/coupons',
+      '/acme/accessible/premium'
+    ];
+
+    for (const path of paths) {
+      const response = await request(app)
+        .get(path)
+        .set('Cookie', signedCookieHeader());
+
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('Forbidden');
+    }
+  });
+
   it('renders the Laravel-backed public knowledge base index and search pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
@@ -6631,7 +6669,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/social');
   });
 
-  it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
+  it('redirects flat signed-out coupon pages and gates tenant-mounted disabled coupon pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
     const index = await request(app).get('/coupons');
@@ -6643,10 +6681,10 @@ describe('shared accessible frontend shell', () => {
     expect(index.headers.location).toBe('/login?status=auth-required');
     expect(detail.status).toBe(302);
     expect(detail.headers.location).toBe('/login?status=auth-required');
-    expect(mountedIndex.status).toBe(302);
-    expect(mountedIndex.headers.location).toBe('/acme/accessible/login?status=auth-required');
-    expect(mountedDetail.status).toBe(302);
-    expect(mountedDetail.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(mountedIndex.status).toBe(403);
+    expect(mountedIndex.text).toContain('This feature is not enabled for this community.');
+    expect(mountedDetail.status).toBe(403);
+    expect(mountedDetail.text).toContain('This feature is not enabled for this community.');
     expect(api.callCouponApi).not.toHaveBeenCalled();
   });
 
@@ -7056,6 +7094,24 @@ describe('shared accessible frontend shell', () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          feed: true,
+          listings: true,
+          wallet: true
+        },
+        features: {
+          connections: true,
+          events: true,
+          member_premium: true,
+          volunteering: true
+        }
+      }
+    });
 
     const first = await agent
       .get('/acme/accessible/contact')
@@ -17561,7 +17617,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
-  it('redirects signed-out visitors away from podcasts before calling Laravel', async () => {
+  it('redirects flat signed-out podcast pages and gates tenant-mounted disabled podcast pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
     api.callPodcastApi.mockClear();
 
@@ -17575,8 +17631,8 @@ describe('shared accessible frontend shell', () => {
 
     const mountedResponse = await request(app).get('/acme/accessible/podcasts');
 
-    expect(mountedResponse.status).toBe(302);
-    expect(mountedResponse.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(mountedResponse.status).toBe(403);
+    expect(mountedResponse.text).toContain('This feature is not enabled for this community.');
     expect(api.callPodcastApi).not.toHaveBeenCalled();
   });
 

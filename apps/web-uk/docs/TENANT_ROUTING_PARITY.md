@@ -839,9 +839,24 @@ into the public coupon family. `src/routes/coupons.js` now routes unsigned
 matching Laravel's named login route behavior for shared tenant mounts and
 custom-domain contexts. The focused source regression first failed because
 the route still emitted direct `res.redirect(loginRedirect())`, then passed
-after conversion. Shared-mount behavior coverage proves unsigned
-`/acme/accessible/coupons` and `/acme/accessible/coupons/{id}` requests
-redirect to `/acme/accessible/login?status=auth-required`.
+after conversion. A later tenant feature-gate slice updates the effective
+shared-mount behavior for tenants where `merchant_coupons` is absent or false:
+`/acme/accessible/coupons` and `/acme/accessible/coupons/{id}` return
+Laravel-style `403` before the auth handoff, matching Laravel's feature gate
+order. The redirect behavior still applies once the tenant feature is enabled.
+
+The seventy-seventh tenant feature-gate slice adds route-level default-off
+feature gates for shared tenant and custom-domain tenant contexts. Web UK now
+uses the Laravel-aligned feature defaults from `src/lib/accessible-shell.js` to
+return `403` for tenant-context Marketplace, Courses, Podcasts, Coupons, and
+Premium paths when `marketplace`, `courses`, `podcasts`, `merchant_coupons`, or
+`member_premium` are absent or false in Laravel tenant bootstrap. The focused
+regression first failed because `/acme/accessible/marketplace` rendered `200`,
+then passed after `src/middleware/tenant-feature-gates.js` was mounted before
+the route modules. A targeted Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6531` and Laravel `http://127.0.0.1:8088` passed all five
+signed gated checks for `/acme/accessible/marketplace`, `/courses`, `/podcasts`,
+`/coupons`, and `/premium` returning `403`.
 
 The forty-seventh template-helper source slice extends direct `urlFor()`
 conversion into AI chat and matches pages. `src/views/ai-chat/index.njk`,

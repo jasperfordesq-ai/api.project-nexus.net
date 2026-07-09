@@ -76,9 +76,14 @@ tenant-mounted Explore unless Laravel explicitly enables them. A scoped Laravel
 runtime smoke also passed signed `/explore=>Explore` against Web UK
 `127.0.0.1:5180` and Laravel `127.0.0.1:8088`; a follow-up current-code smoke
 passed signed `/acme/accessible/explore=>Explore` against Web UK
-`127.0.0.1:6521` and Laravel `127.0.0.1:8088`. This is not yet live runtime
-proof of broker workflow, active-club detection, or every feature-disabled
-route response.
+`127.0.0.1:6521` and Laravel `127.0.0.1:8088`. A follow-up default-off
+feature-gate slice now also returns Laravel-style `403` responses for
+tenant-mounted Marketplace, Courses, Podcasts, Coupons, and Premium paths when
+Laravel tenant bootstrap omits their disabled-by-default flags. A targeted
+Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6531` passed
+all five signed tenant-mounted gated checks with `403`. This is not yet live
+runtime proof of broker workflow, active-club detection, every feature-disabled
+route response, or enabled-tenant depth behavior.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
@@ -191,9 +196,11 @@ Feed, Listings, Members, Events, Volunteering, and footer Blog visibility are
 filtered before tenant/custom-domain prefixes are applied. Shared
 `/{tenantSlug}/accessible` requests now resolve Laravel tenant bootstrap before
 rendering, matching the custom-domain path's tenant-data availability and
-preventing omitted default-off feature flags from leaking page cards. This is
-shell and Explore visibility evidence only; route declarations still do not
-prove every page-level feature-disabled response.
+preventing omitted default-off feature flags from leaking page cards. The first
+route-level gate slice now also blocks tenant-context Marketplace, Courses,
+Podcasts, Coupons, and Premium paths with `403` when their Laravel feature flags
+are absent or false. Route declarations still do not prove every page-level
+feature-disabled response.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.

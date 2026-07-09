@@ -75,6 +75,7 @@ const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { buildShellLocals } = require('./lib/accessible-shell');
 const { parseMultipartForm } = require('./middleware/multipart');
+const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
 
 const app = express();
@@ -361,6 +362,8 @@ app.use(async (req, res, next) => {
 
   next();
 });
+
+app.use(tenantFeatureGate);
 
 function normalizeTenantChooserCommunities(result) {
   const records = Array.isArray(result?.data)

@@ -673,6 +673,21 @@ and Laravel default feature gates:
 - A targeted live Laravel smoke against a temporary current-code Web UK process at `http://127.0.0.1:6521` with `TENANT_ID=2` passed 11/11 checks, including signed `/acme/accessible/explore=>Explore`.
 - This improves page-level feature visibility proof for shared tenant mounts. It does not certify every feature-disabled route response, visual/manual Blade parity, or ASP.NET backend compatibility.
 
+Latest focused verification on 2026-07-09 for tenant-mounted default-off
+feature page gates:
+
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "tenant-mounted default-off feature pages"` first failed because `/acme/accessible/marketplace` rendered `200` when Laravel's `TenantContext::hasFeature('marketplace')` gate would abort with `403`.
+- `src/middleware/tenant-feature-gates.js` now gates tenant-context route prefixes for Marketplace, Courses, Podcasts, Coupons, and Premium using the Laravel-aligned defaults exported from `src/lib/accessible-shell.js`: `marketplace`, `courses`, `podcasts`, `merchant_coupons`, and `member_premium` default to disabled until Laravel tenant bootstrap explicitly enables them.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "tenant-mounted default-off feature pages"` passed after the middleware was mounted after shell locals and before the route modules.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "tenant-mounted default-off feature pages|uses Laravel tenant feature defaults"` passed 2 selected tests.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "shared tenant accessible mount"` passed 9 selected tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath` passed 467/467 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 12 suites and 830 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A targeted Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6531`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 15/15 checks. The narrowed `SMOKE_GATED_PAGE_PATHS` asserted signed `403` responses for `/acme/accessible/marketplace`, `/acme/accessible/courses`, `/acme/accessible/podcasts`, `/acme/accessible/coupons`, and `/acme/accessible/premium`; broad module/body/redirect/content-type/tenant-domain buckets were disabled for this focused run.
+- This covers the first default-off page-level feature-gate slice for tenant contexts. It does not certify every Laravel `TenantContext::hasFeature()` or `hasModule()` route gate, visual/manual Blade parity, enabled-tenant depth behavior, or ASP.NET backend compatibility.
+
 Latest focused verification on 2026-07-09 for the AI chat and matches
 template-helper slice:
 
@@ -2070,11 +2085,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `993/1000`.
-Green confidence estimate: `984/1000`, because the consolidated code, static
+Current working estimate at this handoff: `994/1000`.
+Green confidence estimate: `985/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, and full default Laravel runtime
 smoke coverage via chunked/bucketed runs are strong, while visual/manual Blade
-parity spot-checks, remaining page-level feature-disabled route responses, and
+parity spot-checks, remaining page-level feature-disabled route responses beyond
+the newly gated default-off feature families, and
 ASP.NET backend switching proof still need final certification.
 
 ## Final Handoff Checklist

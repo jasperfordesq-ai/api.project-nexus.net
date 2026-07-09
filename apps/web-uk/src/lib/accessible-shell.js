@@ -413,8 +413,11 @@ module.exports = {
   buildNavItems,
   buildShellLocals,
   exploreLinks,
+  featureDefaults,
+  flagEnabled,
   footerColumns,
   localeOptions,
+  moduleDefaults,
   phaseText,
   prefixLocalPath,
   serviceName
