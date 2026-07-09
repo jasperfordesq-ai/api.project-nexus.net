@@ -223,6 +223,39 @@ public sealed class CoursesCompatibilityControllerUnitTests
         (await controller.Destroy(courseId, CancellationToken.None)).Should().BeOfType<OkObjectResult>();
     }
 
+    [Fact]
+    public async Task ReactCourseCreate_KeepsLaravelDraftPendingLifecycleForInstructorDashboard()
+    {
+        var tenant = CreateTenantContext(43);
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 9002);
+
+        var created = await controller.Store(new CourseCompatCourseRequest
+        {
+            Title = "Neighbourhood basics",
+            Level = "beginner",
+            EnrollmentType = "self_paced"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            var course = createdDocument.RootElement.GetProperty("data");
+            courseId = course.GetProperty("id").GetInt32();
+            course.GetProperty("status").GetString().Should().Be("draft");
+            course.GetProperty("moderation_status").GetString().Should().Be("pending");
+            course.GetProperty("visibility").GetString().Should().Be("members");
+        }
+
+        var authored = await controller.Authored(CancellationToken.None);
+        using var authoredDocument = JsonDocument.Parse(JsonSerializer.Serialize(authored.Should().BeOfType<OkObjectResult>().Subject.Value));
+        var authoredCourse = authoredDocument.RootElement.GetProperty("data").EnumerateArray()
+            .Single(course => course.GetProperty("id").GetInt32() == courseId);
+        authoredCourse.GetProperty("status").GetString().Should().Be("draft");
+        authoredCourse.GetProperty("moderation_status").GetString().Should().Be("pending");
+        authoredCourse.GetProperty("visibility").GetString().Should().Be("members");
+    }
+
     private static CoursesCompatibilityController CreateController(
         NexusDbContext db,
         TenantContext tenant,
