@@ -68,11 +68,17 @@ The Explore route has additional source-level parity coverage beyond static
 method/path matching: its shared card list now consumes tenant bootstrap
 modules/features using Laravel Blade candidate gates, keeps Search and Skills
 visible like Blade, hides Exchanges unless listings plus broker exchange
-workflow config are enabled, and routes live listing/event links through
-`urlFor()` for tenant mounts and custom-domain roots. A scoped Laravel runtime
-smoke also passed signed `/explore=>Explore` against Web UK `127.0.0.1:5180`
-and Laravel `127.0.0.1:8088`; this is not yet live runtime proof of broker
-workflow or active-club detection.
+workflow config are enabled, uses Laravel `TenantFeatureConfig` defaults for
+omitted feature keys, and routes live listing/event links through `urlFor()`
+for tenant mounts and custom-domain roots. Default-off tenant cards such as
+Marketplace, Courses, Podcasts, Coupons, and Premium stay hidden on
+tenant-mounted Explore unless Laravel explicitly enables them. A scoped Laravel
+runtime smoke also passed signed `/explore=>Explore` against Web UK
+`127.0.0.1:5180` and Laravel `127.0.0.1:8088`; a follow-up current-code smoke
+passed signed `/acme/accessible/explore=>Explore` against Web UK
+`127.0.0.1:6521` and Laravel `127.0.0.1:8088`. This is not yet live runtime
+proof of broker workflow, active-club detection, or every feature-disabled
+route response.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
@@ -182,9 +188,12 @@ The shared service navigation and footer Platform column now consume Laravel
 tenant bootstrap `modules`/`features` with the same IA gates used by
 `AlphaController::alphaNavItems()` and `alphaFooterColumns()`: Dashboard,
 Feed, Listings, Members, Events, Volunteering, and footer Blog visibility are
-filtered before tenant/custom-domain prefixes are applied. This is shell-level
-visibility evidence only; route declarations still do not prove page-level
-feature-disabled behavior.
+filtered before tenant/custom-domain prefixes are applied. Shared
+`/{tenantSlug}/accessible` requests now resolve Laravel tenant bootstrap before
+rendering, matching the custom-domain path's tenant-data availability and
+preventing omitted default-off feature flags from leaking page cards. This is
+shell and Explore visibility evidence only; route declarations still do not
+prove every page-level feature-disabled response.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.

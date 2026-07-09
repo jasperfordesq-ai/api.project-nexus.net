@@ -372,6 +372,24 @@ async function redirectMatchedCustomDomainMount(req, res, tenantSlug, rest, quer
   }
 }
 
+async function resolveSharedMountTenant(tenantSlug) {
+  const { ApiError, ApiOfflineError, getTenantBootstrap } = require('../lib/api');
+
+  try {
+    const result = await getTenantBootstrap({ slug: tenantSlug });
+    const tenant = result?.data || result?.tenant || result;
+    if (tenant && typeof tenant === 'object') {
+      return tenant;
+    }
+  } catch (error) {
+    if (!(error instanceof ApiOfflineError || (error instanceof ApiError && error.status === 404))) {
+      throw error;
+    }
+  }
+
+  return { slug: tenantSlug };
+}
+
 function tenantRouting(req, res, next) {
   const originalUrl = req.url || '/';
   const queryIndex = originalUrl.indexOf('?');
@@ -407,9 +425,17 @@ function tenantRouting(req, res, next) {
         return;
       }
 
+      return resolveSharedMountTenant(tenantSlug);
+    })
+    .then((tenant) => {
+      if (!tenant) {
+        return;
+      }
+
       req.accessibleRouting = {
         mode: 'shared',
-        tenantSlug,
+        tenantSlug: tenant.slug || tenantSlug,
+        tenant,
         prefix: accessiblePrefix,
         routePath: rest
       };

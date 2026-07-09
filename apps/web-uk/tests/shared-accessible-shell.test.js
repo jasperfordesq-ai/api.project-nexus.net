@@ -721,7 +721,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/exchanges"');
     expect(response.text).toContain('AI assistant');
     expect(response.text).toContain('Polls');
-    expect(response.text).toContain('Marketplace');
+    expect(response.text).not.toContain('Marketplace');
     expect(response.text).toContain('Federation');
     expect(response.text).toContain('Recent listings');
     expect(response.text).toContain('Borrow a repair kit');
@@ -732,6 +732,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('15 Aug 2026');
     expect(response.text).toContain('href="/events/77"');
     expect(response.text).not.toContain('This page is a shared-accessible-frontend preparation skeleton');
+  });
+
+  it('uses Laravel tenant feature defaults for tenant-mounted Explore cards', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          feed: true,
+          listings: true,
+          wallet: true
+        },
+        features: {
+          connections: true,
+          events: true,
+          volunteering: true
+        }
+      }
+    });
+    api.getExplore.mockResolvedValueOnce({ data: {} });
+
+    const response = await request(app)
+      .get('/acme/accessible/explore')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'acme' });
+    expect(response.text).toContain('Polls');
+    expect(response.text).toContain('Jobs');
+    expect(response.text).not.toContain('Marketplace');
+    expect(response.text).not.toContain('Courses');
+    expect(response.text).not.toContain('Podcasts');
+    expect(response.text).not.toContain('Coupons');
+    expect(response.text).not.toContain('Premium');
   });
 
   it('renders the Laravel-backed public knowledge base index and search pages', async () => {

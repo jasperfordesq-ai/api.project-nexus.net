@@ -238,9 +238,11 @@ Follow the Laravel Blade accessible frontend for:
   still need module-by-module proof.
 - Cookie banner and settings as a Blade-style no-JS candidate. The shell renders
   the GOV.UK cookie banner before the skip link until the Laravel-compatible
-  `nexus_alpha_cookie_consent` cookie is present. `/cookies` renders the
-  analytics yes/no settings form, and `POST /cookie-consent` stores `all` or
-  `essential` locally. Laravel `cookie_consents` audit persistence, tenant
+  `nexus_accessible_cookie_consent` cookie is present, while legacy
+  `nexus_alpha_cookie_consent` values are still accepted as a read-only
+  fallback. `/cookies` renders the analytics yes/no settings form, and
+  `POST /cookie-consent` stores `all` or `essential` locally under the cleaner
+  accessible cookie name. Laravel `cookie_consents` audit persistence, tenant
   scoping, localization, and ASP.NET backend compatibility are not certified.
 - Volunteering as a Blade-style public landing/search candidate. The GET route
   reads `/api/v2/volunteering/opportunities` with search, category, remote, and

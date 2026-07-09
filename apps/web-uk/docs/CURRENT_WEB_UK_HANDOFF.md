@@ -418,8 +418,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `992/1000` implementation/certification parity |
-| Green confidence estimate | about `982/1000`, mainly gated by visual/manual Laravel Blade parity, page-level feature-disabled behavior, and ASP.NET backend switching certification |
+| Working estimate | about `993/1000` implementation/certification parity |
+| Green confidence estimate | about `984/1000`, mainly gated by visual/manual Laravel Blade parity, remaining page-level feature-disabled route responses, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -658,6 +658,20 @@ gating slice:
 - This does not certify page-level feature-disabled redirects/errors, account
   hub feature cards, Explore card gating, runtime Laravel tenant fixtures, or
   ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for shared-mount tenant bootstrap
+and Laravel default feature gates:
+
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "uses Laravel tenant feature defaults"` first failed because `/acme/accessible/explore` did not call Laravel tenant bootstrap and therefore treated omitted tenant feature flags as enabled.
+- Web UK shared `/{tenantSlug}/accessible` requests now resolve tenant bootstrap through Laravel before rendering, so shell and Explore locals can use the same tenant data as custom-domain requests.
+- `src/lib/accessible-shell.js` now mirrors Laravel `TenantFeatureConfig` defaults for shell/Explore visibility, keeping default-off cards such as Marketplace, Courses, Podcasts, Coupons, and Premium hidden unless Laravel explicitly enables them for the tenant.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "shared tenant accessible mount"` passed: 9 selected tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Explore|shared tenant mount|accessible mount"` passed: 24 selected tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 12 suites and 829 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A targeted live Laravel smoke against a temporary current-code Web UK process at `http://127.0.0.1:6521` with `TENANT_ID=2` passed 11/11 checks, including signed `/acme/accessible/explore=>Explore`.
+- This improves page-level feature visibility proof for shared tenant mounts. It does not certify every feature-disabled route response, visual/manual Blade parity, or ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the AI chat and matches
 template-helper slice:
@@ -2056,12 +2070,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `992/1000`.
-Green confidence estimate: `982/1000`, because the consolidated code, static
+Current working estimate at this handoff: `993/1000`.
+Green confidence estimate: `984/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, and full default Laravel runtime
 smoke coverage via chunked/bucketed runs are strong, while visual/manual Blade
-parity spot-checks, page-level feature-disabled behavior, and ASP.NET backend
-switching proof still need final certification.
+parity spot-checks, remaining page-level feature-disabled route responses, and
+ASP.NET backend switching proof still need final certification.
 
 ## Final Handoff Checklist
 

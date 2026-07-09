@@ -79,6 +79,54 @@ const footerColumns = [
   }
 ];
 
+const featureDefaults = {
+  events: true,
+  groups: true,
+  gamification: true,
+  goals: true,
+  blog: true,
+  resources: true,
+  caring_community: false,
+  volunteering: true,
+  exchange_workflow: true,
+  organisations: true,
+  federation: true,
+  connections: true,
+  reviews: true,
+  polls: true,
+  job_vacancies: true,
+  ideation_challenges: true,
+  direct_messaging: true,
+  group_exchanges: true,
+  search: true,
+  ai_chat: true,
+  marketplace: false,
+  merchant_coupons: false,
+  message_translation: true,
+  member_premium: false,
+  ai_agents: false,
+  partner_api: false,
+  fadp_compliance: false,
+  local_advertising: false,
+  regional_analytics: false,
+  newsletter: true,
+  identity_verification: true,
+  maps: false,
+  courses: false,
+  podcasts: false
+};
+
+const moduleDefaults = {
+  listings: true,
+  wallet: true,
+  messages: true,
+  dashboard: true,
+  feed: true,
+  notifications: true,
+  profile: true,
+  settings: true
+};
+
 const exploreLinks = [
   {
     title: 'Exchanges',
@@ -233,6 +281,12 @@ function flagEnabled(tenant = {}, key, source, fallback = true) {
 
   if (Object.prototype.hasOwnProperty.call(primary, key)) return Boolean(primary[key]);
   if (Object.prototype.hasOwnProperty.call(secondary, key)) return Boolean(secondary[key]);
+  if (source === 'features' && Object.prototype.hasOwnProperty.call(featureDefaults, key)) {
+    return featureDefaults[key];
+  }
+  if (source === 'modules' && Object.prototype.hasOwnProperty.call(moduleDefaults, key)) {
+    return moduleDefaults[key];
+  }
   return fallback;
 }
 
