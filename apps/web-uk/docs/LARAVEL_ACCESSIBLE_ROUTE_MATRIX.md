@@ -140,6 +140,9 @@ Achievements route-level redirects now also use `res.locals.urlFor` for
 unsigned, Laravel-401, daily-reward, challenge-claim, shop-purchase, and
 showcase targets, keeping gamification auth and POST result redirects inside
 the active shared accessible mount.
+Connection route-level redirects now also use `res.locals.urlFor` for unsigned
+network access and accept/decline/remove POST results, keeping connections
+workflow redirects inside the active shared accessible mount.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values

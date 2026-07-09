@@ -151,10 +151,15 @@ function connectionActionUrl(status) {
   return `/connections?status=${encodeURIComponent(status)}#connections-top`;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 router.get('/network', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const activeTab = allowed(req.query.tab, NETWORK_TABS, 'accepted');
@@ -263,11 +268,11 @@ router.post('/:id/accept', asyncRoute(async (req, res) => {
 
   try {
     await acceptMemberConnection(req.token, id);
-    res.redirect(connectionActionUrl('connection-accepted'));
+    return redirectTo(res, connectionActionUrl('connection-accepted'));
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
-      return res.redirect(connectionActionUrl('connection-failed'));
+      return redirectTo(res, connectionActionUrl('connection-failed'));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -279,11 +284,11 @@ router.post('/:id/decline', asyncRoute(async (req, res) => {
 
   try {
     await declineMemberConnection(req.token, id);
-    res.redirect(connectionActionUrl('connection-declined'));
+    return redirectTo(res, connectionActionUrl('connection-declined'));
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
-      return res.redirect(connectionActionUrl('connection-failed'));
+      return redirectTo(res, connectionActionUrl('connection-failed'));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -295,11 +300,11 @@ router.post('/:id/remove', asyncRoute(async (req, res) => {
 
   try {
     await removeMemberConnection(req.token, id);
-    res.redirect(connectionActionUrl('connection-removed'));
+    return redirectTo(res, connectionActionUrl('connection-removed'));
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
-      return res.redirect(connectionActionUrl('connection-failed'));
+      return redirectTo(res, connectionActionUrl('connection-failed'));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }

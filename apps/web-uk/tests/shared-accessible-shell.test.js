@@ -7365,6 +7365,28 @@ describe('shared accessible frontend shell', () => {
     expect(api.removeMemberConnection).toHaveBeenCalledWith('test-token', '33');
   });
 
+  it('keeps Laravel connection action redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/connections/31/accept')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/connections?status=connection-accepted#connections-top');
+    expect(api.acceptMemberConnection).toHaveBeenCalledWith('test-token', '31');
+  });
+
   it('redirects signed-out Laravel saved search submissions to the auth-required status', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);

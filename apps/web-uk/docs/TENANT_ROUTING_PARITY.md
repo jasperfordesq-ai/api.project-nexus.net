@@ -879,9 +879,25 @@ achievements route-redirect evidence only; it does not newly certify
 gamification feature gates, Laravel reward persistence depth, visual Blade
 parity, localization, or ASP.NET backend compatibility.
 
+The fifty-seventh source slice extends route-level redirect cleanup into
+connections. `src/routes/connections.js` now sends unsigned network redirects
+plus accept, decline, remove, and non-401 failure redirects through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell
+locals are available. The focused source regression first failed on raw
+`/login?status=auth-required` and `connectionActionUrl(...)` redirects in
+`src/routes/connections.js`, then passed after conversion. A focused
+shared-mount runtime test also proves signed
+`/acme/accessible/connections/31/accept` redirects to
+`/acme/accessible/connections?status=connection-accepted#connections-top`.
+This is connections route-redirect evidence only; it does not newly certify
+connection permission edge cases, Laravel persistence depth, visual Blade
+parity, localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "connection route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "connection action redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "achievements route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "achievement POST redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "Explore route redirects"
