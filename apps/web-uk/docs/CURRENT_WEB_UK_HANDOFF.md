@@ -189,6 +189,10 @@ latest public fallback-link slice now routes newsletter-unsubscribe and error
 page home links through `urlFor('/')`, matching Laravel's
 `govuk-alpha.home` route usage and keeping fallback links tenant/custom-domain
 aware.
+The latest AI chat and matches source slice now routes AI chat back links,
+conversation links, new-conversation links, chat form actions, matches filters,
+board links, listing/group/event links, dismiss forms, empty-state CTAs, and
+back links through `urlFor()`.
 The latest shell tenant-gating slice now mirrors Laravel
 `AlphaController::alphaNavItems()` and `alphaFooterColumns()` for shared shell
 links: Dashboard, Feed, Listings, Members, Events, Volunteering, and footer
@@ -375,6 +379,15 @@ gating slice:
 - This does not certify page-level feature-disabled redirects/errors, account
   hub feature cards, Explore card gating, runtime Laravel tenant fixtures, or
   ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for the AI chat and matches
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "AI chat and matches"` first failed on raw `/chat` links/forms, then passed after converting AI chat and matches templates to `urlFor()`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "matches|AI chat"` passed 7 selected signed render/redirect tests.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed 13/13 checks, including signed `/chat=>AI assistant`, `/matches=>Your matches`, and `/matches/board=>Your matches`.
+- `rg -n --glob '*.njk' 'href="/(chat|explore|matches|listings|groups|events)|action="/(chat|matches)' apps/web-uk/src/views/ai-chat apps/web-uk/src/views/matches` returned no matches.
+- This is focused source-level and runtime render evidence for the AI chat/matches slice only. It does not certify full visual Blade parity, localization, recommendation persistence depth, or ASP.NET backend switching.
 
 Latest focused verification on 2026-07-09 for the Explore tenant-gated card and
 live-content link slice:

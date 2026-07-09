@@ -209,6 +209,13 @@ Laravel runtime smoke proving the current local fixture's expected `403`
 merchant-coupons feature gate. This does not newly certify rendered coupon body
 parity in a merchant-coupons-enabled tenant, localization, QR redemption
 workflows, runtime persistence, or ASP.NET backend compatibility.
+AI chat and matches source templates now also use `urlFor()` for AI chat
+back/conversation/new-conversation links, chat form actions, matches filters,
+board links, listing/group/event links, dismiss forms, empty-state CTAs, and
+back links, with source regression coverage, focused render tests, and scoped
+Laravel runtime smoke for signed `/chat`, `/matches`, and `/matches/board`.
+This does not newly certify full visual Blade parity, localization,
+recommendation persistence depth, or ASP.NET backend compatibility.
 Federation hub source templates now also use `urlFor()` for the hub service
 navigation, opt-in/opt-out CTAs, partner preview links, view-all partners link,
 and quick links, with source regression coverage, focused render tests, and

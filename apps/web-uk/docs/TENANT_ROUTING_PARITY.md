@@ -178,7 +178,10 @@ Current gaps:
   fallback-link conversion covers newsletter-unsubscribe and error-page home
   links, replacing raw `href="/"` with `urlFor('/')`; a full source scan for
   raw root-relative local Nunjucks `href`, `action`, and `baseUrl` patterns now
-  returns no matches.
+  returns no matches. The latest focused source conversion covers AI chat and
+  matches templates, including AI chat back/conversation/new-conversation
+  links, chat form actions, matches filters, board links, listing/group/event
+  links, dismiss forms, empty-state CTAs, and back links.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -716,9 +719,27 @@ auth/cookie/logout flow plus the current local Laravel fixture's expected
 `403` feature gate for `/coupons` and `/coupons/1`; that gate smoke does not
 certify rendered coupon body parity for a merchant-coupons-enabled tenant.
 
+The forty-seventh template-helper source slice extends direct `urlFor()`
+conversion into AI chat and matches pages. `src/views/ai-chat/index.njk`,
+`src/views/matches/index.njk`, and `src/views/matches/board.njk` now route AI
+chat back/conversation/new-conversation links, chat form actions, matches
+filters, board links, listing/group/event links, dismiss forms, empty-state
+CTAs, and back links through `urlFor()`. The source-level regression first
+failed on raw `/chat` links/forms, then passed after conversion; a focused scan
+for raw chat/matches/listing/group/event local `href` and chat/matches
+`action` strings returns no matches. Focused AI chat and matches render
+coverage passes for 7 selected tests. A scoped Laravel runtime smoke against
+Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed
+13 checks including signed `/chat`, `/matches`, and `/matches/board` body
+markers. This does not newly certify full visual Blade parity, localization,
+recommendation persistence depth, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "AI chat and matches"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "matches|AI chat"
+$env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/chat=>AI assistant,/matches=>Your matches,/matches/board=>Your matches'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public coupon"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "coupon"
 $env:SMOKE_GATED_PAGE_PATHS = '/coupons,/coupons/1'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel

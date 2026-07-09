@@ -42,11 +42,11 @@
 
   <nav aria-label="Filter matches by source" class="govuk-!-margin-bottom-6">
     <ul class="nexus-alpha-filter-nav">
-      <li><a class="govuk-link{% if activeSource == 'all' %} govuk-link--no-visited-state{% endif %}" href="/matches/board?source=all#matches-top"{% if activeSource == 'all' %} aria-current="true"{% endif %}>All ({{ stats.total }})</a></li>
-      {% if stats.sourceCounts.listing > 0 %}<li><a class="govuk-link{% if activeSource == 'listing' %} govuk-link--no-visited-state{% endif %}" href="/matches/board?source=listing#matches-top"{% if activeSource == 'listing' %} aria-current="true"{% endif %}>Listings ({{ stats.sourceCounts.listing }})</a></li>{% endif %}
-      {% if stats.sourceCounts.group > 0 %}<li><a class="govuk-link{% if activeSource == 'group' %} govuk-link--no-visited-state{% endif %}" href="/matches/board?source=group#matches-top"{% if activeSource == 'group' %} aria-current="true"{% endif %}>Groups ({{ stats.sourceCounts.group }})</a></li>{% endif %}
-      {% if stats.sourceCounts.volunteering > 0 %}<li><a class="govuk-link{% if activeSource == 'volunteering' %} govuk-link--no-visited-state{% endif %}" href="/matches/board?source=volunteering#matches-top"{% if activeSource == 'volunteering' %} aria-current="true"{% endif %}>Volunteering ({{ stats.sourceCounts.volunteering }})</a></li>{% endif %}
-      {% if stats.sourceCounts.event > 0 %}<li><a class="govuk-link{% if activeSource == 'event' %} govuk-link--no-visited-state{% endif %}" href="/matches/board?source=event#matches-top"{% if activeSource == 'event' %} aria-current="true"{% endif %}>Events ({{ stats.sourceCounts.event }})</a></li>{% endif %}
+      <li><a class="govuk-link{% if activeSource == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/matches/board?source=all#matches-top') }}"{% if activeSource == 'all' %} aria-current="true"{% endif %}>All ({{ stats.total }})</a></li>
+      {% if stats.sourceCounts.listing > 0 %}<li><a class="govuk-link{% if activeSource == 'listing' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/matches/board?source=listing#matches-top') }}"{% if activeSource == 'listing' %} aria-current="true"{% endif %}>Listings ({{ stats.sourceCounts.listing }})</a></li>{% endif %}
+      {% if stats.sourceCounts.group > 0 %}<li><a class="govuk-link{% if activeSource == 'group' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/matches/board?source=group#matches-top') }}"{% if activeSource == 'group' %} aria-current="true"{% endif %}>Groups ({{ stats.sourceCounts.group }})</a></li>{% endif %}
+      {% if stats.sourceCounts.volunteering > 0 %}<li><a class="govuk-link{% if activeSource == 'volunteering' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/matches/board?source=volunteering#matches-top') }}"{% if activeSource == 'volunteering' %} aria-current="true"{% endif %}>Volunteering ({{ stats.sourceCounts.volunteering }})</a></li>{% endif %}
+      {% if stats.sourceCounts.event > 0 %}<li><a class="govuk-link{% if activeSource == 'event' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/matches/board?source=event#matches-top') }}"{% if activeSource == 'event' %} aria-current="true"{% endif %}>Events ({{ stats.sourceCounts.event }})</a></li>{% endif %}
     </ul>
   </nav>
 
@@ -57,11 +57,11 @@
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
               {% if match.module == 'listing' and match.listingId %}
-                <a class="govuk-link" href="/listings/{{ match.listingId }}">{{ match.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/listings/' + (match.listingId | string)) }}">{{ match.title }}</a>
               {% elif match.module == 'group' and match.groupId %}
-                <a class="govuk-link" href="/groups/{{ match.groupId }}">{{ match.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/groups/' + (match.groupId | string)) }}">{{ match.title }}</a>
               {% elif match.module == 'event' and match.eventId %}
-                <a class="govuk-link" href="/events/{{ match.eventId }}">{{ match.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/events/' + (match.eventId | string)) }}">{{ match.title }}</a>
               {% else %}
                 {{ match.title }}
               {% endif %}
@@ -104,7 +104,7 @@
                 Hiding a match tells us it was not useful, so we show you fewer like it. You will not be notified and the other member will not know.
               </strong>
             </div>
-            <form method="post" action="/matches/board/{{ match.listingId }}/dismiss">
+            <form method="post" action="{{ urlFor('/matches/board/' + (match.listingId | string) + '/dismiss') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="source" value="{{ activeSource }}">
               <fieldset class="govuk-fieldset">
@@ -139,10 +139,10 @@
       <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{% if activeSource == 'all' %}No matches yet{% else %}No {{ sourceLabels[activeSource] }} matches yet{% endif %}</h2>
       <p class="govuk-body">As you add listings and update your profile, we will suggest members and opportunities that fit. Browse listings to get started.</p>
     </div>
-    <a class="govuk-button" href="/listings" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
+    <a class="govuk-button" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
   {% endif %}
 
   <p class="govuk-body govuk-!-margin-top-6">
-    <a class="govuk-link" href="/matches">Back to matches</a>
+    <a class="govuk-link" href="{{ urlFor('/matches') }}">Back to matches</a>
   </p>
 {% endblock %}

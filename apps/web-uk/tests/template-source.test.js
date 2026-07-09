@@ -268,6 +268,27 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/feed/);
   });
 
+  it('keeps AI chat and matches links and forms behind urlFor()', () => {
+    const templates = [
+      path.join('ai-chat', 'index.njk'),
+      path.join('matches', 'index.njk'),
+      path.join('matches', 'board.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:chat|explore|matches|listings|groups|events)/);
+      expect(template).not.toMatch(/action="\/(?:chat|matches)/);
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/chat/);
+    expect(source).toMatch(/urlFor\(["']\/matches/);
+    expect(source).toMatch(/urlFor\(["']\/listings/);
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),
