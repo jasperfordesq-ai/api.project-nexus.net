@@ -129,6 +129,12 @@ breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
 donation forms through `urlFor()`. The latest public/auth/support source slice
 now routes contact, cookie settings, login, two-factor login, forgot-password,
 reset-password, register, and report-a-problem links/forms through `urlFor()`.
+The latest member-onboarding redirect slice now routes onboarding
+auth-required, step, avatar, validation, safeguarding, complete, and dashboard
+handoff redirects through `res.locals.urlFor`, matching Laravel's named-route
+redirect behavior for shared mounts and custom-domain contexts. A scoped
+Laravel runtime smoke proves the current completed fixture redirects signed
+`/onboarding/profile` to `/dashboard`.
 The latest organisations source slice now routes organisation directory,
 browse, detail, jobs, manage, register, and opportunity-apply links/forms
 through `urlFor()`. The latest blog source slice now routes blog index, post

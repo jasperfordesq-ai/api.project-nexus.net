@@ -964,11 +964,25 @@ redirect evidence only; it does not newly certify feature/module gates,
 participant authorization edges, visual Blade parity, localization, workflow
 side effects, broader runtime persistence, or ASP.NET backend compatibility.
 
+The sixty-second source slice extends route-level redirect cleanup into member
+onboarding. `src/routes/onboarding-posts.js` now sends auth-required,
+already-complete dashboard, invalid-step, avatar, profile-validation,
+safeguarding, completion-success, completion-failure, and next-step redirects
+through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when
+shell locals are available. The focused source regression first failed on raw
+`/login`, `/onboarding`, and `/dashboard` redirect targets, then passed after
+conversion. A scoped Laravel runtime smoke also proves the current completed
+fixture redirects signed `/onboarding/profile` to `/dashboard`. This is
+member-onboarding redirect evidence only; it does not newly certify onboarding
+form visual parity, profile/avatar persistence edge cases, localization,
+broader runtime behavior, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "exchange route redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "submits the Laravel exchange action" --runInBand --silent
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "member onboarding route redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "blog route redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "blog redirects inside" --runInBand --silent
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "skills links, form"

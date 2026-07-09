@@ -75,6 +75,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toMatch(/urlFor\(["']\/profile/);
   });
 
+  it('keeps member onboarding route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'onboarding-posts.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|onboarding|dashboard)/);
+    expect(route).not.toMatch(/res\.redirect\(`\/(?:login|onboarding|dashboard)/);
+    expect(route).toContain('redirectTo(res,');
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps Explore live-content links behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'explore.njk'),

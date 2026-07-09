@@ -33,6 +33,11 @@ function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function dataFrom(result) {
   return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
     ? result.data
@@ -192,26 +197,26 @@ function completeFailureRedirect(error) {
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
 
   let status;
   let configData;
   try {
     status = asObject(dataFrom(await getOnboardingStatus(token)));
-    if (status.onboarding_completed) return res.redirect('/dashboard');
+    if (status.onboarding_completed) return redirectTo(res, '/dashboard');
     configData = asObject(dataFrom(await getOnboardingConfig(token)));
   } catch (error) {
-    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
+    if (isAuthError(error)) return redirectTo(res, '/login?status=auth-required');
     throw error;
   }
 
   const steps = normalizeSteps(configData.steps);
-  return res.redirect(`/onboarding/${steps[0]?.slug || 'confirm'}`);
+  return redirectTo(res, `/onboarding/${steps[0]?.slug || 'confirm'}`);
 }));
 
 router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
 
   const step = String(req.params.step || '');
   let status;
@@ -222,13 +227,13 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
 
   try {
     status = asObject(dataFrom(await getOnboardingStatus(token)));
-    if (status.onboarding_completed) return res.redirect('/dashboard');
+    if (status.onboarding_completed) return redirectTo(res, '/dashboard');
 
     configData = asObject(dataFrom(await getOnboardingConfig(token)));
     const steps = normalizeSteps(configData.steps);
     const slugs = steps.map((item) => item.slug);
     if (!slugs.includes(step)) {
-      return res.redirect('/onboarding');
+      return redirectTo(res, '/onboarding');
     }
 
     if (['interests', 'skills'].includes(step)) {
@@ -263,18 +268,18 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
       statusBanner: statusBanner(req.query && req.query.status)
     });
   } catch (error) {
-    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
+    if (isAuthError(error)) return redirectTo(res, '/login?status=auth-required');
     throw error;
   }
 }));
 
 router.post('/avatar', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
 
   const file = uploadedFile(req, 'avatar');
   if (!file) {
-    return res.redirect('/onboarding/profile?status=avatar-failed');
+    return redirectTo(res, '/onboarding/profile?status=avatar-failed');
   }
 
   try {
@@ -288,23 +293,23 @@ router.post('/avatar', asyncRoute(async (req, res) => {
       }
     });
   } catch (error) {
-    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
-    return res.redirect('/onboarding/profile?status=avatar-failed');
+    if (isAuthError(error)) return redirectTo(res, '/login?status=auth-required');
+    return redirectTo(res, '/onboarding/profile?status=avatar-failed');
   } finally {
     await removeUploadedFile(file);
   }
 
-  return res.redirect('/onboarding/profile?status=avatar-saved');
+  return redirectTo(res, '/onboarding/profile?status=avatar-saved');
 }));
 
 router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
   req.token = token;
 
   const step = String(req.params.step || '');
   if (!DEFAULT_STEPS.includes(step)) {
-    return res.redirect('/onboarding');
+    return redirectTo(res, '/onboarding');
   }
 
   const bag = getBag(req);
@@ -315,7 +320,7 @@ router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
       await updateProfile(req.token, { bio: bio || null });
     } catch (error) {
       if (isAuthError(error)) throw error;
-      return res.redirect('/onboarding/profile?status=bio-too-short');
+      return redirectTo(res, '/onboarding/profile?status=bio-too-short');
     }
   }
 
@@ -335,7 +340,7 @@ router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
         await saveOnboardingSafeguarding(req.token, preferences);
       } catch (error) {
         if (isAuthError(error)) throw error;
-        return res.redirect('/onboarding/safeguarding?status=safeguarding-failed');
+        return redirectTo(res, '/onboarding/safeguarding?status=safeguarding-failed');
       }
     }
   }
@@ -348,14 +353,14 @@ router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
         needs: collectIds(bag.needs)
       });
       if (req.session) delete req.session[SESSION_KEY];
-      return res.redirect('/dashboard?status=onboarding-complete');
+      return redirectTo(res, '/dashboard?status=onboarding-complete');
     } catch (error) {
       if (isAuthError(error)) throw error;
-      return res.redirect(completeFailureRedirect(error));
+      return redirectTo(res, completeFailureRedirect(error));
     }
   }
 
-  return res.redirect(nextStep(step));
+  return redirectTo(res, nextStep(step));
 }));
 
 module.exports = router;
