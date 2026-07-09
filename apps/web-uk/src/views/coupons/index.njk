@@ -16,7 +16,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/coupons/{{ coupon.id }}">{{ coupon.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/coupons/' + (coupon.id | string)) }}">{{ coupon.title }}</a>
             </h2>
             {% if coupon.discountLabel %}
               <strong class="govuk-tag govuk-tag--green">{{ coupon.discountLabel }}</strong>

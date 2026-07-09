@@ -679,9 +679,24 @@ passes for 9 selected exchange/group-exchange/listing-request tests, and a
 scoped Laravel runtime smoke passes the core auth/cookie/logout flow plus
 signed `/exchanges` rendering and the `Exchanges` body marker.
 
+The forty-fifth template-helper source slice extends direct `urlFor()`
+conversion into the signed Laravel-backed public `/coupons` family.
+`src/views/coupons/index.njk` and `src/views/coupons/detail.njk` now route the
+public coupon detail links and back link through `urlFor()`. The source-level
+regression first failed on a raw `/coupons/{{ coupon.id }}` link, then passed
+after conversion; a source scan for raw coupon local targets returns no
+matches. Focused render coverage passes for 4 selected public-coupon and
+marketplace-coupon tests. A scoped Laravel runtime smoke passes the core
+auth/cookie/logout flow plus the current local Laravel fixture's expected
+`403` feature gate for `/coupons` and `/coupons/1`; that gate smoke does not
+certify rendered coupon body parity for a merchant-coupons-enabled tenant.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public coupon"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "coupon"
+$env:SMOKE_GATED_PAGE_PATHS = '/coupons,/coupons/1'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "exchange list"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "exchange"
 $env:SMOKE_MODULE_PAGE_PATHS = '/exchanges'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/exchanges=>Exchanges'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel

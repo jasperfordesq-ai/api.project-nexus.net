@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="/coupons" class="govuk-back-link">Back to coupons</a>
+  <a href="{{ urlFor('/coupons') }}" class="govuk-back-link">Back to coupons</a>
 
   <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
   <h1 class="govuk-heading-xl">{{ coupon.title }}</h1>

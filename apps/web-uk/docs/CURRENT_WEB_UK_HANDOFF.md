@@ -180,6 +180,8 @@ and social links/forms through `urlFor()`.
 The latest exchanges source slice now routes exchange list tabs, detail links,
 pagination, listing/message links, action forms, and rating form through
 `urlFor()`.
+The latest public coupon source slice now routes public coupon list/detail
+links through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -351,6 +353,14 @@ slice:
 - `Select-String -Path apps\web-uk\src\views\exchanges\*.njk -SimpleMatch -Pattern 'href="/exchanges','action="/exchanges','href="/listings','href="/messages'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "exchange"` passed: 9 selected exchange/group-exchange/listing-request tests.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/exchanges`, `SMOKE_BODY_TEXT_PAGE_PATHS=/exchanges=>Exchanges`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-09 for the public coupons
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public coupon"` first failed on a raw `/coupons/{{ coupon.id }}` link, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\coupons\*.njk -SimpleMatch -Pattern 'href="/coupons','action="/coupons','href: "/coupons'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "coupon"` passed: 4 selected public-coupon and marketplace-coupon tests.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_GATED_PAGE_PATHS=/coupons,/coupons/1`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, proving the current local Laravel fixture returns the expected `403` feature gate for public coupon pages. This does not certify rendered coupon body parity in a tenant with merchant coupons enabled.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

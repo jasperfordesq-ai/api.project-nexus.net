@@ -797,4 +797,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/listings/);
     expect(source).toMatch(/urlFor\(["']\/messages/);
   });
+
+  it('keeps public coupon list and detail links behind urlFor()', () => {
+    const templates = [
+      path.join('coupons', 'index.njk'),
+      path.join('coupons', 'detail.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/coupons/);
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/coupons/);
+  });
 });
