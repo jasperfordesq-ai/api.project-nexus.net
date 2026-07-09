@@ -7,8 +7,10 @@ const express = require('express');
 const {
   ApiError,
   ApiOfflineError,
+  getClubs,
   getExplore
 } = require('../lib/api');
+const { buildExploreLinks } = require('../lib/accessible-shell');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -36,6 +38,14 @@ function positiveInteger(value) {
 
 function asList(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function dataList(result) {
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.data)) return result.data;
+  if (result && result.data && Array.isArray(result.data.items)) return result.data.items;
+  if (result && Array.isArray(result.items)) return result.items;
+  return [];
 }
 
 function normalizeListing(item) {
@@ -83,6 +93,40 @@ function redirectTo(res, pathname) {
   return res.redirect(urlFor(pathname));
 }
 
+function prefixExploreLinks(items, res) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return items.map((item) => ({
+    ...item,
+    href: urlFor(item.href)
+  }));
+}
+
+function routedTenantFrom(req) {
+  return req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+}
+
+async function hasActiveClubEvidence() {
+  return dataList(await getClubs({ per_page: 1 })).length > 0;
+}
+
+async function applyExploreCardEvidence(req, res) {
+  let hasClubs = false;
+  try {
+    hasClubs = await hasActiveClubEvidence();
+  } catch {
+    hasClubs = false;
+  }
+
+  res.locals.alphaExploreLinks = prefixExploreLinks(buildExploreLinks({
+    tenant: {
+      ...routedTenantFrom(req),
+      has_clubs: hasClubs
+    }
+  }), res);
+}
+
 function renderExploreError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
@@ -106,6 +150,7 @@ router.get('/', asyncRoute(async (req, res) => {
   let explore;
   try {
     explore = normalizeExplore(await getExplore(token));
+    await applyExploreCardEvidence(req, res);
   } catch (error) {
     if (renderExploreError(error, res)) return undefined;
     throw error;

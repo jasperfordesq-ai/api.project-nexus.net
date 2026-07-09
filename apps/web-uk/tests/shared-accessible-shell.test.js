@@ -688,6 +688,9 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed Explore hub with live discovery sections', async () => {
     const api = require('../src/lib/api');
+    api.getClubs.mockResolvedValueOnce({
+      data: [{ id: 7, name: 'Velo Club', status: 'active', org_type: 'club' }]
+    });
     api.getExplore.mockResolvedValue({
       data: {
         popular_listings: [
@@ -716,11 +719,14 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.getExplore).toHaveBeenCalledWith('test-token');
+    expect(api.getClubs).toHaveBeenCalledWith({ per_page: 1 });
     expect(response.text).toContain('Explore');
     expect(response.text).toContain('class="nexus-alpha-card-list');
     expect(response.text).not.toContain('href="/exchanges"');
     expect(response.text).toContain('AI assistant');
     expect(response.text).toContain('Polls');
+    expect(response.text).toContain('Clubs');
+    expect(response.text).toContain('href="/clubs"');
     expect(response.text).not.toContain('Marketplace');
     expect(response.text).toContain('Federation');
     expect(response.text).toContain('Recent listings');
@@ -732,6 +738,41 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('15 Aug 2026');
     expect(response.text).toContain('href="/events/77"');
     expect(response.text).not.toContain('This page is a shared-accessible-frontend preparation skeleton');
+  });
+
+  it('uses live active-club evidence for tenant-mounted Explore Clubs card', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          feed: true,
+          listings: true,
+          wallet: true
+        },
+        features: {
+          connections: true,
+          events: true,
+          volunteering: true
+        },
+        has_clubs: false
+      }
+    });
+    api.getExplore.mockResolvedValueOnce({ data: {} });
+    api.getClubs.mockResolvedValueOnce({
+      data: [{ id: 7, name: 'Velo Club', status: 'active', org_type: 'club' }]
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/explore')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getClubs).toHaveBeenCalledWith({ per_page: 1 });
+    expect(response.text).toContain('Clubs');
+    expect(response.text).toContain('href="/acme/accessible/clubs"');
   });
 
   it('uses Laravel tenant feature defaults for tenant-mounted Explore cards', async () => {
