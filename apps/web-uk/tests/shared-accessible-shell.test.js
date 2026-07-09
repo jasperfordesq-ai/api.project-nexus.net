@@ -2859,6 +2859,11 @@ describe('shared accessible frontend shell', () => {
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
 
+    const mountedUnsigned = await request(app).get('/acme/accessible/federation');
+
+    expect(mountedUnsigned.status).toBe(302);
+    expect(mountedUnsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
+
     const response = await request(app)
       .get('/federation?status=opted-in')
       .set('Cookie', signedCookieHeader());

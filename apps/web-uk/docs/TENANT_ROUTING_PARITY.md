@@ -157,6 +157,11 @@ Current gaps:
   service navigation, step form actions, step-back links, and do-this-later
   links. The federation member detail template conversion covers the back link, federation service navigation,
   opt-in CTA, connection/message forms, and transfer CTA. The latest focused
+  federation route-redirect cleanup sends signed-out GET handoffs,
+  opt-in/settings shortcuts, and invalid/empty conversation fallbacks through
+  `res.locals.urlFor`, with shared-mount coverage proving
+  `/acme/accessible/federation` redirects to the tenant-mounted login path.
+  The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,
   empty-state member CTAs, pagination, search form, load-more links, and

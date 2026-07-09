@@ -106,7 +106,11 @@ service navigation, step forms, step-back links, and do-this-later links through
 `urlFor()`.
 The federation member source slice routes the federation member back link,
 federation service navigation, opt-in CTA, connection/message forms, and
-transfer CTA through `urlFor()`. The latest connections source slice now routes the connections
+transfer CTA through `urlFor()`. The latest federation redirect slice now
+routes signed-out federation GET handoffs, opt-in/settings shortcuts, and
+conversation fallback redirects through `res.locals.urlFor`, with shared-mount
+coverage proving `/acme/accessible/federation` redirects to the tenant-mounted
+login path. The latest connections source slice now routes the connections
 index tabs, pending-request link, member links, accept/decline/remove forms,
 empty-state member CTAs, pagination base URL, network search form, network
 tabs, load-more links, card actions, and back link through `urlFor()`. The

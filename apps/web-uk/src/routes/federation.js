@@ -18,6 +18,11 @@ function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function dataFrom(result) {
   return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
     ? result.data
@@ -645,7 +650,7 @@ function messagesStatusBanner(status) {
 
 function renderFederationError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, '/login?status=auth-required');
     return true;
   }
 
@@ -671,7 +676,7 @@ async function optionalFederationActivity(token) {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let statusResult;
@@ -714,7 +719,7 @@ router.get('/', asyncRoute(async (req, res) => {
 router.get('/opt-in', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let settingsResult;
@@ -724,7 +729,7 @@ router.get('/opt-in', asyncRoute(async (req, res) => {
     const settingsData = asObject(dataFrom(settingsResult));
     const settings = asObject(settingsData.settings);
     if (bool(settings.federation_optin)) {
-      return res.redirect('/federation/settings');
+      return redirectTo(res, '/federation/settings');
     }
 
     partnersResult = await callFederationApi(token, 'GET', '/partners');
@@ -747,7 +752,7 @@ router.get('/opt-in', asyncRoute(async (req, res) => {
 router.get('/opt-out', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   return res.render('federation/opt-out', {
@@ -760,7 +765,7 @@ router.get('/opt-out', asyncRoute(async (req, res) => {
 router.get('/onboarding', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const step = onboardingStep(req.query && req.query.step);
@@ -771,7 +776,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
     const settingsData = asObject(dataFrom(settingsResult));
     const settings = asObject(settingsData.settings);
     if (bool(settings.federation_optin) || bool(settingsData.federation_optin)) {
-      return res.redirect('/federation');
+      return redirectTo(res, '/federation');
     }
 
     if (step === 'confirm') {
@@ -804,7 +809,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
 router.get('/groups', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let groupsResult;
@@ -855,7 +860,7 @@ router.get('/groups', asyncRoute(async (req, res) => {
 router.get('/listings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const filters = listingsFilters(req);
@@ -903,7 +908,7 @@ router.get('/listings', asyncRoute(async (req, res) => {
 router.get('/listings/:tenantId/:id', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const tenantId = trimmed(req.params.tenantId, 32);
@@ -959,7 +964,7 @@ router.get('/listings/:tenantId/:id', asyncRoute(async (req, res) => {
 router.get('/events', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const filters = eventsFilters(req);
@@ -1007,7 +1012,7 @@ router.get('/events', asyncRoute(async (req, res) => {
 router.get('/partners', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let partnersResult;
@@ -1031,7 +1036,7 @@ router.get('/partners', asyncRoute(async (req, res) => {
 router.get('/partners/:id', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const id = trimmed(req.params.id, 32);
@@ -1066,7 +1071,7 @@ router.get('/partners/:id', asyncRoute(async (req, res) => {
 router.get('/members', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let membersResult;
@@ -1105,7 +1110,7 @@ router.get('/members', asyncRoute(async (req, res) => {
 router.get('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let settingsResult;
@@ -1143,7 +1148,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
 router.get('/connections', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let activeTab = trimmed(req.query.tab) || 'accepted';
@@ -1180,7 +1185,7 @@ router.get('/connections', asyncRoute(async (req, res) => {
 router.get('/messages', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let settingsResult;
@@ -1213,13 +1218,13 @@ router.get('/messages', asyncRoute(async (req, res) => {
 router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const partnerId = trimmed(req.params.partnerId, 32);
   const partnerTenantId = trimmed(req.query.tenant_id, 32);
   if (!/^\d+$/.test(partnerId) || !/^\d+$/.test(partnerTenantId)) {
-    return res.redirect('/federation/messages');
+    return redirectTo(res, '/federation/messages');
   }
 
   let settingsResult;
@@ -1234,7 +1239,7 @@ router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
 
   const conversation = normalizeConversation(dataFrom(messagesResult), partnerId, partnerTenantId);
   if (conversation.messages.length === 0) {
-    return res.redirect('/federation/messages');
+    return redirectTo(res, '/federation/messages');
   }
 
   if (conversation.unreadIds.length > 0) {
@@ -1265,7 +1270,7 @@ router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
 router.get('/members/:id/transfer', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const id = trimmed(req.params.id, 32);
@@ -1316,7 +1321,7 @@ router.get('/members/:id/transfer', asyncRoute(async (req, res) => {
 router.get('/members/:id', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const id = trimmed(req.params.id, 32);
