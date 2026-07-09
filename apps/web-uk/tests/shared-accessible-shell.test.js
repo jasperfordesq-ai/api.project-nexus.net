@@ -10735,6 +10735,26 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Club pages will follow the Laravel accessible frontend contract.');
   });
 
+  it('keeps Laravel clubs redirects and search form inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+
+    api.getClubs.mockResolvedValueOnce({
+      data: [],
+      meta: { total: 0, page: 1, per_page: 50 }
+    });
+
+    const unsigned = await request(app).get('/acme/accessible/clubs');
+    const signed = await request(app)
+      .get('/acme/accessible/clubs?q=velo')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('action="/acme/accessible/clubs"');
+    expect(api.getClubs).toHaveBeenCalledWith({ search: 'velo', per_page: 50 });
+  });
+
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
     const api = require('../src/lib/api');

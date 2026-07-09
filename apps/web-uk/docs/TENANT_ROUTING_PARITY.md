@@ -893,9 +893,25 @@ This is connections route-redirect evidence only; it does not newly certify
 connection permission edge cases, Laravel persistence depth, visual Blade
 parity, localization, or ASP.NET backend compatibility.
 
+The fifty-eighth source slice extends tenant-aware helper cleanup into clubs.
+`src/views/clubs/index.njk` now sends the search form action through
+`urlFor('/clubs')`, and `src/routes/clubs.js` now sends the unsigned
+auth-required redirect through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on raw `action="/clubs"` in the clubs template, then
+passed after conversion. A focused shared-mount runtime test also proves
+unsigned `/acme/accessible/clubs` redirects to
+`/acme/accessible/login?status=auth-required` and signed
+`/acme/accessible/clubs?q=velo` renders a search form action at
+`/acme/accessible/clubs`. This is clubs helper/redirect evidence only; it does
+not newly certify Laravel's tenant-has-clubs 404 gate, visual Blade parity,
+localization, runtime persistence, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "clubs form and route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "clubs redirects and search form"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "connection route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "connection action redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "achievements route redirects"

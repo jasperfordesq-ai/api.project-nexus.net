@@ -625,6 +625,23 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps clubs form and route redirects behind the active tenant URL helper', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'clubs', 'index.njk'),
+      'utf8'
+    );
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'clubs.js'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/action="\/clubs/);
+    expect(template).toMatch(/urlFor\(["']\/clubs/);
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/login/);
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps notifications filters, actions, redirects, and pagination behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'notifications', 'index.njk'),
