@@ -9349,6 +9349,38 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/feed/42');
   });
 
+  it('renders the feed hub when Laravel returns author-shaped posts', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          content: 'Repair cafe is open.',
+          created_at: '2026-07-06T09:30:00Z',
+          author: {
+            id: 77,
+            name: 'Ada Lovelace',
+            avatar_url: '/avatars/ada.jpg'
+          },
+          likes_count: 2,
+          comments_count: 1,
+          is_liked: false
+        }
+      ],
+      pagination: { page: 1, total_pages: 1 }
+    });
+
+    const response = await request(app)
+      .get('/feed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Ada Lovelace');
+    expect(response.text).toContain('href="/members/77"');
+    expect(response.text).toContain('Repair cafe is open.');
+    expect(response.text).toContain('action="/feed/items/post/42/like"');
+  });
+
   it('renders the feed sidebar without the legacy my groups route', async () => {
     const api = require('../src/lib/api');
     api.getFeedPosts.mockResolvedValueOnce({

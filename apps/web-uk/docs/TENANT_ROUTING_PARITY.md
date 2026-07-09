@@ -577,6 +577,24 @@ UK `http://127.0.0.1:64493`, Laravel `http://127.0.0.1:8088`, and
 `TENANT_ID=2` passed 16 checks across auth/cookie/logout plus signed
 `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new` body markers.
 
+The thirty-eighth template-helper source slice extends direct `urlFor()`
+conversion into feed browse, hashtag, post permalink, and typed-item permalink
+pages. `src/views/feed/index.njk`, `hashtags.njk`, `hashtag.njk`, `post.njk`,
+and `item.njk` now route feed compose/filter forms, hashtag links, post and
+item permalink links, like/comment/not-interested forms, author and group
+links, pagination, sign-in CTAs, `nextHref`, and internal deep links through
+`urlFor()`. The source-level regression first failed on raw `/feed`
+links/actions, then passed after conversion; a source scan for feed-local raw
+`href`, `action`, pagination, and variable internal link targets returns no
+matches. A second focused regression first failed on a live Laravel `author`
+post shape that lacks `user`, then passed after feed index normalization was
+expanded. Focused feed render tests pass for 19 selected tests. Focused Laravel
+runtime smoke against temporary in-process Web UK
+`http://127.0.0.1:58285`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed 20 checks across auth/cookie/logout plus signed `/feed`,
+`/feed/hashtags`, `/feed/hashtag/timebank`, `/feed/posts/796`, and
+`/feed/item/listing/42` body markers.
+
 Verification command:
 
 ```powershell
@@ -619,6 +637,9 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "author-shaped posts"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run lint

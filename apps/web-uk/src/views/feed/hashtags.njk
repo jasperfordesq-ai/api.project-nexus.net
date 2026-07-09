@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a href="/feed" class="govuk-back-link">Back to the feed</a>
+      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">Back to the feed</a>
 
       {% if errorMessage %}
         <div class="govuk-error-summary" data-module="govuk-error-summary">
@@ -25,7 +25,7 @@
       <h1 class="govuk-heading-xl">Hashtags</h1>
       <p class="govuk-body-l">Browse trending hashtags or search for a topic.</p>
 
-      <form method="get" action="/feed/hashtags" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/feed/hashtags') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <label class="govuk-label" for="hashtag-search">Search hashtags</label>
           <div id="hashtag-search-hint" class="govuk-hint">Enter at least one character to search by topic.</div>
@@ -33,7 +33,7 @@
         </div>
         <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
         {% if isSearching %}
-          <a class="govuk-link govuk-!-margin-left-3" href="/feed/hashtags">Clear search and show trending</a>
+          <a class="govuk-link govuk-!-margin-left-3" href="{{ urlFor('/feed/hashtags') }}">Clear search and show trending</a>
         {% endif %}
       </form>
 
@@ -44,7 +44,7 @@
           {% for hashtag in hashtags %}
             <li class="nexus-alpha-card">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/feed/hashtag/{{ hashtag.tag | urlencode }}">#{{ hashtag.tag }}</a>
+                <a class="govuk-link" href="{{ urlFor('/feed/hashtag/' + (hashtag.tag | urlencode)) }}">#{{ hashtag.tag }}</a>
               </h3>
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
                 <span class="govuk-visually-hidden">View posts tagged #{{ hashtag.tag }}. </span>{{ hashtag.postCountLabel }}

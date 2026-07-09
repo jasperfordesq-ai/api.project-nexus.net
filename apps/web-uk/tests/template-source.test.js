@@ -219,6 +219,29 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/podcasts/);
   });
 
+  it('keeps feed browse, hashtag, permalink, and engagement controls behind urlFor()', () => {
+    const templates = [
+      path.join('feed', 'hashtag.njk'),
+      path.join('feed', 'hashtags.njk'),
+      path.join('feed', 'index.njk'),
+      path.join('feed', 'item.njk'),
+      path.join('feed', 'post.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:feed|members|groups|login)/);
+      expect(template).not.toMatch(/action="\/feed/);
+      expect(template).not.toContain('href: "/feed');
+      expect(template).not.toContain('href="{{ nextHref }}"');
+      expect(template).not.toContain('href="{{ item.deepLink.href }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/feed/);
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),

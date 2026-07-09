@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a href="/feed" class="govuk-back-link">Back to the feed</a>
+      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">Back to the feed</a>
 
       <span class="govuk-caption-l">Community feed at {{ communityName }}</span>
       <h1 class="govuk-heading-xl">{% if item.title %}{{ item.title }}{% else %}Activity{% endif %}</h1>
@@ -32,7 +32,7 @@
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">Sign in to take part in the feed.</p>
             <div class="govuk-button-group">
-              <a class="govuk-button" href="/login" role="button" draggable="false" data-module="govuk-button">Sign in</a>
+              <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">Sign in</a>
             </div>
           </div>
         </div>
@@ -71,7 +71,7 @@
 
         {% if item.deepLink %}
           <p class="govuk-body-s nexus-alpha-meta">
-            <a class="govuk-link govuk-link--no-visited-state" href="{{ item.deepLink.href }}">{{ item.deepLink.label }}</a>
+            <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(item.deepLink.href) }}">{{ item.deepLink.label }}</a>
           </p>
         {% endif %}
 
@@ -81,7 +81,7 @@
 
         {% if not requiresAuth %}
           <div class="nexus-alpha-actions govuk-button-group govuk-!-margin-bottom-3">
-            <form method="post" action="/feed/items/{{ item.type }}/{{ item.id }}/like">
+            <form method="post" action="{{ urlFor('/feed/items/' + item.type + '/' + (item.id | string) + '/like') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">
                 {% if item.isLiked %}Remove like{% else %}Like{% endif %}
@@ -95,7 +95,7 @@
             </summary>
             <div class="govuk-details__text">
               <p class="govuk-body-s">We will use this feedback to show you less like this.</p>
-              <form method="post" action="/feed/items/{{ item.type }}/{{ item.id }}/not-interested">
+              <form method="post" action="{{ urlFor('/feed/items/' + item.type + '/' + (item.id | string) + '/not-interested') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Not interested</button>
               </form>
@@ -121,7 +121,7 @@
           {% endif %}
 
           {% if not requiresAuth %}
-            <form method="post" action="/feed/items/{{ item.type }}/{{ item.id }}/comments">
+            <form method="post" action="{{ urlFor('/feed/items/' + item.type + '/' + (item.id | string) + '/comments') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-form-group">
                 <label class="govuk-label" for="item-comment-{{ item.id }}">Add a comment</label>

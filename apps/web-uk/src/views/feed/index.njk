@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <form method="post" action="/feed/posts" enctype="multipart/form-data" class="govuk-!-margin-bottom-7" novalidate>
+      <form method="post" action="{{ urlFor('/feed/posts') }}" enctype="multipart/form-data" class="govuk-!-margin-bottom-7" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label govuk-label--m" for="content">Share an update</label>
@@ -64,7 +64,7 @@
             selected: groupId and (group.id | string) == (groupId | string)
           }), groupItems) %}
         {% endfor %}
-        <form action="/feed" method="get" class="govuk-!-margin-bottom-6">
+        <form action="{{ urlFor('/feed') }}" method="get" class="govuk-!-margin-bottom-6">
           <div class="app-filter-row">
             {{ govukSelect({
               id: "group_id",
@@ -82,7 +82,7 @@
               classes: "govuk-button--secondary govuk-!-margin-bottom-0 govuk-!-margin-left-2"
             }) }}
             {% if groupId %}
-              <a href="/feed" class="govuk-link govuk-!-margin-left-3">Clear filter</a>
+              <a href="{{ urlFor('/feed') }}" class="govuk-link govuk-!-margin-left-3">Clear filter</a>
             {% endif %}
           </div>
         </form>
@@ -104,13 +104,13 @@
                   {% set user = post.user %}
                   {% include "partials/avatar.njk" %}
                   <div class="app-post__author-info">
-                    <a href="/members/{{ post.user.id }}" class="govuk-link govuk-link--no-visited-state govuk-!-font-weight-bold">
+                    <a href="{{ urlFor('/members/' + (post.user.id | string)) }}" class="govuk-link govuk-link--no-visited-state govuk-!-font-weight-bold">
                       {{ post.user.first_name or post.user.firstName }} {{ post.user.last_name or post.user.lastName }}
                     </a>
                     <span class="govuk-body-s govuk-!-margin-bottom-0 app-post__meta">
                       {{ (post.createdAt or post.created_at) | formatDate }}
                       {% if post.group %}
-                        in <a href="/groups/{{ post.group.id }}" class="govuk-link">{{ post.group.name }}</a>
+                        in <a href="{{ urlFor('/groups/' + (post.group.id | string)) }}" class="govuk-link">{{ post.group.name }}</a>
                       {% endif %}
                     </span>
                   </div>
@@ -128,14 +128,14 @@
                 <div class="app-post__actions">
                   {# Like button #}
                   {% if post.isLiked or post.is_liked %}
-                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
+                    <form action="{{ urlFor('/feed/items/post/' + (post.id | string) + '/like') }}" method="post" class="app-post__action-form">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <button type="submit" class="app-link-button app-post__action-button app-post__action-button--active">
                         <span aria-hidden="true">&#9829;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
                       </button>
                     </form>
                   {% else %}
-                    <form action="/feed/items/post/{{ post.id }}/like" method="post" class="app-post__action-form">
+                    <form action="{{ urlFor('/feed/items/post/' + (post.id | string) + '/like') }}" method="post" class="app-post__action-form">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <button type="submit" class="app-link-button app-post__action-button">
                         <span aria-hidden="true">&#9825;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
@@ -144,12 +144,12 @@
                   {% endif %}
 
                   {# Comment link #}
-                  <a href="/feed/posts/{{ post.id }}" class="govuk-link app-post__action-button">
+                  <a href="{{ urlFor('/feed/posts/' + (post.id | string)) }}" class="govuk-link app-post__action-button">
                     <span aria-hidden="true">&#128172;</span> {{ post.commentCount or post.comment_count }} Comment{{ 's' if post.commentCount or post.comment_count != 1 else '' }}
                   </a>
                 </div>
 
-                <a href="/feed/posts/{{ post.id }}" class="govuk-link">View post</a>
+                <a href="{{ urlFor('/feed/posts/' + (post.id | string)) }}" class="govuk-link">View post</a>
               </footer>
             </article>
           {% endfor %}
@@ -162,17 +162,17 @@
           {% for i in range(1, feedTotalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
-              href: "/feed?page=" + i + ("&group_id=" + groupId if groupId else ""),
+              href: urlFor("/feed?page=" + i + ("&group_id=" + groupId if groupId else "")),
               current: i == pagination.page
             }), paginationItems) %}
           {% endfor %}
 
           {{ govukPagination({
             previous: {
-              href: "/feed?page=" + (pagination.page - 1) + ("&group_id=" + groupId if groupId else "")
+              href: urlFor("/feed?page=" + (pagination.page - 1) + ("&group_id=" + groupId if groupId else ""))
             } if pagination.page > 1 else undefined,
             next: {
-              href: "/feed?page=" + (pagination.page + 1) + ("&group_id=" + groupId if groupId else "")
+              href: urlFor("/feed?page=" + (pagination.page + 1) + ("&group_id=" + groupId if groupId else ""))
             } if pagination.page < feedTotalPages else undefined,
             items: paginationItems
           }) }}
@@ -204,13 +204,13 @@
           <ul class="govuk-list">
             {% for group in myGroups | take(5) %}
               <li>
-                <a href="/feed?group_id={{ group.id }}" class="govuk-link">{{ group.name }}</a>
+                <a href="{{ urlFor('/feed?group_id=' + (group.id | string)) }}" class="govuk-link">{{ group.name }}</a>
               </li>
             {% endfor %}
           </ul>
           {% if myGroups.length > 5 %}
             <p class="govuk-body-s">
-              <a href="/groups" class="govuk-link">View all {{ myGroups.length }} groups</a>
+              <a href="{{ urlFor('/groups') }}" class="govuk-link">View all {{ myGroups.length }} groups</a>
             </p>
           {% endif %}
         </div>

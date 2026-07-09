@@ -95,17 +95,39 @@ function feedMedia(row) {
 
 function normalizeFeedPost(row) {
   const id = positiveInteger(row && row.id, 0, 0, Number.MAX_SAFE_INTEGER);
-  const likeCount = positiveInteger(row && (row.likes_count !== undefined ? row.likes_count : row.likeCount), 0, 0, Number.MAX_SAFE_INTEGER);
-  const commentCount = positiveInteger(row && (row.comments_count !== undefined ? row.comments_count : row.commentCount), 0, 0, Number.MAX_SAFE_INTEGER);
-  const author = row && row.author && typeof row.author === 'object' ? row.author : {};
+  const likeCount = positiveInteger(row && (
+    row.likes_count !== undefined ? row.likes_count : row.like_count !== undefined ? row.like_count : row.likeCount
+  ), 0, 0, Number.MAX_SAFE_INTEGER);
+  const commentCount = positiveInteger(row && (
+    row.comments_count !== undefined ? row.comments_count : row.comment_count !== undefined ? row.comment_count : row.commentCount
+  ), 0, 0, Number.MAX_SAFE_INTEGER);
+  const author = row && row.author && typeof row.author === 'object'
+    ? row.author
+    : (row && row.user && typeof row.user === 'object' ? row.user : {});
+  const firstName = trimmed(author.first_name || author.firstName, 100);
+  const lastName = trimmed(author.last_name || author.lastName, 100);
+  const authorName = trimmed(author.name || row && row.author_name, 200)
+    || [firstName, lastName].filter(Boolean).join(' ')
+    || 'A community member';
+  const authorId = positiveInteger(author.id || row && (row.author_id || row.user_id), 0, 0, Number.MAX_SAFE_INTEGER);
+  const contentParagraphs = plainParagraphs(row && row.content);
 
   return {
     id,
-    authorName: trimmed(author.name || row && row.author_name) || 'A community member',
+    user: {
+      id: authorId,
+      first_name: firstName || authorName,
+      last_name: lastName
+    },
+    authorId,
+    authorName,
     authorAvatar: trimmed(author.avatar_url || row && row.author_avatar_url),
     createdAt: trimmed(row && (row.created_at || row.createdAt)),
-    contentParagraphs: plainParagraphs(row && row.content),
+    content: contentParagraphs.join('\n\n'),
+    contentParagraphs,
     media: feedMedia(row),
+    group: row && row.group,
+    isPinned: !!(row && (row.is_pinned || row.isPinned)),
     likeCount,
     commentCount,
     likeLabel: pluralLabel(likeCount, 'like'),
@@ -328,7 +350,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     getMyGroups(req.token).catch(() => ({ data: [] }))
   ]);
 
-  const posts = feedResult.data || [];
+  const posts = feedCollectionRows(feedResult).map(normalizeFeedPost).filter((post) => post.id > 0);
   const myGroups = myGroupsResult.data || [];
 
   res.render('feed/index', {

@@ -721,6 +721,16 @@ list/detail/authored-show APIs, subscribe/update/publish/delete contracts,
 episode audio upload handling, tenant author gates, localization, status
 redirects, and custom-domain tenant behavior before podcasts can be called
 backend-neutral.
+Feed browse/hashtag/post/item pages and POST aliases are backed by
+Laravel-compatible feed APIs, and feed templates route local feed/member/group/
+login links, pagination, engagement forms, `nextHref`, and internal deep links
+through `urlFor()` with focused source, render, and Laravel runtime-smoke
+coverage. Feed index normalization now accepts Laravel `author` post rows as
+well as older local `user` rows. This does not certify ASP.NET backend
+switching: ASP.NET must still match Laravel's feed collection, hashtag, post,
+typed-item, comment, reaction, share, save, report, mute, upload, tenant,
+feature-gate, localization, status redirect, and custom-domain contracts before
+feed can be called backend-neutral.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.

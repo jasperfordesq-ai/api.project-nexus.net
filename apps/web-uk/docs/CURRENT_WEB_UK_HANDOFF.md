@@ -146,6 +146,9 @@ slice now routes podcast browse/studio links, search form, show and episode
 links, subscribe form, create/edit form actions, episode publish/delete/upload
 forms, show publish/delete forms, and studio management links through
 `urlFor()`.
+The latest feed source slice now routes feed compose/filter forms, hashtag
+links, post and item permalink links, like/comment/not-interested forms,
+author and group links, pagination, and sign-in CTAs through `urlFor()`.
 The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights
@@ -174,8 +177,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `987/1000` implementation/certification parity |
-| Green confidence estimate | about `971/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `988/1000` implementation/certification parity |
+| Green confidence estimate | about `973/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -242,6 +245,15 @@ slice:
 - `Get-ChildItem -Path apps\web-uk\src\views\podcasts -Filter *.njk | Select-String -SimpleMatch -Pattern 'href="/podcasts','action="/podcasts','href: "/podcasts','baseUrl: "/podcasts','action="{{ action }}','action="{{ episodeStoreAction }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"` passed: 10 selected tests.
 - A focused exported Laravel runtime smoke against temporary in-process Web UK `http://127.0.0.1:64493`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 16 checks: base API/health, cookie, login, account, logout, signed `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new`, plus body markers `Podcasts`, `Podcast studio`, and `Create a podcast`.
+
+Latest focused verification on 2026-07-09 for the feed template-helper and
+Laravel live-shape slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed browse"` first failed on raw `/feed` links/actions, then passed after conversion.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "author-shaped posts"` first failed with a 500 when Laravel returned `author` instead of `user`, then passed after feed post normalization was expanded.
+- `Get-ChildItem -Path apps\web-uk\src\views\feed -Filter *.njk | Select-String -SimpleMatch -Pattern 'href="/feed','action="/feed','href="/members','href="/groups','href="/login','href: "/feed','href="{{ nextHref }}','href="{{ item.deepLink.href }}'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed"` passed: 19 selected tests.
+- A focused exported Laravel runtime smoke against temporary in-process Web UK `http://127.0.0.1:58285`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 20 checks: base API/health, cookie, login, account, logout, signed `/feed`, `/feed/hashtags`, `/feed/hashtag/timebank`, `/feed/posts/796`, and `/feed/item/listing/42`, plus body markers `Feed`, `Hashtags`, `#timebank`, `Post`, and `View listing`.
 
 Latest focused verification on 2026-07-09 for the groups index/form
 template-helper slice:
@@ -1471,8 +1483,8 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `987/1000`.
-Green confidence estimate: `971/1000`, because the consolidated code, static
+Current working estimate at this handoff: `988/1000`.
+Green confidence estimate: `973/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
 remaining template-helper conversion, and ASP.NET backend switching proof still
