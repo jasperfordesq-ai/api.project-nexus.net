@@ -259,7 +259,10 @@ rating POST result redirects through `res.locals.urlFor`, with focused
 shared-mount coverage proving `/acme/accessible/exchanges/{id}` POSTs redirect
 back inside the active tenant mount.
 The latest public coupon source slice now routes public coupon list/detail
-links through `urlFor()`. The latest parent-domain reserved-segment slice now
+links through `urlFor()`. The latest public coupon route-redirect slice now
+routes unsigned `/coupons` and `/coupons/{id}` auth handoffs through
+`res.locals.urlFor`, matching Laravel's named login route behavior for shared
+tenant mounts and custom-domain contexts. The latest parent-domain reserved-segment slice now
 aligns Web UK's child-slug guard exactly with Laravel
 `TenantContext::getReservedPaths()`, so Laravel-unreserved names such as
 `courses` can still resolve as child tenants on a parent custom domain. The
@@ -734,6 +737,12 @@ template-helper slice:
 - `Select-String -Path apps\web-uk\src\views\coupons\*.njk -SimpleMatch -Pattern 'href="/coupons','action="/coupons','href: "/coupons'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "coupon"` passed: 4 selected public-coupon and marketplace-coupon tests.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_GATED_PAGE_PATHS=/coupons,/coupons/1`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, proving the current local Laravel fixture returns the expected `403` feature gate for public coupon pages. This does not certify rendered coupon body parity in a tenant with merchant coupons enabled.
+
+Latest focused verification on 2026-07-09 for the public coupons
+route-redirect slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "public coupon route redirects|signed-out visitors away from the Laravel coupons"` first failed because `src/routes/coupons.js` still emitted direct `res.redirect(loginRedirect())`, then passed after routing coupon auth handoffs through `res.locals.urlFor`.
+- Shared-mount behavior coverage proves unsigned `/acme/accessible/coupons` and `/acme/accessible/coupons/{id}` requests redirect to `/acme/accessible/login?status=auth-required`.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

@@ -767,6 +767,16 @@ auth/cookie/logout flow plus the current local Laravel fixture's expected
 `403` feature gate for `/coupons` and `/coupons/1`; that gate smoke does not
 certify rendered coupon body parity for a merchant-coupons-enabled tenant.
 
+The seventy-sixth route-redirect slice extends route-level tenant awareness
+into the public coupon family. `src/routes/coupons.js` now routes unsigned
+`/coupons` and `/coupons/{id}` auth handoffs through `res.locals.urlFor`,
+matching Laravel's named login route behavior for shared tenant mounts and
+custom-domain contexts. The focused source regression first failed because
+the route still emitted direct `res.redirect(loginRedirect())`, then passed
+after conversion. Shared-mount behavior coverage proves unsigned
+`/acme/accessible/coupons` and `/acme/accessible/coupons/{id}` requests
+redirect to `/acme/accessible/login?status=auth-required`.
+
 The forty-seventh template-helper source slice extends direct `urlFor()`
 conversion into AI chat and matches pages. `src/views/ai-chat/index.njk`,
 `src/views/matches/index.njk`, and `src/views/matches/board.njk` now route AI

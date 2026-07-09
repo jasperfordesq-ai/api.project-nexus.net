@@ -17,6 +17,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value) {
   return String(value || '').trim();
 }
@@ -94,7 +99,7 @@ function normalizeCoupon(item) {
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const result = await callCouponApi(token, 'GET', '');
   const coupons = collectionFrom(result).map(normalizeCoupon).filter((coupon) => coupon.id !== null);
@@ -108,7 +113,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const result = await callCouponApi(token, 'GET', `/${id}`);

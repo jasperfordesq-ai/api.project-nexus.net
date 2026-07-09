@@ -6587,11 +6587,17 @@ describe('shared accessible frontend shell', () => {
 
     const index = await request(app).get('/coupons');
     const detail = await request(app).get('/coupons/42');
+    const mountedIndex = await request(app).get('/acme/accessible/coupons');
+    const mountedDetail = await request(app).get('/acme/accessible/coupons/42');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
     expect(detail.status).toBe(302);
     expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(mountedIndex.status).toBe(302);
+    expect(mountedIndex.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(mountedDetail.status).toBe(302);
+    expect(mountedDetail.headers.location).toBe('/acme/accessible/login?status=auth-required');
     expect(api.callCouponApi).not.toHaveBeenCalled();
   });
 
