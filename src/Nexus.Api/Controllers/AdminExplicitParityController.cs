@@ -1765,19 +1765,25 @@ public class AdminExplicitParityController : ControllerBase
             .Select(s => (object)new
             {
                 id = $"subscription-{s.Id}",
+                number = $"SUB-{s.Id:D6}",
                 invoice_number = $"SUB-{s.Id:D6}",
+                date = s.StartedAt,
+                created = s.StartedAt,
                 source = "user_subscription",
                 subscription_id = s.Id,
                 user_id = s.UserId,
                 s.user_email,
                 s.plan_name,
                 amount = s.amount,
+                amount_paid = s.Status == SubscriptionStatus.Active ? s.amount : 0,
                 s.currency,
-                status = s.Status == SubscriptionStatus.Active ? "paid" : s.Status.ToString().ToLowerInvariant(),
+                status = BillingInvoiceStatusForReact(s.Status),
                 issued_at = s.StartedAt,
                 due_at = s.NextBillingDate,
                 paid_at = s.Status == SubscriptionStatus.Active ? s.StartedAt : (DateTime?)null,
                 expires_at = s.ExpiresAt,
+                hosted_invoice_url = (string?)null,
+                invoice_pdf = (string?)null,
                 has_stripe_subscription = !string.IsNullOrWhiteSpace(s.StripeSubscriptionId)
             })
             .ToList();
@@ -5980,6 +5986,15 @@ public class AdminExplicitParityController : ControllerBase
         SubscriptionStatus.Cancelled => "cancelled",
         SubscriptionStatus.Expired => "expired",
         _ => "active"
+    };
+
+    private static string BillingInvoiceStatusForReact(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.Active => "paid",
+        SubscriptionStatus.PastDue => "open",
+        SubscriptionStatus.Cancelled => "void",
+        SubscriptionStatus.Expired => "uncollectible",
+        _ => "draft"
     };
 
     private static bool TryGetLastInt(string path, string prefix, out int id)

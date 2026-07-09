@@ -1457,8 +1457,13 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         json.GetProperty("data").EnumerateArray()
             .Should().Contain(item =>
                 item.GetProperty("subscription_id").GetInt32() == subscriptionId &&
+                item.GetProperty("number").GetString() == $"SUB-{subscriptionId:D6}" &&
+                item.GetProperty("date").ValueKind == JsonValueKind.String &&
                 item.GetProperty("amount").GetDecimal() == 45.67m &&
-                item.GetProperty("status").GetString() == "paid");
+                item.GetProperty("currency").GetString() == "EUR" &&
+                item.GetProperty("status").GetString() == "paid" &&
+                item.GetProperty("hosted_invoice_url").ValueKind == JsonValueKind.Null &&
+                item.GetProperty("invoice_pdf").ValueKind == JsonValueKind.Null);
     }
 
     [Fact]
