@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/events/{{ event.id }}">Back to event</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">Back to event</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -14,7 +14,7 @@
 
       <p class="govuk-body-l">This event is part of a repeating series. Choose whether your changes apply to only this date or to all future dates.</p>
 
-      <form method="post" action="/events/{{ event.id }}/recurring-edit" novalidate>
+      <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/recurring-edit') }}" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <fieldset class="govuk-fieldset">
@@ -98,7 +98,7 @@
                 <span class="govuk-!-font-weight-bold">{{ occurrence.when }}</span>
                 <strong class="govuk-tag govuk-tag--blue">This date</strong>
               {% else %}
-                <a class="govuk-link" href="/events/{{ occurrence.id }}">{{ occurrence.when or "View this date" }}</a>
+                <a class="govuk-link" href="{{ urlFor('/events/' + (occurrence.id | string)) }}">{{ occurrence.when or "View this date" }}</a>
               {% endif %}
             </li>
           {% endfor %}

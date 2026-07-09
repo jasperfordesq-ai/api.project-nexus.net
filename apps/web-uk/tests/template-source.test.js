@@ -35,6 +35,26 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps event depth controls behind urlFor()', () => {
+    const templates = [
+      path.join('events', 'browse.njk'),
+      path.join('events', 'map.njk'),
+      path.join('events', 'polls.njk'),
+      path.join('events', 'recurring-edit.njk'),
+      path.join('events', 'translate.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/events/);
+      expect(template).not.toMatch(/action="\/events/);
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/events/);
+  });
+
   it('keeps event route redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'events.js'),

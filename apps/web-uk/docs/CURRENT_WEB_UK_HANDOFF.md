@@ -193,7 +193,16 @@ exits no longer rely on flat `/listings` redirects before shared-mount or
 custom-domain rewriting. The latest events index/form source slice now routes
 event list create CTA, search form, event and group links, pagination,
 empty-state actions, create/edit form actions, breadcrumbs, back links, and
-cancel links through `urlFor()`. The latest groups index/form source slice now
+cancel links through `urlFor()`. A follow-up events depth source slice now
+routes the event browse back/view-all links and filter form, event map back
+link, event poll back link and save form, recurring-edit back link/form/
+occurrence links, and translation back link/form through `urlFor()`, with
+focused source and shared-mount render coverage for `/acme/accessible/events`
+depth pages. A scoped Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6610`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed base auth/cookie/logout checks plus `/events/browse`, `/events/6/map`,
+`/events/6/polls`, and `/events/6/translate` module and body-text markers.
+The latest groups index/form source slice now
 routes group list create CTA, search form, clear links, group card links,
 pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
 links, and legacy my-groups source controls through `urlFor()`. The latest

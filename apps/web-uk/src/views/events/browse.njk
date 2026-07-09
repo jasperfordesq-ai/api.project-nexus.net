@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/events">Back to events</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events') }}">Back to events</a>
 
   <span class="govuk-caption-l">Events</span>
   <h1 class="govuk-heading-xl">Browse events by category</h1>
@@ -15,11 +15,11 @@
     <div class="govuk-inset-text">
       <p class="govuk-body">No event categories have been set up for this community yet.</p>
       <p class="govuk-body">
-        <a class="govuk-link" href="/events">View all events</a>
+        <a class="govuk-link" href="{{ urlFor('/events') }}">View all events</a>
       </p>
     </div>
   {% else %}
-    <form method="get" action="/events" class="govuk-!-margin-bottom-7">
+    <form method="get" action="{{ urlFor('/events') }}" class="govuk-!-margin-bottom-7">
       <fieldset class="govuk-fieldset" aria-describedby="events-browse-hint">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
           <h2 class="govuk-fieldset__heading">Choose a category</h2>
@@ -45,7 +45,7 @@
     </form>
 
     <p class="govuk-body">
-      <a class="govuk-link" href="/events">View all events</a>
+      <a class="govuk-link" href="{{ urlFor('/events') }}">View all events</a>
     </p>
   {% endif %}
 {% endblock %}

@@ -15954,6 +15954,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Repair cafe');
     expect(response.text).toContain('View events');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    api.getEventCategories.mockResolvedValueOnce({
+      data: [
+        { id: 3, name: 'Gardening' },
+        { id: 4, name: 'Repair cafe' }
+      ]
+    });
+
+    const mounted = await request(app).get('/acme/accessible/events/browse?category_id=4');
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/events"');
+    expect(mounted.text).toContain('method="get" action="/acme/accessible/events"');
   });
 
   it('renders the Laravel event poll attachment page for signed-in organisers', async () => {
@@ -15994,6 +16007,26 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Do you need transport?');
     expect(response.text).toContain('Save poll selection');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Repair cafe planning'
+      }
+    });
+    api.getPolls.mockResolvedValueOnce({
+      data: [
+        { id: 12, question: 'Which day works?', event_id: 7 }
+      ]
+    });
+
+    const mounted = await request(app)
+      .get('/acme/accessible/events/7/polls?status=polls-updated')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/events/7"');
+    expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/polls"');
   });
 
   it('renders the Laravel event translation page for signed-in visitors', async () => {
@@ -16028,6 +16061,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Original description');
     expect(response.text).toContain('Bring small appliances and repair notes.');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Repair cafe planning',
+        description: 'Bring small appliances and repair notes.'
+      }
+    });
+
+    const mounted = await request(app)
+      .get('/acme/accessible/events/7/translate?status=translate-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/events/7"');
+    expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/translate"');
   });
 
   it('renders the Laravel recurring event edit page for signed-in organisers', async () => {
@@ -16077,6 +16126,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/events/8"');
     expect(response.text).toContain('Save changes');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Weekly repair cafe',
+        description: 'Bring small appliances.',
+        location: 'Community hall',
+        start_time: '2026-08-01T10:30:00Z',
+        end_time: '2026-08-01T12:00:00Z',
+        is_series: true,
+        series_occurrences: [
+          { id: 7, start_time: '2026-08-01T10:30:00Z' },
+          { id: 8, start_time: '2026-08-08T10:30:00Z' }
+        ]
+      }
+    });
+
+    const mounted = await request(app)
+      .get('/acme/accessible/events/7/recurring-edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/events/7"');
+    expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/recurring-edit"');
+    expect(mounted.text).toContain('href="/acme/accessible/events/8"');
   });
 
   it('redirects non-series events from Laravel recurring edit to the normal edit page', async () => {
@@ -16154,6 +16228,32 @@ describe('shared accessible frontend shell', () => {
     expect(mapped.text).toContain('View this location on OpenStreetMap');
     expect(mapped.text).toContain('Get directions on OpenStreetMap');
     expect(mapped.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community garden day',
+        location: 'Village hall, Main Street',
+        latitude: 53.349805,
+        longitude: -6.26031,
+        is_online: false
+      }
+    });
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { events: true },
+        features: { events: true, maps: true }
+      }
+    });
+
+    const mounted = await request(app).get('/acme/accessible/events/42/map');
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/events/42"');
+    expect(mounted.text).toContain('View this location on OpenStreetMap');
 
     expect(online.status).toBe(200);
     expect(api.callEventApi).toHaveBeenNthCalledWith(2, '', 'GET', '/43');

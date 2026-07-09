@@ -560,6 +560,25 @@ exported Laravel runtime smoke against temporary Web UK
 API/health, cookie, login, account, and logout checks plus `/events`
 containing `Events` and `/events/new` containing `Create an event`.
 
+The latest event depth template-helper source slice extends direct `urlFor()`
+conversion into `src/views/events/browse.njk`, `map.njk`, `polls.njk`,
+`recurring-edit.njk`, and `translate.njk`. These templates now route the
+event browse back/view-all links and filter form, event map back link, poll
+back link and save form, recurring edit back link/form/occurrence links, and
+translation back link/form through `urlFor()` instead of raw `/events` source
+targets. The source regression first failed on raw `/events` `href`/`action`
+strings, then passed after conversion. Focused mounted render coverage proves
+the same controls render under `/acme/accessible/events...`; the map case uses
+an explicit mocked tenant bootstrap with `maps` enabled so the existing
+disabled-map feature-gate proof remains intact. A scoped Laravel runtime smoke
+against temporary Web UK `http://127.0.0.1:6610`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed base auth/cookie/logout
+checks plus `/events/browse`, `/events/6/map`, `/events/6/polls`, and
+`/events/6/translate` module/body-text markers. This is source, mocked render,
+and scoped Laravel runtime evidence only; full visual/manual Blade parity,
+full default Laravel runtime smoke, and ASP.NET backend compatibility are still
+not certified by this slice.
+
 The thirtieth template-helper source slice extends direct `urlFor()`
 conversion into group index, create/edit form, and legacy my-groups source
 pages. `src/views/groups/index.njk`, `src/views/groups/new.njk`,

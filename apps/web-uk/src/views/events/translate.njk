@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/events/{{ event.id }}">Back to event</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">Back to event</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -42,7 +42,7 @@
           <p class="govuk-body">This event has no description to translate.</p>
         </div>
       {% else %}
-        <form method="post" action="/events/{{ event.id }}/translate">
+        <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/translate') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="source_text" value="{{ sourceText }}">
           <div class="govuk-form-group">

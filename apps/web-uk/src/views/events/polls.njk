@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/events/{{ event.id }}">Back to event</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">Back to event</a>
 
   <span class="govuk-caption-l">{{ event.title }}</span>
   <h1 class="govuk-heading-xl">Polls for this event</h1>
@@ -38,7 +38,7 @@
       <p class="govuk-body">Create a poll first, then come back to attach it to this event.</p>
     </div>
   {% else %}
-    <form method="post" action="/events/{{ event.id }}/polls">
+    <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/polls') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <fieldset class="govuk-fieldset" aria-describedby="event-polls-hint">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">

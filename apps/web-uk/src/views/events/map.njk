@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/events/{{ map.id }}">Back to event</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (map.id | string)) }}">Back to event</a>
 
   <span class="govuk-caption-l">{{ map.title }}</span>
   <h1 class="govuk-heading-xl">Event location</h1>
