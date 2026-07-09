@@ -120,8 +120,12 @@ empty-state member CTAs, pagination base URL, network search form, network
 tabs, load-more links, card actions, and back link through `urlFor()`. The
 latest notifications source slice now routes the notifications breadcrumb,
 filter links, read/delete form actions, redirect hidden values, pagination base
-URL, and unread empty-state CTA through `urlFor()`. The latest group-exchanges
-source slice now routes group-exchange create CTA, status tabs, detail links,
+URL, and unread empty-state CTA through `urlFor()`. The latest notifications
+redirect slice now sends grouped-read, read-all, delete-all, single-read,
+single-delete, API-error, and validated return redirects through
+`res.locals.urlFor`, so notification POST outcomes stay inside shared tenant
+mounts and custom-domain child paths. The latest group-exchanges source slice
+now routes group-exchange create CTA, status tabs, detail links,
 create form, participant add/remove/search forms, confirmation form, and
 complete/cancel actions through `urlFor()`. The latest messages source slice
 now routes direct-message breadcrumbs, conversation links, listing links,

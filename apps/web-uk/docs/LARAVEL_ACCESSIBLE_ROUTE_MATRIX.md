@@ -103,8 +103,11 @@ template family has source-level helper coverage for local marketplace
 also use `urlFor()` for local tabs, member links, pagination, search, load-more,
 and action targets. Notifications index source templates now also use
 `urlFor()` for breadcrumbs, filters, read/delete actions, redirect hidden
-values, pagination, and the unread empty-state CTA. Group-exchange
-list/create/detail source templates now also use `urlFor()` for the create CTA,
+values, pagination, and the unread empty-state CTA. Notification route-level
+POST redirects now also use `res.locals.urlFor` for grouped-read, read-all,
+delete-all, single-read, single-delete, API-error, and validated return
+outcomes. Group-exchange list/create/detail source templates now also use
+`urlFor()` for the create CTA,
 status tabs, detail links, create form, participant add/remove/search forms,
 confirmation form, and complete/cancel actions. Message index, direct
 conversation, and group conversation source templates now also use `urlFor()`

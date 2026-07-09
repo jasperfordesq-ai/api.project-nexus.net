@@ -1078,9 +1078,23 @@ visual Blade parity, ideation authorization depth, media upload proxying,
 feature gates, localization, broader Laravel runtime behavior, or ASP.NET
 backend compatibility.
 
+The seventieth source slice extends route-level redirect cleanup into
+notifications. `src/routes/notifications.js` now sends grouped-read, read-all,
+delete-all, single-read, single-delete, API-error, and validated safe-return
+redirects through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on raw `/notifications` redirect targets, then passed
+after conversion, and existing notification alias behavior still passes for the
+flat Laravel-compatible routes. This is notification redirect evidence only; it
+does not newly certify realtime unread-count depth, persistence side effects,
+localization, broader Laravel runtime behavior, visual Blade parity, or ASP.NET
+backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notification route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notification"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation template links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation action redirects"
@@ -1209,7 +1223,7 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run lint
 npm --prefix apps/web-uk test -- --runInBand
-npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters|notification route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"

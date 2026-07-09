@@ -740,8 +740,11 @@ requests redirect to `/login`, and signed-in requests render local account cards
 for wallet, messages, connections, notifications, profile, and settings. The
 notifications module includes Laravel accessible aliases for
 `/notifications/group/read` and `/notifications/delete-all`, backed by
-`/api/v2/notifications/group/read` and `DELETE /api/v2/notifications`. The wallet
-module includes the Laravel accessible `/wallet/donate` POST, backed by
+`/api/v2/notifications/group/read` and `DELETE /api/v2/notifications`.
+Notification POST redirects now resolve through the active tenant URL helper,
+so future ASP.NET mode must preserve shared-mount and custom-domain redirect
+targets instead of emitting flat root paths. The wallet module includes the
+Laravel accessible `/wallet/donate` POST, backed by
 `/api/v2/wallet/donate`. Saved-item removal and appreciation send/react aliases
 are backed by `/api/v2/me/saved-items` and `/api/v2/appreciations`.
 Saved-collection aliases are backed by `/api/v2/me/collections` plus

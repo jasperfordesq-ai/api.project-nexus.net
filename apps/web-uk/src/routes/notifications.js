@@ -18,6 +18,12 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { validateReturnUrl } = require('../lib/urlValidator');
 
 const router = express.Router();
+const NOTIFICATIONS_PATH = '/notifications';
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
 
 router.use(requireAuth);
 
@@ -49,7 +55,7 @@ router.get('/', asyncRoute(async (req, res) => {
 router.post('/group/read', asyncRoute(async (req, res) => {
   const groupKey = typeof req.body.group_key === 'string' ? req.body.group_key.trim() : '';
   if (!groupKey) {
-    return res.redirect('/notifications');
+    return redirectTo(res, NOTIFICATIONS_PATH);
   }
 
   try {
@@ -59,7 +65,7 @@ router.post('/group/read', asyncRoute(async (req, res) => {
     if (req.flash) req.flash('error', error.message || 'Unable to mark grouped notifications as read');
   }
 
-  return res.redirect('/notifications?status=group-marked-read');
+  return redirectTo(res, `${NOTIFICATIONS_PATH}?status=group-marked-read`);
 }));
 
 // Mark single notification as read
@@ -72,16 +78,16 @@ router.post('/:id/read', asyncRoute(async (req, res) => {
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) throw error;
     if (req.flash) req.flash('error', error.message || 'Unable to mark notification as read');
-    return res.redirect('/notifications');
+    return redirectTo(res, NOTIFICATIONS_PATH);
   }
 
   // If redirect URL provided, validate it to prevent open redirect attacks
   if (redirect) {
-    const safeRedirect = validateReturnUrl(redirect, '/notifications');
-    return res.redirect(safeRedirect);
+    const safeRedirect = validateReturnUrl(redirect, NOTIFICATIONS_PATH);
+    return redirectTo(res, safeRedirect);
   }
 
-  res.redirect('/notifications');
+  redirectTo(res, NOTIFICATIONS_PATH);
 }));
 
 // Mark all notifications as read
@@ -98,7 +104,7 @@ router.post('/read-all', asyncRoute(async (req, res) => {
     if (req.flash) req.flash('error', error.message || 'Unable to mark notifications as read');
   }
 
-  res.redirect('/notifications');
+  redirectTo(res, NOTIFICATIONS_PATH);
 }));
 
 // Laravel accessible alias: delete every notification for the signed-in user.
@@ -110,7 +116,7 @@ router.post('/delete-all', asyncRoute(async (req, res) => {
     if (req.flash) req.flash('error', error.message || 'Unable to delete notifications');
   }
 
-  return res.redirect('/notifications?status=all-notifications-deleted');
+  return redirectTo(res, `${NOTIFICATIONS_PATH}?status=all-notifications-deleted`);
 }));
 
 // Delete notification
@@ -128,7 +134,7 @@ router.post('/:id/delete', asyncRoute(async (req, res) => {
     if (req.flash) req.flash('error', error.message || 'Unable to delete notification');
   }
 
-  res.redirect('/notifications');
+  redirectTo(res, NOTIFICATIONS_PATH);
 }));
 
 // Helper to get notification link based on type
