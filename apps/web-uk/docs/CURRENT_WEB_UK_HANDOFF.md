@@ -97,6 +97,9 @@ tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
 domain homes send the resolved Host and Origin. The latest federation hub
 source slice now routes the hub service navigation, opt-in/opt-out CTAs,
 partner preview links, view-all link, and quick links through `urlFor()`.
+The latest federation onboarding source slice now routes the wizard back link,
+service navigation, step forms, step-back links, and do-this-later links through
+`urlFor()`.
 The federation member source slice routes the federation member back link,
 federation service navigation, opt-in CTA, connection/message forms, and
 transfer CTA through `urlFor()`. The latest connections source slice now routes the connections
@@ -328,6 +331,14 @@ template-helper slice:
 - `Select-String -Path apps\web-uk\src\views\federation\index.njk -SimpleMatch -Pattern 'href="/federation','action="/federation','href="{{ partner.href }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation hub"` passed: 2 selected tests.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/federation`, `SMOKE_BODY_TEXT_PAGE_PATHS=/federation=>Federation`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-09 for the federation onboarding
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "federation onboarding"` first failed on raw `/federation` links/actions in `src/views/federation/onboarding.njk`, then passed after the wizard back link, service navigation, POST actions, step-back links, and do-this-later links were routed through `urlFor()`.
+- `Select-String -Path apps\web-uk\src\views\federation\onboarding.njk -SimpleMatch -Pattern 'href="/federation','action="/federation'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation onboarding"` passed: 1 selected test.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/federation/onboarding`, `SMOKE_BODY_TEXT_PAGE_PATHS=/federation/onboarding=>Welcome to the community network`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 
 Latest consolidation verification on 2026-07-08:
 

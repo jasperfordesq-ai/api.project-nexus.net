@@ -462,6 +462,17 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toContain('href="{{ urlFor(partner.href) }}"');
   });
 
+  it('keeps federation onboarding wizard links and forms behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'federation', 'onboarding.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/federation/);
+    expect(template).not.toMatch(/action="\/federation/);
+    expect(template).toMatch(/urlFor\(["']\/federation/);
+  });
+
   it('keeps connections navigation, member links, forms, and pagination behind urlFor()', () => {
     const templates = [
       path.join('connections', 'index.njk'),

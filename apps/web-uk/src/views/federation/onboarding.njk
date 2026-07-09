@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -16,15 +16,15 @@
 
       <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
         <ul class="govuk-service-navigation__list">
-          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
         </ul>
       </nav>
 
@@ -82,16 +82,16 @@
           </div>
         </div>
 
-        <form id="fed-onboarding-form" method="post" action="/federation/onboarding">
+        <form id="fed-onboarding-form" method="post" action="{{ urlFor('/federation/onboarding') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="welcome">
           <div class="govuk-button-group">
             <button type="submit" class="govuk-button" data-module="govuk-button">Get started</button>
-            <a class="govuk-link" href="/federation">Do this later</a>
+            <a class="govuk-link" href="{{ urlFor('/federation') }}">Do this later</a>
           </div>
         </form>
       {% elif step == "privacy" %}
-        <form id="fed-onboarding-form" method="post" action="/federation/onboarding">
+        <form id="fed-onboarding-form" method="post" action="{{ urlFor('/federation/onboarding') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="privacy">
 
@@ -130,12 +130,12 @@
           </fieldset>
 
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/federation/onboarding?step=welcome">Back</a>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=welcome') }}">Back</a>
             <button type="submit" class="govuk-button" data-module="govuk-button">Continue</button>
           </div>
         </form>
       {% elif step == "communication" %}
-        <form id="fed-onboarding-form" method="post" action="/federation/onboarding">
+        <form id="fed-onboarding-form" method="post" action="{{ urlFor('/federation/onboarding') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="communication">
 
@@ -189,7 +189,7 @@
           </fieldset>
 
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/federation/onboarding?step=privacy">Back</a>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=privacy') }}">Back</a>
             <button type="submit" class="govuk-button" data-module="govuk-button">Continue</button>
           </div>
         </form>
@@ -270,13 +270,13 @@
           </strong>
         </div>
 
-        <form id="fed-onboarding-form" method="post" action="/federation/onboarding">
+        <form id="fed-onboarding-form" method="post" action="{{ urlFor('/federation/onboarding') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="confirm">
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/federation/onboarding?step=communication">Back</a>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=communication') }}">Back</a>
             <button type="submit" class="govuk-button" data-module="govuk-button">Enable federation</button>
-            <a class="govuk-link" href="/federation">Do this later</a>
+            <a class="govuk-link" href="{{ urlFor('/federation') }}">Do this later</a>
           </div>
         </form>
       {% endif %}

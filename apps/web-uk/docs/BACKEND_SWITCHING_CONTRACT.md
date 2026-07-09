@@ -665,6 +665,12 @@ and quick links through `urlFor()`. A scoped Laravel runtime smoke against
 `WEB_UK_BASE_URL=http://127.0.0.1:5180`, Laravel
 `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `12/12` checks including
 signed `/federation` and `/federation=>Federation`.
+The federation onboarding source-helper slice now routes the wizard back link,
+service navigation, step form actions, step-back links, and do-this-later links
+through `urlFor()`. A scoped Laravel runtime smoke against the same Web UK and
+Laravel bases with `TENANT_ID=2` passed `12/12` checks including signed
+`/federation/onboarding` and
+`/federation/onboarding=>Welcome to the community network`.
 The same 2026-07-08 temporary process then recertified the remaining chunked
 page sweeps after earlier `1/8` and post-fix `2/8` mixed chunks passed:
 `SMOKE_MODULE_PAGE_CHUNK=3/8` through `8/8` passed with `269/269` repeated

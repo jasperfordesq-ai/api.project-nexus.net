@@ -143,8 +143,10 @@ Current gaps:
   family now has source-level `urlFor()` coverage for local marketplace links
   and forms. The latest focused source conversion covers the federation hub
   template, including service navigation, opt-in/opt-out CTAs, partner preview
-  links, the view-all partners link, and quick links. The federation member
-  detail template conversion covers the back link, federation service navigation,
+  links, the view-all partners link, and quick links. The latest focused source
+  conversion covers the federation onboarding wizard, including the back link,
+  service navigation, step form actions, step-back links, and do-this-later
+  links. The federation member detail template conversion covers the back link, federation service navigation,
   opt-in CTA, connection/message forms, and transfer CTA. The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,
