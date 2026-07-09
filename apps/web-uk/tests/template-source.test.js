@@ -868,4 +868,14 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/coupons/);
   });
+
+  it('keeps the shared pagination partial default behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'partials', 'pagination.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toContain('baseUrl: "/members"');
+    expect(template).toContain("urlFor('/members')");
+  });
 });

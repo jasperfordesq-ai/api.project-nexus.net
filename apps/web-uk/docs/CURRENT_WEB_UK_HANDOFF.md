@@ -193,6 +193,10 @@ The latest AI chat and matches source slice now routes AI chat back links,
 conversation links, new-conversation links, chat form actions, matches filters,
 board links, listing/group/event links, dismiss forms, empty-state CTAs, and
 back links through `urlFor()`.
+The latest shared pagination partial slice now changes the documented/default
+members pagination base URL from raw `/members` to `urlFor('/members')`, so a
+caller that omits `paginationConfig.baseUrl` does not leak a flat root path
+under shared tenant mounts or custom-domain child paths.
 The latest shell tenant-gating slice now mirrors Laravel
 `AlphaController::alphaNavItems()` and `alphaFooterColumns()` for shared shell
 links: Dashboard, Feed, Listings, Members, Events, Volunteering, and footer
@@ -388,6 +392,18 @@ template-helper slice:
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed 13/13 checks, including signed `/chat=>AI assistant`, `/matches=>Your matches`, and `/matches/board=>Your matches`.
 - `rg -n --glob '*.njk' 'href="/(chat|explore|matches|listings|groups|events)|action="/(chat|matches)' apps/web-uk/src/views/ai-chat apps/web-uk/src/views/matches` returned no matches.
 - This is focused source-level and runtime render evidence for the AI chat/matches slice only. It does not certify full visual Blade parity, localization, recommendation persistence depth, or ASP.NET backend switching.
+
+Latest focused verification on 2026-07-09 for the shared pagination partial
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "shared pagination"` first failed on the raw `baseUrl: "/members"` default in `src/views/partials/pagination.njk`, then passed after the default moved to `urlFor('/members')`.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js` passed 42/42 source tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed Laravel members index"` passed the focused members render smoke, including a `GET /members` 200 response.
+- `npm --prefix apps/web-uk test -- --runInBand` passed 757/757 tests across 11 suites.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, and no unexpected extras.
+- A scoped live Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed for `/members` body text containing `Community members`, with all other smoke buckets disabled.
+- This is shared partial source and focused members runtime evidence only. It does not newly certify visual pagination parity, every pagination caller, localization, or ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the Explore tenant-gated card and
 live-content link slice:

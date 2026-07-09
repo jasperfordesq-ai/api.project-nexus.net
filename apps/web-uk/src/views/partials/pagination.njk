@@ -3,7 +3,7 @@
 
   Usage:
   {% set paginationConfig = {
-    baseUrl: "/members",
+    baseUrl: urlFor('/members'),
     page: pagination.page,
     totalPages: pagination.totalPages or pagination.total_pages,
     queryParams: { search: searchQuery }
@@ -11,10 +11,11 @@
   {% include "partials/pagination.njk" %}
 #}
 {% if paginationConfig.totalPages > 1 %}
+  {% set paginationBaseUrl = paginationConfig.baseUrl or urlFor('/members') %}
   <nav class="govuk-pagination app-pagination" aria-label="Pagination">
     {% if paginationConfig.page > 1 %}
       <div class="govuk-pagination__prev">
-        <a class="govuk-link govuk-pagination__link" href="{{ paginationConfig.baseUrl }}?page={{ paginationConfig.page - 1 }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" rel="prev">
+        <a class="govuk-link govuk-pagination__link" href="{{ paginationBaseUrl }}?page={{ paginationConfig.page - 1 }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" rel="prev">
           <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
             <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
           </svg>
@@ -27,7 +28,7 @@
       {# Show first page if not near start #}
       {% if paginationConfig.page > 3 %}
         <li class="govuk-pagination__item">
-          <a class="govuk-link govuk-pagination__link" href="{{ paginationConfig.baseUrl }}?page=1{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page 1">
+          <a class="govuk-link govuk-pagination__link" href="{{ paginationBaseUrl }}?page=1{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page 1">
             1
           </a>
         </li>
@@ -40,7 +41,7 @@
       {% for i in range(1, paginationConfig.totalPages + 1) %}
         {% if i >= paginationConfig.page - 2 and i <= paginationConfig.page + 2 %}
           <li class="govuk-pagination__item{% if i == paginationConfig.page %} govuk-pagination__item--current{% endif %}">
-            <a class="govuk-link govuk-pagination__link" href="{{ paginationConfig.baseUrl }}?page={{ i }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page {{ i }}"{% if i == paginationConfig.page %} aria-current="page"{% endif %}>
+            <a class="govuk-link govuk-pagination__link" href="{{ paginationBaseUrl }}?page={{ i }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page {{ i }}"{% if i == paginationConfig.page %} aria-current="page"{% endif %}>
               {{ i }}
             </a>
           </li>
@@ -53,7 +54,7 @@
           <li class="govuk-pagination__item govuk-pagination__item--ellipses">&ctdot;</li>
         {% endif %}
         <li class="govuk-pagination__item">
-          <a class="govuk-link govuk-pagination__link" href="{{ paginationConfig.baseUrl }}?page={{ paginationConfig.totalPages }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page {{ paginationConfig.totalPages }}">
+          <a class="govuk-link govuk-pagination__link" href="{{ paginationBaseUrl }}?page={{ paginationConfig.totalPages }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" aria-label="Page {{ paginationConfig.totalPages }}">
             {{ paginationConfig.totalPages }}
           </a>
         </li>
@@ -62,7 +63,7 @@
 
     {% if paginationConfig.page < paginationConfig.totalPages %}
       <div class="govuk-pagination__next">
-        <a class="govuk-link govuk-pagination__link" href="{{ paginationConfig.baseUrl }}?page={{ paginationConfig.page + 1 }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" rel="next">
+        <a class="govuk-link govuk-pagination__link" href="{{ paginationBaseUrl }}?page={{ paginationConfig.page + 1 }}{% for key, value in paginationConfig.queryParams %}{% if value %}&{{ key }}={{ value | urlencode }}{% endif %}{% endfor %}" rel="next">
           <span class="govuk-pagination__link-title">Next</span>
           <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
             <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>

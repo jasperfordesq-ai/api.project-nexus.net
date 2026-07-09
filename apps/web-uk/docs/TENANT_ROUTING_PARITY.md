@@ -181,7 +181,10 @@ Current gaps:
   returns no matches. The latest focused source conversion covers AI chat and
   matches templates, including AI chat back/conversation/new-conversation
   links, chat form actions, matches filters, board links, listing/group/event
-  links, dismiss forms, empty-state CTAs, and back links.
+  links, dismiss forms, empty-state CTAs, and back links. A shared pagination
+  partial cleanup now changes the documented/default members pagination base
+  URL from raw `/members` to `urlFor('/members')`, so omitted `baseUrl`
+  fallbacks stay tenant-aware.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -734,9 +737,27 @@ Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed
 markers. This does not newly certify full visual Blade parity, localization,
 recommendation persistence depth, or ASP.NET backend compatibility.
 
+The forty-eighth template-helper source slice cleans up the shared pagination
+partial default. `src/views/partials/pagination.njk` no longer documents a raw
+`baseUrl: "/members"` fallback and instead uses `urlFor('/members')` when
+`paginationConfig.baseUrl` is omitted. The source-level regression first
+failed on the raw default, then passed after conversion. Focused verification
+also passed the signed Laravel members-index render test, lint, the route
+matrix with 608/608 Laravel accessible routes matched and 0 missing, the full
+Web UK Jest suite with 757/757 tests passing across 11 suites, and a
+scoped live Laravel runtime smoke for `/members` containing `Community members`.
+This does not newly certify visual pagination parity, every pagination caller,
+localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "shared pagination"
+npm --prefix apps/web-uk test -- --runInBand
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed Laravel members index"
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk run route:matrix
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/members=>Community members'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "AI chat and matches"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "matches|AI chat"
 $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/chat=>AI assistant,/matches=>Your matches,/matches/board=>Your matches'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel

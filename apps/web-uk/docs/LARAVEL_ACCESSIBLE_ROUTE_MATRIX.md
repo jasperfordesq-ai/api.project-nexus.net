@@ -110,6 +110,9 @@ Newsletter-unsubscribe and error-page fallback home links now also use
 `urlFor('/')`, matching Laravel's `route('govuk-alpha.home', ...)` pattern for
 the unsubscribe back-home link and keeping fallback navigation tenant/custom-
 domain aware.
+The shared pagination partial default now also uses `urlFor('/members')`
+instead of a raw `/members` sample/default base URL, keeping omitted pagination
+fallbacks tenant-aware under shared mounts and custom-domain child paths.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values
