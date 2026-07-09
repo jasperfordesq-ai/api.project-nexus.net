@@ -331,6 +331,18 @@ and removes linked rows through the React delete call. Exact Laravel
 notification side effects, maximum-child/nesting/circular validation parity,
 activity summary fidelity, and browser smoke coverage remain deeper gaps.
 
+The Laravel React FADP consent-banner slice now has focused ASP.NET contract
+coverage for `POST /api/v2/me/fadp/consent` and `GET
+/api/v2/me/fadp/consent-history`, driven from
+`react-frontend/src/components/legal/FadpConsentBanner.tsx` and Laravel
+`FadpComplianceController::recordConsent/myConsentHistory`. ASP.NET now accepts
+Laravel's required `consent_type` plus `action=granted|withdrawn` payload,
+returns `data.recorded`, `data.consent_type`, and `data.action`, persists the
+grant/withdrawal state in `consent_records`, and projects history rows with the
+Laravel `action` field. Exact append-only Laravel `fadp_consent_records`
+schema, `consent_version`, `user_agent`, metadata storage, and service-side
+FADP availability checks remain deeper compliance gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,

@@ -55,6 +55,10 @@ Status values:
 
 - The Laravel repo has 24 curated module guides in `docs/modules/`; those guides
   should be read before implementing each corresponding .NET module.
+- Members/GDPR FADP consent-banner calls now have focused backend contract
+  coverage: `POST /api/v2/me/fadp/consent` accepts Laravel React
+  `action=granted|withdrawn`, returns `data.recorded/consent_type/action`, and
+  `GET /api/v2/me/fadp/consent-history` projects Laravel `action` rows.
 - "Mapped" does not mean complete. It means the .NET repo has enough surface to
   start a detailed contract/workflow parity audit.
 - Full parity requires the gap register in `LARAVEL_PARITY_MAP.md` to close, not

@@ -136,16 +136,96 @@ public class MemberParityController : ControllerBase
     }
 
     [HttpGet("me/fadp/consent-history")]
-    public async Task<IActionResult> FadpConsentHistory() => Ok(new { data = await _db.ConsentRecords.Where(c => c.UserId == UserId()).OrderByDescending(c => c.CreatedAt).ToListAsync() });
+    public async Task<IActionResult> FadpConsentHistory()
+    {
+        var history = await _db.ConsentRecords
+            .AsNoTracking()
+            .Where(c => c.UserId == UserId())
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                id = c.Id,
+                tenant_id = c.TenantId,
+                user_id = c.UserId,
+                consent_type = c.ConsentType,
+                action = c.IsGranted ? "granted" : "withdrawn",
+                consent_version = (string?)null,
+                ip_address = c.IpAddress,
+                user_agent = (string?)null,
+                metadata = (string?)null,
+                created_at = c.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = history });
+    }
 
     [HttpPost("me/fadp/consent")]
     public async Task<IActionResult> FadpConsent([FromBody] JsonElement body)
     {
-        var granted = Bool(body, "granted") ?? true;
-        var record = new ConsentRecord { TenantId = TenantId(), UserId = UserId(), ConsentType = Str(body, "consent_type") ?? "fadp", IsGranted = granted, GrantedAt = granted ? DateTime.UtcNow : null, RevokedAt = granted ? null : DateTime.UtcNow, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() };
-        _db.ConsentRecords.Add(record);
+        var consentType = Str(body, "consent_type")?.Trim();
+        if (string.IsNullOrWhiteSpace(consentType))
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "consent_type is required.", field = "consent_type" } }
+            });
+        }
+
+        var action = Str(body, "action")?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(action))
+        {
+            var grantedValue = Bool(body, "granted");
+            action = grantedValue switch
+            {
+                true => "granted",
+                false => "withdrawn",
+                _ => null
+            };
+        }
+
+        if (action is not ("granted" or "withdrawn"))
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid FADP consent action.", field = "action" } }
+            });
+        }
+
+        var granted = action == "granted";
+        var now = DateTime.UtcNow;
+        var record = await _db.ConsentRecords.FirstOrDefaultAsync(c =>
+            c.UserId == UserId() &&
+            c.ConsentType == consentType);
+
+        if (record == null)
+        {
+            record = new ConsentRecord
+            {
+                TenantId = TenantId(),
+                UserId = UserId(),
+                ConsentType = consentType,
+                CreatedAt = now
+            };
+            _db.ConsentRecords.Add(record);
+        }
+
+        record.IsGranted = granted;
+        record.GrantedAt = granted ? now : null;
+        record.RevokedAt = granted ? null : now;
+        record.UpdatedAt = now;
+        record.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         await _db.SaveChangesAsync();
-        return Ok(new { data = record });
+
+        return Ok(new
+        {
+            data = new
+            {
+                recorded = true,
+                consent_type = consentType,
+                action
+            }
+        });
     }
 
     [HttpGet("me/residency-verification")]
