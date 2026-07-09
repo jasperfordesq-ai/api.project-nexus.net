@@ -563,6 +563,12 @@ checks and `0` failures. The body-text-only default smoke scope was recertified
 in 8 chunks against the same port, covering all 247 body-text contract checks
 with `295/295` executed checks including repeated auth/health setup checks and
 `0` failures.
+A follow-up focused resource source-helper smoke on 2026-07-09 against
+temporary in-process Web UK `http://127.0.0.1:54932`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `18/18` checks: the base
+API/health, cookie, login, account, and logout checks plus module renders and
+body markers for `/resources`, `/resources/library`, `/resources/upload`, and
+`/resources/10/comments`.
 The signed wallet responses `/wallet/export.csv`, `/wallet/manage`, and
 `/wallet/recipients` returned expected response markers against
 `WEB_UK_BASE_URL=http://127.0.0.1:6236`; the CSV export marker tracks the

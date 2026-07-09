@@ -11,10 +11,10 @@
   <p class="govuk-body-l">Guides and reference materials shared with the community.</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
-    <a class="govuk-link" href="/resources/library">Open the full resource library</a>
+    <a class="govuk-link" href="{{ urlFor('/resources/library') }}">Open the full resource library</a>
   </p>
 
-  <form method="get" action="/resources" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/resources') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">Find a resource</label>
       <div id="q-hint" class="govuk-hint">Search by title.</div>

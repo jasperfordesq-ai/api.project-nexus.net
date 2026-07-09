@@ -195,6 +195,28 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps resource browse, library, upload, delete, and discussion controls behind urlFor()', () => {
+    const templates = [
+      path.join('resources', 'index.njk'),
+      path.join('resources', 'library.njk'),
+      path.join('resources', 'upload.njk'),
+      path.join('resources', 'delete.njk'),
+      path.join('resources', 'comments.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/resources/);
+      expect(template).not.toMatch(/action="\/resources/);
+      expect(template).not.toContain('href: "/resources');
+      expect(template).not.toContain('baseUrl: "/resources');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/resources/);
+  });
+
   it('keeps listing index and form controls behind urlFor()', () => {
     const templates = [
       path.join('listings', 'index.njk'),

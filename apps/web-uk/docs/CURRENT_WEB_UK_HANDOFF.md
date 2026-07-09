@@ -129,7 +129,10 @@ empty-state actions, create/edit form actions, breadcrumbs, back links, and
 cancel links through `urlFor()`. The latest groups index/form source slice now
 routes group list create CTA, search form, clear links, group card links,
 pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
-links, and legacy my-groups source controls through `urlFor()`.
+links, and legacy my-groups source controls through `urlFor()`. The latest
+resources source slice now routes resource browse, library, upload, delete,
+download, comment, reaction, reorder, category, search, and pagination
+controls through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -193,6 +196,18 @@ template-helper slice:
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 728 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary Web UK `http://127.0.0.1:6465` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/groups=>Groups` and `/groups/new=>Create a group`.
+
+Latest focused verification on 2026-07-09 for the resources
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "resource browse"` first failed on raw `/resources` links/actions, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\resources\*.njk -Pattern 'href="/resources','action="/resources','href: "/resources','baseUrl: "/resources'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "resource"` passed: 14 selected tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 24 tests.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 730 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:54932` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 18 checks: base API/health, cookie, login, account, logout, module renders for `/resources`, `/resources/library`, `/resources/upload`, and `/resources/10/comments`, plus body markers `Resources`, `Resource library`, `Upload a resource`, and `Discussion`.
 
 Latest focused verification on 2026-07-09 for the tenant parent-domain
 reserved-path slice:

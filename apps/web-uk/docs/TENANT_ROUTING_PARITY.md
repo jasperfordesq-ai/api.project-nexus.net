@@ -470,9 +470,26 @@ and logout checks plus `timebank.global|/` containing
 `Exchange Skills Across Borders` with no legacy `/alpha` or `/accessible`
 links.
 
+The thirty-second template-helper source slice extends direct `urlFor()`
+conversion into resource pages. `src/views/resources/index.njk`,
+`library.njk`, `upload.njk`, `delete.njk`, and `comments.njk` now route simple
+browse, full library, upload, delete confirmation, download, discussion,
+reaction, comment, reorder, category, search, and pagination controls through
+`urlFor()`. The source-level regression first failed on raw `/resources`
+links/actions, then passed after conversion; a source scan for resource-local
+raw `href`, `action`, JavaScript `href`, and pagination `baseUrl` strings
+returns no matches. A focused exported Laravel runtime smoke against temporary
+in-process Web UK `http://127.0.0.1:54932` and Laravel
+`http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed the base
+API/health, cookie, login, account, and logout checks plus `/resources`,
+`/resources/library`, `/resources/upload`, and `/resources/10/comments` module
+renders and body markers.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "resource browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "resource"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk run route:matrix

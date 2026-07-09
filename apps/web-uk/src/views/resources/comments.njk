@@ -16,7 +16,7 @@
     <p class="govuk-body govuk-!-margin-bottom-2">{{ comment.content }}</p>
 
     {% if currentUserId and comment.userId == currentUserId %}
-      <form method="post" action="/resources/{{ resourceId }}/comments/{{ comment.id }}/delete" class="govuk-!-display-inline">
+      <form method="post" action="{{ urlFor('/resources/' + (resourceId | string) + '/comments/' + (comment.id | string) + '/delete') }}" class="govuk-!-display-inline">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete this comment">Delete</button>
       </form>
@@ -35,7 +35,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/resources/library">Back to resource library</a>
+      <a class="govuk-back-link" href="{{ urlFor('/resources/library') }}">Back to resource library</a>
 
       {% if status %}
         {% if status.type == "success" %}
@@ -65,7 +65,7 @@
           <div class="nexus-alpha-actions govuk-button-group govuk-!-margin-bottom-2">
             {% for reactionType, reactionLabel in reactionLabels %}
               {% set typeCount = reactions.counts[reactionType] or 0 %}
-              <form method="post" action="/resources/{{ resourceId }}/react" class="nexus-alpha-reaction-form">
+              <form method="post" action="{{ urlFor('/resources/' + (resourceId | string) + '/react') }}" class="nexus-alpha-reaction-form">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="emoji" value="{{ reactionType }}">
                 <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0{% if reactions.userReaction == reactionType %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" aria-pressed="{% if reactions.userReaction == reactionType %}true{% else %}false{% endif %}">
@@ -94,7 +94,7 @@
         {% endif %}
 
         <h3 class="govuk-heading-m govuk-!-margin-top-6">Add a comment</h3>
-        <form method="post" action="/resources/{{ resourceId }}/comments/add">
+        <form method="post" action="{{ urlFor('/resources/' + (resourceId | string) + '/comments/add') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if status and status.anchor == 'body' %} govuk-form-group--error{% endif %}">
             <label class="govuk-label govuk-label--s" for="body">Your comment</label>
