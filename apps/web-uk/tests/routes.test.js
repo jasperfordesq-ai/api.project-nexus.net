@@ -453,6 +453,33 @@ describe('Public Routes', () => {
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 
+    it('allows Laravel-unreserved accessible route names to resolve as parent-domain child slugs', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 33,
+          name: 'Courses Timebank',
+          slug: 'courses',
+          parent_domain: 'parent-domain.test'
+        }
+      });
+
+      const response = await request(app)
+        .get('/courses/login?status=auth-required')
+        .set('Host', 'parent-domain.test');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Sign in');
+      expect(response.text).toContain('action="/courses/login"');
+      expect(response.text).toContain('href="/courses/register"');
+      expect(response.text).not.toContain('/courses/accessible');
+      expect(response.text).not.toContain('/courses/alpha');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'courses' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
     it('does not treat Laravel-reserved parent-domain paths as child tenant slugs', async () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();

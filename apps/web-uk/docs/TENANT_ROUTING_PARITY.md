@@ -106,7 +106,10 @@ Current implemented slice:
   `TenantContext::getReservedPaths()` for platform, auth, public-info, admin,
   system, and legacy reserved first segments. Reserved paths such as `/classic`
   stay host-scoped platform paths and no longer trigger a child-tenant
-  `/api/v2/tenant/bootstrap?slug=classic` probe.
+  `/api/v2/tenant/bootstrap?slug=classic` probe. The reserved list is now exact
+  rather than broader than Laravel's list, so Laravel-unreserved route-looking
+  names such as `courses` can still resolve as child tenant slugs when Laravel
+  returns a matching `parent_domain`.
 
 Current gaps:
 
@@ -188,6 +191,12 @@ Current gaps:
   `parent-domain.test/classic`: the regression first failed because Web UK
   called `/api/v2/tenant/bootstrap?slug=classic`, then passed after aligning
   the reserved segment set with Laravel `TenantContext::getReservedPaths()`.
+  Over-reserved path handling is covered by Jest for
+  `parent-domain.test/courses/login`: the regression first failed because Web
+  UK treated `courses` as a reserved parent route segment even though Laravel
+  does not reserve it, then passed after the set was made an exact source match.
+  A source comparison now reports no Web UK-only and no Laravel-only reserved
+  child segments.
 - Shared tenant-root home rendering is covered by Jest and a scoped live
   Laravel smoke against `/hour-timebank/accessible`, checking `Accessible`,
   `Connecting Communities`, and `What you can do` in the rendered page body.
@@ -484,12 +493,24 @@ paths whose first segment is reserved by Laravel, such as `/classic`, now stay
 on the host-scoped platform/custom-domain route path instead of being probed as
 child tenant slugs. The source-level regression first failed on an unexpected
 `getTenantBootstrap({ slug: "classic" })` call, then passed after the reserved
-segment set was expanded. A focused exported Laravel runtime smoke against
-temporary in-process Web UK `http://127.0.0.1:6467` and Laravel
-`http://127.0.0.1:8088` passed the base API/health, cookie, login, account,
-and logout checks plus `timebank.global|/` containing
-`Exchange Skills Across Borders` with no legacy `/alpha` or `/accessible`
-links.
+segment set was expanded.
+
+The forty-sixth tenant-routing slice tightens that same guard from a
+Laravel-plus-local reserved list to an exact Laravel reserved list. Names that
+look like accessible pages locally but are not reserved by Laravel, such as
+`courses`, are again eligible to resolve as parent-domain child tenant slugs.
+The focused regression first failed because `/courses/login` on
+`parent-domain.test` stayed on the parent route path, then passed after Web UK
+called `getTenantBootstrap({ slug: "courses" })` and served the child login page
+under `/courses`. A source comparison between Laravel
+`TenantContext::getReservedPaths()` and Web UK `RESERVED_CHILD_SEGMENTS` now
+reports no differences.
+
+A scoped Laravel runtime smoke against temporary in-process Web UK
+`http://127.0.0.1:59115` and Laravel `http://127.0.0.1:8088` passed the base
+API/health, cookie, login, account, and logout checks plus
+`timebank.global|/hour-timebank/login` containing `Sign in` with no legacy
+`/alpha` or `/accessible` links.
 
 The thirty-second template-helper source slice extends direct `urlFor()`
 conversion into resource pages. `src/views/resources/index.njk`,
@@ -718,6 +739,7 @@ npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBa
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "resource browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "resource"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-unreserved accessible route names"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run lint
