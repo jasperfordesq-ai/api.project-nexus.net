@@ -58,6 +58,14 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, path) {
+  return typeof res.locals?.urlFor === 'function' ? res.locals.urlFor(path) : path;
+}
+
+function redirectTo(res, path) {
+  return res.redirect(urlFor(res, path));
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
@@ -69,7 +77,7 @@ function apiErrorCode(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -90,15 +98,15 @@ async function callListing(token, method, path, data = undefined) {
 async function runListingAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
     await callListing(token, method, path, data);
-    return res.redirect(successRedirect);
+    return redirectTo(res, successRedirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
@@ -336,12 +344,12 @@ async function walletBalanceForExchange(token) {
 
 router.post('/generate-description', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = positiveInteger(req.body.listing_id);
   const title = trimmed(req.body.title, 255);
   if (title === '') {
-    return res.redirect(generateDescriptionRedirect(listingId, 'ai-title-required'));
+    return redirectTo(res, generateDescriptionRedirect(listingId, 'ai-title-required'));
   }
 
   const payload = {
@@ -362,7 +370,7 @@ router.post('/generate-description', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 403 ? 'ai-disabled' : 'ai-failed';
   }
 
-  return res.redirect(generateDescriptionRedirect(listingId, status));
+  return redirectTo(res, generateDescriptionRedirect(listingId, status));
 }));
 
 router.post('/:id(\\d+)/save', asyncRoute(async (req, res) => {
@@ -406,7 +414,7 @@ router.post('/:id(\\d+)/renew', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'like-failed';
@@ -421,17 +429,17 @@ router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  return res.redirect(listingRedirect(id, status, '#like'));
+  return redirectTo(res, listingRedirect(id, status, '#like'));
 }));
 
 router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const body = trimmed(req.body.body || req.body.content, 5000);
   if (body === '') {
-    return res.redirect(`/listings/${id}/comments?status=comment-invalid#add-comment`);
+    return redirectTo(res, `/listings/${id}/comments?status=comment-invalid#add-comment`);
   }
 
   const parentId = positiveInteger(req.body.parent_id);
@@ -454,12 +462,12 @@ router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
       : 'comment-failed';
   }
 
-  return res.redirect(`/listings/${id}/comments?status=${status}#add-comment`);
+  return redirectTo(res, `/listings/${id}/comments?status=${status}#add-comment`);
 }));
 
 router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = Number(req.params.listingId);
   const prepTime = boundedNumber(req.body.prep_time, 0, 24, null);
@@ -482,25 +490,25 @@ router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) =>
       data && (data.id || data.exchange_id || (data.exchange && data.exchange.id))
     );
     if (exchangeId !== null) {
-      return res.redirect(`/exchanges/${exchangeId}?status=exchange-created`);
+      return redirectTo(res, `/exchanges/${exchangeId}?status=exchange-created`);
     }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     const code = apiErrorCode(error);
     if (code === 'COMPLIANCE_VIOLATION') {
-      return res.redirect(`/listings/${listingId}/exchange-request?status=compliance-failed`);
+      return redirectTo(res, `/listings/${listingId}/exchange-request?status=compliance-failed`);
     }
     if (code === 'FEATURE_DISABLED') {
-      return res.redirect(listingRedirect(listingId, 'exchange-disabled'));
+      return redirectTo(res, listingRedirect(listingId, 'exchange-disabled'));
     }
   }
 
-  return res.redirect(`/listings/${listingId}/exchange-request?status=exchange-failed`);
+  return redirectTo(res, `/listings/${listingId}/exchange-request?status=exchange-failed`);
 }));
 
 router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = Number(req.params.listingId);
   const [listingResult, profileResult, walletBalance] = await Promise.all([
@@ -514,7 +522,7 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
   const ownerId = listingOwnerId(listing);
   const currentUserId = positiveInteger(currentUser.id);
   if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
-    return res.redirect(listingRedirect(listingId, 'own-listing'));
+    return redirectTo(res, listingRedirect(listingId, 'own-listing'));
   }
 
   const suggestedHours = suggestedExchangeHours(listing);
@@ -534,7 +542,7 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
 
 router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const days = listingAnalyticsDays(req.query.days);
@@ -576,7 +584,7 @@ router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const listingResult = await callListing(token, 'GET', `/${id}`);
@@ -605,11 +613,11 @@ router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = reportPayload(req.body);
   if (payload === null) {
-    return res.redirect(`/listings/${id}/report?status=report-invalid`);
+    return redirectTo(res, `/listings/${id}/report?status=report-invalid`);
   }
 
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let status = 'listing-reported';
   try {
@@ -621,12 +629,12 @@ router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
       : 'report-failed';
   }
 
-  return res.redirect(listingRedirect(id, status));
+  return redirectTo(res, listingRedirect(id, status));
 }));
 
 router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const [listingResult, profileResult] = await Promise.all([
@@ -742,7 +750,7 @@ router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, r
     if (req.flash) {
       req.flash('success', 'Listing created successfully');
     }
-    res.redirect('/listings');
+    return redirectTo(res, '/listings');
   } catch (error) {
     // Handle validation errors from API specifically for form re-render
     if (error instanceof ApiError && error.status === 400) {
@@ -790,7 +798,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
 
   // Only the owner may access the edit form
   if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
-    return res.redirect('/listings/' + req.params.id);
+    return redirectTo(res, `/listings/${req.params.id}`);
   }
 
   res.render('listings/form', {
@@ -844,7 +852,7 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(as
     if (req.flash) {
       req.flash('success', 'Listing updated successfully');
     }
-    res.redirect('/listings');
+    return redirectTo(res, '/listings');
   } catch (error) {
     // Handle validation errors from API specifically for form re-render
     if (error instanceof ApiError && error.status === 400) {
@@ -868,7 +876,7 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.listingDelete(), asyncRoute(
   if (req.flash) {
     req.flash('success', 'Listing deleted successfully');
   }
-  res.redirect('/listings');
+  return redirectTo(res, '/listings');
 }, { notFoundTitle: 'Listing not found' }));
 
 module.exports = router;

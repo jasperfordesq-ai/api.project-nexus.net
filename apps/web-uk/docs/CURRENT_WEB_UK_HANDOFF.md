@@ -181,7 +181,12 @@ certificate/learn errors, learner actions, instructor course, section, lesson,
 publish/delete, and grading outcomes through `res.locals.urlFor`. The latest listing index/form source slice now routes listing
 breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
 controls, pagination, empty-state CTAs, create/edit form action, and cancel
-link through `urlFor()`. The latest events index/form source slice now routes
+link through `urlFor()`. The latest listing route-redirect slice now sends
+legacy listing auth handoffs, generate-description outcomes, like/comment/
+exchange/report actions, owner self-request/edit redirects, create/update
+successes, and delete successes through `res.locals.urlFor`, so listing route
+exits no longer rely on flat `/listings` redirects before shared-mount or
+custom-domain rewriting. The latest events index/form source slice now routes
 event list create CTA, search form, event and group links, pagination,
 empty-state actions, create/edit form actions, breadcrumbs, back links, and
 cancel links through `urlFor()`. The latest groups index/form source slice now
@@ -976,6 +981,10 @@ Latest local verification after the public/auth/support source-helper slice:
 - `rg -n 'href="/listings|action="/listings|href: "/listings' apps/web-uk/src/views/listings/index.njk apps/web-uk/src/views/listings/form.njk` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed listing index|owner listing delete"` passed `2/2` selected listing tests.
 - A focused Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6463`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed base API/health, cookie-consent, login/account/logout checks plus `body-text-page-listings-contains-create-listing` for signed `/listings`.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "listing route redirects"` first failed on raw `res.redirect('/listings...')` calls in `src/routes/listings.js`, then passed after those route exits moved through `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "listing"` passed `14/14` selected listing and marketplace-listing tests after the listing route redirect conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed `86/86` source-helper tests after the listing route redirect conversion.
+- A targeted Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6611`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `11/11` checks: Laravel API reachability, Web UK health, account auth redirect, cookie-consent POSTs, login/account/logout, and signed `/listings` containing `Listings`.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`

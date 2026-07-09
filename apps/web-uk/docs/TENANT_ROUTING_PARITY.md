@@ -531,6 +531,12 @@ listing index/form raw `href`/`action` strings returns no matches. A focused
 Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6463` and
 Laravel `http://127.0.0.1:8088` passed the base API/health, cookie, login,
 account, and logout checks plus signed `/listings` containing `Create listing`.
+The latest listing route-redirect cleanup now sends listing auth handoffs,
+generate-description outcomes, like/comment/exchange/report actions, owner
+self-request/edit redirects, create/update successes, and delete successes
+through `res.locals.urlFor`, so those Laravel named-route equivalents stay
+inside shared tenant mounts and custom-domain child paths without relying only
+on response rewriting.
 
 The twenty-ninth template-helper source slice extends direct `urlFor()`
 conversion into event index and create/edit form pages.

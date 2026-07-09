@@ -674,6 +674,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/listings/);
   });
 
+  it('keeps listing route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'listings.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/listings/);
+    expect(route).not.toMatch(/res\.redirect\(`\/listings/);
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps marketplace offer and management controls behind urlFor()', () => {
     const templates = [
       path.join('marketplace', 'offers.njk'),
