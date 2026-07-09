@@ -161,6 +161,10 @@ Current gaps:
   opt-in/settings shortcuts, and invalid/empty conversation fallbacks through
   `res.locals.urlFor`, with shared-mount coverage proving
   `/acme/accessible/federation` redirects to the tenant-mounted login path.
+  The latest focused group/volunteering source conversion covers group
+  announcements, group files, and volunteering recommended shifts, including
+  announcement edit/pin/delete/create controls, file download/delete/upload
+  controls, and recommended opportunity links.
   The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,

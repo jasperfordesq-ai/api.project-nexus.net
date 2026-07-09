@@ -234,6 +234,23 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/report-a-problem/);
   });
 
+  it('keeps group announcement, group file, and recommended volunteering links behind urlFor()', () => {
+    const templates = [
+      path.join('groups', 'announcements.njk'),
+      path.join('groups', 'files.njk'),
+      path.join('volunteering', 'recommended-shifts.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/href="\/(?:groups|volunteering)/);
+    expect(source).not.toMatch(/action="\/groups/);
+    expect(source).toMatch(/urlFor\(["']\/groups/);
+    expect(source).toMatch(/urlFor\(["']\/volunteering/);
+  });
+
   it('keeps member directory, discovery, nearby, and insights controls behind urlFor()', () => {
     const templates = [
       path.join('members', 'index.njk'),

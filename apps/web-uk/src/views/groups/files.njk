@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
 
   <span class="govuk-caption-xl">Files for {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Group files</h1>
@@ -55,9 +55,9 @@
             <td class="govuk-table__cell">{{ file.uploaderName }}</td>
             <td class="govuk-table__cell">{{ file.uploadedAtLabel }}</td>
             <td class="govuk-table__cell">
-              <a class="govuk-link govuk-!-margin-right-2" href="/groups/{{ group.id }}/files/{{ file.id }}/download" aria-label="Download {{ file.fileName }}">Download</a>
+              <a class="govuk-link govuk-!-margin-right-2" href="{{ urlFor('/groups/' + (group.id | string) + '/files/' + (file.id | string) + '/download') }}" aria-label="Download {{ file.fileName }}">Download</a>
               {% if isAdmin %}
-                <form method="post" action="/groups/{{ group.id }}/files/{{ file.id }}/delete" style="display:inline">
+                <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/files/' + (file.id | string) + '/delete') }}" style="display:inline">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete {{ file.fileName }}">Delete</button>
                 </form>
@@ -72,7 +72,7 @@
   <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
   <h2 class="govuk-heading-l">Upload a file</h2>
 
-  <form method="post" action="/groups/{{ group.id }}/files" enctype="multipart/form-data" novalidate>
+  <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/files') }}" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if statusBanner and statusBanner.href == '#file-input' %} govuk-form-group--error{% endif %}">

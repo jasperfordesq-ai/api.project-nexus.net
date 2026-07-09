@@ -160,7 +160,10 @@ cancel links through `urlFor()`. The latest groups index/form source slice now
 routes group list create CTA, search form, clear links, group card links,
 pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
 links, and legacy my-groups source controls through `urlFor()`. The latest
-resources source slice now routes resource browse, library, upload, delete,
+group depth/volunteering source slice now routes group announcement back,
+edit, pin, delete, and create targets, group file back/download/delete/upload
+targets, and volunteering recommended-shift back/opportunity links through
+`urlFor()`. The latest resources source slice now routes resource browse, library, upload, delete,
 download, comment, reaction, reorder, category, search, and pagination
 controls through `urlFor()`. The latest resources redirect slice now routes
 resource auth-required handoffs, upload/reorder/delete outcomes, and

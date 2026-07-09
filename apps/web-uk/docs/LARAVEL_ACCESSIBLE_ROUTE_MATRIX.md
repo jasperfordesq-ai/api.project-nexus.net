@@ -378,6 +378,10 @@ Group index, create, edit, and legacy my-groups source templates now also use
 `urlFor()` for group list create CTA, search and clear controls, group card
 links, pagination base URL, create/edit form actions, breadcrumbs, back links,
 cancel links, and legacy my-groups source controls.
+Group announcement and file source templates now also use `urlFor()` for
+announcement edit/pin/delete/create controls, file download/delete/upload
+controls, and group back links. Volunteering recommended-shifts source links
+now use `urlFor()` for the volunteering back link and opportunity links.
 
 The legacy local event RSVP routes have been removed: GET `/events/my` and POST
 `/events/{id}/rsvp/remove` are no longer exposed. Event list pages no longer
