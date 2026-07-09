@@ -1253,7 +1253,8 @@ skips asset, API, upload, service-worker, health, and other infrastructure URLs
 so static resources stay on their flat public paths. Focused route tests passed
 with `30/30` tests, full Web UK Jest passed with `8` suites and `681` tests,
 lint passed, and the route matrix stayed at `608/608` Laravel accessible routes
-matched with `0` missing and `2` extra Web UK exchange routes.
+matched with `0` missing, `0` true extra Web UK routes, and `3` ignored
+infrastructure helper routes.
 
 Latest focused backend-contract provenance slice: `resolveBackendContract()`
 now returns `baseUrlSource` so Laravel defaults, future ASP.NET mode, and
