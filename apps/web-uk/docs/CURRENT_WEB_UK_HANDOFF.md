@@ -129,7 +129,11 @@ The latest organisations source slice now routes organisation directory,
 browse, detail, jobs, manage, register, and opportunity-apply links/forms
 through `urlFor()`. The latest blog source slice now routes blog index, post
 detail, discussion, liker, reaction, comment, pagination, and member-profile
-links/forms through `urlFor()`. The latest courses source slice now routes
+links/forms through `urlFor()`. The latest blog redirect slice now routes
+signed-out discussion/liker/comment/reaction handoffs and blog POST result
+redirects through `res.locals.urlFor`, so blog workflow redirects stay inside
+the active tenant mount without relying only on the shared-mount response
+rewriter. The latest courses source slice now routes
 course browse, learner, instructor, builder, analytics, grading, certificate,
 review, enrolment, quiz, progress, and section/lesson controls through
 `urlFor()`. The latest listing index/form source slice now routes listing

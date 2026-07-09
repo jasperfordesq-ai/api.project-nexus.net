@@ -926,9 +926,26 @@ skills helper/redirect evidence only; it does not newly certify category
 authorization, visual Blade parity, localization, runtime persistence, or
 ASP.NET backend compatibility.
 
+The sixtieth source slice extends route-level redirect cleanup into blog.
+`src/routes/blog-posts.js` now sends signed-out discussion, liker, comment,
+like, and reaction redirects plus comment/reaction POST result redirects
+through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when
+shell locals are available. The focused source regression first failed on raw
+`res.redirect('/login...')` targets in the blog route module, then passed after
+conversion. A focused shared-mount runtime test also proves unsigned
+`/acme/accessible/blog/community-news/comments` redirects to
+`/acme/accessible/login?status=auth-required`, and signed
+`/acme/accessible/blog/community-news/comments` POSTs redirect back to
+`/acme/accessible/blog/community-news?status=comment-added#comments`. This is
+blog redirect evidence only; it does not newly certify feature gates, visual
+Blade parity, localization, RSS metadata depth, runtime persistence, or
+ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "blog route redirects"
+npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "blog redirects inside" --runInBand --silent
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "skills links, form"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "skills redirects and links"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "clubs form and route redirects"

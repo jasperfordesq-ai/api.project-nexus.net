@@ -59,9 +59,14 @@ function isNotFound(error) {
   return error instanceof ApiError && error.status === 404;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function redirectAuthIfNeeded(error, res) {
   if (isAuthError(error)) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, '/login?status=auth-required');
     return true;
   }
   return false;
@@ -249,7 +254,7 @@ router.get('/feed.xml', asyncRoute(async (req, res) => {
 
 router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
 
   const post = normalizePost(await blogPostFromSlug(token, req.params.slug));
   const postId = post.id;
@@ -280,7 +285,7 @@ router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
 
 router.get('/:slug([a-zA-Z0-9_-]+)/likers/:reaction([a-zA-Z0-9_]+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login?status=auth-required');
+  if (!token) return redirectTo(res, '/login?status=auth-required');
 
   const reaction = BLOG_REACTIONS.has(req.params.reaction) ? req.params.reaction : 'like';
   const page = positiveInteger(req.query && req.query.page) || 1;
@@ -339,13 +344,13 @@ router.get('/:slug([a-zA-Z0-9_-]+)', asyncRoute(async (req, res) => {
 async function createBlogComment(req, res, slug, redirectToPost) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const body = trimmed(req.body.body, 5000);
   const parentId = positiveInteger(req.body.parent_id);
   if (body === '') {
-    return res.redirect(redirectToPost
+    return redirectTo(res, redirectToPost
       ? blogPostRedirect(slug, 'comment-invalid')
       : blogCommentsRedirect(slug, 'comment-invalid'));
   }
@@ -370,7 +375,7 @@ async function createBlogComment(req, res, slug, redirectToPost) {
     status = 'comment-failed';
   }
 
-  return res.redirect(redirectToPost
+  return redirectTo(res, redirectToPost
     ? blogPostRedirect(slug, status)
     : blogCommentsRedirect(slug, status));
 }
@@ -379,12 +384,12 @@ router.post('/comments/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const content = trimmed(req.body.content, 5000);
   if (content === '') {
-    return res.redirect(commentMutationRedirect(req, 'comment-empty'));
+    return redirectTo(res, commentMutationRedirect(req, 'comment-empty'));
   }
 
   let status = 'comment-updated';
@@ -395,14 +400,14 @@ router.post('/comments/:id(\\d+)/update', asyncRoute(async (req, res) => {
     status = 'comment-update-failed';
   }
 
-  return res.redirect(commentMutationRedirect(req, status));
+  return redirectTo(res, commentMutationRedirect(req, status));
 }));
 
 router.post('/comments/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let status = 'comment-deleted';
@@ -413,14 +418,14 @@ router.post('/comments/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'comment-delete-failed';
   }
 
-  return res.redirect(commentMutationRedirect(req, status));
+  return redirectTo(res, commentMutationRedirect(req, status));
 }));
 
 router.post('/comments/:id(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -440,7 +445,7 @@ router.post('/comments/:id(\\d+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(commentMutationRedirect(req, status, `comment-${id}`));
+  return redirectTo(res, commentMutationRedirect(req, status, `comment-${id}`));
 }));
 
 router.post('/:slug([a-zA-Z0-9_-]+)/comments/add', asyncRoute(async (req, res) => (
@@ -455,7 +460,7 @@ router.post('/:slug([a-zA-Z0-9_-]+)/like', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const slug = req.params.slug;
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let status = 'like-failed';
@@ -477,14 +482,14 @@ router.post('/:slug([a-zA-Z0-9_-]+)/like', asyncRoute(async (req, res) => {
     status = 'like-failed';
   }
 
-  return res.redirect(blogPostRedirect(slug, status, 'reactions'));
+  return redirectTo(res, blogPostRedirect(slug, status, 'reactions'));
 }));
 
 router.post('/:slug([a-zA-Z0-9_-]+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const slug = req.params.slug;
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -509,7 +514,7 @@ router.post('/:slug([a-zA-Z0-9_-]+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(blogCommentsRedirect(slug, status, 'post-reactions'));
+  return redirectTo(res, blogCommentsRedirect(slug, status, 'post-reactions'));
 }));
 
 module.exports = router;

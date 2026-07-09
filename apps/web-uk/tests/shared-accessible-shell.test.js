@@ -9156,6 +9156,47 @@ describe('shared accessible frontend shell', () => {
     expect(api.createComment).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel blog redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getBlogPost.mockResolvedValue({
+      data: {
+        id: 42,
+        slug: 'community-news',
+        title: 'Community garden opens',
+        content: '<p>The community garden opened this week.</p>'
+      }
+    });
+
+    const unsigned = await request(app).get('/acme/accessible/blog/community-news/comments');
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const posted = await agent
+      .post('/acme/accessible/blog/community-news/comments')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: ' Great update '
+      });
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(posted.status).toBe(302);
+    expect(posted.headers.location).toBe('/acme/accessible/blog/community-news?status=comment-added#comments');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      content: 'Great update',
+      parent_id: null
+    });
+  });
+
   it('renders the public Laravel feed hashtag discovery page', async () => {
     const api = require('../src/lib/api');
 
