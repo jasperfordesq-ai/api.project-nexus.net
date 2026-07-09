@@ -104,6 +104,10 @@ partner preview links, view-all link, and quick links through `urlFor()`.
 The latest federation onboarding source slice now routes the wizard back link,
 service navigation, step forms, step-back links, and do-this-later links through
 `urlFor()`.
+The latest wallet route-redirect slice now sends transfer and donation status
+redirects through `res.locals.urlFor`, with shared-mount coverage proving
+`/acme/accessible/wallet/donate` validation redirects stay under the active
+tenant mount.
 The federation member source slice routes the federation member back link,
 federation service navigation, opt-in CTA, connection/message forms, and
 transfer CTA through `urlFor()`. The latest federation redirect slice now
@@ -641,8 +645,10 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "direct and group message"` first failed on raw `/messages`, `/members`, and `/connections` links/actions, then passed after the template conversion.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "message"` passed `5/5` selected message tests.
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"` first failed on raw `/wallet` links/actions, then passed after the template conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet action redirects"` first failed on raw wallet route redirects, then passed after transfer and donation status redirects moved through `redirectTo(res, ...)` and `res.locals.urlFor`.
 - `Select-String -Path apps\web-uk\src\views\wallet\*.njk -Pattern 'href="/wallet','action="/wallet','href: "/wallet'` returned no matches.
-- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"` passed `8/8` selected wallet tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"` passed `9/9` selected wallet tests, including shared-mount donation validation redirect coverage for `/acme/accessible/wallet/donate`.
+- A scoped live Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed `12/12` checks, including `/wallet=>Wallet` and `/wallet/manage=>Manage credits`.
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"` first failed on raw `/contact` and `/login` controls, then passed after the template conversion.
 - `Select-String` over `contact.njk`, `cookie-settings.njk`, `forgot-password.njk`, `login.njk`, `register.njk`, `report-problem.njk`, and `reset-password.njk` for raw local public/auth/support `href` and `action` targets returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"` passed `25/25` selected tests.

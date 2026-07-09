@@ -977,9 +977,26 @@ member-onboarding redirect evidence only; it does not newly certify onboarding
 form visual parity, profile/avatar persistence edge cases, localization,
 broader runtime behavior, or ASP.NET backend compatibility.
 
+The sixty-third source slice extends route-level redirect cleanup into wallet
+actions. `src/routes/wallet.js` now sends transfer validation/success/failure
+redirects and donation validation/success/failure redirects through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell
+locals are available. The focused source regression first failed on missing
+wallet route helper coverage and raw `/wallet` redirect targets, then passed
+after conversion. Focused shared-mount coverage proves a signed invalid POST to
+`/acme/accessible/wallet/donate` redirects to
+`/acme/accessible/wallet?status=donate-failed&donate_error=decimals#donate`.
+This is wallet action redirect evidence only; it does not newly certify live
+wallet transfer/donation persistence, recipient privacy behavior, visual Blade
+parity, localization, broader runtime behavior, or ASP.NET backend
+compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/wallet=>Wallet,/wallet/manage=>Manage credits'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "exchange route redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "submits the Laravel exchange action" --runInBand --silent
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "member onboarding route redirects"

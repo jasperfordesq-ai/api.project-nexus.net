@@ -777,6 +777,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/wallet/);
   });
 
+  it('keeps wallet action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'wallet.js'),
+      'utf8'
+    );
+
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).not.toMatch(/res\.redirect\(\s*[`'"]\/wallet/);
+    expect(route).not.toMatch(/res\.redirect\(\s*walletDonateFailure/);
+    expect(route).toMatch(/redirectTo\(res,\s*walletDonateFailure/);
+    expect(route).toMatch(/redirectTo\(res,\s*[`'"]\/wallet/);
+  });
+
   it('keeps public auth and support links and forms behind urlFor()', () => {
     const templates = [
       'contact.njk',

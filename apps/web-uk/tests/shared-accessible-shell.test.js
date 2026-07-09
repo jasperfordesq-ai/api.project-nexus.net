@@ -5091,6 +5091,30 @@ describe('shared accessible frontend shell', () => {
     expect(api.donateCredits).not.toHaveBeenCalled();
   });
 
+  it('keeps wallet donation validation redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/wallet/donate')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        target: 'community_fund',
+        amount: '1.5'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/wallet?status=donate-failed&donate_error=decimals#donate');
+    expect(api.donateCredits).not.toHaveBeenCalled();
+  });
+
   it('submits wallet donations to the Laravel v2 donate API', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

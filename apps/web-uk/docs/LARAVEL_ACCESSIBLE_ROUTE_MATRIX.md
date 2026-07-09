@@ -102,7 +102,9 @@ links, older-message pagination, search forms, reply/edit/delete/voice/archive
 forms, group create/search/member/reaction forms, and leave-group controls.
 Wallet index and manage source templates now also use `urlFor()` for the
 breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
-donation forms.
+donation forms. Wallet transfer and donation status redirects now also use
+`res.locals.urlFor`, with shared-mount coverage for invalid donation
+validation.
 Public/auth/support source templates now also use `urlFor()` for contact,
 cookie settings, login, two-factor login, forgot-password, reset-password,
 register, and report-a-problem local links/forms.

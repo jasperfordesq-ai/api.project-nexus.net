@@ -129,6 +129,11 @@ async function walletRecipientsFor(token, query) {
     .filter(Boolean);
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 // Wallet overview
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const [balanceData, transactionsData, currentUser] = await Promise.all([
@@ -233,7 +238,7 @@ router.post('/transfer', requireAuth, audit.walletTransfer(), asyncRoute(async (
   }
 
   if (errors.length > 0) {
-    return res.redirect(`/wallet?status=transfer-failed&error=${encodeURIComponent(errors[0])}#transfer`);
+    return redirectTo(res, `/wallet?status=transfer-failed&error=${encodeURIComponent(errors[0])}#transfer`);
   }
 
   try {
@@ -242,10 +247,10 @@ router.post('/transfer', requireAuth, audit.walletTransfer(), asyncRoute(async (
     if (req.flash) {
       req.flash('success', 'Transfer completed successfully');
     }
-    res.redirect('/wallet?status=transfer-sent#transactions');
+    return redirectTo(res, '/wallet?status=transfer-sent#transactions');
   } catch (error) {
     if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
-      return res.redirect('/wallet?status=transfer-failed&error=failed#transfer');
+      return redirectTo(res, '/wallet?status=transfer-failed&error=failed#transfer');
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -272,16 +277,16 @@ router.post('/donate', requireAuth, asyncRoute(async (req, res) => {
   const payload = walletDonationPayload(req.body);
 
   if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
-    return res.redirect(walletDonateFailure('invalid'));
+    return redirectTo(res, walletDonateFailure('invalid'));
   }
   if (Math.round(payload.amount) !== payload.amount) {
-    return res.redirect(walletDonateFailure('decimals'));
+    return redirectTo(res, walletDonateFailure('decimals'));
   }
   if (payload.amount > 1000) {
-    return res.redirect(walletDonateFailure('too-large'));
+    return redirectTo(res, walletDonateFailure('too-large'));
   }
   if (payload.recipient_type === 'user' && (!payload.recipient_id || Number(payload.recipient_id) <= 0)) {
-    return res.redirect(walletDonateFailure('invalid'));
+    return redirectTo(res, walletDonateFailure('invalid'));
   }
 
   try {
@@ -295,15 +300,15 @@ router.post('/donate', requireAuth, asyncRoute(async (req, res) => {
     if (error instanceof ApiError && error.status === 401) throw error;
     const message = String(error.message || '');
     if (/insufficient/i.test(message)) {
-      return res.redirect(walletDonateFailure('insufficient'));
+      return redirectTo(res, walletDonateFailure('insufficient'));
     }
     if (/not found|recipient/i.test(message)) {
-      return res.redirect(walletDonateFailure('not-found'));
+      return redirectTo(res, walletDonateFailure('not-found'));
     }
-    return res.redirect(walletDonateFailure('failed'));
+    return redirectTo(res, walletDonateFailure('failed'));
   }
 
-  return res.redirect('/wallet?status=donate-sent#transactions');
+  return redirectTo(res, '/wallet?status=donate-sent#transactions');
 }));
 
 module.exports = router;
