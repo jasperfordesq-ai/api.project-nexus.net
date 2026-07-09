@@ -1296,6 +1296,78 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BillingSubscription_ReturnsLatestLaravelReactSubscriptionDetailsObject()
+    {
+        int subscriptionId;
+        int planId;
+        var periodStart = DateTime.UtcNow.AddDays(-4);
+        var periodEnd = DateTime.UtcNow.AddDays(26);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Laravel React Subscription Plan",
+                Price = 29.99m,
+                Currency = "EUR",
+                Features = "[]",
+                IsActive = true,
+                IsPublic = true
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+
+            var olderSubscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                StartedAt = periodStart.AddMonths(-2),
+                CreatedAt = periodStart.AddMonths(-2),
+                NextBillingDate = periodEnd.AddMonths(-2)
+            };
+            var latestSubscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.PastDue,
+                StartedAt = periodStart,
+                CreatedAt = periodStart.AddMinutes(1),
+                NextBillingDate = periodEnd,
+                StripeSubscriptionId = "sub_laravel_react_contract"
+            };
+            db.UserSubscriptions.AddRange(olderSubscription, latestSubscription);
+            await db.SaveChangesAsync();
+            subscriptionId = latestSubscription.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/billing/subscription");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.ValueKind.Should().Be(JsonValueKind.Object);
+        data.GetProperty("id").GetInt32().Should().Be(subscriptionId);
+        data.GetProperty("plan_id").GetInt32().Should().Be(planId);
+        data.GetProperty("plan_name").GetString().Should().Be("Laravel React Subscription Plan");
+        data.GetProperty("plan_tier_level").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("status").GetString().Should().Be("past_due");
+        data.GetProperty("billing_interval").GetString().Should().Be("monthly");
+        data.GetProperty("current_period_start").GetDateTime().Should().BeCloseTo(periodStart, TimeSpan.FromSeconds(2));
+        data.GetProperty("current_period_end").GetDateTime().Should().BeCloseTo(periodEnd, TimeSpan.FromSeconds(2));
+        data.GetProperty("trial_ends_at").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("cancel_at_period_end").GetBoolean().Should().BeFalse();
+        data.GetProperty("stripe_subscription_id").GetString().Should().Be("sub_laravel_react_contract");
+        json.TryGetProperty("meta", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BillingInvoices_ReturnsSubscriptionBackedInvoices()
     {
         int subscriptionId;

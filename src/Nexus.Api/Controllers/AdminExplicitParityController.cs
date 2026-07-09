@@ -1604,44 +1604,39 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetBillingSubscription()
     {
-        var subscriptionRows = await _db.UserSubscriptions
+        var subscription = await _db.UserSubscriptions
             .AsNoTracking()
             .Include(s => s.Plan)
             .OrderByDescending(s => s.CreatedAt)
-            .Select(s => new
-            {
-                s.Id,
-                s.UserId,
-                s.PlanId,
-                plan_name = s.Plan == null ? null : s.Plan.Name,
-                plan_price = s.Plan == null ? 0 : s.Plan.Price,
-                currency = s.Plan == null ? null : s.Plan.Currency,
-                s.Status,
-                s.StartedAt,
-                s.NextBillingDate,
-                s.ExpiresAt,
-                has_stripe_subscription = !string.IsNullOrEmpty(s.StripeSubscriptionId)
-            })
-            .Take(100)
-            .ToListAsync();
-        var subscriptions = subscriptionRows
-            .Select(s => new
-            {
-                s.Id,
-                s.UserId,
-                s.PlanId,
-                s.plan_name,
-                s.plan_price,
-                s.currency,
-                status = s.Status.ToString().ToLowerInvariant(),
-                s.StartedAt,
-                s.NextBillingDate,
-                s.ExpiresAt,
-                s.has_stripe_subscription
-            })
-            .ToList();
+            .FirstOrDefaultAsync();
 
-        return Ok(new { data = subscriptions, meta = new { total = subscriptions.Count } });
+        if (subscription == null)
+        {
+            return Ok(new { data = (object?)null });
+        }
+
+        var planTierLevel = await BillingPlanTierLevel(subscription.Plan);
+        var currentPeriodEnd = subscription.NextBillingDate
+            ?? subscription.ExpiresAt
+            ?? subscription.StartedAt.AddMonths(1);
+
+        return Ok(new
+        {
+            data = new
+            {
+                id = subscription.Id,
+                plan_id = subscription.PlanId,
+                plan_name = subscription.Plan?.Name ?? string.Empty,
+                plan_tier_level = planTierLevel,
+                status = BillingStatusForReact(subscription.Status),
+                billing_interval = "monthly",
+                current_period_start = subscription.StartedAt,
+                current_period_end = currentPeriodEnd,
+                trial_ends_at = (DateTime?)null,
+                cancel_at_period_end = false,
+                stripe_subscription_id = subscription.StripeSubscriptionId
+            }
+        });
     }
 
     private async Task<IActionResult> GetBillingInvoices()
@@ -5863,6 +5858,31 @@ public class AdminExplicitParityController : ControllerBase
             .Select(p => p.Currency)
             .FirstOrDefaultAsync() ?? "EUR";
     }
+
+    private async Task<int> BillingPlanTierLevel(SubscriptionPlan? plan)
+    {
+        if (plan == null)
+        {
+            return 1;
+        }
+
+        var cheaperPlans = await _db.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.IsPublic && p.Price < plan.Price)
+            .Select(p => p.Price)
+            .Distinct()
+            .CountAsync();
+
+        return cheaperPlans + 1;
+    }
+
+    private static string BillingStatusForReact(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.PastDue => "past_due",
+        SubscriptionStatus.Cancelled => "cancelled",
+        SubscriptionStatus.Expired => "expired",
+        _ => "active"
+    };
 
     private static bool TryGetLastInt(string path, string prefix, out int id)
     {

@@ -80,15 +80,16 @@ coverage for `POST /api/v2/donations/payment-intent` and
 tenant-scoped pending `MoneyDonation`, returns the React `client_secret` /
 `donation_id` envelope, and returns JSON receipt data for the receipt component.
 
-The Laravel React billing plan slice now has focused ASP.NET regression
-coverage for `GET /api/v2/billing/plans` as used by
-`react-frontend/src/admin/api/billingApi.ts`. The .NET compatibility path uses
-tenant-scoped `SubscriptionPlan` rows instead of placeholders and returns the
-Laravel React `Plan` fields: numeric `id`, `name`, generated `slug`,
-`description`, `tier_level`, `price_monthly`, `price_yearly`, `features[]`, and
-`is_active`. Frontend-authenticated admin billing checkout, portal,
-subscription, invoice, real Stripe session behavior, and exact Laravel
-`pay_plans` schema parity remain deeper gaps.
+The Laravel React billing slice now has focused ASP.NET regression coverage for
+`GET /api/v2/billing/plans` and `GET /api/v2/admin/billing/subscription` as
+used by `react-frontend/src/admin/api/billingApi.ts`. The .NET compatibility
+path uses tenant-scoped `SubscriptionPlan`/`UserSubscription` rows instead of
+placeholder lists, returns Laravel React `Plan` fields for public plans, and
+returns the singular admin `SubscriptionDetails` object with `plan_id`,
+`plan_name`, `plan_tier_level`, `status`, period dates, cancellation flag, and
+`stripe_subscription_id`. Checkout, portal, invoice history, real Stripe
+session behavior, billing-interval storage, and exact Laravel `pay_plans` /
+`tenant_plan_assignments` schema parity remain deeper gaps.
 
 The Laravel React availability grid slice now has focused ASP.NET regression
 coverage for `GET /api/v2/users/me/availability`,
