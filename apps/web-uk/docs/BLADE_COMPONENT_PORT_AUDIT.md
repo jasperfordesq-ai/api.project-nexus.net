@@ -139,6 +139,11 @@ Frontend stack.
 | Members insights | `views/members-insights.blade.php`, `AlphaController::membersInsights()`, `Api\UsersController::show()`, `Api\MemberVerificationBadgeController::getUserBadges()` | `src/routes/members.js`, `src/views/members/insights.njk`, `src/lib/api.js` | Partial. Signed GET `/members/{id}/insights` redirects unsigned visitors to `/login?status=auth-required`, calls Laravel-compatible profile, `/api/v2/users/{id}`, and `/api/v2/users/{id}/verification-badges` endpoints, and renders the Blade-style reputation page with NEXUS score, tier, percentile progress, activity stats, verification badges, earned badges, and profile back links. Profile back links now use `urlFor()` with source regression, focused render coverage, and focused Laravel runtime smoke. Exact tenant feature gates, block/privacy/onboarding gating, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Generated Laravel GET preparation fallback | Laravel route matrix | `src/routes/laravel-prep-pages.js` and `src/views/static-page.njk` | Started. The fallback router reads `docs/generated/accessible-route-matrix.json` and registers Laravel GET paths after real routes. The current generated matrix has zero `static-page` rows, so no Laravel GET route is presently being handled by this preparation fallback. Keeping the fallback in place preserves route discoverability if future Laravel routes are added, but it does not certify Blade visual parity, backend data, forms, redirects, tenant routing, auth, feature gates, localization, or POST workflows. |
 
+Feed action redirect note: `src/routes/feed-actions.js` now sends feed post,
+item, comment, poll, moderation, share, save, and mute POST result redirects
+through `res.locals.urlFor`, with focused shared-mount validation redirect
+coverage for `/acme/accessible/feed/posts`.
+
 ## Still To Port
 
 | Blade pattern | Why it matters | Suggested ASP.NET implementation |

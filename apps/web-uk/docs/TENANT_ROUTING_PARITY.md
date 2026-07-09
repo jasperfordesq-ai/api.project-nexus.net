@@ -1022,9 +1022,24 @@ newly certify external Stripe checkout/portal runtime behavior, tenant premium
 feature gates, localization, exact billing status wording, or ASP.NET backend
 compatibility.
 
+The sixty-sixth source slice extends route-level redirect cleanup into feed
+actions. `src/routes/feed-actions.js` now sends feed post, item, comment, poll,
+moderation, share, save, and mute POST result redirects through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell
+locals are available. The focused source regression first failed on raw
+`res.redirect('/feed')` and raw `/feed` helper returns, then passed after
+conversion. Focused shared-mount coverage proves an empty signed
+`/acme/accessible/feed/posts` submission redirects to
+`/acme/accessible/feed?status=post-empty`. This is feed action redirect
+evidence only; it does not newly certify full feed visual parity, feed
+persistence depth, localization, broader Laravel runtime behavior, or ASP.NET
+backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed action validation redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "premium links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "premium"

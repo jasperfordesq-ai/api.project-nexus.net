@@ -319,6 +319,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/feed/);
   });
 
+  it('keeps feed action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'feed-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/feed/);
+    expect(route).not.toMatch(/res\.redirect\(`\/feed/);
+    expect(route).not.toMatch(/return `\/feed/);
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps AI chat and matches links and forms behind urlFor()', () => {
     const templates = [
       path.join('ai-chat', 'index.njk'),

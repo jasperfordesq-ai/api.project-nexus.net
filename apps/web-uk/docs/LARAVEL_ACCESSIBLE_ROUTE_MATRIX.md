@@ -231,6 +231,9 @@ post rows as well as the older local `user` row shape. Focused Laravel runtime
 smoke for the feed source slice passed against Laravel
 `http://127.0.0.1:8088`, covering signed `/feed`, `/feed/hashtags`,
 `/feed/hashtag/timebank`, `/feed/posts/796`, and `/feed/item/listing/42`.
+Feed action redirects now also use `res.locals.urlFor` for POST result
+destinations, with shared-mount coverage proving validation redirects stay
+under `/acme/accessible/feed`.
 Knowledge-base source templates now also use `urlFor()` for the public `/kb`
 search form, article links, cursor load-more link, article back link, and
 related-article links, with source regression coverage and focused render

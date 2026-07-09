@@ -28,6 +28,7 @@ const {
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+const FEED_PATH = '/feed';
 const FEED_REACTIONS = new Set(['like', 'love', 'celebrate']);
 
 function tokenFrom(req) {
@@ -75,18 +76,27 @@ function isAuthError(error) {
 
 function redirectAuthIfNeeded(error, res, req, targetType = null, targetId = null) {
   if (isAuthError(error)) {
-    res.redirect(feedRedirect(req, 'auth-required', targetType, targetId));
+    redirectTo(res, feedRedirect(req, 'auth-required', targetType, targetId));
     return true;
   }
   return false;
 }
 
+function localUrl(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return urlFor(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(localUrl(res, pathname));
+}
+
 function feedStatusRedirect(status) {
-  return `/feed?status=${encodeURIComponent(status)}`;
+  return `${FEED_PATH}?status=${encodeURIComponent(status)}`;
 }
 
 function feedRedirect(req, status = '', targetType = null, targetId = null) {
-  if (!status) return '/feed';
+  if (!status) return FEED_PATH;
 
   const params = new URLSearchParams();
   params.set('status', status);
@@ -100,7 +110,7 @@ function feedRedirect(req, status = '', targetType = null, targetId = null) {
   const anchor = targetType !== null && targetId !== null
     ? `#feed-item-${String(targetType).replace(/[^a-z0-9_-]/gi, '-')}-${targetId}`
     : '';
-  return `/feed?${params.toString()}${anchor}`;
+  return `${FEED_PATH}?${params.toString()}${anchor}`;
 }
 
 function likeStatusFrom(result) {
@@ -126,7 +136,7 @@ function savedStatusFrom(result) {
 router.post('/posts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/feed');
+    return redirectTo(res, FEED_PATH);
   }
 
   const content = trimmed(req.body.content, 5000);
@@ -134,7 +144,7 @@ router.post('/posts', asyncRoute(async (req, res) => {
   const image = uploadedFile(req, 'image');
   if (content === '') {
     await removeUploadedFile(image);
-    return res.redirect(feedStatusRedirect('post-empty'));
+    return redirectTo(res, feedStatusRedirect('post-empty'));
   }
 
   let status = 'post-created';
@@ -162,19 +172,19 @@ router.post('/posts', asyncRoute(async (req, res) => {
     await removeUploadedFile(image);
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/posts/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   const content = trimmed(req.body.content, 5000);
   if (content === '') {
-    return res.redirect(feedStatusRedirect('post-empty'));
+    return redirectTo(res, feedStatusRedirect('post-empty'));
   }
 
   let status = 'post-updated';
@@ -185,14 +195,14 @@ router.post('/posts/:id(\\d+)/update', asyncRoute(async (req, res) => {
     status = 'post-update-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/posts/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   let status = 'post-deleted';
@@ -203,14 +213,14 @@ router.post('/posts/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'post-delete-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/posts/:id(\\d+)/hide', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   const type = normalizeFeedTargetType(req.body.type || 'post');
@@ -222,14 +232,14 @@ router.post('/posts/:id(\\d+)/hide', asyncRoute(async (req, res) => {
     status = 'moderation-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/users/:id(\\d+)/mute', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   let status = 'author-muted';
@@ -240,14 +250,14 @@ router.post('/users/:id(\\d+)/mute', asyncRoute(async (req, res) => {
     status = 'moderation-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/posts/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   const type = normalizeFeedTargetType(req.body.type || 'post');
@@ -265,19 +275,19 @@ router.post('/posts/:id(\\d+)/report', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/comments/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   const content = trimmed(req.body.content, 10000);
   if (content === '') {
-    return res.redirect(feedStatusRedirect('comment-empty'));
+    return redirectTo(res, feedStatusRedirect('comment-empty'));
   }
 
   let status = 'comment-updated';
@@ -288,14 +298,14 @@ router.post('/comments/:id(\\d+)/update', asyncRoute(async (req, res) => {
     status = 'comment-update-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/comments/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedStatusRedirect('auth-required'));
+    return redirectTo(res, feedStatusRedirect('auth-required'));
   }
 
   let status = 'comment-deleted';
@@ -306,14 +316,14 @@ router.post('/comments/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'comment-delete-failed';
   }
 
-  return res.redirect(feedStatusRedirect(status));
+  return redirectTo(res, feedStatusRedirect(status));
 }));
 
 router.post('/comments/:id(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', 'comment', id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', 'comment', id));
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -332,14 +342,14 @@ router.post('/comments/:id(\\d+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(feedRedirect(req, status, 'comment', id));
+  return redirectTo(res, feedRedirect(req, status, 'comment', id));
 }));
 
 router.post('/posts/:id(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', 'post', id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', 'post', id));
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -358,14 +368,14 @@ router.post('/posts/:id(\\d+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(feedRedirect(req, status, 'post', id));
+  return redirectTo(res, feedRedirect(req, status, 'post', id));
 }));
 
 router.post('/posts/:id(\\d+)/share', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', 'post', id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', 'post', id));
   }
 
   const comment = trimmed(req.body.comment, 1000);
@@ -380,14 +390,14 @@ router.post('/posts/:id(\\d+)/share', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 422 ? 'share-own' : 'share-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, 'post', id));
+  return redirectTo(res, feedRedirect(req, status, 'post', id));
 }));
 
 router.post('/posts/:id(\\d+)/save', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', 'post', id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', 'post', id));
   }
 
   let status = 'save-failed';
@@ -407,7 +417,7 @@ router.post('/posts/:id(\\d+)/save', asyncRoute(async (req, res) => {
     status = 'save-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, 'post', id));
+  return redirectTo(res, feedRedirect(req, status, 'post', id));
 }));
 
 router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/like', asyncRoute(async (req, res) => {
@@ -415,7 +425,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/like', asyncRoute(async (req
   const id = Number(req.params.id);
   const type = normalizeFeedTargetType(req.params.type);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', type, id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', type, id));
   }
 
   let status = 'like-failed';
@@ -430,7 +440,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/like', asyncRoute(async (req
     status = 'like-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, type, id));
+  return redirectTo(res, feedRedirect(req, status, type, id));
 }));
 
 router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/comments', asyncRoute(async (req, res) => {
@@ -438,13 +448,13 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/comments', asyncRoute(async 
   const id = Number(req.params.id);
   const type = normalizeFeedTargetType(req.params.type);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', type, id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', type, id));
   }
 
   const content = trimmed(req.body.content, 10000);
   const parentId = positiveInteger(req.body.parent_id);
   if (content === '') {
-    return res.redirect(feedRedirect(req, 'comment-empty', type, id));
+    return redirectTo(res, feedRedirect(req, 'comment-empty', type, id));
   }
 
   let status = 'comment-created';
@@ -460,7 +470,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/comments', asyncRoute(async 
     status = 'comment-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, type, id));
+  return redirectTo(res, feedRedirect(req, status, type, id));
 }));
 
 router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/not-interested', asyncRoute(async (req, res) => {
@@ -468,7 +478,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/not-interested', asyncRoute(
   const id = Number(req.params.id);
   const type = normalizeFeedTargetType(req.params.type);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', type, id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', type, id));
   }
 
   let status = 'not-interested';
@@ -479,7 +489,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/not-interested', asyncRoute(
     status = 'not-interested-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, type, id));
+  return redirectTo(res, feedRedirect(req, status, type, id));
 }));
 
 router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/react', asyncRoute(async (req, res) => {
@@ -487,7 +497,7 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/react', asyncRoute(async (re
   const id = Number(req.params.id);
   const type = normalizeFeedTargetType(req.params.type);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', type, id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', type, id));
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -506,19 +516,19 @@ router.post('/items/:type([a-zA-Z0-9_-]+)/:id(\\d+)/react', asyncRoute(async (re
     }
   }
 
-  return res.redirect(feedRedirect(req, status, type, id));
+  return redirectTo(res, feedRedirect(req, status, type, id));
 }));
 
 router.post('/polls/:id(\\d+)/vote', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect(feedRedirect(req, 'auth-required', 'poll', id));
+    return redirectTo(res, feedRedirect(req, 'auth-required', 'poll', id));
   }
 
   const optionId = positiveInteger(req.body.option_id);
   if (optionId === null) {
-    return res.redirect(feedRedirect(req, 'poll-vote-failed', 'poll', id));
+    return redirectTo(res, feedRedirect(req, 'poll-vote-failed', 'poll', id));
   }
 
   let status = 'poll-voted';
@@ -529,7 +539,7 @@ router.post('/polls/:id(\\d+)/vote', asyncRoute(async (req, res) => {
     status = 'poll-vote-failed';
   }
 
-  return res.redirect(feedRedirect(req, status, 'poll', id));
+  return redirectTo(res, feedRedirect(req, status, 'poll', id));
 }));
 
 module.exports = router;

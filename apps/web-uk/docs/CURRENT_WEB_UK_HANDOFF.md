@@ -190,6 +190,11 @@ forms, show publish/delete forms, and studio management links through
 The latest feed source slice now routes feed compose/filter forms, hashtag
 links, post and item permalink links, like/comment/not-interested forms,
 author and group links, pagination, and sign-in CTAs through `urlFor()`.
+The latest feed action redirect slice now sends feed post, item, comment,
+poll, moderation, share, save, and mute POST result redirects through
+`res.locals.urlFor`, with shared-mount coverage proving an empty
+`/acme/accessible/feed/posts` submission redirects to
+`/acme/accessible/feed?status=post-empty`.
 The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights
