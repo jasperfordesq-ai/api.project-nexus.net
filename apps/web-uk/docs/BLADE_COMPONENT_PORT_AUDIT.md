@@ -12,7 +12,7 @@ Frontend stack.
 
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
-| Custom dark header | `accessible-frontend/views/layout.blade.php` | `src/views/layouts/base.njk` | Started. Text brand, language selector, My account link, and service navigation are present. |
+| Custom dark header | `accessible-frontend/views/layout.blade.php` | `src/views/layouts/base.njk`, `src/lib/accessible-shell.js` | Started. Text brand, language selector, My account link, and service navigation are present. The no-JS language selector now mirrors Blade's `request()->except(['locale'])` behavior for scalar query params, preserving filters/status/return values while excluding `locale`. |
 | Header visual layer | `accessible-frontend/src/app.scss` | `src/assets/scss/main.scss` | Started. Dark header, accent strip, language form, nav badge, card list, and link-button patterns are present. |
 | Service navigation | `AlphaController::alphaNavItems()` | `src/lib/accessible-shell.js` | Started. Header labels now mirror Blade IA. Feature-gate behavior is not implemented yet. |
 | Footer columns | `AlphaController::alphaFooterColumns()` | `src/lib/accessible-shell.js` and `partials/footer.njk` | Started. Platform, Support, and Legal columns mirror Blade labels and local path equivalents. |
@@ -134,7 +134,6 @@ Frontend stack.
 | Tenant logo and shape sizing | Blade supports tenant-uploaded dark logos with aspect-ratio-aware sizing. | Add tenant logo locals after ASP.NET tenant bootstrap exposes compatible logo URLs and validated header colours. |
 | Per-tenant header colours | Blade safely validates `#rrggbb` values and picks readable foreground colours. | Add validated colour locals only after tenant setting parity exists. |
 | Cookie consent depth | Blade records choices through `CookieConsentService` and tenant-scoped consent audit storage. | Certify tenant scoping, backend audit persistence, localization, route-name generation, and runtime behavior before shared use. |
-| No-JS locale preservation | Blade preserves non-locale query params in the language selector. | Add hidden query-param locals and tests once routing helpers are stable. |
 | Account hub depth | Blade also conditionally includes matches, group exchanges, gamification, linked accounts, appearance, saved items, reviews, activity, jobs, and other feature-gated links. | Add missing account cards only after each target route and Laravel-compatible backend contract is certified. |
 | Module and feature gating | Blade only shows modules enabled for the tenant. | Add a feature/module flag local from ASP.NET tenant bootstrap, matching Laravel semantics. |
 | Live Explore content | Blade shows recent listings and upcoming events. | The protected `/explore` route now reads Laravel `/api/v2/explore` and renders listing/event summaries when returned. Exact Blade service-source parity, tenant feature gates, localization, and runtime smoke certification still need work. |

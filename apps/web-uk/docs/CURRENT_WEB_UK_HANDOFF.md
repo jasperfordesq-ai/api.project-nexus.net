@@ -339,6 +339,17 @@ slice:
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 749 tests, with the existing Node `DEP0044 util.isArray` deprecation warning. An earlier concurrent full-suite attempt hit a transient `ENOBUFS` while stale 2026-07-08 Web UK Jest processes were still running; after stopping those stale test runners, the sequential rerun passed.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` against temporary in-process Web UK `http://127.0.0.1:63409` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/newsletter/unsubscribe=>Unsubscribe from emails`.
 
+Latest focused verification on 2026-07-09 for the no-JS language selector
+query-preservation slice:
+
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "no-JS language selector"` first failed because the Web UK language form did not render Blade-style hidden query inputs for `status` and `return`, then passed after `buildShellLocals()` exposed scalar non-`locale` query params and `layouts/base.njk` rendered them as hidden inputs.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath` passed: 443 tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 750 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with only `/login?status=auth-required&return=%2Fexplore&locale=ga=>Sign in` as the body-text page passed 11/11 checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+- This mirrors Laravel Blade's `request()->except(['locale'])` scalar query behavior for the global language selector. It does not newly certify localization depth, tenant feature gates, runtime locale persistence, or ASP.NET backend compatibility.
+
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
 

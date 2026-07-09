@@ -219,7 +219,8 @@ Follow the Laravel Blade accessible frontend for:
 - custom `nexus-alpha-header`;
 - dark header and accent strip;
 - lean GOV.UK service navigation;
-- no-JS language selector;
+- no-JS language selector, including preserving scalar non-`locale` query
+  parameters as hidden inputs like the Blade layout;
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.

@@ -551,6 +551,17 @@ describe('shared accessible frontend shell', () => {
     expect(components.text).toContain('Page not found');
   });
 
+  it('preserves non-locale query parameters in the no-JS language selector', async () => {
+    const response = await request(app).get('/login?status=auth-required&return=%2Fexplore&locale=ga');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<form method="get" action="/login" class="nexus-alpha-lang"');
+    expect(response.text).toContain('<input type="hidden" name="status" value="auth-required">');
+    expect(response.text).toContain('<input type="hidden" name="return" value="/explore">');
+    expect(response.text).not.toContain('<input type="hidden" name="locale"');
+    expect(response.text).toContain('<option value="ga" selected>Gaeilge</option>');
+  });
+
   it('renders the Laravel-backed member dashboard summary', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({

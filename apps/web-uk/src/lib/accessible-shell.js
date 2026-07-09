@@ -237,6 +237,18 @@ function prefixFooterColumns(columns, prefix) {
   }));
 }
 
+function buildLanguageQueryParams(query = {}) {
+  return Object.entries(query)
+    .filter(([key, value]) => (
+      key !== 'locale'
+      && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    ))
+    .map(([name, value]) => ({
+      name,
+      value: String(value)
+    }));
+}
+
 function buildShellLocals(req, isAuthenticated) {
   const routedTenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
     ? req.accessibleRouting.tenant
@@ -258,6 +270,7 @@ function buildShellLocals(req, isAuthenticated) {
     urlFor,
     alphaCurrentLocale: currentLocale,
     alphaLocaleOptions: localeOptions,
+    alphaLanguageQueryParams: buildLanguageQueryParams(req.query),
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
     alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated }), routePrefix),
     alphaActiveNav: activeNavForPath(req.path),
@@ -276,6 +289,7 @@ function buildShellLocals(req, isAuthenticated) {
 
 module.exports = {
   activeNavForPath,
+  buildLanguageQueryParams,
   buildNavItems,
   buildShellLocals,
   exploreLinks,

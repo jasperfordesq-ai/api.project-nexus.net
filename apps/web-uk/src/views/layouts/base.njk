@@ -44,6 +44,9 @@
       <nav class="nexus-alpha-header__links" aria-label="Service links">
         {% if alphaLocaleOptions and alphaLocaleOptions.length > 1 %}
           <form method="get" action="{{ currentPath or '/' }}" class="nexus-alpha-lang" aria-label="Choose a language">
+            {% for queryParam in alphaLanguageQueryParams %}
+              <input type="hidden" name="{{ queryParam.name }}" value="{{ queryParam.value }}">
+            {% endfor %}
             <label class="govuk-visually-hidden" for="alpha-locale-select">Choose a language</label>
             <select class="govuk-select nexus-alpha-lang__select" id="alpha-locale-select" name="locale">
               {% for locale in alphaLocaleOptions %}

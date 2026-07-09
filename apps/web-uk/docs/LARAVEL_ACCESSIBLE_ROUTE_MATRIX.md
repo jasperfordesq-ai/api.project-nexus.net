@@ -100,6 +100,10 @@ Newsletter-unsubscribe and error-page fallback home links now also use
 `urlFor('/')`, matching Laravel's `route('govuk-alpha.home', ...)` pattern for
 the unsubscribe back-home link and keeping fallback navigation tenant/custom-
 domain aware.
+The global no-JS language selector now preserves scalar non-`locale` query
+parameters as hidden inputs, matching Laravel Blade's
+`request()->except(['locale'])` behavior so status, filter, and return values
+survive locale changes.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.
