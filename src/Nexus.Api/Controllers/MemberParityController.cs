@@ -636,10 +636,36 @@ public class MemberParityController : ControllerBase
     public IActionResult PremiumMe() => Ok(new { data = new { user_id = UserId(), tier = "free", status = "active" } });
 
     [HttpPost("member-premium/checkout")]
-    public IActionResult PremiumCheckout([FromBody] JsonElement body) => Ok(new { data = new { checkout_url = "/billing/checkout/mock", tier = Str(body, "tier") ?? "supporter" } });
+    public IActionResult PremiumCheckout([FromBody] JsonElement body)
+    {
+        var tierId = Int(body, "tier_id") ?? 0;
+        var interval = NormalizeAdChoice(Str(body, "interval"), "monthly", new[] { "monthly", "yearly" });
+        var sessionId = $"cs_member_local_{TenantId()}_{UserId()}_{Math.Max(tierId, 1)}_{interval}_{Guid.NewGuid():N}";
+        var returnUrl = SafeLocalReturnUrl(Str(body, "return_url"), "/premium/return");
+        var separator = returnUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        var checkoutUrl = $"{returnUrl}{separator}session_id={Uri.EscapeDataString(sessionId)}";
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                checkout_url = checkoutUrl,
+                session_id = sessionId
+            }
+        });
+    }
 
     [HttpPost("member-premium/billing-portal")]
-    public IActionResult BillingPortal() => Ok(new { data = new { url = "/billing/portal/mock" } });
+    public IActionResult BillingPortal([FromBody] JsonElement body)
+    {
+        var portalSession = $"bps_member_local_{TenantId()}_{UserId()}_{Guid.NewGuid():N}";
+        var returnUrl = SafeLocalReturnUrl(Str(body, "return_url"), "/premium/manage");
+        var separator = returnUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        var portalUrl = $"{returnUrl}{separator}portal_session={Uri.EscapeDataString(portalSession)}";
+
+        return Ok(new { success = true, data = new { portal_url = portalUrl } });
+    }
 
     [HttpPost("member-premium/cancel")]
     public IActionResult CancelPremium() => Ok(new { data = new { status = "cancelled" } });
@@ -1598,6 +1624,24 @@ public class MemberParityController : ControllerBase
         var normalized = value?.Trim().ToLowerInvariant();
         return !string.IsNullOrWhiteSpace(normalized) && allowed.Contains(normalized)
             ? normalized
+            : fallback;
+    }
+
+    private static string SafeLocalReturnUrl(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        if (Uri.TryCreate(value, UriKind.Absolute, out var absolute)
+            && (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps))
+        {
+            return absolute.ToString();
+        }
+
+        return value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)
+            ? value
             : fallback;
     }
 

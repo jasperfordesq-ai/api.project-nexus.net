@@ -80,6 +80,18 @@ coverage for `POST /api/v2/donations/payment-intent` and
 tenant-scoped pending `MoneyDonation`, returns the React `client_secret` /
 `donation_id` envelope, and returns JSON receipt data for the receipt component.
 
+The Laravel React member-premium member checkout slice now has focused ASP.NET
+contract coverage for `POST /api/v2/member-premium/checkout` and
+`POST /api/v2/member-premium/billing-portal`, driven from
+`react-frontend/src/pages/premium/PricingPage.tsx` and
+`react-frontend/src/pages/premium/MySubscriptionPage.tsx`. ASP.NET now accepts
+the React `tier_id`, `interval`, and `return_url` checkout payload and returns
+Laravel-style `success/data.checkout_url/session_id`; the billing portal call
+now accepts `return_url` and returns `success/data.portal_url` instead of the
+legacy `data.url` mock. Real Stripe member checkout/portal session creation,
+member subscription persistence, cancellation/webhook processing, and exact
+Laravel member-premium tier/subscription schema parity remain deeper gaps.
+
 The Laravel React billing slice now has focused ASP.NET regression coverage for
 `GET /api/v2/billing/plans`, `GET /api/v2/admin/billing/subscription`,
 `POST /api/v2/admin/billing/checkout`, and `GET /api/v2/admin/billing/invoices`
