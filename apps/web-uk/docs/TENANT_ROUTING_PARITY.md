@@ -1,6 +1,6 @@
 # Web UK Tenant Routing Parity
 
-Last reviewed: 2026-07-08
+Last reviewed: 2026-07-09
 
 This note records the Laravel tenant-routing contract that `apps/web-uk` must
 clone before it can be called tenant-domain parity complete.
@@ -93,6 +93,11 @@ Current implemented slice:
   accessible app below `/{childSlug}` and rewrites local links and redirects to
   remain under that child path. This mirrors Laravel's parent custom-domain
   child resolution without exposing either `/alpha` or `/accessible`.
+- The parent-domain child guard now mirrors Laravel
+  `TenantContext::getReservedPaths()` for platform, auth, public-info, admin,
+  system, and legacy reserved first segments. Reserved paths such as `/classic`
+  stay host-scoped platform paths and no longer trigger a child-tenant
+  `/api/v2/tenant/bootstrap?slug=classic` probe.
 
 Current gaps:
 
@@ -158,6 +163,10 @@ Current gaps:
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
   `parent_domain: timebank.global`.
+- Laravel-reserved parent-domain path handling is covered by Jest for
+  `parent-domain.test/classic`: the regression first failed because Web UK
+  called `/api/v2/tenant/bootstrap?slug=classic`, then passed after aligning
+  the reserved segment set with Laravel `TenantContext::getReservedPaths()`.
 - Shared tenant-root home rendering is covered by Jest and a scoped live
   Laravel smoke against `/hour-timebank/accessible`, checking `Accessible`,
   `Connecting Communities`, and `What you can do` in the rendered page body.
@@ -448,9 +457,27 @@ matches. A focused exported Laravel runtime smoke against temporary Web UK
 API/health, cookie, login, account, and logout checks plus `/groups`
 containing `Groups` and `/groups/new` containing `Create a group`.
 
+The thirty-first tenant-routing slice aligns the Web UK parent-domain child
+guard with Laravel `TenantContext::getReservedPaths()`. Parent custom-domain
+paths whose first segment is reserved by Laravel, such as `/classic`, now stay
+on the host-scoped platform/custom-domain route path instead of being probed as
+child tenant slugs. The source-level regression first failed on an unexpected
+`getTenantBootstrap({ slug: "classic" })` call, then passed after the reserved
+segment set was expanded. A focused exported Laravel runtime smoke against
+temporary in-process Web UK `http://127.0.0.1:6467` and Laravel
+`http://127.0.0.1:8088` passed the base API/health, cookie, login, account,
+and logout checks plus `timebank.global|/` containing
+`Exchange Skills Across Borders` with no legacy `/alpha` or `/accessible`
+links.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "course browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "listing index"

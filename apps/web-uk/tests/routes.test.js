@@ -407,6 +407,28 @@ describe('Public Routes', () => {
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'dunmanway' });
       expect(api.getTenants).not.toHaveBeenCalled();
     });
+
+    it('does not treat Laravel-reserved parent-domain paths as child tenant slugs', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 4,
+          name: 'Timebank Global',
+          slug: 'timebank-global',
+          domain: 'parent-domain.test'
+        }
+      });
+
+      await request(app)
+        .get('/classic')
+        .set('Host', 'parent-domain.test');
+
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'parent-domain.test' });
+      expect(api.getTenantBootstrap).not.toHaveBeenCalledWith({ slug: 'classic' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
   });
 
   describe('GET /health', () => {

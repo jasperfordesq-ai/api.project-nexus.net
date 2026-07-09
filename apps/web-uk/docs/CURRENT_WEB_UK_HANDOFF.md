@@ -194,6 +194,16 @@ template-helper slice:
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 728 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary Web UK `http://127.0.0.1:6465` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/groups=>Groups` and `/groups/new=>Create a group`.
 
+Latest focused verification on 2026-07-09 for the tenant parent-domain
+reserved-path slice:
+
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"` first failed because `/classic` on `parent-domain.test` called `getTenantBootstrap({ slug: "classic" })`, then passed after Web UK's reserved child-segment set was aligned with Laravel `TenantContext::getReservedPaths()`.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath` passed: 37 tests.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 729 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:6467` and Laravel `http://127.0.0.1:8088` passed 11 checks, including `timebank.global|/=>Exchange Skills Across Borders` with no legacy `/alpha` or `/accessible` links.
+
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.

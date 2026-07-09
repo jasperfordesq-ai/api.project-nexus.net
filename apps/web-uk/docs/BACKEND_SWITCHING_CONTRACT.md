@@ -49,6 +49,12 @@ process default `X-Tenant-ID`, because Laravel prioritizes that header over
 Host/Origin and would resolve the local E2E tenant instead of the browser
 domain. Future ASP.NET mode must accept equivalent host/Origin tenant context
 before it can be certified.
+Parent custom-domain child routing must also preserve Laravel's reserved
+first-segment behavior. Web UK mirrors Laravel `TenantContext::getReservedPaths()`
+so reserved platform paths such as `/classic` remain host-scoped platform paths
+and are not treated as child tenant slugs. The Web UK regression covers
+`parent-domain.test/classic` so future backend modes must preserve the same
+reserved-path outcome.
 
 ## Laravel Runtime Smoke
 
