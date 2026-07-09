@@ -217,6 +217,33 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/resources/);
   });
 
+  it('keeps search forms, tabs, result links, and saved-search controls behind urlFor()', () => {
+    const templates = [
+      path.join('search', 'index.njk'),
+      path.join('search', 'advanced.njk'),
+      path.join('search', 'saved-delete.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:search|listings|members|events|groups)/);
+      expect(template).not.toMatch(/action="\/search/);
+      expect(template).not.toContain('href: "/search');
+      expect(template).not.toContain('href: "/listings"');
+      expect(template).not.toContain('baseUrl: "/search"');
+      expect(template).not.toContain('href="{{ tabHrefs.');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/search/);
+    expect(source).toMatch(/urlFor\(["']\/listings/);
+    expect(source).toMatch(/urlFor\(["']\/members/);
+    expect(source).toMatch(/urlFor\(["']\/events/);
+    expect(source).toMatch(/urlFor\(["']\/groups/);
+  });
+
   it('keeps listing index and form controls behind urlFor()', () => {
     const templates = [
       path.join('listings', 'index.njk'),

@@ -42,9 +42,9 @@
   <h1 class="govuk-heading-xl">Advanced search</h1>
   <p class="govuk-body-l">Search across listings, members, events and groups, then narrow your results with filters.</p>
 
-  <p class="govuk-body"><a class="govuk-link" href="/search">Switch to simple search</a></p>
+  <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/search') }}">Switch to simple search</a></p>
 
-  <form method="get" action="/search/advanced" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/search/advanced') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label govuk-label--m" for="q">What are you looking for?</label>
       <div id="q-hint" class="govuk-hint">Search by keyword, name, title or description.</div>
@@ -129,14 +129,14 @@
 
         <div class="govuk-button-group">
           <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Apply filters</button>
-          {% if activeFilterCount > 0 %}<a class="govuk-link" href="/search/advanced{% if searchQuery %}?q={{ searchQuery | urlencode }}{% endif %}">Reset filters</a>{% endif %}
+          {% if activeFilterCount > 0 %}<a class="govuk-link" href="{{ urlFor('/search/advanced' + ('?q=' + (searchQuery | urlencode) if searchQuery else '')) }}">Reset filters</a>{% endif %}
         </div>
       </div>
     </details>
 
     <div class="govuk-button-group">
       <button type="submit" class="govuk-button" data-module="govuk-button">Search</button>
-      {% if searchQuery %}<a class="govuk-link" href="/search/advanced">Clear search</a>{% endif %}
+      {% if searchQuery %}<a class="govuk-link" href="{{ urlFor('/search/advanced') }}">Clear search</a>{% endif %}
     </div>
   </form>
 
@@ -146,7 +146,7 @@
         <span class="govuk-details__summary-text">Save this search</span>
       </summary>
       <div class="govuk-details__text">
-        <form method="post" action="/search/saved">
+        <form method="post" action="{{ urlFor('/search/saved') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="q" value="{{ searchQuery }}">
           <input type="hidden" name="type" value="{{ filters.type }}">
@@ -181,11 +181,11 @@
               </span>
             </span>
             <span class="nexus-alpha-actions">
-              <form method="post" action="/search/saved/{{ saved.id }}/run" class="govuk-!-display-inline">
+              <form method="post" action="{{ urlFor('/search/saved/' + (saved.id | string) + '/run') }}" class="govuk-!-display-inline">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Run saved search {{ saved.name }}">Run search</button>
               </form>
-              <a class="govuk-link" href="/search/saved/{{ saved.id }}/delete" aria-label="Delete saved search {{ saved.name }}">Delete</a>
+              <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="Delete saved search {{ saved.name }}">Delete</a>
             </span>
           </li>
         {% endfor %}
@@ -218,11 +218,11 @@
 
     <nav class="govuk-!-margin-bottom-4" aria-label="Advanced search">
       <ul class="govuk-list nexus-alpha-inline-list">
-        <li><a class="govuk-link{% if activeTab == 'all' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'all' %} aria-current="page"{% endif %} href="{{ tabHrefs.all }}">All ({{ counts.all }})</a></li>
-        <li><a class="govuk-link{% if activeTab == 'listings' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'listings' %} aria-current="page"{% endif %} href="{{ tabHrefs.listings }}">Listings ({{ counts.listings }})</a></li>
-        <li><a class="govuk-link{% if activeTab == 'users' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'users' %} aria-current="page"{% endif %} href="{{ tabHrefs.users }}">Members ({{ counts.users }})</a></li>
-        <li><a class="govuk-link{% if activeTab == 'events' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'events' %} aria-current="page"{% endif %} href="{{ tabHrefs.events }}">Events ({{ counts.events }})</a></li>
-        <li><a class="govuk-link{% if activeTab == 'groups' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'groups' %} aria-current="page"{% endif %} href="{{ tabHrefs.groups }}">Groups ({{ counts.groups }})</a></li>
+        <li><a class="govuk-link{% if activeTab == 'all' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'all' %} aria-current="page"{% endif %} href="{{ urlFor(tabHrefs.all) }}">All ({{ counts.all }})</a></li>
+        <li><a class="govuk-link{% if activeTab == 'listings' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'listings' %} aria-current="page"{% endif %} href="{{ urlFor(tabHrefs.listings) }}">Listings ({{ counts.listings }})</a></li>
+        <li><a class="govuk-link{% if activeTab == 'users' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'users' %} aria-current="page"{% endif %} href="{{ urlFor(tabHrefs.users) }}">Members ({{ counts.users }})</a></li>
+        <li><a class="govuk-link{% if activeTab == 'events' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'events' %} aria-current="page"{% endif %} href="{{ urlFor(tabHrefs.events) }}">Events ({{ counts.events }})</a></li>
+        <li><a class="govuk-link{% if activeTab == 'groups' %} govuk-!-font-weight-bold{% endif %}"{% if activeTab == 'groups' %} aria-current="page"{% endif %} href="{{ urlFor(tabHrefs.groups) }}">Groups ({{ counts.groups }})</a></li>
       </ul>
     </nav>
 
@@ -233,13 +233,13 @@
           {% for listing in grouped.listings %}
             <article class="nexus-alpha-card">
               <div class="nexus-alpha-module-row">
-                <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="/listings/{{ listing.id }}">{{ listing.title or 'Listings' }}</a></h3>
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ listing.title or 'Listings' }}</a></h3>
                 {% if listing.listing_type == 'offer' %}<strong class="govuk-tag govuk-tag--green">Offering</strong>{% elif listing.listing_type == 'request' %}<strong class="govuk-tag govuk-tag--orange">Requesting</strong>{% endif %}
               </div>
               {% if listing.is_featured %}<p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">Featured</strong></p>{% endif %}
               {% if listing.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(listing.description, 200) }}</p>{% endif %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{% if listing.hours_estimate %}{{ listing.hours_estimate }} hours{% else %}Time to be agreed{% endif %}</p>
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="/listings/{{ listing.id }}">View listing</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/listings/' + (listing.id | string)) }}">View listing</a></p>
             </article>
           {% endfor %}
         </div>
@@ -252,10 +252,10 @@
         <div class="nexus-alpha-card-list">
           {% for user in grouped.users %}
             <article class="nexus-alpha-card">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="/members/{{ user.id }}">{{ user.name or 'Members' }}</a></h3>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/members/' + (user.id | string)) }}">{{ user.name or 'Members' }}</a></h3>
               {% if user.location %}<p class="govuk-body-s nexus-alpha-meta">{{ user.location }}</p>{% endif %}
               {% if user.bio %}<p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-2">{{ truncate(user.bio, 180) }}</p>{% endif %}
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="/members/{{ user.id }}">View member</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/members/' + (user.id | string)) }}">View member</a></p>
             </article>
           {% endfor %}
         </div>
@@ -268,10 +268,10 @@
         <div class="nexus-alpha-card-list">
           {% for event in grouped.events %}
             <article class="nexus-alpha-card">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="/events/{{ event.id }}">{{ event.title or 'Events' }}</a></h3>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ event.title or 'Events' }}</a></h3>
               {% if event.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(event.description, 200) }}</p>{% endif %}
               {% if event.location %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ event.location }}</p>{% endif %}
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="/events/{{ event.id }}">View event</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">View event</a></p>
             </article>
           {% endfor %}
         </div>
@@ -284,10 +284,10 @@
         <div class="nexus-alpha-card-list">
           {% for group in grouped.groups %}
             <article class="nexus-alpha-card">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="/groups/{{ group.id }}">{{ group.name or 'Groups' }}</a></h3>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ group.name or 'Groups' }}</a></h3>
               {% if group.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(group.description, 200) }}</p>{% endif %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ membersCountLabel(group.members_count or group.member_count or 0) }}</p>
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="/groups/{{ group.id }}">View group</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/groups/' + (group.id | string)) }}">View group</a></p>
             </article>
           {% endfor %}
         </div>

@@ -132,7 +132,10 @@ pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
 links, and legacy my-groups source controls through `urlFor()`. The latest
 resources source slice now routes resource browse, library, upload, delete,
 download, comment, reaction, reorder, category, search, and pagination
-controls through `urlFor()`.
+controls through `urlFor()`. The latest search source slice now routes simple
+search, advanced search, saved-search delete, result tabs, result links,
+empty-state CTAs, pagination base URL, and saved-search forms through
+`urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -157,8 +160,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `982/1000` implementation/certification parity |
-| Green confidence estimate | about `965/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `983/1000` implementation/certification parity |
+| Green confidence estimate | about `966/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -184,6 +187,14 @@ template-helper slice:
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 727 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary Web UK `http://127.0.0.1:6464` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/events=>Events` and `/events/new=>Create an event`; the broader CLI invocation timed out after walking default smoke page lists and is not counted as a full-smoke pass.
+
+Latest focused verification on 2026-07-09 for the search template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search forms"` first failed on raw `/search`, `/listings`, `/members`, `/events`, and `/groups` links/actions, then passed after conversion.
+- `Get-ChildItem apps\web-uk\src\views\search -Filter *.njk | Select-String -Pattern 'href="/search','action="/search','href="/listings','href="/members','href="/events','href="/groups','href: "/search','href: "/listings','baseUrl: "/search'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"` passed: 15 selected tests.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:56338` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 13 checks: base API/health, cookie, login, account, logout, signed `/search/advanced?q=garden`, and body markers `Advanced search` and `Save this search`.
 
 Latest focused verification on 2026-07-09 for the groups index/form
 template-helper slice:
@@ -1409,12 +1420,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `980/1000`.
-Green confidence estimate: `964/1000`, because the consolidated code, static
+Current working estimate at this handoff: `983/1000`.
+Green confidence estimate: `966/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
-template-helper conversion, and ASP.NET backend switching proof still need final
-certification.
+remaining template-helper conversion, and ASP.NET backend switching proof still
+need final certification.
 
 ## Final Handoff Checklist
 

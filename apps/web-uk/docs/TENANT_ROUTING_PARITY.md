@@ -485,9 +485,26 @@ API/health, cookie, login, account, and logout checks plus `/resources`,
 `/resources/library`, `/resources/upload`, and `/resources/10/comments` module
 renders and body markers.
 
+The thirty-third template-helper source slice extends direct `urlFor()`
+conversion into search pages. `src/views/search/index.njk`,
+`advanced.njk`, and `saved-delete.njk` now route simple search, advanced
+search, saved-search delete, result tabs, result links, empty-state CTAs,
+pagination base URL, saved-search run/delete forms, and saved-search delete
+confirmation controls through `urlFor()`. The source-level regression first
+failed on raw `/search`, `/listings`, `/members`, `/events`, and `/groups`
+links/actions, then passed after conversion; a source scan for search-local raw
+`href`, `action`, and pagination `baseUrl` strings returns no matches. A
+focused exported Laravel runtime smoke against temporary in-process Web UK
+`http://127.0.0.1:56338` and Laravel `http://127.0.0.1:8088`, started with
+`TENANT_ID=2`, passed the base API/health, cookie, login, account, and logout
+checks plus `/search/advanced?q=garden` module rendering and body markers
+`Advanced search` and `Save this search`.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search forms"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "resource browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "resource"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"

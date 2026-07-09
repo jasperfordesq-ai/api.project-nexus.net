@@ -17,7 +17,7 @@
 
       <h1 class="govuk-heading-xl">Search</h1>
 
-      <form action="/search" method="get" class="govuk-!-margin-bottom-6">
+      <form action="{{ urlFor('/search') }}" method="get" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <div class="app-search-box">
             {{ govukInput({
@@ -51,12 +51,12 @@
         <nav class="govuk-tabs govuk-!-margin-bottom-6" data-module="govuk-tabs">
           <ul class="govuk-tabs__list">
             <li class="govuk-tabs__list-item {% if type == 'all' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=all">
+              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=all') }}">
                 All
               </a>
             </li>
             <li class="govuk-tabs__list-item {% if type == 'listings' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=listings">
+              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=listings') }}">
                 Listings
                 {% if results.listings and results.listings.length > 0 %}
                   <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.listings.length }}</span>
@@ -64,7 +64,7 @@
               </a>
             </li>
             <li class="govuk-tabs__list-item {% if type == 'users' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=users">
+              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=users') }}">
                 Members
                 {% if results.users and results.users.length > 0 %}
                   <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.users.length }}</span>
@@ -72,7 +72,7 @@
               </a>
             </li>
             <li class="govuk-tabs__list-item {% if type == 'groups' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=groups">
+              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=groups') }}">
                 Groups
                 {% if results.groups and results.groups.length > 0 %}
                   <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.groups.length }}</span>
@@ -80,7 +80,7 @@
               </a>
             </li>
             <li class="govuk-tabs__list-item {% if type == 'events' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=events">
+              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=events') }}">
                 Events
                 {% if results.events and results.events.length > 0 %}
                   <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.events.length }}</span>
@@ -105,7 +105,7 @@
             {% for listing in results.listings %}
               <li class="app-search-result govuk-!-margin-bottom-4">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="/listings/{{ listing.id }}" class="govuk-link">{{ listing.title }}</a>
+                  <a href="{{ urlFor('/listings/' + (listing.id | string)) }}" class="govuk-link">{{ listing.title }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
                   {% if listing.type == 'offer' %}
@@ -127,7 +127,7 @@
           </ul>
           {% if type == 'all' and results.listings.length >= 5 %}
             <p class="govuk-body">
-              <a href="/search?q={{ query | urlencode }}&type=listings" class="govuk-link">View all listing results</a>
+              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=listings') }}" class="govuk-link">View all listing results</a>
             </p>
           {% endif %}
         {% endif %}
@@ -144,7 +144,7 @@
                   {% include "partials/avatar.njk" %}
                   <div>
                     <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                      <a href="/members/{{ user.id }}" class="govuk-link">
+                      <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
                         {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
                       </a>
                     </h3>
@@ -158,7 +158,7 @@
           </ul>
           {% if type == 'all' and results.users.length >= 5 %}
             <p class="govuk-body">
-              <a href="/search?q={{ query | urlencode }}&type=users" class="govuk-link">View all member results</a>
+              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=users') }}" class="govuk-link">View all member results</a>
             </p>
           {% endif %}
         {% endif %}
@@ -172,7 +172,7 @@
             {% for group in results.groups %}
               <li class="app-search-result govuk-!-margin-bottom-4">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="/groups/{{ group.id }}" class="govuk-link">{{ group.name }}</a>
+                  <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">{{ group.name }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
                   {% if group.isPublic or group.is_public %}
@@ -193,7 +193,7 @@
           </ul>
           {% if type == 'all' and results.groups.length >= 5 %}
             <p class="govuk-body">
-              <a href="/search?q={{ query | urlencode }}&type=groups" class="govuk-link">View all group results</a>
+              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=groups') }}" class="govuk-link">View all group results</a>
             </p>
           {% endif %}
         {% endif %}
@@ -207,7 +207,7 @@
             {% for event in results.events %}
               <li class="app-search-result govuk-!-margin-bottom-4">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="/events/{{ event.id }}" class="govuk-link">{{ event.title }}</a>
+                  <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">{{ event.title }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
                   {% if event.startsAt or event.starts_at %}
@@ -227,7 +227,7 @@
           </ul>
           {% if type == 'all' and results.events.length >= 5 %}
             <p class="govuk-body">
-              <a href="/search?q={{ query | urlencode }}&type=events" class="govuk-link">View all event results</a>
+              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=events') }}" class="govuk-link">View all event results</a>
             </p>
           {% endif %}
         {% endif %}
@@ -242,7 +242,7 @@
               message: "Try a different search term or browse all results.",
               action: {
                 text: "View all results",
-                href: "/search?q=" + (query | urlencode) + "&type=all"
+                href: urlFor("/search?q=" + (query | urlencode) + "&type=all")
               }
             } %}
             {% include "partials/empty-state.njk" %}
@@ -257,7 +257,7 @@
             message: "We couldn't find anything matching \"" + query + "\". Try a different search term.",
             action: {
               text: "Browse listings",
-              href: "/listings"
+              href: urlFor("/listings")
             }
           } %}
           {% include "partials/empty-state.njk" %}
@@ -266,7 +266,7 @@
         {# Pagination #}
         {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% set paginationConfig = {
-            baseUrl: "/search",
+            baseUrl: urlFor("/search"),
             page: pagination.page,
             totalPages: pagination.totalPages or pagination.total_pages,
             queryParams: { q: query, type: type }

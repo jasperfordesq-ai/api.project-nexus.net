@@ -569,6 +569,12 @@ temporary in-process Web UK `http://127.0.0.1:54932`, Laravel
 API/health, cookie, login, account, and logout checks plus module renders and
 body markers for `/resources`, `/resources/library`, `/resources/upload`, and
 `/resources/10/comments`.
+A follow-up focused search source-helper smoke on 2026-07-09 against temporary
+in-process Web UK `http://127.0.0.1:56338`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `13/13` checks: the base
+API/health, cookie, login, account, and logout checks plus signed
+`/search/advanced?q=garden` module rendering and body markers
+`Advanced search` and `Save this search`.
 The signed wallet responses `/wallet/export.csv`, `/wallet/manage`, and
 `/wallet/recipients` returned expected response markers against
 `WEB_UK_BASE_URL=http://127.0.0.1:6236`; the CSV export marker tracks the
