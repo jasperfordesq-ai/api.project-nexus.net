@@ -407,11 +407,25 @@ The source-level regression first failed on raw `/courses` links/actions, then
 passed after conversion; a source scan for course-local raw `href`/`action`
 strings and the raw `formAction` template action returns no matches.
 
+The twenty-eighth template-helper source slice extends direct `urlFor()`
+conversion into listing index and create/edit form pages.
+`src/views/listings/index.njk` and `src/views/listings/form.njk` now route
+listing breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
+controls, pagination, empty-state CTAs, create/edit form action, and cancel
+link through `urlFor()`. The source-level regression first failed on raw
+`/listings` links/actions, then passed after conversion; a source scan for
+listing index/form raw `href`/`action` strings returns no matches. A focused
+Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6463` and
+Laravel `http://127.0.0.1:8088` passed the base API/health, cookie, login,
+account, and logout checks plus signed `/listings` containing `Create listing`.
+
 Verification command:
 
 ```powershell
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "course browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "listing index"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed listing index|owner listing delete"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"

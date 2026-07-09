@@ -13,8 +13,8 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
-      { text: "Listings", href: "/listings" },
+      { text: "Home", href: urlFor("/") },
+      { text: "Listings", href: urlFor("/listings") },
       { text: "Edit listing" if listing else "New listing" }
     ]
   }) }}
@@ -37,6 +37,7 @@
     {% set currentDescription = "" %}
     {% set currentType = "" %}
   {% endif %}
+  {% set listingFormAction = "/listings/" + (listing.id | string) + "/edit" if listing and listing.id else "/listings/new" %}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -50,7 +51,7 @@
 
       <h1 class="govuk-heading-xl">{% if listing %}Edit listing{% else %}Create listing{% endif %}</h1>
 
-      <form method="post" novalidate>
+      <form method="post" action="{{ urlFor(listingFormAction) }}" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {{ govukInput({
@@ -112,7 +113,7 @@
           {{ govukButton({
             text: "Save listing"
           }) }}
-          <a href="/listings" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/listings') }}" class="govuk-link">Cancel</a>
         </div>
       </form>
 

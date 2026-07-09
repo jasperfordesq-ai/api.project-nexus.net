@@ -10,7 +10,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: "/" },
+      { text: "Home", href: urlFor("/") },
       { text: "Listings" }
     ]
   }) }}
@@ -30,7 +30,7 @@
 
       <div class="govuk-grid-row govuk-!-margin-bottom-6">
         <div class="govuk-grid-column-full">
-          <form method="get" action="/listings" class="app-filter-form">
+          <form method="get" action="{{ urlFor('/listings') }}" class="app-filter-form">
             <div class="govuk-grid-row">
               <div class="govuk-grid-column-one-third">
                 {{ govukInput({
@@ -59,7 +59,7 @@
                   classes: "govuk-button--secondary"
                 }) }}
                 {% if filters.search or filters.status %}
-                  <a href="/listings" class="govuk-link govuk-!-margin-left-2">Clear</a>
+                  <a href="{{ urlFor('/listings') }}" class="govuk-link govuk-!-margin-left-2">Clear</a>
                 {% endif %}
               </div>
             </div>
@@ -68,7 +68,7 @@
       </div>
 
       <p class="govuk-body">
-        <a href="/listings/new" class="govuk-button">Create listing</a>
+        <a href="{{ urlFor('/listings/new') }}" class="govuk-button">Create listing</a>
       </p>
 
       {% if listings and listings.length > 0 %}
@@ -92,7 +92,7 @@
               {% endif %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
-                  <a href="/listings/{{ listing.id }}" class="govuk-link">
+                  <a href="{{ urlFor('/listings/' + (listing.id | string)) }}" class="govuk-link">
                     {{ listing.title or listing.name or "Untitled" }}
                   </a>
                 </td>
@@ -106,8 +106,8 @@
                   {% set listingOwnerId = listing.user_id or listing.userId or listing.author_id or listing.authorId or (listing.user.id if listing.user and listing.user.id else null) %}
                   {% set currentUserId = currentUser.id if currentUser and currentUser.id else null %}
                   {% if listing.can_edit or (listingOwnerId and currentUserId and (listingOwnerId | string) == (currentUserId | string)) %}
-                    <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
-                    <form method="post" action="/listings/{{ listing.id }}/delete" class="nexus-alpha-linkform govuk-!-display-inline-block">
+                    <a href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}" class="govuk-link govuk-!-margin-right-2">Edit</a>
+                    <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}" class="nexus-alpha-linkform govuk-!-display-inline-block">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <button type="submit" class="govuk-link app-link--destructive nexus-alpha-linkbutton">Delete</button>
                     </form>
@@ -123,14 +123,14 @@
           {% for i in range(1, pagination.totalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
-              href: "/listings?page=" + i + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else ""),
+              href: urlFor("/listings?page=" + i + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")),
               current: i == pagination.currentPage
             }), paginationItems) %}
           {% endfor %}
 
           {{ govukPagination({
-            previous: { href: "/listings?page=" + (pagination.currentPage - 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage > 1 else undefined,
-            next: { href: "/listings?page=" + (pagination.currentPage + 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage < pagination.totalPages else undefined,
+            previous: { href: urlFor("/listings?page=" + (pagination.currentPage - 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")) } if pagination.currentPage > 1 else undefined,
+            next: { href: urlFor("/listings?page=" + (pagination.currentPage + 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")) } if pagination.currentPage < pagination.totalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}
@@ -143,7 +143,7 @@
             message: "No listings match your search criteria.",
             action: {
               text: "Clear filters",
-              href: "/listings"
+              href: urlFor("/listings")
             }
           } %}
         {% else %}
@@ -153,7 +153,7 @@
             message: "Create your first listing to share with the community.",
             action: {
               text: "Create listing",
-              href: "/listings/new",
+              href: urlFor("/listings/new"),
               isButton: true
             }
           } %}

@@ -120,7 +120,10 @@ detail, discussion, liker, reaction, comment, pagination, and member-profile
 links/forms through `urlFor()`. The latest courses source slice now routes
 course browse, learner, instructor, builder, analytics, grading, certificate,
 review, enrolment, quiz, progress, and section/lesson controls through
-`urlFor()`.
+`urlFor()`. The latest listing index/form source slice now routes listing
+breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
+controls, pagination, empty-state CTAs, create/edit form action, and cancel
+link through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -202,6 +205,10 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "course browse"` first failed on raw `/courses` links/actions, then passed after the template conversion.
 - `rg -n 'href="/courses|action="/courses|action="\{\{ formAction \}\}' apps/web-uk/src/views/courses` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"` passed `4/4` selected course tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "listing index"` first failed on raw `/listings` links/actions, then passed after the listing index/form conversion.
+- `rg -n 'href="/listings|action="/listings|href: "/listings' apps/web-uk/src/views/listings/index.njk apps/web-uk/src/views/listings/form.njk` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed listing index|owner listing delete"` passed `2/2` selected listing tests.
+- A focused Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6463`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed base API/health, cookie-consent, login/account/logout checks plus `body-text-page-listings-contains-create-listing` for signed `/listings`.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
