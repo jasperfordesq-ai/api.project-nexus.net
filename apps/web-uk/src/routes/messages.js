@@ -22,6 +22,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { flagEnabled } = require('../lib/accessible-shell');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
@@ -124,6 +125,12 @@ function messageRedirect(userId, status, fragment = '') {
 
 function groupRedirect(conversationId, status, fragment = '') {
   return statusRedirect(`/messages/groups/${conversationId}`, status, fragment);
+}
+
+function tenantFeatureEnabled(req, key, fallback = true) {
+  const tenant = req.accessibleRouting?.tenant;
+  if (!tenant || typeof tenant !== 'object') return fallback;
+  return flagEnabled(tenant, key, 'features', fallback);
 }
 
 function memberIdsFrom(raw) {
@@ -378,6 +385,10 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/translate', asyncRoute(async (req
 
   const userId = Number(req.params.userId);
   const messageId = Number(req.params.messageId);
+  if (!tenantFeatureEnabled(req, 'message_translation', true)) {
+    return res.redirect(messageRedirect(userId, 'translate-unavailable', `#m-${messageId}`));
+  }
+
   const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
   let status = 'translate-done';
   try {

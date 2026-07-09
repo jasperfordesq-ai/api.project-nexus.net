@@ -4316,6 +4316,63 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('hides federation message translation controls when tenant message translation is disabled', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { messages: true },
+        features: { federation: true, message_translation: false }
+      }
+    });
+    api.callFederationApi.mockImplementation(async (token, method, pathValue, data) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              messaging_enabled_federated: true
+            }
+          }
+        };
+      }
+      if (pathValue === '/messages') {
+        return {
+          data: [
+            {
+              id: 33,
+              subject: 'Workshop plans',
+              body: 'Can we confirm tools for Saturday?',
+              direction: 'inbound',
+              status: 'delivered',
+              read_at: null,
+              created_at: '2026-07-02T12:00:00Z',
+              sender: { id: 77, name: 'Avery Stone', tenant_id: 12, tenant_name: 'North Timebank' },
+              receiver: { id: 5, name: 'Jasper Ford', tenant_id: 1, tenant_name: 'Local Timebank' }
+            }
+          ]
+        };
+      }
+      if (pathValue === '/messages/mark-read-batch' && method === 'POST' && data.ids[0] === 33) {
+        return { data: { updated: 1 } };
+      }
+
+      return { data: [] };
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/federation/messages/conversation/77?tenant_id=12')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Conversation with Avery Stone');
+    expect(response.text).not.toContain('action="/acme/accessible/federation/messages/translate/33"');
+    expect(response.text).not.toContain('name="target_language"');
+  });
+
   it('renders the Laravel-style community guidelines fallback document', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
@@ -17413,6 +17470,47 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('returns Laravel unavailable redirects when tenant message translation is disabled', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { messages: true },
+        features: { federation: true, message_translation: false }
+      }
+    });
+
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    api.callMessageApi.mockClear();
+    api.callFederationApi.mockClear();
+
+    const directResponse = await agent
+      .post('/acme/accessible/messages/77/m/12/translate')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], target_language: 'ga' });
+
+    expect(directResponse.status).toBe(302);
+    expect(directResponse.headers.location).toBe('/acme/accessible/messages/77?status=translate-unavailable#m-12');
+    expect(api.callMessageApi).not.toHaveBeenCalledWith('test-token', 'POST', '/12/translate', expect.anything());
+
+    const federationResponse = await agent
+      .post('/acme/accessible/federation/messages/translate/33')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], partner_id: '77', partner_tenant_id: '12', target_language: 'ga' });
+
+    expect(federationResponse.status).toBe(302);
+    expect(federationResponse.headers.location).toBe('/acme/accessible/federation/messages/conversation/77?tenant_id=12&status=translate-unavailable#message-33');
+    expect(api.callFederationApi).not.toHaveBeenCalledWith('test-token', 'POST', '/messages/33/translate', expect.anything());
   });
 
   it('renders the Laravel group conversations list for signed-in members', async () => {

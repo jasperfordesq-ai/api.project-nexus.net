@@ -423,8 +423,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `996/1000` implementation/certification parity |
-| Green confidence estimate | about `987/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific workflow gates such as message translation, active-club evidence, broker workflow behavior, and ASP.NET backend switching certification |
+| Working estimate | about `997/1000` implementation/certification parity |
+| Green confidence estimate | about `988/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific workflow gates such as active-club evidence and broker workflow behavior, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -741,9 +741,38 @@ feature gates:
   basics and that the enabled Laravel fixture still renders `/events/6/map`,
   `/organisations/636/jobs`, and `/messages/groups/new`.
 - This closes the proven maps, organisation-jobs, and group-message compound
-  gate slice. It does not prove message translation policy, active-club
-  evidence, broker workflow gating, visual/manual Blade parity, or ASP.NET
-  backend compatibility.
+  gate slice. It does not prove active-club evidence, broker workflow gating,
+  visual/manual Blade parity, or ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for the message translation policy
+slice:
+
+- Laravel source checked:
+  `MessagesParity::messagesTranslateMessage()` and
+  `AlphaController::translateFederationMessage()` both gate translation on
+  `TenantContext::hasFeature('message_translation')`, and the federation
+  conversation renderer passes `translateEnabled` from the same tenant feature.
+- Web UK direct message translation now checks
+  `req.accessibleRouting.tenant.features.message_translation` before calling
+  Laravel message APIs and redirects disabled tenants to
+  `/messages/{userId}?status=translate-unavailable#m-{messageId}`.
+- Web UK federation conversation rendering hides per-message translate forms
+  when tenant `message_translation` is disabled, and federation translate POSTs
+  redirect disabled tenants to the Laravel-style
+  `/federation/messages/conversation/{partnerId}?tenant_id={tenantId}&status=translate-unavailable#message-{id}`.
+- TDD proof: the focused tests first failed because Web UK rendered the
+  federation translate form and redirected direct translation as
+  `translate-done`; after the route changes the same selected tests passed.
+- Verification passed:
+  `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "message translation is disabled|hides federation message translation"`,
+  the enabled-path alias/conversation selection, full
+  `shared-accessible-shell.test.js`, `npm --prefix apps/web-uk run lint`,
+  `npm --prefix apps/web-uk run route:matrix`, and full
+  `npm --prefix apps/web-uk test -- --runInBand`.
+- Targeted Laravel runtime smoke passed for signed `/federation/messages` at
+  `WEB_UK_BASE_URL=http://127.0.0.1:6622` and signed `/messages/77` at
+  `WEB_UK_BASE_URL=http://127.0.0.1:6623`, both against
+  `LARAVEL_BASE_URL=http://127.0.0.1:8088` with `TENANT_ID=2`.
 
 Latest focused verification on 2026-07-09 for the AI chat and matches
 template-helper slice:
@@ -2126,9 +2155,10 @@ ASP.NET switching proof over adding more skeleton pages.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
 4. Add remaining route-specific workflow gate proof beyond the broad
-   route-level module/feature gates. Maps, organisation jobs, and group-message
-   connection gates now have focused Jest proof; message translation policy,
-   active-club evidence, and broker workflow gating still need certification.
+   route-level module/feature gates. Maps, organisation jobs, group-message
+   connection gates, and message translation policy now have focused Jest
+   proof; active-club evidence and broker workflow gating still need
+   certification.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -2148,12 +2178,12 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `996/1000`.
-Green confidence estimate: `987/1000`, because the consolidated code, static
+Current working estimate at this handoff: `997/1000`.
+Green confidence estimate: `988/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
 full default Laravel runtime-smoke coverage via chunked/bucketed runs are
-strong, while visual/manual Blade parity spot-checks, remaining route-specific
-workflow gates, and ASP.NET backend switching proof still need final
+strong, while visual/manual Blade parity spot-checks, active-club and broker
+workflow gate proof, and ASP.NET backend switching proof still need final
 certification.
 
 ## Final Handoff Checklist
