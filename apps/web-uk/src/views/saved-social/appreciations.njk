@@ -8,7 +8,7 @@
 {% block content %}
   {% set messageError = status == "appreciation-message-required" %}
 
-  <a class="govuk-back-link" href="/members/{{ owner.id }}">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">Back to profile</a>
 
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -44,7 +44,7 @@
   <p class="govuk-body-l">Public thank-you notes other members have sent to this person.</p>
 
   {% if not isSelf %}
-    <form method="post" action="/users/{{ owner.id }}/appreciations" class="govuk-!-margin-bottom-7">
+    <form method="post" action="{{ urlFor('/users/' + (owner.id | string) + '/appreciations') }}" class="govuk-!-margin-bottom-7">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if messageError %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--m" for="appreciation-message">Send a thank-you</label>
@@ -71,7 +71,7 @@
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
             From
             {% if appreciation.sender.id %}
-              <a class="govuk-link" href="/members/{{ appreciation.sender.id }}">{{ appreciation.sender.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' + (appreciation.sender.id | string)) }}">{{ appreciation.sender.name }}</a>
             {% else %}
               {{ appreciation.sender.name }}
             {% endif %}
@@ -81,7 +81,7 @@
           <p class="govuk-body-s nexus-alpha-meta">{{ appreciation.reactionLabel }}</p>
           <div class="govuk-button-group">
             {% for reaction in reactionTypes %}
-              <form method="post" action="/appreciations/{{ appreciation.id }}/react" class="govuk-!-margin-bottom-0">
+              <form method="post" action="{{ urlFor('/appreciations/' + (appreciation.id | string) + '/react') }}" class="govuk-!-margin-bottom-0">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="owner_id" value="{{ owner.id }}">
                 <input type="hidden" name="reaction_type" value="{{ reaction.value }}">
@@ -105,14 +105,14 @@
     <nav class="govuk-pagination" role="navigation" aria-label="Page {{ currentPage }} of {{ lastPage }}">
       {% if currentPage > 1 %}
         <div class="govuk-pagination__prev">
-          <a class="govuk-link govuk-pagination__link" href="/users/{{ owner.id }}/appreciations?page={{ currentPage - 1 }}" rel="prev">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/users/' + (owner.id | string) + '/appreciations?page=' + ((currentPage - 1) | string)) }}" rel="prev">
             <span class="govuk-pagination__link-title">Previous</span>
           </a>
         </div>
       {% endif %}
       {% if currentPage < lastPage %}
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="/users/{{ owner.id }}/appreciations?page={{ currentPage + 1 }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/users/' + (owner.id | string) + '/appreciations?page=' + ((currentPage + 1) | string)) }}" rel="next">
             <span class="govuk-pagination__link-title">Next</span>
           </a>
         </div>

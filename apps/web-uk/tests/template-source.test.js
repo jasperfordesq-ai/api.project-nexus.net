@@ -244,6 +244,32 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps saved-item, collection, and appreciation controls behind urlFor()', () => {
+    const templates = [
+      path.join('saved', 'index.njk'),
+      path.join('saved-collections', 'index.njk'),
+      path.join('saved-collections', 'detail.njk'),
+      path.join('saved-social', 'appreciations.njk'),
+      path.join('saved-social', 'public-collections.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:saved|me\/collections|members|users)/);
+      expect(template).not.toMatch(/action="\/(?:saved|me\/collections|users|appreciations)/);
+      expect(template).not.toContain('href="{{ item.href }}"');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/saved/);
+    expect(source).toMatch(/urlFor\(["']\/me\/collections/);
+    expect(source).toMatch(/urlFor\(["']\/members/);
+    expect(source).toMatch(/urlFor\(["']\/users/);
+    expect(source).toMatch(/urlFor\(["']\/appreciations/);
+  });
+
   it('keeps listing index and form controls behind urlFor()', () => {
     const templates = [
       path.join('listings', 'index.njk'),

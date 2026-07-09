@@ -20,7 +20,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/saved" class="govuk-!-margin-bottom-4">
+  <form method="get" action="{{ urlFor('/saved') }}" class="govuk-!-margin-bottom-4">
     <div class="govuk-form-group govuk-!-margin-bottom-2">
       <label class="govuk-label" for="saved-type-filter">Filter saved items by type</label>
       <select class="govuk-select" id="saved-type-filter" name="type">
@@ -32,7 +32,7 @@
     </div>
     <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply</button>
     {% if selectedType %}
-      <a class="govuk-link govuk-!-margin-left-4" href="/saved">Clear filters</a>
+      <a class="govuk-link govuk-!-margin-left-4" href="{{ urlFor('/saved') }}">Clear filters</a>
     {% endif %}
   </form>
 
@@ -45,7 +45,7 @@
       {% for item in bookmarks %}
         <li>
           {% if item.href %}
-            <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+            <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
           {% else %}
             {{ item.title }}
           {% endif %}
@@ -53,7 +53,7 @@
             <strong class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ item.label }}</strong>
           {% endif %}
           {% if item.itemId and item.type %}
-            <form method="post" action="/saved/destroy" class="nexus-alpha-linkform govuk-!-display-inline-block govuk-!-margin-left-2">
+            <form method="post" action="{{ urlFor('/saved/destroy') }}" class="nexus-alpha-linkform govuk-!-display-inline-block govuk-!-margin-left-2">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="type" value="{{ item.type }}">
               <input type="hidden" name="id" value="{{ item.itemId }}">

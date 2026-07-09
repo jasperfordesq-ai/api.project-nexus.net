@@ -575,6 +575,12 @@ in-process Web UK `http://127.0.0.1:56338`, Laravel
 API/health, cookie, login, account, and logout checks plus signed
 `/search/advanced?q=garden` module rendering and body markers
 `Advanced search` and `Save this search`.
+A follow-up focused saved source-helper smoke on 2026-07-09 against temporary
+in-process Web UK `http://127.0.0.1:50823`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `16/16` checks: the base
+API/health, cookie, login, account, and logout checks plus signed `/saved`,
+`/me/collections`, and `/users/14/appreciations` module rendering and body
+markers `Saved items`, `My collections`, and `Appreciation`.
 The signed wallet responses `/wallet/export.csv`, `/wallet/manage`, and
 `/wallet/recipients` returned expected response markers against
 `WEB_UK_BASE_URL=http://127.0.0.1:6236`; the CSV export marker tracks the
@@ -696,7 +702,9 @@ module includes the Laravel accessible `/wallet/donate` POST, backed by
 `/api/v2/wallet/donate`. Saved-item removal and appreciation send/react aliases
 are backed by `/api/v2/me/saved-items` and `/api/v2/appreciations`.
 Saved-collection aliases are backed by `/api/v2/me/collections` plus
-`/api/v2/me/saved-items/{id}` for item removal.
+`/api/v2/me/saved-items/{id}` for item removal. Saved item, collection, and
+saved social templates route their local links/forms through `urlFor()` with
+focused source, render, and Laravel runtime-smoke coverage.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.

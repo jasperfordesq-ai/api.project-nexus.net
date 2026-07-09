@@ -150,7 +150,12 @@ Current gaps:
   empty-state CTA. The latest focused source conversion covers the group
   exchange list/create/detail templates, including the create CTA, status tabs,
   detail links, create form, participant add/remove/search forms, confirmation
-  form, and complete/cancel actions.
+  form, and complete/cancel actions. The latest focused source conversion
+  covers saved item, saved collection, and saved social templates, including
+  saved-item filters, bookmark removal, item links, collection list/detail
+  links, pagination, create/update/delete forms, collection item removal,
+  public collection profile links, appreciation send/reaction forms, and
+  appreciation pagination.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -500,9 +505,29 @@ focused exported Laravel runtime smoke against temporary in-process Web UK
 checks plus `/search/advanced?q=garden` module rendering and body markers
 `Advanced search` and `Save this search`.
 
+The thirty-fourth template-helper source slice extends direct `urlFor()`
+conversion into saved item and collection pages. `src/views/saved/index.njk`,
+`src/views/saved-collections/index.njk`,
+`src/views/saved-collections/detail.njk`,
+`src/views/saved-social/appreciations.njk`, and
+`src/views/saved-social/public-collections.njk` now route saved filters,
+clear links, dynamic item links, bookmark removal, collection list/detail
+links, collection create/update/delete/item-remove forms, public collection
+links, appreciation send/reaction forms, member profile links, and pagination
+through `urlFor()`. The source-level regression first failed on raw `/saved`,
+`/me/collections`, `/members`, `/users`, and `/appreciations` links/actions,
+then passed after conversion; a source scan for saved-family raw local
+`href`/`action` strings returns no matches. A focused exported Laravel runtime
+smoke against temporary in-process Web UK `http://127.0.0.1:50823`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed the base API/health,
+cookie, login, account, and logout checks plus `/saved`, `/me/collections`,
+and `/users/14/appreciations` module rendering and body markers.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "saved-item"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search forms"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "resource browse"

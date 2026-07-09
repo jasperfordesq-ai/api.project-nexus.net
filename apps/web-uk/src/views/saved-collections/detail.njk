@@ -8,7 +8,7 @@
 {% block content %}
   {% set editNameError = status == "collection-name-required" %}
 
-  <a class="govuk-back-link" href="/me/collections">My collections</a>
+  <a class="govuk-back-link" href="{{ urlFor('/me/collections') }}">My collections</a>
 
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -58,7 +58,7 @@
         <li class="nexus-alpha-card">
           <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
             {% if item.href %}
-              <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+            <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
             {% else %}
               {{ item.title }}
             {% endif %}
@@ -73,7 +73,7 @@
             <p class="govuk-body">{{ item.note }}</p>
           {% endif %}
           {% if isOwner and item.id %}
-            <form method="post" action="/me/collections/{{ collection.id }}/items/{{ item.id }}/remove" class="govuk-!-margin-bottom-0">
+            <form method="post" action="{{ urlFor('/me/collections/' + (collection.id | string) + '/items/' + (item.id | string) + '/remove') }}" class="govuk-!-margin-bottom-0">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="Remove {{ item.title }} from this collection">Remove</button>
             </form>
@@ -92,14 +92,14 @@
     <nav class="govuk-pagination" role="navigation" aria-label="Page {{ currentPage }} of {{ lastPage }}">
       {% if currentPage > 1 %}
         <div class="govuk-pagination__prev">
-          <a class="govuk-link govuk-pagination__link" href="/me/collections/{{ collection.id }}?page={{ currentPage - 1 }}" rel="prev">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/me/collections/' + (collection.id | string) + '?page=' + ((currentPage - 1) | string)) }}" rel="prev">
             <span class="govuk-pagination__link-title">Previous</span>
           </a>
         </div>
       {% endif %}
       {% if currentPage < lastPage %}
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="/me/collections/{{ collection.id }}?page={{ currentPage + 1 }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/me/collections/' + (collection.id | string) + '?page=' + ((currentPage + 1) | string)) }}" rel="next">
             <span class="govuk-pagination__link-title">Next</span>
           </a>
         </div>
@@ -114,7 +114,7 @@
         <span class="govuk-details__summary-text">Edit this collection</span>
       </summary>
       <div class="govuk-details__text">
-        <form method="post" action="/me/collections/{{ collection.id }}/update">
+        <form method="post" action="{{ urlFor('/me/collections/' + (collection.id | string) + '/update') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if editNameError %} govuk-form-group--error{% endif %}">
             <label class="govuk-label" for="edit-collection-name">Collection name</label>
@@ -148,7 +148,7 @@
             Deleting a collection cannot be undone. The saved items it contains will also be removed.
           </strong>
         </div>
-        <form method="post" action="/me/collections/{{ collection.id }}/delete">
+        <form method="post" action="{{ urlFor('/me/collections/' + (collection.id | string) + '/delete') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button" aria-label="Delete the collection {{ collection.name }}">Delete collection</button>
         </form>

@@ -135,7 +135,10 @@ download, comment, reaction, reorder, category, search, and pagination
 controls through `urlFor()`. The latest search source slice now routes simple
 search, advanced search, saved-search delete, result tabs, result links,
 empty-state CTAs, pagination base URL, and saved-search forms through
-`urlFor()`.
+`urlFor()`. The latest saved source slice now routes saved-item filters,
+bookmark links/removal, collection list/detail pagination and CRUD controls,
+public collection links, and appreciation send/react/pagination controls
+through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -160,8 +163,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `983/1000` implementation/certification parity |
-| Green confidence estimate | about `966/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `984/1000` implementation/certification parity |
+| Green confidence estimate | about `967/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -195,6 +198,14 @@ slice:
 - `Get-ChildItem apps\web-uk\src\views\search -Filter *.njk | Select-String -Pattern 'href="/search','action="/search','href="/listings','href="/members','href="/events','href="/groups','href: "/search','href: "/listings','baseUrl: "/search'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"` passed: 15 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:56338` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 13 checks: base API/health, cookie, login, account, logout, signed `/search/advanced?q=garden`, and body markers `Advanced search` and `Save this search`.
+
+Latest focused verification on 2026-07-09 for the saved template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "saved-item"` first failed on raw `/saved`, `/me/collections`, `/members`, `/users`, and `/appreciations` links/actions, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\saved\*.njk,apps\web-uk\src\views\saved-collections\*.njk,apps\web-uk\src\views\saved-social\*.njk -Pattern 'href="/saved','action="/saved','href="/me','action="/me','href="/members','href="/users','action="/users','action="/appreciations','href="{{ item.href }}' -SimpleMatch` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved"` passed: 20 selected tests.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:50823` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 16 checks: base API/health, cookie, login, account, logout, signed `/saved`, `/me/collections`, and `/users/14/appreciations`, plus body markers `Saved items`, `My collections`, and `Appreciation`.
 
 Latest focused verification on 2026-07-09 for the groups index/form
 template-helper slice:
@@ -1420,8 +1431,8 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `983/1000`.
-Green confidence estimate: `966/1000`, because the consolidated code, static
+Current working estimate at this handoff: `984/1000`.
+Green confidence estimate: `967/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
 remaining template-helper conversion, and ASP.NET backend switching proof still

@@ -45,7 +45,7 @@
   {% endif %}
 
   <p class="govuk-body-l">Group the listings, posts, events and other items you have saved into collections.</p>
-  <p class="govuk-body"><a class="govuk-link" href="/saved">Back to saved items</a></p>
+  <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/saved') }}">Back to saved items</a></p>
 
   {% if collections and collections.length %}
     <ul class="govuk-list nexus-alpha-card-list">
@@ -53,7 +53,7 @@
         <li class="nexus-alpha-card">
           <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
             <span class="nexus-alpha-avatar" style="background-color: {{ collection.color }}; width: 1rem; height: 1rem; display: inline-block; border-radius: 50%; vertical-align: middle;" aria-hidden="true"></span>
-            <a class="govuk-link" href="/me/collections/{{ collection.id }}">{{ collection.name }}</a>
+            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">{{ collection.name }}</a>
           </h2>
           <p class="govuk-body nexus-alpha-meta">
             {{ collection.countLabel }}
@@ -63,7 +63,7 @@
             <p class="govuk-body">{{ collection.description }}</p>
           {% endif %}
           <p class="govuk-body govuk-!-margin-bottom-0">
-            <a class="govuk-link" href="/me/collections/{{ collection.id }}">View collection</a>
+            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">View collection</a>
           </p>
         </li>
       {% endfor %}
@@ -77,7 +77,7 @@
 
   <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
   <h2 class="govuk-heading-l">Create a collection</h2>
-  <form method="post" action="/me/collections">
+  <form method="post" action="{{ urlFor('/me/collections') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group{% if nameError %} govuk-form-group--error{% endif %}">
       <label class="govuk-label" for="collection-name">Collection name</label>
