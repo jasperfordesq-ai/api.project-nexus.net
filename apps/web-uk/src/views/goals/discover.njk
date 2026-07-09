@@ -10,7 +10,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
-      <a class="govuk-back-link" href="/goals">Back to goals</a>
+      <a class="govuk-back-link" href="{{ urlFor('/goals') }}">Back to goals</a>
 
       {% if successMessage %}
         {{ govukNotificationBanner({
@@ -45,7 +45,7 @@
           {% for goal in goals %}
             <article class="nexus-alpha-card">
               <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/goals/{{ goal.id }}">{{ goal.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ goal.title }}</a>
               </h2>
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Owned by {{ goal.ownerName }}</p>
 
@@ -56,7 +56,7 @@
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ goal.currentText }} of {{ goal.targetText }}</p>
               <progress max="100" value="{{ goal.progressPercent }}" aria-label="{{ goal.progressPercent }}%">{{ goal.progressPercent }}%</progress>
 
-              <form method="post" action="/goals/{{ goal.id }}/buddy" class="govuk-!-margin-top-2">
+              <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/buddy') }}" class="govuk-!-margin-top-2">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button" type="submit">Become buddy</button>
               </form>
@@ -67,7 +67,7 @@
 
       {% if nextHref %}
         <p class="govuk-body govuk-!-margin-top-6">
-          <a class="govuk-link" href="{{ nextHref }}">Load more goals</a>
+          <a class="govuk-link" href="{{ urlFor(nextHref) }}">Load more goals</a>
         </p>
       {% endif %}
     </div>

@@ -36,9 +36,9 @@
 
   <nav class="govuk-!-margin-bottom-6" aria-label="Goals">
     <ul class="govuk-list govuk-list--inline">
-      <li><a class="govuk-link" href="/goals/templates">Goal templates</a></li>
-      <li><a class="govuk-link" href="/goals/buddying">Buddying</a></li>
-      <li><a class="govuk-link" href="/goals/discover">Discover goals</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/goals/templates') }}">Goal templates</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/goals/buddying') }}">Buddying</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/goals/discover') }}">Discover goals</a></li>
     </ul>
   </nav>
 
@@ -48,7 +48,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/goals/{{ goal.id }}">{{ goal.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ goal.title }}</a>
             </h2>
             <strong class="govuk-tag {{ goal.statusClass }}">{{ goal.statusLabel }}</strong>
             <strong class="govuk-tag {{ goal.visibilityClass }}">{{ goal.visibilityLabel }}</strong>
@@ -69,7 +69,7 @@
     </div>
 
     {% if meta and meta.hasMore and meta.cursor %}
-      <p class="govuk-body"><a class="govuk-link" href="/goals?cursor={{ meta.cursor }}">Load more goals</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/goals?cursor=' + (meta.cursor | string)) }}">Load more goals</a></p>
     {% endif %}
   {% else %}
     <div class="govuk-inset-text">
@@ -83,7 +83,7 @@
     </div>
   </div>
 
-  <form method="post" action="/goals" class="govuk-grid-row">
+  <form method="post" action="{{ urlFor('/goals') }}" class="govuk-grid-row">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-grid-column-two-thirds">
       <div class="govuk-form-group">

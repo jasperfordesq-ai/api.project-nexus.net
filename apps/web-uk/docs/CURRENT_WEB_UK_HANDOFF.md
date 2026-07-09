@@ -174,6 +174,9 @@ knowledge-base route family remains `/kb`.
 The latest dashboard source slice now routes onboarding, exchange-attention,
 create-listing, upcoming-event, quick-link, recent-feed, and recent-listing
 dashboard links through `urlFor()`.
+The latest goals source slice now routes goals browse/detail, template,
+discover, buddying, edit, check-in, reminder, buddy-action, history, insights,
+and social links/forms through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -330,6 +333,13 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"` first failed on raw dashboard `/onboarding`, `/exchanges`, `/listings`, `/events`, `/profile`, `/feed`, `/messages`, `/members`, and `/volunteering` links, then passed after `src/views/dashboard/index.njk` converted those local links through `urlFor()`.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "member dashboard"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/dashboard`, `SMOKE_BODY_TEXT_PAGE_PATHS=/dashboard=>Quick links`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-09 for the goals template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "goals browse"` first failed on raw `/goals` links/actions, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\goals\*.njk -SimpleMatch -Pattern 'href="/goals','action="/goals','href: "/goals','action: "/goals','href="{{ nextHref }}'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goal"` passed: 13 selected tests across goals browse, templates, discover, buddying, edit, check-in, reminder, buddy-action, history, insights, social, and POST action coverage.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

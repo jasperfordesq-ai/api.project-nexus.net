@@ -164,6 +164,12 @@ and recent-listing links, with source regression coverage, focused render
 tests, and scoped Laravel runtime smoke for signed `/dashboard`. This does not
 newly certify dashboard feature gates, localization, runtime persistence, or
 ASP.NET backend compatibility.
+Goals source templates now also use `urlFor()` for browse/detail links,
+template filters and use forms, discover/buddying controls, edit/delete
+forms, check-in/reminder/buddy-action forms, history/insights links, and
+social like/comment/reply/delete controls, with source regression coverage and
+focused render tests. This does not newly certify goals feature gates,
+localization, runtime persistence, or ASP.NET backend compatibility.
 Federation hub source templates now also use `urlFor()` for the hub service
 navigation, opt-in/opt-out CTAs, partner preview links, view-all partners link,
 and quick links, with source regression coverage, focused render tests, and

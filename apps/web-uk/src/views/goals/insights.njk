@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
 
   <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
   <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Goal insights</h1>
@@ -87,11 +87,11 @@
   <nav class="govuk-!-margin-top-4" aria-label="Goal insights">
     <ul class="govuk-list">
       {% if isOwner %}
-        <li><a class="govuk-link" href="/goals/{{ goal.id }}/checkin">Log a check-in</a></li>
-        <li><a class="govuk-link" href="/goals/{{ goal.id }}/reminder">Reminder settings</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string) + '/checkin') }}">Log a check-in</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string) + '/reminder') }}">Reminder settings</a></li>
       {% endif %}
       {% if isBuddy %}
-        <li><a class="govuk-link" href="/goals/{{ goal.id }}/buddy-actions">Send buddy support</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string) + '/buddy-actions') }}">Send buddy support</a></li>
       {% endif %}
     </ul>
   </nav>

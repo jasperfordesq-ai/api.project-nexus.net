@@ -657,9 +657,21 @@ redirects to `/register` when Laravel bootstrap resolves the host to the same
 tenant. Focused tenant-routing route tests pass for 14 selected
 shared-root/shared-mount/custom-domain cases.
 
+The forty-third template-helper source slice extends direct `urlFor()`
+conversion into the signed Laravel-backed `/goals` family.
+`src/views/goals/*.njk` now routes browse/detail links, template filter/use
+forms, discover/buddying links and buddy forms, edit/delete forms, check-in,
+reminder, buddy-action, history, insights, social like/comment/reply/delete
+forms, and cursor links through `urlFor()`. The source-level regression first
+failed on raw `/goals` links/actions, then passed after conversion; a source
+scan for raw goals local `href`, `action`, and `nextHref` strings returns no
+matches. Focused render coverage passes for 13 selected goals tests.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "goals browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goal"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "member dashboard"
 $env:SMOKE_MODULE_PAGE_PATHS = '/dashboard'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/dashboard=>Quick links'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel

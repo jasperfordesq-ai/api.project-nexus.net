@@ -748,4 +748,33 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/knowledge-base/);
   });
+
+  it('keeps goals browse, detail, progress, and social controls behind urlFor()', () => {
+    const templates = [
+      'buddy-actions.njk',
+      'buddying.njk',
+      'checkin.njk',
+      'detail.njk',
+      'discover.njk',
+      'edit.njk',
+      'history.njk',
+      'index.njk',
+      'insights.njk',
+      'reminder.njk',
+      'social.njk',
+      'templates.njk'
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'goals', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/goals/);
+      expect(template).not.toMatch(/action="\/goals/);
+      expect(template).not.toContain('href: "/goals"');
+      expect(template).not.toContain('href="{{ nextHref }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/goals/);
+  });
 });

@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
 
   <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
   <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Progress history</h1>
@@ -37,12 +37,12 @@
 
     {% if hasMore and nextHref %}
       <p class="govuk-body govuk-!-margin-top-4">
-        <a class="govuk-link" href="{{ nextHref }}">Load older events</a>
+        <a class="govuk-link" href="{{ urlFor(nextHref) }}">Load older events</a>
       </p>
     {% endif %}
   {% endif %}
 
   <p class="govuk-body govuk-!-margin-top-6">
-    <a class="govuk-link" href="/goals/{{ goal.id }}">Back to goal</a>
+    <a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
   </p>
 {% endblock %}

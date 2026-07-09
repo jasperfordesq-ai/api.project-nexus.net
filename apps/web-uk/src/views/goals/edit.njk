@@ -7,7 +7,7 @@
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
 
   {% if errorMessage %}
     {{ govukErrorSummary({
@@ -26,7 +26,7 @@
       <span class="govuk-caption-xl">Update the details of your goal.</span>
       <h1 class="govuk-heading-xl">Edit your goal</h1>
 
-      <form method="post" action="/goals/{{ goal.id }}/edit" novalidate>
+      <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/edit') }}" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <div class="govuk-form-group">
@@ -78,7 +78,7 @@
           Deleting a goal removes it and its progress history for good. This cannot be undone.
         </strong>
       </div>
-      <form method="post" action="/goals/{{ goal.id }}/delete">
+      <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/delete') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <button class="govuk-button govuk-button--warning" data-module="govuk-button" type="submit">Delete goal</button>
       </form>

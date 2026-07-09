@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
 
   {% if successMessage %}
     {{ govukNotificationBanner({
@@ -34,7 +34,7 @@
   <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Send buddy support</h1>
   <p class="govuk-body-l">Send a small, visible bit of support to the goal owner. Nudges are gentle reminders, not pressure.</p>
 
-  <form method="post" action="/goals/{{ goal.id }}/buddy-actions" class="govuk-grid-row">
+  <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/buddy-actions') }}" class="govuk-grid-row">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-grid-column-two-thirds">

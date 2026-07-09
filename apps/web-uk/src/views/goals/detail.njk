@@ -12,7 +12,7 @@
 {% block beforeContent %}
   {{ super() }}
   {% set breadcrumbs = [
-    { text: "Goals", href: "/goals" },
+    { text: "Goals", href: urlFor("/goals") },
     { text: goal.title }
   ] %}
   {% include "partials/breadcrumbs.njk" %}
@@ -94,7 +94,7 @@
       {% endif %}
 
       <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/goals" class="govuk-link">Back to goals</a>
+        <a href="{{ urlFor('/goals') }}" class="govuk-link">Back to goals</a>
       </p>
 
     </div>
