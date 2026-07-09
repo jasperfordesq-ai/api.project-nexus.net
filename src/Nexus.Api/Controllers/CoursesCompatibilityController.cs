@@ -233,7 +233,13 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpPost("api/courses/attempts/{attemptId:int}/grade")]
     [HttpPost("api/v2/courses/attempts/{attemptId:int}/grade")]
     public Task<IActionResult> GradeAttempt(int attemptId, [FromBody] CourseCompatGradeAttemptRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.GradeAttemptAsync(_tenant.GetTenantIdOrThrow(), attemptId, request, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            var courseId = await _courses.GetCourseIdForAttemptAsync(tenantId, attemptId, ct);
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.GradeAttemptAsync(tenantId, attemptId, request, ct);
+        });
 
     [HttpPost("api/courses/{courseId:int}/quizzes")]
     [HttpPost("api/v2/courses/{courseId:int}/quizzes")]

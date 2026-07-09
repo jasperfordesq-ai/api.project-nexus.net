@@ -694,6 +694,17 @@ public sealed class CoursesCompatibilityService
         return EnsureCourse(state, courseId).AuthorUserId;
     }
 
+    public async Task<int> GetCourseIdForAttemptAsync(int tenantId, int attemptId, CancellationToken ct)
+    {
+        var state = await LoadAsync(tenantId, ct);
+        var attempt = state.Attempts.FirstOrDefault(row => row.Id == attemptId)
+            ?? throw new CoursesCompatibilityNotFoundException("Attempt not found");
+        var quiz = state.Quizzes.FirstOrDefault(row => row.Id == attempt.QuizId)
+            ?? throw new CoursesCompatibilityNotFoundException("Quiz not found");
+        EnsureCourse(state, quiz.CourseId);
+        return quiz.CourseId;
+    }
+
     private static bool IsExplicitlyDisabled(string? value)
     {
         var normalized = value?.Trim();

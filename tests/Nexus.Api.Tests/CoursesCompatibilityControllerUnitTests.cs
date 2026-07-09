@@ -429,6 +429,71 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseGradeAttempt_RequiresCourseOwnerOrAdmin()
+    {
+        var tenant = CreateTenantContext(51);
+        await using var db = CreateDbContext(tenant);
+        var ownerController = CreateController(db, tenant, userId: 9012, role: "member");
+
+        var created = await ownerController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Grading guarded course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        var quiz = await ownerController.StoreQuiz(courseId, new CourseCompatQuizRequest
+        {
+            Title = "Instructor review"
+        }, CancellationToken.None);
+
+        int quizId;
+        using (var quizDocument = JsonDocument.Parse(JsonSerializer.Serialize(quiz.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            quizId = quizDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        await ownerController.StoreQuestion(courseId, quizId, new CourseCompatQuestionRequest
+        {
+            Prompt = "Explain",
+            Type = "essay",
+            Points = 5
+        }, CancellationToken.None);
+
+        var learnerController = CreateController(db, tenant, userId: 9013, role: "member");
+        var attempt = await learnerController.AttemptQuiz(quizId, new CourseCompatQuizAttemptRequest
+        {
+            Answers = new Dictionary<string, object?> { ["1"] = "Answer" }
+        }, CancellationToken.None);
+
+        int attemptId;
+        using (var attemptDocument = JsonDocument.Parse(JsonSerializer.Serialize(attempt.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            attemptId = attemptDocument.RootElement.GetProperty("data").GetProperty("attempt_id").GetInt32();
+        }
+
+        var otherMemberController = CreateController(db, tenant, userId: 9014, role: "member");
+
+        (await otherMemberController.GradeAttempt(attemptId, new CourseCompatGradeAttemptRequest
+        {
+            ScorePercent = 10,
+            Passed = false
+        }, CancellationToken.None)).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+
+        var adminController = CreateController(db, tenant, userId: 9015, role: "admin");
+
+        (await adminController.GradeAttempt(attemptId, new CourseCompatGradeAttemptRequest
+        {
+            ScorePercent = 91,
+            Passed = true
+        }, CancellationToken.None)).Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
     {
         var tenant = CreateTenantContext(44);
