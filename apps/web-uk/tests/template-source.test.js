@@ -450,6 +450,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toMatch(/urlFor\(["']\/federation/);
   });
 
+  it('keeps federation hub navigation and partner links behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'federation', 'index.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/federation/);
+    expect(template).not.toContain('href="{{ partner.href }}"');
+    expect(template).toMatch(/urlFor\(["']\/federation/);
+    expect(template).toContain('href="{{ urlFor(partner.href) }}"');
+  });
+
   it('keeps connections navigation, member links, forms, and pagination behind urlFor()', () => {
     const templates = [
       path.join('connections', 'index.njk'),

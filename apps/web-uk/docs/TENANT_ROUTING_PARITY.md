@@ -141,8 +141,10 @@ Current gaps:
   management templates, including coupon links/forms, order tabs and actions,
   and pickup-slot scan/edit/delete forms. The marketplace source-template
   family now has source-level `urlFor()` coverage for local marketplace links
-  and forms. The latest focused source conversion covers the federation member
-  detail template, including the back link, federation service navigation,
+  and forms. The latest focused source conversion covers the federation hub
+  template, including service navigation, opt-in/opt-out CTAs, partner preview
+  links, the view-all partners link, and quick links. The federation member
+  detail template conversion covers the back link, federation service navigation,
   opt-in CTA, connection/message forms, and transfer CTA. The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,

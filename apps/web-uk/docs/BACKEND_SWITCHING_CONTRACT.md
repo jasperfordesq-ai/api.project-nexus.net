@@ -659,6 +659,12 @@ with an empty activity list in that permission-limited state. A targeted
 Laravel runtime smoke against `WEB_UK_BASE_URL=http://127.0.0.1:6260`, started
 with `TENANT_ID=2`, passed `11/11` checks including
 `module-page-federation-renders`.
+On 2026-07-09, the federation hub source-helper slice converted the hub
+service navigation, opt-in/opt-out CTAs, partner preview links, view-all link,
+and quick links through `urlFor()`. A scoped Laravel runtime smoke against
+`WEB_UK_BASE_URL=http://127.0.0.1:5180`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `12/12` checks including
+signed `/federation` and `/federation=>Federation`.
 The same 2026-07-08 temporary process then recertified the remaining chunked
 page sweeps after earlier `1/8` and post-fix `2/8` mixed chunks passed:
 `SMOKE_MODULE_PAGE_CHUNK=3/8` through `8/8` passed with `269/269` repeated

@@ -18,15 +18,15 @@
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
@@ -60,7 +60,7 @@
         <div class="govuk-grid-column-two-thirds">
           <h2 class="govuk-heading-l">Join the federation network</h2>
           <p class="govuk-body">Choose what profile details, skills, messaging, and time-credit actions you want to make available across trusted partner communities.</p>
-          <p class="govuk-body"><a class="govuk-button" data-module="govuk-button" href="/federation/opt-in">Turn on federation</a></p>
+          <p class="govuk-body"><a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/federation/opt-in') }}">Turn on federation</a></p>
         </div>
       </div>
 
@@ -116,7 +116,7 @@
         {% for partner in partners %}
           <article class="nexus-alpha-card">
             <div class="nexus-alpha-module-row">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ partner.href }}">{{ partner.name }}</a></h3>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(partner.href) }}">{{ partner.name }}</a></h3>
               {% if partner.isExternal %}
                 <strong class="govuk-tag govuk-tag--grey">External</strong>
               {% elif partner.levelName %}
@@ -130,12 +130,12 @@
               <div><dt>Listings</dt><dd>{{ partner.listingCount }}</dd></div>
               {% if partner.partnershipSince %}<div><dt>Since</dt><dd>{{ partner.partnershipSince | date }}</dd></div>{% endif %}
             </dl>
-            <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ partner.href }}">View community</a></p>
+            <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor(partner.href) }}">View community</a></p>
           </article>
         {% endfor %}
       </div>
       {% if partnerTotal > partners.length %}
-        <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="/federation/partners">View all {{ partnerTotal }} partner communities</a></p>
+        <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="{{ urlFor('/federation/partners') }}">View all {{ partnerTotal }} partner communities</a></p>
       {% endif %}
     {% else %}
       <div class="govuk-inset-text"><p class="govuk-body">No partner communities are available yet.</p></div>
@@ -146,16 +146,16 @@
         <div class="govuk-grid-column-two-thirds">
           <h2 class="govuk-heading-l">Federation links</h2>
           <ul class="govuk-list">
-            <li><a class="govuk-link" href="/federation/partners">Browse partner communities</a></li>
-            <li><a class="govuk-link" href="/federation/members">Find federation members</a></li>
-            <li><a class="govuk-link" href="/federation/connections">Manage federation connections</a></li>
-            <li><a class="govuk-link" href="/federation/messages">Federation messages</a></li>
-            <li><a class="govuk-link" href="/federation/listings">Federated listings</a></li>
-            <li><a class="govuk-link" href="/federation/events">Federated events</a></li>
-            <li><a class="govuk-link" href="/federation/groups">Federated groups</a></li>
-            <li><a class="govuk-link" href="/federation/settings">Federation settings</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/partners') }}">Browse partner communities</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/members') }}">Find federation members</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/connections') }}">Manage federation connections</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/messages') }}">Federation messages</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}">Federated listings</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/events') }}">Federated events</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/groups') }}">Federated groups</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/settings') }}">Federation settings</a></li>
           </ul>
-          <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="/federation/opt-out">Turn off federation</a></p>
+          <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="{{ urlFor('/federation/opt-out') }}">Turn off federation</a></p>
         </div>
       </div>
     {% endif %}

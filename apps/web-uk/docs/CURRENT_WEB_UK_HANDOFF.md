@@ -94,10 +94,12 @@ generic Web UK home inside tenant contexts with the Laravel Blade-style
 stats, sign-in/register CTAs, module availability rows, and service details. A
 follow-up tenant-stats slice now scopes those platform stats through Laravel's
 tenant resolution: shared-mount tenant homes send `X-Tenant-Slug`, while custom
-domain homes send the resolved Host and Origin. The latest federation member
-source slice now routes the federation member back link, federation service
-navigation, opt-in CTA, connection/message forms, and transfer CTA through
-`urlFor()`. The latest connections source slice now routes the connections
+domain homes send the resolved Host and Origin. The latest federation hub
+source slice now routes the hub service navigation, opt-in/opt-out CTAs,
+partner preview links, view-all link, and quick links through `urlFor()`.
+The federation member source slice routes the federation member back link,
+federation service navigation, opt-in CTA, connection/message forms, and
+transfer CTA through `urlFor()`. The latest connections source slice now routes the connections
 index tabs, pending-request link, member links, accept/decline/remove forms,
 empty-state member CTAs, pagination base URL, network search form, network
 tabs, load-more links, card actions, and back link through `urlFor()`. The
@@ -318,6 +320,14 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"` first failed on raw dashboard `/onboarding`, `/exchanges`, `/listings`, `/events`, `/profile`, `/feed`, `/messages`, `/members`, and `/volunteering` links, then passed after `src/views/dashboard/index.njk` converted those local links through `urlFor()`.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "member dashboard"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/dashboard`, `SMOKE_BODY_TEXT_PAGE_PATHS=/dashboard=>Quick links`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-09 for the federation hub
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "federation hub"` first failed on raw `/federation` links in `src/views/federation/index.njk`, then passed after the hub navigation, opt-in/opt-out CTAs, partner preview links, view-all link, and quick links were routed through `urlFor()`.
+- `Select-String -Path apps\web-uk\src\views\federation\index.njk -SimpleMatch -Pattern 'href="/federation','action="/federation','href="{{ partner.href }}'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation hub"` passed: 2 selected tests.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/federation`, `SMOKE_BODY_TEXT_PAGE_PATHS=/federation=>Federation`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 
 Latest consolidation verification on 2026-07-08:
 
