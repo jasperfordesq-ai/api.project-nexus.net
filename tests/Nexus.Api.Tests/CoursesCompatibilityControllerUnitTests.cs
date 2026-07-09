@@ -368,6 +368,45 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseBuilderEndpoints_RequireOwnerOrAdmin()
+    {
+        var tenant = CreateTenantContext(49);
+        await using var db = CreateDbContext(tenant);
+        var ownerController = CreateController(db, tenant, userId: 9009, role: "member");
+
+        var created = await ownerController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Builder guarded course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        var section = await ownerController.StoreSection(courseId, new CourseCompatSectionRequest { Title = "Owner section" }, CancellationToken.None);
+        section.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status201Created);
+
+        var otherMemberController = CreateController(db, tenant, userId: 9010, role: "member");
+
+        (await otherMemberController.StoreSection(courseId, new CourseCompatSectionRequest { Title = "Hijack section" }, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.StoreLesson(courseId, new CourseCompatLessonRequest { Title = "Hijack lesson" }, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.StoreQuiz(courseId, new CourseCompatQuizRequest { Title = "Hijack quiz" }, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.StoreCohort(courseId, new CourseCompatCohortRequest { Name = "Hijack cohort" }, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.AttachGroup(courseId, 123, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.GroupsForCourse(courseId, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.GradingQueue(courseId, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
     public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
     {
         var tenant = CreateTenantContext(44);

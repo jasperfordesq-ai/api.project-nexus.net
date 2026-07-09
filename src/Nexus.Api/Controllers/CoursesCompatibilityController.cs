@@ -209,7 +209,12 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpGet("api/courses/{courseId:int}/grading")]
     [HttpGet("api/v2/courses/{courseId:int}/grading")]
     public Task<IActionResult> GradingQueue(int courseId, CancellationToken ct) =>
-        RunAsync(() => _courses.GradingQueueAsync(_tenant.GetTenantIdOrThrow(), courseId, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.GradingQueueAsync(tenantId, courseId, ct);
+        });
 
     [HttpPost("api/courses/attempts/{attemptId:int}/grade")]
     [HttpPost("api/v2/courses/attempts/{attemptId:int}/grade")]
@@ -219,17 +224,32 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpPost("api/courses/{courseId:int}/quizzes")]
     [HttpPost("api/v2/courses/{courseId:int}/quizzes")]
     public Task<IActionResult> StoreQuiz(int courseId, [FromBody] CourseCompatQuizRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.StoreQuizAsync(_tenant.GetTenantIdOrThrow(), courseId, request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.StoreQuizAsync(tenantId, courseId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpPost("api/courses/{courseId:int}/quizzes/{quizId:int}/questions")]
     [HttpPost("api/v2/courses/{courseId:int}/quizzes/{quizId:int}/questions")]
     public Task<IActionResult> StoreQuestion(int courseId, int quizId, [FromBody] CourseCompatQuestionRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.StoreQuestionAsync(_tenant.GetTenantIdOrThrow(), courseId, quizId, request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.StoreQuestionAsync(tenantId, courseId, quizId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpDelete("api/courses/{courseId:int}/quizzes/{quizId:int}/questions/{questionId:int}")]
     [HttpDelete("api/v2/courses/{courseId:int}/quizzes/{quizId:int}/questions/{questionId:int}")]
     public Task<IActionResult> DeleteQuestion(int courseId, int quizId, int questionId, CancellationToken ct) =>
-        RunAsync(async () => new { deleted = await _courses.DeleteQuestionAsync(_tenant.GetTenantIdOrThrow(), courseId, quizId, questionId, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return new { deleted = await _courses.DeleteQuestionAsync(tenantId, courseId, quizId, questionId, ct) };
+        });
 
     [HttpGet("api/courses/{courseId:int}/cohorts")]
     [HttpGet("api/v2/courses/{courseId:int}/cohorts")]
@@ -239,12 +259,22 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpPost("api/courses/{courseId:int}/cohorts")]
     [HttpPost("api/v2/courses/{courseId:int}/cohorts")]
     public Task<IActionResult> StoreCohort(int courseId, [FromBody] CourseCompatCohortRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.StoreCohortAsync(_tenant.GetTenantIdOrThrow(), courseId, request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.StoreCohortAsync(tenantId, courseId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpDelete("api/courses/{courseId:int}/cohorts/{cohortId:int}")]
     [HttpDelete("api/v2/courses/{courseId:int}/cohorts/{cohortId:int}")]
     public Task<IActionResult> DeleteCohort(int courseId, int cohortId, CancellationToken ct) =>
-        RunAsync(async () => new { deleted = await _courses.DeleteCohortAsync(_tenant.GetTenantIdOrThrow(), courseId, cohortId, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return new { deleted = await _courses.DeleteCohortAsync(tenantId, courseId, cohortId, ct) };
+        });
 
     [HttpGet("api/groups/{groupId:int}/courses")]
     [HttpGet("api/v2/groups/{groupId:int}/courses")]
@@ -254,47 +284,92 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpGet("api/courses/{courseId:int}/groups")]
     [HttpGet("api/v2/courses/{courseId:int}/groups")]
     public Task<IActionResult> GroupsForCourse(int courseId, CancellationToken ct) =>
-        RunAsync(() => _courses.GroupsForCourseAsync(_tenant.GetTenantIdOrThrow(), courseId, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.GroupsForCourseAsync(tenantId, courseId, ct);
+        });
 
     [HttpPost("api/courses/{courseId:int}/groups/{groupId:int}")]
     [HttpPost("api/v2/courses/{courseId:int}/groups/{groupId:int}")]
     public Task<IActionResult> AttachGroup(int courseId, int groupId, CancellationToken ct) =>
-        RunAsync(() => _courses.AttachGroupAsync(_tenant.GetTenantIdOrThrow(), courseId, groupId, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.AttachGroupAsync(tenantId, courseId, groupId, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpDelete("api/courses/{courseId:int}/groups/{groupId:int}")]
     [HttpDelete("api/v2/courses/{courseId:int}/groups/{groupId:int}")]
     public Task<IActionResult> DetachGroup(int courseId, int groupId, CancellationToken ct) =>
-        RunAsync(async () => new { detached = await _courses.DetachGroupAsync(_tenant.GetTenantIdOrThrow(), courseId, groupId, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return new { detached = await _courses.DetachGroupAsync(tenantId, courseId, groupId, ct) };
+        });
 
     [HttpPost("api/courses/{courseId:int}/sections")]
     [HttpPost("api/v2/courses/{courseId:int}/sections")]
     public Task<IActionResult> StoreSection(int courseId, [FromBody] CourseCompatSectionRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.StoreSectionAsync(_tenant.GetTenantIdOrThrow(), courseId, request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.StoreSectionAsync(tenantId, courseId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpPut("api/courses/{courseId:int}/sections/{sectionId:int}")]
     [HttpPut("api/v2/courses/{courseId:int}/sections/{sectionId:int}")]
     public Task<IActionResult> UpdateSection(int courseId, int sectionId, [FromBody] CourseCompatSectionRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.UpdateSectionAsync(_tenant.GetTenantIdOrThrow(), courseId, sectionId, request, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.UpdateSectionAsync(tenantId, courseId, sectionId, request, ct);
+        });
 
     [HttpDelete("api/courses/{courseId:int}/sections/{sectionId:int}")]
     [HttpDelete("api/v2/courses/{courseId:int}/sections/{sectionId:int}")]
     public Task<IActionResult> DeleteSection(int courseId, int sectionId, CancellationToken ct) =>
-        RunAsync(async () => new { deleted = await _courses.DeleteSectionAsync(_tenant.GetTenantIdOrThrow(), courseId, sectionId, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return new { deleted = await _courses.DeleteSectionAsync(tenantId, courseId, sectionId, ct) };
+        });
 
     [HttpPost("api/courses/{courseId:int}/lessons")]
     [HttpPost("api/v2/courses/{courseId:int}/lessons")]
     public Task<IActionResult> StoreLesson(int courseId, [FromBody] CourseCompatLessonRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.StoreLessonAsync(_tenant.GetTenantIdOrThrow(), courseId, request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.StoreLessonAsync(tenantId, courseId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpPut("api/courses/{courseId:int}/lessons/{lessonId:int}")]
     [HttpPut("api/v2/courses/{courseId:int}/lessons/{lessonId:int}")]
     public Task<IActionResult> UpdateLesson(int courseId, int lessonId, [FromBody] CourseCompatLessonRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.UpdateLessonAsync(_tenant.GetTenantIdOrThrow(), courseId, lessonId, request, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return await _courses.UpdateLessonAsync(tenantId, courseId, lessonId, request, ct);
+        });
 
     [HttpDelete("api/courses/{courseId:int}/lessons/{lessonId:int}")]
     [HttpDelete("api/v2/courses/{courseId:int}/lessons/{lessonId:int}")]
     public Task<IActionResult> DeleteLesson(int courseId, int lessonId, CancellationToken ct) =>
-        RunAsync(async () => new { deleted = await _courses.DeleteLessonAsync(_tenant.GetTenantIdOrThrow(), courseId, lessonId, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            return new { deleted = await _courses.DeleteLessonAsync(tenantId, courseId, lessonId, ct) };
+        });
 
     [HttpPost("api/admin/courses/discussions/{id:int}/hide")]
     [HttpPost("api/v2/admin/courses/discussions/{id:int}/hide")]
