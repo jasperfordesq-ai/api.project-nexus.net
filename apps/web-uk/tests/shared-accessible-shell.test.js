@@ -889,6 +889,46 @@ describe('shared accessible frontend shell', () => {
     }
   });
 
+  it('returns Laravel-style 403 for tenant-mounted route-specific compound gates', async () => {
+    const api = require('../src/lib/api');
+    const tenantBootstrap = {
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          messages: true
+        },
+        features: {
+          connections: false,
+          events: true,
+          job_vacancies: false,
+          maps: false,
+          volunteering: true
+        }
+      }
+    };
+
+    const paths = [
+      '/acme/accessible/events/6/map',
+      '/acme/accessible/organisations/42/jobs',
+      '/acme/accessible/messages/groups/new'
+    ];
+
+    for (let index = 0; index < paths.length; index += 1) {
+      api.getTenantBootstrap.mockResolvedValueOnce(tenantBootstrap);
+    }
+
+    for (const path of paths) {
+      const response = await request(app)
+        .get(path)
+        .set('Cookie', signedCookieHeader());
+
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('Forbidden');
+    }
+  });
+
   it('renders the Laravel-backed public knowledge base index and search pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');

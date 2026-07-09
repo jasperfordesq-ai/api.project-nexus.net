@@ -6,6 +6,9 @@
 const { flagEnabled } = require('../lib/accessible-shell');
 
 const FEATURE_ROUTE_GATES = [
+  { pattern: /^\/events\/[^/]+\/map\/?$/, featureKey: 'maps' },
+  { pattern: /^\/organisations\/[^/]+\/jobs\/?$/, featureKey: 'job_vacancies' },
+  { pattern: /^\/messages\/groups(?:\/|$)/, featureKey: 'connections' },
   { prefix: '/dashboard', moduleKey: 'dashboard' },
   { prefix: '/feed', moduleKey: 'feed' },
   { prefix: '/listings', moduleKey: 'listings' },
@@ -45,8 +48,16 @@ function pathMatchesPrefix(pathname, prefix) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-function routeGateForPath(pathname = '') {
-  return FEATURE_ROUTE_GATES.find((gate) => pathMatchesPrefix(pathname, gate.prefix)) || null;
+function pathMatchesGate(pathname, gate) {
+  if (gate.pattern) {
+    return gate.pattern.test(pathname);
+  }
+
+  return pathMatchesPrefix(pathname, gate.prefix);
+}
+
+function routeGatesForPath(pathname = '') {
+  return FEATURE_ROUTE_GATES.filter((gate) => pathMatchesGate(pathname, gate));
 }
 
 function tenantFeatureGate(req, res, next) {
@@ -55,27 +66,29 @@ function tenantFeatureGate(req, res, next) {
     return next();
   }
 
-  const gate = routeGateForPath(req.path || '/');
-  if (!gate) {
+  const gates = routeGatesForPath(req.path || '/');
+  if (!gates.length) {
     return next();
   }
 
-  if (gate.moduleKey && !flagEnabled(tenant, gate.moduleKey, 'modules', true)) {
-    return res.status(403).render('errors/403', {
-      title: 'Forbidden',
-      message: 'This feature is not enabled for this community.'
-    });
-  }
+  for (const gate of gates) {
+    if (gate.moduleKey && !flagEnabled(tenant, gate.moduleKey, 'modules', true)) {
+      return res.status(403).render('errors/403', {
+        title: 'Forbidden',
+        message: 'This feature is not enabled for this community.'
+      });
+    }
 
-  if (gate.featureKey && !flagEnabled(tenant, gate.featureKey, 'features', true)) {
-    return res.status(403).render('errors/403', {
-      title: 'Forbidden',
-      message: 'This feature is not enabled for this community.'
-    });
-  }
+    if (gate.featureKey && !flagEnabled(tenant, gate.featureKey, 'features', true)) {
+      return res.status(403).render('errors/403', {
+        title: 'Forbidden',
+        message: 'This feature is not enabled for this community.'
+      });
+    }
 
-  if (!gate.moduleKey && !gate.featureKey) {
-    return next();
+    if (!gate.moduleKey && !gate.featureKey) {
+      return next();
+    }
   }
 
   return next();
@@ -83,5 +96,6 @@ function tenantFeatureGate(req, res, next) {
 
 module.exports = {
   FEATURE_ROUTE_GATES,
+  routeGatesForPath,
   tenantFeatureGate
 };

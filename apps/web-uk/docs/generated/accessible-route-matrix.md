@@ -1,6 +1,6 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-09T21:52:40.257Z
+Generated: 2026-07-09T22:08:56.120Z
 
 | Metric | Count |
 | --- | ---: |

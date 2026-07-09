@@ -95,8 +95,19 @@ smoke against temporary Web UK `http://127.0.0.1:6535`, Laravel
 `/hour-timebank/accessible/dashboard`, `/wallet`, and `/members` body markers
 plus the five default-off `/acme/accessible/*` `403` checks. This is not yet
 live runtime proof of a real Laravel tenant with disabled core modules, broker
-workflow, active-club detection, every route-specific compound gate, or full
-enabled-tenant depth behavior.
+workflow, active-club detection, every route-specific workflow gate, or full
+enabled-tenant depth behavior. A follow-up compound-gate slice now stacks all
+matching route gates and blocks `/events/{id}/map` when `maps` is disabled,
+`/organisations/{id}/jobs` when `job_vacancies` is disabled, and
+`/messages/groups...` when `connections` is disabled while the broader route
+families remain enabled. Focused Jest first failed on
+`/acme/accessible/events/6/map` returning `200`, then passed once
+`src/middleware/tenant-feature-gates.js` used route-specific patterns plus
+all-matching gate evaluation. A scoped Laravel runtime smoke against temporary
+Web UK `http://127.0.0.1:6601`, Laravel `http://127.0.0.1:8088`, and
+`TENANT_ID=2` passed `13/13` checks, proving the enabled local Laravel fixture
+still renders `/events/6/map`, `/organisations/636/jobs`, and
+`/messages/groups/new` after the gate change.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
@@ -218,7 +229,10 @@ across dashboard, feed, listings/exchanges/matches, events, volunteering/
 organisations, members/connections, messages, wallet, notifications,
 gamification, blog, AI chat, federation, goals, groups, group exchanges,
 ideation, jobs, polls, resources, reviews, and search. Route declarations still
-do not prove every route-specific compound feature-disabled response.
+do not prove every route-specific workflow-disabled response. Maps,
+organisation jobs, and group-message connection gates now have focused
+middleware proof; message translation policy, active-club evidence, and broker
+workflow gating still need certification.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.
