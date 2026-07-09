@@ -24,6 +24,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function payloadFrom(result) {
   if (result && Object.prototype.hasOwnProperty.call(result, 'data')) {
     return result.data;
@@ -346,7 +351,7 @@ function statusMessages(status) {
 
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -355,7 +360,7 @@ function redirectAuthIfNeeded(error, res) {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let profilePayload;
@@ -405,7 +410,7 @@ router.get('/', asyncRoute(async (req, res) => {
 router.get('/shop', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let shopPayload;
@@ -434,7 +439,7 @@ router.get('/shop', asyncRoute(async (req, res) => {
 router.get('/collections', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let collectionsPayload;
@@ -455,7 +460,7 @@ router.get('/collections', asyncRoute(async (req, res) => {
 router.get('/engagement', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let historyPayload;
@@ -476,7 +481,7 @@ router.get('/engagement', asyncRoute(async (req, res) => {
 router.get('/showcase', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let badgesPayload;
@@ -498,7 +503,7 @@ router.get('/showcase', asyncRoute(async (req, res) => {
 router.get('/badges/:key', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const key = textFrom(req.params.key);
@@ -521,7 +526,7 @@ router.get('/badges/:key', asyncRoute(async (req, res) => {
 router.post('/daily-reward', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let status = 'daily-reward-claimed';
@@ -532,13 +537,13 @@ router.post('/daily-reward', asyncRoute(async (req, res) => {
     status = 'daily-reward-failed';
   }
 
-  return res.redirect(`/achievements?status=${status}`);
+  return redirectTo(res, `/achievements?status=${status}`);
 }));
 
 router.post('/challenges/:id(\\d+)/claim', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let status = 'challenge-claimed';
@@ -549,13 +554,13 @@ router.post('/challenges/:id(\\d+)/claim', asyncRoute(async (req, res) => {
     status = 'challenge-claim-failed';
   }
 
-  return res.redirect(`/achievements?status=${status}`);
+  return redirectTo(res, `/achievements?status=${status}`);
 }));
 
 router.post('/shop/purchase', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const itemId = positiveInteger(req.body.item_id);
@@ -569,13 +574,13 @@ router.post('/shop/purchase', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(`/achievements/shop?status=${status}`);
+  return redirectTo(res, `/achievements/shop?status=${status}`);
 }));
 
 router.post('/showcase', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const badgeKeys = badgeKeysFrom(req.body);
@@ -594,7 +599,7 @@ router.post('/showcase', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(`/achievements/showcase?status=${status}`);
+  return redirectTo(res, `/achievements/showcase?status=${status}`);
 }));
 
 module.exports = router;

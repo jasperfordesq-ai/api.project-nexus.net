@@ -7407,6 +7407,28 @@ describe('shared accessible frontend shell', () => {
     expect(api.claimDailyReward).toHaveBeenCalledWith('test-token');
   });
 
+  it('keeps Laravel achievement POST redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/achievements/daily-reward')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/achievements?status=daily-reward-claimed');
+    expect(api.claimDailyReward).toHaveBeenCalledWith('test-token');
+  });
+
   it('maps Laravel achievement daily reward conflicts to the failed status', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

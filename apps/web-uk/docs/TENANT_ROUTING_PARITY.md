@@ -865,9 +865,25 @@ evidence only; it does not newly certify Explore feature-disabled behavior,
 recent-listing source parity, live broker workflow data, visual Blade parity,
 localization, or ASP.NET backend compatibility.
 
+The fifty-sixth source slice extends route-level redirect cleanup into
+achievements/gamification. `src/routes/achievements.js` now sends unsigned,
+Laravel-401, daily-reward, challenge-claim, shop-purchase, and showcase
+redirects through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on raw `/login` and `/achievements` redirects in
+`src/routes/achievements.js`, then passed after conversion. A focused
+shared-mount runtime test also proves signed
+`/acme/accessible/achievements/daily-reward` redirects to
+`/acme/accessible/achievements?status=daily-reward-claimed`. This is
+achievements route-redirect evidence only; it does not newly certify
+gamification feature gates, Laravel reward persistence depth, visual Blade
+parity, localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "achievements route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "achievement POST redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "Explore route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Explore hub"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "contact and report route redirects"

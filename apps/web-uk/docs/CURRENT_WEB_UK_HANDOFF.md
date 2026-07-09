@@ -219,6 +219,11 @@ The latest Explore redirect slice now routes unsigned and Laravel-401
 `res.locals.urlFor`, so the Explore gateway's auth-required redirects stay
 inside the active tenant mount without relying only on the shared-mount
 response rewriter.
+The latest achievements redirect slice now routes unsigned, Laravel-401,
+daily-reward, challenge-claim, shop-purchase, and showcase redirects generated
+by `src/routes/achievements.js` through `res.locals.urlFor`, so gamification
+POST results and auth-required redirects stay inside the active tenant mount
+without relying only on the shared-mount response rewriter.
 The latest shared pagination partial slice now changes the documented/default
 members pagination base URL from raw `/members` to `urlFor('/members')`, so a
 caller that omits `paginationConfig.baseUrl` does not leak a flat root path
