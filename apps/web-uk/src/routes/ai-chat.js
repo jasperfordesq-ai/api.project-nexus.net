@@ -13,6 +13,11 @@ function tokenFrom(req) {
   return req.signedCookies.token || '';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function normaliseConversationId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -75,7 +80,7 @@ function messagesFrom(result) {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const selectedId = normaliseConversationId(req.query.c);
@@ -116,12 +121,12 @@ router.get('/', asyncRoute(async (req, res) => {
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const message = String(req.body.message || '').trim().slice(0, 4000);
   if (message === '') {
-    return res.redirect('/chat?status=empty');
+    return redirectTo(res, '/chat?status=empty');
   }
 
   const payload = { message };
@@ -147,7 +152,7 @@ router.post('/', asyncRoute(async (req, res) => {
   }
   query.set('status', status);
 
-  return res.redirect(`/chat?${query.toString()}`);
+  return redirectTo(res, `/chat?${query.toString()}`);
 }));
 
 module.exports = router;

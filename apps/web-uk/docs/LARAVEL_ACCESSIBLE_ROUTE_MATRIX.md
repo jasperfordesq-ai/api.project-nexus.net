@@ -116,6 +116,9 @@ fallbacks tenant-aware under shared mounts and custom-domain child paths.
 Shared empty-state action links now render through `urlFor()`, and shared
 breadcrumb examples use `urlFor('/groups')` style paths, keeping reused partial
 links tenant-aware when pages are served from `/{tenantSlug}/accessible`.
+AI chat route-level redirects now also use a route-local helper backed by
+`res.locals.urlFor`, keeping auth-required, empty-message, and post-send chat
+redirects inside the active shared accessible mount.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values
