@@ -272,6 +272,13 @@ The member/auth utility slice now exposes Laravel React-compatible aliases for
 public SSO provider discovery/redirect, OAuth callback-code exchange errors, OS
 Places lookup, exchange attention count, given reviews, goal insights, goal
 buddy nudge, typed match dismissals, and coordinator assistance requests.
+Connected-accounts OAuth now follows Laravel's default `OAUTH_ENABLED=false`
+kill-switch behavior: enabled provider discovery and `/me/identities`
+`enabled_providers` return empty arrays by default, while supported providers
+remain discoverable; redirect/link attempts return Laravel-style disabled-flow
+errors instead of synthetic redirect URLs. Real provider credentials, callback
+state verification, linked identity persistence, and browser OAuth smoke
+coverage remain deeper gaps.
 
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET

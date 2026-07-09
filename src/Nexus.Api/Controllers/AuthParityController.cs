@@ -121,7 +121,7 @@ public class AuthParityController : ControllerBase
     [AllowAnonymous]
     public IActionResult EnabledProviders()
     {
-        var providers = ResolveOAuthTenantId() > 0 ? SupportedOAuthProviders : [];
+        var providers = OAuthEnabled() && ResolveOAuthTenantId() > 0 ? SupportedOAuthProviders : [];
         return Ok(new { success = true, providers });
     }
 
@@ -136,6 +136,9 @@ public class AuthParityController : ControllerBase
 
         if (ResolveOAuthTenantId() <= 0)
             return BadRequest(new { success = false, error = "tenant_required", message = "Tenant is required for OAuth." });
+
+        if (!OAuthEnabled())
+            return BadRequest(new { success = false, error = "oauth_redirect_failed", message = "OAuth provider is disabled for this community." });
 
         var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
             .TrimEnd('=')
@@ -155,7 +158,7 @@ public class AuthParityController : ControllerBase
     {
         success = true,
         identities = Array.Empty<object>(),
-        enabled_providers = SupportedOAuthProviders,
+        enabled_providers = OAuthEnabled() ? SupportedOAuthProviders : [],
         supported_providers = SupportedOAuthProviders
     });
 
@@ -167,6 +170,9 @@ public class AuthParityController : ControllerBase
         provider = NormalizeOAuthProvider(provider);
         if (!SupportedOAuthProviders.Contains(provider))
             return BadRequest(new { success = false, error = "unsupported_provider", message = "OAuth provider is not supported." });
+
+        if (!OAuthEnabled())
+            return BadRequest(new { success = false, error = "oauth_link_failed", message = "OAuth provider is disabled for this community." });
 
         var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
             .TrimEnd('=')
@@ -183,7 +189,22 @@ public class AuthParityController : ControllerBase
     [HttpDelete("oauth/{provider}/unlink")]
     [HttpDelete("~/api/v2/auth/oauth/{provider}/unlink")]
     [Authorize]
-    public IActionResult UnlinkOAuth(string provider) => Ok(new { success = true });
+    public IActionResult UnlinkOAuth(string provider)
+    {
+        provider = NormalizeOAuthProvider(provider);
+        if (!SupportedOAuthProviders.Contains(provider))
+            return UnprocessableEntity(new { success = false, error = "unlink_failed", message = "OAuth provider is not supported." });
+
+        return Ok(new { success = true });
+    }
+
+    private bool OAuthEnabled()
+    {
+        var configured = _config["OAuth:Enabled"]
+            ?? _config["OAUTH_ENABLED"];
+
+        return bool.TryParse(configured, out var enabled) && enabled;
+    }
 
     private int ResolveOAuthTenantId()
     {

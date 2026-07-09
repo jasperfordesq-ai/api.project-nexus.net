@@ -72,7 +72,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AuthOAuthV2_UsesLaravelReactProviderRedirectAndIdentityShapes()
+    public async Task AuthOAuthV2_UsesLaravelReactDefaultDisabledProviderAndIdentityShapes()
     {
         ClearAuthToken();
 
@@ -84,21 +84,15 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         providersJson.GetProperty("success").GetBoolean().Should().BeTrue();
         var providerList = providersJson.GetProperty("providers");
         providerList.ValueKind.Should().Be(JsonValueKind.Array);
-        var supportedOAuthProviders = new[] { "google", "apple", "facebook" };
-        providerList.EnumerateArray()
-            .Select(item => item.GetString())
-            .Should()
-            .NotContain(provider => !supportedOAuthProviders.Contains(provider));
+        providerList.EnumerateArray().Should().BeEmpty("Laravel's default OAUTH_ENABLED=false kill switch should not advertise connectable providers");
         providersJson.TryGetProperty("data", out _).Should().BeFalse();
 
         var redirect = await Client.GetAsync($"/api/v2/auth/oauth/google/redirect?tenant_id={TestData.Tenant1.Id}&intent=login");
 
-        redirect.StatusCode.Should().Be(HttpStatusCode.OK);
+        redirect.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var redirectJson = await redirect.Content.ReadFromJsonAsync<JsonElement>();
-        redirectJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        redirectJson.GetProperty("provider").GetString().Should().Be("google");
-        redirectJson.GetProperty("redirect_url").GetString().Should().NotBeNullOrWhiteSpace();
-        redirectJson.GetProperty("state").GetString().Should().NotBeNullOrWhiteSpace();
+        redirectJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        redirectJson.GetProperty("error").GetString().Should().Be("oauth_redirect_failed");
 
         await AuthenticateAsMemberAsync();
 
@@ -109,6 +103,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         identitiesJson.GetProperty("success").GetBoolean().Should().BeTrue();
         identitiesJson.GetProperty("identities").ValueKind.Should().Be(JsonValueKind.Array);
         identitiesJson.GetProperty("enabled_providers").ValueKind.Should().Be(JsonValueKind.Array);
+        identitiesJson.GetProperty("enabled_providers").EnumerateArray().Should().BeEmpty();
         identitiesJson.GetProperty("supported_providers").EnumerateArray()
             .Select(item => item.GetString())
             .Should()
@@ -117,11 +112,10 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
 
         var link = await Client.PostAsJsonAsync("/api/v2/auth/oauth/google/link", new { });
 
-        link.StatusCode.Should().Be(HttpStatusCode.OK);
+        link.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var linkJson = await link.Content.ReadFromJsonAsync<JsonElement>();
-        linkJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        linkJson.GetProperty("redirect_url").GetString().Should().NotBeNullOrWhiteSpace();
-        linkJson.GetProperty("state").GetString().Should().NotBeNullOrWhiteSpace();
+        linkJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        linkJson.GetProperty("error").GetString().Should().Be("oauth_link_failed");
         linkJson.TryGetProperty("data", out _).Should().BeFalse();
     }
 
