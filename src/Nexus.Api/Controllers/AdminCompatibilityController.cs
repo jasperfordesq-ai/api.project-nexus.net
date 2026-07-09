@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -39,6 +40,52 @@ public class AdminCompatibilityController : ControllerBase
         ("digest_emails", "Email Digest Sender"),
         ("badge_checker", "Badge Award Checker"),
         ("streak_updater", "Login Streak Updater")
+    ];
+
+    private static readonly (string Slug, string Name, string Command, string Schedule, string Category, string Description)[] LaravelReactCronJobs =
+    [
+        ("run-all", "Master Cron Runner", "runAll", "* * * * *", "master", "Runs all appropriate cron tasks based on the current time. This is the only scheduled entry - all other jobs run inside it."),
+        ("process-queue", "Instant Notification Queue", "runInstantQueue", "* * * * *", "notifications", "Processes the instant notification queue, sending pending notifications immediately."),
+        ("daily-digest", "Daily Digest", "dailyDigest", "0 8 * * *", "notifications", "Sends daily notification digest emails to users who opted for daily frequency."),
+        ("weekly-digest", "Monthly Digest", "weeklyDigest", "0 17 1 * *", "notifications", "Sends monthly notification digest emails (1st of month at 5 PM)."),
+        ("process-newsletters", "Process Scheduled Newsletters", "processNewsletters", "*/5 * * * *", "newsletters", "Checks for newsletters scheduled to be sent and initiates their sending process."),
+        ("process-recurring", "Process Recurring Newsletters", "processRecurring", "*/15 * * * *", "newsletters", "Handles recurring/automated newsletters (e.g., weekly community updates)."),
+        ("process-newsletter-queue", "Newsletter Queue Processor", "processNewsletterQueue", "* * * * *", "newsletters", "Processes the newsletter sending queue in batches for large sends."),
+        ("notify-hot-matches", "Hot Match Notifications", "notifyHotMatches", "0 * * * *", "matching", "Notifies users of new high-scoring matches."),
+        ("match-digest-daily", "Daily Match Digest", "matchDigestDaily", "0 9 * * *", "matching", "Sends daily match recommendations to users."),
+        ("match-digest-weekly", "Weekly Match Digest", "matchDigestWeekly", "0 9 * * 1", "matching", "Sends weekly match recommendations summary (Mondays 9 AM)."),
+        ("gamification-daily", "Gamification Daily Tasks", "gamificationDaily", "0 3 * * *", "gamification", "Processes streak resets, daily bonuses, and badge checks."),
+        ("gamification-campaigns", "Process Achievement Campaigns", "gamificationCampaigns", "0 * * * *", "gamification", "Processes recurring achievement campaigns."),
+        ("gamification-leaderboard", "Leaderboard Snapshot", "gamificationLeaderboard", "0 0 * * *", "gamification", "Creates daily leaderboard snapshots and finalizes seasons."),
+        ("gamification-challenges", "Check Challenge Expirations", "gamificationChallenges", "30 * * * *", "gamification", "Expires completed challenges and updates statuses."),
+        ("gamification-weekly-digest", "Gamification Monthly Digest", "gamificationWeeklyDigest", "0 4 1 * *", "gamification", "Sends monthly progress email digests to users."),
+        ("gamification-streaks", "Gamification Streak Milestones", "gamificationStreaks", "0 1 * * *", "gamification", "Checks and awards streak milestones (7/14/30/60/90/180/365 days)."),
+        ("gamification-cleanup", "Gamification Cleanup", "gamificationCleanup", "0 3 * * 0", "gamification", "Cleans old XP notifications, campaign awards, and analytics data."),
+        ("update-featured-groups", "Update Featured Groups", "updateFeaturedGroups", "0 8 * * *", "groups", "Updates featured groups based on ranking algorithms."),
+        ("group-weekly-digest", "Group Monthly Digests", "groupWeeklyDigest", "0 9 1 * *", "groups", "Sends monthly analytics digest emails to group owners."),
+        ("abuse-detection", "Abuse Detection", "abuseDetection", "0 * * * *", "security", "Scans transactions for potential abuse patterns."),
+        ("abuse-daily-report", "Abuse Daily Report", "abuseDailyReport", "0 7 * * *", "security", "Sends daily abuse detection report to admins."),
+        ("abuse-cleanup", "Abuse Alert Cleanup", "abuseCleanup", "0 2 * * 0", "security", "Archives old alerts and auto-dismisses low-severity items."),
+        ("verification-reminders", "Verification Reminders", "verificationReminders", "0 */6 * * *", "verification", "Sends reminders to users with incomplete identity verifications."),
+        ("expire-verifications", "Expire Abandoned Verifications", "expireVerifications", "30 4 * * *", "verification", "Expires verification sessions abandoned for 72+ hours."),
+        ("purge-verification-sessions", "Purge Old Verification Data", "purgeVerificationSessions", "30 3 * * 0", "verification", "Purges completed/expired verification sessions older than 180 days."),
+        ("volunteer-pre-shift", "Volunteer Pre-Shift Reminders", "volunteerPreShiftReminders", "*/30 * * * *", "volunteering", "Sends reminders 24h and 2h before volunteer shifts."),
+        ("volunteer-post-shift", "Volunteer Post-Shift Feedback", "volunteerPostShiftFeedback", "*/30 * * * *", "volunteering", "Sends feedback request after completed shifts."),
+        ("volunteer-lapsed-nudge", "Lapsed Volunteer Nudge", "volunteerLapsedNudge", "0 5 * * *", "volunteering", "Nudges volunteers who have not been active recently."),
+        ("volunteer-expiry-warnings", "Volunteer Credential Expiry", "volunteerExpiryWarnings", "0 5 * * *", "volunteering", "Warns volunteers about expiring credentials and training."),
+        ("recurring-shifts", "Generate Recurring Shifts", "recurringShifts", "0 6 * * *", "volunteering", "Auto-generates volunteer shifts 14 days ahead from recurring templates."),
+        ("volunteer-expire-consents", "Expire Guardian Consents", "volunteerExpireConsents", "0 5 * * *", "volunteering", "Expires guardian consent records that have passed their expiry date."),
+        ("cleanup", "System Cleanup", "cleanup", "0 0 * * *", "maintenance", "Cleans expired tokens, old queue entries, API tokens, and tracking data."),
+        ("geocode-batch", "Batch Geocoding", "geocodeBatch", "*/30 * * * *", "maintenance", "Geocodes users and listings missing lat/lng coordinates."),
+        ("event-reminders", "Event Reminders", "eventReminders", "*/15 * * * *", "notifications", "Sends reminders 24h and 1h before events."),
+        ("inactive-members", "Inactive Member Detection", "inactiveMembers", "0 2 * * *", "maintenance", "Detects and flags inactive members for follow-up."),
+        ("listing-expiry", "Listing Expiry Processing", "listingExpiry", "0 8 * * *", "maintenance", "Expires listings that have passed their expiry date."),
+        ("listing-expiry-reminders", "Listing Expiry Reminders", "listingExpiryReminders", "0 8 * * *", "notifications", "Warns listing owners 3 days before their listing expires."),
+        ("job-expiry", "Job Vacancy Expiry", "jobExpiry", "0 8 * * *", "maintenance", "Expires job vacancies that have passed their closing date."),
+        ("federation-weekly-digest", "Federation Monthly Digest", "federationWeeklyDigest", "0 9 1 * *", "notifications", "Sends federation activity digest to opted-in tenants."),
+        ("balance-alerts", "Balance Alerts", "balanceAlerts", "0 8 * * *", "notifications", "Checks organization wallet balances and sends low/critical alerts."),
+        ("goal-reminders", "Goal Reminders", "goalReminders", "0 8 * * *", "notifications", "Sends reminders for goals that are due or behind schedule."),
+        ("retry-failed-webhooks", "Retry Failed Webhooks", "retryFailedWebhooks", "*/5 * * * *", "maintenance", "Retries webhook deliveries that previously failed.")
     ];
 
     private static readonly (int Id, string Name, string Location)[] MenuDefinitions =
@@ -2287,6 +2334,11 @@ public class AdminCompatibilityController : ControllerBase
     [HttpGet("system/cron-jobs")]
     public async Task<IActionResult> ListCronJobs()
     {
+        if (IsLaravelV2Request)
+        {
+            return LaravelData(await ListLaravelReactCronJobsAsync());
+        }
+
         var tasks = await _db.ScheduledTasks
             .AsNoTracking()
             .OrderBy(t => t.TaskName)
@@ -2309,6 +2361,11 @@ public class AdminCompatibilityController : ControllerBase
     [HttpPost("system/cron-jobs/{id}/run")]
     public async Task<IActionResult> RunCronJob(string id)
     {
+        if (IsLaravelV2Request)
+        {
+            return await RunLaravelReactCronJobAsync(id);
+        }
+
         var result = await RecordScheduledTaskRunAsync(id);
         if (result == null)
             return NotFound(new { error = "Cron job not found" });
@@ -3511,6 +3568,148 @@ public class AdminCompatibilityController : ControllerBase
         _logger.LogInformation("Admin {AdminId} reordered {Count} menu items for menu {MenuId}", GetCurrentUserId(), ordering.Count, menuId);
         return Ok(new { success = true, message = "Items reordered", updated = ordering.Count });
     }
+
+    private async Task<List<object>> ListLaravelReactCronJobsAsync()
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var slugs = LaravelReactCronJobs.Select(j => j.Slug).ToList();
+        var lastRuns = await _db.ScheduledJobRuns
+            .AsNoTracking()
+            .Where(r => (r.TenantId == tenantId || r.TenantId == null) && slugs.Contains(r.JobName))
+            .GroupBy(r => r.JobName)
+            .Select(g => g.OrderByDescending(r => r.StartedAt).First())
+            .ToListAsync();
+
+        return LaravelReactCronJobs.Select((job, index) =>
+        {
+            var lastRun = lastRuns.FirstOrDefault(r => r.JobName == job.Slug);
+            return (object)new
+            {
+                id = index + 1,
+                slug = job.Slug,
+                name = job.Name,
+                command = job.Command,
+                schedule = job.Schedule,
+                status = "active",
+                category = job.Category,
+                description = job.Description,
+                last_run_at = lastRun?.StartedAt,
+                last_status = lastRun == null || lastRun.Status == ScheduledJobRunStatus.Running
+                    ? null
+                    : LaravelReactCronRunStatus(lastRun.Status),
+                next_run_at = CalculateLaravelReactNextRun(job.Schedule)
+            };
+        }).ToList();
+    }
+
+    private async Task<IActionResult> RunLaravelReactCronJobAsync(string id)
+    {
+        if (!int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId) || numericId < 1)
+        {
+            return LaravelError("VALIDATION_ERROR", "Invalid cron job id.", StatusCodes.Status400BadRequest);
+        }
+
+        if (numericId > LaravelReactCronJobs.Length)
+        {
+            return LaravelError("NOT_FOUND", "Cron job not found.", StatusCodes.Status404NotFound);
+        }
+
+        var job = LaravelReactCronJobs[numericId - 1];
+        var startedAt = DateTime.UtcNow;
+        var completedAt = DateTime.UtcNow;
+        var duration = Math.Round(Math.Max(0, (completedAt - startedAt).TotalSeconds), 2);
+        var output = $"Manual compatibility run recorded for {job.Slug}; ASP.NET did not execute the Laravel CronJobRunner.";
+
+        _db.ScheduledJobRuns.Add(new ScheduledJobRun
+        {
+            TenantId = _tenant.GetTenantIdOrThrow(),
+            JobName = job.Slug,
+            StartedAt = startedAt,
+            CompletedAt = completedAt,
+            Status = ScheduledJobRunStatus.Success,
+            ItemsProcessed = 0,
+            ErrorMessage = output,
+            DurationMs = duration * 1000
+        });
+        await _db.SaveChangesAsync();
+
+        return LaravelData(new
+        {
+            triggered = true,
+            job_slug = job.Slug,
+            job_name = job.Name,
+            status = "success",
+            duration,
+            output
+        });
+    }
+
+    private static string? CalculateLaravelReactNextRun(string cronExpression)
+    {
+        var parts = cronExpression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 5) return null;
+
+        var minute = parts[0];
+        var hour = parts[1];
+        var dayOfWeek = parts[4];
+        var now = DateTime.UtcNow;
+        var next = now;
+
+        if (minute == "*" && hour == "*")
+        {
+            return FormatLaravelCronTime(next.AddMinutes(1));
+        }
+
+        if (minute.StartsWith("*/", StringComparison.Ordinal) &&
+            int.TryParse(minute[2..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var interval) &&
+            interval > 0)
+        {
+            var nextMinute = (int)(Math.Ceiling(now.Minute / (double)interval) * interval);
+            if (nextMinute >= 60)
+            {
+                next = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc).AddHours(1);
+            }
+            else
+            {
+                next = new DateTime(now.Year, now.Month, now.Day, now.Hour, nextMinute, 0, DateTimeKind.Utc);
+            }
+
+            if (next <= now) next = next.AddMinutes(interval);
+            return FormatLaravelCronTime(next);
+        }
+
+        if (int.TryParse(minute, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedMinute) &&
+            int.TryParse(hour, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedHour))
+        {
+            if (dayOfWeek != "*" && int.TryParse(dayOfWeek, NumberStyles.Integer, CultureInfo.InvariantCulture, out var targetDay))
+            {
+                var currentDay = (int)now.DayOfWeek;
+                var daysUntil = (targetDay - currentDay + 7) % 7;
+                next = new DateTime(now.Year, now.Month, now.Day, parsedHour, parsedMinute, 0, DateTimeKind.Utc).AddDays(daysUntil);
+                if (next <= now) next = next.AddDays(7);
+                return FormatLaravelCronTime(next);
+            }
+
+            next = new DateTime(now.Year, now.Month, now.Day, parsedHour, parsedMinute, 0, DateTimeKind.Utc);
+            if (next <= now) next = next.AddDays(1);
+            return FormatLaravelCronTime(next);
+        }
+
+        if (int.TryParse(minute, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedMinute) && hour == "*")
+        {
+            next = new DateTime(now.Year, now.Month, now.Day, now.Hour, parsedMinute, 0, DateTimeKind.Utc);
+            if (next <= now) next = next.AddHours(1);
+            return FormatLaravelCronTime(next);
+        }
+
+        return null;
+    }
+
+    private static string FormatLaravelCronTime(DateTime value)
+        => value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+    private static string LaravelReactCronRunStatus(ScheduledJobRunStatus status)
+        => status == ScheduledJobRunStatus.Failed ? "error" : "success";
 
     private async Task<object?> RecordScheduledTaskRunAsync(string id)
     {

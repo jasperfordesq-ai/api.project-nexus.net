@@ -119,6 +119,17 @@ secret, and rejects cross-tenant/private-user subscriptions with Laravel-style
 forbidden errors. End-to-end broadcast smoke coverage remains a gap until a
 configured Pusher app is available.
 
+The Laravel React system cron-jobs slice now has focused ASP.NET regression
+coverage for `GET /api/v2/admin/system/cron-jobs` and
+`POST /api/v2/admin/system/cron-jobs/{id}/run` as used by
+`react-frontend/src/admin/modules/system/CronJobs.tsx` and
+`react-frontend/src/admin/api/adminApi.ts`. The .NET compatibility path mirrors
+the Laravel `AdminConfigController::getCronJobs/runCronJob` definition list and
+manual-run response envelope, accepts the frontend's numeric job id, and writes
+a `ScheduledJobRun` row for observability. It records a safe compatibility run;
+actual Laravel `CronJobRunner` side effects and full scheduled-job service
+equivalence remain deeper backend parity gaps.
+
 The Laravel React typing-indicator slice now has focused ASP.NET regression
 coverage for `POST /api/v2/messages/typing` with the `PusherContext.tsx`
 payload `{ to_user_id, is_typing }`. The .NET compatibility path also accepts

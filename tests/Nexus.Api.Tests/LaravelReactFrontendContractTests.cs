@@ -914,6 +914,40 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminCronV2_UsesLaravelReactDefinitionListAndManualRunShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var list = await Client.GetAsync("/api/v2/admin/system/cron-jobs");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var jobs = listJson.GetProperty("data").EnumerateArray().ToArray();
+        jobs.Should().NotBeEmpty();
+
+        var master = jobs.Should().ContainSingle(job =>
+            job.GetProperty("id").GetInt32() == 1 &&
+            job.GetProperty("slug").GetString() == "run-all").Subject;
+        master.GetProperty("name").GetString().Should().Be("Master Cron Runner");
+        master.GetProperty("command").GetString().Should().Be("runAll");
+        master.GetProperty("schedule").GetString().Should().Be("* * * * *");
+        master.GetProperty("status").GetString().Should().Be("active");
+        master.GetProperty("category").GetString().Should().Be("master");
+        master.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        master.GetProperty("last_run_at").ValueKind.Should().Be(JsonValueKind.Null);
+        master.GetProperty("last_status").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var run = await Client.PostAsJsonAsync("/api/v2/admin/system/cron-jobs/1/run", new { });
+        run.StatusCode.Should().Be(HttpStatusCode.OK);
+        var runData = (await run.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        runData.GetProperty("triggered").GetBoolean().Should().BeTrue();
+        runData.GetProperty("job_slug").GetString().Should().Be("run-all");
+        runData.GetProperty("job_name").GetString().Should().Be("Master Cron Runner");
+        runData.GetProperty("status").GetString().Should().Be("success");
+        runData.GetProperty("duration").GetDouble().Should().BeGreaterThanOrEqualTo(0);
+        runData.GetProperty("output").GetString().Should().Contain("recorded");
+    }
+
+    [Fact]
     public async Task AdminPagesV2_UsesLaravelReactCmsWorkflowShape()
     {
         await AuthenticateAsAdminAsync();
