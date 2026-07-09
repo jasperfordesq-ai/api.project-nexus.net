@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/blog/{{ post.slug }}/comments">Back to the discussion</a>
+      <a class="govuk-back-link" href="{{ urlFor('/blog/' + post.slug + '/comments') }}">Back to the discussion</a>
 
       <span class="govuk-caption-l">Blog reactions</span>
       <h1 class="govuk-heading-xl">People who reacted {{ reactionEmoji }}</h1>
@@ -24,7 +24,7 @@
           {% for liker in likers %}
             <li class="nexus-alpha-module-row">
               {% if liker.id %}
-                <a class="govuk-link" href="/members/{{ liker.id }}">{{ liker.name }}</a>
+                <a class="govuk-link" href="{{ urlFor('/members/' + (liker.id | string)) }}">{{ liker.name }}</a>
               {% else %}
                 {{ liker.name }}
               {% endif %}
@@ -33,7 +33,7 @@
         </ul>
 
         {% if likersHasMore %}
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="/blog/{{ post.slug }}/likers/{{ reaction }}?page={{ likersPage + 1 }}">Show more people</a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/blog/' + post.slug + '/likers/' + reaction + '?page=' + ((likersPage + 1) | string)) }}">Show more people</a>
         {% endif %}
       {% endif %}
     </div>

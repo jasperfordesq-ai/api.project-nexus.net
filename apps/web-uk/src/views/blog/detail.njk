@@ -12,7 +12,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/blog">Back to the blog</a>
+      <a class="govuk-back-link" href="{{ urlFor('/blog') }}">Back to the blog</a>
 
       <span class="govuk-caption-l">This community</span>
       <h1 class="govuk-heading-xl">{{ post.title }}</h1>
@@ -21,7 +21,7 @@
         {% if post.category.name %}{{ post.category.name }} - {% endif %}
         {% if post.author.name %}
           Written by
-          {% if post.author.id %}<a class="govuk-link" href="/members/{{ post.author.id }}">{{ post.author.name }}</a>{% else %}{{ post.author.name }}{% endif %} -
+          {% if post.author.id %}<a class="govuk-link" href="{{ urlFor('/members/' + (post.author.id | string)) }}">{{ post.author.name }}</a>{% else %}{{ post.author.name }}{% endif %} -
         {% endif %}
         {% if post.publishedAt %}Published: {{ post.publishedAt | formatDate }}{% endif %}
         {% if post.readingTime %} - {{ post.readingTime }} min read{% endif %}
@@ -39,7 +39,7 @@
 
       <div id="reactions" class="govuk-!-margin-top-4 govuk-!-margin-bottom-2">
         {% if isAuthenticated and post.slug %}
-          <form method="post" action="/blog/{{ post.slug }}/like" class="govuk-!-display-inline-block">
+          <form method="post" action="{{ urlFor('/blog/' + post.slug + '/like') }}" class="govuk-!-display-inline-block">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button class="govuk-button {% if not hasLiked %}govuk-button--secondary{% endif %} govuk-!-margin-bottom-0" data-module="govuk-button">
               {% if hasLiked %}Liked{% else %}Like{% endif %}
@@ -56,7 +56,7 @@
 
         {% if post.slug %}
           <p class="govuk-body">
-            <a class="govuk-link" href="/blog/{{ post.slug }}/comments">View the full discussion</a>
+            <a class="govuk-link" href="{{ urlFor('/blog/' + post.slug + '/comments') }}">View the full discussion</a>
           </p>
         {% endif %}
 
@@ -85,7 +85,7 @@
             </ul>
           {% endif %}
 
-          <form method="post" action="/blog/{{ post.slug }}/comments" class="govuk-!-margin-top-4">
+          <form method="post" action="{{ urlFor('/blog/' + post.slug + '/comments') }}" class="govuk-!-margin-top-4">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'body' %} govuk-form-group--error{% endif %}">
               <label class="govuk-label govuk-label--s" for="body">Add a comment</label>

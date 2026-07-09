@@ -115,7 +115,9 @@ now routes contact, cookie settings, login, two-factor login, forgot-password,
 reset-password, register, and report-a-problem links/forms through `urlFor()`.
 The latest organisations source slice now routes organisation directory,
 browse, detail, jobs, manage, register, and opportunity-apply links/forms
-through `urlFor()`.
+through `urlFor()`. The latest blog source slice now routes blog index, post
+detail, discussion, liker, reaction, comment, pagination, and member-profile
+links/forms through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -191,6 +193,9 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"` first failed on raw `/organisations` and `/volunteering` links/actions, then passed after the template conversion.
 - `Select-String` over `organisation-detail.njk`, `organisations.njk`, `organisations-apply.njk`, `organisations-browse.njk`, `organisations-jobs.njk`, `organisations-manage.njk`, and `organisations-register.njk` for raw local organisation/volunteering/job `href` and `action` targets returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"` passed `6/6` selected tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"` first failed on raw `/blog` links/actions, then passed after the template conversion.
+- `Select-String -Path apps\web-uk\src\views\blog\*.njk -Pattern 'href="/(blog|members)','action="/blog'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "blog"` passed `9/9` selected blog tests.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
@@ -252,6 +257,10 @@ actions through `urlFor()`.
 `organisations-register.njk` now route organisation directory, browse, detail,
 jobs, manage, register, volunteer opportunity, and apply controls through
 `urlFor()`.
+`src/views/blog/index.njk`, `detail.njk`, `comments.njk`, and `likers.njk`
+now route blog search, post links, pagination, back links, author/member links,
+like/reaction/comment forms, discussion links, liker links, and show-more links
+through `urlFor()`.
 `src/views/marketplace/offers.njk` and `src/views/marketplace/manage.njk` now
 route offer tabs, dynamic listing links, accept/decline/withdraw forms,
 my-listings tabs, create/view/edit links, and renew/delete forms through

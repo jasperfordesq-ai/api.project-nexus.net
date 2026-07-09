@@ -12,7 +12,7 @@
       <h1 class="govuk-heading-xl">Blog</h1>
       <p class="govuk-body-l">News, stories and updates from this community.</p>
 
-      <form method="get" action="/blog" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/blog') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <label class="govuk-label" for="q">Search the blog</label>
           <div id="q-hint" class="govuk-hint">Search by title or content.</div>
@@ -51,7 +51,7 @@
                 <strong class="govuk-tag govuk-tag--blue govuk-!-margin-bottom-2">Featured</strong>
               {% endif %}
               <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/blog/{{ post.slug }}">{{ post.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/blog/' + post.slug) }}">{{ post.title }}</a>
               </h3>
               {% if post.excerpt %}
                 <p class="govuk-body govuk-!-margin-bottom-1">{{ post.excerpt }}</p>
@@ -69,7 +69,12 @@
         {% if hasMore and nextCursor %}
           <nav class="govuk-pagination govuk-pagination--block" role="navigation" aria-label="More posts">
             <div class="govuk-pagination__next">
-              <a class="govuk-link govuk-pagination__link" href="/blog?q={{ searchQuery | urlencode }}{% if categoryId %}&category={{ categoryId }}{% endif %}&cursor={{ nextCursor | urlencode }}" rel="next">
+              {% set nextHref = '/blog?q=' + (searchQuery | urlencode) %}
+              {% if categoryId %}
+                {% set nextHref = nextHref + '&category=' + (categoryId | string) %}
+              {% endif %}
+              {% set nextHref = nextHref + '&cursor=' + (nextCursor | urlencode) %}
+              <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
                 <span class="govuk-pagination__link-title">Load more</span>
               </a>
             </div>

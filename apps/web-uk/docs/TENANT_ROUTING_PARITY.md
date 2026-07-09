@@ -387,11 +387,22 @@ on raw `/organisations` and `/volunteering` links/actions, then passed after
 conversion; a source scan for organisation-local raw `href`/`action` strings
 returns no matches.
 
+The twenty-sixth template-helper source slice extends direct `urlFor()`
+conversion into blog pages. `src/views/blog/index.njk`, `detail.njk`,
+`comments.njk`, and `likers.njk` now route blog search, post links, pagination,
+back links, author/member links, like/reaction/comment forms, discussion links,
+liker links, and show-more links through `urlFor()`. The source-level
+regression first failed on raw `/blog` links/actions, then passed after
+conversion; a source scan for blog-local raw `href`/`action` strings returns no
+matches.
+
 Verification command:
 
 ```powershell
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "blog"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"

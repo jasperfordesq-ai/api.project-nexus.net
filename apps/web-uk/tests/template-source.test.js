@@ -392,4 +392,25 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
     expect(source).toMatch(/urlFor\(["']\/jobs/);
   });
+
+  it('keeps blog index, detail, comments, and reaction controls behind urlFor()', () => {
+    const templates = [
+      path.join('blog', 'index.njk'),
+      path.join('blog', 'detail.njk'),
+      path.join('blog', 'comments.njk'),
+      path.join('blog', 'likers.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:blog|members)/);
+      expect(template).not.toMatch(/action="\/blog/);
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/blog/);
+    expect(source).toMatch(/urlFor\(["']\/members/);
+  });
 });

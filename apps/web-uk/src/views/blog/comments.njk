@@ -12,7 +12,7 @@
       {{ comment.user.name }}{% if comment.createdAt %} - Posted on {{ comment.createdAt | formatDate }}{% endif %}
     </p>
     <div class="govuk-button-group">
-      <form method="post" action="/blog/comments/{{ comment.id }}/react">
+      <form method="post" action="{{ urlFor('/blog/comments/' + (comment.id | string) + '/react') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="slug" value="{{ post.slug }}">
         <input type="hidden" name="emoji" value="like">
@@ -22,7 +22,7 @@
     <details class="govuk-details">
       <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Reply</span></summary>
       <div class="govuk-details__text">
-        <form method="post" action="/blog/{{ post.slug }}/comments/add">
+        <form method="post" action="{{ urlFor('/blog/' + post.slug + '/comments/add') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="parent_id" value="{{ comment.id }}">
           <label class="govuk-label govuk-label--s" for="reply-{{ comment.id }}">Your reply</label>
@@ -34,7 +34,7 @@
     <details class="govuk-details">
       <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Edit</span></summary>
       <div class="govuk-details__text">
-        <form method="post" action="/blog/comments/{{ comment.id }}/update">
+        <form method="post" action="{{ urlFor('/blog/comments/' + (comment.id | string) + '/update') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="slug" value="{{ post.slug }}">
           <label class="govuk-label govuk-label--s" for="edit-{{ comment.id }}">Edit your comment</label>
@@ -43,7 +43,7 @@
         </form>
       </div>
     </details>
-    <form method="post" action="/blog/comments/{{ comment.id }}/delete">
+    <form method="post" action="{{ urlFor('/blog/comments/' + (comment.id | string) + '/delete') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <input type="hidden" name="slug" value="{{ post.slug }}">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete comment</button>
@@ -61,7 +61,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/blog/{{ post.slug }}">Back to the post</a>
+      <a class="govuk-back-link" href="{{ urlFor('/blog/' + post.slug) }}">Back to the post</a>
 
       {% if statusBanner and statusBanner.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
@@ -86,7 +86,7 @@
         <div class="nexus-alpha-actions govuk-button-group govuk-!-margin-bottom-2">
           {% for reactionType, label in reactionLabels %}
             {% set typeCount = reactions.counts[reactionType] or 0 %}
-            <form method="post" action="/blog/{{ post.slug }}/react" class="nexus-alpha-reaction-form">
+            <form method="post" action="{{ urlFor('/blog/' + post.slug + '/react') }}" class="nexus-alpha-reaction-form">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="emoji" value="{{ reactionType }}">
               <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0{% if reactions.userReaction == reactionType %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" aria-pressed="{% if reactions.userReaction == reactionType %}true{% else %}false{% endif %}">
@@ -98,7 +98,7 @@
         <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-0">
           {% for reactionType, count in reactions.counts %}
             {% if count > 0 %}
-              <li><a class="govuk-link" href="/blog/{{ post.slug }}/likers/{{ reactionType }}">See who reacted ({{ count }})</a></li>
+              <li><a class="govuk-link" href="{{ urlFor('/blog/' + post.slug + '/likers/' + reactionType) }}">See who reacted ({{ count }})</a></li>
             {% endif %}
           {% endfor %}
         </ul>
@@ -120,7 +120,7 @@
         {% endif %}
 
         <h3 class="govuk-heading-m govuk-!-margin-top-6">Add a comment</h3>
-        <form method="post" action="/blog/{{ post.slug }}/comments/add">
+        <form method="post" action="{{ urlFor('/blog/' + post.slug + '/comments/add') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'body' %} govuk-form-group--error{% endif %}">
             <label class="govuk-label govuk-label--s" for="body">Your comment</label>
