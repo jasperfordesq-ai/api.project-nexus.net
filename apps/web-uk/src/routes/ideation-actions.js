@@ -8,6 +8,7 @@ const { ApiError, callIdeationApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+const IDEATION_PATH = '/ideation';
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -38,13 +39,22 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function localUrl(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return urlFor(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(localUrl(res, pathname));
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -72,7 +82,7 @@ async function callApi(token, method, path, data = undefined) {
 async function runAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
@@ -80,27 +90,39 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
     const redirect = typeof successRedirect === 'function'
       ? successRedirect(result)
       : successRedirect;
-    return res.redirect(redirect);
+    return redirectTo(res, redirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
 function challengeRedirect(id, status) {
-  return `/ideation/${id}?status=${encodeURIComponent(status)}`;
+  return `${IDEATION_PATH}/${id}?status=${encodeURIComponent(status)}`;
 }
 
 function challengeManageRedirect(id, status) {
-  return `/ideation/${id}/manage?status=${encodeURIComponent(status)}`;
+  return `${IDEATION_PATH}/${id}/manage?status=${encodeURIComponent(status)}`;
 }
 
 function ideaRedirect(challengeId, ideaId, status, fragment = '') {
-  return `/ideation/${challengeId}/ideas/${ideaId}?status=${encodeURIComponent(status)}${fragment}`;
+  return `${IDEATION_PATH}/${challengeId}/ideas/${ideaId}?status=${encodeURIComponent(status)}${fragment}`;
 }
 
 function campaignRedirect(id, status) {
-  return `/ideation/campaigns/${id}?status=${encodeURIComponent(status)}`;
+  return `${IDEATION_PATH}/campaigns/${id}?status=${encodeURIComponent(status)}`;
+}
+
+function ideationRedirect(status) {
+  return `${IDEATION_PATH}?status=${encodeURIComponent(status)}`;
+}
+
+function ideationSubpageRedirect(subpage, status, fragment = '') {
+  return `${IDEATION_PATH}/${subpage}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function challengeSubpageRedirect(id, subpage, status, fragment = '') {
+  return `${IDEATION_PATH}/${id}/${subpage}?status=${encodeURIComponent(status)}${fragment}`;
 }
 
 function challengePayload(body) {
@@ -192,8 +214,8 @@ router.post('/campaigns', asyncRoute(async (req, res) => runAction(
   'POST',
   '/ideation-campaigns',
   campaignPayload(req.body),
-  '/ideation/campaigns?status=campaign-created',
-  '/ideation/campaigns?status=campaign-create-failed'
+  ideationSubpageRedirect('campaigns', 'campaign-created'),
+  ideationSubpageRedirect('campaigns', 'campaign-create-failed')
 )));
 
 router.post('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
@@ -231,7 +253,7 @@ router.post('/campaigns/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     'DELETE',
     `/ideation-campaigns/${id}`,
     undefined,
-    '/ideation/campaigns?status=campaign-deleted',
+    ideationSubpageRedirect('campaigns', 'campaign-deleted'),
     campaignRedirect(id, 'campaign-delete-failed')
   );
 }));
@@ -243,7 +265,7 @@ router.post('/new', asyncRoute(async (req, res) => runAction(
   '/ideation-challenges',
   challengePayload(req.body),
   (result) => challengeRedirect(resultId(result) || 'new', 'challenge-created'),
-  '/ideation/new?status=challenge-create-failed'
+  ideationSubpageRedirect('new', 'challenge-create-failed')
 )));
 
 router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
@@ -306,7 +328,7 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     'DELETE',
     `/ideation-challenges/${id}`,
     undefined,
-    '/ideation?status=challenge-deleted',
+    ideationRedirect('challenge-deleted'),
     challengeManageRedirect(id, 'challenge-delete-failed')
   );
 }));
@@ -339,8 +361,8 @@ router.post('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
     'PUT',
     `/ideation-challenges/${id}/outcome`,
     outcomePayload(req.body),
-    `/ideation/${id}/outcome?status=outcome-saved`,
-    `/ideation/${id}/outcome?status=outcome-failed`
+    challengeSubpageRedirect(id, 'outcome', 'outcome-saved'),
+    challengeSubpageRedirect(id, 'outcome', 'outcome-failed')
   );
 }));
 
@@ -353,8 +375,8 @@ router.post('/:id(\\d+)/drafts/:ideaId(\\d+)', asyncRoute(async (req, res) => {
     'PUT',
     `/ideation-ideas/${ideaId}/draft`,
     ideaPayload(req.body),
-    `/ideation/${id}/drafts?status=draft-saved`,
-    `/ideation/${id}/drafts?status=draft-save-failed`
+    challengeSubpageRedirect(id, 'drafts', 'draft-saved'),
+    challengeSubpageRedirect(id, 'drafts', 'draft-save-failed')
   );
 }));
 
@@ -366,8 +388,8 @@ router.post('/:id(\\d+)/ideas', asyncRoute(async (req, res) => {
     'POST',
     `/ideation-challenges/${id}/ideas`,
     ideaPayload(req.body),
-    `/ideation/${id}?status=idea-submitted#ideas`,
-    `/ideation/${id}?status=idea-submit-failed#ideas`
+    challengeRedirect(id, 'idea-submitted') + '#ideas',
+    challengeRedirect(id, 'idea-submit-failed') + '#ideas'
   );
 }));
 
@@ -423,8 +445,8 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/vote', asyncRoute(async (req, res) =
     'POST',
     `/ideation-ideas/${ideaId}/vote`,
     undefined,
-    `/ideation/${id}?status=idea-voted#ideas`,
-    `/ideation/${id}?status=idea-vote-failed#ideas`
+    challengeRedirect(id, 'idea-voted') + '#ideas',
+    challengeRedirect(id, 'idea-vote-failed') + '#ideas'
   );
 }));
 
@@ -451,8 +473,8 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/delete', asyncRoute(async (req, res)
     'DELETE',
     `/ideation-ideas/${ideaId}`,
     undefined,
-    `/ideation/${id}?status=idea-deleted#ideas`,
-    `/ideation/${id}?status=idea-delete-failed#ideas`
+    challengeRedirect(id, 'idea-deleted') + '#ideas',
+    challengeRedirect(id, 'idea-delete-failed') + '#ideas'
   );
 }));
 

@@ -13956,6 +13956,40 @@ describe('shared accessible frontend shell', () => {
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel ideation action redirects inside the shared tenant mount', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/ideation/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: ' Better parks ',
+        description: ' Gather ideas for local parks ',
+        category_id: '3',
+        status: 'open',
+        tags: 'parks, youth'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/ideation/42?status=challenge-created');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges', {
+      title: 'Better parks',
+      description: 'Gather ideas for local parks',
+      category_id: 3,
+      status: 'open',
+      tags: ['parks', 'youth']
+    });
+  });
+
   it('redirects signed-out visitors away from Laravel group exchange GET pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 

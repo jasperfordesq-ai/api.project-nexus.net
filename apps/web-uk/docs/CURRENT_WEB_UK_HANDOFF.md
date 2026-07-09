@@ -200,6 +200,11 @@ validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed
 `/acme/accessible/group-exchanges/new` submission redirects to
 `/acme/accessible/group-exchanges/new?status=create-invalid`.
+The latest ideation action redirect slice now sends challenge, idea, outcome,
+media, conversion, and campaign POST redirects through `res.locals.urlFor`.
+Focused shared-mount coverage proves a signed
+`/acme/accessible/ideation/new` submission redirects to
+`/acme/accessible/ideation/{id}?status=challenge-created`.
 The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights

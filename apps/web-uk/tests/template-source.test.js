@@ -754,6 +754,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toContain('value="{{ urlFor(notificationLink) }}"');
   });
 
+  it('keeps ideation action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'ideation-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|ideation)/);
+    expect(route).not.toContain('return `/ideation/');
+    expect(route).not.toContain("'/ideation/campaigns?status=campaign-created'");
+    expect(route).not.toContain("'/ideation/new?status=challenge-create-failed'");
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps group exchange tabs, links, and forms behind urlFor()', () => {
     const templates = [
       path.join('group-exchanges', 'index.njk'),

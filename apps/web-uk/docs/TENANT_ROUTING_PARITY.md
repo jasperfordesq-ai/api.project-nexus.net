@@ -1050,9 +1050,26 @@ organiser/participant authorization depth, same-tenant member search parity,
 settlement side effects, feature gates, localization, broader Laravel runtime
 behavior, or ASP.NET backend compatibility.
 
+The sixty-eighth source slice extends route-level redirect cleanup into
+ideation actions. `src/routes/ideation-actions.js` now sends signed-out auth
+handoffs, challenge create/update/status/favorite/duplicate/delete/link/outcome
+results, idea submit/draft/comment/vote/status/media/convert/delete results,
+and campaign create/update/unlink/delete results through `redirectTo(res, ...)`,
+which delegates to `res.locals.urlFor` when shell locals are available. The
+focused source regression first failed on raw `/ideation` helper returns and
+flat ideation redirect strings, then passed after conversion. Focused
+shared-mount coverage proves a signed `/acme/accessible/ideation/new`
+submission redirects to `/acme/accessible/ideation/42?status=challenge-created`.
+This is ideation action redirect evidence only; it does not newly certify admin
+authorization depth, media upload proxying, team conversion runtime behavior,
+feature gates, localization, broader Laravel runtime behavior, or ASP.NET
+backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation action"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed action redirects"
