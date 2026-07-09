@@ -107,15 +107,17 @@ blocked in this Windows environment by Application Control on the copied
 `Nexus.Api.dll`; the focused test currently builds but cannot be counted as run.
 
 The Laravel React realtime bootstrap slice now has a backend contract test for
-`GET /api/v2/realtime/config` and invalid `POST /api/pusher/auth` requests. The
+`GET /api/v2/realtime/config` and `POST /api/pusher/auth` requests. The
 .NET compatibility path returns the Laravel React Pusher bootstrap envelope
 (`success/data`, `driver`, `key`, `cluster`, `ws_host`, `ws_port`, `force_tls`,
 `authEndpoint`, `enabled`), keeps realtime disabled unless key/secret/app id are
 configured, and returns Laravel-style validation errors for missing
-`socket_id`/`channel_name`. Real Pusher channel signing and end-to-end broadcast
-smoke coverage remain gaps until a configured Pusher app is available. Runtime
-test execution is currently blocked in this Windows environment by Application
-Control on copied test dependencies.
+`socket_id`/`channel_name`. When Pusher is configured, `/api/pusher/auth` now
+returns raw Pusher `{ auth }` / `{ auth, channel_data }` JSON instead of a
+Laravel envelope, signs private and presence channels with the configured
+secret, and rejects cross-tenant/private-user subscriptions with Laravel-style
+forbidden errors. End-to-end broadcast smoke coverage remains a gap until a
+configured Pusher app is available.
 
 The Laravel React typing-indicator slice now has focused ASP.NET regression
 coverage for `POST /api/v2/messages/typing` with the `PusherContext.tsx`

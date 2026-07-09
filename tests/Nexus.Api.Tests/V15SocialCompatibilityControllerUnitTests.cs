@@ -116,6 +116,57 @@ public sealed class V15SocialCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task PusherAuth_WhenConfigured_ReturnsRawLaravelPusherAuth()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(
+            db,
+            tenant,
+            userId: 2,
+            configurationValues: PusherConfiguration());
+
+        var result = controller.PusherAuth(JsonDocument.Parse("""
+        {
+          "socket_id": "123.456",
+          "channel_name": "private-tenant.1.user.2"
+        }
+        """).RootElement);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("auth").GetString()
+            .Should().Be("test-key:bbfa56e4552f2467081105c47f58fceecba2730766661e72f0f8b5b3c5627d1b");
+        document.RootElement.TryGetProperty("success", out _).Should().BeFalse("Pusher expects raw auth JSON");
+    }
+
+    [Fact]
+    public async Task PusherAuth_RejectsCrossTenantPrivateAndPresenceChannels()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(
+            db,
+            tenant,
+            userId: 2,
+            configurationValues: PusherConfiguration());
+
+        AssertForbidden(controller.PusherAuth(JsonDocument.Parse("""
+        {
+          "socket_id": "123.456",
+          "channel_name": "private-tenant.2.feed"
+        }
+        """).RootElement));
+
+        AssertForbidden(controller.PusherAuth(JsonDocument.Parse("""
+        {
+          "socket_id": "123.456",
+          "channel_name": "presence-tenant.2"
+        }
+        """).RootElement));
+    }
+
+    [Fact]
     public async Task HideFeedItemV2_AcceptsLaravelReactPolymorphicHideAndNotInterestedPayloads()
     {
         var tenant = CreateTenantContext();
@@ -890,9 +941,19 @@ public sealed class V15SocialCompatibilityControllerUnitTests
         return tenant;
     }
 
-    private static V15SocialCompatibilityController CreateController(NexusDbContext db, TenantContext tenant, int userId)
+    private static V15SocialCompatibilityController CreateController(
+        NexusDbContext db,
+        TenantContext tenant,
+        int userId,
+        IReadOnlyDictionary<string, string?>? configurationValues = null)
     {
-        var configuration = new ConfigurationBuilder().Build();
+        var configurationBuilder = new ConfigurationBuilder();
+        if (configurationValues is not null)
+        {
+            configurationBuilder.AddInMemoryCollection(configurationValues);
+        }
+
+        var configuration = configurationBuilder.Build();
         var push = new PushNotificationService(
             db,
             tenant,
@@ -917,5 +978,22 @@ public sealed class V15SocialCompatibilityControllerUnitTests
         };
 
         return controller;
+    }
+
+    private static Dictionary<string, string?> PusherConfiguration() => new()
+    {
+        ["Pusher:Key"] = "test-key",
+        ["Pusher:Secret"] = "test-secret",
+        ["Pusher:AppId"] = "test-app",
+        ["Pusher:Cluster"] = "eu"
+    };
+
+    private static void AssertForbidden(IActionResult result)
+    {
+        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+        document.RootElement.GetProperty("code").GetString().Should().Be("FORBIDDEN");
     }
 }

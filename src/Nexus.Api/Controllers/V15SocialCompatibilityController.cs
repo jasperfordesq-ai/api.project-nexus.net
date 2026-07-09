@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -1451,12 +1452,156 @@ public class V15SocialCompatibilityController : ControllerBase
             });
         }
 
-        return StatusCode(StatusCodes.Status501NotImplemented, new
+        var auth = BuildPusherAuthResponse(channelName, socketId, userId);
+        if (auth is null)
         {
-            success = false,
-            code = "REALTIME_AUTH_UNAVAILABLE",
-            message = "Pusher authentication requires a configured signing secret."
-        });
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                success = false,
+                code = "FORBIDDEN",
+                message = "Forbidden."
+            });
+        }
+
+        return Ok(auth);
+    }
+
+    private object? BuildPusherAuthResponse(string channelName, string socketId, int userId)
+    {
+        var key = PusherConfigValue("PUSHER_APP_KEY", "Pusher:Key", "Pusher:AppKey");
+        var secret = PusherConfigValue("PUSHER_APP_SECRET", "Pusher:Secret", "Pusher:AppSecret");
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(secret))
+        {
+            return null;
+        }
+
+        if (channelName.StartsWith("presence-", StringComparison.Ordinal))
+        {
+            return BuildPusherPresenceAuthResponse(key, secret, channelName, socketId, userId);
+        }
+
+        if (channelName.StartsWith("private-", StringComparison.Ordinal))
+        {
+            if (!CanAccessPrivatePusherChannel(channelName, userId))
+            {
+                return null;
+            }
+
+            return new
+            {
+                auth = $"{key}:{HmacSha256Hex(secret, $"{socketId}:{channelName}")}"
+            };
+        }
+
+        return null;
+    }
+
+    private object? BuildPusherPresenceAuthResponse(string key, string secret, string channelName, string socketId, int userId)
+    {
+        if (!CanAccessPresencePusherChannel(channelName))
+        {
+            return null;
+        }
+
+        var user = _db.Users
+            .AsNoTracking()
+            .FirstOrDefault(row => row.TenantId == TenantId() && row.Id == userId);
+        var name = string.Join(" ", new[] { user?.FirstName, user?.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)))
+            .Trim();
+        var channelData = JsonSerializer.Serialize(new
+        {
+            user_id = userId.ToString(),
+            user_info = new
+            {
+                id = userId,
+                name = string.IsNullOrWhiteSpace(name) ? "User" : name,
+                avatar = user?.AvatarUrl
+            }
+        }, JsonOptions);
+
+        return new
+        {
+            auth = $"{key}:{HmacSha256Hex(secret, $"{socketId}:{channelName}:{channelData}")}",
+            channel_data = channelData
+        };
+    }
+
+    private bool CanAccessPrivatePusherChannel(string channelName, int userId)
+    {
+        if (TryMatchPusherChannel(channelName, @"^private-user\.(\d+)$", out var privateUser))
+        {
+            return privateUser == userId;
+        }
+
+        var tenantMatch = System.Text.RegularExpressions.Regex.Match(channelName, @"^private-tenant\.(\d+)\.(.+)$");
+        if (!tenantMatch.Success || !int.TryParse(tenantMatch.Groups[1].Value, out var channelTenantId) || channelTenantId != TenantId())
+        {
+            return false;
+        }
+
+        var suffix = tenantMatch.Groups[2].Value;
+        if (TryMatchPusherChannel(suffix, @"^user\.(\d+)$", out var tenantUser))
+        {
+            return tenantUser == userId;
+        }
+
+        var chatMatch = System.Text.RegularExpressions.Regex.Match(suffix, @"^chat\.(\d+)-(\d+)$");
+        if (chatMatch.Success
+            && int.TryParse(chatMatch.Groups[1].Value, out var firstUser)
+            && int.TryParse(chatMatch.Groups[2].Value, out var secondUser))
+        {
+            return userId == firstUser || userId == secondUser;
+        }
+
+        if (suffix is "feed" or "presence")
+        {
+            return true;
+        }
+
+        if (TryMatchPusherChannel(suffix, @"^conversation\.(\d+)$", out var conversationId))
+        {
+            return _db.Conversations
+                .Any(row =>
+                    row.TenantId == channelTenantId
+                    && row.Id == conversationId
+                    && (row.Participant1Id == userId || row.Participant2Id == userId));
+        }
+
+        if (TryMatchPusherChannel(suffix, @"^group\.(\d+)(?:\.|$)", out var groupId))
+        {
+            return _db.GroupMembers
+                .Any(row => row.TenantId == channelTenantId && row.GroupId == groupId && row.UserId == userId);
+        }
+
+        return false;
+    }
+
+    private bool CanAccessPresencePusherChannel(string channelName)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(channelName, @"^presence-tenant\.(\d+)\b");
+        return match.Success
+            && int.TryParse(match.Groups[1].Value, out var channelTenantId)
+            && channelTenantId == TenantId();
+    }
+
+    private static bool TryMatchPusherChannel(string value, string pattern, out int id)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(value, pattern);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out id))
+        {
+            return true;
+        }
+
+        id = 0;
+        return false;
+    }
+
+    private static string HmacSha256Hex(string secret, string value)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     [HttpPost("/api/v2/presence/heartbeat")]
