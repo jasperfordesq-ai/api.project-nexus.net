@@ -18,6 +18,53 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     public AdminV2RouteAliasRuntimeTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
+    public async Task BillingPlansPublicV2_ReturnsLaravelReactPlanShapeFromSubscriptionPlans()
+    {
+        var uniqueName = "Laravel React Billing Plan " + Guid.NewGuid().ToString("N");
+        int planId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = uniqueName,
+                Description = "Public pricing plan for Laravel React billing contract",
+                Price = 19.99m,
+                Currency = "EUR",
+                Features = """{"analytics":true,"legacy_disabled":false,"api_access":true}""",
+                IsActive = true,
+                IsPublic = true
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v2/billing/plans");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.ValueKind.Should().Be(JsonValueKind.Array);
+
+        var planJson = data.EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == planId);
+        planJson.GetProperty("name").GetString().Should().Be(uniqueName);
+        planJson.GetProperty("slug").GetString().Should().Be(uniqueName.ToLowerInvariant().Replace(' ', '-'));
+        planJson.GetProperty("description").GetString().Should().Be("Public pricing plan for Laravel React billing contract");
+        planJson.GetProperty("tier_level").GetInt32().Should().BeGreaterThan(0);
+        planJson.GetProperty("price_monthly").GetDecimal().Should().Be(19.99m);
+        planJson.GetProperty("price_yearly").GetDecimal().Should().Be(239.88m);
+        planJson.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        planJson.GetProperty("features").EnumerateArray()
+            .Select(item => item.GetString())
+            .Should().BeEquivalentTo(new[] { "analytics", "api_access" });
+    }
+
+    [Fact]
     public async Task LaravelReactLinkPreviewV2_GetAndPost_ReturnSuccessDataEnvelope()
     {
         await AuthenticateAsMemberAsync();

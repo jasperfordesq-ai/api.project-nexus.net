@@ -1,6 +1,6 @@
 # API Parity Map
 
-Last reviewed: 2026-07-08
+Last reviewed: 2026-07-09
 
 Laravel source of truth: `C:\platforms\htdocs\staging\openapi.json` plus route
 files under `C:\platforms\htdocs\staging\routes`.
@@ -79,6 +79,16 @@ coverage for `POST /api/v2/donations/payment-intent` and
 `GET /api/v2/donations/{id}/receipt`. The .NET compatibility path persists a
 tenant-scoped pending `MoneyDonation`, returns the React `client_secret` /
 `donation_id` envelope, and returns JSON receipt data for the receipt component.
+
+The Laravel React billing plan slice now has focused ASP.NET regression
+coverage for `GET /api/v2/billing/plans` as used by
+`react-frontend/src/admin/api/billingApi.ts`. The .NET compatibility path uses
+tenant-scoped `SubscriptionPlan` rows instead of placeholders and returns the
+Laravel React `Plan` fields: numeric `id`, `name`, generated `slug`,
+`description`, `tier_level`, `price_monthly`, `price_yearly`, `features[]`, and
+`is_active`. Frontend-authenticated admin billing checkout, portal,
+subscription, invoice, real Stripe session behavior, and exact Laravel
+`pay_plans` schema parity remain deeper gaps.
 
 The Laravel React availability grid slice now has focused ASP.NET regression
 coverage for `GET /api/v2/users/me/availability`,

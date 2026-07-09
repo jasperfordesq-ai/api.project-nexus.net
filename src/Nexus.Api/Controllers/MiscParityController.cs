@@ -123,7 +123,31 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("billing/plans")]
     [AllowAnonymous]
-    public IActionResult BillingPlans() => Ok(new { data = new[] { new { id = "free", price = 0 }, new { id = "premium", price = 10 } } });
+    public async Task<IActionResult> BillingPlans()
+    {
+        var plans = await _db.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.IsPublic)
+            .OrderBy(p => p.Price)
+            .ThenBy(p => p.Name)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var data = plans.Select((plan, index) => new
+        {
+            id = plan.Id,
+            name = plan.Name,
+            slug = Slugify(plan.Name),
+            description = plan.Description ?? string.Empty,
+            tier_level = index + 1,
+            price_monthly = plan.Price,
+            price_yearly = decimal.Round(plan.Price * 12m, 2, MidpointRounding.AwayFromZero),
+            features = NormalizePlanFeatures(plan.Features),
+            is_active = plan.IsActive
+        });
+
+        return Ok(new { data });
+    }
 
     // V1 marketplace-bookmark parity shim. Moved from /api/bookmark-collections
     // and /api/bookmarks to /api/parity/* to avoid ambiguous-route collision
@@ -995,6 +1019,76 @@ public class MiscParityController : ControllerBase
     private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static DateTime? DateTimeValue(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value.ToUniversalTime() : null;
+
+    private static string Slugify(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        var previousWasSeparator = false;
+
+        foreach (var c in value.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c);
+                previousWasSeparator = false;
+            }
+            else if (!previousWasSeparator && builder.Length > 0)
+            {
+                builder.Append('-');
+                previousWasSeparator = true;
+            }
+        }
+
+        return builder.ToString().Trim('-');
+    }
+
+    private static string[] NormalizePlanFeatures(string? features)
+    {
+        if (string.IsNullOrWhiteSpace(features))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(features);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                return root.EnumerateArray()
+                    .Where(item => item.ValueKind == JsonValueKind.String)
+                    .Select(item => item.GetString()?.Trim())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!)
+                    .ToArray();
+            }
+
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                return root.EnumerateObject()
+                    .Where(property => IsTruthyFeatureValue(property.Value))
+                    .Select(property => property.Name)
+                    .ToArray();
+            }
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+
+        return [];
+    }
+
+    private static bool IsTruthyFeatureValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.True => true,
+        JsonValueKind.False or JsonValueKind.Null or JsonValueKind.Undefined => false,
+        JsonValueKind.Number => value.TryGetDecimal(out var number) && number != 0m,
+        JsonValueKind.String => !string.IsNullOrWhiteSpace(value.GetString()),
+        JsonValueKind.Array => value.GetArrayLength() > 0,
+        JsonValueKind.Object => value.EnumerateObject().Any(),
+        _ => false
+    };
 
     private async Task<bool> ReactionTargetExistsAsync(string targetType, int targetId)
     {
