@@ -907,9 +907,30 @@ unsigned `/acme/accessible/clubs` redirects to
 not newly certify Laravel's tenant-has-clubs 404 gate, visual Blade parity,
 localization, runtime persistence, or ASP.NET backend compatibility.
 
+The fifty-ninth source slice extends tenant-aware helper cleanup into skills.
+`src/views/skills/index.njk` now sends category links, member profile links,
+the back-to-categories link, skill-search links, and the search form action
+through `urlFor()`, and `src/routes/skills.js` now sends the unsigned
+auth-required redirect through `redirectTo(res, ...)`. The shared
+`src/lib/routeHelpers.js` async error path also resolves 401/error redirect
+targets through `res.locals.urlFor` when shell locals are available, so
+Laravel-expired-token redirects stay inside shared tenant mounts instead of
+falling back to flat `/login`. The focused source regression first failed on
+raw `/skills` and `/members` href/action targets in the skills template, then
+passed after conversion. A focused shared-mount runtime test also proves
+unsigned and expired-token `/acme/accessible/skills` requests redirect to
+`/acme/accessible/login?status=auth-required`, while signed
+`/acme/accessible/skills?category=7&skill=gardening` renders the search form,
+category link, member link, and skill link under `/acme/accessible`. This is
+skills helper/redirect evidence only; it does not newly certify category
+authorization, visual Blade parity, localization, runtime persistence, or
+ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "skills links, form"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "skills redirects and links"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "clubs form and route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "clubs redirects and search form"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "connection route redirects"

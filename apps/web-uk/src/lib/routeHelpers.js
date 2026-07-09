@@ -10,6 +10,14 @@
 const { ApiError, ApiOfflineError } = require('./api');
 const { clearAuthCookies } = require('../middleware/auth');
 
+function resolveRedirectTarget(res, target) {
+  if (typeof target !== 'string') return target;
+  const urlFor = res && res.locals && typeof res.locals.urlFor === 'function'
+    ? res.locals.urlFor
+    : (value) => value;
+  return urlFor(target);
+}
+
 /**
  * Handle API errors consistently across routes
  * Returns true if error was handled, false if it should be thrown
@@ -45,7 +53,7 @@ function handleApiError(error, req, res, options = {}) {
         req.flash('success');
         req.flash('error');
       }
-      res.redirect(redirectOn401);
+      res.redirect(resolveRedirectTarget(res, redirectOn401));
       return true;
     }
 
@@ -60,7 +68,7 @@ function handleApiError(error, req, res, options = {}) {
       if (req.flash) {
         req.flash('error', error.message);
       }
-      res.redirect(redirectOnError);
+      res.redirect(resolveRedirectTarget(res, redirectOnError));
       return true;
     }
   }

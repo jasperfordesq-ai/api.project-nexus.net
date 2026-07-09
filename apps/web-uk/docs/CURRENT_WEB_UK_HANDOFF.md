@@ -233,6 +233,12 @@ The latest clubs source slice now routes the clubs search form through
 `urlFor('/clubs')` and the unsigned clubs redirect through `res.locals.urlFor`,
 so the clubs directory stays inside the active tenant mount without relying
 only on the shared-mount response rewriter.
+The latest skills source slice now routes the skills category/member/search
+links and search form through `urlFor()`, routes the unsigned skills redirect
+through `res.locals.urlFor`, and makes shared `asyncRoute` 401/error redirects
+tenant-aware when `res.locals.urlFor` is present. Focused shared-mount coverage
+now proves `/acme/accessible/skills` unsigned and expired-token redirects stay
+under `/acme/accessible/login?status=auth-required`.
 The latest shared pagination partial slice now changes the documented/default
 members pagination base URL from raw `/members` to `urlFor('/members')`, so a
 caller that omits `paginationConfig.baseUrl` does not leak a flat root path

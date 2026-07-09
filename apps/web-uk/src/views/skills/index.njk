@@ -10,7 +10,7 @@
     {% for node in nodes %}
       <li>
         {% if node.id %}
-          <a class="govuk-link" href="/skills?category={{ node.id }}">{{ node.name }}</a>
+          <a class="govuk-link" href="{{ urlFor('/skills?category=' ~ node.id) }}">{{ node.name }}</a>
         {% else %}
           {{ node.name }}
         {% endif %}
@@ -35,7 +35,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/skills" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/skills') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="skill">Search for a skill</label>
       <div id="skill-hint" class="govuk-hint">Enter a skill such as gardening, transport, mentoring or bicycle repair.</div>
@@ -51,7 +51,7 @@
         {% for member in skillMembers %}
           <li class="govuk-!-margin-bottom-2">
             {% if member.id %}
-              <a class="govuk-link" href="/members/{{ member.id }}">{{ member.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' ~ member.id) }}">{{ member.name }}</a>
             {% else %}
               {{ member.name }}
             {% endif %}
@@ -77,7 +77,7 @@
 
   {% if selectedCategory %}
     <h2 class="govuk-heading-l">Skills in {{ selectedCategory.name }}</h2>
-    <p class="govuk-body"><a class="govuk-link" href="/skills">Back to categories</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/skills') }}">Back to categories</a></p>
     {% if categorySkills and categorySkills.length %}
       <table class="govuk-table">
         <caption class="govuk-visually-hidden">Skills in {{ selectedCategory.name }}</caption>
@@ -92,7 +92,7 @@
         <tbody class="govuk-table__body">
           {% for skill in categorySkills %}
             <tr class="govuk-table__row">
-              <th scope="row" class="govuk-table__header"><a class="govuk-link" href="/skills?skill={{ skill.name | urlencode }}">{{ skill.name }}</a></th>
+              <th scope="row" class="govuk-table__header"><a class="govuk-link" href="{{ urlFor('/skills?skill=' ~ (skill.name | urlencode)) }}">{{ skill.name }}</a></th>
               <td class="govuk-table__cell govuk-table__cell--numeric">{{ skill.userCount }}</td>
               <td class="govuk-table__cell govuk-table__cell--numeric">{{ skill.offeringCount }}</td>
               <td class="govuk-table__cell govuk-table__cell--numeric">{{ skill.requestingCount }}</td>

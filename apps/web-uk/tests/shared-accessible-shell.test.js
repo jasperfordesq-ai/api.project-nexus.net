@@ -5821,6 +5821,51 @@ describe('shared accessible frontend shell', () => {
     expect(api.getSkillMembers).toHaveBeenCalledWith('test-token', 'gardening', { limit: 40 });
   });
 
+  it('keeps Laravel skills redirects and links inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    api.getSkillCategories.mockResolvedValueOnce({
+      data: [
+        { id: 7, name: 'Practical help', children: [] }
+      ]
+    });
+    api.getSkillCategory.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        name: 'Practical help',
+        skills: [
+          { skill_name: 'Gardening', user_count: 4, offering_count: 3, requesting_count: 1 }
+        ]
+      }
+    });
+    api.getSkillMembers.mockResolvedValueOnce({
+      data: [
+        { id: 101, name: 'Avery Morgan', proficiency_level: 'advanced', is_offering: true, is_requesting: false }
+      ]
+    });
+
+    const unsigned = await request(app).get('/acme/accessible/skills');
+    const signed = await request(app)
+      .get('/acme/accessible/skills?category=7&skill=gardening')
+      .set('Cookie', signedCookieHeader());
+    api.getSkillCategories.mockRejectedValueOnce(new api.ApiError('Unauthorized', 401));
+    const expired = await request(app)
+      .get('/acme/accessible/skills')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('action="/acme/accessible/skills"');
+    expect(signed.text).toContain('href="/acme/accessible/skills?category=7"');
+    expect(signed.text).toContain('href="/acme/accessible/members/101"');
+    expect(signed.text).toContain('href="/acme/accessible/skills?skill=Gardening"');
+    expect(expired.status).toBe(302);
+    expect(expired.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(api.getSkillCategories).toHaveBeenCalledWith('test-token');
+    expect(api.getSkillCategory).toHaveBeenCalledWith('test-token', 7);
+    expect(api.getSkillMembers).toHaveBeenCalledWith('test-token', 'gardening', { limit: 40 });
+  });
+
   it('redirects signed-out visitors away from the Laravel goals index before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
