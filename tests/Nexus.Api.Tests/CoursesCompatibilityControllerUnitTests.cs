@@ -215,6 +215,15 @@ public sealed class CoursesCompatibilityControllerUnitTests
             cohortId = cohortDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
         }
 
+        db.Groups.Add(new Group
+        {
+            Id = 123,
+            TenantId = tenant.GetTenantIdOrThrow(),
+            CreatedById = 9001,
+            Name = "Course group"
+        });
+        await db.SaveChangesAsync();
+
         (await controller.AttachGroup(courseId, 123, CancellationToken.None)).Should().BeOfType<ObjectResult>()
             .Which.StatusCode.Should().Be(StatusCodes.Status201Created);
         (await controller.ForGroup(123, CancellationToken.None)).Should().BeOfType<OkObjectResult>();
@@ -494,6 +503,68 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseGroupLinks_RequireLaravelManageableGroup()
+    {
+        var tenant = CreateTenantContext(52);
+        await using var db = CreateDbContext(tenant);
+        var tenantId = tenant.GetTenantIdOrThrow();
+        var ownerController = CreateController(db, tenant, userId: 9016, role: "member");
+
+        var created = await ownerController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Group guarded course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        db.Groups.AddRange(
+            new Group
+            {
+                Id = 5201,
+                TenantId = tenantId,
+                CreatedById = 9910,
+                Name = "Managed group"
+            },
+            new Group
+            {
+                Id = 5202,
+                TenantId = tenantId,
+                CreatedById = 9911,
+                Name = "Unmanaged group"
+            });
+        db.GroupMembers.Add(new GroupMember
+        {
+            TenantId = tenantId,
+            GroupId = 5201,
+            UserId = 9016,
+            Role = Group.Roles.Admin
+        });
+        await db.SaveChangesAsync();
+
+        AssertLaravelError(
+            await ownerController.AttachGroup(courseId, 5299, CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "RESOURCE_NOT_FOUND");
+        AssertLaravelError(
+            await ownerController.AttachGroup(courseId, 5202, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FORBIDDEN");
+        AssertLaravelError(
+            await ownerController.DetachGroup(courseId, 5202, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FORBIDDEN");
+
+        (await ownerController.AttachGroup(courseId, 5201, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status201Created);
+        (await ownerController.DetachGroup(courseId, 5201, CancellationToken.None))
+            .Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
     {
         var tenant = CreateTenantContext(44);
@@ -563,6 +634,15 @@ public sealed class CoursesCompatibilityControllerUnitTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
         document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("FEATURE_DISABLED");
+    }
+
+    private static void AssertLaravelError(IActionResult result, int statusCode, string code)
+    {
+        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(statusCode);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be(code);
     }
 
     private static ControllerContext ControllerContextFor(int userId, int tenantId, string role)

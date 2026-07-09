@@ -501,6 +501,38 @@ public sealed class CoursesCompatibilityService
         return detached;
     }
 
+    public async Task EnsureGroupManageableAsync(int tenantId, int groupId, int userId, bool isPlatformAdmin, CancellationToken ct)
+    {
+        var group = await _db.Groups
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == groupId, ct);
+
+        if (group is null)
+        {
+            throw new CoursesCompatibilityNotFoundException("Group not found");
+        }
+
+        if (isPlatformAdmin || group.CreatedById == userId)
+        {
+            return;
+        }
+
+        var canManage = await _db.GroupMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(row =>
+                row.TenantId == tenantId
+                && row.GroupId == groupId
+                && row.UserId == userId
+                && (row.Role == Nexus.Api.Entities.Group.Roles.Owner || row.Role == Nexus.Api.Entities.Group.Roles.Admin), ct);
+
+        if (!canManage)
+        {
+            throw new CoursesCompatibilityForbiddenException("Group cannot be modified by this user");
+        }
+    }
+
     public async Task<IReadOnlyList<int>> GroupsForCourseAsync(int tenantId, int courseId, CancellationToken ct)
     {
         var state = await LoadAsync(tenantId, ct);

@@ -317,7 +317,10 @@ public sealed class CoursesCompatibilityController : ControllerBase
         RunAsync(async () =>
         {
             var tenantId = _tenant.GetTenantIdOrThrow();
-            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            var userId = UserId();
+            var isAdmin = HasAdminRole();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, userId, ct);
+            await _courses.EnsureGroupManageableAsync(tenantId, groupId, userId, isAdmin, ct);
             return await _courses.AttachGroupAsync(tenantId, courseId, groupId, ct);
         }, StatusCodes.Status201Created);
 
@@ -327,7 +330,10 @@ public sealed class CoursesCompatibilityController : ControllerBase
         RunAsync(async () =>
         {
             var tenantId = _tenant.GetTenantIdOrThrow();
-            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, UserId(), ct);
+            var userId = UserId();
+            var isAdmin = HasAdminRole();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, courseId, userId, ct);
+            await _courses.EnsureGroupManageableAsync(tenantId, groupId, userId, isAdmin, ct);
             return new { detached = await _courses.DetachGroupAsync(tenantId, courseId, groupId, ct) };
         });
 
