@@ -712,6 +712,15 @@ variable form targets through `urlFor()` with focused source and render
 coverage plus focused Laravel runtime smoke for the signed jobs account
 subpages. This is still Laravel-mode evidence only, not ASP.NET switching
 certification.
+Podcast browse/detail/episode/studio/create/manage pages and POST aliases are
+backed by Laravel-compatible podcast APIs, and podcast templates route their
+local links/forms and multipart episode upload action through `urlFor()` with
+focused source, render, and Laravel runtime-smoke coverage. This does not
+certify ASP.NET backend switching: ASP.NET must still match Laravel's podcast
+list/detail/authored-show APIs, subscribe/update/publish/delete contracts,
+episode audio upload handling, tenant author gates, localization, status
+redirects, and custom-domain tenant behavior before podcasts can be called
+backend-neutral.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.

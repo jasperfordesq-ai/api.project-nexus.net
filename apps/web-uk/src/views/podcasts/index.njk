@@ -11,10 +11,10 @@
   <p class="govuk-body-l">Listen to podcasts from your community.</p>
 
   <p class="govuk-body">
-    <a class="govuk-link" href="/podcasts/studio">Podcast studio</a>
+    <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">Podcast studio</a>
   </p>
 
-  <form method="get" action="/podcasts" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/podcasts') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
@@ -58,7 +58,7 @@
             <img class="nexus-alpha-avatar" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
           {% endif %}
           <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-            <a class="govuk-link" href="/podcasts/{{ show.id }}">{{ show.title }}</a>
+            <a class="govuk-link" href="{{ urlFor('/podcasts/' + (show.id | string)) }}">{{ show.title }}</a>
           </h2>
           {% if show.description %}
             <p class="govuk-body govuk-!-margin-bottom-1">{{ show.description }}</p>

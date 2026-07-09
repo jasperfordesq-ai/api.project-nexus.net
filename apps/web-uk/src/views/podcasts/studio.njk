@@ -34,7 +34,7 @@
   <h1 class="govuk-heading-xl">Podcast studio</h1>
   <p class="govuk-body-l">Create and manage your podcast shows and episodes.</p>
 
-  <a class="govuk-button" href="/podcasts/studio/new" data-module="govuk-button">Create a podcast</a>
+  <a class="govuk-button" href="{{ urlFor('/podcasts/studio/new') }}" data-module="govuk-button">Create a podcast</a>
 
   {% if not shows.length %}
     <p class="govuk-inset-text">You have not created any podcasts yet. Create your first show to start publishing episodes.</p>
@@ -47,7 +47,7 @@
             <strong class="govuk-tag {{ show.statusTag }}">{{ show.statusLabel }}</strong>
           </div>
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ show.episodeCountLabel }}</p>
-          <a class="govuk-link" href="/podcasts/studio/{{ show.id }}">Manage</a>
+          <a class="govuk-link" href="{{ urlFor('/podcasts/studio/' + (show.id | string)) }}">Manage</a>
         </article>
       {% endfor %}
     </div>

@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/podcasts/studio">Back to podcast studio</a>
+  <a class="govuk-back-link" href="{{ urlFor('/podcasts/studio') }}">Back to podcast studio</a>
 
   {% if status %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -23,7 +23,7 @@
 
   <h1 class="govuk-heading-xl">Create a podcast</h1>
 
-  <form method="post" action="{{ action }}" novalidate>
+  <form method="post" action="{{ urlFor(action) }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
@@ -72,7 +72,7 @@
 
     <div class="govuk-button-group">
       <button class="govuk-button" data-module="govuk-button">Create show</button>
-      <a class="govuk-link" href="/podcasts/studio">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">Cancel</a>
     </div>
   </form>
 {% endblock %}

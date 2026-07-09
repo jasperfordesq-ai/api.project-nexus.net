@@ -196,6 +196,29 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
   });
 
+  it('keeps podcast browse, detail, studio, and management controls behind urlFor()', () => {
+    const templates = [
+      path.join('podcasts', 'detail.njk'),
+      path.join('podcasts', 'episode.njk'),
+      path.join('podcasts', 'form.njk'),
+      path.join('podcasts', 'index.njk'),
+      path.join('podcasts', 'manage.njk'),
+      path.join('podcasts', 'studio.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/podcasts/);
+      expect(template).not.toMatch(/action="\/podcasts/);
+      expect(template).not.toContain('action="{{ action }}"');
+      expect(template).not.toContain('action="{{ episodeStoreAction }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/podcasts/);
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),

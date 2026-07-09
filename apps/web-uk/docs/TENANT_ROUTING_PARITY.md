@@ -562,6 +562,21 @@ passed 18 checks across auth/cookie/logout plus signed `/members`,
 `/members/discover`, `/members/nearby`, and `/members/77/insights` body
 markers.
 
+The thirty-seventh template-helper source slice extends direct `urlFor()`
+conversion into podcast browse, detail, episode, form, manage, and studio
+pages. `src/views/podcasts/index.njk`, `detail.njk`, `episode.njk`,
+`form.njk`, `manage.njk`, and `studio.njk` now route podcast list/search,
+studio navigation, show and episode links, subscribe form, create/edit form
+actions, episode add/publish/delete forms, show publish/delete forms, and
+studio management links through `urlFor()`. The source-level regression first
+failed on raw `/podcasts` links/actions, then passed after conversion; a source
+scan for podcast-local raw `href`, `action`, pagination, and variable form
+target strings returns no matches. Focused podcast render tests pass for 10
+selected tests. Focused Laravel runtime smoke against temporary in-process Web
+UK `http://127.0.0.1:64493`, Laravel `http://127.0.0.1:8088`, and
+`TENANT_ID=2` passed 16 checks across auth/cookie/logout plus signed
+`/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new` body markers.
+
 Verification command:
 
 ```powershell
@@ -602,6 +617,8 @@ npm --prefix apps/web-uk run lint
 npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "notifications filters"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run lint

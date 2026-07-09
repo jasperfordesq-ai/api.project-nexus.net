@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/podcasts/{{ show.id }}" class="govuk-back-link">Back to podcast</a>
+  <a href="{{ urlFor('/podcasts/' + (show.id | string)) }}" class="govuk-back-link">Back to podcast</a>
 
   <span class="govuk-caption-xl">{{ show.title }}</span>
   <h1 class="govuk-heading-xl">{{ episode.title }}</h1>

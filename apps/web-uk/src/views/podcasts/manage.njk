@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/podcasts/studio">Back to podcast studio</a>
+  <a class="govuk-back-link" href="{{ urlFor('/podcasts/studio') }}">Back to podcast studio</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -38,7 +38,7 @@
     <p class="govuk-body">Your show is a draft. Publish it when you are ready for listeners to find it.</p>
   {% endif %}
 
-  <form method="post" action="/podcasts/studio/{{ show.id }}/update" novalidate>
+  <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/update') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
@@ -101,12 +101,12 @@
           </div>
           <div class="nexus-alpha-actions govuk-!-margin-top-2">
             {% if episode.status != "published" %}
-              <form method="post" action="/podcasts/studio/{{ show.id }}/episodes/{{ episode.id }}/publish" class="govuk-!-display-inline">
+              <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/episodes/' + (episode.id | string) + '/publish') }}" class="govuk-!-display-inline">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button class="govuk-button govuk-button--secondary govuk-button--small" data-module="govuk-button">Publish</button>
               </form>
             {% endif %}
-            <form method="post" action="/podcasts/studio/{{ show.id }}/episodes/{{ episode.id }}/delete" class="govuk-!-display-inline">
+            <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/episodes/' + (episode.id | string) + '/delete') }}" class="govuk-!-display-inline">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--warning govuk-button--small" data-module="govuk-button">Delete</button>
             </form>
@@ -117,7 +117,7 @@
   {% endif %}
 
   <h3 class="govuk-heading-s govuk-!-margin-top-4">Add an episode</h3>
-  <form method="post" action="{{ episodeStoreAction }}" enctype="multipart/form-data" novalidate class="govuk-!-margin-bottom-6">
+  <form method="post" action="{{ urlFor(episodeStoreAction) }}" enctype="multipart/form-data" novalidate class="govuk-!-margin-bottom-6">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
@@ -161,7 +161,7 @@
 
   {% if show.status != "published" %}
     <h2 class="govuk-heading-m govuk-!-margin-top-6">Publish your show</h2>
-    <form method="post" action="/podcasts/studio/{{ show.id }}/publish">
+    <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/publish') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Publish show</button>
     </form>
@@ -175,7 +175,7 @@
       Deleting a show removes it permanently, along with all its episodes. This cannot be undone.
     </strong>
   </div>
-  <form method="post" action="/podcasts/studio/{{ show.id }}/delete">
+  <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/delete') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete show</button>
   </form>
