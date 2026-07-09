@@ -226,6 +226,23 @@ describe('Public Routes', () => {
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe('/acme/accessible/cookies?status=saved');
+      expect((response.headers['set-cookie'] || []).join('; ')).toContain('nexus_accessible_cookie_consent=all');
+      expect((response.headers['set-cookie'] || []).join('; ')).not.toContain('nexus_alpha_cookie_consent=');
+    });
+
+    it('treats accessible and legacy Laravel cookie choices as banner dismissal signals', async () => {
+      const accessibleCookie = await request(app)
+        .get('/acme/accessible/cookies')
+        .set('Cookie', 'nexus_accessible_cookie_consent=all');
+
+      const legacyCookie = await request(app)
+        .get('/acme/accessible/cookies')
+        .set('Cookie', 'nexus_alpha_cookie_consent=all');
+
+      expect(accessibleCookie.status).toBe(200);
+      expect(accessibleCookie.text).not.toContain('govuk-cookie-banner');
+      expect(legacyCookie.status).toBe(200);
+      expect(legacyCookie.text).not.toContain('govuk-cookie-banner');
     });
 
     it('keeps server-level organisation auth redirects inside the active shared accessible mount', async () => {

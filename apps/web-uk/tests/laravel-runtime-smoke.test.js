@@ -136,7 +136,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       if (storesChoice) {
         res.writeHead(302, {
           location: choice === 'save' ? '/cookies?status=saved' : (params.get('return') || '/'),
-          'set-cookie': `nexus_alpha_cookie_consent=${analyticsOn ? 'all' : 'essential'}; Path=/`
+          'set-cookie': `nexus_accessible_cookie_consent=${analyticsOn ? 'all' : 'essential'}; Path=/`
         });
       } else {
         res.writeHead(400, { 'content-type': 'text/plain' });

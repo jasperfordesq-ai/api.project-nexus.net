@@ -4798,14 +4798,20 @@ describe('shared accessible frontend shell', () => {
 
     const dismissed = await request(app)
       .get('/')
+      .set('Cookie', ['nexus_accessible_cookie_consent=all']);
+
+    const legacyDismissed = await request(app)
+      .get('/')
       .set('Cookie', ['nexus_alpha_cookie_consent=all']);
 
     expect(dismissed.status).toBe(200);
     expect(dismissed.text).not.toContain('class="govuk-cookie-banner"');
     expect(dismissed.text).not.toContain('Accept analytics cookies');
+    expect(legacyDismissed.status).toBe(200);
+    expect(legacyDismissed.text).not.toContain('class="govuk-cookie-banner"');
   });
 
-  it('stores the Laravel-compatible cookie choice from the no-JS banner post', async () => {
+  it('stores the accessible cookie choice from the no-JS banner post', async () => {
     const agent = request.agent(app);
     const first = await agent.get('/');
     const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
@@ -4823,7 +4829,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/explore');
-    expect(response.headers['set-cookie'].join(';')).toContain('nexus_alpha_cookie_consent=essential');
+    expect(response.headers['set-cookie'].join(';')).toContain('nexus_accessible_cookie_consent=essential');
+    expect(response.headers['set-cookie'].join(';')).not.toContain('nexus_alpha_cookie_consent=');
   });
 
   it('renders the Blade-style cookie settings page instead of the static skeleton', async () => {

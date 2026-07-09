@@ -1903,7 +1903,7 @@ Blade strings before certification.
 The no-JS cookie consent POST flows are now part of the default Laravel runtime
 smoke scope: the harness fetches CSRF tokens, posts banner reject, banner accept,
 and settings-save analytics choices to `/cookie-consent`, and asserts the
-Laravel-compatible `nexus_alpha_cookie_consent=essential` or `all` cookie plus
+accessible `nexus_accessible_cookie_consent=essential` or `all` cookie plus
 the expected `/cookies` redirects. A targeted live run on 2026-07-08 against
 `WEB_UK_BASE_URL=http://127.0.0.1:6242`, started with `TENANT_ID=2`, passed
 `9/9` checks including all three cookie POST workflows, auth, and signed

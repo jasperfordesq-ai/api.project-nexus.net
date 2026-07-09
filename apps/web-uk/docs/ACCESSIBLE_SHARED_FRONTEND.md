@@ -589,7 +589,7 @@ Blade strings before certification.
 The no-JS cookie consent POST flows are now part of the default Laravel runtime
 smoke scope: it fetches CSRF tokens, posts banner reject, banner accept, and
 settings-save analytics choices to `/cookie-consent`, and asserts the expected
-redirects plus Laravel-compatible `nexus_alpha_cookie_consent` values.
+redirects plus accessible `nexus_accessible_cookie_consent` values.
 The protected account sign-out form is also runtime-smoked: the harness reads
 the `/account` CSRF token, posts `/logout`, checks the `/login` redirect, and
 then verifies `/account` redirects after the signed cookies are cleared.
@@ -946,11 +946,13 @@ certified.
 
 The cookie banner and `/cookies` page are now local Blade-style no-JS
 candidates. The shell renders the GOV.UK cookie banner before the skip link
-until the Laravel-compatible `nexus_alpha_cookie_consent` cookie is present.
+until the accessible `nexus_accessible_cookie_consent` cookie is present.
+The legacy Laravel `nexus_alpha_cookie_consent` cookie is still accepted as a
+read-only compatibility fallback.
 Accept/reject/save posts use `/cookie-consent` and store `all` or `essential`
 locally, matching Laravel's first-party choice cookie values. The default
 Laravel runtime smoke now verifies no-JS reject, accept, and settings-save POST
-redirects plus the expected `nexus_alpha_cookie_consent` cookie values against
+redirects plus the expected `nexus_accessible_cookie_consent` cookie values against
 a tenant-aware local web-uk process. This remains partial: Laravel
 `cookie_consents` audit
 persistence, tenant scoping, route-name generation, localization, and ASP.NET

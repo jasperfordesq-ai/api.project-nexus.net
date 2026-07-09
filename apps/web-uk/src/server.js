@@ -83,7 +83,8 @@ const PORT = process.env.PORT || 3001;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET || COOKIE_SECRET;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
+const ACCESSIBLE_COOKIE_NAME = 'nexus_accessible_cookie_consent';
+const LEGACY_ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
 const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
 const HOME_MODULES = [
@@ -327,8 +328,9 @@ app.use(async (req, res, next) => {
   }
 
   res.locals.alphaCookieChoice = alphaCookieChoice || '';
-  res.locals.alphaCookieConsent = req.cookies[ALPHA_COOKIE_NAME] || '';
-  res.locals.alphaHasCookieChoice = req.cookies[ALPHA_COOKIE_NAME] !== undefined;
+  res.locals.alphaCookieConsent = req.cookies[ACCESSIBLE_COOKIE_NAME] || req.cookies[LEGACY_ALPHA_COOKIE_NAME] || '';
+  res.locals.alphaHasCookieChoice = req.cookies[ACCESSIBLE_COOKIE_NAME] !== undefined
+    || req.cookies[LEGACY_ALPHA_COOKIE_NAME] !== undefined;
   res.locals.showAlphaCookieBanner = !!alphaCookieChoice || !res.locals.alphaHasCookieChoice;
 
   // Make CSRF token available to all views
@@ -591,7 +593,7 @@ app.get('/cookies', (req, res) => {
     title: 'Cookies',
     activeNav: '',
     status: typeof req.query.status === 'string' ? req.query.status : '',
-    analyticsOn: req.cookies[ALPHA_COOKIE_NAME] === 'all'
+    analyticsOn: (req.cookies[ACCESSIBLE_COOKIE_NAME] || req.cookies[LEGACY_ALPHA_COOKIE_NAME]) === 'all'
   });
 });
 
@@ -600,7 +602,7 @@ app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
   const analyticsOn = choice === 'accept' || (choice === 'save' && req.body.analytics === 'yes');
   const cookieValue = analyticsOn ? 'all' : 'essential';
 
-  res.cookie(ALPHA_COOKIE_NAME, cookieValue, {
+  res.cookie(ACCESSIBLE_COOKIE_NAME, cookieValue, {
     path: '/',
     maxAge: ALPHA_COOKIE_MAX_AGE,
     sameSite: 'lax',

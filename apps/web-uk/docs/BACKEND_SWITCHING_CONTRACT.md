@@ -836,11 +836,14 @@ compatibility is still future/not-certified.
 
 `/cookies` GET and `/cookie-consent` POST are local Blade-style no-JS cookie
 candidates. They render the Laravel-style analytics settings form and set the
-same first-party `nexus_alpha_cookie_consent` values (`all` or `essential`) used
+same first-party `nexus_accessible_cookie_consent` values (`all` or `essential`) used
 by Laravel's accessible frontend. The Laravel runtime smoke now verifies the
 no-JS reject, accept, and settings-save POSTs by fetching CSRF tokens, posting
 to `/cookie-consent`, and asserting the expected `/cookies` redirects plus
-`nexus_alpha_cookie_consent` values.
+`nexus_accessible_cookie_consent` values. Web UK still reads the legacy
+`nexus_alpha_cookie_consent` cookie as a compatibility fallback so existing
+Laravel Blade consent choices continue to dismiss the banner, but new Web UK
+POSTs do not write the public-facing alpha name.
 They do not certify Laravel `cookie_consents` audit persistence, tenant-scoped
 consent behavior, localized copy, report-a-problem workflows, or ASP.NET backend
 readiness.

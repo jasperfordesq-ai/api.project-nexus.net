@@ -12,7 +12,7 @@ const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
 const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
-const ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
+const ACCESSIBLE_COOKIE_NAME = 'nexus_accessible_cookie_consent';
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
 const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/events/6',
@@ -1266,15 +1266,16 @@ async function runLaravelRuntimeSmoke(options = {}) {
           body: form.toString()
         }
       });
-      const ok = isRedirectTo(postResponse, '/cookies') && cookieJar.get(ALPHA_COOKIE_NAME) === 'essential';
+      const cookieValue = cookieJar.get(ACCESSIBLE_COOKIE_NAME);
+      const ok = isRedirectTo(postResponse, '/cookies') && cookieValue === 'essential';
       addCheck(
         checks,
         cookieConsentPostCheckName(),
         ok,
         ok
-          ? 'No-JS cookie consent POST stored the essential-only Laravel-compatible choice.'
-          : `expected redirect to /cookies and ${ALPHA_COOKIE_NAME}=essential, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${cookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
-        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: cookieJar.get(ALPHA_COOKIE_NAME) }
+          ? 'No-JS cookie consent POST stored the essential-only accessible choice.'
+          : `expected redirect to /cookies and ${ACCESSIBLE_COOKIE_NAME}=essential, got ${postResponse.status} ${responseLocation(postResponse)} with ${ACCESSIBLE_COOKIE_NAME}=${cookieValue || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue }
       );
     }
   } catch (error) {
@@ -1317,15 +1318,16 @@ async function runLaravelRuntimeSmoke(options = {}) {
           body: form.toString()
         }
       });
-      const ok = isRedirectTo(postResponse, '/cookies') && acceptCookieJar.get(ALPHA_COOKIE_NAME) === 'all';
+      const cookieValue = acceptCookieJar.get(ACCESSIBLE_COOKIE_NAME);
+      const ok = isRedirectTo(postResponse, '/cookies') && cookieValue === 'all';
       addCheck(
         checks,
         cookieConsentAllPostCheckName(),
         ok,
         ok
-          ? 'No-JS cookie consent POST stored the analytics-enabled Laravel-compatible choice.'
-          : `expected redirect to /cookies and ${ALPHA_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${acceptCookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
-        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: acceptCookieJar.get(ALPHA_COOKIE_NAME) }
+          ? 'No-JS cookie consent POST stored the analytics-enabled accessible choice.'
+          : `expected redirect to /cookies and ${ACCESSIBLE_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ACCESSIBLE_COOKIE_NAME}=${cookieValue || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue }
       );
     }
   } catch (error) {
@@ -1368,15 +1370,16 @@ async function runLaravelRuntimeSmoke(options = {}) {
           body: form.toString()
         }
       });
-      const ok = isRedirectTo(postResponse, '/cookies?status=saved') && settingsCookieJar.get(ALPHA_COOKIE_NAME) === 'all';
+      const cookieValue = settingsCookieJar.get(ACCESSIBLE_COOKIE_NAME);
+      const ok = isRedirectTo(postResponse, '/cookies?status=saved') && cookieValue === 'all';
       addCheck(
         checks,
         cookieSettingsSaveCheckName(),
         ok,
         ok
           ? 'Cookie settings POST saved the analytics-enabled Laravel-compatible choice.'
-          : `expected redirect to /cookies?status=saved and ${ALPHA_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ALPHA_COOKIE_NAME}=${settingsCookieJar.get(ALPHA_COOKIE_NAME) || '<missing>'}`,
-        { status: postResponse.status, location: responseLocation(postResponse), cookieValue: settingsCookieJar.get(ALPHA_COOKIE_NAME) }
+          : `expected redirect to /cookies?status=saved and ${ACCESSIBLE_COOKIE_NAME}=all, got ${postResponse.status} ${responseLocation(postResponse)} with ${ACCESSIBLE_COOKIE_NAME}=${cookieValue || '<missing>'}`,
+        { status: postResponse.status, location: responseLocation(postResponse), cookieValue }
       );
     }
   } catch (error) {
