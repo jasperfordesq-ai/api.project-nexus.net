@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -25,6 +26,7 @@ public class MemberParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly FileUploadService _fileUploadService;
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
@@ -35,10 +37,11 @@ public class MemberParityController : ControllerBase
         PropertyNameCaseInsensitive = true
     };
 
-    public MemberParityController(NexusDbContext db, TenantContext tenantContext)
+    public MemberParityController(NexusDbContext db, TenantContext tenantContext, FileUploadService fileUploadService)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _fileUploadService = fileUploadService;
     }
 
     [HttpGet("me/dashboard")]
@@ -655,6 +658,114 @@ public class MemberParityController : ControllerBase
 
     [HttpPost("merchant-onboarding/complete")]
     public Task<IActionResult> MerchantOnboardingComplete([FromBody] JsonElement body) => UpsertMerchant(body, 4);
+
+    [HttpPost("merchant-onboarding/image")]
+    [HttpPost("/api/v2/merchant-onboarding/image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> MerchantOnboardingImage()
+    {
+        if (!Request.HasFormContentType)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "No image uploaded.", field = "image" } }
+            });
+        }
+
+        IFormCollection form;
+        try
+        {
+            form = await Request.ReadFormAsync();
+        }
+        catch (InvalidDataException)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "No image uploaded.", field = "image" } }
+            });
+        }
+
+        var field = form.Files.GetFile("avatar") != null
+            ? "avatar"
+            : form.Files.GetFile("cover_image") != null
+                ? "cover_image"
+                : form.Files.GetFile("image") != null
+                    ? "image"
+                    : null;
+
+        var file = field == null ? null : form.Files.GetFile(field);
+        if (file == null || file.Length == 0)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "No image uploaded.", field = "image" } }
+            });
+        }
+
+        var profile = await FindMerchantProfileAsync();
+        if (profile == null)
+        {
+            profile = new MarketplaceSellerProfile
+            {
+                TenantId = TenantId(),
+                UserId = UserId(),
+                DisplayName = $"Seller {UserId()}",
+                SellerType = "business",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.MarketplaceSellerProfiles.Add(profile);
+            await _db.SaveChangesAsync();
+        }
+
+        var category = field == "cover_image" ? FileCategory.Listing : FileCategory.Avatar;
+        await using var stream = file.OpenReadStream();
+        var (upload, error) = await _fileUploadService.UploadAsync(
+            stream,
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            UserId(),
+            TenantId(),
+            category,
+            profile.Id,
+            "marketplace/sellers");
+
+        if (error != null)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = error, field } }
+            });
+        }
+
+        var savedUpload = upload!;
+        var url = _fileUploadService.GetDownloadUrl(savedUpload);
+        if (field == "avatar")
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == UserId() && u.TenantId == TenantId());
+            if (user != null)
+            {
+                user.AvatarUrl = url;
+                user.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                id = savedUpload.Id,
+                url,
+                avatar_url = field == "avatar" ? url : null,
+                cover_image_url = field == "cover_image" ? url : null,
+                field
+            }
+        });
+    }
 
     [HttpPut("messages/{messageId:int}")]
     public async Task<IActionResult> UpdateMessage(int messageId, [FromBody] JsonElement body)

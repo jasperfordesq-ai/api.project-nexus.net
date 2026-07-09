@@ -8,11 +8,11 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 | Surface | Laravel Edition | .NET Edition |
 | --- | ---: | ---: |
-| Controllers | 308 | 216 |
-| Services | 479 | 188 |
-| Models/entities | 200 Laravel models | 187 EF entity files |
-| Migrations | 318 | 89 EF migration classes excluding designers/snapshot |
-| OpenAPI operations | 891 | 3,737 static controller operations from parity script |
+| Controllers | 309 | 225 |
+| Services | 483 | 188 |
+| Models/entities | 200 Laravel models | 191 EF entity files |
+| Migrations | 323 | 100 EF migration classes excluding designers/snapshot |
+| OpenAPI operations | 891 | 4,293 static controller operations from parity script |
 | Schema tables | 361 Laravel source tables | 316 .NET static table names |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -22,12 +22,12 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
-`artifacts/parity/api/api-parity.json` on 2026-07-05 with 2,429 Laravel source
-operations after supplemental API route parsing and de-duplication, 2,429 static
+`artifacts/parity/api/api-parity.json` on 2026-07-09 with 2,436 Laravel source
+operations after supplemental API route parsing and de-duplication, 2,436 static
 matches, and 0 missing operations. Laravel `govuk-alpha*` accessible page
 routes are excluded from the API comparator and tracked in the frontend
-comparator. The artifact is ignored by git; regenerate it before using the
-numbers for implementation planning.
+comparator. Regenerate the artifact before using the numbers for implementation
+planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-05 with 361 Laravel

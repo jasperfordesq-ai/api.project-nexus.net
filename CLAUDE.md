@@ -1,6 +1,6 @@
 # Project NEXUS .NET Edition - Agent Guide
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-09
 
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
@@ -81,16 +81,16 @@ See `docs/REACT_FRONTEND_RETIREMENT.md` for the maintained policy.
 ## Current Inventory Snapshot
 
 Backend, API, schema, frontend, localization, and backlog counts were refreshed
-from source on 2026-07-05. The accessible `apps/web-uk` route count was
+from source on 2026-07-09. The accessible `apps/web-uk` route count was
 superseded by the 2026-07-08 consolidated Web UK route matrix noted below.
 
 | Surface | Laravel Edition (`C:\platforms\htdocs\staging`) | .NET Edition (this repo) |
 | --- | ---: | ---: |
-| Controllers | 308 PHP controller files | 219 C# controller files |
-| Services | 479 PHP service files | 188 C# service files |
-| Models/entities | 200 Laravel model files | 187 EF entity files |
-| Migrations | 318 Laravel migrations | 89 EF migration classes excluding designers/snapshot |
-| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,737 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,429 static matches / 0 missing source operations |
+| Controllers | 309 PHP controller files | 225 C# controller files |
+| Services | 483 PHP service files | 188 C# service files |
+| Models/entities | 200 Laravel model files | 191 EF entity files |
+| Migrations | 323 Laravel migrations | 100 EF migration classes excluding designers/snapshot |
+| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 4,293 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,436 static matches / 0 missing source operations |
 | Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 316 static EF/migration table names; 126 exact matches |
 | Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1`; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 610 local declarations, 608 matched Laravel accessible routes, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |

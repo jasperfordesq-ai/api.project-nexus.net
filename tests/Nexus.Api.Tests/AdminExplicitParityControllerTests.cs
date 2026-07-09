@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -48,6 +49,59 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         data.GetProperty("total").GetInt32().Should().BeGreaterThan(0);
         data.GetProperty("active").GetInt32().Should().BeGreaterThan(0);
         data.TryGetProperty("compatibility", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StaticApiGap_VolunteeringExpenseReceiptV2_ReturnsTenantScopedReceiptDownload()
+    {
+        int expenseId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var fileUploadService = scope.ServiceProvider.GetRequiredService<FileUploadService>();
+            await using var receiptStream = new MemoryStream(Encoding.UTF8.GetBytes("bus receipt"));
+            var (upload, uploadError) = await fileUploadService.UploadAsync(
+                receiptStream,
+                "bus-receipt.txt",
+                "text/plain",
+                receiptStream.Length,
+                TestData.MemberUser.Id,
+                TestData.Tenant1.Id,
+                FileCategory.Document,
+                entityType: "volunteer_expense");
+
+            uploadError.Should().BeNull();
+            upload.Should().NotBeNull();
+
+            var expense = new VolunteerExpense
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                Amount = 12.50m,
+                Currency = "GBP",
+                Category = "travel",
+                Description = "Bus fare to community shift",
+                ReceiptUrl = fileUploadService.GetDownloadUrl(upload!),
+                Status = VolunteerExpenseStatus.Submitted,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.VolunteerExpenses.Add(expense);
+            await db.SaveChangesAsync();
+            expenseId = expense.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+        var response = await Client.GetAsync($"/api/v2/admin/volunteering/expenses/{expenseId}/receipt");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("text/plain");
+        response.Content.Headers.ContentDisposition?.FileNameStar.Should().Be("bus-receipt.txt");
+        (await response.Content.ReadAsStringAsync()).Should().Be("bus receipt");
+
+        var missing = await Client.GetAsync("/api/v2/admin/volunteering/expenses/999999/receipt");
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var missingJson = await missing.Content.ReadFromJsonAsync<JsonElement>();
+        missingJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("NOT_FOUND");
     }
 
     [Fact]

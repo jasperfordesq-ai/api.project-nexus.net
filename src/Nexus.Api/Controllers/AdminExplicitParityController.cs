@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 using Nexus.Api.Services.Federation;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -23,6 +25,7 @@ public class AdminExplicitParityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly IFederationWebhookSubscriptionService _webhookService;
     private readonly IConfiguration _configuration;
+    private readonly FileUploadService _fileUploadService;
     private const string BillingInvoicesKey = "admin_explicit.billing.invoices";
     private const string FederationTopicsKey = "admin_explicit.federation.topics";
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
@@ -195,11 +198,13 @@ public class AdminExplicitParityController : ControllerBase
     public AdminExplicitParityController(
         NexusDbContext db,
         IFederationWebhookSubscriptionService webhookService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        FileUploadService fileUploadService)
     {
         _db = db;
         _webhookService = webhookService;
         _configuration = configuration;
+        _fileUploadService = fileUploadService;
     }
 
     [HttpDelete("/api/v2/admin/events/{id}")]
@@ -656,6 +661,40 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
+    }
+
+    [HttpGet("/api/v2/admin/volunteering/expenses/{id:int}/receipt")]
+    public async Task<IActionResult> DownloadVolunteeringExpenseReceipt(int id)
+    {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "TENANT_CONTEXT_REQUIRED", message = "Authentication required with valid tenant context." } }
+            });
+        }
+
+        var expense = await _db.VolunteerExpenses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId.Value);
+
+        if (expense == null || string.IsNullOrWhiteSpace(expense.ReceiptUrl))
+            return VolunteerExpenseReceiptNotFound();
+
+        if (!TryExtractFileUploadId(expense.ReceiptUrl, out var fileId))
+            return VolunteerExpenseReceiptNotFound();
+
+        var upload = await _fileUploadService.GetByIdAsync(fileId);
+        if (upload == null || upload.TenantId != tenantId.Value)
+            return VolunteerExpenseReceiptNotFound();
+
+        var fullPath = _fileUploadService.GetFullPath(upload);
+        if (!System.IO.File.Exists(fullPath))
+            return VolunteerExpenseReceiptNotFound();
+
+        Response.Headers.CacheControl = "private, max-age=0";
+        return PhysicalFile(fullPath, upload.ContentType, upload.OriginalFilename);
     }
 
     private IActionResult CreateBillingPortal()
@@ -6140,6 +6179,34 @@ public class AdminExplicitParityController : ControllerBase
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? DeletedAt { get; set; }
+    }
+
+    private NotFoundObjectResult VolunteerExpenseReceiptNotFound()
+        => NotFound(new
+        {
+            errors = new[] { new { code = "NOT_FOUND", message = "Receipt not found." } }
+        });
+
+    private static bool TryExtractFileUploadId(string receiptUrl, out int fileId)
+    {
+        fileId = 0;
+        if (string.IsNullOrWhiteSpace(receiptUrl))
+            return false;
+
+        if (Uri.TryCreate(receiptUrl, UriKind.Absolute, out var absolute))
+            receiptUrl = absolute.AbsolutePath;
+
+        var segments = receiptUrl.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            if (string.Equals(segments[i], "files", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(segments[i + 1], out fileId))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private sealed class FederationCreditAgreementRecord

@@ -221,6 +221,51 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task StaticApiGap_MerchantOnboardingImageV2_MatchesLaravelReactUploadContract()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using var avatar = CreateImageUpload("avatar", "merchant-avatar.png");
+        var avatarResponse = await Client.PostAsync("/api/v2/merchant-onboarding/image", avatar);
+
+        avatarResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var avatarJson = await avatarResponse.Content.ReadFromJsonAsync<JsonElement>();
+        avatarJson.GetProperty("data").GetProperty("url").GetString().Should().Contain("/api/files/");
+        avatarJson.GetProperty("data").GetProperty("avatar_url").GetString()
+            .Should().Be(avatarJson.GetProperty("data").GetProperty("url").GetString());
+        avatarJson.GetProperty("data").GetProperty("field").GetString().Should().Be("avatar");
+
+        using var missingFile = new MultipartFormDataContent();
+        var missingResponse = await Client.PostAsync("/api/v2/merchant-onboarding/image", missingFile);
+
+        missingResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var missingJson = await missingResponse.Content.ReadFromJsonAsync<JsonElement>();
+        missingJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+        missingJson.GetProperty("errors")[0].GetProperty("field").GetString().Should().Be("image");
+    }
+
+    [Fact]
+    public async Task StaticApiGap_MediaThumbnailV2_ReturnsCachedInlineImageForUploadedMedia()
+    {
+        await AuthenticateAsMemberAsync();
+        using var avatar = CreateImageUpload("avatar", "thumbnail-source.png");
+        var uploadResponse = await Client.PostAsync("/api/v2/marketplace/seller/profile", avatar);
+        uploadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var uploadJson = await uploadResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var url = uploadJson.GetProperty("data").GetProperty("url").GetString();
+
+        ClearAuthToken();
+        var thumbnail = await Client.GetAsync($"/api/v2/media/thumbnail?src={Uri.EscapeDataString(url!)}&w=64&h=64&fit=contain");
+
+        thumbnail.StatusCode.Should().Be(HttpStatusCode.OK);
+        thumbnail.Content.Headers.ContentType?.MediaType.Should().Be("image/png");
+        thumbnail.Headers.CacheControl?.Public.Should().BeTrue();
+        thumbnail.Headers.CacheControl?.MaxAge.Should().Be(TimeSpan.FromDays(365));
+        thumbnail.Headers.CacheControl?.Extensions.Select(e => e.Name).Should().Contain("immutable");
+        (await thumbnail.Content.ReadAsByteArrayAsync()).Should().NotBeEmpty();
+    }
+
+    [Fact]
     public async Task PromotionProductsV2_MatchesLaravelReactSelectorContract()
     {
         Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
