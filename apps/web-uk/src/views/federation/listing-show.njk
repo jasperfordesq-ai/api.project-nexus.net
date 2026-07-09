@@ -6,22 +6,22 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation/listings" class="govuk-back-link">Back to listings</a>
+  <a href="{{ urlFor('/federation/listings') }}" class="govuk-back-link">Back to listings</a>
 
   <span class="govuk-caption-xl">This community</span>
   <h1 class="govuk-heading-xl">{{ listing.title }}</h1>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
@@ -83,9 +83,9 @@
 
   {% if listing.memberHref %}
     <div class="govuk-button-group">
-      <a class="govuk-link" href="{{ listing.memberHref }}">View profile</a>
+      <a class="govuk-link" href="{{ urlFor(listing.memberHref) }}">View profile</a>
       {% if listing.canContact %}
-        <a class="govuk-button" href="{{ listing.memberHref }}" data-module="govuk-button">Contact author</a>
+        <a class="govuk-button" href="{{ urlFor(listing.memberHref) }}" data-module="govuk-button">Contact author</a>
       {% endif %}
     </div>
   {% endif %}

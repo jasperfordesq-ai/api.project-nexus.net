@@ -765,6 +765,33 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toMatch(/urlFor\(["']\/federation/);
   });
 
+  it('keeps federation browse, messaging, settings, and transfer templates behind urlFor()', () => {
+    const templates = [
+      'connections.njk',
+      'conversation.njk',
+      'events.njk',
+      'groups.njk',
+      'listing-show.njk',
+      'listings.njk',
+      'members.njk',
+      'messages.njk',
+      'opt-in.njk',
+      'opt-out.njk',
+      'partner.njk',
+      'partners.njk',
+      'settings.njk',
+      'transfer.njk'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'federation', file),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/href="\/federation/);
+    expect(source).not.toMatch(/action="\/federation/);
+    expect(source).toMatch(/urlFor\(["']\/federation/);
+  });
+
   it('keeps federation route redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'federation.js'),
@@ -775,6 +802,21 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).not.toMatch(/res\.redirect\(`\/(?:login|federation)/);
     expect(route).toContain('redirectTo(res,');
     expect(route).toContain('res.locals.urlFor');
+  });
+
+  it('keeps federation action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'federation-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/federation/);
+    expect(route).not.toMatch(/res\.redirect\(`\/federation/);
+    expect(route).not.toMatch(/res\.redirect\((?:status|member|transfer|conversation|connectionList)Redirect/);
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
   });
 
   it('keeps connections navigation, member links, forms, and pagination behind urlFor()', () => {

@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation/messages" class="govuk-back-link">Back to conversations</a>
+  <a href="{{ urlFor('/federation/messages') }}" class="govuk-back-link">Back to conversations</a>
 
   <span class="govuk-caption-xl">Conversation with {{ conversation.partnerName }}</span>
   <h1 class="govuk-heading-xl">{{ conversation.partnerName }}</h1>
@@ -19,15 +19,15 @@
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
@@ -84,7 +84,7 @@
             {% endif %}
           </p>
         {% elif translateEnabled %}
-          <form method="post" action="/federation/messages/translate/{{ message.id }}" class="govuk-!-margin-top-2">
+          <form method="post" action="{{ urlFor('/federation/messages/translate/' + (message.id | string)) }}" class="govuk-!-margin-top-2">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="partner_id" value="{{ conversation.partnerId }}">
             <input type="hidden" name="partner_tenant_id" value="{{ conversation.partnerTenantId }}">
@@ -96,7 +96,7 @@
   </div>
 
   {% if canReply %}
-    <form method="post" action="/federation/messages" class="govuk-!-margin-top-6">
+    <form method="post" action="{{ urlFor('/federation/messages') }}" class="govuk-!-margin-top-6">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <input type="hidden" name="receiver_id" value="{{ conversation.partnerId }}">
       <input type="hidden" name="receiver_tenant_id" value="{{ conversation.partnerTenantId }}">

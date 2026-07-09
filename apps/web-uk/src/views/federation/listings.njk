@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <span class="govuk-caption-xl">This community</span>
   <h1 class="govuk-heading-xl">Federated listings</h1>
@@ -14,22 +14,22 @@
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
   {% if not allowed %}
     <div class="govuk-inset-text"><p class="govuk-body">Browsing federated listings is not available for this community right now.</p></div>
   {% else %}
-    <form method="get" action="/federation/listings" class="govuk-!-margin-bottom-6">
+    <form method="get" action="{{ urlFor('/federation/listings') }}" class="govuk-!-margin-bottom-6">
       <fieldset class="govuk-fieldset">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter listings</legend>
 
@@ -68,7 +68,7 @@
           <h2 class="govuk-error-summary__title">We could not load federated listings.</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
-              <li><a href="/federation/listings">Try again</a></li>
+              <li><a href="{{ urlFor('/federation/listings') }}">Try again</a></li>
             </ul>
           </div>
         </div>
@@ -86,7 +86,7 @@
             <div class="nexus-alpha-module-row">
               <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
                 {% if listing.href %}
-                  <a class="govuk-link" href="{{ listing.href }}">{{ listing.title }}</a>
+                  <a class="govuk-link" href="{{ urlFor(listing.href) }}">{{ listing.title }}</a>
                 {% else %}
                   {{ listing.title }}
                 {% endif %}
@@ -127,7 +127,7 @@
 
       {% if loadMoreHref %}
         <p class="govuk-body govuk-!-margin-top-4">
-          <a class="govuk-link" href="{{ loadMoreHref }}">Load more listings</a>
+          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more listings</a>
         </p>
       {% endif %}
     {% endif %}

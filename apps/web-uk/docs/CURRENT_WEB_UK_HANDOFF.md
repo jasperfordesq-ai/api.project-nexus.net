@@ -121,7 +121,18 @@ transfer CTA through `urlFor()`. The latest federation redirect slice now
 routes signed-out federation GET handoffs, opt-in/settings shortcuts, and
 conversation fallback redirects through `res.locals.urlFor`, with shared-mount
 coverage proving `/acme/accessible/federation` redirects to the tenant-mounted
-login path. The latest connections source slice now routes the connections
+login path. The latest federation browse/messaging/settings/transfer source
+slice routes connections, conversations, events, groups, listings, member
+browse, messages, opt-in/out, partner list/detail, settings, and transfer
+template links and forms through `urlFor()`. Federation POST action redirects
+now route connection, message, translation, transfer, onboarding, opt-in/out,
+and settings outcomes through `res.locals.urlFor`. A targeted Laravel runtime
+smoke on 2026-07-09 against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and
+`LARAVEL_BASE_URL=http://127.0.0.1:8088` passed `19/19` checks for auth,
+cookie/logout setup, signed `/federation`, `/federation/connections`,
+`/federation/messages`, `/federation/settings`, and
+`/federation/members/353/transfer`, plus body markers for the changed
+federation pages. The latest connections source slice now routes the connections
 index tabs, pending-request link, member links, accept/decline/remove forms,
 empty-state member CTAs, pagination base URL, network search form, network
 tabs, load-more links, card actions, and back link through `urlFor()`. The

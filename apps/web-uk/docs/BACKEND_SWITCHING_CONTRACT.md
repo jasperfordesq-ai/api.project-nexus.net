@@ -70,7 +70,9 @@ volunteering action routes now follow this rule for auth-required handoffs,
 direct validation branches, and Laravel API success/failure outcomes. The
 podcast page routes now follow this rule for signed-out and Laravel-401 auth
 handoffs, and the podcast action routes follow it for subscribe, studio show,
-and episode POST outcomes. The Jobs action routes now follow it for
+and episode POST outcomes. The federation action routes now follow it for
+connection, message, translation, transfer, onboarding, opt-in/out, and settings
+POST outcomes. The Jobs action routes now follow it for
 create/update/delete/renew/apply/save/unsave, application status/withdrawal,
 alert, interview, offer, and owner CSV failure outcomes; future ASP.NET mode
 must preserve equivalent local redirect semantics.

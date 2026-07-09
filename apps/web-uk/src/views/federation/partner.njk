@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation/partners" class="govuk-back-link">Back to Federation partners</a>
+  <a href="{{ urlFor('/federation/partners') }}" class="govuk-back-link">Back to Federation partners</a>
 
   <span class="govuk-caption-xl">Federation partner</span>
   <div class="nexus-alpha-module-row">
@@ -20,15 +20,15 @@
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
@@ -86,13 +86,13 @@
     <h2 class="govuk-heading-m">Browse this partner community</h2>
     <ul class="govuk-list">
       {% if "profiles" in partner.permissions %}
-        <li><a class="govuk-link" href="/federation/members{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse members</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/federation/members') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse members</a></li>
       {% endif %}
       {% if "listings" in partner.permissions %}
-        <li><a class="govuk-link" href="/federation/listings{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse listings</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse listings</a></li>
       {% endif %}
       {% if "events" in partner.permissions %}
-        <li><a class="govuk-link" href="/federation/events{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse events</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/federation/events') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse events</a></li>
       {% endif %}
     </ul>
   {% endif %}

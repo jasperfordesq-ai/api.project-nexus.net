@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation" class="govuk-back-link">Back to Federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to Federation</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -16,15 +16,15 @@
 
       <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
         <ul class="govuk-service-navigation__list">
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
         </ul>
       </nav>
 
@@ -54,7 +54,7 @@
 
       {% if not optedIn %}
         <div class="govuk-inset-text"><p class="govuk-body">Turn on federation before changing federation visibility, messaging, and transfer settings.</p></div>
-        <a class="govuk-button" data-module="govuk-button" href="/federation/opt-in">Turn on federation</a>
+        <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/federation/opt-in') }}">Turn on federation</a>
       {% else %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="fed-settings-active">
           <div class="govuk-notification-banner__header">
@@ -67,7 +67,7 @@
           </div>
         </div>
 
-        <form method="post" action="/federation/settings">
+        <form method="post" action="{{ urlFor('/federation/settings') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
@@ -153,7 +153,7 @@
         </form>
 
         <div class="govuk-button-group govuk-!-margin-top-6">
-          <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/federation/opt-out">Turn off federation</a>
+          <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/federation/opt-out') }}">Turn off federation</a>
         </div>
       {% endif %}
     </div>

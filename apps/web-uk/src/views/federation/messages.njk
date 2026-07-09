@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/federation" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Federated messages</h1>
@@ -14,15 +14,15 @@
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
-      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
-      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation') }}">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/partners') }}">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/members') }}">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/listings') }}">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/events') }}">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/groups') }}">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/connections') }}">Connections</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/messages') }}">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="{{ urlFor('/federation/settings') }}">Settings</a></li>
     </ul>
   </nav>
 
@@ -55,10 +55,10 @@
       <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Opt in to send federated messages</h2>
       <p class="govuk-body">You need to opt in to federation and turn on federated messaging before you can message members in other communities.</p>
     </div>
-    <a href="/federation/opt-in" class="govuk-button govuk-button--secondary" data-module="govuk-button">Opt in to federation</a>
+    <a href="{{ urlFor('/federation/opt-in') }}" class="govuk-button govuk-button--secondary" data-module="govuk-button">Opt in to federation</a>
   {% endif %}
 
-  <form method="get" action="/federation/messages" class="govuk-!-margin-bottom-4">
+  <form method="get" action="{{ urlFor('/federation/messages') }}" class="govuk-!-margin-bottom-4">
     <div class="govuk-form-group govuk-!-margin-bottom-2">
       <label class="govuk-label" for="q">Search conversations</label>
       <input class="govuk-input govuk-input--width-20" id="q" name="q" type="text" value="{{ query }}" placeholder="Search by name or community">
@@ -67,7 +67,7 @@
   </form>
 
   <p class="govuk-body">
-    <a class="govuk-link" href="/federation/members">Browse federated members</a>
+    <a class="govuk-link" href="{{ urlFor('/federation/members') }}">Browse federated members</a>
   </p>
   <p class="govuk-hint">To start a new conversation, message a member from the federated members directory.</p>
 
@@ -85,7 +85,7 @@
         {% for thread in threads %}
           <article class="nexus-alpha-card">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="{{ thread.href }}" title="Open conversation">{{ thread.partnerName }}</a>
+              <a class="govuk-link" href="{{ urlFor(thread.href) }}" title="Open conversation">{{ thread.partnerName }}</a>
             </h3>
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
               <strong class="govuk-tag govuk-tag--grey">{{ thread.partnerTenantName }}</strong>

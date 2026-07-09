@@ -161,6 +161,12 @@ Current gaps:
   opt-in/settings shortcuts, and invalid/empty conversation fallbacks through
   `res.locals.urlFor`, with shared-mount coverage proving
   `/acme/accessible/federation` redirects to the tenant-mounted login path.
+  The latest focused federation browse/messaging/settings/transfer source
+  conversion covers connections, conversations, events, groups, listings,
+  member browse, messages, opt-in/out, partner list/detail, settings, and
+  transfer templates. Federation POST action redirects now send connection,
+  message, translation, transfer, onboarding, opt-in/out, and settings outcomes
+  through `res.locals.urlFor`.
   The latest focused group/volunteering source conversion covers group
   announcements, group files, and volunteering recommended shifts, including
   announcement edit/pin/delete/create controls, file download/delete/upload

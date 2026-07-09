@@ -17,6 +17,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -49,7 +54,7 @@ function isAuthError(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -111,12 +116,12 @@ function referenceMessageId(value) {
 
 router.post('/connections', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const receiverId = positiveInteger(req.body.receiver_id);
   const receiverTenantId = federationTenantId(req.body.receiver_tenant_id);
   if (receiverId === null || receiverTenantId === null) {
-    return res.redirect(statusRedirect('/federation/members', 'connect-failed'));
+    return redirectTo(res, statusRedirect('/federation/members', 'connect-failed'));
   }
 
   let status = 'connect-sent';
@@ -131,12 +136,12 @@ router.post('/connections', asyncRoute(async (req, res) => {
     status = 'connect-failed';
   }
 
-  return res.redirect(memberRedirect(receiverId, receiverTenantId, status));
+  return redirectTo(res, memberRedirect(receiverId, receiverTenantId, status));
 }));
 
 router.post('/connections/:id(\\d+)/accept', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'connection-accepted';
@@ -147,12 +152,12 @@ router.post('/connections/:id(\\d+)/accept', asyncRoute(async (req, res) => {
     status = 'connection-action-failed';
   }
 
-  return res.redirect(connectionListRedirect('received', status));
+  return redirectTo(res, connectionListRedirect('received', status));
 }));
 
 router.post('/connections/:id(\\d+)/reject', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'connection-rejected';
@@ -163,12 +168,12 @@ router.post('/connections/:id(\\d+)/reject', asyncRoute(async (req, res) => {
     status = 'connection-action-failed';
   }
 
-  return res.redirect(connectionListRedirect('received', status));
+  return redirectTo(res, connectionListRedirect('received', status));
 }));
 
 router.post('/connections/:id(\\d+)/remove', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'connection-removed';
@@ -179,12 +184,12 @@ router.post('/connections/:id(\\d+)/remove', asyncRoute(async (req, res) => {
     status = 'connection-action-failed';
   }
 
-  return res.redirect(connectionListRedirect('accepted', status));
+  return redirectTo(res, connectionListRedirect('accepted', status));
 }));
 
 router.post('/messages/translate/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const partnerId = positiveInteger(req.body.partner_id);
@@ -193,7 +198,7 @@ router.post('/messages/translate/:id(\\d+)', asyncRoute(async (req, res) => {
     ? statusRedirect('/federation/messages', 'translate-failed')
     : conversationRedirect(partnerId, partnerTenantId, 'translate-failed', `#message-${id}`);
 
-  if (partnerId === null || partnerTenantId === null) return res.redirect(back);
+  if (partnerId === null || partnerTenantId === null) return redirectTo(res, back);
 
   const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
   let status = 'translate-done';
@@ -206,17 +211,17 @@ router.post('/messages/translate/:id(\\d+)', asyncRoute(async (req, res) => {
     status = 'translate-failed';
   }
 
-  return res.redirect(conversationRedirect(partnerId, partnerTenantId, status, `#message-${id}`));
+  return redirectTo(res, conversationRedirect(partnerId, partnerTenantId, status, `#message-${id}`));
 }));
 
 router.post('/messages', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const receiverId = positiveInteger(req.body.receiver_id);
   const receiverTenantId = federationTenantId(req.body.receiver_tenant_id);
   if (receiverId === null || receiverTenantId === null) {
-    return res.redirect(statusRedirect('/federation/members', 'message-failed'));
+    return redirectTo(res, statusRedirect('/federation/members', 'message-failed'));
   }
 
   const body = trimmed(req.body.body, 10000);
@@ -225,7 +230,7 @@ router.post('/messages', asyncRoute(async (req, res) => {
     ? (status) => conversationRedirect(receiverId, receiverTenantId, status)
     : (status) => memberRedirect(receiverId, receiverTenantId, status);
 
-  if (body === '') return res.redirect(backPath('message-empty'));
+  if (body === '') return redirectTo(res, backPath('message-empty'));
 
   const payload = {
     receiver_id: receiverId,
@@ -246,27 +251,27 @@ router.post('/messages', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 422 ? 'message-too-long' : 'message-failed';
   }
 
-  return res.redirect(backPath(status));
+  return redirectTo(res, backPath(status));
 }));
 
 router.post('/members/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const receiverId = Number(req.params.id);
   const receiverTenantId = federationTenantId(req.body.receiver_tenant_id);
   if (receiverTenantId === null) {
-    return res.redirect(statusRedirect('/federation/members', 'transfer-recipient-unavailable'));
+    return redirectTo(res, statusRedirect('/federation/members', 'transfer-recipient-unavailable'));
   }
 
   const amount = positiveInteger(req.body.amount);
   if (amount === null || amount > 100) {
-    return res.redirect(transferRedirect(receiverId, receiverTenantId, 'transfer-amount-invalid'));
+    return redirectTo(res, transferRedirect(receiverId, receiverTenantId, 'transfer-amount-invalid'));
   }
 
   const description = trimmed(req.body.description, 500);
   if (description === '') {
-    return res.redirect(transferRedirect(receiverId, receiverTenantId, 'transfer-description-required'));
+    return redirectTo(res, transferRedirect(receiverId, receiverTenantId, 'transfer-description-required'));
   }
 
   let status = 'transfer-sent';
@@ -282,12 +287,12 @@ router.post('/members/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
     status = 'transfer-failed';
   }
 
-  return res.redirect(memberRedirect(receiverId, receiverTenantId, status));
+  return redirectTo(res, memberRedirect(receiverId, receiverTenantId, status));
 }));
 
 router.post('/onboarding', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const step = trimmed(req.body.step) || 'welcome';
   const nextSteps = {
@@ -296,7 +301,7 @@ router.post('/onboarding', asyncRoute(async (req, res) => {
     communication: 'confirm'
   };
   if (step !== 'confirm') {
-    return res.redirect(`/federation/onboarding?step=${encodeURIComponent(nextSteps[step] || 'confirm')}`);
+    return redirectTo(res, `/federation/onboarding?step=${encodeURIComponent(nextSteps[step] || 'confirm')}`);
   }
 
   let status = 'opted-in';
@@ -307,12 +312,12 @@ router.post('/onboarding', asyncRoute(async (req, res) => {
     status = 'optin-failed';
   }
 
-  return res.redirect(statusRedirect('/federation', status));
+  return redirectTo(res, statusRedirect('/federation', status));
 }));
 
 router.post('/opt-in', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const submittedPreferences = checked(req.body.preferences_submitted);
   const payload = submittedPreferences
@@ -339,12 +344,12 @@ router.post('/opt-in', asyncRoute(async (req, res) => {
     status = 'optin-failed';
   }
 
-  return res.redirect(statusRedirect('/federation', status));
+  return redirectTo(res, statusRedirect('/federation', status));
 }));
 
 router.post('/opt-out', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let status = 'opted-out';
   try {
@@ -354,12 +359,12 @@ router.post('/opt-out', asyncRoute(async (req, res) => {
     status = 'optout-failed';
   }
 
-  return res.redirect(statusRedirect('/federation', status));
+  return redirectTo(res, statusRedirect('/federation', status));
 }));
 
 router.post('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let status = 'settings-saved';
   try {
@@ -369,7 +374,7 @@ router.post('/settings', asyncRoute(async (req, res) => {
     status = 'settings-failed';
   }
 
-  return res.redirect(statusRedirect('/federation/settings', status));
+  return redirectTo(res, statusRedirect('/federation/settings', status));
 }));
 
 module.exports = router;
