@@ -66,7 +66,10 @@ Current implemented slice:
   uploads, and other infrastructure URLs unprefixed.
 - Shared root `/` renders the Laravel-style tenant chooser backed by
   `/api/v2/tenants` without `include_master`, excludes the master tenant, and
-  links communities to the cleaner `/{tenantSlug}/accessible` mount.
+  links communities to the cleaner `/{tenantSlug}/accessible` mount. The
+  normalized chooser list is sorted by display name to mirror Laravel Blade's
+  `AlphaController::tenantChooser()` query, which orders active non-master
+  tenants by `name`.
 - Tenant-mounted roots render the Laravel Blade-style tenant home instead of
   the old generic Web UK home. Shared mount `/{tenantSlug}/accessible` loads
   tenant bootstrap and tenant-scoped public platform stats, renders the
@@ -595,9 +598,20 @@ passed 20 checks across auth/cookie/logout plus signed `/feed`,
 `/feed/hashtags`, `/feed/hashtag/timebank`, `/feed/posts/796`, and
 `/feed/item/listing/42` body markers.
 
+The thirty-ninth tenant-routing source slice aligns shared-root tenant chooser
+ordering with Laravel Blade. Laravel's `AlphaController::tenantChooser()`
+orders active non-master tenants by `name`; Web UK now sorts normalized
+`/api/v2/tenants` communities by display name before rendering the chooser.
+The focused regression first failed when `Zebra Timebank` rendered before
+`Acme Timebank`, then passed after the normalization sort was added. Focused
+tenant-routing route tests pass for 13 selected shared-root/shared-mount/
+custom-domain cases.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "orders shared-root tenant chooser"
+npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "jobs browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "jobs|job"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "saved-item"

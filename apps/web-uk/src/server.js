@@ -376,7 +376,8 @@ function normalizeTenantChooserCommunities(result) {
         tagline: tenant.tagline || '',
         href: `/${encodeURIComponent(slug)}/accessible`
       };
-    });
+    })
+    .sort((left, right) => left.name.localeCompare(right.name, 'en-GB'));
 }
 
 function dataFrom(result) {

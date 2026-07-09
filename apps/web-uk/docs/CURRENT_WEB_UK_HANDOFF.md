@@ -47,7 +47,10 @@ redirects plus rendered HTML `href` and `action` targets inside the active
 flat root paths during shared-host tenant browsing. A shared-root slice now
 renders the Laravel-style tenant chooser at `/`, backed by Laravel
 `/api/v2/tenants` with the master tenant excluded and community links using the
-cleaner `/{tenantSlug}/accessible` mount. Custom/root domain slices now ask
+cleaner `/{tenantSlug}/accessible` mount. A follow-up tenant-chooser slice now
+sorts those communities by display name to match Laravel
+`AlphaController::tenantChooser()`, which orders active non-master tenants by
+name. Custom/root domain slices now ask
 Laravel `/api/v2/tenant/bootstrap` to resolve non-local Host values, including
 Laravel `domain` and `accessible_domain`, and render the resolved tenant home at
 slugless `/` when Laravel returns a matching tenant. This covers the master
@@ -288,6 +291,12 @@ reserved-path slice:
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 729 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:6467` and Laravel `http://127.0.0.1:8088` passed 11 checks, including `timebank.global|/=>Exchange Skills Across Borders` with no legacy `/alpha` or `/accessible` links.
+
+Latest focused verification on 2026-07-09 for the shared-root tenant chooser
+ordering slice:
+
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "orders shared-root tenant chooser"` first failed because Web UK preserved Laravel API response order (`Zebra Timebank` before `Acme Timebank`) while Laravel Blade orders chooser tenants by `name`, then passed after `normalizeTenantChooserCommunities()` sorted by display name.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"` passed: 13 selected tests.
 
 Latest consolidation verification on 2026-07-08:
 

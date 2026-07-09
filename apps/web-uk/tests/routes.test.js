@@ -76,6 +76,21 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('Project NEXUS master tenant');
       expect(api.getTenants).toHaveBeenCalledWith({ includeMaster: false });
     });
+
+    it('orders shared-root tenant chooser communities by name like Laravel Blade', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockResolvedValueOnce({
+        data: [
+          { id: 2, name: 'Zebra Timebank', slug: 'zebra' },
+          { id: 3, name: 'Acme Timebank', slug: 'acme' }
+        ]
+      });
+
+      const response = await request(app).get('/');
+
+      expect(response.status).toBe(200);
+      expect(response.text.indexOf('Acme Timebank')).toBeLessThan(response.text.indexOf('Zebra Timebank'));
+    });
   });
 
   describe('shared tenant accessible mount', () => {
