@@ -87,6 +87,12 @@ Current implemented slice:
   forwards the resolved Host and Origin to Laravel `/api/v2/platform/stats` and
   `/api/v2/tenant/bootstrap` so host-resolved tenant stats use the same lookup
   path as Laravel's accessible runtime.
+- On a dedicated custom/domain host, requests that arrive with the matching
+  tenant's legacy `/{tenantSlug}/alpha/...` prefix or Web UK's shared
+  `/{tenantSlug}/accessible/...` prefix now canonicalize to the slugless
+  custom-domain path. This mirrors Laravel's
+  `StripTenantSlugOnAccessibleDomain` response behavior while keeping Web UK's
+  public shared-host slug clean.
 - Master and parent/cluster custom-domain roots render Laravel SEO h1/intro
   copy plus `tenant_switcher` communities. Same-host switcher URLs are converted
   to relative paths, while external community domains remain absolute.
@@ -632,6 +638,16 @@ proves the flat signed `/dashboard` output. A scoped Laravel runtime smoke
 against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel
 `http://127.0.0.1:8088` passed the core auth/cookie/logout flow plus signed
 `/dashboard` rendering and the `Quick links` body marker.
+
+The forty-second tenant-routing slice aligns prefixed accessible paths on
+custom domains with Laravel's slugless accessible-domain behavior. The focused
+regression first failed because `Host: acme-accessible.test` with
+`/acme/alpha/login?status=auth-required` redirected to
+`/acme/accessible/login?status=auth-required`; it now redirects to the
+slugless `/login?status=auth-required`, and `/acme/accessible/register` now
+redirects to `/register` when Laravel bootstrap resolves the host to the same
+tenant. Focused tenant-routing route tests pass for 14 selected
+shared-root/shared-mount/custom-domain cases.
 
 Verification command:
 

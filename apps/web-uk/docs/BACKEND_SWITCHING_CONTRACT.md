@@ -55,6 +55,12 @@ so reserved platform paths such as `/classic` remain host-scoped platform paths
 and are not treated as child tenant slugs. The Web UK regression covers
 `parent-domain.test/classic` so future backend modes must preserve the same
 reserved-path outcome.
+Dedicated custom-domain hosts must also remain slugless when a browser reaches
+them with a matching tenant-prefixed accessible path. Web UK now asks Laravel
+bootstrap to resolve the host before shared-mount handling; if the host-resolved
+tenant matches `/{tenantSlug}/alpha/...` or `/{tenantSlug}/accessible/...`, the
+request redirects to the slugless path. Future ASP.NET mode must preserve the
+same canonical behavior before it can be certified for tenant-domain routing.
 
 ## Laravel Runtime Smoke
 

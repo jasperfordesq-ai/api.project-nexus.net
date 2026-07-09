@@ -335,6 +335,36 @@ async function resolveCustomAccessibleDomain(req, pathname) {
   }
 }
 
+async function redirectMatchedCustomDomainMount(req, res, tenantSlug, rest, queryIndex, originalUrl) {
+  const host = requestHost(req);
+  if (!shouldResolveCustomAccessibleDomain(host)) {
+    return false;
+  }
+
+  const { ApiError, ApiOfflineError, getTenantBootstrap } = require('../lib/api');
+
+  try {
+    const result = await getTenantBootstrap({ host });
+    const tenant = result?.data || result?.tenant || result;
+    const matchedHost = tenantDataMatchesAccessibleHost(tenant, host) || tenantDataMatchesDomainHost(tenant, host);
+    const matchedSlug = String(tenant?.slug || '').toLowerCase() === String(tenantSlug || '').toLowerCase();
+
+    if (!matchedHost || !matchedSlug) {
+      return false;
+    }
+
+    const sluglessPath = rest === '/' ? '/' : rest;
+    res.redirect(301, withQuery(sluglessPath, queryIndex, originalUrl));
+    return true;
+  } catch (error) {
+    if (error instanceof ApiOfflineError || (error instanceof ApiError && error.status === 404)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
 function tenantRouting(req, res, next) {
   const originalUrl = req.url || '/';
   const queryIndex = originalUrl.indexOf('?');
@@ -359,20 +389,29 @@ function tenantRouting(req, res, next) {
   const rest = pathname.slice(match[0].length) || '/';
   const accessiblePrefix = `/${tenantSlug}/accessible`;
 
-  if (mount === 'alpha') {
-    return res.redirect(301, withQuery(`${accessiblePrefix}${rest === '/' ? '' : rest}`, queryIndex, originalUrl));
-  }
+  redirectMatchedCustomDomainMount(req, res, tenantSlug, rest, queryIndex, originalUrl)
+    .then((redirected) => {
+      if (redirected) {
+        return;
+      }
 
-  req.accessibleRouting = {
-    mode: 'shared',
-    tenantSlug,
-    prefix: accessiblePrefix,
-    routePath: rest
-  };
-  installSharedMountResponseRewriter(res, accessiblePrefix);
-  req.url = withQuery(rest, queryIndex, originalUrl);
+      if (mount === 'alpha') {
+        res.redirect(301, withQuery(`${accessiblePrefix}${rest === '/' ? '' : rest}`, queryIndex, originalUrl));
+        return;
+      }
 
-  return next();
+      req.accessibleRouting = {
+        mode: 'shared',
+        tenantSlug,
+        prefix: accessiblePrefix,
+        routePath: rest
+      };
+      installSharedMountResponseRewriter(res, accessiblePrefix);
+      req.url = withQuery(rest, queryIndex, originalUrl);
+
+      next();
+    })
+    .catch(next);
 }
 
 module.exports = {

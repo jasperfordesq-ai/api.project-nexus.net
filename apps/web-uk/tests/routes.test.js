@@ -396,6 +396,36 @@ describe('Public Routes', () => {
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 
+    it('canonicalizes tenant-prefixed accessible paths to slugless paths on custom domains', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getTenantBootstrap.mockResolvedValue({
+        data: {
+          id: 2,
+          name: 'Acme Timebank',
+          slug: 'acme',
+          accessible_domain: 'acme-accessible.test'
+        }
+      });
+
+      const alphaResponse = await request(app)
+        .get('/acme/alpha/login?status=auth-required')
+        .set('Host', 'acme-accessible.test');
+
+      expect(alphaResponse.status).toBe(301);
+      expect(alphaResponse.headers.location).toBe('/login?status=auth-required');
+
+      const accessibleResponse = await request(app)
+        .get('/acme/accessible/register')
+        .set('Host', 'acme-accessible.test');
+
+      expect(accessibleResponse.status).toBe(301);
+      expect(accessibleResponse.headers.location).toBe('/register');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'acme-accessible.test' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
     it('serves a direct child tenant below a parent custom domain path', async () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();

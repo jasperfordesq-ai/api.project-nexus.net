@@ -189,6 +189,11 @@ for `timebank.global` and `project-nexus.ie` is green. A follow-up full
 temporary Web UK process smoke fixed the earlier chooser fallback by suppressing
 the process default `X-Tenant-ID` on host-scoped Host/Origin API calls, then
 passed `timebank.global|/=>Exchange Skills Across Borders`.
+Custom-domain requests for the matched tenant's legacy
+`/{tenantSlug}/alpha/...` prefix or Web UK's shared
+`/{tenantSlug}/accessible/...` prefix now canonicalize to the slugless
+custom-domain path, matching Laravel's accessible-domain response behavior
+while keeping `/accessible` only as the shared-host public mount.
 
 The legacy local two-factor POST alias has been removed: POST `/verify-2fa` is
 no longer exposed. Laravel's accessible source uses GET/POST

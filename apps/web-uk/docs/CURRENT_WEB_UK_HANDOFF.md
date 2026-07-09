@@ -56,7 +56,11 @@ Laravel `domain` and `accessible_domain`, and render the resolved tenant home at
 slugless `/` when Laravel returns a matching tenant. This covers the master
 tenant's configured `project-nexus.ie` domain and the `timebank.global` cluster
 front page in tests, using Laravel SEO h1/intro copy and `tenant_switcher`
-items. A parent-domain child slice now resolves the first non-reserved path
+items. A custom-domain canonicalization slice now sends matching
+`/{tenantSlug}/alpha/...` and `/{tenantSlug}/accessible/...` requests on a
+dedicated tenant host to the slugless path, mirroring Laravel's
+`StripTenantSlugOnAccessibleDomain` behavior while keeping Web UK's public
+shared-host slug as `/accessible`. A parent-domain child slice now resolves the first non-reserved path
 segment through Laravel bootstrap and serves the flat accessible app below
 `/{childSlug}` when Laravel returns a matching `parent_domain`. A live
 runtime-smoke slice certifies that same parent-domain child path against the
@@ -339,6 +343,12 @@ template-helper slice:
 - `Select-String -Path apps\web-uk\src\views\federation\onboarding.njk -SimpleMatch -Pattern 'href="/federation','action="/federation'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation onboarding"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/federation/onboarding`, `SMOKE_BODY_TEXT_PAGE_PATHS=/federation/onboarding=>Welcome to the community network`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-09 for the custom-domain
+canonicalization tenant-routing slice:
+
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "canonicalizes tenant-prefixed accessible paths"` first failed because `Host: acme-accessible.test` with `/acme/alpha/login?status=auth-required` redirected to `/acme/accessible/login?status=auth-required`; it passed after host-resolved matching tenant prefixes were canonicalized to slugless custom-domain paths.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"` passed: 14 selected tests.
 
 Latest consolidation verification on 2026-07-08:
 
