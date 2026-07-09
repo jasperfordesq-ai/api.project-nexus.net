@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/jobs/mine" class="govuk-back-link">My postings</a>
+  <a href="{{ urlFor('/jobs/mine') }}" class="govuk-back-link">My postings</a>
 
   <span class="govuk-caption-xl">Project NEXUS Accessible</span>
   <h1 class="govuk-heading-xl">{% if formMode == "edit" %}Edit opportunity{% else %}Post an opportunity{% endif %}</h1>
@@ -27,7 +27,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="{{ formAction }}">
+  <form method="post" action="{{ urlFor(formAction) }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">

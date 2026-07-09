@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/applications">Back to my applications</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/applications') }}">Back to my applications</a>
 
   <span class="govuk-caption-xl">Application {{ applicationId }}</span>
   <h1 class="govuk-heading-xl">Application timeline</h1>

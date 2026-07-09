@@ -11,32 +11,32 @@
   <p class="govuk-body-l">Opportunities you have applied for and their status.</p>
 
   <p class="govuk-body">
-    <a class="govuk-link" href="/jobs/responses">Responses</a>
+    <a class="govuk-link" href="{{ urlFor('/jobs/responses') }}">Responses</a>
   </p>
 
   <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
     <h2 class="govuk-tabs__title">Jobs</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs">Browse opportunities</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs') }}">Browse opportunities</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/saved">Saved</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}">Saved</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/jobs/applications" aria-current="page">My applications</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}" aria-current="page">My applications</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/responses">Responses</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}">Responses</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/alerts">Job alerts</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">Job alerts</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/mine">My postings</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">My postings</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/create">Post a job</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">Post a job</a>
       </li>
     </ul>
   </div>
@@ -66,7 +66,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/jobs/applications" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/jobs/applications') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="status_filter">Status</label>
       <select class="govuk-select" id="status_filter" name="status_filter">
@@ -90,7 +90,7 @@
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
               {% if app.vacancyId %}
-                <a class="govuk-link" href="/jobs/{{ app.vacancyId }}">{{ app.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/jobs/' ~ app.vacancyId) }}">{{ app.title }}</a>
               {% else %}
                 {{ app.title }}
               {% endif %}
@@ -104,12 +104,12 @@
 
           {% if app.id %}
             <p class="govuk-body-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/jobs/applications/{{ app.id }}/history">View application history</a>
+              <a class="govuk-link" href="{{ urlFor('/jobs/applications/' ~ app.id ~ '/history') }}">View application history</a>
             </p>
           {% endif %}
 
           {% if app.canWithdraw %}
-            <form method="post" action="/jobs/applications/{{ app.id }}/withdraw" class="govuk-!-margin-top-2">
+            <form method="post" action="{{ urlFor('/jobs/applications/' ~ app.id ~ '/withdraw') }}" class="govuk-!-margin-top-2">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-warning-text govuk-!-margin-bottom-2">
                 <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
@@ -128,7 +128,7 @@
     {% if jobsMeta.has_more and nextHref %}
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" rel="next" href="{{ nextHref }}">
+          <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
             <span class="govuk-pagination__link-title">Load more</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">More results</span>

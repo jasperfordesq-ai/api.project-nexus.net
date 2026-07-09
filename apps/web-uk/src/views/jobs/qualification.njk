@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/{{ qualification.jobId }}">Back to opportunity</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/' ~ qualification.jobId) }}">Back to opportunity</a>
 
   <span class="govuk-caption-xl">{{ qualification.jobTitle }}</span>
   <h1 class="govuk-heading-xl">Am I qualified?</h1>
@@ -78,6 +78,6 @@
   {% endif %}
 
   <p>
-    <a class="govuk-button" data-module="govuk-button" href="/jobs/{{ qualification.jobId }}">View this opportunity</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ qualification.jobId) }}">View this opportunity</a>
   </p>
 {% endblock %}

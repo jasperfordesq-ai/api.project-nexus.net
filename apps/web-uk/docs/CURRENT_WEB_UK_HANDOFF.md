@@ -138,7 +138,10 @@ empty-state CTAs, pagination base URL, and saved-search forms through
 `urlFor()`. The latest saved source slice now routes saved-item filters,
 bookmark links/removal, collection list/detail pagination and CRUD controls,
 public collection links, and appreciation send/react/pagination controls
-through `urlFor()`.
+through `urlFor()`. The latest jobs source slice now routes jobs tabs,
+browse filters, saved/application/owner links, alerts, responses, detail
+actions, employer pages, talent search/profile links, CSV/CV downloads, and
+job POST forms through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -163,8 +166,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `984/1000` implementation/certification parity |
-| Green confidence estimate | about `967/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
+| Working estimate | about `985/1000` implementation/certification parity |
+| Green confidence estimate | about `968/1000`, mainly gated by visual/manual Laravel Blade parity, full unchunked runtime certification, remaining template-helper conversion, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, chunked live Laravel runtime-smoke evidence, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -206,6 +209,15 @@ slice:
 - `Select-String -Path apps\web-uk\src\views\saved\*.njk,apps\web-uk\src\views\saved-collections\*.njk,apps\web-uk\src\views\saved-social\*.njk -Pattern 'href="/saved','action="/saved','href="/me','action="/me','href="/members','href="/users','action="/users','action="/appreciations','href="{{ item.href }}' -SimpleMatch` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved"` passed: 20 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:50823` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 16 checks: base API/health, cookie, login, account, logout, signed `/saved`, `/me/collections`, and `/users/14/appreciations`, plus body markers `Saved items`, `My collections`, and `Appreciation`.
+
+Latest focused verification on 2026-07-09 for the jobs template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "jobs browse"` first failed on raw `/jobs` links/actions, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\jobs\*.njk -Pattern 'href="/jobs','action="/jobs','href: "/jobs','baseUrl: "/jobs','href="{{ nextHref }}','href="{{ meta.nextHref }}','action="{{ formAction }}' -SimpleMatch` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 27 tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "jobs|job"` passed: 28 selected tests.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:60268`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 24 checks: base API/health, cookie, login, account, logout, signed `/jobs/saved`, `/jobs/applications`, `/jobs/mine`, `/jobs/create`, `/jobs/alerts`, `/jobs/responses`, and `/jobs/employer-onboarding`, plus body markers `Saved opportunities`, `My applications`, `My postings`, `Post an opportunity`, `Job alerts`, `Interview invitations`, and `Welcome to posting opportunities`.
 
 Latest focused verification on 2026-07-09 for the groups index/form
 template-helper slice:
@@ -371,6 +383,10 @@ seller profile links, and seller onboarding controls through `urlFor()`.
 `slots.njk`, `slot-form.njk`, and `_slot-form.njk` now route coupon links and
 forms, order tab links, order ship/confirm/pay/cancel/rate forms, pickup-slot
 scan/edit/delete forms, and shared slot form actions through `urlFor()`.
+`src/views/jobs/*.njk` now route jobs tabs, browse filters, saved and
+application links, owner-management controls, alerts, responses, detail save/
+apply/renew forms, employer-brand links, talent search/profile links, CSV/CV
+downloads, and variable pagination/form targets through `urlFor()`.
 `src/views/federation/member.njk` now routes the federation member back link,
 service-navigation links, opt-in CTA, connection/message forms, and transfer
 CTA through `urlFor()`.
@@ -1431,8 +1447,8 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `984/1000`.
-Green confidence estimate: `967/1000`, because the consolidated code, static
+Current working estimate at this handoff: `985/1000`.
+Green confidence estimate: `968/1000`, because the consolidated code, static
 tests, route matrix, and focused host-domain smoke are strong, while
 visual/manual Blade parity spot-checks, full unchunked runtime certification,
 remaining template-helper conversion, and ASP.NET backend switching proof still

@@ -6,12 +6,12 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs">Back to jobs</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs') }}">Back to jobs</a>
 
   <h1 class="govuk-heading-xl">Hiring bias audit</h1>
   <p class="govuk-body-l">Review your hiring pipeline for patterns that may indicate bias. Data covers applications in the selected date range.</p>
 
-  <form method="get" action="/jobs/bias-audit" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/jobs/bias-audit') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label govuk-label--s" for="bias-from">From date</label>
       <input class="govuk-input govuk-input--width-10" id="bias-from" name="from" type="date" value="{{ filters.from }}">

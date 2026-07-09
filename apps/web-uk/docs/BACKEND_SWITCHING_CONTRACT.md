@@ -705,6 +705,13 @@ Saved-collection aliases are backed by `/api/v2/me/collections` plus
 `/api/v2/me/saved-items/{id}` for item removal. Saved item, collection, and
 saved social templates route their local links/forms through `urlFor()` with
 focused source, render, and Laravel runtime-smoke coverage.
+Jobs browse/detail/saved/applications/owner/employer/talent GET pages and
+job POST aliases are backed by Laravel-compatible jobs/admin/user APIs, and
+jobs templates route their local links/forms, pagination, CSV/CV downloads, and
+variable form targets through `urlFor()` with focused source and render
+coverage plus focused Laravel runtime smoke for the signed jobs account
+subpages. This is still Laravel-mode evidence only, not ASP.NET switching
+certification.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.

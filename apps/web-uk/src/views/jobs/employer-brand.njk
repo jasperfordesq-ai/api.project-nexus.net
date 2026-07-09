@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs">Back to opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs') }}">Back to opportunities</a>
 
   <div class="nexus-alpha-module-row govuk-!-margin-bottom-2">
     {% if employer.avatarUrl %}
@@ -51,7 +51,7 @@
       {% for job in openJobs %}
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-            <a class="govuk-link" href="/jobs/{{ job.id }}">{{ job.title }}</a>
+            <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id) }}">{{ job.title }}</a>
           </h3>
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
             {{ job.typeLabel }}{% if job.commitmentLabel %} - {{ job.commitmentLabel }}{% endif %}{% if job.locationLabel %} - {{ job.locationLabel }}{% endif %}

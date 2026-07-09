@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/mine">Back to my opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/mine') }}">Back to my opportunities</a>
 
   <span class="govuk-caption-xl">Get started as an employer</span>
   <h1 class="govuk-heading-xl">{% if hasPosted %}Post another opportunity{% else %}Welcome to posting opportunities{% endif %}</h1>
@@ -47,8 +47,8 @@
   </div>
 
   <p class="govuk-button-group">
-    <a class="govuk-button" data-module="govuk-button" href="/jobs/create">Post an opportunity</a>
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/mine">View my opportunities</a>
-    <a class="govuk-link" href="/jobs">Browse opportunities</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">Post an opportunity</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/mine') }}">View my opportunities</a>
+    <a class="govuk-link" href="{{ urlFor('/jobs') }}">Browse opportunities</a>
   </p>
 {% endblock %}

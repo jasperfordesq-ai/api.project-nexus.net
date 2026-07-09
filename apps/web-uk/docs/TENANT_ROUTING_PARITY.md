@@ -155,7 +155,10 @@ Current gaps:
   saved-item filters, bookmark removal, item links, collection list/detail
   links, pagination, create/update/delete forms, collection item removal,
   public collection profile links, appreciation send/reaction forms, and
-  appreciation pagination.
+  appreciation pagination. The latest focused source conversion covers jobs
+  templates, including tabs, browse filters, saved/application/owner links,
+  alerts, responses, detail actions, employer pages, talent search/profile
+  links, CSV/CV downloads, pagination, and job POST forms.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -523,9 +526,31 @@ smoke against temporary in-process Web UK `http://127.0.0.1:50823`, Laravel
 cookie, login, account, and logout checks plus `/saved`, `/me/collections`,
 and `/users/14/appreciations` module rendering and body markers.
 
+The thirty-fifth template-helper source slice extends direct `urlFor()`
+conversion into jobs pages. `src/views/jobs/alerts.njk`,
+`analytics.njk`, `applicants.njk`, `application-history.njk`,
+`applications.njk`, `bias-audit.njk`, `detail.njk`, `employer-brand.njk`,
+`form.njk`, `index.njk`, `mine.njk`, `onboarding.njk`, `pipeline.njk`,
+`qualification.njk`, `responses.njk`, `saved.njk`, `talent-profile.njk`, and
+`talent-search.njk` now route jobs tabs, browse filters, saved/application/
+owner links, alerts, responses, detail save/apply/renew forms, employer-brand
+links, talent search/profile links, CSV/CV downloads, pagination, and variable
+form targets through `urlFor()`. The source-level regression first failed on
+raw `/jobs` links/actions, then passed after conversion; a source scan for
+job-local raw `href`/`action`, pagination, and form-action strings returns no
+matches. Focused jobs render/API tests pass for 28 selected tests.
+Focused Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:60268`, Laravel `http://127.0.0.1:8088`, and
+`TENANT_ID=2` passed 24 checks across auth/cookie/logout plus signed
+`/jobs/saved`, `/jobs/applications`, `/jobs/mine`, `/jobs/create`,
+`/jobs/alerts`, `/jobs/responses`, and `/jobs/employer-onboarding` body
+markers.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "jobs browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "jobs|job"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "saved-item"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "saved"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search forms"

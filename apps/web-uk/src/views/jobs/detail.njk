@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a href="/jobs" class="govuk-back-link">Back to opportunities</a>
+  <a href="{{ urlFor('/jobs') }}" class="govuk-back-link">Back to opportunities</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -38,13 +38,13 @@
 
   {% if not job.isOwner %}
     {% if job.isSaved %}
-      <form method="post" action="/jobs/{{ job.id }}/unsave" class="govuk-!-margin-bottom-4">
+      <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/unsave') }}" class="govuk-!-margin-bottom-4">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="from" value="detail">
         <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Remove from saved</button>
       </form>
     {% else %}
-      <form method="post" action="/jobs/{{ job.id }}/save" class="govuk-!-margin-bottom-4">
+      <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/save') }}" class="govuk-!-margin-bottom-4">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="from" value="detail">
         <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Save opportunity</button>
@@ -104,10 +104,10 @@
   {% if job.isOwner %}
     <div class="govuk-inset-text govuk-!-margin-top-6">This is your opportunity. Manage applications from your postings.</div>
     <div class="nexus-alpha-actions govuk-!-margin-bottom-2">
-      <a class="govuk-link" href="/jobs/{{ job.id }}/applications">Manage applications</a>
-      <a class="govuk-link" href="/jobs/{{ job.id }}/edit">Edit</a>
+      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">Manage applications</a>
+      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/edit') }}">Edit</a>
     </div>
-    <form method="post" action="/jobs/{{ job.id }}/renew">
+    <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/renew') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Renew</button>
     </form>
@@ -118,7 +118,7 @@
         <p class="govuk-body">You have already applied for this opportunity.</p>
       </div>
     {% else %}
-      <form method="post" action="/jobs/{{ job.id }}/apply" enctype="multipart/form-data">
+      <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/apply') }}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="cover_letter">Why are you a good fit? (optional)</label>

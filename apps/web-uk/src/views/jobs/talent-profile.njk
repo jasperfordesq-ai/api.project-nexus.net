@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/talent-search">Find candidates</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/talent-search') }}">Find candidates</a>
 
   <div class="nexus-alpha-module-row govuk-!-margin-bottom-2">
     {% if candidate.avatarUrl %}

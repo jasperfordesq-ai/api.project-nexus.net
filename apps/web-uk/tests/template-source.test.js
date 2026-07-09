@@ -528,6 +528,42 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/jobs/);
   });
 
+  it('keeps jobs browse, saved, application, owner, and employer controls behind urlFor()', () => {
+    const templates = [
+      path.join('jobs', 'alerts.njk'),
+      path.join('jobs', 'analytics.njk'),
+      path.join('jobs', 'applicants.njk'),
+      path.join('jobs', 'application-history.njk'),
+      path.join('jobs', 'applications.njk'),
+      path.join('jobs', 'bias-audit.njk'),
+      path.join('jobs', 'detail.njk'),
+      path.join('jobs', 'employer-brand.njk'),
+      path.join('jobs', 'form.njk'),
+      path.join('jobs', 'index.njk'),
+      path.join('jobs', 'mine.njk'),
+      path.join('jobs', 'onboarding.njk'),
+      path.join('jobs', 'pipeline.njk'),
+      path.join('jobs', 'qualification.njk'),
+      path.join('jobs', 'responses.njk'),
+      path.join('jobs', 'saved.njk'),
+      path.join('jobs', 'talent-profile.njk'),
+      path.join('jobs', 'talent-search.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/jobs/);
+      expect(template).not.toMatch(/action="\/jobs/);
+      expect(template).not.toContain('href="{{ nextHref }}"');
+      expect(template).not.toContain('href="{{ meta.nextHref }}"');
+      expect(template).not.toContain('action="{{ formAction }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/jobs/);
+  });
+
   it('keeps blog index, detail, comments, and reaction controls behind urlFor()', () => {
     const templates = [
       path.join('blog', 'index.njk'),

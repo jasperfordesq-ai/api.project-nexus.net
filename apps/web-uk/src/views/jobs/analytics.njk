@@ -6,16 +6,16 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/{{ job.id }}/applications">Back to my opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">Back to my opportunities</a>
 
   <span class="govuk-caption-xl">{{ job.title }}</span>
   <h1 class="govuk-heading-xl">Opportunity analytics</h1>
   <p class="govuk-body-l">See how your opportunity is performing - views, applications and where candidates are in your pipeline.</p>
 
   <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
-    <a class="govuk-button" data-module="govuk-button" href="/jobs/{{ job.id }}/pipeline">View pipeline</a>
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/{{ job.id }}/applications/export.csv">Download applications (CSV)</a>
-    <a class="govuk-link" href="/jobs/{{ job.id }}">View opportunity</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/pipeline') }}">View pipeline</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications/export.csv') }}">Download applications (CSV)</a>
+    <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id) }}">View opportunity</a>
   </div>
 
   <h2 class="govuk-heading-l">Key metrics</h2>

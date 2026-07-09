@@ -14,25 +14,25 @@
     <h2 class="govuk-tabs__title">Jobs</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs">Browse opportunities</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs') }}">Browse opportunities</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/saved">Saved</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}">Saved</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/applications">My applications</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">My applications</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="/jobs/responses" aria-current="page">Responses</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}" aria-current="page">Responses</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/alerts">Job alerts</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">Job alerts</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/mine">My postings</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">My postings</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="/jobs/create">Post a job</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">Post a job</a>
       </li>
     </ul>
   </div>
@@ -92,12 +92,12 @@
               <p class="govuk-body">{{ interview.details }}</p>
             {% endif %}
             {% if interview.vacancyId %}
-              <p class="govuk-body-s"><a class="govuk-link" href="/jobs/{{ interview.vacancyId }}">View opportunity</a></p>
+              <p class="govuk-body-s"><a class="govuk-link" href="{{ urlFor('/jobs/' ~ interview.vacancyId) }}">View opportunity</a></p>
             {% endif %}
 
             {% if interview.canRespond %}
               <div class="nexus-alpha-actions">
-                <form method="post" action="/jobs/interviews/{{ interview.id }}/accept" class="nexus-alpha-linkform">
+                <form method="post" action="{{ urlFor('/jobs/interviews/' ~ interview.id ~ '/accept') }}" class="nexus-alpha-linkform">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <div class="govuk-form-group govuk-!-margin-bottom-2">
                     <label class="govuk-label" for="interview-accept-note-{{ interview.id }}">Note (optional)</label>
@@ -106,7 +106,7 @@
                   </div>
                   <button type="submit" class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Accept interview</button>
                 </form>
-                <form method="post" action="/jobs/interviews/{{ interview.id }}/decline" class="nexus-alpha-linkform">
+                <form method="post" action="{{ urlFor('/jobs/interviews/' ~ interview.id ~ '/decline') }}" class="nexus-alpha-linkform">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Decline interview</button>
                 </form>
@@ -146,7 +146,7 @@
               <p class="govuk-body">{{ offer.messageText }}</p>
             {% endif %}
             {% if offer.vacancyId %}
-              <p class="govuk-body-s"><a class="govuk-link" href="/jobs/{{ offer.vacancyId }}">View opportunity</a></p>
+              <p class="govuk-body-s"><a class="govuk-link" href="{{ urlFor('/jobs/' ~ offer.vacancyId) }}">View opportunity</a></p>
             {% endif %}
 
             {% if offer.canRespond %}
@@ -158,11 +158,11 @@
                 </strong>
               </div>
               <div class="nexus-alpha-actions">
-                <form method="post" action="/jobs/offers/{{ offer.id }}/accept" class="nexus-alpha-linkform">
+                <form method="post" action="{{ urlFor('/jobs/offers/' ~ offer.id ~ '/accept') }}" class="nexus-alpha-linkform">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button type="submit" class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Accept offer</button>
                 </form>
-                <form method="post" action="/jobs/offers/{{ offer.id }}/reject" class="nexus-alpha-linkform">
+                <form method="post" action="{{ urlFor('/jobs/offers/' ~ offer.id ~ '/reject') }}" class="nexus-alpha-linkform">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Decline offer</button>
                 </form>

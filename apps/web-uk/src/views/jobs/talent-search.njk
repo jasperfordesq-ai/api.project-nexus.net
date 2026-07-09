@@ -6,12 +6,12 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/mine">Back to my opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/mine') }}">Back to my opportunities</a>
 
   <h1 class="govuk-heading-xl">Find candidates</h1>
   <p class="govuk-body-l">Search community members who have made their profile available to employers. Members choose whether to appear here.</p>
 
-  <form method="get" action="/jobs/talent-search" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/jobs/talent-search') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label govuk-label--s" for="talent-keywords">Keywords</label>
       <div id="talent-keywords-hint" class="govuk-hint">Search names, headlines, skills and bios.</div>
@@ -31,7 +31,7 @@
 
     <button type="submit" class="govuk-button" data-module="govuk-button">Search candidates</button>
     {% if hasSearched %}
-      <a class="govuk-link govuk-!-margin-left-3" href="/jobs/talent-search">Clear search</a>
+      <a class="govuk-link govuk-!-margin-left-3" href="{{ urlFor('/jobs/talent-search') }}">Clear search</a>
     {% endif %}
   </form>
 
@@ -57,7 +57,7 @@
             {% endif %}
             <div>
               <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/jobs/talent-search/{{ candidate.id }}">{{ candidate.name }}</a>
+                <a class="govuk-link" href="{{ urlFor('/jobs/talent-search/' ~ candidate.id) }}">{{ candidate.name }}</a>
               </h2>
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ candidate.headline }}</p>
             </div>
@@ -81,7 +81,7 @@
 
     {% if meta.nextHref %}
       <p class="govuk-!-margin-top-4">
-        <a class="govuk-link" href="{{ meta.nextHref }}">Show more candidates</a>
+        <a class="govuk-link" href="{{ urlFor(meta.nextHref) }}">Show more candidates</a>
       </p>
     {% endif %}
   {% endif %}

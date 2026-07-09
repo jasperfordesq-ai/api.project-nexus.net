@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/jobs/mine">Back to my opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/mine') }}">Back to my opportunities</a>
 
   <span class="govuk-caption-xl">{{ job.title }}</span>
   <h1 class="govuk-heading-xl">Application pipeline</h1>
@@ -32,7 +32,7 @@
   {% endif %}
 
   <p class="govuk-!-margin-bottom-6">
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/{{ job.id }}/applications">View full applicant list</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">View full applicant list</a>
   </p>
 
   {% if not hasApplications %}
@@ -60,11 +60,11 @@
               {% endif %}
               {% if app.cvFilename %}
                 <p class="govuk-body-s govuk-!-margin-bottom-2">
-                  <a class="govuk-link" href="/jobs/applications/{{ app.id }}/cv">Download CV: {{ app.cvFilename }}</a>
+                  <a class="govuk-link" href="{{ urlFor('/jobs/applications/' ~ app.id ~ '/cv') }}">Download CV: {{ app.cvFilename }}</a>
                 </p>
               {% endif %}
 
-              <form method="post" action="/jobs/{{ job.id }}/applications/{{ app.id }}/status">
+              <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/applications/' ~ app.id ~ '/status') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <div class="govuk-form-group govuk-!-margin-bottom-2">
                   <label class="govuk-label" for="pipeline-status-{{ app.id }}">Move to stage</label>
