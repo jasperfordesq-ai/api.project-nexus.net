@@ -95,9 +95,12 @@ subscription-backed invoice rows with the React `number`, `date`, `amount`,
 `currency`, `status`, `hosted_invoice_url`, and `invoice_pdf` fields.
 `POST /api/v2/admin/billing/portal` now returns Laravel's `NO_SUBSCRIPTION`
 error envelope instead of a generic compatibility write when no Stripe customer
-is available. Paid checkout, real Stripe portal/invoice retrieval/session
-behavior, billing-interval storage, and exact Laravel `pay_plans` /
-`tenant_plan_assignments` schema parity remain deeper gaps.
+is available, and `POST /api/v2/admin/billing/upgrade-request` now returns the
+Laravel `data.sent=true` envelope while recording an `AuditLog` entry for the
+tenant request. Paid checkout, real Stripe portal/invoice retrieval/session
+behavior, provider-backed upgrade email delivery, billing-interval storage, and
+exact Laravel `pay_plans` / `tenant_plan_assignments` schema parity remain
+deeper gaps.
 
 The Laravel React availability grid slice now has focused ASP.NET regression
 coverage for `GET /api/v2/users/me/availability`,

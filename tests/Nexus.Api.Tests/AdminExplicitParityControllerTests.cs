@@ -1431,6 +1431,35 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BillingUpgradeRequest_ReturnsSentAndWritesAuditLog()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/admin/billing/upgrade-request", new
+        {
+            message = "Please move us to a larger plan."
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("data").GetProperty("sent").GetBoolean().Should().BeTrue();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var audit = await db.AuditLogs.IgnoreQueryFilters()
+            .SingleAsync(a => a.TenantId == TestData.Tenant1.Id && a.Action == "billing.upgrade_requested");
+        audit.UserId.Should().Be(TestData.AdminUser.Id);
+        audit.EntityType.Should().Be("Tenant");
+        audit.EntityId.Should().Be(TestData.Tenant1.Id);
+        audit.NewValues.Should().Contain("Please move us to a larger plan.");
+
+        var compatibilityRows = await db.CompatibilityAuditEntries.IgnoreQueryFilters()
+            .CountAsync(a => a.TenantId == TestData.Tenant1.Id && a.Endpoint == "/api/v2/admin/billing/upgrade-request");
+        compatibilityRows.Should().Be(0);
+    }
+
+    [Fact]
     public async Task BillingInvoices_ReturnsSubscriptionBackedInvoices()
     {
         int subscriptionId;

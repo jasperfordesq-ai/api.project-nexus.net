@@ -630,6 +630,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/api-partners" => await CreateApiPartner(),
             "/api/v2/admin/billing/checkout" => await CreateBillingCheckout(),
             "/api/v2/admin/billing/portal" => CreateBillingPortal(),
+            "/api/v2/admin/billing/upgrade-request" => await CreateBillingUpgradeRequest(),
             "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
@@ -670,6 +671,39 @@ public class AdminExplicitParityController : ControllerBase
                 }
             }
         });
+    }
+
+    private async Task<IActionResult> CreateBillingUpgradeRequest()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var message = JsonString(payload, "message") ?? string.Empty;
+        var now = DateTime.UtcNow;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = tenantId,
+            UserId = GetCurrentAdminUserId(),
+            Action = "billing.upgrade_requested",
+            EntityType = "Tenant",
+            EntityId = tenantId,
+            NewValues = JsonSerializer.Serialize(new { message }, StoreJsonOptions),
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            UserAgent = Request.Headers.UserAgent.ToString(),
+            Metadata = JsonSerializer.Serialize(new
+            {
+                source = "laravel_react_billing",
+                endpoint = "/api/v2/admin/billing/upgrade-request",
+                email_delivery = "not_configured"
+            }, StoreJsonOptions),
+            Severity = AuditSeverity.Info,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { sent = true } });
     }
 
     private async Task<IActionResult> BulkApproveUsers()
