@@ -727,7 +727,31 @@ public class MemberParityController : ControllerBase
     }
 
     [HttpPost("member-premium/cancel")]
-    public IActionResult CancelPremium() => Ok(new { data = new { status = "cancelled" } });
+    public async Task<IActionResult> CancelPremium()
+    {
+        var subscription = await _db.UserSubscriptions
+            .Where(s => s.TenantId == TenantId() && s.UserId == UserId() && s.Status == SubscriptionStatus.Active)
+            .OrderByDescending(s => s.UpdatedAt)
+            .ThenByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (subscription == null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[] { new { code = "NO_SUBSCRIPTION", message = "No active member premium subscription found." } }
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        subscription.Status = SubscriptionStatus.Cancelled;
+        subscription.CancelledAt = now;
+        subscription.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { cancelled = true } });
+    }
 
     [HttpPost("members/{memberId:int}/peer-endorse")]
     public IActionResult PeerEndorse(int memberId, [FromBody] JsonElement body) => Ok(new { data = new { member_id = memberId, skill = Str(body, "skill"), endorsed = true } });

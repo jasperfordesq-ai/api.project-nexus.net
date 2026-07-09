@@ -131,4 +131,69 @@ public sealed class LaravelReactMemberPremiumCompatibilityTests : IntegrationTes
         portalData.GetProperty("portal_url").GetString().Should().Contain("/premium/manage?portal_session=");
         portalData.TryGetProperty("url", out _).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task MemberPremiumCancel_ReturnsLaravelReactCancelledEnvelopeAndMarksSubscription()
+    {
+        var now = DateTime.UtcNow;
+        int subscriptionId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var existing = await db.UserSubscriptions
+                .Where(s => s.TenantId == TestData.Tenant1.Id && s.UserId == TestData.MemberUser.Id)
+                .ToListAsync();
+            db.UserSubscriptions.RemoveRange(existing);
+
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Cancel Contract Tier",
+                Description = "Member premium cancel contract plan",
+                Price = 9m,
+                Currency = "EUR",
+                Features = "[]",
+                IsActive = true,
+                IsPublic = true,
+                CreatedAt = now.AddDays(-20),
+                UpdatedAt = now.AddDays(-1)
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+
+            var subscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                StartedAt = now.AddDays(-5),
+                NextBillingDate = now.AddDays(25),
+                StripeSubscriptionId = "sub_member_premium_cancel_contract",
+                CreatedAt = now.AddDays(-5),
+                UpdatedAt = now.AddDays(-1)
+            };
+            db.UserSubscriptions.Add(subscription);
+            await db.SaveChangesAsync();
+            subscriptionId = subscription.Id;
+        }
+
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/member-premium/cancel", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.GetProperty("cancelled").GetBoolean().Should().BeTrue();
+        data.TryGetProperty("status", out _).Should().BeFalse();
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var refreshed = await verifyDb.UserSubscriptions.SingleAsync(s => s.Id == subscriptionId);
+        refreshed.Status.Should().Be(SubscriptionStatus.Cancelled);
+        refreshed.CancelledAt.Should().NotBeNull();
+    }
 }
