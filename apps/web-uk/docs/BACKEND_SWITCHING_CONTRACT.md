@@ -904,6 +904,13 @@ through the active tenant URL helper. It must not emit flat `/login` locations
 when the request is served from `/{tenantSlug}/accessible`, a custom accessible
 domain, or a parent-domain child path.
 
+The activity route-redirect slice adds the same backend-neutral requirement
+for activity dashboard and insights auth handoffs. Future ASP.NET mode must
+preserve Laravel-compatible `/activity` and `/activity/insights` auth-required
+redirects through the active tenant URL helper. It must not emit flat `/login`
+locations when the request is served from `/{tenantSlug}/accessible`, a custom
+accessible domain, or a parent-domain child path.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

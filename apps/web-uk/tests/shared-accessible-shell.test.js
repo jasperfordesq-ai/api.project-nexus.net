@@ -1462,12 +1462,15 @@ describe('shared accessible frontend shell', () => {
     });
 
     const unsigned = await request(app).get('/activity');
+    const mountedUnsigned = await request(app).get('/acme/accessible/activity');
     const signed = await request(app)
       .get('/activity')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(mountedUnsigned.status).toBe(302);
+    expect(mountedUnsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
 
     expect(signed.status).toBe(200);
     expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/activity/dashboard');
@@ -1575,12 +1578,15 @@ describe('shared accessible frontend shell', () => {
     });
 
     const unsigned = await request(app).get('/activity/insights');
+    const mountedUnsigned = await request(app).get('/acme/accessible/activity/insights');
     const signed = await request(app)
       .get('/activity/insights')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(mountedUnsigned.status).toBe(302);
+    expect(mountedUnsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
 
     expect(signed.status).toBe(200);
     expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/activity/dashboard');

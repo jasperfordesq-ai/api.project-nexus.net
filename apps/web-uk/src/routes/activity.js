@@ -45,6 +45,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function payloadFrom(result) {
   if (result && result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
     return result.data;
@@ -241,7 +246,7 @@ function normalizeActivity(payload) {
 async function activityContext(req, res, title) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return null;
   }
 
@@ -250,7 +255,7 @@ async function activityContext(req, res, title) {
     payload = await callProfileApi(token, 'GET', '/activity/dashboard');
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      res.redirect(loginRedirect());
+      redirectTo(res, loginRedirect());
       return null;
     }
     payload = {};

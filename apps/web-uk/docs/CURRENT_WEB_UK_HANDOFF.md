@@ -78,6 +78,10 @@ navigation links, and the achievements/gamification tabs, back links, forms,
 and badge links, plus the leaderboard/NEXUS score tabs, back links, forms,
 load-more links, tier link, and profile links with `urlFor()`; most other
 templates still need the same source-level conversion. A follow-up
+activity route-redirect slice now sends unsigned activity dashboard and
+insights auth handoffs through `res.locals.urlFor`, with shared-mount coverage
+proving `/acme/accessible/activity` and `/acme/accessible/activity/insights`
+redirect to the tenant-mounted login path. A follow-up
 profile/settings slice now routes the profile summary links, settings hub
 cards, profile/security/privacy forms, two-step verification actions, blocked
 member unblock forms, delete-account controls, and settings appearance,
@@ -743,6 +747,12 @@ route-redirect slice:
 
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "public coupon route redirects|signed-out visitors away from the Laravel coupons"` first failed because `src/routes/coupons.js` still emitted direct `res.redirect(loginRedirect())`, then passed after routing coupon auth handoffs through `res.locals.urlFor`.
 - Shared-mount behavior coverage proves unsigned `/acme/accessible/coupons` and `/acme/accessible/coupons/{id}` requests redirect to `/acme/accessible/login?status=auth-required`.
+
+Latest focused verification on 2026-07-09 for the activity route-redirect
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity route redirects|Laravel-style activity"` first failed because `src/routes/activity.js` still emitted direct `res.redirect(loginRedirect())`, then passed after routing activity auth handoffs through `res.locals.urlFor`.
+- Shared-mount behavior coverage proves unsigned `/acme/accessible/activity` and `/acme/accessible/activity/insights` requests redirect to `/acme/accessible/login?status=auth-required`.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

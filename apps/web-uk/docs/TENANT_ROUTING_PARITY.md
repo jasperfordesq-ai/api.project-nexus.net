@@ -328,6 +328,16 @@ detailed-insights link through `urlFor('/activity/insights')`, and
 tests prove the flat `/activity` and `/activity/insights` output remains
 unchanged.
 
+The seventy-seventh route-redirect slice extends route-level tenant awareness
+into the activity family. `src/routes/activity.js` now routes unsigned
+activity dashboard and insights auth handoffs through `res.locals.urlFor`,
+matching Laravel's named login route behavior for shared tenant mounts and
+custom-domain contexts. The focused source regression first failed because the
+route still emitted direct `res.redirect(loginRedirect())`, then passed after
+conversion. Shared-mount behavior coverage proves unsigned
+`/acme/accessible/activity` and `/acme/accessible/activity/insights` requests
+redirect to `/acme/accessible/login?status=auth-required`.
+
 The thirteenth template-helper source slice extends the same direct `urlFor()`
 conversion into the achievements and gamification pages. The achievements
 index, XP shop, collections, engagement history, showcase, and badge detail
