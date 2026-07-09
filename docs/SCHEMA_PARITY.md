@@ -7,20 +7,20 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 ## Current Source Counts
 
-Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-05.
+Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-09.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
-| Laravel migrations | 318 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 89 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
+| Laravel migrations | 323 | PHP migration files under `database/migrations`. |
+| ASP.NET EF migrations | 101 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
-| Laravel touched tables | 102 | Unique `Schema::table(...)` table names. |
+| Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 361 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 316 | Union of EF `ToTable(...)`, `[Table(...)]`, and migration `CreateTable(...)` names. |
-| Exact matched tables | 126 | Static name matches only. |
-| Missing Laravel tables | 235 | Laravel source tables with no exact .NET table name. |
-| Extra ASP.NET tables | 190 | .NET table names with no exact Laravel table name. |
+| ASP.NET tables | 323 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
+| Exact matched tables | 130 | Static name matches only; `user_blocks` is now represented for Laravel React blocked-users settings parity. |
+| Missing Laravel tables | 231 | Laravel source tables with no exact .NET table name. |
+| Extra ASP.NET tables | 193 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`

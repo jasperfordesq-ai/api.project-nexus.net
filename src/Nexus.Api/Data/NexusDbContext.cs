@@ -38,6 +38,7 @@ public class NexusDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Connection> Connections => Set<Connection>();
+    public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();

@@ -53,6 +53,39 @@ public class SocialConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<UserBlock>(entity =>
+        {
+            entity.ToTable("user_blocks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.BlockedUserId).HasColumnName("blocked_user_id");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasColumnType("text");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasIndex(e => new { e.TenantId, e.BlockedUserId });
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.BlockedUserId }).IsUnique();
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.BlockedUser)
+                .WithMany()
+                .HasForeignKey(e => e.BlockedUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // FeedPost configuration with tenant filter
         modelBuilder.Entity<FeedPost>(entity =>
         {

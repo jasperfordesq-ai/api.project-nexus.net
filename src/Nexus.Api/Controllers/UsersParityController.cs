@@ -42,16 +42,145 @@ public class UsersParityController : ControllerBase
     }
 
     [HttpGet("blocked")]
-    public IActionResult Blocked() => Ok(new { data = Array.Empty<object>() });
+    public async Task<IActionResult> Blocked()
+    {
+        var tenantId = TenantId();
+        var userId = UserId();
+        var rows = await (
+            from block in _db.UserBlocks.AsNoTracking()
+            join blockedUser in _db.Users.AsNoTracking() on block.BlockedUserId equals blockedUser.Id
+            where block.TenantId == tenantId
+                && block.UserId == userId
+                && blockedUser.TenantId == tenantId
+            orderby block.CreatedAt descending
+            select new
+            {
+                block_id = block.Id,
+                user_id = block.BlockedUserId,
+                first_name = blockedUser.FirstName,
+                last_name = blockedUser.LastName,
+                avatar_url = blockedUser.AvatarUrl,
+                reason = block.Reason,
+                blocked_at = block.CreatedAt
+            }).ToListAsync();
+
+        var data = rows.Select(row => new
+        {
+            row.block_id,
+            row.user_id,
+            name = $"{row.first_name} {row.last_name}".Trim(),
+            row.first_name,
+            row.last_name,
+            row.avatar_url,
+            row.reason,
+            row.blocked_at
+        }).ToList();
+
+        return Ok(new { data, meta = BaseMeta() });
+    }
 
     [HttpPost("{userId:int}/block")]
-    public IActionResult BlockUser(int userId) => Ok(new { data = new { user_id = userId, blocked = true } });
+    public async Task<IActionResult> BlockUser(int userId, [FromBody] JsonElement body)
+    {
+        var tenantId = TenantId();
+        var currentUserId = UserId();
+        if (currentUserId == userId)
+        {
+            return BadRequest(ErrorEnvelope("VALIDATION_ERROR", "You cannot block yourself."));
+        }
+
+        var targetExists = await _db.Users.AsNoTracking()
+            .AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!targetExists)
+        {
+            return NotFound(ErrorEnvelope("NOT_FOUND", "User not found."));
+        }
+
+        var existing = await _db.UserBlocks.FirstOrDefaultAsync(block =>
+            block.TenantId == tenantId &&
+            block.UserId == currentUserId &&
+            block.BlockedUserId == userId);
+
+        if (existing == null)
+        {
+            _db.UserBlocks.Add(new UserBlock
+            {
+                TenantId = tenantId,
+                UserId = currentUserId,
+                BlockedUserId = userId,
+                Reason = Str(body, "reason"),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        var connections = await _db.Connections
+            .Where(connection => connection.TenantId == tenantId &&
+                ((connection.RequesterId == currentUserId && connection.AddresseeId == userId) ||
+                 (connection.RequesterId == userId && connection.AddresseeId == currentUserId)))
+            .ToListAsync();
+        if (connections.Count > 0)
+        {
+            _db.Connections.RemoveRange(connections);
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                message = "User blocked.",
+                blocked_user_id = userId
+            },
+            meta = BaseMeta()
+        });
+    }
 
     [HttpDelete("{userId:int}/block")]
-    public IActionResult UnblockUser(int userId) => NoContent();
+    public async Task<IActionResult> UnblockUser(int userId)
+    {
+        var tenantId = TenantId();
+        var currentUserId = UserId();
+        var block = await _db.UserBlocks.FirstOrDefaultAsync(row =>
+            row.TenantId == tenantId &&
+            row.UserId == currentUserId &&
+            row.BlockedUserId == userId);
+
+        if (block == null)
+        {
+            return NotFound(ErrorEnvelope("NOT_FOUND", "User is not blocked."));
+        }
+
+        _db.UserBlocks.Remove(block);
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                message = "User unblocked.",
+                unblocked_user_id = userId
+            },
+            meta = BaseMeta()
+        });
+    }
 
     [HttpGet("{userId:int}/block-status")]
-    public IActionResult BlockStatus(int userId) => Ok(new { data = new { user_id = userId, blocked = false } });
+    public async Task<IActionResult> BlockStatus(int userId)
+    {
+        var tenantId = TenantId();
+        var currentUserId = UserId();
+        var isBlocked = await _db.UserBlocks.AsNoTracking().AnyAsync(block =>
+            block.TenantId == tenantId &&
+            block.UserId == currentUserId &&
+            block.BlockedUserId == userId);
+        var isBlockedBy = await _db.UserBlocks.AsNoTracking().AnyAsync(block =>
+            block.TenantId == tenantId &&
+            block.UserId == userId &&
+            block.BlockedUserId == currentUserId);
+
+        return Ok(new { data = new { is_blocked = isBlocked, is_blocked_by = isBlockedBy }, meta = BaseMeta() });
+    }
 
     [HttpGet("{userId:int}/appreciations")]
     public async Task<IActionResult> Appreciations(int userId) => Ok(new { data = await _db.Reviews.Where(r => r.TenantId == TenantId() && r.TargetUserId == userId).ToListAsync() });
@@ -404,6 +533,8 @@ public class UsersParityController : ControllerBase
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
+    private static object BaseMeta() => new { base_url = "" };
+    private static object ErrorEnvelope(string code, string message) => new { errors = new[] { new { code, message } } };
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;

@@ -280,6 +280,17 @@ errors instead of synthetic redirect URLs. Real provider credentials, callback
 state verification, linked identity persistence, and browser OAuth smoke
 coverage remain deeper gaps.
 
+The Laravel React blocked-users settings slice now has focused PostgreSQL-backed
+contract coverage for `POST /api/v2/users/{id}/block`, `GET
+/api/v2/users/blocked`, `GET /api/v2/users/{id}/block-status`, and `DELETE
+/api/v2/users/{id}/block`. ASP.NET now persists tenant-scoped rows in the
+Laravel-compatible `user_blocks` table, returns blocked-user rows with
+`block_id`, `user_id`, `name`, `first_name`, `last_name`, `avatar_url`,
+`reason`, and `blocked_at`, removes same-tenant connection rows on block, and
+returns Laravel-style `data.success` / `errors[].code=NOT_FOUND` envelopes for
+unblock flows. Feed/search/message exclusion side effects remain broader
+workflow gaps beyond this settings-page contract.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,

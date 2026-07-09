@@ -420,6 +420,7 @@ public static class TestDataSeeder
                 group_members,
                 groups,
                 notifications,
+                user_blocks,
                 connections,
                 messages,
                 conversations,
