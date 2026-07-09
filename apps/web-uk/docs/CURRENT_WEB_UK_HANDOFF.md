@@ -226,6 +226,11 @@ The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights
 profile back links through `urlFor()`.
+The latest member action redirect slice now routes member connection,
+endorsement, block/unblock, review, transfer, discover, nearby, insights, and
+Laravel-401 auth redirects through `res.locals.urlFor`, with shared-mount
+coverage proving `/acme/accessible/members/{id}/connection` and blocked-list
+unblock results stay inside the active tenant mount.
 The latest knowledge-base source slice now routes the public `/kb` search form,
 article links, load-more link, article back link, and related-article links
 through `urlFor()`. A follow-up cleanup also routes the unmounted legacy

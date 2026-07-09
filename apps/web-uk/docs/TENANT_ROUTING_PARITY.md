@@ -629,6 +629,17 @@ passed 18 checks across auth/cookie/logout plus signed `/members`,
 `/members/discover`, `/members/nearby`, and `/members/77/insights` body
 markers.
 
+The member action redirect slice extends route-level tenant awareness into
+`src/routes/members.js`. Auth-required handoffs, connection/endorsement/
+block/unblock/review/transfer status redirects, blocked-list unblock returns,
+discover/nearby/insights auth handoffs, and Laravel `401` redirects now pass
+through `res.locals.urlFor` instead of raw `/login`, `/members`, or
+`/profile/blocked` targets. The source-level regression first failed on those
+raw redirects, then passed after conversion; shared-mount coverage proves
+signed-out `/acme/accessible/members/77/connection` redirects to
+`/acme/accessible/login?status=auth-required`, and signed unblock-from-list
+redirects to `/acme/accessible/profile/blocked?status=member-unblocked`.
+
 The thirty-seventh template-helper source slice extends direct `urlFor()`
 conversion into podcast browse, detail, episode, form, manage, and studio
 pages. `src/views/podcasts/index.njk`, `detail.njk`, `episode.njk`,

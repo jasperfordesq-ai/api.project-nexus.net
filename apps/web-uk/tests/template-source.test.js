@@ -273,6 +273,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/members/);
   });
 
+  it('keeps member action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'members.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|members|profile\/blocked)/);
+    expect(route).not.toContain('return `/members');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps podcast browse, detail, studio, and management controls behind urlFor()', () => {
     const templates = [
       path.join('podcasts', 'detail.njk'),

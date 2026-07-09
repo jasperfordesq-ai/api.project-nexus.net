@@ -33,6 +33,9 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
+const MEMBERS_PATH = '/members';
+const BLOCKED_MEMBERS_PATH = '/profile/blocked?status=member-unblocked';
 const MEMBER_CONNECTION_ACTIONS = new Set(['connect', 'accept', 'decline', 'cancel', 'remove']);
 const MEMBER_ENDORSEMENT_ACTIONS = new Set(['endorse', 'remove']);
 
@@ -41,7 +44,12 @@ function tokenFrom(req) {
 }
 
 function memberUrl(id, status) {
-  return `/members/${id}?status=${encodeURIComponent(status)}`;
+  return `${MEMBERS_PATH}/${id}?status=${encodeURIComponent(status)}`;
+}
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
 }
 
 function isAuthError(error) {
@@ -215,7 +223,7 @@ function normalizeVerificationBadges(result) {
 
 function redirectAuthIfNeeded(error, res) {
   if (isAuthError(error)) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return true;
   }
   return false;
@@ -240,7 +248,7 @@ router.post('/:id(\\d+)/connection', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const action = String(req.body.action || '').trim();
@@ -275,14 +283,14 @@ router.post('/:id(\\d+)/connection', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(memberUrl(id, status));
+  return redirectTo(res, memberUrl(id, status));
 }));
 
 router.post('/:id(\\d+)/endorse', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const skillName = String(req.body.skill_name || '').trim();
@@ -305,14 +313,14 @@ router.post('/:id(\\d+)/endorse', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(memberUrl(id, status));
+  return redirectTo(res, memberUrl(id, status));
 }));
 
 router.post('/:id(\\d+)/block', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   let status = 'member-blocked';
@@ -324,14 +332,14 @@ router.post('/:id(\\d+)/block', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 400 ? 'block-self' : 'block-failed';
   }
 
-  return res.redirect(memberUrl(id, status));
+  return redirectTo(res, memberUrl(id, status));
 }));
 
 router.post('/:id(\\d+)/unblock', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   try {
@@ -342,21 +350,21 @@ router.post('/:id(\\d+)/unblock', asyncRoute(async (req, res) => {
   }
 
   if (String(req.body.from || '').trim() === 'list') {
-    return res.redirect('/profile/blocked?status=member-unblocked');
+    return redirectTo(res, BLOCKED_MEMBERS_PATH);
   }
-  return res.redirect(memberUrl(id, 'member-unblocked'));
+  return redirectTo(res, memberUrl(id, 'member-unblocked'));
 }));
 
 router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const rating = Number(req.body.rating);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.redirect(memberUrl(id, 'review-invalid'));
+    return redirectTo(res, memberUrl(id, 'review-invalid'));
   }
 
   let status = 'review-submitted';
@@ -378,19 +386,19 @@ router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(memberUrl(id, status));
+  return redirectTo(res, memberUrl(id, status));
 }));
 
 router.post('/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const amount = Number(req.body.amount);
   if (!Number.isInteger(amount) || amount <= 0) {
-    return res.redirect(memberUrl(id, 'transfer-failed'));
+    return redirectTo(res, memberUrl(id, 'transfer-failed'));
   }
 
   let status = 'transfer-sent';
@@ -407,13 +415,13 @@ router.post('/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
     status = transferFailureStatus(error);
   }
 
-  return res.redirect(memberUrl(id, status));
+  return redirectTo(res, memberUrl(id, status));
 }));
 
 router.get('/discover', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const search = String(req.query.q || '').trim().slice(0, 100);
@@ -458,7 +466,7 @@ router.get('/discover', asyncRoute(async (req, res) => {
 router.get('/nearby', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const search = String(req.query.q || '').trim().slice(0, 100);
@@ -514,7 +522,7 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   try {

@@ -8303,6 +8303,45 @@ describe('shared accessible frontend shell', () => {
     expect(api.getMemberConnectionStatus).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel member action redirects inside the shared accessible mount', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/acme/accessible/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const signedOut = await agent
+      .post('/acme/accessible/members/77/connection')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'connect'
+      });
+
+    expect(signedOut.status).toBe(302);
+    expect(signedOut.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(api.getMemberConnectionStatus).not.toHaveBeenCalled();
+
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const signedFirst = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const signedCsrfMatch = signedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const signedResponse = await agent
+      .post('/acme/accessible/members/77/unblock')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: signedCsrfMatch[1],
+        from: 'list'
+      });
+
+    expect(signedResponse.status).toBe(302);
+    expect(signedResponse.headers.location).toBe('/acme/accessible/profile/blocked?status=member-unblocked');
+    expect(api.unblockMember).toHaveBeenCalledWith('test-token', 77);
+  });
+
   it('submits the Laravel resource upload route with multipart file data', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
