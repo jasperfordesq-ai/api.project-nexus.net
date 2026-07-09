@@ -209,10 +209,12 @@ Current gaps:
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
   Laravel bootstrap calls and a direct Web UK middleware harness resolve
-  `timebank.global` and `project-nexus.ie` correctly. A full temporary Web UK
-  process smoke now also covers `timebank.global|/=>Exchange Skills Across
-  Borders` with `TENANT_ID=2`; host-scoped bootstrap/stats calls suppress that
-  default `X-Tenant-ID` so Laravel resolves from Host/Origin instead.
+  `timebank.global` and `project-nexus.ie` correctly. Full temporary Web UK
+  process smokes now also cover
+  `project-nexus.ie|/=>Build Thriving Communities with NEXUS` and
+  `timebank.global|/=>Exchange Skills Across Borders` with `TENANT_ID=2`;
+  host-scoped bootstrap/stats calls suppress that default `X-Tenant-ID` so
+  Laravel resolves from Host/Origin instead.
 - Parent-domain child-tenant paths are covered by Jest for a parent-host child
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
@@ -316,7 +318,14 @@ received `hour-timebank` bootstrap data and fell back to the shared chooser for
 tenant context is present. A focused smoke on 2026-07-08 against temporary Web
 UK `http://127.0.0.1:6426` and Laravel `http://127.0.0.1:8088` passed
 `SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across
-Borders`, emitting `tenant-domain-page-timebank-global-home-renders`.
+Borders`, emitting `tenant-domain-page-timebank-global-home-renders`. A
+follow-up focused smoke on 2026-07-09 against temporary Web UK
+`http://127.0.0.1:6521` and Laravel `http://127.0.0.1:8088` passed both
+`project-nexus.ie|/=>Build Thriving Communities with NEXUS` and
+`timebank.global|/=>Exchange Skills Across Borders`, emitting
+`tenant-domain-page-project-nexus-ie-home-renders` and
+`tenant-domain-page-timebank-global-home-renders` with no `/alpha` or
+`/accessible` link leakage.
 
 The eleventh template-helper source slice extends the direct `urlFor()`
 conversion from event detail into the account hub. `src/views/account.njk` now

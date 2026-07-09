@@ -192,6 +192,13 @@ tenant-context calls. A focused live smoke on 2026-07-08 against
 `http://127.0.0.1:8088` passed
 `SMOKE_TENANT_DOMAIN_PAGE_PATHS=timebank.global|/=>Exchange Skills Across Borders`,
 emitting `tenant-domain-page-timebank-global-home-renders`.
+A follow-up focused live smoke on 2026-07-09 against a current-checkout
+temporary Web UK process at `WEB_UK_BASE_URL=http://127.0.0.1:6521`, started
+with `TENANT_ID=2`, passed
+`SMOKE_TENANT_DOMAIN_PAGE_PATHS=project-nexus.ie|/=>Build Thriving Communities with NEXUS,timebank.global|/=>Exchange Skills Across Borders`.
+The emitted checks were `tenant-domain-page-project-nexus-ie-home-renders` and
+`tenant-domain-page-timebank-global-home-renders`; both pages rendered without
+`/alpha` or `/accessible` link leakage.
 A targeted real-fixture parameterised run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5325`, started with `TENANT_ID=2`, passed on
 2026-07-07: `24/24` checks, `0` failures, with 6 auth/health checks and 18

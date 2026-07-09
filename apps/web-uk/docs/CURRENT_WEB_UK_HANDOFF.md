@@ -64,13 +64,16 @@ shared-host slug as `/accessible`. A parent-domain child slice now resolves the 
 segment through Laravel bootstrap and serves the flat accessible app below
 `/{childSlug}` when Laravel returns a matching `parent_domain`. A live
 runtime-smoke slice certifies that same parent-domain child path against the
-local Laravel `hour-timebank` fixture. A follow-up host-root smoke slice now
-certifies `timebank.global|/=>Exchange Skills Across Borders` against a full
-temporary Web UK process started with `TENANT_ID=2`; the API client suppresses
+local Laravel `hour-timebank` fixture. Follow-up host-root smoke slices now
+certify both the master and cluster domain front pages against full temporary
+Web UK processes started with `TENANT_ID=2`:
+`project-nexus.ie|/=>Build Thriving Communities with NEXUS` and
+`timebank.global|/=>Exchange Skills Across Borders`. The API client suppresses
 the default `X-Tenant-ID` whenever Host/Origin tenant context is present so
 Laravel can resolve the browser domain. This is not full tenant-domain parity
-yet: template-helper conversion, visual/manual tenant checks, and ASP.NET
-backend switching certification still need work. Focused template-helper
+yet: template-helper conversion,
+visual/manual tenant checks, and ASP.NET backend switching certification still
+need work. Focused template-helper
 conversion slices now cover the event detail page's breadcrumbs, group/member
 links, RSVP/admin forms, attendee links, and report return path plus the
 account hub's card links and CSRF logout form, the activity dashboard/insights
