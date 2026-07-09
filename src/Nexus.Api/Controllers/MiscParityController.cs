@@ -79,11 +79,31 @@ public class MiscParityController : ControllerBase
 
     [HttpPost("ads/impression")]
     [Authorize]
-    public IActionResult AdImpression([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), tracked = true } });
+    public IActionResult AdImpression([FromBody] JsonElement body)
+    {
+        var impressionId = StableId(body);
+        return Ok(new
+        {
+            data = new
+            {
+                impression_id = impressionId,
+                id = impressionId,
+                tracked = true
+            }
+        });
+    }
 
     [HttpPost("ads/impression/{impressionId:int}/click")]
     [Authorize]
-    public IActionResult AdClick(int impressionId) => Ok(new { data = new { impression_id = impressionId, clicked = true } });
+    public IActionResult AdClick(int impressionId) => Ok(new
+    {
+        data = new
+        {
+            ok = true,
+            impression_id = impressionId,
+            clicked = true
+        }
+    });
 
     [HttpPost("ai/generate/bio")]
     [Authorize]

@@ -59,6 +59,10 @@ Status values:
   coverage: `POST /api/v2/me/fadp/consent` accepts Laravel React
   `action=granted|withdrawn`, returns `data.recorded/consent_type/action`, and
   `GET /api/v2/me/fadp/consent-history` projects Laravel `action` rows.
+- Monetization feed-ad tracking now covers the Laravel React
+  `FeedAdCard.tsx` calls: `POST /api/v2/ads/impression` returns
+  `data.impression_id`, and `POST /api/v2/ads/impression/{id}/click` returns
+  `data.ok=true`.
 - "Mapped" does not mean complete. It means the .NET repo has enough surface to
   start a detailed contract/workflow parity audit.
 - Full parity requires the gap register in `LARAVEL_PARITY_MAP.md` to close, not

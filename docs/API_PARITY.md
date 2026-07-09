@@ -343,6 +343,18 @@ Laravel `action` field. Exact append-only Laravel `fadp_consent_records`
 schema, `consent_version`, `user_agent`, metadata storage, and service-side
 FADP availability checks remain deeper compliance gaps.
 
+The Laravel React feed-ad tracking slice now has focused ASP.NET contract
+coverage for `POST /api/v2/ads/impression` and `POST
+/api/v2/ads/impression/{impressionId}/click`, driven from
+`react-frontend/src/components/feed/FeedAdCard.tsx` and Laravel
+`LocalAdvertisingController::recordImpression/recordClick`. ASP.NET now accepts
+the React `creative_id` plus `placement` impression payload, returns
+`data.impression_id`, and returns `data.ok=true` for click tracking while
+preserving legacy `id`/`clicked` aliases. Exact Laravel `ad_impressions` and
+`ad_clicks` storage, serveable-creative validation, signed tracking-token
+validation, campaign counter/budget updates, and duplicate-click suppression
+remain deeper local-advertising gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,
