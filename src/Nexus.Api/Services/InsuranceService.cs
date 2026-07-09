@@ -43,7 +43,8 @@ public class InsuranceService
 
     public async Task<(InsuranceCertificate? Cert, string? Error)> CreateAsync(
         int userId, string type, string? provider, string? policyNumber,
-        decimal? coverAmount, DateTime startDate, DateTime expiryDate, string? documentUrl)
+        decimal? coverAmount, DateTime startDate, DateTime expiryDate, string? documentUrl,
+        string status = "pending")
     {
         if (expiryDate <= startDate) return (null, "Expiry date must be after start date");
 
@@ -58,7 +59,7 @@ public class InsuranceService
             StartDate = startDate,
             ExpiryDate = expiryDate,
             DocumentUrl = documentUrl,
-            Status = "pending"
+            Status = status
         };
 
         _db.Set<InsuranceCertificate>().Add(cert);

@@ -4,8 +4,11 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text.Json.Serialization;
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -20,10 +23,17 @@ namespace Nexus.Api.Controllers;
 public class InsuranceController : ControllerBase
 {
     private readonly InsuranceService _insurance;
+    private readonly FileUploadService _fileUploadService;
+    private readonly TenantContext _tenantContext;
 
-    public InsuranceController(InsuranceService insurance)
+    public InsuranceController(
+        InsuranceService insurance,
+        FileUploadService fileUploadService,
+        TenantContext tenantContext)
     {
         _insurance = insurance;
+        _fileUploadService = fileUploadService;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -37,6 +47,19 @@ public class InsuranceController : ControllerBase
 
         var certs = await _insurance.GetUserCertificatesAsync(userId.Value);
         return Ok(new { data = certs.Select(c => MapCert(c)) });
+    }
+
+    /// <summary>
+    /// GET /api/v2/users/me/insurance - Laravel React certificate list.
+    /// </summary>
+    [HttpGet("/api/v2/users/me/insurance")]
+    public async Task<IActionResult> GetMyCertificatesV2()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { success = false, errors = new[] { new { code = "UNAUTHENTICATED", message = "Invalid token" } } });
+
+        var certs = await _insurance.GetUserCertificatesAsync(userId.Value);
+        return Ok(new { success = true, data = certs.Select(MapLaravelCert) });
     }
 
     /// <summary>
@@ -69,6 +92,107 @@ public class InsuranceController : ControllerBase
 
         if (error != null) return BadRequest(new { error });
         return Created($"/api/insurance/{cert!.Id}", new { data = new { cert.Id, cert.Type, cert.Status } });
+    }
+
+    /// <summary>
+    /// POST /api/v2/users/me/insurance - Laravel React multipart certificate upload.
+    /// </summary>
+    [HttpPost("/api/v2/users/me/insurance")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> CreateV2(CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { success = false, errors = new[] { new { code = "UNAUTHENTICATED", message = "Invalid token" } } });
+        if (!Request.HasFormContentType)
+        {
+            return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Expected multipart form-data.", field = "certificate_file" } }
+            });
+        }
+
+        var form = await Request.ReadFormAsync(cancellationToken);
+        var insuranceType = (form["insurance_type"].FirstOrDefault() ?? "public_liability").Trim();
+        if (!AllowedLaravelInsuranceTypes.Contains(insuranceType))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid insurance type.", field = "insurance_type" } }
+            });
+        }
+
+        var file = form.Files.GetFile("certificate_file");
+        string? documentUrl = null;
+        if (file is { Length: > 0 })
+        {
+            if (!AllowedLaravelInsuranceMimeTypes.Contains(file.ContentType))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "Insurance certificates must be PDF, JPEG, or PNG files.", field = "certificate_file" } }
+                });
+            }
+
+            if (file.Length > 10 * 1024 * 1024)
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "File exceeds the 10 MB limit.", field = "certificate_file" } }
+                });
+            }
+
+            await using var stream = file.OpenReadStream();
+            var (upload, uploadError) = await _fileUploadService.UploadAsync(
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                userId.Value,
+                _tenantContext.GetTenantIdOrThrow(),
+                FileCategory.Document,
+                entityType: "insurance_certificate");
+
+            if (uploadError != null || upload == null)
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = uploadError ?? "Upload failed.", field = "certificate_file" } }
+                });
+            }
+
+            documentUrl = _fileUploadService.GetDownloadUrl(upload);
+        }
+
+        var startDate = Date(form["start_date"].FirstOrDefault()) ?? DateTime.UtcNow.Date;
+        var expiryDate = Date(form["expiry_date"].FirstOrDefault()) ?? startDate.AddYears(1);
+        var coverageAmount = Decimal(form["coverage_amount"].FirstOrDefault());
+
+        var (cert, error) = await _insurance.CreateAsync(
+            userId.Value,
+            insuranceType,
+            form["provider_name"].FirstOrDefault(),
+            form["policy_number"].FirstOrDefault(),
+            coverageAmount,
+            startDate,
+            expiryDate,
+            documentUrl,
+            status: "submitted");
+
+        if (error != null)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = error, field = "expiry_date" } }
+            });
+        }
+
+        return Created($"/api/v2/users/me/insurance/{cert!.Id}", new { success = true, data = MapLaravelCert(cert) });
     }
 
     /// <summary>
@@ -164,6 +288,53 @@ public class InsuranceController : ControllerBase
         user = c.User != null ? new { c.User.Id, c.User.FirstName, c.User.LastName } : null,
         verified_by = c.VerifiedBy != null ? new { c.VerifiedBy.Id, c.VerifiedBy.FirstName, c.VerifiedBy.LastName } : null
     };
+
+    private static readonly HashSet<string> AllowedLaravelInsuranceTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "public_liability",
+        "professional_indemnity",
+        "employers_liability",
+        "product_liability",
+        "personal_accident",
+        "other"
+    };
+
+    private static readonly HashSet<string> AllowedLaravelInsuranceMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "application/pdf",
+        "image/jpeg",
+        "image/png"
+    };
+
+    private static object MapLaravelCert(Entities.InsuranceCertificate c) => new
+    {
+        id = c.Id,
+        tenant_id = c.TenantId,
+        user_id = c.UserId,
+        insurance_type = c.Type,
+        provider_name = c.Provider,
+        policy_number = c.PolicyNumber,
+        coverage_amount = c.CoverAmount,
+        start_date = c.StartDate,
+        expiry_date = c.ExpiryDate,
+        certificate_file_path = c.DocumentUrl,
+        status = c.Status,
+        notes = (string?)null,
+        verified_by = c.VerifiedById,
+        verified_at = c.VerifiedAt,
+        created_at = c.CreatedAt,
+        updated_at = c.UpdatedAt
+    };
+
+    private static DateTime? Date(string? value)
+        => DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            ? DateTime.SpecifyKind(parsed.Date, DateTimeKind.Utc)
+            : null;
+
+    private static decimal? Decimal(string? value)
+        => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
 }
 
 public class CreateInsuranceRequest
