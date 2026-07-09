@@ -1077,6 +1077,16 @@ separate My events page, event detail pages use Laravel's canonical
 `/events/{id}/rsvp` action for RSVP changes, and the generated matrix now
 reports `0` extra local event routes.
 
+Latest focused event redirect slice: event route-level auth, status, and
+POST-result redirects now use `res.locals.urlFor` through a route-local helper.
+Waitlist, poll, recurring-edit, translation, create, edit, cancel, delete, and
+RSVP outcomes stay inside the active `/{tenantSlug}/accessible` mount or
+custom-domain child path instead of emitting flat `/login` or `/events`
+locations. Focused Laravel runtime smoke passed for `/events/browse`,
+`/events/6`, `/events/6/polls`, and `/events/6/translate` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel
+`http://127.0.0.1:8088`.
+
 Latest focused feed route slice: legacy local GET/POST `/feed/new`,
 `/feed/{id}`, `/feed/{id}/edit`, `/feed/{id}/like`, `/feed/{id}/unlike`,
 `/feed/{id}/comments`, and delete/edit/comment variants were removed. The feed

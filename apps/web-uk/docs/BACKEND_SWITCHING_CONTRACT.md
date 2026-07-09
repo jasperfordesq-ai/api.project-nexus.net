@@ -871,6 +871,14 @@ Laravel's user search, community ranking, nearby-member, visibility/privacy,
 verification badge, connection, tenant, feature-gate, localization, and redirect
 contracts before these pages can be called backend-neutral.
 
+The event action redirect slice adds the same backend-neutral requirement for
+event workflows. Future ASP.NET mode must preserve Laravel-compatible event
+waitlist, check-in, poll attachment/vote, recurring edit, translation, create,
+edit, cancel, delete, and RSVP status redirects through the active tenant URL
+helper. It must not emit flat `/login` or `/events` locations when the request
+is served from `/{tenantSlug}/accessible`, a custom accessible domain, or a
+parent-domain child path.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

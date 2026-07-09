@@ -1129,6 +1129,22 @@ only; it does not newly certify exact moderation/deletion display, threaded
 reply depth, feature gates, localization, runtime persistence, visual Blade
 parity, or ASP.NET backend compatibility.
 
+The seventy-third source slice extends route-level redirect cleanup into event
+actions. `src/routes/events.js` now sends unsigned event handoffs, recurring
+non-series handoffs, waitlist/check-in/poll/recurring/translation POST
+outcomes, create/edit status redirects, cancel/delete results, and RSVP results
+through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when
+shell locals are available. Event helper URLs now build from a shared
+`/events` constant instead of raw root-relative return strings. The focused
+source regression first failed on raw `/login` and `/events` redirect targets,
+then passed after conversion. Focused shared-mount coverage proves signed
+`/acme/accessible/events/7/waitlist` and
+`/acme/accessible/events/7/translate` POSTs redirect back under the active
+tenant mount. This is event redirect evidence only; it does not newly certify
+full event visual Blade parity, owner/participant authorization depth,
+notification/XP/waitlist side effects, feature gates, localization, broader
+Laravel runtime behavior, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell

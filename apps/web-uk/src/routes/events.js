@@ -90,13 +90,20 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+const EVENTS_PATH = '/events';
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -234,20 +241,24 @@ function occurrenceFrom(item, currentEventId) {
 async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
     await callApi(token, method, path, data);
-    return res.redirect(successRedirect);
+    return redirectTo(res, successRedirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
+function eventPath(id, suffix = '') {
+  return `${EVENTS_PATH}/${id}${suffix}`;
+}
+
 function eventRedirect(id, status, fragment = '') {
-  return `/events/${id}?status=${encodeURIComponent(status)}${fragment}`;
+  return `${eventPath(id)}?status=${encodeURIComponent(status)}${fragment}`;
 }
 
 router.get('/browse', asyncRoute(async (req, res) => {
@@ -279,12 +290,12 @@ router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const event = eventFrom(await callApi(token, 'GET', `/${id}`));
   if (!eventIsSeries(event)) {
-    return res.redirect(`/events/${id}/edit`);
+    return redirectTo(res, eventPath(id, '/edit'));
   }
 
   const occurrences = collectionFrom(event.series_occurrences ?? event.seriesOccurrences)
@@ -309,7 +320,7 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const [eventResult, pollsResult] = await Promise.all([
@@ -336,7 +347,7 @@ router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const event = eventFrom(await callApi(token, 'GET', `/${id}`));
@@ -444,20 +455,20 @@ router.post('/:id(\\d+)/attendees/:attendeeId(\\d+)/check-in', asyncRoute(async 
 
 router.post('/:id(\\d+)/polls/:pollId(\\d+)/vote', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const pollId = Number(req.params.pollId);
   const optionId = positiveInteger(req.body.option_id);
   if (optionId === null) {
-    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+    return redirectTo(res, eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
   }
 
   try {
     await votePoll(token, pollId, { option_id: optionId });
-    return res.redirect(eventRedirect(id, 'poll-voted', `#poll-${pollId}`));
+    return redirectTo(res, eventRedirect(id, 'poll-voted', `#poll-${pollId}`));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+    return redirectTo(res, eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
   }
 }));
 
@@ -469,8 +480,8 @@ router.post('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
     'PUT',
     `/${id}`,
     { poll_ids: pollIdsFrom(req.body.poll_ids) },
-    `/events/${id}/polls?status=polls-updated`,
-    `/events/${id}/polls?status=polls-failed`
+    eventPath(id, '/polls?status=polls-updated'),
+    eventPath(id, '/polls?status=polls-failed')
   );
 }));
 
@@ -493,11 +504,11 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const sourceText = trimmed(req.body.source_text || req.body.description, 8000);
   if (sourceText === '') {
-    return res.redirect(`/events/${id}/translate?status=translate-empty`);
+    return redirectTo(res, eventPath(id, '/translate?status=translate-empty'));
   }
 
   const payload = {
@@ -514,10 +525,10 @@ router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
 
   try {
     await callUgcTranslateApi(token, payload);
-    return res.redirect(`/events/${id}/translate?status=translate-done`);
+    return redirectTo(res, eventPath(id, '/translate?status=translate-done'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(`/events/${id}/translate?status=translate-failed`);
+    return redirectTo(res, eventPath(id, '/translate?status=translate-failed'));
   }
 }));
 
@@ -696,7 +707,7 @@ router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res
       req.flash('success', 'Event created successfully');
     }
 
-    res.redirect(`/events/${eventId}`);
+    redirectTo(res, eventPath(eventId));
   } catch (error) {
     await removeUploadedFile(image);
     // Handle validation errors from API by re-rendering form
@@ -884,7 +895,7 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
       req.flash('success', 'Event updated successfully');
     }
 
-    res.redirect(`/events/${id}`);
+    redirectTo(res, eventPath(id));
   } catch (error) {
     await removeUploadedFile(image);
     // Handle non-401 API errors with flash message
@@ -892,7 +903,7 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
       if (req.flash) {
         req.flash('error', error.message || 'Unable to update event');
       }
-      return res.redirect(`/events/${id}/edit`);
+      return redirectTo(res, eventPath(id, '/edit'));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -914,12 +925,12 @@ router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to cancel event');
       }
-      return res.redirect(`/events/${id}`);
+      return redirectTo(res, eventPath(id));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
 
-  res.redirect(`/events/${id}`);
+  redirectTo(res, eventPath(id));
 }));
 
 // Delete event
@@ -933,14 +944,14 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(as
       req.flash('success', 'Event deleted successfully');
     }
 
-    res.redirect('/events');
+    redirectTo(res, EVENTS_PATH);
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to delete event');
       }
-      return res.redirect(`/events/${id}`);
+      return redirectTo(res, eventPath(id));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
@@ -968,12 +979,12 @@ router.post('/:id(\\d+)/rsvp', requireAuth, audit.eventRsvp(), asyncRoute(async 
       if (req.flash) {
         req.flash('error', error.message || 'Unable to RSVP');
       }
-      return res.redirect(`/events/${id}`);
+      return redirectTo(res, eventPath(id));
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
 
-  res.redirect(`/events/${id}`);
+  redirectTo(res, eventPath(id));
 }));
 
 module.exports = router;

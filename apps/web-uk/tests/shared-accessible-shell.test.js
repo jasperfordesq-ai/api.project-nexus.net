@@ -15768,6 +15768,46 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel event action redirects inside the shared accessible mount', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const waitlistResponse = await agent
+      .post('/acme/accessible/events/7/waitlist')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(waitlistResponse.status).toBe(302);
+    expect(waitlistResponse.headers.location).toBe('/acme/accessible/events/7?status=waitlist-joined');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/waitlist');
+
+    const translateResponse = await agent
+      .post('/acme/accessible/events/7/translate')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        source_text: ' Hello neighbours ',
+        target_locale: 'ga'
+      });
+
+    expect(translateResponse.status).toBe(302);
+    expect(translateResponse.headers.location).toBe('/acme/accessible/events/7/translate?status=translate-done');
+    expect(api.callUgcTranslateApi).toHaveBeenLastCalledWith('test-token', {
+      content_type: 'event',
+      content_id: 7,
+      source_text: 'Hello neighbours',
+      target_locale: 'ga'
+    });
+  });
+
   it('renders and submits Laravel event cover images with multipart data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
