@@ -7,13 +7,13 @@
   <h2 class="govuk-tabs__title">Courses</h2>
   <ul class="govuk-tabs__list">
     <li class="govuk-tabs__list-item{% if activeTab == 'browse' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/courses"{% if activeTab == 'browse' %} aria-current="page"{% endif %}>Browse</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/courses') }}"{% if activeTab == 'browse' %} aria-current="page"{% endif %}>Browse</a>
     </li>
     <li class="govuk-tabs__list-item{% if activeTab == 'learning' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/courses/mine"{% if activeTab == 'learning' %} aria-current="page"{% endif %}>My learning</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/courses/mine') }}"{% if activeTab == 'learning' %} aria-current="page"{% endif %}>My learning</a>
     </li>
     <li class="govuk-tabs__list-item{% if activeTab == 'teaching' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="/courses/instructor"{% if activeTab == 'teaching' %} aria-current="page"{% endif %}>Courses I teach</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/courses/instructor') }}"{% if activeTab == 'teaching' %} aria-current="page"{% endif %}>Courses I teach</a>
     </li>
   </ul>
 </nav>

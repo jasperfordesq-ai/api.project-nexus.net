@@ -413,4 +413,30 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/blog/);
     expect(source).toMatch(/urlFor\(["']\/members/);
   });
+
+  it('keeps course browse, learner, and instructor controls behind urlFor()', () => {
+    const templates = [
+      path.join('courses', '_nav.njk'),
+      path.join('courses', 'analytics.njk'),
+      path.join('courses', 'detail.njk'),
+      path.join('courses', 'form.njk'),
+      path.join('courses', 'grading.njk'),
+      path.join('courses', 'index.njk'),
+      path.join('courses', 'instructor.njk'),
+      path.join('courses', 'learn.njk'),
+      path.join('courses', 'my-learning.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/courses/);
+      expect(template).not.toMatch(/action="\/courses/);
+      expect(template).not.toContain('action="{{ formAction }}"');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/courses/);
+  });
 });

@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/courses/instructor/{{ courseId }}/edit">Back to course</a>
+  <a class="govuk-back-link" href="{{ urlFor('/courses/instructor/' + (courseId | string) + '/edit') }}">Back to course</a>
 
   {% if status %}
     {% if status.type == 'success' %}
@@ -56,7 +56,7 @@
           </dl>
         {% endif %}
 
-        <form method="post" action="/courses/instructor/{{ courseId }}/grading/{{ attempt.id }}" novalidate>
+        <form method="post" action="{{ urlFor('/courses/instructor/' + (courseId | string) + '/grading/' + (attempt.id | string)) }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <div class="govuk-form-group">

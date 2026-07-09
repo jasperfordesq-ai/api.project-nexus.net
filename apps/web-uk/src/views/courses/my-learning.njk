@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="/courses" class="govuk-back-link">Back to courses</a>
+  <a href="{{ urlFor('/courses') }}" class="govuk-back-link">Back to courses</a>
 
   <span class="govuk-caption-xl">Your courses at {{ tenantName }}</span>
   <h1 class="govuk-heading-xl">My learning</h1>
@@ -20,7 +20,7 @@
       <p class="govuk-body">You are not enrolled in any courses yet. Browse the course library to get started.</p>
     </div>
     <p class="govuk-body">
-      <a class="govuk-button" href="/courses" role="button" draggable="false" data-module="govuk-button">Browse courses</a>
+      <a class="govuk-button" href="{{ urlFor('/courses') }}" role="button" draggable="false" data-module="govuk-button">Browse courses</a>
     </p>
   {% else %}
     <div class="nexus-alpha-card-list">
@@ -40,7 +40,7 @@
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ enrollment.percent }}% complete</p>
               <progress value="{{ enrollment.percent }}" max="100" aria-label="{{ enrollment.percent }}% complete">{{ enrollment.percent }}%</progress>
               <div class="nexus-alpha-actions govuk-!-margin-top-2">
-                <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" href="/courses/{{ enrollment.course.id }}/learn" role="button" draggable="false" data-module="govuk-button">{% if enrollment.percent > 0 %}Resume{% else %}Start learning{% endif %}</a>
+                <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" href="{{ urlFor('/courses/' + (enrollment.course.id | string) + '/learn') }}" role="button" draggable="false" data-module="govuk-button">{% if enrollment.percent > 0 %}Resume{% else %}Start learning{% endif %}</a>
               </div>
             </div>
           </div>

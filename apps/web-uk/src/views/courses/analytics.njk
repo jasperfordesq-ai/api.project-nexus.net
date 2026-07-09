@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/courses/instructor">Back to courses you teach</a>
+  <a class="govuk-back-link" href="{{ urlFor('/courses/instructor') }}">Back to courses you teach</a>
 
   {% set activeTab = 'teaching' %}
   {% include "courses/_nav.njk" %}

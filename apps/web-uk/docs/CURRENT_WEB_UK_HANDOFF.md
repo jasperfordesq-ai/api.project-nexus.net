@@ -117,7 +117,10 @@ The latest organisations source slice now routes organisation directory,
 browse, detail, jobs, manage, register, and opportunity-apply links/forms
 through `urlFor()`. The latest blog source slice now routes blog index, post
 detail, discussion, liker, reaction, comment, pagination, and member-profile
-links/forms through `urlFor()`.
+links/forms through `urlFor()`. The latest courses source slice now routes
+course browse, learner, instructor, builder, analytics, grading, certificate,
+review, enrolment, quiz, progress, and section/lesson controls through
+`urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -196,6 +199,9 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"` first failed on raw `/blog` links/actions, then passed after the template conversion.
 - `Select-String -Path apps\web-uk\src\views\blog\*.njk -Pattern 'href="/(blog|members)','action="/blog'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "blog"` passed `9/9` selected blog tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "course browse"` first failed on raw `/courses` links/actions, then passed after the template conversion.
+- `rg -n 'href="/courses|action="/courses|action="\{\{ formAction \}\}' apps/web-uk/src/views/courses` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"` passed `4/4` selected course tests.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
@@ -261,6 +267,12 @@ jobs, manage, register, volunteer opportunity, and apply controls through
 now route blog search, post links, pagination, back links, author/member links,
 like/reaction/comment forms, discussion links, liker links, and show-more links
 through `urlFor()`.
+`src/views/courses/_nav.njk`, `index.njk`, `detail.njk`, `learn.njk`,
+`my-learning.njk`, `instructor.njk`, `form.njk`, `analytics.njk`, and
+`grading.njk` now route course tabs, browse/search, course and prerequisite
+links, certificate and learning links, review/enrolment/quiz/progress forms,
+instructor create/edit analytics links, builder section/lesson forms, publish/
+unpublish/delete actions, and grading forms through `urlFor()`.
 `src/views/marketplace/offers.njk` and `src/views/marketplace/manage.njk` now
 route offer tabs, dynamic listing links, accept/decline/withdraw forms,
 my-listings tabs, create/view/edit links, and renew/delete forms through

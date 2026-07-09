@@ -13,7 +13,7 @@
   {% set activeTab = 'browse' %}
   {% include "courses/_nav.njk" %}
 
-  <form method="get" action="/courses" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/courses') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">Find a course</label>
       <div id="q-hint" class="govuk-hint">Search by title.</div>
@@ -55,7 +55,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="/courses/{{ course.id }}">{{ course.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/courses/' + (course.id | string)) }}">{{ course.title }}</a>
             </h2>
             <strong class="govuk-tag {{ course.costTagClass }}">{{ course.costLabel }}</strong>
           </div>

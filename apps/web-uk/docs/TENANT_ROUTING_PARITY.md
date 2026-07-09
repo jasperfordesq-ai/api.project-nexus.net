@@ -396,9 +396,22 @@ regression first failed on raw `/blog` links/actions, then passed after
 conversion; a source scan for blog-local raw `href`/`action` strings returns no
 matches.
 
+The twenty-seventh template-helper source slice extends direct `urlFor()`
+conversion into course pages. `src/views/courses/_nav.njk`, `index.njk`,
+`detail.njk`, `learn.njk`, `my-learning.njk`, `instructor.njk`, `form.njk`,
+`analytics.njk`, and `grading.njk` now route course tabs, browse/search, course
+and prerequisite links, certificate and learning links, review/enrolment/quiz/
+progress forms, instructor create/edit analytics links, builder section/lesson
+forms, publish/unpublish/delete actions, and grading forms through `urlFor()`.
+The source-level regression first failed on raw `/courses` links/actions, then
+passed after conversion; a source scan for course-local raw `href`/`action`
+strings and the raw `formAction` template action returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "course browse"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"
