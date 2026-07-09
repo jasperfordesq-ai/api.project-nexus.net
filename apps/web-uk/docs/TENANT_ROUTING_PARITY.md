@@ -1035,9 +1035,26 @@ evidence only; it does not newly certify full feed visual parity, feed
 persistence depth, localization, broader Laravel runtime behavior, or ASP.NET
 backend compatibility.
 
+The sixty-seventh source slice extends route-level redirect cleanup into group
+exchange actions. `src/routes/group-exchange-actions.js` now sends signed-out
+auth handoffs, create validation failures, create success/failure redirects,
+participant add/remove results, confirm/complete/cancel results, and API auth
+failures through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor`
+when shell locals are available. The focused source regression first failed on
+raw `/login` and `/group-exchanges` redirects plus raw helper return strings,
+then passed after conversion. Focused shared-mount coverage proves an invalid
+signed `/acme/accessible/group-exchanges/new` submission redirects to
+`/acme/accessible/group-exchanges/new?status=create-invalid`. This is group
+exchange action redirect evidence only; it does not newly certify full
+organiser/participant authorization depth, same-tenant member search parity,
+settlement side effects, feature gates, localization, broader Laravel runtime
+behavior, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed action validation redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand

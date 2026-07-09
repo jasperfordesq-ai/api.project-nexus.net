@@ -774,6 +774,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).not.toContain('href="{{ tab.href }}"');
   });
 
+  it('keeps group exchange action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'group-exchange-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|group-exchanges)/);
+    expect(route).not.toContain('return `/group-exchanges/');
+    expect(route).not.toContain("'/group-exchanges/new?status=create-failed'");
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps direct and group message links and forms behind urlFor()', () => {
     const templates = [
       path.join('messages', 'index.njk'),

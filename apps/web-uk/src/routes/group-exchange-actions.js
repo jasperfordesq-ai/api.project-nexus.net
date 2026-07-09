@@ -8,6 +8,7 @@ const { ApiError, callGroupExchangeApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+const GROUP_EXCHANGES_PATH = '/group-exchanges';
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -32,13 +33,22 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function localUrl(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return urlFor(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(localUrl(res, pathname));
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -66,7 +76,7 @@ async function callApi(token, method, path, data = undefined) {
 async function runAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
@@ -74,15 +84,23 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
     const redirect = typeof successRedirect === 'function'
       ? successRedirect(result)
       : successRedirect;
-    return res.redirect(redirect);
+    return redirectTo(res, redirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
 function exchangeRedirect(id, status) {
-  return `/group-exchanges/${id}?status=${encodeURIComponent(status)}#group-exchange-top`;
+  return `${GROUP_EXCHANGES_PATH}/${id}?status=${encodeURIComponent(status)}#group-exchange-top`;
+}
+
+function exchangeCreateRedirect(status) {
+  return `${GROUP_EXCHANGES_PATH}/new?status=${encodeURIComponent(status)}`;
+}
+
+function exchangeCreatedRedirect(result) {
+  return `${GROUP_EXCHANGES_PATH}/${resultId(result) || 'new'}?status=created`;
 }
 
 function exchangePayload(body) {
@@ -108,10 +126,10 @@ function participantPayload(body) {
 }
 
 router.post('/new', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const payload = exchangePayload(req.body);
   if (payload.title === '' || payload.total_hours <= 0) {
-    return res.redirect('/group-exchanges/new?status=create-invalid');
+    return redirectTo(res, exchangeCreateRedirect('create-invalid'));
   }
 
   return runAction(
@@ -120,8 +138,8 @@ router.post('/new', asyncRoute(async (req, res) => {
     'POST',
     '',
     payload,
-    (result) => `/group-exchanges/${resultId(result) || 'new'}?status=created`,
-    '/group-exchanges/new?status=create-failed'
+    exchangeCreatedRedirect,
+    exchangeCreateRedirect('create-failed')
   );
 }));
 

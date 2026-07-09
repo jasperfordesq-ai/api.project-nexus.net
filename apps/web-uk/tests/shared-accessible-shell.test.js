@@ -14146,6 +14146,34 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel group exchange validation redirects inside the shared tenant mount', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/group-exchanges/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(first.status).toBe(200);
+    expect(csrfMatch).not.toBeNull();
+    expect(first.text).toContain('action="/acme/accessible/group-exchanges/new"');
+
+    const response = await agent
+      .post('/acme/accessible/group-exchanges/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: '  ',
+        total_hours: '0'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/group-exchanges/new?status=create-invalid');
+  });
+
   it('submits Laravel group depth aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

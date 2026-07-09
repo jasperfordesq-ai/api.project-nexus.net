@@ -195,6 +195,11 @@ poll, moderation, share, save, and mute POST result redirects through
 `res.locals.urlFor`, with shared-mount coverage proving an empty
 `/acme/accessible/feed/posts` submission redirects to
 `/acme/accessible/feed?status=post-empty`.
+The latest group-exchange action redirect slice now sends auth-required,
+validation, success, and API-failure POST redirects through `res.locals.urlFor`.
+Focused shared-mount coverage proves an invalid signed
+`/acme/accessible/group-exchanges/new` submission redirects to
+`/acme/accessible/group-exchanges/new?status=create-invalid`.
 The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights
