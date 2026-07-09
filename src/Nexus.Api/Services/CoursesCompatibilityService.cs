@@ -657,6 +657,26 @@ public sealed class CoursesCompatibilityService
         return updated;
     }
 
+    public async Task<bool> IsMemberAuthoringAllowedAsync(int tenantId, CancellationToken ct)
+    {
+        var value = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(config => config.TenantId == tenantId && config.Key == "courses.allow_member_authoring")
+            .Select(config => config.Value)
+            .FirstOrDefaultAsync(ct);
+
+        return !bool.TryParse(value, out var allowed) || allowed;
+    }
+
+    public async Task<bool> HasInstructorGrantAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        return await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AnyAsync(config =>
+                config.TenantId == tenantId
+                && config.Key == $"{AdminCoursesService.InstructorKeyPrefix}{userId}", ct);
+    }
+
     private async Task<CourseCompatibilityState> LoadAsync(int tenantId, CancellationToken ct)
     {
         var row = await _db.TenantConfigs

@@ -258,6 +258,82 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseCreate_RespectsLaravelRestrictedAuthoringPolicy()
+    {
+        var tenant = CreateTenantContext(46);
+        await using var db = CreateDbContext(tenant);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = "courses.allow_member_authoring",
+            Value = "false"
+        });
+        await db.SaveChangesAsync();
+
+        var memberController = CreateController(db, tenant, userId: 9004, role: "member");
+
+        var forbidden = await memberController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Restricted course"
+        }, CancellationToken.None);
+
+        var forbiddenResult = forbidden.Should().BeOfType<ObjectResult>().Subject;
+        forbiddenResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        using (var forbiddenDocument = JsonDocument.Parse(JsonSerializer.Serialize(forbiddenResult.Value)))
+        {
+            forbiddenDocument.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+                .Should().Be("FORBIDDEN");
+        }
+
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = $"{AdminCoursesService.InstructorKeyPrefix}9004",
+            Value = "{}"
+        });
+        await db.SaveChangesAsync();
+
+        var granted = await memberController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Restricted course"
+        }, CancellationToken.None);
+
+        granted.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status201Created);
+    }
+
+    [Fact]
+    public async Task ReactCourseAuthored_RespectsLaravelRestrictedAuthoringPolicy()
+    {
+        var tenant = CreateTenantContext(47);
+        await using var db = CreateDbContext(tenant);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = "courses.allow_member_authoring",
+            Value = "false"
+        });
+        await db.SaveChangesAsync();
+
+        var memberController = CreateController(db, tenant, userId: 9005, role: "member");
+
+        var forbidden = await memberController.Authored(CancellationToken.None);
+
+        forbidden.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = $"{AdminCoursesService.InstructorKeyPrefix}9005",
+            Value = "{}"
+        });
+        await db.SaveChangesAsync();
+
+        var authored = await memberController.Authored(CancellationToken.None);
+
+        authored.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
     {
         var tenant = CreateTenantContext(44);
@@ -294,12 +370,13 @@ public sealed class CoursesCompatibilityControllerUnitTests
     private static CoursesCompatibilityController CreateController(
         NexusDbContext db,
         TenantContext tenant,
-        int userId)
+        int userId,
+        string role = "admin")
     {
         var service = new CoursesCompatibilityService(db);
         return new CoursesCompatibilityController(service, tenant)
         {
-            ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow(), "admin")
+            ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow(), role)
         };
     }
 

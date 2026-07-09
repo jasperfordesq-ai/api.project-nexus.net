@@ -77,7 +77,13 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpPost("api/courses")]
     [HttpPost("api/v2/courses")]
     public Task<IActionResult> Store([FromBody] CourseCompatCourseRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.CreateCourseAsync(_tenant.GetTenantIdOrThrow(), UserId(), request, ct), StatusCodes.Status201Created);
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            var userId = UserId();
+            await EnsureCourseAuthorAsync(tenantId, userId, ct);
+            return await _courses.CreateCourseAsync(tenantId, userId, request, ct);
+        }, StatusCodes.Status201Created);
 
     [HttpPut("api/courses/{id:int}")]
     [HttpPut("api/v2/courses/{id:int}")]
@@ -162,7 +168,13 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpGet("api/courses/mine")]
     [HttpGet("api/v2/courses/mine")]
     public Task<IActionResult> Authored(CancellationToken ct) =>
-        RunAsync(() => _courses.AuthoredAsync(_tenant.GetTenantIdOrThrow(), UserId(), ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            var userId = UserId();
+            await EnsureCourseAuthorAsync(tenantId, userId, ct);
+            return await _courses.AuthoredAsync(tenantId, userId, ct);
+        });
 
     [HttpGet("api/courses/{id:int}/analytics")]
     [HttpGet("api/v2/courses/{id:int}/analytics")]
@@ -300,6 +312,32 @@ public sealed class CoursesCompatibilityController : ControllerBase
     {
         var id = UserId();
         return id <= 0 ? null : id;
+    }
+
+    private async Task EnsureCourseAuthorAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        if (await _courses.IsMemberAuthoringAllowedAsync(tenantId, ct))
+        {
+            return;
+        }
+
+        if (HasAdminRole() || await _courses.HasInstructorGrantAsync(tenantId, userId, ct))
+        {
+            return;
+        }
+
+        throw new CoursesCompatibilityForbiddenException("Course authoring is restricted to instructors and admins");
+    }
+
+    private bool HasAdminRole()
+    {
+        static bool IsAdminRole(string? role) =>
+            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "super_admin", StringComparison.OrdinalIgnoreCase);
+
+        return User.Claims
+            .Where(claim => claim.Type == ClaimTypes.Role || claim.Type == "role")
+            .Any(claim => IsAdminRole(claim.Value));
     }
 
     private static object LaravelError(string code, string message) => new
