@@ -59,8 +59,9 @@ Status values:
   coverage: `POST /api/v2/me/fadp/consent` accepts Laravel React
   `action=granted|withdrawn`, returns `data.recorded/consent_type/action`, and
   `GET /api/v2/me/fadp/consent-history` projects Laravel `action` rows.
-- Monetization feed-ad tracking now covers the Laravel React
-  `FeedAdCard.tsx` calls: `POST /api/v2/ads/impression` returns
+- Monetization feed-ad serving/tracking now covers the Laravel React
+  `FeedPage.tsx` and `FeedAdCard.tsx` calls: `GET /api/v2/ads/active` returns
+  React feed-card ad fields, `POST /api/v2/ads/impression` returns
   `data.impression_id`, and `POST /api/v2/ads/impression/{id}/click` returns
   `data.ok=true`.
 - Social feed profile-card stats now cover `GET /api/v2/me/stats` for

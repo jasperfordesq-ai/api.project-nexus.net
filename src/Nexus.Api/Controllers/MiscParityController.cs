@@ -19,6 +19,13 @@ namespace Nexus.Api.Controllers;
 [Route("api")]
 public class MiscParityController : ControllerBase
 {
+    private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
+    private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+
     private static readonly HashSet<string> LaravelReactionTypes = new(StringComparer.Ordinal)
     {
         "love",
@@ -75,7 +82,47 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("ads/active")]
     [Authorize]
-    public IActionResult ActiveAds() => Ok(new { data = Array.Empty<object>() });
+    public async Task<IActionResult> ActiveAds([FromQuery] string? placement = "feed", [FromQuery] int limit = 3)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var normalizedPlacement = string.IsNullOrWhiteSpace(placement) ? "feed" : placement.Trim().ToLowerInvariant();
+        var safeLimit = Math.Clamp(limit, 1, 10);
+        var today = DateTime.UtcNow.Date;
+        var campaigns = await LoadLocalAdCampaignsAsync(tenantId);
+
+        var ads = campaigns
+            .Where(c => c.TenantId == tenantId)
+            .Where(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase))
+            .Where(c => string.Equals(c.Placement, normalizedPlacement, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(c.Placement, "all", StringComparison.OrdinalIgnoreCase))
+            .Where(c => !TryParseDate(c.StartDate, out var start) || start <= today)
+            .Where(c => !TryParseDate(c.EndDate, out var end) || end >= today)
+            .Where(c => c.BudgetCents <= 0 || c.SpentCents < c.BudgetCents)
+            .OrderByDescending(c => c.ImpressionCount)
+            .SelectMany(c => c.Creatives
+                .Where(creative => creative.IsActive != 0)
+                .Select(creative => new
+                {
+                    campaign_id = c.Id,
+                    creative_id = creative.Id,
+                    advertiser_name = string.IsNullOrWhiteSpace(c.AdvertiserName) ? c.Name : c.AdvertiserName,
+                    title = creative.Headline,
+                    headline = creative.Headline,
+                    body = string.IsNullOrWhiteSpace(creative.Body) ? null : creative.Body,
+                    image_url = creative.ImageUrl,
+                    cta_url = creative.DestinationUrl,
+                    destination_url = creative.DestinationUrl,
+                    cta_label = creative.CtaText,
+                    cta_text = creative.CtaText,
+                    tracking_token = TrackingToken(tenantId, c.Id, creative.Id, normalizedPlacement),
+                    placement = c.Placement,
+                    advertiser_type = c.AdvertiserType
+                }))
+            .Take(safeLimit)
+            .ToList();
+
+        return Ok(new { success = true, data = ads });
+    }
 
     [HttpPost("ads/impression")]
     [Authorize]
@@ -1401,6 +1448,75 @@ public class MiscParityController : ControllerBase
     }
 
     private static string IdeationChallengeMetaKey(int id) => $"ideation.challenge.meta.{id}";
+
+    private async Task<List<LocalAdCampaignRecord>> LoadLocalAdCampaignsAsync(int tenantId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == LocalAdvertisingCampaignsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<LocalAdCampaignRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static bool TryParseDate(string? value, out DateTime date)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            date = default;
+            return false;
+        }
+
+        return DateTime.TryParse(value, out date);
+    }
+
+    private static string TrackingToken(int tenantId, int campaignId, int creativeId, string placement)
+    {
+        var payload = $"{tenantId}:{campaignId}:{creativeId}:{placement}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
+    }
+
+    private sealed class LocalAdCampaignRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int CreatedBy { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Status { get; set; } = "pending_review";
+        public string AdvertiserType { get; set; } = "sme";
+        public int BudgetCents { get; set; }
+        public int SpentCents { get; set; }
+        public string? StartDate { get; set; }
+        public string? EndDate { get; set; }
+        public string Placement { get; set; } = "feed";
+        public int ImpressionCount { get; set; }
+        public string? AdvertiserName { get; set; }
+        public List<LocalAdCreativeRecord> Creatives { get; set; } = [];
+    }
+
+    private sealed class LocalAdCreativeRecord
+    {
+        public int Id { get; set; }
+        public string Headline { get; set; } = string.Empty;
+        public string? Body { get; set; }
+        public string? CtaText { get; set; }
+        public string? ImageUrl { get; set; }
+        public string? DestinationUrl { get; set; }
+        public int IsActive { get; set; } = 1;
+    }
 
     private static long ToMinorUnits(decimal amount) => decimal.ToInt64(decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero));
     private static string DonationStatusForReact(MoneyDonationStatus status) => status switch

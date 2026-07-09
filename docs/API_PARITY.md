@@ -343,16 +343,20 @@ Laravel `action` field. Exact append-only Laravel `fadp_consent_records`
 schema, `consent_version`, `user_agent`, metadata storage, and service-side
 FADP availability checks remain deeper compliance gaps.
 
-The Laravel React feed-ad tracking slice now has focused ASP.NET contract
-coverage for `POST /api/v2/ads/impression` and `POST
+The Laravel React feed-ad slice now has focused ASP.NET contract coverage for
+`GET /api/v2/ads/active`, `POST /api/v2/ads/impression`, and `POST
 /api/v2/ads/impression/{impressionId}/click`, driven from
-`react-frontend/src/components/feed/FeedAdCard.tsx` and Laravel
-`LocalAdvertisingController::recordImpression/recordClick`. ASP.NET now accepts
-the React `creative_id` plus `placement` impression payload, returns
+`react-frontend/src/pages/feed/FeedPage.tsx`,
+`react-frontend/src/components/feed/FeedAdCard.tsx`, and Laravel
+`LocalAdvertisingController::getActiveAds/recordImpression/recordClick`.
+ASP.NET now returns active tenant ad creatives as the React feed-card fields
+`campaign_id`, `creative_id`, `advertiser_name`, `title`, `body`,
+`image_url`, `cta_url`, `cta_label`, and `tracking_token`, accepts the React
+`creative_id` plus `placement` impression payload, returns
 `data.impression_id`, and returns `data.ok=true` for click tracking while
-preserving legacy `id`/`clicked` aliases. Exact Laravel `ad_impressions` and
+preserving legacy aliases. Exact Laravel `local_ad_*`, `ad_impressions`, and
 `ad_clicks` storage, serveable-creative validation, signed tracking-token
-validation, campaign counter/budget updates, and duplicate-click suppression
+verification, campaign counter/budget updates, and duplicate-click suppression
 remain deeper local-advertising gaps.
 
 The Laravel React feed profile-card stats slice now has focused ASP.NET
