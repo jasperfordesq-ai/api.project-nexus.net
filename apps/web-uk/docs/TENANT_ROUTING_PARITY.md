@@ -941,9 +941,23 @@ blog redirect evidence only; it does not newly certify feature gates, visual
 Blade parity, localization, RSS metadata depth, runtime persistence, or
 ASP.NET backend compatibility.
 
+The sixty-first source slice extends route-level redirect cleanup into
+exchanges. `src/routes/exchanges.js` now sends exchange action and rating POST
+result redirects through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on raw `/exchanges` redirect targets, then passed after
+conversion. A focused shared-mount runtime assertion proves signed
+`/acme/accessible/exchanges/88` POSTs redirect back to
+`/acme/accessible/exchanges/88?status=exchange-updated`. This is exchange
+redirect evidence only; it does not newly certify feature/module gates,
+participant authorization edges, visual Blade parity, localization, workflow
+side effects, broader runtime persistence, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "exchange route redirects"
+npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "submits the Laravel exchange action" --runInBand --silent
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "blog route redirects"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "blog redirects inside" --runInBand --silent
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "skills links, form"

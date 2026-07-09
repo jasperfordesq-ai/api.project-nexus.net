@@ -193,6 +193,11 @@ function statusMessage(status) {
   }
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 router.get('/', asyncRoute(async (req, res) => {
   const tab = ['all', 'active', 'needs_confirmation', 'completed'].includes(req.query.tab) ? req.query.tab : 'all';
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
@@ -277,14 +282,14 @@ router.post('/:id', asyncRoute(async (req, res) => {
 
   try {
     if (!['accept', 'decline', 'start', 'complete', 'confirm', 'cancel'].includes(action)) {
-      return res.redirect(`/exchanges/${id}?status=exchange-action-failed`);
+      return redirectTo(res, `/exchanges/${id}?status=exchange-action-failed`);
     }
 
     await performExchangeAction(req.token, id, action, actionPayload);
-    return res.redirect(`/exchanges/${id}?status=exchange-updated`);
+    return redirectTo(res, `/exchanges/${id}?status=exchange-updated`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
-      return res.redirect(`/exchanges/${id}?status=exchange-action-failed`);
+      return redirectTo(res, `/exchanges/${id}?status=exchange-action-failed`);
     }
     throw error;
   }
@@ -294,7 +299,7 @@ router.post('/:id/rate', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const rating = parseInt(req.body.rating, 10);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.redirect(`/exchanges/${id}?status=rating-invalid#rating`);
+    return redirectTo(res, `/exchanges/${id}?status=rating-invalid#rating`);
   }
 
   try {
@@ -302,10 +307,10 @@ router.post('/:id/rate', asyncRoute(async (req, res) => {
       rating,
       comment: String(req.body.comment || '').trim()
     });
-    return res.redirect(`/exchanges/${id}?status=rating-submitted`);
+    return redirectTo(res, `/exchanges/${id}?status=rating-submitted`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
-      return res.redirect(`/exchanges/${id}?status=rating-failed#rating`);
+      return redirectTo(res, `/exchanges/${id}?status=rating-failed#rating`);
     }
     throw error;
   }

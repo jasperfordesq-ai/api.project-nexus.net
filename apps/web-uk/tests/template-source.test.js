@@ -992,6 +992,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/messages/);
   });
 
+  it('keeps exchange route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'exchanges.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/exchanges/);
+    expect(route).not.toMatch(/res\.redirect\(`\/exchanges/);
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps public coupon list and detail links behind urlFor()', () => {
     const templates = [
       path.join('coupons', 'index.njk'),

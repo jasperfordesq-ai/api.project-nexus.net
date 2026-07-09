@@ -6602,6 +6602,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/exchanges/88?status=exchange-updated');
     expect(api.performExchangeAction).toHaveBeenCalledWith('test-token', 88, 'confirm', { hours: 2.5 });
+
+    api.performExchangeAction.mockClear();
+    const tenantAgent = request.agent(app);
+    const tenantFirst = await tenantAgent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const tenantCsrfMatch = tenantFirst.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const tenantResponse = await tenantAgent
+      .post('/acme/accessible/exchanges/88')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: tenantCsrfMatch[1],
+        action: 'confirm',
+        hours: '2.5'
+      });
+
+    expect(tenantResponse.status).toBe(302);
+    expect(tenantResponse.headers.location).toBe('/acme/accessible/exchanges/88?status=exchange-updated');
+    expect(api.performExchangeAction).toHaveBeenCalledWith('test-token', 88, 'confirm', { hours: 2.5 });
   });
 
   it('submits the Laravel exchange rating route through the exchange rating API helper', async () => {

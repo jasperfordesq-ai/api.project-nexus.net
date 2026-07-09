@@ -183,7 +183,10 @@ discover, buddying, edit, check-in, reminder, buddy-action, history, insights,
 and social links/forms through `urlFor()`.
 The latest exchanges source slice now routes exchange list tabs, detail links,
 pagination, listing/message links, action forms, and rating form through
-`urlFor()`.
+`urlFor()`. The latest exchange redirect slice now routes exchange action and
+rating POST result redirects through `res.locals.urlFor`, with focused
+shared-mount coverage proving `/acme/accessible/exchanges/{id}` POSTs redirect
+back inside the active tenant mount.
 The latest public coupon source slice now routes public coupon list/detail
 links through `urlFor()`. The latest parent-domain reserved-segment slice now
 aligns Web UK's child-slug guard exactly with Laravel
