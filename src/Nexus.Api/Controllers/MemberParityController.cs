@@ -886,7 +886,158 @@ public class MemberParityController : ControllerBase
     public IActionResult UploadVoiceMessage([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "uploaded" } });
 
     [HttpPost("messages/voice")]
-    public IActionResult CreateVoiceMessage([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "created" } });
+    public async Task<IActionResult> CreateVoiceMessage(CancellationToken ct)
+    {
+        if (!Request.HasFormContentType)
+        {
+            return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Voice message must be multipart form data.", field = "voice_message" } }
+            });
+        }
+
+        var form = await Request.ReadFormAsync(ct);
+        if (!int.TryParse(form["recipient_id"].ToString(), out var recipientId) || recipientId <= 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "recipient_id is required.", field = "recipient_id" } }
+            });
+        }
+
+        var voiceFile = form.Files.GetFile("voice_message");
+        if (voiceFile == null || voiceFile.Length == 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "voice_message is required.", field = "voice_message" } }
+            });
+        }
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var recipient = await _db.Users.FirstOrDefaultAsync(u => u.Id == recipientId && u.TenantId == tenantId && u.IsActive);
+        if (recipient == null || recipient.Id == userId)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Recipient not found.", field = "recipient_id" } }
+            });
+        }
+
+        var participant1Id = Math.Min(userId, recipientId);
+        var participant2Id = Math.Max(userId, recipientId);
+        var conversation = await _db.Conversations
+            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
+        if (conversation == null)
+        {
+            conversation = new Conversation
+            {
+                Participant1Id = participant1Id,
+                Participant2Id = participant2Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Conversations.Add(conversation);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        var message = new Message
+        {
+            TenantId = tenantId,
+            ConversationId = conversation.Id,
+            SenderId = userId,
+            Content = string.Empty,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Messages.Add(message);
+        conversation.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        await using var stream = voiceFile.OpenReadStream();
+        var (upload, uploadError) = await _fileUploadService.UploadAsync(
+            stream,
+            voiceFile.FileName,
+            string.IsNullOrWhiteSpace(voiceFile.ContentType) ? "audio/webm" : voiceFile.ContentType,
+            voiceFile.Length,
+            userId,
+            tenantId,
+            FileCategory.Message,
+            message.Id,
+            "message_voice");
+
+        if (uploadError != null)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "UPLOAD_FAILED", message = uploadError, field = "voice_message" } }
+            });
+        }
+
+        var savedUpload = upload!;
+        var attachment = new MessageAttachment
+        {
+            MessageId = message.Id,
+            FileUploadId = savedUpload.Id,
+            UploadedById = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.MessageAttachments.Add(attachment);
+        await _db.SaveChangesAsync(ct);
+
+        var audioUrl = _fileUploadService.GetDownloadUrl(savedUpload);
+        var sender = await CurrentUser();
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = new
+            {
+                id = message.Id,
+                conversation_id = conversation.Id,
+                sender_id = userId,
+                recipient_id = recipientId,
+                receiver_id = recipientId,
+                body = string.Empty,
+                content = string.Empty,
+                is_voice = true,
+                audio_url = audioUrl,
+                audio_duration = 0,
+                transcript = (string?)null,
+                transcript_language = (string?)null,
+                sender = new
+                {
+                    id = sender?.Id ?? userId,
+                    first_name = sender?.FirstName,
+                    last_name = sender?.LastName
+                },
+                recipient = new
+                {
+                    id = recipient.Id,
+                    first_name = recipient.FirstName,
+                    last_name = recipient.LastName
+                },
+                attachments = new[]
+                {
+                    new
+                    {
+                        id = attachment.Id,
+                        message_id = message.Id,
+                        file_upload_id = savedUpload.Id,
+                        original_filename = savedUpload.OriginalFilename,
+                        file_name = savedUpload.OriginalFilename,
+                        content_type = savedUpload.ContentType,
+                        mime_type = savedUpload.ContentType,
+                        file_size_bytes = savedUpload.FileSizeBytes,
+                        file_size = savedUpload.FileSizeBytes,
+                        url = audioUrl,
+                        created_at = attachment.CreatedAt
+                    }
+                },
+                is_read = message.IsRead,
+                created_at = message.CreatedAt
+            }
+        });
+    }
 
     [HttpPost("metrics")]
     [AllowAnonymous]

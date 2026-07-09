@@ -144,6 +144,31 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MessageVoiceV2_AcceptsLaravelReactVoiceFormData()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(TestData.AdminUser.Id.ToString()), "recipient_id");
+        using var voice = new ByteArrayContent(new byte[] { 0x1a, 0x45, 0xdf, 0xa3, 0x00, 0x00 });
+        voice.Headers.ContentType = new MediaTypeHeaderValue("audio/webm");
+        form.Add(voice, "voice_message", "voice-message.webm");
+
+        var response = await Client.PostAsync("/api/v2/messages/voice", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var data = await ReadDataAsync(response);
+        data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        data.GetProperty("is_voice").GetBoolean().Should().BeTrue();
+        data.GetProperty("audio_url").GetString().Should().Contain("/api/files/");
+        data.GetProperty("audio_duration").GetInt32().Should().Be(0);
+        data.GetProperty("attachments").EnumerateArray().Should().ContainSingle(attachmentJson =>
+            attachmentJson.GetProperty("original_filename").GetString() == "voice-message.webm" &&
+            attachmentJson.GetProperty("content_type").GetString() == "audio/webm");
+    }
+
+    [Fact]
     public async Task MessageUnreadCount_ReturnsLaravelReactCountEnvelope()
     {
         await AuthenticateAsMemberAsync();

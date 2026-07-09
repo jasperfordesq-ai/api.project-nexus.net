@@ -42,6 +42,16 @@ public class FileUploadService
         "text/plain", "text/csv"
     };
 
+    private static readonly HashSet<string> AllowedMessageTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain", "text/csv",
+        "audio/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg"
+    };
+
     public FileUploadService(NexusDbContext db, IConfiguration config, ILogger<FileUploadService> logger)
     {
         _db = db;
@@ -72,7 +82,7 @@ public class FileUploadService
         var allowedTypes = category switch
         {
             FileCategory.Document => AllowedDocumentTypes,
-            FileCategory.Message => AllowedDocumentTypes,
+            FileCategory.Message => AllowedMessageTypes,
             FileCategory.TenantLogo => AllowedTenantLogoTypes,
             _ => AllowedImageTypes
         };

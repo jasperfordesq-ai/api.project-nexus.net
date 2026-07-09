@@ -210,7 +210,16 @@ URLs. V2 thread loads treat `{id}` as the other user id instead of an internal
 conversation id. The thread response returns message rows in `data` with
 `meta.conversation`, `per_page`, `cursor`, and `has_more`; the legacy
 `/api/messages/{id}` path keeps its conversation-id response shape for existing
-ASP.NET callers. Voice-message multipart send remains a separate parity slice.
+ASP.NET callers.
+
+The Laravel React voice-message slice now has focused ASP.NET regression
+coverage for `POST /api/v2/messages/voice` as used by `ConversationPage.tsx`.
+ASP.NET accepts multipart `recipient_id` plus `voice_message`, stores the audio
+through the .NET file service, creates a normal conversation message, and returns
+Laravel-style `success/data` with `is_voice`, `audio_url`, `audio_duration`,
+sender/recipient rows, and an attachment row. Real audio-duration extraction,
+voice transcription, and exact Laravel voice columns remain deeper workflow and
+schema parity gaps.
 
 The Laravel React unread/read-receipt slice now has focused ASP.NET regression
 coverage for `GET /api/v2/messages/unread-count` and
