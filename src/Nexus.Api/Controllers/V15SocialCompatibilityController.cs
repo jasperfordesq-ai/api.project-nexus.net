@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text;
 using System.Security.Cryptography;
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -1019,9 +1020,158 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpGet("/api/v2/feed/sidebar")]
     public async Task<IActionResult> FeedSidebar()
     {
-        var trending = await _db.Hashtags.OrderByDescending(h => h.UsageCount).Take(10).ToListAsync();
-        var groups = await _db.Groups.OrderByDescending(g => g.CreatedAt).Take(5).Select(g => new { g.Id, g.Name, g.Description }).ToListAsync();
-        return Ok(new { data = new { trending_hashtags = trending, suggested_groups = groups } });
+        var tenantId = TenantId();
+        var userId = RequireUserId();
+        var now = DateTime.UtcNow;
+
+        var communityStats = new
+        {
+            members = await _db.Users.AsNoTracking().CountAsync(u => u.TenantId == tenantId && u.IsActive),
+            listings = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.Status == ListingStatus.Active),
+            events = await _db.Events.AsNoTracking().CountAsync(e => e.TenantId == tenantId && !e.IsCancelled),
+            groups = await _db.Groups.AsNoTracking().CountAsync(g => g.TenantId == tenantId)
+        };
+
+        var categories = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.IsActive)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Slug,
+                Count = c.Listings.Count(l => l.TenantId == tenantId && l.Status == ListingStatus.Active)
+            })
+            .Where(c => c.Count > 0)
+            .OrderByDescending(c => c.Count)
+            .ThenBy(c => c.Name)
+            .Take(8)
+            .ToListAsync();
+
+        var topCategories = categories.Select(c => new
+        {
+            id = c.Id,
+            name = c.Name,
+            slug = c.Slug,
+            color = (string?)null,
+            count = c.Count
+        }).ToList();
+
+        var events = await _db.Events
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId && !e.IsCancelled && e.StartsAt >= now)
+            .OrderBy(e => e.StartsAt)
+            .Take(3)
+            .Select(e => new
+            {
+                e.Id,
+                e.Title,
+                e.StartsAt,
+                e.Location
+            })
+            .ToListAsync();
+
+        var upcomingEvents = events.Select(e => new
+        {
+            id = e.Id,
+            title = e.Title,
+            start_time = e.StartsAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+            location = e.Location
+        }).ToList();
+
+        var groups = await _db.Groups
+            .AsNoTracking()
+            .Where(g => g.TenantId == tenantId)
+            .OrderByDescending(g => g.Members.Count)
+            .ThenByDescending(g => g.CreatedAt)
+            .Take(5)
+            .Select(g => new
+            {
+                id = g.Id,
+                name = g.Name,
+                description = g.Description,
+                image_url = g.ImageUrl,
+                member_count = g.Members.Count
+            })
+            .ToListAsync();
+
+        var suggestedListings = await _db.Listings
+            .AsNoTracking()
+            .Where(l => l.TenantId == tenantId && l.UserId != userId && l.Status == ListingStatus.Active)
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(4)
+            .Select(l => new
+            {
+                id = l.Id,
+                title = l.Title,
+                type = l.Type == ListingType.Request ? "request" : "offer",
+                owner_name = l.User == null ? string.Empty : (l.User.FirstName + " " + l.User.LastName).Trim(),
+                image_url = l.ImageUrl
+            })
+            .ToListAsync();
+
+        var friendRows = await _db.Connections
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId
+                && c.Status == Connection.Statuses.Accepted
+                && (c.RequesterId == userId || c.AddresseeId == userId))
+            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+            .Take(8)
+            .Select(c => c.RequesterId == userId ? c.Addressee : c.Requester)
+            .Select(u => new
+            {
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.AvatarUrl,
+                u.LastLoginAt
+            })
+            .ToListAsync();
+
+        var friends = friendRows.Select(u => new
+        {
+            id = u.Id,
+            name = (u.FirstName + " " + u.LastName).Trim(),
+            first_name = u.FirstName,
+            last_name = u.LastName,
+            avatar_url = u.AvatarUrl,
+            location = (string?)null,
+            is_online = u.LastLoginAt.HasValue && u.LastLoginAt.Value > now.AddMinutes(-5),
+            is_recent = u.LastLoginAt.HasValue && u.LastLoginAt.Value > now.AddDays(-1)
+        }).ToList();
+
+        var profileStats = new
+        {
+            total_listings = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId),
+            offers = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId && l.Type == ListingType.Offer),
+            requests = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId && l.Type == ListingType.Request),
+            hours_given = await _db.Transactions.AsNoTracking().Where(t => t.TenantId == tenantId && t.SenderId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m,
+            hours_received = await _db.Transactions.AsNoTracking().Where(t => t.TenantId == tenantId && t.ReceiverId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m
+        };
+
+        var trending = await _db.Hashtags
+            .AsNoTracking()
+            .Where(h => h.TenantId == tenantId)
+            .OrderByDescending(h => h.UsageCount)
+            .Take(10)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                community_stats = communityStats,
+                top_categories = topCategories,
+                upcoming_events = upcomingEvents,
+                popular_groups = groups.Take(3).ToList(),
+                suggested_listings = suggestedListings,
+                friends,
+                profile_stats = profileStats,
+                trending_hashtags = trending,
+                suggested_groups = groups
+            }
+        });
     }
 
     [HttpGet("/api/v2/jobs/feed.json")]

@@ -66,6 +66,10 @@ Status values:
 - Social feed profile-card stats now cover `GET /api/v2/me/stats` for
   `ProfileCardWidget.tsx`, returning `listings_count`, `given_count`,
   `received_count`, `offers_count`, `requests_count`, and `wallet_balance`.
+- Social feed sidebar aggregation now covers `GET /api/v2/feed/sidebar` for
+  `FeedSidebar.tsx`, returning the Laravel React widget keys
+  `community_stats`, `top_categories`, `upcoming_events`, `popular_groups`,
+  `suggested_listings`, `friends`, and `profile_stats`.
 - "Mapped" does not mean complete. It means the .NET repo has enough surface to
   start a detailed contract/workflow parity audit.
 - Full parity requires the gap register in `LARAVEL_PARITY_MAP.md` to close, not

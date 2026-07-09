@@ -364,6 +364,17 @@ the React `listings_count`, `given_count`, `received_count`, `offers_count`,
 aliases. Exact Laravel `users.balance` column parity remains a schema gap;
 .NET derives `wallet_balance` from completed time-credit transactions.
 
+The Laravel React feed-sidebar aggregate slice now has focused ASP.NET
+contract coverage for `GET /api/v2/feed/sidebar`, driven from
+`react-frontend/src/components/feed/sidebar/FeedSidebar.tsx` and Laravel
+`FeedSidebarController::sidebar`. ASP.NET now returns the Laravel-style
+`success/data` envelope with `community_stats`, `top_categories`,
+`upcoming_events`, `popular_groups`, `suggested_listings`, `friends`, and
+`profile_stats`, while retaining legacy `trending_hashtags` and
+`suggested_groups` aliases. Exact Laravel cache behavior, `categories.type`
+filtering, group visibility/member status rules, friend/suggested-member
+ranking, and runtime browser smoke coverage remain deeper social-feed gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,
