@@ -199,6 +199,10 @@ poll, moderation, share, save, and mute POST result redirects through
 `res.locals.urlFor`, with shared-mount coverage proving an empty
 `/acme/accessible/feed/posts` submission redirects to
 `/acme/accessible/feed?status=post-empty`.
+The latest poll action redirect slice now routes auth-required, create, vote,
+rank, delete, like, and comment POST outcomes through `res.locals.urlFor`, with
+shared-mount coverage proving `/acme/accessible/polls/42/vote` stays under the
+active tenant mount when redirecting to auth-required login.
 The latest group-exchange action redirect slice now sends auth-required,
 validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed

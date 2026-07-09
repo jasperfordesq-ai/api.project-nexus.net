@@ -22,6 +22,13 @@ const {
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+const POLLS_PATH = '/polls';
+const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -54,7 +61,7 @@ function isAuthError(error) {
 
 function redirectAuthIfNeeded(error, res) {
   if (isAuthError(error)) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return true;
   }
   return false;
@@ -164,7 +171,7 @@ function rankedResultRows(result) {
 function requirePollAuth(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return '';
   }
   return token;
@@ -193,21 +200,21 @@ function pollStatusBanner(status) {
 
 function pollRedirect(status, id = null) {
   const suffix = id === null ? '' : `#poll-${id}`;
-  return `/polls?status=${encodeURIComponent(status)}${suffix}`;
+  return `${POLLS_PATH}?status=${encodeURIComponent(status)}${suffix}`;
 }
 
 function pollDetailRedirect(id, status, fragment) {
   const suffix = fragment ? `#${fragment}` : '';
-  return `/polls/${encodeURIComponent(id)}?status=${encodeURIComponent(status)}${suffix}`;
+  return `${POLLS_PATH}/${encodeURIComponent(id)}?status=${encodeURIComponent(status)}${suffix}`;
 }
 
 function rankRedirect(id, status) {
-  return `/polls/${encodeURIComponent(id)}/rank?status=${encodeURIComponent(status)}`;
+  return `${POLLS_PATH}/${encodeURIComponent(id)}/rank?status=${encodeURIComponent(status)}`;
 }
 
 function createPollRedirect(status, parity = false) {
   return parity
-    ? `/polls/parity/create?status=${encodeURIComponent(status)}`
+    ? `${POLLS_PATH}/parity/create?status=${encodeURIComponent(status)}`
     : pollRedirect(status);
 }
 
@@ -428,12 +435,12 @@ router.get('/', asyncRoute(async (req, res) => {
 async function storePoll(req, res, { parity = false } = {}) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const payload = pollPayloadFrom(req.body, { parity });
   if (!isValidPollPayload(payload)) {
-    return res.redirect(createPollRedirect('poll-create-failed', parity));
+    return redirectTo(res, createPollRedirect('poll-create-failed', parity));
   }
 
   let status = 'poll-created';
@@ -444,7 +451,7 @@ async function storePoll(req, res, { parity = false } = {}) {
     status = 'poll-create-failed';
   }
 
-  return res.redirect(createPollRedirect(status, parity));
+  return redirectTo(res, createPollRedirect(status, parity));
 }
 
 router.post('/parity/create', asyncRoute(async (req, res) => (
@@ -459,12 +466,12 @@ router.post('/:id(\\d+)/vote', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const optionId = positiveInteger(req.body.option_id);
   if (optionId === null) {
-    return res.redirect(pollRedirect('vote-failed', id));
+    return redirectTo(res, pollRedirect('vote-failed', id));
   }
 
   let status = 'voted';
@@ -475,19 +482,19 @@ router.post('/:id(\\d+)/vote', asyncRoute(async (req, res) => {
     status = 'vote-failed';
   }
 
-  return res.redirect(pollRedirect(status, id));
+  return redirectTo(res, pollRedirect(status, id));
 }));
 
 router.post('/:id(\\d+)/rank', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const rankings = rankingsFrom(req.body, req.rawUrlencodedBody);
   if (rankings.length === 0) {
-    return res.redirect(rankRedirect(id, 'rank-failed'));
+    return redirectTo(res, rankRedirect(id, 'rank-failed'));
   }
 
   let status = 'ranked';
@@ -498,14 +505,14 @@ router.post('/:id(\\d+)/rank', asyncRoute(async (req, res) => {
     status = 'rank-failed';
   }
 
-  return res.redirect(rankRedirect(id, status));
+  return redirectTo(res, rankRedirect(id, status));
 }));
 
 router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   let status = 'poll-deleted';
@@ -516,14 +523,14 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'poll-delete-failed';
   }
 
-  return res.redirect(`/polls/parity/manage?status=${encodeURIComponent(status)}`);
+  return redirectTo(res, `${POLLS_PATH}/parity/manage?status=${encodeURIComponent(status)}`);
 }));
 
 router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   let status = 'poll-like-failed';
@@ -538,24 +545,24 @@ router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
     status = 'poll-like-failed';
   }
 
-  return res.redirect(pollDetailRedirect(id, status, 'poll-social'));
+  return redirectTo(res, pollDetailRedirect(id, status, 'poll-social'));
 }));
 
 router.post('/:id(\\d+)/comment', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const content = trimmed(req.body.content || req.body.body, 10000);
   const rawContent = String(req.body.content || req.body.body || '');
   const parentId = positiveInteger(req.body.parent_id);
   if (content === '') {
-    return res.redirect(pollDetailRedirect(id, 'poll-comment-empty', 'poll-comments'));
+    return redirectTo(res, pollDetailRedirect(id, 'poll-comment-empty', 'poll-comments'));
   }
   if (rawContent.length > 10000) {
-    return res.redirect(pollDetailRedirect(id, 'poll-comment-too-long', 'poll-comments'));
+    return redirectTo(res, pollDetailRedirect(id, 'poll-comment-too-long', 'poll-comments'));
   }
 
   let status = 'poll-comment-created';
@@ -571,7 +578,7 @@ router.post('/:id(\\d+)/comment', asyncRoute(async (req, res) => {
     status = 'poll-comment-failed';
   }
 
-  return res.redirect(pollDetailRedirect(id, status, 'poll-comments'));
+  return redirectTo(res, pollDetailRedirect(id, status, 'poll-comments'));
 }));
 
 module.exports = router;

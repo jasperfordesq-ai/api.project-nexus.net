@@ -1090,6 +1090,19 @@ does not newly certify realtime unread-count depth, persistence side effects,
 localization, broader Laravel runtime behavior, visual Blade parity, or ASP.NET
 backend compatibility.
 
+The seventy-first source slice extends route-level redirect cleanup into poll
+actions. `src/routes/poll-actions.js` now sends auth-required, create, vote,
+rank, delete, like, and comment result redirects through `redirectTo(res, ...)`,
+which delegates to `res.locals.urlFor` when shell locals are available. The
+focused source regression first failed on raw `/login` and `/polls` redirect
+targets plus raw poll helper return strings, then passed after conversion.
+Focused shared-mount coverage proves unsigned
+`/acme/accessible/polls/42/vote` redirects to
+`/acme/accessible/login?status=auth-required`. This is poll redirect evidence
+only; it does not newly certify feature gates, exact open/closed list parity,
+owner authorization, localization, runtime persistence, visual Blade parity, or
+ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
@@ -1103,6 +1116,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed action validation redirects"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "poll action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "poll action redirects inside|Laravel poll"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "premium links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "premium"

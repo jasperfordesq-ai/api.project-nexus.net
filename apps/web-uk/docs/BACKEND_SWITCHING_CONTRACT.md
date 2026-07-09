@@ -536,7 +536,10 @@ The signed poll pages `/polls`, `/polls/parity/create`,
 `WEB_UK_BASE_URL=http://127.0.0.1:6231`. The targeted run passed with `13/13`
 checks and `0` failures. The body-text-only default smoke scope passed against
 the same port with `234/234` total checks, including 228 body-text contract
-checks, and `0` failures.
+checks, and `0` failures. Poll action redirects for auth-required, create,
+vote, rank, delete, like, and comment outcomes now use `res.locals.urlFor`; any
+future ASP.NET backend mode must preserve those tenant-aware redirect targets
+rather than returning flat root-relative poll/login paths.
 The blog feed, detail, comments, and reaction pages `/blog/feed.xml`,
 `/blog/test-sitemap-blog-post/likers/like`,
 `/blog/timebank-ireland/likers/like`, `/blog/test-sitemap-blog-post`,

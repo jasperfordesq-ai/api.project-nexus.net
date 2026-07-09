@@ -765,6 +765,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps poll action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'poll-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|polls)/);
+    expect(route).not.toContain('return `/polls');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps ideation action redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'ideation-actions.js'),
