@@ -513,6 +513,12 @@ forms, publish/unpublish/delete actions, and grading forms through `urlFor()`.
 The source-level regression first failed on raw `/courses` links/actions, then
 passed after conversion; a source scan for course-local raw `href`/`action`
 strings and the raw `formAction` template action returns no matches.
+The latest course route-redirect cleanup now sends signed-out auth handoffs,
+certificate and learner error redirects, learner enrol/review/progress/quiz
+results, instructor create/update/publish/unpublish/delete results,
+section/lesson builder outcomes, and grading redirects through
+`res.locals.urlFor`, so those Laravel named-route equivalents stay inside
+shared tenant mounts and custom-domain child paths.
 
 The twenty-eighth template-helper source slice extends direct `urlFor()`
 conversion into listing index and create/edit form pages.

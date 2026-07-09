@@ -74,7 +74,9 @@ and episode POST outcomes. The federation action routes now follow it for
 connection, message, translation, transfer, onboarding, opt-in/out, and settings
 POST outcomes. The settings routes now follow it for appearance, availability,
 data-rights, linked-account, and insurance auth, validation, success, and
-API-error outcomes. The Jobs action routes now follow it for
+API-error outcomes. The course routes now follow it for auth handoffs,
+certificate/learn errors, learner actions, instructor course, section, lesson,
+publish/delete, and grading outcomes. The Jobs action routes now follow it for
 create/update/delete/renew/apply/save/unsave, application status/withdrawal,
 alert, interview, offer, and owner CSV failure outcomes; future ASP.NET mode
 must preserve equivalent local redirect semantics.

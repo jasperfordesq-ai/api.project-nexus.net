@@ -102,6 +102,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -138,7 +143,7 @@ function isAuthError(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
 
@@ -192,7 +197,7 @@ async function callCourse(token, method, path, data = undefined) {
 function requireToken(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return null;
   }
 
@@ -535,14 +540,14 @@ async function courseDetailPayload(token, id) {
 async function requireCourseAction(req, res, failureRedirect, action) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
     return await action(token);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect);
+    return redirectTo(res, typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect);
   }
 }
 
@@ -557,6 +562,10 @@ function learnRedirect(id, status, lessonId = null) {
 
 function instructorRedirect(status) {
   return `/courses/instructor?status=${encodeURIComponent(status)}`;
+}
+
+function instructorCreateRedirect(status) {
+  return `/courses/instructor/new?status=${encodeURIComponent(status)}`;
 }
 
 function instructorEditRedirect(id, status) {
@@ -754,13 +763,13 @@ router.get('/:id/certificate', asyncRoute(async (req, res) => {
     const data = objectFrom(result);
     const html = typeof data.html === 'string' ? data.html : '';
     if (!html) {
-      return res.redirect(courseRedirect(req.params.id, 'certificate-failed'));
+      return redirectTo(res, courseRedirect(req.params.id, 'certificate-failed'));
     }
     return res.type('html').send(html);
   } catch (error) {
     if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
       const status = error.status === 403 ? 'certificate-locked' : 'certificate-failed';
-      return res.redirect(courseRedirect(req.params.id, status));
+      return redirectTo(res, courseRedirect(req.params.id, status));
     }
     if (handleCourseGetError(error, res)) return undefined;
     throw error;
@@ -774,7 +783,7 @@ router.get('/:id/learn', asyncRoute(async (req, res) => {
   try {
     const payload = await courseDetailPayload(token, req.params.id);
     if (!payload.isEnrolled) {
-      return res.redirect(courseRedirect(req.params.id, 'enrol-required'));
+      return redirectTo(res, courseRedirect(req.params.id, 'enrol-required'));
     }
 
     const requestedLessonId = positiveInteger(req.query.lesson);
@@ -951,7 +960,7 @@ function quizStatus(result) {
 router.post('/:id/enrol', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, (error) => courseRedirect(req.params.id, enrolFailureStatus(error)), async (token) => {
     await callCourse(token, 'POST', `/${req.params.id}/enroll`);
-    return res.redirect(courseRedirect(req.params.id, 'enrolled'));
+    return redirectTo(res, courseRedirect(req.params.id, 'enrolled'));
   });
 }));
 
@@ -962,7 +971,7 @@ router.post('/:id/lessons/:lessonId/complete', asyncRoute(async (req, res) => {
     const status = data && typeof data === 'object' && data.course_completed
       ? 'course-completed'
       : 'lesson-completed';
-    return res.redirect(learnRedirect(req.params.id, status));
+    return redirectTo(res, learnRedirect(req.params.id, status));
   });
 }));
 
@@ -970,18 +979,18 @@ router.post('/:id/lessons/:lessonId/quiz', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, learnRedirect(req.params.id, 'quiz-error', req.params.lessonId), async (token) => {
     const quizId = positiveInteger(req.body.quiz_id || req.body.quizId);
     if (quizId === null) {
-      return res.redirect(learnRedirect(req.params.id, 'quiz-error', req.params.lessonId));
+      return redirectTo(res, learnRedirect(req.params.id, 'quiz-error', req.params.lessonId));
     }
 
     try {
       const result = await callCourse(token, 'POST', `/quizzes/${quizId}/attempt`, {
         answers: quizAnswers(req.body)
       });
-      return res.redirect(learnRedirect(req.params.id, quizStatus(result), req.params.lessonId));
+      return redirectTo(res, learnRedirect(req.params.id, quizStatus(result), req.params.lessonId));
     } catch (error) {
       if (redirectOnAuthError(error, res)) return undefined;
       const status = errorCode(error) === 'MAX_ATTEMPTS_REACHED' ? 'quiz-no-attempts' : 'quiz-error';
-      return res.redirect(learnRedirect(req.params.id, status, req.params.lessonId));
+      return redirectTo(res, learnRedirect(req.params.id, status, req.params.lessonId));
     }
   });
 }));
@@ -989,26 +998,26 @@ router.post('/:id/lessons/:lessonId/quiz', asyncRoute(async (req, res) => {
 router.post('/:id/reviews', asyncRoute(async (req, res) => {
   const payload = reviewPayload(req.body);
   if (payload === null) {
-    return res.redirect(courseRedirect(req.params.id, 'review-invalid', '#reviews'));
+    return redirectTo(res, courseRedirect(req.params.id, 'review-invalid', '#reviews'));
   }
 
   return requireCourseAction(req, res, (error) => courseRedirect(req.params.id, reviewFailureStatus(error), '#reviews'), async (token) => {
     await callCourse(token, 'POST', `/${req.params.id}/reviews`, payload);
-    return res.redirect(courseRedirect(req.params.id, 'review-saved', '#reviews'));
+    return redirectTo(res, courseRedirect(req.params.id, 'review-saved', '#reviews'));
   });
 }));
 
 router.post('/instructor/new', asyncRoute(async (req, res) => {
   const payload = coursePayload(req.body);
   if (payload === null) {
-    return res.redirect('/courses/instructor/new?status=create-failed');
+    return redirectTo(res, instructorCreateRedirect('create-failed'));
   }
 
-  return requireCourseAction(req, res, '/courses/instructor/new?status=create-failed', async (token) => {
+  return requireCourseAction(req, res, instructorCreateRedirect('create-failed'), async (token) => {
     const result = await callCourse(token, 'POST', '', payload);
     const id = resultId(result);
-    return res.redirect(id === null
-      ? '/courses/instructor/new?status=create-failed'
+    return redirectTo(res, id === null
+      ? instructorCreateRedirect('create-failed')
       : instructorEditRedirect(id, 'created'));
   });
 }));
@@ -1016,12 +1025,12 @@ router.post('/instructor/new', asyncRoute(async (req, res) => {
 router.post('/instructor/:id/update', asyncRoute(async (req, res) => {
   const payload = coursePayload(req.body);
   if (payload === null) {
-    return res.redirect(instructorEditRedirect(req.params.id, 'save-failed'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'save-failed'));
   }
 
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'save-failed'), async (token) => {
     await callCourse(token, 'PUT', `/${req.params.id}`, payload);
-    return res.redirect(instructorEditRedirect(req.params.id, 'saved'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'saved'));
   });
 }));
 
@@ -1032,90 +1041,90 @@ router.post('/instructor/:id/publish', asyncRoute(async (req, res) => {
     const status = data && typeof data === 'object' && data.moderation_status === 'approved'
       ? 'published'
       : 'pending-review';
-    return res.redirect(instructorEditRedirect(req.params.id, status));
+    return redirectTo(res, instructorEditRedirect(req.params.id, status));
   });
 }));
 
 router.post('/instructor/:id/unpublish', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'unpublish-failed'), async (token) => {
     await callCourse(token, 'POST', `/${req.params.id}/unpublish`);
-    return res.redirect(instructorEditRedirect(req.params.id, 'unpublished'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'unpublished'));
   });
 }));
 
 router.post('/instructor/:id/delete', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, instructorRedirect('delete-failed'), async (token) => {
     await callCourse(token, 'DELETE', `/${req.params.id}`);
-    return res.redirect(instructorRedirect('deleted'));
+    return redirectTo(res, instructorRedirect('deleted'));
   });
 }));
 
 router.post('/instructor/:id/grading/:attemptId', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, instructorGradingRedirect(req.params.id, 'grade-failed'), async (token) => {
     await callCourse(token, 'POST', `/attempts/${req.params.attemptId}/grade`, gradePayload(req.body));
-    return res.redirect(instructorGradingRedirect(req.params.id, 'graded'));
+    return redirectTo(res, instructorGradingRedirect(req.params.id, 'graded'));
   });
 }));
 
 router.post('/instructor/:id/sections', asyncRoute(async (req, res) => {
   const payload = sectionPayload(req.body);
   if (payload === null) {
-    return res.redirect(instructorEditRedirect(req.params.id, 'section-title-missing'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'section-title-missing'));
   }
 
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'section-failed'), async (token) => {
     await callCourse(token, 'POST', `/${req.params.id}/sections`, payload);
-    return res.redirect(instructorEditRedirect(req.params.id, 'section-added'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'section-added'));
   });
 }));
 
 router.post('/instructor/:id/sections/:sectionId/update', asyncRoute(async (req, res) => {
   const payload = sectionPayload(req.body);
   if (payload === null) {
-    return res.redirect(instructorEditRedirect(req.params.id, 'section-title-missing'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'section-title-missing'));
   }
 
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'section-failed'), async (token) => {
     await callCourse(token, 'PUT', `/${req.params.id}/sections/${req.params.sectionId}`, payload);
-    return res.redirect(instructorEditRedirect(req.params.id, 'section-saved'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'section-saved'));
   });
 }));
 
 router.post('/instructor/:id/sections/:sectionId/delete', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'section-failed'), async (token) => {
     await callCourse(token, 'DELETE', `/${req.params.id}/sections/${req.params.sectionId}`);
-    return res.redirect(instructorEditRedirect(req.params.id, 'section-deleted'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'section-deleted'));
   });
 }));
 
 router.post('/instructor/:id/lessons', asyncRoute(async (req, res) => {
   const payload = lessonPayload(req.body);
   if (payload === null) {
-    return res.redirect(instructorEditRedirect(req.params.id, 'lesson-title-missing'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'lesson-title-missing'));
   }
 
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'lesson-failed'), async (token) => {
     await callCourse(token, 'POST', `/${req.params.id}/lessons`, payload);
-    return res.redirect(instructorEditRedirect(req.params.id, 'lesson-added'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'lesson-added'));
   });
 }));
 
 router.post('/instructor/:id/lessons/:lessonId/update', asyncRoute(async (req, res) => {
   const payload = lessonPayload(req.body);
   if (payload === null) {
-    return res.redirect(instructorEditRedirect(req.params.id, 'lesson-title-missing'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'lesson-title-missing'));
   }
 
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'lesson-failed'), async (token) => {
     await callCourse(token, 'PUT', `/${req.params.id}/lessons/${req.params.lessonId}`, payload);
-    return res.redirect(instructorEditRedirect(req.params.id, 'lesson-saved'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'lesson-saved'));
   });
 }));
 
 router.post('/instructor/:id/lessons/:lessonId/delete', asyncRoute(async (req, res) => {
   return requireCourseAction(req, res, instructorEditRedirect(req.params.id, 'lesson-failed'), async (token) => {
     await callCourse(token, 'DELETE', `/${req.params.id}/lessons/${req.params.lessonId}`);
-    return res.redirect(instructorEditRedirect(req.params.id, 'lesson-deleted'));
+    return redirectTo(res, instructorEditRedirect(req.params.id, 'lesson-deleted'));
   });
 }));
 

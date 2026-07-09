@@ -1282,6 +1282,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/courses/);
   });
 
+  it('keeps course action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'courses.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|courses)/);
+    expect(route).not.toMatch(/res\.redirect\(`\/courses/);
+    expect(route).not.toMatch(/requireCourseAction\([^,]+,\s*[^,]+,\s*['"`]\/(?:login|courses)/);
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps knowledge-base browse, pagination, and article links behind urlFor()', () => {
     const templates = [
       path.join('kb', 'index.njk'),

@@ -176,7 +176,9 @@ the active tenant mount without relying only on the shared-mount response
 rewriter. The latest courses source slice now routes
 course browse, learner, instructor, builder, analytics, grading, certificate,
 review, enrolment, quiz, progress, and section/lesson controls through
-`urlFor()`. The latest listing index/form source slice now routes listing
+`urlFor()`. The latest courses redirect slice now routes course auth handoffs,
+certificate/learn errors, learner actions, instructor course, section, lesson,
+publish/delete, and grading outcomes through `res.locals.urlFor`. The latest listing index/form source slice now routes listing
 breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
 controls, pagination, empty-state CTAs, create/edit form action, and cancel
 link through `urlFor()`. The latest events index/form source slice now routes
