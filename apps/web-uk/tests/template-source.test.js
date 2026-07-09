@@ -275,6 +275,36 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
   });
 
+  it('keeps public volunteering links, filters, and apply CTAs behind urlFor()', () => {
+    const templates = [
+      'volunteering.njk',
+      'volunteer-opportunity.njk'
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/href="\/(?:volunteering|organisations)/);
+    expect(source).not.toMatch(/action="\/volunteering/);
+    expect(source).not.toContain('href="{{ loadMoreHref }}"');
+    expect(source).toMatch(/urlFor\(["']\/volunteering/);
+    expect(source).toMatch(/urlFor\(["']\/organisations/);
+  });
+
+  it('keeps volunteering action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'volunteering-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|volunteering)/);
+    expect(route).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps member directory, discovery, nearby, and insights controls behind urlFor()', () => {
     const templates = [
       path.join('members', 'index.njk'),

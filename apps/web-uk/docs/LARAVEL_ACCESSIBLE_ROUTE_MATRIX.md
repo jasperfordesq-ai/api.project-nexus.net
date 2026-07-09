@@ -421,6 +421,11 @@ Group announcement and file source templates now also use `urlFor()` for
 announcement edit/pin/delete/create controls, file download/delete/upload
 controls, and group back links. Volunteering recommended-shifts source links
 now use `urlFor()` for the volunteering back link and opportunity links.
+The public volunteering landing/search and opportunity detail source templates
+now also use `urlFor()` for volunteering filters, organisation links,
+opportunity cards, load-more links, and apply CTAs; volunteering action
+redirects now pass through `res.locals.urlFor` for auth, validation, success,
+and API-failure destinations.
 
 The legacy local event RSVP routes have been removed: GET `/events/my` and POST
 `/events/{id}/rsvp/remove` are no longer exposed. Event list pages no longer

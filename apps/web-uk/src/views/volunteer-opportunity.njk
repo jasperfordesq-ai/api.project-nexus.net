@@ -8,7 +8,7 @@
 {% set opportunityTitle = opportunity.title or "Volunteering opportunity" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -31,7 +31,7 @@
         {% endif %}
         {% if opportunity.organisationId %}
           <p class="govuk-body govuk-!-margin-bottom-0">
-            <a class="govuk-link" href="/organisations/{{ opportunity.organisationId }}">{{ opportunity.organisationName or "Organisation" }}</a>
+            <a class="govuk-link" href="{{ urlFor('/organisations/' ~ opportunity.organisationId) }}">{{ opportunity.organisationName or "Organisation" }}</a>
           </p>
         {% else %}
           <p class="govuk-body govuk-!-margin-bottom-0">{{ opportunity.organisationName or "Organisation" }}</p>
@@ -128,7 +128,7 @@
   {% endif %}
 
   <div class="govuk-button-group govuk-!-margin-top-6">
-    <a class="govuk-button" data-module="govuk-button" href="/organisations/opportunities/{{ opportunityId }}/apply">Apply for this opportunity</a>
-    <a class="govuk-link" href="/volunteering">Back to volunteering</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/opportunities/' ~ opportunityId ~ '/apply') }}">Apply for this opportunity</a>
+    <a class="govuk-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
   </div>
 {% endblock %}

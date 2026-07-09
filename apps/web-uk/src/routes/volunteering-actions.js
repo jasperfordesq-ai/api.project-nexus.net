@@ -223,13 +223,20 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const target = res.locals && typeof res.locals.urlFor === 'function'
+    ? res.locals.urlFor(pathname)
+    : pathname;
+  return res.redirect(target);
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -277,7 +284,7 @@ async function callApi(token, method, path, data = undefined) {
 async function runAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
@@ -285,10 +292,10 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
     const redirect = typeof successRedirect === 'function'
       ? successRedirect(result)
       : successRedirect;
-    return res.redirect(redirect);
+    return redirectTo(res, redirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
@@ -1673,7 +1680,7 @@ function accessibilityPayload(rows) {
 router.get('/certificates', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let certificates = [];
@@ -1698,7 +1705,7 @@ router.get('/certificates', asyncRoute(async (req, res) => {
 router.get('/certificates/:code([A-Za-z0-9]+)/download', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const code = trimmed(req.params.code);
@@ -1721,7 +1728,7 @@ router.get('/certificates/:code([A-Za-z0-9]+)/download', asyncRoute(async (req, 
 router.get('/accessibility', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const accessibility = accessibilityPayload(collectionFrom(await callApi(token, 'GET', '/accessibility-needs')));
@@ -1739,7 +1746,7 @@ router.get('/accessibility', asyncRoute(async (req, res) => {
 router.get('/emergency-alerts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let dashboard = normalizeEmergencyAlertDashboard({});
@@ -1766,7 +1773,7 @@ router.get('/emergency-alerts', asyncRoute(async (req, res) => {
 router.get('/group-signups', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let reservations = [];
@@ -1793,7 +1800,7 @@ router.get('/group-signups', asyncRoute(async (req, res) => {
 async function renderSafeguarding(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const queryTab = trimmed(req.query.tab);
@@ -1838,7 +1845,7 @@ router.get('/incidents', asyncRoute(renderSafeguarding, { redirectOn401: loginRe
 router.get('/waitlist', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let entries = [];
@@ -1865,7 +1872,7 @@ router.get('/waitlist', asyncRoute(async (req, res) => {
 router.get('/swaps', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let swaps = [];
@@ -1897,7 +1904,7 @@ router.get('/swaps', asyncRoute(async (req, res) => {
 router.get('/my-organisations', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const roleFilter = ['owner', 'admin', 'member'].includes(trimmed(req.query.role))
@@ -1935,7 +1942,7 @@ router.get('/my-organisations', asyncRoute(async (req, res) => {
 router.get('/recommended-shifts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let shifts = [];
@@ -1960,7 +1967,7 @@ router.get('/recommended-shifts', asyncRoute(async (req, res) => {
 router.get('/organisations/:id(\\d+)/dashboard', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const id = Number(req.params.id);
@@ -1985,7 +1992,7 @@ router.get('/organisations/:id(\\d+)/dashboard', asyncRoute(async (req, res) => 
 router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const id = Number(req.params.id);
@@ -2022,7 +2029,7 @@ router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
 router.get('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const id = Number(req.params.id);
@@ -2049,7 +2056,7 @@ router.get('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
 router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const id = Number(req.params.id);
@@ -2085,7 +2092,7 @@ router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) =>
 router.get('/organisations/:id(\\d+)/wallet', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const id = Number(req.params.id);
@@ -2121,7 +2128,7 @@ router.get('/organisations/:id(\\d+)/wallet', asyncRoute(async (req, res) => {
 router.get('/credentials', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let credentials = [];
@@ -2147,7 +2154,7 @@ router.get('/credentials', asyncRoute(async (req, res) => {
 router.get('/hours', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let summary = normalizeHourSummary({});
@@ -2190,7 +2197,7 @@ router.get('/hours', asyncRoute(async (req, res) => {
 router.get('/wellbeing', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let wellbeing = normalizeWellbeingDashboard({});
@@ -2215,7 +2222,7 @@ router.get('/wellbeing', asyncRoute(async (req, res) => {
 router.get('/donations', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let dashboard = normalizeDonationDashboard({}, {});
@@ -2242,7 +2249,7 @@ router.get('/donations', asyncRoute(async (req, res) => {
 router.get('/expenses', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let dashboard = normalizeExpenseDashboard({}, {});
@@ -2269,7 +2276,7 @@ router.get('/expenses', asyncRoute(async (req, res) => {
 router.get('/opportunities/create', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let organizations = [];
@@ -2303,7 +2310,7 @@ router.post('/opportunities/create', asyncRoute(async (req, res) => {
   const title = trimmed(req.body.title);
   const description = trimmed(req.body.description);
   if (organizationId === null || title === '' || description === '') {
-    return res.redirect('/volunteering/opportunities/create?status=opp-validation');
+    return redirectTo(res, '/volunteering/opportunities/create?status=opp-validation');
   }
 
   const categoryId = positiveInteger(req.body.category_id);
@@ -2460,7 +2467,7 @@ router.post('/swaps', asyncRoute(async (req, res) => {
   const toShiftId = positiveInteger(req.body.to_shift_id);
   const toUserId = positiveInteger(req.body.to_user_id);
   if (fromShiftId === null || toShiftId === null || toUserId === null) {
-    return res.redirect('/volunteering/swaps?status=swap-invalid');
+    return redirectTo(res, '/volunteering/swaps?status=swap-invalid');
   }
 
   return runAction(
@@ -2527,7 +2534,7 @@ router.post('/emergency-alerts/:id(\\d+)/respond', asyncRoute(async (req, res) =
 router.post('/credentials', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const type = trimmed(req.body.credential_type || req.body.type, 100);
@@ -2535,7 +2542,7 @@ router.post('/credentials', asyncRoute(async (req, res) => {
   const file = uploadedFile(req, 'file') || uploadedFile(req, 'document');
   if (!type || !file) {
     await removeUploadedFile(file);
-    return res.redirect('/volunteering/credentials?status=credential-upload-failed');
+    return redirectTo(res, '/volunteering/credentials?status=credential-upload-failed');
   }
 
   try {
@@ -2552,12 +2559,12 @@ router.post('/credentials', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect('/volunteering/credentials?status=credential-upload-failed');
+    return redirectTo(res, '/volunteering/credentials?status=credential-upload-failed');
   } finally {
     await removeUploadedFile(file);
   }
 
-  return res.redirect('/volunteering/credentials?status=credential-uploaded');
+  return redirectTo(res, '/volunteering/credentials?status=credential-uploaded');
 }));
 
 router.post('/credentials/:id(\\d+)/delete', asyncRoute(async (req, res) => {
@@ -2576,7 +2583,7 @@ router.post('/credentials/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 router.post('/wellbeing/checkin', asyncRoute(async (req, res) => {
   const mood = positiveInteger(req.body.mood);
   if (mood === null || mood < 1 || mood > 5) {
-    return res.redirect('/volunteering/wellbeing?status=mood-invalid');
+    return redirectTo(res, '/volunteering/wellbeing?status=mood-invalid');
   }
 
   return runAction(
@@ -2596,7 +2603,7 @@ router.post('/wellbeing/checkin', asyncRoute(async (req, res) => {
 router.post('/donations', asyncRoute(async (req, res) => {
   const amount = decimalNumber(req.body.amount);
   if (amount <= 0) {
-    return res.redirect('/volunteering/donations?status=donate-failed&donate_error=amount#donate');
+    return redirectTo(res, '/volunteering/donations?status=donate-failed&donate_error=amount#donate');
   }
 
   const givingDayId = positiveInteger(req.body.giving_day_id);
@@ -2626,7 +2633,7 @@ router.post('/group-signups/:id(\\d+)/members', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const userId = positiveInteger(req.body.user_id);
   if (userId === null) {
-    return res.redirect('/volunteering/group-signups?status=member-id-required');
+    return redirectTo(res, '/volunteering/group-signups?status=member-id-required');
   }
 
   return runAction(
@@ -2672,13 +2679,13 @@ router.post('/expenses', asyncRoute(async (req, res) => {
   const amount = decimalNumber(req.body.amount);
   const description = trimmed(req.body.description);
   if (organizationId === null) {
-    return res.redirect('/volunteering/expenses?status=expense-org-required');
+    return redirectTo(res, '/volunteering/expenses?status=expense-org-required');
   }
   if (amount <= 0) {
-    return res.redirect('/volunteering/expenses?status=expense-amount-invalid');
+    return redirectTo(res, '/volunteering/expenses?status=expense-amount-invalid');
   }
   if (description === '') {
-    return res.redirect('/volunteering/expenses?status=expense-description-required');
+    return redirectTo(res, '/volunteering/expenses?status=expense-description-required');
   }
 
   const expenseType = trimmed(req.body.expense_type);
@@ -2706,13 +2713,13 @@ router.post('/training', asyncRoute(async (req, res) => {
   const trainingName = trimmed(req.body.training_name);
   const completedAt = trimmed(req.body.completed_at);
   if (trainingType === '') {
-    return res.redirect('/volunteering/training?status=training-type-required&tab=training');
+    return redirectTo(res, '/volunteering/training?status=training-type-required&tab=training');
   }
   if (trainingName === '') {
-    return res.redirect('/volunteering/training?status=training-name-required&tab=training');
+    return redirectTo(res, '/volunteering/training?status=training-name-required&tab=training');
   }
   if (completedAt === '') {
-    return res.redirect('/volunteering/training?status=training-date-required&tab=training');
+    return redirectTo(res, '/volunteering/training?status=training-date-required&tab=training');
   }
 
   return runAction(
@@ -2736,10 +2743,10 @@ router.post('/incidents', asyncRoute(async (req, res) => {
   const title = trimmed(req.body.title);
   const description = trimmed(req.body.description);
   if (title === '') {
-    return res.redirect('/volunteering/incidents?status=incident-title-required&tab=incidents');
+    return redirectTo(res, '/volunteering/incidents?status=incident-title-required&tab=incidents');
   }
   if (description.length < 20) {
-    return res.redirect('/volunteering/incidents?status=incident-description-too-short&tab=incidents');
+    return redirectTo(res, '/volunteering/incidents?status=incident-description-too-short&tab=incidents');
   }
 
   const severity = trimmed(req.body.severity);
@@ -2803,7 +2810,7 @@ router.post('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => 
   const id = Number(req.params.id);
   const name = trimmed(req.body.name);
   if (name === '') {
-    return res.redirect(orgSettingsRedirect(id, 'name-required'));
+    return redirectTo(res, orgSettingsRedirect(id, 'name-required'));
   }
 
   return runAction(
@@ -2826,7 +2833,7 @@ router.post('/organisations/:id(\\d+)/wallet/deposit', asyncRoute(async (req, re
   const id = Number(req.params.id);
   const amount = decimalNumber(req.body.amount);
   if (amount <= 0) {
-    return res.redirect(orgWalletRedirect(id, 'deposit-amount-invalid'));
+    return redirectTo(res, orgWalletRedirect(id, 'deposit-amount-invalid'));
   }
 
   return runAction(

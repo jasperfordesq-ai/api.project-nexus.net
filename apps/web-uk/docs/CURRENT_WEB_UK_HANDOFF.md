@@ -174,7 +174,13 @@ links, and legacy my-groups source controls through `urlFor()`. The latest
 group depth/volunteering source slice now routes group announcement back,
 edit, pin, delete, and create targets, group file back/download/delete/upload
 targets, and volunteering recommended-shift back/opportunity links through
-`urlFor()`. The latest resources source slice now routes resource browse, library, upload, delete,
+`urlFor()`. The latest public volunteering source slice now routes the
+volunteering landing/search form, organisation CTA, opportunity cards,
+load-more link, opportunity detail back/organisation/apply links, and clear
+filter links through `urlFor()`. Volunteering action redirects now route auth,
+validation, success, and API-failure destinations through `res.locals.urlFor`
+from the central action helper and direct validation branches. The latest
+resources source slice now routes resource browse, library, upload, delete,
 download, comment, reaction, reorder, category, search, and pagination
 controls through `urlFor()`. The latest resources redirect slice now routes
 resource auth-required handoffs, upload/reorder/delete outcomes, and
@@ -859,6 +865,9 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"` first failed on raw `/organisations` and `/volunteering` links/actions, then passed after the template conversion.
 - `Select-String` over `organisation-detail.njk`, `organisations.njk`, `organisations-apply.njk`, `organisations-browse.njk`, `organisations-jobs.njk`, `organisations-manage.njk`, and `organisations-register.njk` for raw local organisation/volunteering/job `href` and `action` targets returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"` passed `6/6` selected tests.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public volunteering"` first failed on raw `/volunteering` and `/organisations` links/actions in `volunteering.njk` and `volunteer-opportunity.njk`, then passed after conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "volunteering action redirects"` first failed on flat `res.redirect('/volunteering...')` and `res.redirect(loginRedirect())` calls, then passed after `src/routes/volunteering-actions.js` routed action and validation exits through `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "volunteering"` passed `26/26` selected tests after the public volunteering source and route-redirect conversion.
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"` first failed on raw `/blog` links/actions, then passed after the template conversion.
 - `Select-String -Path apps\web-uk\src\views\blog\*.njk -Pattern 'href="/(blog|members)','action="/blog'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "blog"` passed `9/9` selected blog tests.

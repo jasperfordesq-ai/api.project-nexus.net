@@ -165,6 +165,13 @@ Current gaps:
   announcements, group files, and volunteering recommended shifts, including
   announcement edit/pin/delete/create controls, file download/delete/upload
   controls, and recommended opportunity links.
+  The latest public volunteering source conversion covers the public
+  volunteering landing/search template and opportunity detail template,
+  including filters, organisation links, opportunity links, load-more links,
+  and apply CTAs. The latest volunteering route-redirect cleanup sends
+  volunteering auth-required, validation, success, and failure redirects
+  through `res.locals.urlFor`, including the central action helper and direct
+  validation branches.
   The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,
@@ -190,10 +197,10 @@ Current gaps:
   proving `/acme/accessible/jobs/42/apply` redirects to the tenant-mounted
   login path before any Laravel Jobs API call. The latest
   fallback-link conversion covers newsletter-unsubscribe and error-page home
-  links, replacing raw `href="/"` with `urlFor('/')`; a full source scan for
-  raw root-relative local Nunjucks `href`, `action`, and `baseUrl` patterns now
-  returns no matches. The latest focused source conversion covers AI chat and
-  matches templates, including AI chat back/conversation/new-conversation
+  links, replacing raw `href="/"` with `urlFor('/')`; broad raw-link source
+  scans are still useful backlog discovery because some route families continue
+  to contain root-relative local targets. The latest focused source conversion
+  covers AI chat and matches templates, including AI chat back/conversation/new-conversation
   links, chat form actions, matches filters, board links, listing/group/event
   links, dismiss forms, empty-state CTAs, and back links. A shared pagination
   partial cleanup now changes the documented/default members pagination base

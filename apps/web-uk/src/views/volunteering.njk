@@ -11,7 +11,7 @@
   <p class="govuk-body-l">Find volunteering opportunities, track applications and log volunteering hours.</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
-    <a class="govuk-link govuk-link--no-visited-state" href="/organisations">Browse organisations</a>
+    <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations') }}">Browse organisations</a>
   </p>
 
   <div class="govuk-inset-text" role="note" aria-labelledby="how-it-works-heading">
@@ -36,7 +36,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/volunteering" class="govuk-!-margin-bottom-7">
+  <form method="get" action="{{ urlFor('/volunteering') }}" class="govuk-!-margin-bottom-7">
     <fieldset class="govuk-fieldset" aria-describedby="volunteering-filter-hint">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
         <h2 class="govuk-fieldset__heading">Search and filter opportunities</h2>
@@ -66,7 +66,7 @@
       <div class="govuk-button-group">
         <button class="govuk-button" data-module="govuk-button" type="submit">Search</button>
         {% if volunteeringQuery or categoryId or isRemote %}
-          <a class="govuk-link" href="/volunteering">Clear filters</a>
+          <a class="govuk-link" href="{{ urlFor('/volunteering') }}">Clear filters</a>
         {% endif %}
       </div>
     </fieldset>
@@ -99,7 +99,7 @@
       {% for opportunity in opportunities %}
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">{{ opportunity.title or "Volunteering opportunity" }}</a>
+            <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ opportunity.title or "Volunteering opportunity" }}</a>
           </h3>
 
           {% if opportunity.is_remote %}
@@ -132,8 +132,8 @@
           {% endif %}
 
           <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-0">
-            <li><a class="govuk-link govuk-link--no-visited-state" href="/volunteering/opportunities/{{ opportunity.id }}">View details</a></li>
-            <li><a class="govuk-link govuk-link--no-visited-state" href="/organisations/opportunities/{{ opportunity.id }}/apply">Apply to volunteer</a></li>
+            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">View details</a></li>
+            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations/opportunities/' ~ opportunity.id ~ '/apply') }}">Apply to volunteer</a></li>
           </ul>
         </article>
       {% endfor %}
@@ -142,7 +142,7 @@
     {% if hasMore and loadMoreHref %}
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Volunteering pages">
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="{{ loadMoreHref }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor(loadMoreHref) }}" rel="next">
             <span class="govuk-pagination__link-title">Load more</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">More opportunities</span>
@@ -156,7 +156,7 @@
       <p class="govuk-body">No volunteering opportunities match your filters.</p>
       <p class="govuk-body govuk-!-margin-bottom-0">
         {% if volunteeringQuery or categoryId or isRemote %}
-          No opportunities match your filters. Try widening your search or <a class="govuk-link" href="/volunteering">clear filters</a>.
+          No opportunities match your filters. Try widening your search or <a class="govuk-link" href="{{ urlFor('/volunteering') }}">clear filters</a>.
         {% else %}
           There are no opportunities listed right now. Check back soon, or follow the community feed for new openings.
         {% endif %}

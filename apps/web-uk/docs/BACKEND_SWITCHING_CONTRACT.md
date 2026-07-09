@@ -66,6 +66,8 @@ success, validation, auth-required, and API-failure destinations should go
 through the active `res.locals.urlFor` helper before calling `res.redirect`, so
 shared `/{tenantSlug}/accessible`, parent-domain child paths, and slugless
 custom-domain contexts do not rely only on last-mile response rewriting. The
+volunteering action routes now follow this rule for auth-required handoffs,
+direct validation branches, and Laravel API success/failure outcomes. The
 podcast page routes now follow this rule for signed-out and Laravel-401 auth
 handoffs, and the podcast action routes follow it for subscribe, studio show,
 and episode POST outcomes. The Jobs action routes now follow it for
