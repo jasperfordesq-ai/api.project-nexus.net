@@ -1,7 +1,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/exchanges">Back to exchanges</a>
+  <a class="govuk-back-link" href="{{ urlFor('/exchanges') }}">Back to exchanges</a>
 
   {% if statusMessage or successMessage %}
     {% if status == 'exchange-action-failed' or status == 'rating-failed' or status == 'rating-invalid' %}
@@ -41,7 +41,7 @@
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">Listing</dt>
       <dd class="govuk-summary-list__value">
-        <a class="govuk-link" href="/listings/{{ exchange.listingId }}">{{ exchange.listingTitle }}</a>
+        <a class="govuk-link" href="{{ urlFor('/listings/' + (exchange.listingId | string)) }}">{{ exchange.listingTitle }}</a>
       </dd>
     </div>
     <div class="govuk-summary-list__row">
@@ -109,7 +109,7 @@
 
   {% if exchange.otherUserId %}
     <div class="nexus-alpha-actions govuk-!-margin-bottom-7">
-      <a class="govuk-button govuk-button--secondary" href="/messages/{{ exchange.otherUserId }}" role="button" draggable="false" data-module="govuk-button">Message member</a>
+      <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/messages/' + (exchange.otherUserId | string)) }}" role="button" draggable="false" data-module="govuk-button">Message member</a>
     </div>
   {% endif %}
 
@@ -120,21 +120,21 @@
     {% if exchange.canAccept or exchange.canStart or exchange.canComplete %}
       <div class="govuk-button-group govuk-!-margin-bottom-5">
         {% if exchange.canAccept %}
-          <form method="post" action="/exchanges/{{ exchange.id }}">
+          <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="accept">
             <button class="govuk-button" data-module="govuk-button">Accept</button>
           </form>
         {% endif %}
         {% if exchange.canStart %}
-          <form method="post" action="/exchanges/{{ exchange.id }}">
+          <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="start">
             <button class="govuk-button" data-module="govuk-button">Start exchange</button>
           </form>
         {% endif %}
         {% if exchange.canComplete %}
-          <form method="post" action="/exchanges/{{ exchange.id }}">
+          <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="complete">
             <button class="govuk-button" data-module="govuk-button">Mark ready</button>
@@ -144,7 +144,7 @@
     {% endif %}
 
     {% if exchange.canConfirm %}
-      <form method="post" action="/exchanges/{{ exchange.id }}" class="govuk-!-margin-bottom-5">
+      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}" class="govuk-!-margin-bottom-5">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="action" value="confirm">
         <div class="govuk-form-group">
@@ -164,7 +164,7 @@
           Declining will stop this exchange request.
         </strong>
       </div>
-      <form method="post" action="/exchanges/{{ exchange.id }}" class="govuk-!-margin-bottom-5">
+      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}" class="govuk-!-margin-bottom-5">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="action" value="decline">
         <div class="govuk-form-group">
@@ -183,7 +183,7 @@
           Cancelling will stop this exchange.
         </strong>
       </div>
-      <form method="post" action="/exchanges/{{ exchange.id }}">
+      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="action" value="cancel">
         <div class="govuk-form-group">
@@ -199,7 +199,7 @@
     <h2 class="govuk-heading-l govuk-!-margin-top-7" id="rating">Review</h2>
     {% if canReview %}
       <p class="govuk-body">Leave a review for this completed exchange.</p>
-      <form method="post" action="/exchanges/{{ exchange.id }}/rate">
+      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string) + '/rate') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="rating-select">Rating</label>

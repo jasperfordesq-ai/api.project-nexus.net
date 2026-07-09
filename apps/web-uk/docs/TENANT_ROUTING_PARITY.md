@@ -667,9 +667,24 @@ failed on raw `/goals` links/actions, then passed after conversion; a source
 scan for raw goals local `href`, `action`, and `nextHref` strings returns no
 matches. Focused render coverage passes for 13 selected goals tests.
 
+The forty-fourth template-helper source slice extends direct `urlFor()`
+conversion into the signed Laravel-backed `/exchanges` family.
+`src/views/exchanges/index.njk` and `src/views/exchanges/detail.njk` now route
+filter tabs, exchange detail links, pagination, listing and message links,
+exchange action forms, and the completed-exchange rating form through
+`urlFor()`. The source-level regression first failed on raw `/exchanges`
+links/actions, then passed after conversion; a source scan for raw exchange,
+listing, and message local targets returns no matches. Focused render coverage
+passes for 9 selected exchange/group-exchange/listing-request tests, and a
+scoped Laravel runtime smoke passes the core auth/cookie/logout flow plus
+signed `/exchanges` rendering and the `Exchanges` body marker.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "exchange list"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "exchange"
+$env:SMOKE_MODULE_PAGE_PATHS = '/exchanges'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/exchanges=>Exchanges'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "goals browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goal"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"

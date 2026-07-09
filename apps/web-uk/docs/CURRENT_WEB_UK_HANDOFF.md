@@ -177,6 +177,9 @@ dashboard links through `urlFor()`.
 The latest goals source slice now routes goals browse/detail, template,
 discover, buddying, edit, check-in, reminder, buddy-action, history, insights,
 and social links/forms through `urlFor()`.
+The latest exchanges source slice now routes exchange list tabs, detail links,
+pagination, listing/message links, action forms, and rating form through
+`urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -340,6 +343,14 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "goals browse"` first failed on raw `/goals` links/actions, then passed after conversion.
 - `Select-String -Path apps\web-uk\src\views\goals\*.njk -SimpleMatch -Pattern 'href="/goals','action="/goals','href: "/goals','action: "/goals','href="{{ nextHref }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goal"` passed: 13 selected tests across goals browse, templates, discover, buddying, edit, check-in, reminder, buddy-action, history, insights, social, and POST action coverage.
+
+Latest focused verification on 2026-07-09 for the exchanges template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "exchange list"` first failed on raw `/exchanges` links/actions, then passed after conversion.
+- `Select-String -Path apps\web-uk\src\views\exchanges\*.njk -SimpleMatch -Pattern 'href="/exchanges','action="/exchanges','href="/listings','href="/messages'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "exchange"` passed: 9 selected exchange/group-exchange/listing-request tests.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/exchanges`, `SMOKE_BODY_TEXT_PAGE_PATHS=/exchanges=>Exchanges`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

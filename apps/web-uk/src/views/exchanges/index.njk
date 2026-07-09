@@ -40,10 +40,10 @@
 
   <nav aria-label="Filter exchanges" class="govuk-!-margin-bottom-7">
     <ul class="nexus-alpha-filter-nav">
-      <li><a class="govuk-link{% if activeTab == 'all' %} govuk-link--no-visited-state{% endif %}" href="/exchanges?tab=all"{% if activeTab == 'all' %} aria-current="true"{% endif %}>All</a></li>
-      <li><a class="govuk-link{% if activeTab == 'active' %} govuk-link--no-visited-state{% endif %}" href="/exchanges?tab=active"{% if activeTab == 'active' %} aria-current="true"{% endif %}>Active</a></li>
-      <li><a class="govuk-link{% if activeTab == 'needs_confirmation' %} govuk-link--no-visited-state{% endif %}" href="/exchanges?tab=needs_confirmation"{% if activeTab == 'needs_confirmation' %} aria-current="true"{% endif %}>Needs confirmation</a></li>
-      <li><a class="govuk-link{% if activeTab == 'completed' %} govuk-link--no-visited-state{% endif %}" href="/exchanges?tab=completed"{% if activeTab == 'completed' %} aria-current="true"{% endif %}>Completed</a></li>
+      <li><a class="govuk-link{% if activeTab == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=all') }}"{% if activeTab == 'all' %} aria-current="true"{% endif %}>All</a></li>
+      <li><a class="govuk-link{% if activeTab == 'active' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=active') }}"{% if activeTab == 'active' %} aria-current="true"{% endif %}>Active</a></li>
+      <li><a class="govuk-link{% if activeTab == 'needs_confirmation' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=needs_confirmation') }}"{% if activeTab == 'needs_confirmation' %} aria-current="true"{% endif %}>Needs confirmation</a></li>
+      <li><a class="govuk-link{% if activeTab == 'completed' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=completed') }}"{% if activeTab == 'completed' %} aria-current="true"{% endif %}>Completed</a></li>
     </ul>
   </nav>
 
@@ -62,7 +62,7 @@
       {% for exchange in exchanges %}
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="/exchanges/{{ exchange.id }}">{{ exchange.listingTitle }}</a>
+            <a class="govuk-link" href="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">{{ exchange.listingTitle }}</a>
           </h3>
           <strong class="govuk-tag {{ exchange.statusClass }}">{{ exchange.statusLabel }}</strong>
           {% if exchange.actionNeeded == 'respond' %}
@@ -89,7 +89,7 @@
           </dl>
 
           <p class="govuk-body govuk-!-margin-bottom-0">
-            <a class="govuk-link govuk-link--no-visited-state" href="/exchanges/{{ exchange.id }}">View exchange</a>
+            <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">View exchange</a>
           </p>
         </article>
       {% endfor %}
@@ -98,7 +98,7 @@
     {% if meta.has_more and meta.cursor %}
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Exchange pagination">
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="/exchanges?tab={{ activeTab }}&cursor={{ meta.cursor }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/exchanges?tab=' + activeTab + '&cursor=' + meta.cursor) }}" rel="next">
             <span class="govuk-pagination__link-title">Load more</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">more exchange results</span>

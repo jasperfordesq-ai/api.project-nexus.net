@@ -777,4 +777,24 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/goals/);
   });
+
+  it('keeps exchange list and detail links and forms behind urlFor()', () => {
+    const templates = [
+      path.join('exchanges', 'index.njk'),
+      path.join('exchanges', 'detail.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:exchanges|listings|messages)/);
+      expect(template).not.toMatch(/action="\/exchanges/);
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/exchanges/);
+    expect(source).toMatch(/urlFor\(["']\/listings/);
+    expect(source).toMatch(/urlFor\(["']\/messages/);
+  });
 });
