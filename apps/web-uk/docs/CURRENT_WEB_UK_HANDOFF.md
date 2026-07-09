@@ -289,6 +289,11 @@ Blog are filtered from tenant bootstrap `modules`/`features`, and the footer
 Platform column is removed when no platform links are enabled. This is shell
 visibility parity only; page-level disabled-state behavior still needs
 module-by-module certification.
+The latest generated-prep cleanup slice now narrows
+`src/routes/laravel-prep-pages.js` to rows explicitly marked `missing` in the
+generated route matrix. With the current 608/608 matrix, the runtime prep-page
+loader exports `0` preparation pages, so matched Laravel GET routes are no
+longer backed by generic skeleton handlers after the real route modules.
 
 ## Non-Negotiable Rules
 
@@ -328,6 +333,15 @@ The latest generated route matrix at this handoff reported:
 | Extra Web UK routes | `0` |
 | Ignored Web UK infrastructure routes | `3` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
+| Runtime generated prep pages | `0` exported by `src/routes/laravel-prep-pages.js` |
+
+Latest focused verification on 2026-07-09 for the generated prep-page cleanup
+slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/laravel-prep-pages.test.js --runInBand` first failed because the loader still registered a matched `/matched` GET row as a preparation page, then passed after filtering to `status: "missing"`.
+- `node -e "const r=require('./apps/web-uk/src/routes/laravel-prep-pages'); console.log(r.prepPages.length)"` reported `0` current runtime preparation pages.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes after the loader cleanup.
+- A scoped live `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, with module/page sweeps disabled, passed 10/10 checks for Laravel API reachability, Web UK health, cookie-consent POST workflows, login CSRF, login POST, signed `/account`, and logout. This is core runtime proof only, not the required full 634-check smoke.
 
 Latest focused verification on 2026-07-09 for the events index/form
 template-helper slice:

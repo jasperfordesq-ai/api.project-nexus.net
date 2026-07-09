@@ -1158,6 +1158,9 @@ feature/module gates, API/service hints, and current `apps/web-uk` target view
 where a static method/path match exists.
 
 Missing Laravel GET routes are also served by
-`src/routes/laravel-prep-pages.js` after all real route modules. These pages are
-deliberate preparation fallbacks; they prevent 404s and preserve route
-discoverability, but they do not certify page workflow parity.
+`src/routes/laravel-prep-pages.js` after all real route modules only when the
+generated matrix marks those rows as `missing`. With the current 608/608 static
+matrix there are no missing rows, and the loader exports `0` runtime preparation
+pages. Any future generated prep page is a deliberate discoverability fallback
+only; it prevents a 404 while preserving the gap, but it does not certify page
+workflow parity.

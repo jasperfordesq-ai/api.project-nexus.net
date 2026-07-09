@@ -61,7 +61,7 @@ function compareSpecificity(left, right) {
 }
 
 const prepPages = routeMatrix.matrix
-  .filter((row) => row.method === 'GET' && row.laravelHandler)
+  .filter((row) => row.status === 'missing' && row.method === 'GET' && row.laravelHandler)
   .map((row) => ({
     title: humanize(row.laravelView || row.laravelHandler || row.path),
     laravelPath: row.path,

@@ -872,9 +872,11 @@ gates, auth classification, API/service hints, and current `apps/web-uk`
 method/path matches.
 
 `src/routes/laravel-prep-pages.js` registers generated Laravel GET preparation
-pages after all real route modules. These fallback pages count as route
-existence only. They are not backend adapters and must not be used as proof of
-Laravel or ASP.NET workflow compatibility.
+pages after all real route modules only for rows that the generated matrix marks
+as `missing`. The current 608/608 matrix exports `0` runtime preparation pages.
+Any future fallback page counts as route discoverability only. It is not a
+backend adapter and must not be used as proof of Laravel or ASP.NET workflow
+compatibility.
 
 `src/routes/contact-support.js` is a Laravel-backed candidate for the accessible
 contact/support routes. `/contact` POST submits to Laravel `/api/v2/contact`;
