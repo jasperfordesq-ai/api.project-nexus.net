@@ -180,6 +180,34 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('href="/login/forgot-password"');
       expect(response.text).not.toContain('href="/register"');
     });
+
+    it('keeps auth POST redirects inside the active shared accessible mount', async () => {
+      const api = require('../src/lib/api');
+      api.login.mockReset();
+      api.login.mockResolvedValueOnce({
+        access_token: 'test-token',
+        refresh_token: 'refresh-token'
+      });
+
+      const agent = request.agent(app);
+      const first = await agent.get('/acme/accessible/login');
+      const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const response = await agent
+        .post('/acme/accessible/login')
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          email: 'member@acme.test',
+          password: 'Test123!',
+          tenant_slug: 'acme'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/dashboard');
+      expect(api.login).toHaveBeenCalledWith('member@acme.test', 'Test123!', 'acme');
+    });
   });
 
   describe('custom accessible domains', () => {

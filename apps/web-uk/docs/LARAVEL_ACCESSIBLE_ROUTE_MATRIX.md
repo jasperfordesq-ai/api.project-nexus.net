@@ -122,6 +122,9 @@ redirects inside the active shared accessible mount.
 Matches route-level redirects now also use the same `res.locals.urlFor` helper,
 keeping match dismiss and board dismiss redirects inside the active shared
 accessible mount.
+Auth route-level redirects now also use the same `res.locals.urlFor` helper,
+keeping login, two-factor, register, logout, forgot-password, and reset-password
+redirects inside the active shared accessible mount.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values

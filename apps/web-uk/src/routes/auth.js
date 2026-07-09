@@ -10,6 +10,11 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 router.get('/login', (req, res) => {
   res.render('login', {
     title: 'Sign in',
@@ -44,11 +49,11 @@ router.post('/login', asyncRoute(async (req, res) => {
     if (result.requires_2fa) {
       const pendingToken = result.two_factor_token || result.temp_token || result.access_token;
       if (!pendingToken || !req.session) {
-        return res.redirect('/login?status=two-factor-required');
+        return redirectTo(res, '/login?status=two-factor-required');
       }
 
       req.session.pending2faToken = pendingToken;
-      return res.redirect('/login/two-factor');
+      return redirectTo(res, '/login/two-factor');
     }
 
     if (!result.access_token) {
@@ -57,7 +62,7 @@ router.post('/login', asyncRoute(async (req, res) => {
 
     setAuthCookies(res, result.access_token, result.refresh_token);
 
-    res.redirect('/dashboard');
+    return redirectTo(res, '/dashboard');
   } catch (error) {
     // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {
@@ -88,7 +93,7 @@ async function handleTwoFactorPost(req, res) {
   const pendingToken = req.session?.pending2faToken;
 
   if (!pendingToken) {
-    return res.redirect('/login?status=two-factor-expired');
+    return redirectTo(res, '/login?status=two-factor-expired');
   }
 
   if (!code || !code.trim()) {
@@ -109,7 +114,7 @@ async function handleTwoFactorPost(req, res) {
     const accessToken = result.access_token || pendingToken;
     setAuthCookies(res, accessToken, result.refresh_token);
 
-    res.redirect('/dashboard');
+    return redirectTo(res, '/dashboard');
   } catch (error) {
     if (error instanceof ApiOfflineError) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
@@ -127,7 +132,7 @@ async function handleTwoFactorPost(req, res) {
 
 router.get('/login/two-factor', (req, res) => {
   if (!req.session?.pending2faToken) {
-    return res.redirect('/login?status=two-factor-expired');
+    return redirectTo(res, '/login?status=two-factor-expired');
   }
 
   res.render('login', {
@@ -150,7 +155,7 @@ router.post('/login/resend-verification', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect('/login?status=verification-resent');
+  return redirectTo(res, '/login?status=verification-resent');
 }));
 
 // Cloudflare Turnstile siteverify. Returns true when the env secret is
@@ -296,14 +301,14 @@ router.post('/register', asyncRoute(async (req, res) => {
       if (req.flash) {
         req.flash('success', 'Account created successfully. Welcome!');
       }
-      return res.redirect('/dashboard');
+      return redirectTo(res, '/dashboard');
     }
 
     // If auto-login fails, redirect to login page
     if (req.flash) {
       req.flash('success', 'Account created. Please sign in.');
     }
-    res.redirect('/login');
+    return redirectTo(res, '/login');
   } catch (error) {
     // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {
@@ -351,7 +356,7 @@ router.post('/logout', asyncRoute(async (req, res) => {
   }
 
   clearAuthCookies(res);
-  res.redirect('/login');
+  return redirectTo(res, '/login');
 }));
 
 // Forgot password
@@ -418,7 +423,7 @@ async function handleForgotPasswordPost(req, res) {
   if (req.flash) {
     req.flash('success', 'If an account exists with this email, we have sent password reset instructions.');
   }
-  res.redirect('/login/forgot-password?status=forgot-sent');
+  return redirectTo(res, '/login/forgot-password?status=forgot-sent');
 }
 
 router.post('/login/forgot-password', asyncRoute(handleForgotPasswordPost));
@@ -428,7 +433,7 @@ function renderResetPassword(req, res) {
   const { token } = req.query;
 
   if (!token) {
-    return res.redirect('/login/forgot-password');
+    return redirectTo(res, '/login/forgot-password');
   }
 
   res.render('reset-password', {
@@ -484,7 +489,7 @@ async function handleResetPasswordPost(req, res) {
     if (req.flash) {
       req.flash('success', 'Your password has been reset. Please sign in with your new password.');
     }
-    res.redirect('/login');
+    return redirectTo(res, '/login');
   } catch (error) {
     // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {
