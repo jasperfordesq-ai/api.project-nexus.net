@@ -463,6 +463,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps search route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'search.js'),
+      'utf8'
+    );
+
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).not.toMatch(/res\.redirect\(\s*['"`]\/login/);
+    expect(route).not.toMatch(/res\.redirect\(\s*searchAdvancedUrl/);
+    expect(route).toMatch(/redirectTo\(res,\s*['"`]\/login/);
+    expect(route).toMatch(/redirectTo\(res,\s*searchAdvancedUrl/);
+  });
+
   it('keeps saved-item, collection, and appreciation controls behind urlFor()', () => {
     const templates = [
       path.join('saved', 'index.njk'),

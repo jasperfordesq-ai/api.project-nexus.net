@@ -170,7 +170,10 @@ redirect to `/acme/accessible/resources/library?status=resource-deleted`.
 The latest search source slice now routes simple
 search, advanced search, saved-search delete, result tabs, result links,
 empty-state CTAs, pagination base URL, and saved-search forms through
-`urlFor()`. The latest saved source slice now routes saved-item filters,
+`urlFor()`. The latest search route-redirect slice now sends unsigned
+auth-required handoffs and saved-search save/delete/run result redirects
+through `res.locals.urlFor`, matching Laravel's named-route redirect behavior
+under shared mounts and custom-domain contexts. The latest saved source slice now routes saved-item filters,
 bookmark links/removal, collection list/detail pagination and CRUD controls,
 public collection links, and appreciation send/react/pagination controls
 through `urlFor()`. The latest jobs source slice now routes jobs tabs,
@@ -336,8 +339,9 @@ Latest focused verification on 2026-07-09 for the search template-helper
 slice:
 
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search forms"` first failed on raw `/search`, `/listings`, `/members`, `/events`, and `/groups` links/actions, then passed after conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search route redirects"` first failed on missing route-helper coverage and raw `/login` plus `searchAdvancedUrl(...)` redirects, then passed after those redirects moved through `redirectTo(res, ...)` and `res.locals.urlFor`.
 - `Get-ChildItem apps\web-uk\src\views\search -Filter *.njk | Select-String -Pattern 'href="/search','action="/search','href="/listings','href="/members','href="/events','href="/groups','href: "/search','href: "/listings','baseUrl: "/search'` returned no matches.
-- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"` passed: 15 selected tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"` passed: 16 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:56338` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 13 checks: base API/health, cookie, login, account, logout, signed `/search/advanced?q=garden`, and body markers `Advanced search` and `Save this search`.
 
 Latest focused verification on 2026-07-09 for the saved template-helper

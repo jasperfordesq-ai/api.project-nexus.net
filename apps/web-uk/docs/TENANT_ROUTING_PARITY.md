@@ -991,9 +991,22 @@ wallet transfer/donation persistence, recipient privacy behavior, visual Blade
 parity, localization, broader runtime behavior, or ASP.NET backend
 compatibility.
 
+The sixty-fourth source slice extends route-level redirect cleanup into search.
+`src/routes/search.js` now sends unsigned advanced-search and saved-search
+delete handoffs, Laravel-401 auth handoffs, saved-search validation/results,
+delete results, and run results through `redirectTo(res, ...)`, which delegates
+to `res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on missing route helper coverage and raw `/login` plus
+`searchAdvancedUrl(...)` redirect targets, then passed after conversion. This
+is search redirect evidence only; it does not newly certify live saved-search
+persistence, tenant feature gates, visual Blade parity, localization, broader
+runtime behavior, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "search"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"
 $env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/wallet=>Wallet,/wallet/manage=>Manage credits'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel

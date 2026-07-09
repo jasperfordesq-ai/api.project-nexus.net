@@ -115,9 +115,14 @@ function searchAdvancedUrl(params = {}, status = null) {
   return `/search/advanced${text ? `?${text}` : ''}`;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, '/login?status=auth-required');
     return true;
   }
   return false;
@@ -293,7 +298,7 @@ function savedSearchById(result, id) {
 router.get('/advanced', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const state = advancedSearchState(req.query);
@@ -346,7 +351,7 @@ router.get('/advanced', asyncRoute(async (req, res) => {
 router.get('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const id = Number(req.params.id);
@@ -366,14 +371,14 @@ router.get('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 router.post('/saved', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const name = String(req.body.name || '').trim().slice(0, 255);
   const queryParams = queryParamsFrom(req.body);
 
   if (name === '' || !queryParams.q) {
-    return res.redirect(searchAdvancedUrl(queryParams, 'search-save-failed'));
+    return redirectTo(res, searchAdvancedUrl(queryParams, 'search-save-failed'));
   }
 
   let status = 'search-saved';
@@ -388,13 +393,13 @@ router.post('/saved', asyncRoute(async (req, res) => {
     status = 'search-save-failed';
   }
 
-  return res.redirect(searchAdvancedUrl(queryParams, status));
+  return redirectTo(res, searchAdvancedUrl(queryParams, status));
 }));
 
 router.post('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let status = 'search-deleted';
@@ -406,26 +411,26 @@ router.post('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'search-delete-failed';
   }
 
-  return res.redirect(searchAdvancedUrl({}, status));
+  return redirectTo(res, searchAdvancedUrl({}, status));
 }));
 
 router.post('/saved/:id(\\d+)/run', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   try {
     const result = await runSavedSearch(token, Number(req.params.id));
     const data = result && result.data && typeof result.data === 'object' ? result.data : {};
     const params = queryParamsFrom(data.query_params && typeof data.query_params === 'object' ? data.query_params : {});
-    return res.redirect(searchAdvancedUrl(params));
+    return redirectTo(res, searchAdvancedUrl(params));
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     if (shouldRenderNotFound(error)) throw error;
   }
 
-  return res.redirect(searchAdvancedUrl({}, 'search-run-failed'));
+  return redirectTo(res, searchAdvancedUrl({}, 'search-run-failed'));
 }));
 
 // Search results page
