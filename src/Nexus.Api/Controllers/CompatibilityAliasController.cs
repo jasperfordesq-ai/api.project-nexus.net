@@ -2748,27 +2748,69 @@ public class CompatibilityAliasController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        if (request?.SkillId is not > 0) return BadRequest(new { error = "skill_id is required" });
 
-        var skill = await _db.Skills.FirstOrDefaultAsync(s => s.Id == request.SkillId.Value);
-        if (skill == null) return NotFound(new { error = "Skill not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var skillName = request?.SkillName?.Trim();
+        if (request?.SkillId is not > 0 && string.IsNullOrWhiteSpace(skillName))
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "skill_name is required", field = "skill_name" } }
+            });
+        }
 
-        var existing = await _db.UserSkills.FirstOrDefaultAsync(us => us.UserId == userId.Value && us.SkillId == skill.Id);
-        if (existing != null) return BadRequest(new { error = "Skill already added" });
+        Skill? skill = null;
+        if (request?.SkillId is > 0)
+        {
+            skill = await _db.Skills.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Id == request.SkillId.Value);
+            if (skill == null) return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Skill not found" } } });
+        }
+        else
+        {
+            skillName = skillName!.Length > 100 ? skillName[..100] : skillName;
+            var normalized = skillName.ToLowerInvariant();
+            skill = await _db.Skills.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Name.ToLower() == normalized);
+            if (skill == null)
+            {
+                skill = new Skill
+                {
+                    TenantId = tenantId,
+                    Name = skillName,
+                    Slug = await GenerateUniqueSkillSlugAsync(tenantId, skillName),
+                    CategoryId = request?.CategoryId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.Skills.Add(skill);
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        var existing = await _db.UserSkills.FirstOrDefaultAsync(us =>
+            us.TenantId == tenantId && us.UserId == userId.Value && us.SkillId == skill.Id);
+        if (existing != null)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "DUPLICATE", message = "Skill already added", field = "skill_name" } }
+            });
+        }
 
         var userSkill = new UserSkill
         {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            TenantId = tenantId,
             UserId = userId.Value,
             SkillId = skill.Id,
-            ProficiencyLevel = NormalizeSkillLevel(request.ProficiencyLevel),
+            ProficiencyLevel = NormalizeSkillLevel(request?.ProficiencyLevel),
             CreatedAt = DateTime.UtcNow
         };
 
         _db.UserSkills.Add(userSkill);
         await _db.SaveChangesAsync();
 
-        return Created("", new { success = true, message = "Skill added", id = userSkill.Id, skill_id = userSkill.SkillId, proficiency_level = userSkill.ProficiencyLevel.ToString().ToLowerInvariant() });
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = await BuildLaravelUserSkillListAsync(userId.Value)
+        });
     }
 
     /// <summary>
@@ -2787,7 +2829,7 @@ public class CompatibilityAliasController : ControllerBase
         _db.UserSkills.Remove(userSkill);
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Skill removed" });
+        return Ok(new { data = new { message = "Skill removed" } });
     }
 
     // ──────────────────────────────────────────────
@@ -3312,11 +3354,61 @@ public class CompatibilityAliasController : ControllerBase
     private static SkillLevel NormalizeSkillLevel(string? proficiencyLevel)
     {
         if (string.IsNullOrWhiteSpace(proficiencyLevel))
-            return SkillLevel.Beginner;
+            return SkillLevel.Intermediate;
 
         return Enum.TryParse<SkillLevel>(proficiencyLevel.Trim(), true, out var parsed)
             ? parsed
-            : SkillLevel.Beginner;
+            : SkillLevel.Intermediate;
+    }
+
+    private async Task<List<object>> BuildLaravelUserSkillListAsync(int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var rows = await _db.UserSkills
+            .AsNoTracking()
+            .Where(us => us.TenantId == tenantId && us.UserId == userId)
+            .Include(us => us.Skill)
+            .ThenInclude(skill => skill!.Category)
+            .OrderBy(us => us.Skill!.Name)
+            .ToListAsync();
+
+        return rows.Select(us => (object)new
+        {
+            id = us.Id,
+            user_id = us.UserId,
+            tenant_id = us.TenantId,
+            skill_id = us.SkillId,
+            category_id = us.Skill?.CategoryId,
+            skill_name = us.Skill?.Name ?? string.Empty,
+            category_name = us.Skill?.Category?.Name,
+            category_slug = us.Skill?.Category?.Slug,
+            proficiency_level = us.ProficiencyLevel.ToString().ToLowerInvariant(),
+            is_offering = true,
+            is_requesting = false,
+            endorsement_count = us.EndorsementCount,
+            created_at = us.CreatedAt
+        }).ToList();
+    }
+
+    private async Task<string> GenerateUniqueSkillSlugAsync(int tenantId, string name)
+    {
+        var slug = Slugify(name);
+        var candidate = slug;
+        var suffix = 2;
+        while (await _db.Skills.AnyAsync(s => s.TenantId == tenantId && s.Slug == candidate))
+        {
+            candidate = $"{slug}-{suffix++}";
+        }
+
+        return candidate;
+    }
+
+    private static string Slugify(string value)
+    {
+        var slug = System.Text.RegularExpressions.Regex
+            .Replace(value.Trim().ToLowerInvariant(), "[^a-z0-9]+", "-")
+            .Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "skill" : slug;
     }
 
     private async Task<List<object>> BuildAvailabilityWeeklyAsync(int tenantId, int userId)
@@ -3751,6 +3843,12 @@ public class AddUserSkillAliasRequest
 {
     [JsonPropertyName("skill_id")]
     public int? SkillId { get; set; }
+
+    [JsonPropertyName("skill_name")]
+    public string? SkillName { get; set; }
+
+    [JsonPropertyName("category_id")]
+    public int? CategoryId { get; set; }
 
     [JsonPropertyName("proficiency_level")]
     public string? ProficiencyLevel { get; set; }

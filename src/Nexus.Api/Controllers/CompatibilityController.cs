@@ -1291,24 +1291,31 @@ public class CompatibilityController : ControllerBase
 
         var skills = await _db.UserSkills
             .AsNoTracking()
-            .Where(us => us.UserId == userId.Value)
+            .Where(us => us.TenantId == _tenantContext.GetTenantIdOrThrow() && us.UserId == userId.Value)
             .Include(us => us.Skill)
+            .ThenInclude(skill => skill!.Category)
             .OrderBy(us => us.Skill!.Name)
-            .Select(us => new
+            .ToListAsync();
+
+        var data = skills.Select(us => new
             {
                 id = us.Id,
+                user_id = us.UserId,
+                tenant_id = us.TenantId,
                 skill_id = us.SkillId,
-                skill_name = us.Skill != null ? us.Skill.Name : null,
-                skill_slug = us.Skill != null ? us.Skill.Slug : null,
-                category_id = us.Skill != null ? us.Skill.CategoryId : null,
-                proficiency_level = us.ProficiencyLevel.ToString().ToLower(),
-                is_verified = us.IsVerified,
+                category_id = us.Skill?.CategoryId,
+                skill_name = us.Skill?.Name ?? string.Empty,
+                category_name = us.Skill?.Category?.Name,
+                category_slug = us.Skill?.Category?.Slug,
+                proficiency_level = us.ProficiencyLevel.ToString().ToLowerInvariant(),
+                is_offering = true,
+                is_requesting = false,
                 endorsement_count = us.EndorsementCount,
                 created_at = us.CreatedAt
             })
-            .ToListAsync();
+            .ToList();
 
-        return Ok(new { data = skills, total = skills.Count });
+        return Ok(new { data, total = data.Count });
     }
 
     /// <summary>

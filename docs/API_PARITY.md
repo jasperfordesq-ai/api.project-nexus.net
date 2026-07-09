@@ -291,6 +291,17 @@ returns Laravel-style `data.success` / `errors[].code=NOT_FOUND` envelopes for
 unblock flows. Feed/search/message exclusion side effects remain broader
 workflow gaps beyond this settings-page contract.
 
+The Laravel React skills settings slice now has focused PostgreSQL-backed
+contract coverage for `GET/POST /api/v2/users/me/skills`, `PUT
+/api/v2/users/me/skills/{id}`, and `DELETE /api/v2/users/me/skills/{id}`.
+ASP.NET now accepts Laravel React custom `skill_name` payloads, creates or
+reuses tenant-scoped `skills` rows, persists `user_skills`, returns HTTP 201
+with the refreshed Laravel `data` array, projects `skill_name`, category fields,
+`proficiency_level`, offering/requesting flags, `endorsement_count`, and returns
+a Laravel-style `data.message` envelope on delete. Exact Laravel
+`skill_categories`, offering/requesting storage, endorsement table semantics,
+and skill-search taxonomy fidelity remain deeper skills-module gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,

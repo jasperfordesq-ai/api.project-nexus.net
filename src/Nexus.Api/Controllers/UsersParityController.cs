@@ -452,11 +452,20 @@ public class UsersParityController : ControllerBase
     [HttpPut("me/skills/{id:int}")]
     public async Task<IActionResult> UpdateSkill([FromRoute(Name = "id")] int skillId, [FromBody] JsonElement body)
     {
-        var skill = await _db.UserSkills.FirstOrDefaultAsync(s => s.TenantId == TenantId() && s.UserId == UserId() && s.SkillId == skillId);
+        var skill = await _db.UserSkills.FirstOrDefaultAsync(s =>
+            s.TenantId == TenantId() &&
+            s.UserId == UserId() &&
+            (s.Id == skillId || s.SkillId == skillId));
         if (skill == null) return NotFound(new { error = "Skill not found" });
+
+        if ((Str(body, "proficiency_level") ?? Str(body, "proficiency")) is { } proficiency)
+        {
+            skill.ProficiencyLevel = NormalizeSkillLevel(proficiency);
+        }
+
         skill.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = skill });
+        return Ok(new { data = await BuildLaravelUserSkillListAsync(UserId()) });
     }
 
     [HttpGet("me/parent-accounts")]
@@ -539,6 +548,46 @@ public class UsersParityController : ControllerBase
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static DateTime? Date(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value : null;
+
+    private async Task<List<object>> BuildLaravelUserSkillListAsync(int userId)
+    {
+        var rows = await _db.UserSkills
+            .AsNoTracking()
+            .Where(us => us.TenantId == TenantId() && us.UserId == userId)
+            .Include(us => us.Skill)
+            .ThenInclude(skill => skill!.Category)
+            .OrderBy(us => us.Skill!.Name)
+            .ToListAsync();
+
+        return rows.Select(us => (object)new
+        {
+            id = us.Id,
+            user_id = us.UserId,
+            tenant_id = us.TenantId,
+            skill_id = us.SkillId,
+            category_id = us.Skill?.CategoryId,
+            skill_name = us.Skill?.Name ?? string.Empty,
+            category_name = us.Skill?.Category?.Name,
+            category_slug = us.Skill?.Category?.Slug,
+            proficiency_level = us.ProficiencyLevel.ToString().ToLowerInvariant(),
+            is_offering = true,
+            is_requesting = false,
+            endorsement_count = us.EndorsementCount,
+            created_at = us.CreatedAt
+        }).ToList();
+    }
+
+    private static SkillLevel NormalizeSkillLevel(string? proficiencyLevel)
+    {
+        if (string.IsNullOrWhiteSpace(proficiencyLevel))
+        {
+            return SkillLevel.Intermediate;
+        }
+
+        return Enum.TryParse<SkillLevel>(proficiencyLevel.Trim(), true, out var parsed)
+            ? parsed
+            : SkillLevel.Intermediate;
+    }
 
     private static JsonObject ParsePreferenceBag(string? raw)
     {
