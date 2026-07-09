@@ -628,6 +628,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/api-partners" => await CreateApiPartner(),
+            "/api/v2/admin/billing/checkout" => await CreateBillingCheckout(),
             "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
@@ -693,6 +694,103 @@ public class AdminExplicitParityController : ControllerBase
                 success,
                 failed = skippedIds.Count,
                 skipped_ids = skippedIds
+            }
+        });
+    }
+
+    private async Task<IActionResult> CreateBillingCheckout()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var planId = JsonInt(payload, "plan_id", 0, 0, int.MaxValue);
+        var billingInterval = JsonString(payload, "billing_interval")?.Trim().ToLowerInvariant();
+
+        if (planId <= 0)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid plan id.", field = "plan_id" } }
+            });
+        }
+
+        if (billingInterval is not ("monthly" or "yearly"))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "billing_interval must be \"monthly\" or \"yearly\"", field = "billing_interval" } }
+            });
+        }
+
+        var plan = await _db.SubscriptionPlans
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == planId && p.IsActive);
+        if (plan == null)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid plan id.", field = "plan_id" } }
+            });
+        }
+
+        if (plan.Price == 0m)
+        {
+            var now = DateTime.UtcNow;
+            var adminUserId = GetCurrentAdminUserId()
+                ?? await _db.Users
+                    .Where(u => u.TenantId == tenantId)
+                    .Select(u => (int?)u.Id)
+                    .FirstOrDefaultAsync();
+            if (adminUserId == null)
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "No tenant user is available for checkout activation.", field = "user_id" } }
+                });
+            }
+
+            var subscription = await _db.UserSubscriptions
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId);
+
+            if (subscription == null)
+            {
+                subscription = new UserSubscription
+                {
+                    TenantId = tenantId,
+                    UserId = adminUserId.Value,
+                    CreatedAt = now
+                };
+                _db.UserSubscriptions.Add(subscription);
+            }
+
+            subscription.UserId = adminUserId.Value;
+            subscription.PlanId = plan.Id;
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.StartedAt = now;
+            subscription.ExpiresAt = null;
+            subscription.CancelledAt = null;
+            subscription.NextBillingDate = null;
+            subscription.StripeSubscriptionId = null;
+            subscription.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { data = new { activated = true, checkout_url = (string?)null } });
+        }
+
+        return StatusCode(StatusCodes.Status501NotImplemented, new
+        {
+            success = false,
+            errors = new[]
+            {
+                new
+                {
+                    code = "STRIPE_ERROR",
+                    message = "Stripe checkout session creation is not configured in this ASP.NET environment."
+                }
             }
         });
     }

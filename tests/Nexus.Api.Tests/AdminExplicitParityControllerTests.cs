@@ -1368,6 +1368,53 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BillingCheckout_ActivatesFreePlanWithLaravelReactEnvelope()
+    {
+        int planId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Free Laravel React Checkout Plan",
+                Description = "Free plan activated without Stripe",
+                Price = 0m,
+                Currency = "EUR",
+                Features = "[]",
+                IsActive = true,
+                IsPublic = true
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/admin/billing/checkout", new
+        {
+            plan_id = planId,
+            billing_interval = "monthly"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("checkout_url").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("activated").GetBoolean().Should().BeTrue();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var subscription = await verifyDb.UserSubscriptions
+            .IgnoreQueryFilters()
+            .SingleAsync(s => s.TenantId == TestData.Tenant1.Id && s.PlanId == planId);
+        subscription.Status.Should().Be(SubscriptionStatus.Active);
+        subscription.StripeSubscriptionId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task BillingInvoices_ReturnsSubscriptionBackedInvoices()
     {
         int subscriptionId;
