@@ -94,9 +94,9 @@ smoke against temporary Web UK `http://127.0.0.1:6535`, Laravel
 `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `18/18` checks: enabled
 `/hour-timebank/accessible/dashboard`, `/wallet`, and `/members` body markers
 plus the five default-off `/acme/accessible/*` `403` checks. This is not yet
-live runtime proof of a real Laravel tenant with disabled core modules, broker
-workflow, every route-specific workflow gate, or full enabled-tenant depth
-behavior. A follow-up compound-gate slice now stacks all
+live runtime proof of a real Laravel tenant with disabled core modules, a
+disabled broker workflow fixture, every route-specific workflow gate, or full
+enabled-tenant depth behavior. A follow-up compound-gate slice now stacks all
 matching route gates and blocks `/events/{id}/map` when `maps` is disabled,
 `/organisations/{id}/jobs` when `job_vacancies` is disabled, and
 `/messages/groups...` when `connections` is disabled while the broader route
@@ -246,9 +246,11 @@ do not prove every route-specific workflow-disabled response. Maps,
 organisation jobs, and group-message connection gates now have focused
 middleware proof. Message translation policy now has focused shared-mount
 render/action proof for disabled tenants, the Clubs route now has route-level
-active-club 404 proof, and Explore-card active-club sourcing now has
-Laravel-backed route-level proof; broker workflow gating still needs
-certification.
+active-club 404 proof, Explore-card active-club sourcing now has
+Laravel-backed route-level proof, and listing exchange-request GET/POST now
+pre-check Laravel exchange config and redirect with `status=exchange-disabled`
+when broker workflow is disabled. Live disabled-tenant Laravel fixture proof
+for broker workflow remains unproven.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.

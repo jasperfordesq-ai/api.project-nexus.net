@@ -821,6 +821,13 @@ pages can be called backend-neutral.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.
+Listing exchange-request GET and POST routes now pre-check Laravel
+`/api/v2/exchanges/config` and mirror Blade's broker workflow-disabled
+redirect to `/listings/{id}?status=exchange-disabled` before rendering the
+request form or calling `/api/v2/exchanges`. Future ASP.NET mode must expose an
+equivalent `exchange_workflow_enabled` contract and preserve the same no-JS
+disabled-workflow redirect before this workflow can be certified as
+backend-neutral.
 Onboarding step POSTs use `/api/users/me`, `/api/v2/users/me/avatar`,
 `/api/v2/onboarding/safeguarding`, and `/api/v2/onboarding/complete`. It is not
 a backend adapter and does not certify Laravel tenant feature gates, full

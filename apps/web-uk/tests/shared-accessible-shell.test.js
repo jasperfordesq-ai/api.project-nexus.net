@@ -17089,6 +17089,34 @@ describe('shared accessible frontend shell', () => {
     expect(api.callListingApi).not.toHaveBeenCalled();
   });
 
+  it('redirects listing exchange request POST before create when broker exchange workflow is disabled', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.getExchangeConfig.mockResolvedValueOnce({ data: { exchange_workflow_enabled: false } });
+
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/listings/42/exchange-request')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        proposed_hours: '2',
+        message: 'Could you help?'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/listings/42?status=exchange-disabled');
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
+    expect(api.createExchangeRequest).not.toHaveBeenCalled();
+  });
+
   it('renders the Laravel-backed listing report form', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
@@ -17178,6 +17206,21 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Message to the member');
     expect(signed.text).toContain('Send request');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('redirects listing exchange request GET when broker exchange workflow is disabled', async () => {
+    const api = require('../src/lib/api');
+    api.getExchangeConfig.mockResolvedValueOnce({ data: { exchange_workflow_enabled: false } });
+
+    const response = await request(app)
+      .get('/listings/42/exchange-request')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/listings/42?status=exchange-disabled');
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
+    expect(api.callListingApi).not.toHaveBeenCalled();
+    expect(api.callWalletApi).not.toHaveBeenCalled();
   });
 
   it('does not expose the legacy exchanges request alias outside Laravel route identity', async () => {

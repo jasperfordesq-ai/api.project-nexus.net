@@ -426,8 +426,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `998.5/1000` implementation/certification parity |
-| Green confidence estimate | about `991/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific workflow gates such as broker workflow behavior, and ASP.NET backend switching certification |
+| Working estimate | about `998.8/1000` implementation/certification parity |
+| Green confidence estimate | about `992/1000`, mainly gated by visual/manual Laravel Blade parity, live disabled-tenant fixture proof for broker workflow behavior, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -744,9 +744,9 @@ feature gates:
   basics and that the enabled Laravel fixture still renders `/events/6/map`,
   `/organisations/636/jobs`, and `/messages/groups/new`.
 - This closes the proven maps, organisation-jobs, and group-message compound
-  gate slice. It does not prove broker workflow gating, visual/manual Blade
-  parity, or ASP.NET backend compatibility; route-level active-club proof is
-  documented in the later active-club evidence slice.
+  gate slice. It does not prove visual/manual Blade parity or ASP.NET backend
+  compatibility; route-level active-club proof and broker workflow listing
+  request proof are documented in later focused slices.
 
 Latest focused verification on 2026-07-09 for the active-club evidence route
 gate slice:
@@ -926,7 +926,27 @@ live-content link slice:
 - `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand -t "Explore hub"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with only `/explore=>Explore` in `SMOKE_BODY_TEXT_PAGE_PATHS` and large route lists disabled passed 11/11 checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 - The slice pins Blade Explore card gates from tenant bootstrap: Exchanges require `listings` plus broker `exchange_workflow`, AI assistant/Polls/Groups/Goals/Organisations/Blog/Resources/Marketplace/Jobs/Courses/Podcasts/Coupons/Premium/Ideation/Federation use their Blade feature keys, Search and Skills remain card-visible, and Clubs were initially held behind an explicit tenant `has_clubs` flag before the later Explore active-club evidence slice added the Laravel-backed probe.
-- This also routes Explore listing/event live-content links and view-all links through `urlFor()` for shared mounts and custom-domain roots. It does not certify live Laravel broker workflow data, visual/manual Blade parity, localization, or ASP.NET backend compatibility.
+- This also routes Explore listing/event live-content links and view-all links through `urlFor()` for shared mounts and custom-domain roots. It does not certify live disabled-tenant broker workflow data, visual/manual Blade parity, localization, or ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-10 for the broker exchange workflow
+listing-request gate:
+
+- Laravel source check: `AlphaController::requestExchange()` and
+  `storeExchangeRequest()` call `BrokerControlConfigService::isExchangeWorkflowEnabled()`
+  before rendering the request form or creating an exchange, redirecting to the
+  listing detail with `status=exchange-disabled` when disabled.
+- Web UK now calls Laravel `/api/v2/exchanges/config` before signed
+  `/listings/{id}/exchange-request` GET rendering or POST create. If Laravel
+  explicitly returns `exchange_workflow_enabled: false`, Web UK redirects to
+  `/listings/{id}?status=exchange-disabled` and avoids the listing lookup,
+  wallet lookup, and exchange-create call.
+- Focused Jest first failed because GET rendered `200` and POST redirected to
+  `/exchanges/88?status=exchange-created`; after the route change the focused
+  run passed 4/4 matching tests:
+  `npm test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "broker exchange workflow is disabled|listing exchange request|listing action aliases" --runInBand`.
+- This is focused route/source proof. A live Laravel fixture with broker
+  exchange workflow disabled and ASP.NET backend switching certification remain
+  unproven.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
@@ -2217,7 +2237,8 @@ ASP.NET switching proof over adding more skeleton pages.
    connection gates, and message translation policy now have focused Jest
    proof, the Clubs route now has active-club 404 proof, and Explore-card
    active-club sourcing now uses live Laravel-backed club evidence. Broker
-   workflow gating still needs certification.
+   workflow-disabled listing exchange requests now have focused Jest/source
+   proof; a live disabled-tenant Laravel fixture is still not certified.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -2237,12 +2258,13 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `998.5/1000`.
-Green confidence estimate: `991/1000`, because the consolidated code, static
+Current working estimate at this handoff: `998.8/1000`.
+Green confidence estimate: `992/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
 full default Laravel runtime-smoke coverage via chunked/bucketed runs are
-strong, while visual/manual Blade parity spot-checks, broker workflow gate
-proof, and ASP.NET backend switching proof still need final certification.
+strong, while visual/manual Blade parity spot-checks, live disabled-tenant
+broker workflow proof, and ASP.NET backend switching proof still need final
+certification.
 
 ## Final Handoff Checklist
 

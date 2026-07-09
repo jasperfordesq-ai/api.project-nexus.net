@@ -13,6 +13,7 @@ const {
   deleteListing,
   callListingApi,
   createExchangeRequest,
+  getExchangeConfig,
   createComment,
   getComments,
   toggleFeedLike,
@@ -52,6 +53,12 @@ function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined
     ? result.data
     : result;
+}
+
+async function exchangeWorkflowEnabled(token) {
+  const payload = await getExchangeConfig(token).catch(() => ({ data: { exchange_workflow_enabled: true } }));
+  const data = dataFrom(payload) || {};
+  return data.exchange_workflow_enabled !== false;
 }
 
 function loginRedirect() {
@@ -470,6 +477,11 @@ router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) =>
   if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = Number(req.params.listingId);
+  const workflowEnabled = await exchangeWorkflowEnabled(token);
+  if (!workflowEnabled) {
+    return redirectTo(res, listingRedirect(listingId, 'exchange-disabled'));
+  }
+
   const prepTime = boundedNumber(req.body.prep_time, 0, 24, null);
   const message = trimmed(req.body.message, 5000);
   const payload = {
@@ -511,6 +523,11 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
   if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = Number(req.params.listingId);
+  const workflowEnabled = await exchangeWorkflowEnabled(token);
+  if (!workflowEnabled) {
+    return redirectTo(res, listingRedirect(listingId, 'exchange-disabled'));
+  }
+
   const [listingResult, profileResult, walletBalance] = await Promise.all([
     callListing(token, 'GET', `/${listingId}`),
     getProfile(token).catch(() => null),
