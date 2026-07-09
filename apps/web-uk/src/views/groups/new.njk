@@ -11,7 +11,7 @@
   {{ super() }}
   {{ govukBackLink({
     text: "Back to groups",
-    href: "/groups"
+    href: urlFor("/groups")
   }) }}
 {% endblock %}
 
@@ -28,7 +28,7 @@
 
       <h1 class="govuk-heading-xl">Create a group</h1>
 
-      <form method="post" action="/groups/new" novalidate data-validate-form>
+      <form method="post" action="{{ urlFor('/groups/new') }}" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {{ govukInput({
@@ -87,7 +87,7 @@
           {{ govukButton({
             text: "Create group"
           }) }}
-          <a href="/groups" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/groups') }}" class="govuk-link">Cancel</a>
         </div>
       </form>
 

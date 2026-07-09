@@ -433,6 +433,21 @@ exported Laravel runtime smoke against temporary Web UK
 API/health, cookie, login, account, and logout checks plus `/events`
 containing `Events` and `/events/new` containing `Create an event`.
 
+The thirtieth template-helper source slice extends direct `urlFor()`
+conversion into group index, create/edit form, and legacy my-groups source
+pages. `src/views/groups/index.njk`, `src/views/groups/new.njk`,
+`src/views/groups/edit.njk`, and `src/views/groups/my.njk` now route the group
+list create CTA, search form, clear links, group card links, pagination base
+URL, create/edit form actions, breadcrumbs, back links, cancel links, and
+legacy my-groups source controls through `urlFor()`. The source-level
+regression first failed on raw `/groups` links/actions/base URL, then passed
+after conversion; a source scan for group index/form raw local `href`,
+`action`, JavaScript `href`, and pagination `baseUrl` strings returns no
+matches. A focused exported Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6465` and Laravel `http://127.0.0.1:8088` passed the base
+API/health, cookie, login, account, and logout checks plus `/groups`
+containing `Groups` and `/groups/new` containing `Create a group`.
+
 Verification command:
 
 ```powershell
@@ -442,6 +457,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed listing index|owner listing delete"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "event index"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group index"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "renders group navigation without legacy member-management links"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"

@@ -23,13 +23,13 @@
       <div class="govuk-!-margin-bottom-6" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-0">Groups</h1>
         <div>
-          <a href="/groups/new" class="govuk-button">Create a group</a>
+          <a href="{{ urlFor('/groups/new') }}" class="govuk-button">Create a group</a>
         </div>
       </div>
 
       <p class="govuk-body">Browse and join groups to connect with community members who share your interests.</p>
 
-      <form action="/groups" method="get" class="govuk-!-margin-bottom-6">
+      <form action="{{ urlFor('/groups') }}" method="get" class="govuk-!-margin-bottom-6">
         <div class="app-search-form">
           {{ govukInput({
             id: "search",
@@ -48,7 +48,7 @@
             Search
           </button>
           {% if searchQuery %}
-            <a href="/groups" class="govuk-link govuk-!-margin-left-3">Clear</a>
+            <a href="{{ urlFor('/groups') }}" class="govuk-link govuk-!-margin-left-3">Clear</a>
           {% endif %}
         </div>
       </form>
@@ -60,7 +60,7 @@
           message: "No groups match \"" + searchQuery + "\". Try a different search term.",
           action: {
             text: "Clear search",
-            href: "/groups"
+            href: urlFor("/groups")
           }
         } %}
         {% include "partials/empty-state.njk" %}
@@ -68,7 +68,7 @@
         <div class="app-card-grid">
           {% for group in groups %}
             <div class="app-card app-card--clickable">
-              <a href="/groups/{{ group.id }}" class="app-card__link">
+              <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="app-card__link">
                 <div class="app-card__header">
                   <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ group.name }}</h2>
                   {% if group.isPrivate or group.is_private %}
@@ -95,7 +95,7 @@
           message: "Be the first to create a group for your community.",
           action: {
             text: "Create a group",
-            href: "/groups/new"
+            href: urlFor("/groups/new")
           }
         } %}
         {% include "partials/empty-state.njk" %}
@@ -104,7 +104,7 @@
       {# Pagination #}
       {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
-          baseUrl: "/groups",
+          baseUrl: urlFor("/groups"),
           page: pagination.page,
           totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { search: searchQuery }

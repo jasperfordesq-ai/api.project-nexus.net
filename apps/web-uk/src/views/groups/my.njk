@@ -7,7 +7,7 @@
   {{ super() }}
   {{ govukBackLink({
     text: "Back to all groups",
-    href: "/groups"
+    href: urlFor("/groups")
   }) }}
 {% endblock %}
 
@@ -37,7 +37,7 @@
             {% for group in groups %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
-                  <a href="/groups/{{ group.id }}" class="govuk-link govuk-!-font-weight-bold">
+                  <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link govuk-!-font-weight-bold">
                     {{ group.name }}
                   </a>
                   {% if group.isPrivate or group.is_private %}
@@ -70,7 +70,7 @@
           message: "Browse groups to find communities that interest you.",
           action: {
             text: "Browse groups",
-            href: "/groups"
+            href: urlFor("/groups")
           }
         } %}
         {% include "partials/empty-state.njk" %}

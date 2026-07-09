@@ -126,7 +126,10 @@ controls, pagination, empty-state CTAs, create/edit form action, and cancel
 link through `urlFor()`. The latest events index/form source slice now routes
 event list create CTA, search form, event and group links, pagination,
 empty-state actions, create/edit form actions, breadcrumbs, back links, and
-cancel links through `urlFor()`.
+cancel links through `urlFor()`. The latest groups index/form source slice now
+routes group list create CTA, search form, clear links, group card links,
+pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
+links, and legacy my-groups source controls through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -178,6 +181,18 @@ template-helper slice:
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, 727 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary Web UK `http://127.0.0.1:6464` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/events=>Events` and `/events/new=>Create an event`; the broader CLI invocation timed out after walking default smoke page lists and is not counted as a full-smoke pass.
+
+Latest focused verification on 2026-07-09 for the groups index/form
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group index"` first failed on raw `/groups` links, actions, and pagination base URL, then passed after conversion.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 23 tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "renders group navigation without legacy member-management links"` passed.
+- Source scan of `src/views/groups/index.njk`, `new.njk`, `edit.njk`, and `my.njk` for raw group local `href`, form `action`, JavaScript `href`, and pagination `baseUrl` strings returned no matches.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 728 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A focused exported `runLaravelRuntimeSmoke()` invocation against temporary Web UK `http://127.0.0.1:6465` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/groups=>Groups` and `/groups/new=>Create a group`.
 
 Latest consolidation verification on 2026-07-08:
 
