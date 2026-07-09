@@ -1415,6 +1415,22 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BillingPortal_WithoutStripeCustomerReturnsLaravelNoSubscriptionError()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsync("/api/v2/admin/billing/portal", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var error = json.GetProperty("errors").EnumerateArray().Single();
+        error.GetProperty("code").GetString().Should().Be("NO_SUBSCRIPTION");
+        error.GetProperty("message").GetString().Should().Be("No active subscription. Subscribe to a plan first to manage payment methods.");
+        json.TryGetProperty("data", out _).Should().BeFalse();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BillingInvoices_ReturnsSubscriptionBackedInvoices()
     {
         int subscriptionId;

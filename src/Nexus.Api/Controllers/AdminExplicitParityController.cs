@@ -629,6 +629,7 @@ public class AdminExplicitParityController : ControllerBase
         {
             "/api/v2/admin/api-partners" => await CreateApiPartner(),
             "/api/v2/admin/billing/checkout" => await CreateBillingCheckout(),
+            "/api/v2/admin/billing/portal" => CreateBillingPortal(),
             "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
@@ -654,6 +655,21 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
+    }
+
+    private IActionResult CreateBillingPortal()
+    {
+        return BadRequest(new
+        {
+            errors = new[]
+            {
+                new
+                {
+                    code = "NO_SUBSCRIPTION",
+                    message = "No active subscription. Subscribe to a plan first to manage payment methods."
+                }
+            }
+        });
     }
 
     private async Task<IActionResult> BulkApproveUsers()

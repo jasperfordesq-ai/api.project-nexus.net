@@ -92,9 +92,11 @@ singular admin `SubscriptionDetails` object with `plan_id`, `plan_name`,
 `stripe_subscription_id`, activates zero-price plans with the Laravel React
 `{ activated: true, checkout_url: null }` data envelope, and projects
 subscription-backed invoice rows with the React `number`, `date`, `amount`,
-`currency`, `status`, `hosted_invoice_url`, and `invoice_pdf` fields. Paid
-checkout, portal, real Stripe invoice retrieval/session behavior,
-billing-interval storage, and exact Laravel `pay_plans` /
+`currency`, `status`, `hosted_invoice_url`, and `invoice_pdf` fields.
+`POST /api/v2/admin/billing/portal` now returns Laravel's `NO_SUBSCRIPTION`
+error envelope instead of a generic compatibility write when no Stripe customer
+is available. Paid checkout, real Stripe portal/invoice retrieval/session
+behavior, billing-interval storage, and exact Laravel `pay_plans` /
 `tenant_plan_assignments` schema parity remain deeper gaps.
 
 The Laravel React availability grid slice now has focused ASP.NET regression
