@@ -334,6 +334,40 @@ public sealed class CoursesCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task ReactCourseOwnerMutations_RequireOwnerOrAdmin()
+    {
+        var tenant = CreateTenantContext(48);
+        await using var db = CreateDbContext(tenant);
+        var ownerController = CreateController(db, tenant, userId: 9006, role: "member");
+
+        var created = await ownerController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Owner managed course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        var otherMemberController = CreateController(db, tenant, userId: 9007, role: "member");
+
+        (await otherMemberController.Update(courseId, new CourseCompatCourseRequest { Title = "Taken over" }, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.Publish(courseId, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.Analytics(courseId, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await otherMemberController.Destroy(courseId, CancellationToken.None))
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+
+        var adminController = CreateController(db, tenant, userId: 9008, role: "admin");
+
+        (await adminController.Publish(courseId, CancellationToken.None)).Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task ReactCoursePublish_RespectsLaravelTenantModerationSetting()
     {
         var tenant = CreateTenantContext(44);

@@ -88,22 +88,42 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpPut("api/courses/{id:int}")]
     [HttpPut("api/v2/courses/{id:int}")]
     public Task<IActionResult> Update(int id, [FromBody] CourseCompatCourseRequest request, CancellationToken ct) =>
-        RunAsync(() => _courses.UpdateCourseAsync(_tenant.GetTenantIdOrThrow(), id, request, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, id, UserId(), ct);
+            return await _courses.UpdateCourseAsync(tenantId, id, request, ct);
+        });
 
     [HttpDelete("api/courses/{id:int}")]
     [HttpDelete("api/v2/courses/{id:int}")]
     public Task<IActionResult> Destroy(int id, CancellationToken ct) =>
-        RunAsync(async () => new { deleted = await _courses.DeleteCourseAsync(_tenant.GetTenantIdOrThrow(), id, ct) });
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, id, UserId(), ct);
+            return new { deleted = await _courses.DeleteCourseAsync(tenantId, id, ct) };
+        });
 
     [HttpPost("api/courses/{id:int}/publish")]
     [HttpPost("api/v2/courses/{id:int}/publish")]
     public Task<IActionResult> Publish(int id, CancellationToken ct) =>
-        RunAsync(() => _courses.SetPublishedAsync(_tenant.GetTenantIdOrThrow(), id, published: true, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, id, UserId(), ct);
+            return await _courses.SetPublishedAsync(tenantId, id, published: true, ct);
+        });
 
     [HttpPost("api/courses/{id:int}/unpublish")]
     [HttpPost("api/v2/courses/{id:int}/unpublish")]
     public Task<IActionResult> Unpublish(int id, CancellationToken ct) =>
-        RunAsync(() => _courses.SetPublishedAsync(_tenant.GetTenantIdOrThrow(), id, published: false, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, id, UserId(), ct);
+            return await _courses.SetPublishedAsync(tenantId, id, published: false, ct);
+        });
 
     [HttpPost("api/courses/{id:int}/enroll")]
     [HttpPost("api/v2/courses/{id:int}/enroll")]
@@ -179,7 +199,12 @@ public sealed class CoursesCompatibilityController : ControllerBase
     [HttpGet("api/courses/{id:int}/analytics")]
     [HttpGet("api/v2/courses/{id:int}/analytics")]
     public Task<IActionResult> Analytics(int id, CancellationToken ct) =>
-        RunAsync(() => _courses.AnalyticsAsync(_tenant.GetTenantIdOrThrow(), id, ct));
+        RunAsync(async () =>
+        {
+            var tenantId = _tenant.GetTenantIdOrThrow();
+            await EnsureCourseOwnerOrAdminAsync(tenantId, id, UserId(), ct);
+            return await _courses.AnalyticsAsync(tenantId, id, ct);
+        });
 
     [HttpGet("api/courses/{courseId:int}/grading")]
     [HttpGet("api/v2/courses/{courseId:int}/grading")]
@@ -327,6 +352,22 @@ public sealed class CoursesCompatibilityController : ControllerBase
         }
 
         throw new CoursesCompatibilityForbiddenException("Course authoring is restricted to instructors and admins");
+    }
+
+    private async Task EnsureCourseOwnerOrAdminAsync(int tenantId, int courseId, int userId, CancellationToken ct)
+    {
+        if (HasAdminRole())
+        {
+            return;
+        }
+
+        var authorUserId = await _courses.GetCourseAuthorUserIdAsync(tenantId, courseId, ct);
+        if (authorUserId == userId)
+        {
+            return;
+        }
+
+        throw new CoursesCompatibilityForbiddenException("Course can only be managed by its owner or an admin");
     }
 
     private bool HasAdminRole()

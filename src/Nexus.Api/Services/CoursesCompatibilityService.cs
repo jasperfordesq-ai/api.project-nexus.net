@@ -677,6 +677,12 @@ public sealed class CoursesCompatibilityService
                 && config.Key == $"{AdminCoursesService.InstructorKeyPrefix}{userId}", ct);
     }
 
+    public async Task<int> GetCourseAuthorUserIdAsync(int tenantId, int courseId, CancellationToken ct)
+    {
+        var state = await LoadAsync(tenantId, ct);
+        return EnsureCourse(state, courseId).AuthorUserId;
+    }
+
     private async Task<CourseCompatibilityState> LoadAsync(int tenantId, CancellationToken ct)
     {
         var row = await _db.TenantConfigs
