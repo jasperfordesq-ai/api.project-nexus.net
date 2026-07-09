@@ -1122,6 +1122,22 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/jobs/);
   });
 
+  it('keeps jobs route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'jobs.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(\s*['"`]\/(?:login|jobs)/);
+    expect(route).not.toMatch(/res\.redirect\(\s*(?:loginRedirect\(\)|statusRedirect|jobRedirect|bookmarkRedirect)/);
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res, loginRedirect())');
+    expect(route).toMatch(/redirectTo\(res,\s*statusRedirect/);
+    expect(route).toMatch(/redirectTo\(res,\s*jobRedirect/);
+    expect(route).toMatch(/redirectTo\(res,\s*bookmarkRedirect/);
+  });
+
   it('keeps blog index, detail, comments, and reaction controls behind urlFor()', () => {
     const templates = [
       path.join('blog', 'index.njk'),

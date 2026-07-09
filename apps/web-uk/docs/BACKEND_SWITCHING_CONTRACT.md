@@ -68,8 +68,10 @@ shared `/{tenantSlug}/accessible`, parent-domain child paths, and slugless
 custom-domain contexts do not rely only on last-mile response rewriting. The
 podcast page routes now follow this rule for signed-out and Laravel-401 auth
 handoffs, and the podcast action routes follow it for subscribe, studio show,
-and episode POST outcomes; future ASP.NET mode must preserve equivalent local
-redirect semantics.
+and episode POST outcomes. The Jobs action routes now follow it for
+create/update/delete/renew/apply/save/unsave, application status/withdrawal,
+alert, interview, offer, and owner CSV failure outcomes; future ASP.NET mode
+must preserve equivalent local redirect semantics.
 
 ## Laravel Runtime Smoke
 

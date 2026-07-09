@@ -195,8 +195,13 @@ stay inside the active shared tenant mount or custom-domain context instead of
 falling back to flat `/saved`, `/me/collections`, or `/users/...` paths. The latest jobs source slice now routes jobs tabs,
 browse filters, saved/application/owner links, alerts, responses, detail
 actions, employer pages, talent search/profile links, CSV/CV downloads,
-pagination, and job POST forms through `urlFor()`. The latest podcast source
-slice now routes podcast browse/studio links, search form, show and episode
+pagination, and job POST forms through `urlFor()`. The latest jobs
+route-redirect slice now routes create/update/delete/renew/apply/save/unsave,
+application status/withdrawal, alert, interview, offer, and owner CSV failure
+redirects through `res.locals.urlFor`, with shared-mount coverage proving
+`/acme/accessible/jobs/42/apply` redirects to `/acme/accessible/login` before
+any Laravel Jobs API call. The latest podcast source slice now routes podcast
+browse/studio links, search form, show and episode
 links, subscribe form, create/edit form actions, episode publish/delete/upload
 forms, show publish/delete forms, and studio management links through
 `urlFor()`. The latest podcast action redirect slice now routes subscribe,
@@ -505,6 +510,13 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 27 tests.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "jobs|job"` passed: 28 selected tests.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:60268`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 24 checks: base API/health, cookie, login, account, logout, signed `/jobs/saved`, `/jobs/applications`, `/jobs/mine`, `/jobs/create`, `/jobs/alerts`, `/jobs/responses`, and `/jobs/employer-onboarding`, plus body markers `Saved opportunities`, `My applications`, `My postings`, `Post an opportunity`, `Job alerts`, `Interview invitations`, and `Welcome to posting opportunities`.
+
+Latest focused verification on 2026-07-09 for the jobs route-redirect
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "jobs route redirects"` first failed on raw `res.redirect('/login')`/`res.redirect('/jobs...')` outcomes, then passed after conversion through `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Laravel jobs action aliases"` passed, including mounted unsigned `/acme/accessible/jobs/42/apply` redirecting to `/acme/accessible/login` without calling the Laravel Jobs API.
+- A scoped Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6514`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 17 checks for base API/health, cookie, login/account/logout, signed `/jobs`, `/jobs/90764`, `/jobs/90764/qualified`, and `/jobs/employers/14`, plus body markers `Apply for this opportunity`, `Am I qualified?`, and `Open opportunities and reviews for this employer`.
 
 Latest focused verification on 2026-07-09 for the members template-helper
 slice:

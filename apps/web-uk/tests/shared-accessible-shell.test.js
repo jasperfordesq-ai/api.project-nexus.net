@@ -15510,6 +15510,17 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login');
     expect(api.callJobApi).not.toHaveBeenCalled();
+
+    const mountedUnsigned = request.agent(app);
+    const mountedUnsignedFirst = await mountedUnsigned.get('/acme/accessible/contact');
+    const mountedUnsignedCsrf = mountedUnsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const mountedUnsignedResponse = await mountedUnsigned
+      .post('/acme/accessible/jobs/42/apply')
+      .type('form')
+      .send({ _csrf: mountedUnsignedCsrf[1], cover_letter: 'Hello' });
+    expect(mountedUnsignedResponse.status).toBe(302);
+    expect(mountedUnsignedResponse.headers.location).toBe('/acme/accessible/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel job application route with multipart CV data', async () => {

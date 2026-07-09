@@ -232,9 +232,14 @@ function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
 
@@ -1832,7 +1837,7 @@ router.get('/:id(\\d+)/applications/export.csv', asyncRoute(async (req, res) => 
     csv = await callJob(token, 'GET', `/${id}/applications/export-csv`);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect(`/jobs/${id}/applications`, 'export-failed'));
+    return redirectTo(res, statusRedirect(`/jobs/${id}/applications`, 'export-failed'));
   }
 
   const filename = `job_${id}_applications_${timestampForFilename()}.csv`;
@@ -2140,11 +2145,11 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
 
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const payload = jobFormPayload(req.body);
   if (payload === null) {
-    return res.redirect('/jobs/create');
+    return redirectTo(res, '/jobs/create');
   }
 
   let result;
@@ -2152,63 +2157,63 @@ router.post('/', asyncRoute(async (req, res) => {
     result = await callJob(token, 'POST', '', payload);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/create', 'create-failed'));
+    return redirectTo(res, statusRedirect('/jobs/create', 'create-failed'));
   }
 
   const id = resultId(result);
-  return res.redirect(id ? jobRedirect(id, 'created') : statusRedirect('/jobs/mine', 'created'));
+  return redirectTo(res, id ? jobRedirect(id, 'created') : statusRedirect('/jobs/mine', 'created'));
 }));
 
 router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = jobFormPayload(req.body);
   if (payload === null) {
-    return res.redirect(`/jobs/${id}/edit`);
+    return redirectTo(res, `/jobs/${id}/edit`);
   }
 
   try {
     await callJob(token, 'PUT', `/${id}`, payload);
-    return res.redirect(jobRedirect(id, 'updated'));
+    return redirectTo(res, jobRedirect(id, 'updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect(`/jobs/${id}/edit`, 'update-failed'));
+    return redirectTo(res, statusRedirect(`/jobs/${id}/edit`, 'update-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callJob(token, 'DELETE', `/${id}`);
-    return res.redirect(statusRedirect('/jobs/mine', 'deleted'));
+    return redirectTo(res, statusRedirect('/jobs/mine', 'deleted'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/mine', 'delete-failed'));
+    return redirectTo(res, statusRedirect('/jobs/mine', 'delete-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/renew', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callJob(token, 'POST', `/${id}/renew`, { days: 30 });
-    return res.redirect(jobRedirect(id, 'renewed'));
+    return redirectTo(res, jobRedirect(id, 'renewed'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(jobRedirect(id, 'renew-failed'));
+    return redirectTo(res, jobRedirect(id, 'renew-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = { message: trimmed(req.body.cover_letter, 5000) };
@@ -2229,10 +2234,10 @@ router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
     } else {
       await callJob(token, 'POST', `/${id}/apply`, payload);
     }
-    return res.redirect(jobRedirect(id, 'applied'));
+    return redirectTo(res, jobRedirect(id, 'applied'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(jobRedirect(id, 'apply-failed'));
+    return redirectTo(res, jobRedirect(id, 'apply-failed'));
   } finally {
     await removeUploadedFile(file);
   }
@@ -2240,169 +2245,169 @@ router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/save', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callJob(token, 'POST', `/${id}/save`);
-    return res.redirect(bookmarkRedirect(id, req.body.from, 'saved'));
+    return redirectTo(res, bookmarkRedirect(id, req.body.from, 'saved'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(bookmarkRedirect(id, req.body.from, 'save-failed'));
+    return redirectTo(res, bookmarkRedirect(id, req.body.from, 'save-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/unsave', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callJob(token, 'DELETE', `/${id}/save`);
-    return res.redirect(bookmarkRedirect(id, req.body.from, 'unsaved'));
+    return redirectTo(res, bookmarkRedirect(id, req.body.from, 'unsaved'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(bookmarkRedirect(id, req.body.from, 'save-failed'));
+    return redirectTo(res, bookmarkRedirect(id, req.body.from, 'save-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/applications/:appId(\\d+)/status', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const appId = Number(req.params.appId);
   try {
     await callJob(token, 'PUT', `/applications/${appId}`, applicationStatusPayload(req.body));
-    return res.redirect(statusRedirect(`/jobs/${id}/applications`, 'status-updated'));
+    return redirectTo(res, statusRedirect(`/jobs/${id}/applications`, 'status-updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect(`/jobs/${id}/applications`, 'status-failed'));
+    return redirectTo(res, statusRedirect(`/jobs/${id}/applications`, 'status-failed'));
   }
 }));
 
 router.post('/applications/:appId(\\d+)/withdraw', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const appId = Number(req.params.appId);
   try {
     await callJob(token, 'PUT', `/applications/${appId}`, { status: 'withdrawn' });
-    return res.redirect(statusRedirect('/jobs/applications', 'withdrawn'));
+    return redirectTo(res, statusRedirect('/jobs/applications', 'withdrawn'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/applications', 'withdraw-failed'));
+    return redirectTo(res, statusRedirect('/jobs/applications', 'withdraw-failed'));
   }
 }));
 
 router.post('/alerts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   try {
     await callJob(token, 'POST', '/alerts', alertPayload(req.body));
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-created'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-created'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-failed'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-failed'));
   }
 }));
 
 router.post('/alerts/:alertId(\\d+)/pause', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const alertId = Number(req.params.alertId);
   try {
     await callJob(token, 'PUT', `/alerts/${alertId}/unsubscribe`);
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-paused'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-paused'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-failed'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-failed'));
   }
 }));
 
 router.post('/alerts/:alertId(\\d+)/resume', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const alertId = Number(req.params.alertId);
   try {
     await callJob(token, 'PUT', `/alerts/${alertId}/resubscribe`);
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-resumed'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-resumed'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-failed'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-failed'));
   }
 }));
 
 router.post('/alerts/:alertId(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const alertId = Number(req.params.alertId);
   try {
     await callJob(token, 'DELETE', `/alerts/${alertId}`);
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-deleted'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-deleted'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/alerts', 'alert-failed'));
+    return redirectTo(res, statusRedirect('/jobs/alerts', 'alert-failed'));
   }
 }));
 
 router.post('/interviews/:interviewId(\\d+)/accept', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const interviewId = Number(req.params.interviewId);
   try {
     await callJob(token, 'PUT', `/interviews/${interviewId}/accept`, notePayload(req.body));
-    return res.redirect(statusRedirect('/jobs/responses', 'interview-accepted'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'interview-accepted'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/responses', 'interview-failed'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'interview-failed'));
   }
 }));
 
 router.post('/interviews/:interviewId(\\d+)/decline', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const interviewId = Number(req.params.interviewId);
   try {
     await callJob(token, 'PUT', `/interviews/${interviewId}/decline`, notePayload(req.body));
-    return res.redirect(statusRedirect('/jobs/responses', 'interview-declined'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'interview-declined'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/responses', 'interview-failed'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'interview-failed'));
   }
 }));
 
 router.post('/offers/:offerId(\\d+)/accept', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const offerId = Number(req.params.offerId);
   try {
     await callJob(token, 'PUT', `/offers/${offerId}/accept`);
-    return res.redirect(statusRedirect('/jobs/responses', 'offer-accepted'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'offer-accepted'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/responses', 'offer-failed'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'offer-failed'));
   }
 }));
 
 router.post('/offers/:offerId(\\d+)/reject', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect('/login');
+  if (!token) return redirectTo(res, loginRedirect());
 
   const offerId = Number(req.params.offerId);
   try {
     await callJob(token, 'PUT', `/offers/${offerId}/reject`);
-    return res.redirect(statusRedirect('/jobs/responses', 'offer-rejected'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'offer-rejected'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(statusRedirect('/jobs/responses', 'offer-failed'));
+    return redirectTo(res, statusRedirect('/jobs/responses', 'offer-failed'));
   }
 }));
 

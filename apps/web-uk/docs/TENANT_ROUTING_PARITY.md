@@ -183,7 +183,12 @@ Current gaps:
   appreciation pagination. The latest focused source conversion covers jobs
   templates, including tabs, browse filters, saved/application/owner links,
   alerts, responses, detail actions, employer pages, talent search/profile
-  links, CSV/CV downloads, pagination, and job POST forms. The latest
+  links, CSV/CV downloads, pagination, and job POST forms. The latest focused
+  Jobs route-redirect cleanup sends create/update/delete/renew/apply/save/
+  unsave, application status/withdrawal, alert, interview, offer, and owner CSV
+  failure redirects through `res.locals.urlFor`, with shared-mount coverage
+  proving `/acme/accessible/jobs/42/apply` redirects to the tenant-mounted
+  login path before any Laravel Jobs API call. The latest
   fallback-link conversion covers newsletter-unsubscribe and error-page home
   links, replacing raw `href="/"` with `urlFor('/')`; a full source scan for
   raw root-relative local Nunjucks `href`, `action`, and `baseUrl` patterns now
