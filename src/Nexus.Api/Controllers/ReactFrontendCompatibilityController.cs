@@ -1824,9 +1824,34 @@ public class ReactFrontendCompatibilityController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var tenantId = _tenantContext.TenantId;
+        var offersCount = await _db.Listings.CountAsync(l =>
+            l.TenantId == tenantId &&
+            l.UserId == userId.Value &&
+            l.Type == ListingType.Offer &&
+            l.Status == ListingStatus.Active);
+        var requestsCount = await _db.Listings.CountAsync(l =>
+            l.TenantId == tenantId &&
+            l.UserId == userId.Value &&
+            l.Type == ListingType.Request &&
+            l.Status == ListingStatus.Active);
+        var givenTotal = await _db.Transactions
+            .Where(t => t.TenantId == tenantId && t.SenderId == userId.Value && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var receivedTotal = await _db.Transactions
+            .Where(t => t.TenantId == tenantId && t.ReceiverId == userId.Value && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var walletBalance = Math.Round(receivedTotal - givenTotal, 2);
+
         var stats = new
         {
-            listings = await _db.Listings.CountAsync(l => l.UserId == userId.Value),
+            listings_count = offersCount + requestsCount,
+            given_count = Math.Round(givenTotal, 1),
+            received_count = Math.Round(receivedTotal, 1),
+            offers_count = offersCount,
+            requests_count = requestsCount,
+            wallet_balance = walletBalance,
+            listings = offersCount + requestsCount,
             completed_exchanges = await _db.Transactions.CountAsync(t => (t.SenderId == userId.Value || t.ReceiverId == userId.Value) && t.Status == TransactionStatus.Completed),
             connections = await _db.Connections.CountAsync(c => (c.RequesterId == userId.Value || c.AddresseeId == userId.Value) && c.Status == Connection.Statuses.Accepted),
             reviews = await _db.Reviews.CountAsync(r => r.TargetUserId == userId.Value),

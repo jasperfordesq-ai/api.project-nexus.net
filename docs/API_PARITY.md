@@ -355,6 +355,15 @@ preserving legacy `id`/`clicked` aliases. Exact Laravel `ad_impressions` and
 validation, campaign counter/budget updates, and duplicate-click suppression
 remain deeper local-advertising gaps.
 
+The Laravel React feed profile-card stats slice now has focused ASP.NET
+contract coverage for `GET /api/v2/me/stats`, driven from
+`react-frontend/src/components/feed/sidebar/ProfileCardWidget.tsx` and Laravel
+`UsersController::stats` / `UserService::getProfileStats`. ASP.NET now returns
+the React `listings_count`, `given_count`, `received_count`, `offers_count`,
+`requests_count`, and `wallet_balance` fields while retaining older stats
+aliases. Exact Laravel `users.balance` column parity remains a schema gap;
+.NET derives `wallet_balance` from completed time-credit transactions.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,
