@@ -159,6 +159,9 @@ profile back links through `urlFor()`.
 The latest knowledge-base source slice now routes the public `/kb` search form,
 article links, load-more link, article back link, and related-article links
 through `urlFor()`.
+The latest dashboard source slice now routes onboarding, exchange-attention,
+create-listing, upcoming-event, quick-link, recent-feed, and recent-listing
+dashboard links through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -308,6 +311,13 @@ template-helper slice:
 - `Select-String -Path apps\web-uk\src\views\kb\*.njk -SimpleMatch -Pattern 'href="/kb','action="/kb','href="{{ nextHref }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 31 tests.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "knowledge base"` passed: 2 selected tests.
+
+Latest focused verification on 2026-07-09 for the dashboard template-helper
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"` first failed on raw dashboard `/onboarding`, `/exchanges`, `/listings`, `/events`, `/profile`, `/feed`, `/messages`, `/members`, and `/volunteering` links, then passed after `src/views/dashboard/index.njk` converted those local links through `urlFor()`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "member dashboard"` passed: 1 selected test.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/dashboard`, `SMOKE_BODY_TEXT_PAGE_PATHS=/dashboard=>Quick links`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 
 Latest consolidation verification on 2026-07-08:
 

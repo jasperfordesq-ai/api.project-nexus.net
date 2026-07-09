@@ -617,9 +617,24 @@ source scan for raw knowledge-base local `href`, `action`, and `nextHref`
 strings returns no matches. Focused knowledge-base render tests pass for the
 public index/search and article pages.
 
+The forty-first template-helper source slice extends direct `urlFor()`
+conversion into the signed Laravel `/dashboard` template.
+`src/views/dashboard/index.njk` now routes onboarding, exchange-attention,
+create-listing,
+upcoming-event, quick-link, recent-feed, and recent-listing links through
+`urlFor()`. The source-level regression first failed on raw dashboard local
+links, then passed after conversion; focused dashboard render coverage still
+proves the flat signed `/dashboard` output. A scoped Laravel runtime smoke
+against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel
+`http://127.0.0.1:8088` passed the core auth/cookie/logout flow plus signed
+`/dashboard` rendering and the `Quick links` body marker.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "member dashboard"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "member dashboard"
+$env:SMOKE_MODULE_PAGE_PATHS = '/dashboard'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/dashboard=>Quick links'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "knowledge-base"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "knowledge base"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "orders shared-root tenant chooser"

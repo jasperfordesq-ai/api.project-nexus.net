@@ -672,6 +672,18 @@ web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6240`, started with
 `TENANT_ID=2`, passed `12/12` checks for auth/health, signed `/dashboard`, and
 the dashboard body markers `Welcome back`, `Your time bank`, `Quick links`,
 `Recent feed`, and `Recent listings`.
+The dashboard source template now routes onboarding, exchange-attention,
+create-listing, upcoming-event, quick-link, recent-feed, and recent-listing
+links through `urlFor()` for shared-mount and custom-domain tenant contexts.
+A scoped Laravel runtime smoke on 2026-07-09 against
+`WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel
+`http://127.0.0.1:8088` passed `12/12` checks for the core auth/cookie/logout
+flow plus signed `/dashboard` rendering and the `Quick links` body marker, with
+unrelated default page sweeps disabled.
+This does not certify ASP.NET backend switching: ASP.NET must still match
+Laravel's dashboard profile, onboarding, wallet, gamification, feed, listing,
+event, exchange-attention, endorsement, tenant feature-gate, localization, and
+status redirect contracts before dashboard can be called backend-neutral.
 A targeted core Laravel runtime smoke on 2026-07-08 against a temporary
 web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6251`, started with
 `TENANT_ID=2`, passed with `SMOKE_MODULE_PAGE_PATHS=none` and

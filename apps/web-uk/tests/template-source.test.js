@@ -63,6 +63,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(insightsTemplate).not.toContain('href="/activity"');
   });
 
+  it('keeps member dashboard links behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'dashboard', 'index.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/(?:onboarding|exchanges|listings|events|profile|feed|messages|members|volunteering)/);
+    expect(template).toMatch(/urlFor\(["']\/listings/);
+    expect(template).toMatch(/urlFor\(["']\/events/);
+    expect(template).toMatch(/urlFor\(["']\/profile/);
+  });
+
   it('keeps achievements navigation and forms behind urlFor()', () => {
     const templates = [
       'index.njk',

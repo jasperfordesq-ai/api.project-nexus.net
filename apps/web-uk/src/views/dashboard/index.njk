@@ -24,7 +24,7 @@
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">Add a few details so other members can find and connect with you.</p>
         <p class="govuk-body">
-          <a class="govuk-notification-banner__link" href="/onboarding">Complete your profile</a>
+          <a class="govuk-notification-banner__link" href="{{ urlFor('/onboarding') }}">Complete your profile</a>
         </p>
       </div>
     </div>
@@ -38,14 +38,14 @@
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ exchangeAttention.body }}</p>
         <p class="govuk-body">
-          <a class="govuk-notification-banner__link" href="/exchanges">View your exchanges</a>
+          <a class="govuk-notification-banner__link" href="{{ urlFor('/exchanges') }}">View your exchanges</a>
         </p>
       </div>
     </div>
   {% endif %}
 
   <div class="govuk-button-group govuk-!-margin-bottom-6">
-    <a class="govuk-button" data-module="govuk-button" href="/listings/new">Create a listing</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/listings/new') }}">Create a listing</a>
   </div>
 
   <div class="govuk-grid-row">
@@ -99,7 +99,7 @@
         <ul class="govuk-list govuk-list--spaced">
           {% for event in upcomingEvents %}
             <li>
-              <a class="govuk-link" href="/events/{{ event.id }}">{{ event.title }}</a>
+              <a class="govuk-link" href="{{ urlFor('/events/' ~ event.id) }}">{{ event.title }}</a>
               {% if event.start or event.location %}
                 <br>
                 <span class="govuk-body-s nexus-alpha-meta">
@@ -129,14 +129,14 @@
     <div class="govuk-grid-column-one-third">
       <h2 class="govuk-heading-l">Quick links</h2>
       <ul class="govuk-list govuk-list--spaced">
-        <li><a class="govuk-link" href="/profile">View your profile</a></li>
-        <li><a class="govuk-link" href="/profile/settings">Edit your profile</a></li>
-        <li><a class="govuk-link" href="/feed">View all feed items</a></li>
-        <li><a class="govuk-link" href="/messages">Messages</a></li>
-        <li><a class="govuk-link" href="/members">Members</a></li>
-        <li><a class="govuk-link" href="/listings">View all listings</a></li>
-        <li><a class="govuk-link" href="/events">Events</a></li>
-        <li><a class="govuk-link" href="/volunteering">Volunteering</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/profile') }}">View your profile</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/profile/settings') }}">Edit your profile</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/feed') }}">View all feed items</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/messages') }}">Messages</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/members') }}">Members</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/listings') }}">View all listings</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/events') }}">Events</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/volunteering') }}">Volunteering</a></li>
       </ul>
     </div>
   </div>
@@ -152,7 +152,7 @@
             <article class="nexus-alpha-card">
               <strong class="govuk-tag govuk-tag--grey">{{ item.typeLabel }}</strong>
               <h3 class="govuk-heading-m govuk-!-margin-top-2 govuk-!-margin-bottom-2">
-                <a class="govuk-link" href="/feed">{{ item.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/feed') }}">{{ item.title }}</a>
               </h3>
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Posted by {{ item.authorName }}</p>
               {% if item.content %}
@@ -177,7 +177,7 @@
             <article class="nexus-alpha-card">
               <strong class="govuk-tag {% if listing.type == "request" %}govuk-tag--purple{% else %}govuk-tag--blue{% endif %}">{{ listing.type | capitalize }}</strong>
               <h3 class="govuk-heading-m govuk-!-margin-top-2 govuk-!-margin-bottom-2">
-                <a class="govuk-link" href="/listings/{{ listing.id }}">{{ listing.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/listings/' ~ listing.id) }}">{{ listing.title }}</a>
               </h3>
               {% if listing.description %}
                 <p class="govuk-body">{{ listing.description }}</p>
