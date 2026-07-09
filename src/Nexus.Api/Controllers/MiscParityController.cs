@@ -20,6 +20,7 @@ namespace Nexus.Api.Controllers;
 public class MiscParityController : ControllerBase
 {
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
+    private const string AppreciationsKey = "social.appreciations";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -174,19 +175,196 @@ public class MiscParityController : ControllerBase
 
     [HttpPost("appreciations")]
     [Authorize]
-    public IActionResult CreateAppreciation([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), created = true } });
+    public async Task<IActionResult> CreateAppreciation([FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var senderId = UserId();
+        var receiverId = Int(body, "receiver_id") ?? 0;
+        var message = Str(body, "message")?.Trim() ?? string.Empty;
+        var contextType = Str(body, "context_type")?.Trim();
+
+        if (receiverId <= 0 || string.IsNullOrWhiteSpace(message))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "receiver_id and message required" } }
+            });
+        }
+
+        if (senderId == receiverId)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "CANNOT_THANK_SELF", message = "cannot_thank_self" } }
+            });
+        }
+
+        if (message.Length > 500)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "MESSAGE_TOO_LONG", message = "message_too_long" } }
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(contextType) && contextType is not ("vol_log" or "listing_completion" or "general" or "event_help"))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "INVALID_CONTEXT", message = "invalid_context" } }
+            });
+        }
+
+        var receiverExists = await _db.Users.AsNoTracking().AnyAsync(u => u.TenantId == tenantId && u.Id == receiverId);
+        if (!receiverExists)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "RECEIVER_NOT_FOUND", message = "receiver_not_found" } }
+            });
+        }
+
+        var records = await LoadAppreciationsAsync(tenantId);
+        var now = DateTime.UtcNow;
+        var record = new AppreciationRecord
+        {
+            Id = records.Count == 0 ? 1 : records.Max(a => a.Id) + 1,
+            TenantId = tenantId,
+            SenderId = senderId,
+            ReceiverId = receiverId,
+            Message = message,
+            ContextType = string.IsNullOrWhiteSpace(contextType) ? null : contextType,
+            ContextId = Int(body, "context_id"),
+            IsPublic = Bool(body, "is_public") ?? true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        records.Add(record);
+        await SaveAppreciationsAsync(tenantId, records);
+
+        return StatusCode(StatusCodes.Status201Created, new { success = true, data = await MapAppreciationAsync(record, senderId) });
+    }
 
     [HttpGet("appreciations/most-appreciated")]
     [Authorize]
-    public async Task<IActionResult> MostAppreciated() => Ok(new { data = await _db.Reviews.GroupBy(r => r.TargetUserId).Select(g => new { user_id = g.Key, count = g.Count() }).Take(20).ToListAsync() });
+    public async Task<IActionResult> MostAppreciated([FromQuery] string? period = "last_30d", [FromQuery] int limit = 10)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var safeLimit = Math.Clamp(limit, 1, 50);
+        var since = period switch
+        {
+            "last_7d" => DateTime.UtcNow.AddDays(-7),
+            "last_90d" => DateTime.UtcNow.AddDays(-90),
+            "all_time" => (DateTime?)null,
+            _ => DateTime.UtcNow.AddDays(-30)
+        };
+
+        var records = (await LoadAppreciationsAsync(tenantId))
+            .Where(a => a.IsPublic)
+            .Where(a => !since.HasValue || a.CreatedAt >= since.Value)
+            .ToList();
+        var receiverIds = records.Select(a => a.ReceiverId).Distinct().ToArray();
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && receiverIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        var rows = records
+            .GroupBy(a => a.ReceiverId)
+            .Select(g =>
+            {
+                users.TryGetValue(g.Key, out var user);
+                return new
+                {
+                    user_id = g.Key,
+                    name = user == null ? null : DisplayName(user),
+                    avatar_url = user?.AvatarUrl,
+                    count = g.Count()
+                };
+            })
+            .OrderByDescending(row => row.count)
+            .ThenBy(row => row.name)
+            .Take(safeLimit)
+            .ToList();
+
+        return Ok(new { success = true, data = rows });
+    }
 
     [HttpPost("appreciations/{id:int}/react")]
     [Authorize]
-    public IActionResult ReactAppreciation(int id, [FromBody] JsonElement body) => Ok(new { data = new { id, reaction = Str(body, "reaction") ?? "like" } });
+    public async Task<IActionResult> ReactAppreciation(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userId = UserId();
+        var reactionType = Str(body, "reaction_type")?.Trim() ?? string.Empty;
+        if (reactionType is not ("heart" or "clap" or "star"))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "invalid_reaction" } }
+            });
+        }
+
+        var records = await LoadAppreciationsAsync(tenantId);
+        var record = records.FirstOrDefault(a => a.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, errors = new[] { new { code = "NOT_FOUND", message = "Not found" } } });
+        }
+
+        var userKey = userId.ToString();
+        var reacted = true;
+        string? currentReaction = reactionType;
+        if (record.Reactions.TryGetValue(userKey, out var existing) && existing == reactionType)
+        {
+            record.Reactions.Remove(userKey);
+            reacted = false;
+            currentReaction = null;
+        }
+        else
+        {
+            record.Reactions[userKey] = reactionType;
+        }
+
+        record.UpdatedAt = DateTime.UtcNow;
+        await SaveAppreciationsAsync(tenantId, records);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                reacted,
+                reaction_type = currentReaction,
+                reactions_count = record.Reactions.Count
+            }
+        });
+    }
 
     [HttpDelete("appreciations/{id:int}/react")]
     [Authorize]
-    public IActionResult DeleteAppreciationReaction(int id) => NoContent();
+    public async Task<IActionResult> DeleteAppreciationReaction(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var userKey = UserId().ToString();
+        var records = await LoadAppreciationsAsync(tenantId);
+        var record = records.FirstOrDefault(a => a.Id == id);
+        if (record == null || !record.Reactions.Remove(userKey))
+        {
+            return NotFound(new { success = false, errors = new[] { new { code = "NOT_FOUND", message = "Not found" } } });
+        }
+
+        record.UpdatedAt = DateTime.UtcNow;
+        await SaveAppreciationsAsync(tenantId, records);
+        return NoContent();
+    }
 
     [HttpGet("billing/plans")]
     [AllowAnonymous]
@@ -1516,6 +1694,91 @@ public class MiscParityController : ControllerBase
         public string? ImageUrl { get; set; }
         public string? DestinationUrl { get; set; }
         public int IsActive { get; set; } = 1;
+    }
+
+    private async Task<List<AppreciationRecord>> LoadAppreciationsAsync(int tenantId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == AppreciationsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<AppreciationRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SaveAppreciationsAsync(int tenantId, List<AppreciationRecord> records)
+    {
+        var json = JsonSerializer.Serialize(records.OrderBy(a => a.Id).ToList(), StoreJsonOptions);
+        await SetTenantConfigAsync(tenantId, AppreciationsKey, json, DateTime.UtcNow);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<object> MapAppreciationAsync(AppreciationRecord record, int? currentUserId)
+    {
+        var sender = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == record.TenantId && u.Id == record.SenderId)
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.AvatarUrl })
+            .FirstOrDefaultAsync();
+
+        return new
+        {
+            id = record.Id,
+            sender_id = record.SenderId,
+            receiver_id = record.ReceiverId,
+            message = record.Message,
+            context_type = record.ContextType,
+            context_id = record.ContextId,
+            is_public = record.IsPublic,
+            reactions_count = record.Reactions.Count,
+            created_at = record.CreatedAt,
+            updated_at = record.UpdatedAt,
+            sender = sender == null ? null : new
+            {
+                id = sender.Id,
+                name = DisplayName(sender.FirstName, sender.LastName, sender.Email),
+                avatar_url = sender.AvatarUrl
+            },
+            my_reaction = currentUserId.HasValue && record.Reactions.TryGetValue(currentUserId.Value.ToString(), out var reaction)
+                ? reaction
+                : null
+        };
+    }
+
+    private sealed class AppreciationRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int SenderId { get; set; }
+        public int ReceiverId { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? ContextType { get; set; }
+        public int? ContextId { get; set; }
+        public bool IsPublic { get; set; } = true;
+        public Dictionary<string, string> Reactions { get; set; } = [];
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private static string DisplayName(User user) => DisplayName(user.FirstName, user.LastName, user.Email);
+
+    private static string DisplayName(string firstName, string lastName, string email)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? email : name;
     }
 
     private static long ToMinorUnits(decimal amount) => decimal.ToInt64(decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero));

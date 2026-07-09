@@ -71,6 +71,9 @@ Status values:
   `FeedSidebar.tsx`, returning the Laravel React widget keys
   `community_stats`, `top_categories`, `upcoming_events`, `popular_groups`,
   `suggested_listings`, `friends`, and `profile_stats`.
+- Social appreciations now cover the Laravel React send, profile wall, mine,
+  react, and most-appreciated calls with `success/data/meta` envelopes and
+  focused backend contract coverage.
 - "Mapped" does not mean complete. It means the .NET repo has enough surface to
   start a detailed contract/workflow parity audit.
 - Full parity requires the gap register in `LARAVEL_PARITY_MAP.md` to close, not

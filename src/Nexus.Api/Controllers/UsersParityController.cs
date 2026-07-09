@@ -19,6 +19,7 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class UsersParityController : ControllerBase
 {
+    private const string AppreciationsKey = "social.appreciations";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -183,7 +184,24 @@ public class UsersParityController : ControllerBase
     }
 
     [HttpGet("{userId:int}/appreciations")]
-    public async Task<IActionResult> Appreciations(int userId) => Ok(new { data = await _db.Reviews.Where(r => r.TenantId == TenantId() && r.TargetUserId == userId).ToListAsync() });
+    public async Task<IActionResult> Appreciations(int userId, [FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 20)
+    {
+        var tenantId = TenantId();
+        var safePage = Math.Max(page, 1);
+        var safePerPage = Math.Clamp(perPage, 1, 100);
+        var all = (await LoadAppreciationsAsync(tenantId))
+            .Where(a => a.ReceiverId == userId && a.IsPublic)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToList();
+        var data = await MapAppreciationsAsync(all.Skip((safePage - 1) * safePerPage).Take(safePerPage), UserId());
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            meta = PageMeta(safePage, safePerPage, all.Count)
+        });
+    }
 
     [HttpGet("{userId:int}/rating")]
     public async Task<IActionResult> Rating(int userId)
@@ -594,6 +612,93 @@ public class UsersParityController : ControllerBase
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
     private static object BaseMeta() => new { base_url = "" };
+    private static object PageMeta(int page, int perPage, int total)
+    {
+        var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)perPage);
+        return new { current_page = page, page, per_page = perPage, total, last_page = totalPages, total_pages = totalPages };
+    }
+
+    private async Task<List<AppreciationRecord>> LoadAppreciationsAsync(int tenantId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == AppreciationsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<AppreciationRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<object>> MapAppreciationsAsync(IEnumerable<AppreciationRecord> records, int? currentUserId)
+    {
+        var items = records.ToList();
+        var senderIds = items.Select(a => a.SenderId).Distinct().ToArray();
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == TenantId() && senderIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        return items.Select(record =>
+        {
+            users.TryGetValue(record.SenderId, out var sender);
+            return (object)new
+            {
+                id = record.Id,
+                sender_id = record.SenderId,
+                receiver_id = record.ReceiverId,
+                message = record.Message,
+                context_type = record.ContextType,
+                context_id = record.ContextId,
+                is_public = record.IsPublic,
+                reactions_count = record.Reactions.Count,
+                created_at = record.CreatedAt,
+                updated_at = record.UpdatedAt,
+                sender = sender == null ? null : new
+                {
+                    id = sender.Id,
+                    name = DisplayName(sender),
+                    avatar_url = sender.AvatarUrl
+                },
+                my_reaction = currentUserId.HasValue && record.Reactions.TryGetValue(currentUserId.Value.ToString(), out var reaction)
+                    ? reaction
+                    : null
+            };
+        }).ToList();
+    }
+
+    private static string DisplayName(User user)
+    {
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
+    }
+
+    private sealed class AppreciationRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int SenderId { get; set; }
+        public int ReceiverId { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? ContextType { get; set; }
+        public int? ContextId { get; set; }
+        public bool IsPublic { get; set; } = true;
+        public Dictionary<string, string> Reactions { get; set; } = [];
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
     private static object ErrorEnvelope(string code, string message) => new { errors = new[] { new { code, message } } };
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;

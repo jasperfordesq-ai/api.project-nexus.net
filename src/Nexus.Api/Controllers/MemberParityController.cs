@@ -31,6 +31,7 @@ public class MemberParityController : ControllerBase
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
     private const string MessageReactionKeyPrefix = "message_reactions.";
+    private const string AppreciationsKey = "social.appreciations";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -48,7 +49,27 @@ public class MemberParityController : ControllerBase
     public async Task<IActionResult> Dashboard() => Ok(new { data = new { user = await CurrentUser(), listings = await _db.Listings.CountAsync(l => l.UserId == UserId()), groups = await _db.GroupMembers.CountAsync(g => g.UserId == UserId()), unread = await _db.Notifications.CountAsync(n => n.UserId == UserId() && !n.IsRead) } });
 
     [HttpGet("me/appreciations")]
-    public async Task<IActionResult> Appreciations() => Ok(new { data = await _db.Reviews.Where(r => r.TenantId == TenantId() && r.TargetUserId == UserId()).OrderByDescending(r => r.CreatedAt).ToListAsync() });
+    public async Task<IActionResult> Appreciations([FromQuery] string? tab = "received", [FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 20)
+    {
+        var userId = UserId();
+        var safePage = Math.Max(page, 1);
+        var safePerPage = Math.Clamp(perPage, 1, 100);
+        var includeSent = string.Equals(tab, "all", StringComparison.OrdinalIgnoreCase);
+        var rows = (await LoadAppreciationsAsync())
+            .Where(a => includeSent
+                ? a.ReceiverId == userId || a.SenderId == userId
+                : a.ReceiverId == userId)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToList();
+        var data = await MapAppreciationsAsync(rows.Skip((safePage - 1) * safePerPage).Take(safePerPage), userId);
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            meta = PageMeta(safePage, safePerPage, rows.Count)
+        });
+    }
 
     [HttpGet("me/data-export/history")]
     [HttpGet("v2/me/data-export/history")]
@@ -1292,6 +1313,72 @@ public class MemberParityController : ControllerBase
         }
     }
 
+    private async Task<List<AppreciationRecord>> LoadAppreciationsAsync()
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == TenantId() && c.Key == AppreciationsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<AppreciationRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<object>> MapAppreciationsAsync(IEnumerable<AppreciationRecord> records, int currentUserId)
+    {
+        var items = records.ToList();
+        var senderIds = items.Select(a => a.SenderId).Distinct().ToArray();
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == TenantId() && senderIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        return items.Select(record =>
+        {
+            users.TryGetValue(record.SenderId, out var sender);
+            return (object)new
+            {
+                id = record.Id,
+                sender_id = record.SenderId,
+                receiver_id = record.ReceiverId,
+                message = record.Message,
+                context_type = record.ContextType,
+                context_id = record.ContextId,
+                is_public = record.IsPublic,
+                reactions_count = record.Reactions.Count,
+                created_at = record.CreatedAt,
+                updated_at = record.UpdatedAt,
+                sender = sender == null ? null : new
+                {
+                    id = sender.Id,
+                    name = DisplayName(sender),
+                    avatar_url = sender.AvatarUrl
+                },
+                my_reaction = record.Reactions.TryGetValue(currentUserId.ToString(), out var reaction)
+                    ? reaction
+                    : null
+            };
+        }).ToList();
+    }
+
+    private static object PageMeta(int page, int perPage, int total)
+    {
+        var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)perPage);
+        return new { current_page = page, page, per_page = perPage, total, last_page = totalPages, total_pages = totalPages };
+    }
+
     private async Task<List<LocalAdCampaignRecord>> LoadAdCampaignsAsync()
     {
         var raw = await _db.TenantConfigs
@@ -1546,6 +1633,21 @@ public class MemberParityController : ControllerBase
     private static string Required(string? value, string name) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException($"{name} is required") : value;
     private static int StableId(JsonElement body) => Math.Abs(HashCode.Combine(body.GetRawText()));
     private static string Hex(string value) => Convert.ToHexString(Encoding.UTF8.GetBytes(value));
+
+    private sealed class AppreciationRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int SenderId { get; set; }
+        public int ReceiverId { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? ContextType { get; set; }
+        public int? ContextId { get; set; }
+        public bool IsPublic { get; set; } = true;
+        public Dictionary<string, string> Reactions { get; set; } = [];
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
 
     private sealed class LocalAdCampaignRecord
     {

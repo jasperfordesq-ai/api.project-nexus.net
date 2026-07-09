@@ -379,6 +379,21 @@ contract coverage for `GET /api/v2/feed/sidebar`, driven from
 filtering, group visibility/member status rules, friend/suggested-member
 ranking, and runtime browser smoke coverage remain deeper social-feed gaps.
 
+The Laravel React appreciations slice now has focused ASP.NET contract coverage
+for `POST /api/v2/appreciations`, `GET /api/v2/users/{userId}/appreciations`,
+`GET /api/v2/me/appreciations`, `POST /api/v2/appreciations/{id}/react`, and
+`GET /api/v2/appreciations/most-appreciated`, driven from
+`react-frontend/src/components/social/AppreciationModal.tsx`,
+`react-frontend/src/pages/profile/AppreciationWallPage.tsx`,
+`react-frontend/src/components/social/MostAppreciatedWidget.tsx`, and Laravel
+`AppreciationsController` / `AppreciationService`. ASP.NET now returns the
+Laravel `success/data` send envelope with HTTP 201, public wall and mine
+pagination metadata including `total_pages`, sender and `my_reaction` fields,
+reaction toggle results/counts, and most-appreciated leaderboard rows. Exact
+Laravel `appreciations` / `appreciation_reactions` schema fidelity, daily
+send-limit/cache behavior, notification/email/push side effects, delete-reaction
+coverage, and runtime browser smoke coverage remain deeper social gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,
