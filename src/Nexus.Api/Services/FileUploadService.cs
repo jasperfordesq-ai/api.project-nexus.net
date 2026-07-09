@@ -72,6 +72,7 @@ public class FileUploadService
         var allowedTypes = category switch
         {
             FileCategory.Document => AllowedDocumentTypes,
+            FileCategory.Message => AllowedDocumentTypes,
             FileCategory.TenantLogo => AllowedTenantLogoTypes,
             _ => AllowedImageTypes
         };

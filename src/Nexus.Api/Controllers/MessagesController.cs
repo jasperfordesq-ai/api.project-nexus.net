@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,17 +29,20 @@ public class MessagesController : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly ILogger<MessagesController> _logger;
     private readonly IRealTimeMessagingService _realTimeMessaging;
+    private readonly FileUploadService _fileUploadService;
 
     public MessagesController(
         NexusDbContext db,
         TenantContext tenantContext,
         ILogger<MessagesController> logger,
-        IRealTimeMessagingService realTimeMessaging)
+        IRealTimeMessagingService realTimeMessaging,
+        FileUploadService fileUploadService)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
         _realTimeMessaging = realTimeMessaging;
+        _fileUploadService = fileUploadService;
     }
 
     /// <summary>
@@ -470,8 +474,9 @@ public class MessagesController : ControllerBase
     /// Creates a new conversation if one doesn't exist.
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+    public async Task<IActionResult> SendMessage(CancellationToken ct)
     {
+        var (request, attachmentFiles) = await ReadSendMessageRequestAsync(ct);
         var userId = GetCurrentUserId();
         if (userId == null)
         {
@@ -479,9 +484,10 @@ public class MessagesController : ControllerBase
         }
 
         var messageContent = request.ResolvedContent;
+        var hasAttachments = attachmentFiles.Count > 0;
 
         // Validate content
-        if (string.IsNullOrWhiteSpace(messageContent))
+        if (string.IsNullOrWhiteSpace(messageContent) && !hasAttachments)
         {
             return BadRequest(new { error = "Message content is required" });
         }
@@ -543,6 +549,43 @@ public class MessagesController : ControllerBase
         conversation.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+
+        var attachments = new List<object>();
+        foreach (var attachmentFile in attachmentFiles)
+        {
+            await using var stream = attachmentFile.OpenReadStream();
+            var (upload, uploadError) = await _fileUploadService.UploadAsync(
+                stream,
+                attachmentFile.FileName,
+                string.IsNullOrWhiteSpace(attachmentFile.ContentType) ? "application/octet-stream" : attachmentFile.ContentType,
+                attachmentFile.Length,
+                userId.Value,
+                _tenantContext.GetTenantIdOrThrow(),
+                FileCategory.Message,
+                message.Id,
+                "message");
+
+            if (uploadError != null)
+            {
+                return UnprocessableEntity(new
+                {
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = uploadError, field = "attachments" } }
+                });
+            }
+
+            var savedUpload = upload!;
+            var attachment = new MessageAttachment
+            {
+                MessageId = message.Id,
+                FileUploadId = savedUpload.Id,
+                UploadedById = userId.Value,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.MessageAttachments.Add(attachment);
+            await _db.SaveChangesAsync();
+
+            attachments.Add(MapLaravelReactAttachment(attachment, savedUpload));
+        }
 
         // Load sender for response
         var sender = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
@@ -606,6 +649,7 @@ public class MessagesController : ControllerBase
                 first_name = recipient.FirstName,
                 last_name = recipient.LastName
             },
+            attachments,
             is_read = message.IsRead,
             created_at = message.CreatedAt
         };
@@ -787,6 +831,69 @@ public class MessagesController : ControllerBase
     private bool IsLaravelV2Request() => Request.Path.StartsWithSegments("/api/v2", StringComparison.OrdinalIgnoreCase);
 
     private int? GetCurrentUserId() => User.GetUserId();
+
+    private async Task<(SendMessageRequest Request, IReadOnlyList<IFormFile> Attachments)> ReadSendMessageRequestAsync(CancellationToken ct)
+    {
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync(ct);
+            return (new SendMessageRequest
+            {
+                RecipientId = ParseInt(FormValue(form, "recipient_id")),
+                Body = FormValue(form, "body"),
+                Content = FormValue(form, "content") ?? string.Empty,
+                ListingId = ParseIntNullable(FormValue(form, "listing_id")),
+                ContextType = FormValue(form, "context_type"),
+                ContextId = ParseIntNullable(FormValue(form, "context_id"))
+            }, ReadAttachmentFiles(form));
+        }
+
+        if (Request.ContentLength is 0 or null)
+        {
+            return (new SendMessageRequest(), []);
+        }
+
+        var request = await JsonSerializer.DeserializeAsync<SendMessageRequest>(Request.Body, new JsonSerializerOptions(JsonSerializerDefaults.Web), ct)
+            ?? new SendMessageRequest();
+        return (request, []);
+    }
+
+    private static IReadOnlyList<IFormFile> ReadAttachmentFiles(IFormCollection form)
+    {
+        var files = form.Files.GetFiles("attachments[]")
+            .Concat(form.Files.GetFiles("attachments"))
+            .Where(file => file.Length > 0)
+            .Take(5)
+            .ToArray();
+        return files;
+    }
+
+    private static string? FormValue(IFormCollection form, string key)
+    {
+        var value = form[key].ToString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static int ParseInt(string? value) =>
+        int.TryParse(value, out var parsed) ? parsed : 0;
+
+    private static int? ParseIntNullable(string? value) =>
+        int.TryParse(value, out var parsed) ? parsed : null;
+
+    private object MapLaravelReactAttachment(MessageAttachment attachment, FileUpload upload) => new
+    {
+        id = attachment.Id,
+        message_id = attachment.MessageId,
+        file_upload_id = upload.Id,
+        original_filename = upload.OriginalFilename,
+        file_name = upload.OriginalFilename,
+        content_type = upload.ContentType,
+        mime_type = upload.ContentType,
+        file_size_bytes = upload.FileSizeBytes,
+        file_size = upload.FileSizeBytes,
+        url = _fileUploadService.GetDownloadUrl(upload),
+        created_at = attachment.CreatedAt
+    };
 }
 
 /// <summary>
@@ -802,6 +909,15 @@ public class SendMessageRequest
 
     [JsonPropertyName("body")]
     public string? Body { get; set; }
+
+    [JsonPropertyName("listing_id")]
+    public int? ListingId { get; set; }
+
+    [JsonPropertyName("context_type")]
+    public string? ContextType { get; set; }
+
+    [JsonPropertyName("context_id")]
+    public int? ContextId { get; set; }
 
     public string ResolvedContent => string.IsNullOrWhiteSpace(Content) ? Body ?? string.Empty : Content;
 }

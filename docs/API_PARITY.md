@@ -201,11 +201,16 @@ The Laravel React message send/thread slice now has focused ASP.NET regression
 coverage for `POST /api/v2/messages` and `GET /api/v2/messages/{id}` as used by
 `ConversationPage.tsx`. The duplicate explicit v2 send route was removed so the
 route-alias convention has a single owner, v2 sends now return the
-`success/data` envelope consumed by the Laravel React API client, and v2 thread
-loads treat `{id}` as the other user id instead of an internal conversation id.
-The thread response returns message rows in `data` with `meta.conversation`,
-`per_page`, `cursor`, and `has_more`; the legacy `/api/messages/{id}` path keeps
-its conversation-id response shape for existing ASP.NET callers.
+`success/data` envelope consumed by the Laravel React API client, and v2 sends
+now accept the multipart `attachments[]` form-data path used by
+`ConversationPage.tsx`, including attachment-only sends with an empty `body`.
+Uploaded files are stored through the .NET file service and returned as message
+`attachments[]` rows with filename, MIME, size, and `/api/files/{id}/download`
+URLs. V2 thread loads treat `{id}` as the other user id instead of an internal
+conversation id. The thread response returns message rows in `data` with
+`meta.conversation`, `per_page`, `cursor`, and `has_more`; the legacy
+`/api/messages/{id}` path keeps its conversation-id response shape for existing
+ASP.NET callers. Voice-message multipart send remains a separate parity slice.
 
 The Laravel React unread/read-receipt slice now has focused ASP.NET regression
 coverage for `GET /api/v2/messages/unread-count` and

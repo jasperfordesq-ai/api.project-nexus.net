@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
@@ -116,6 +117,30 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         json.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
         json.GetProperty("meta").GetProperty("conversation").GetProperty("other_user").GetProperty("id").GetInt32()
             .Should().Be(TestData.AdminUser.Id);
+    }
+
+    [Fact]
+    public async Task MessageSendMultipartV2_AcceptsLaravelReactAttachmentsFormData()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(TestData.AdminUser.Id.ToString()), "recipient_id");
+        form.Add(new StringContent(string.Empty), "body");
+        using var attachment = new ByteArrayContent("hello from laravel react"u8.ToArray());
+        attachment.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        form.Add(attachment, "attachments[]", "hello.txt");
+
+        var response = await Client.PostAsync("/api/v2/messages", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var data = await ReadDataAsync(response);
+        data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        data.GetProperty("attachments").EnumerateArray().Should().ContainSingle(attachmentJson =>
+            attachmentJson.GetProperty("original_filename").GetString() == "hello.txt" &&
+            attachmentJson.GetProperty("content_type").GetString() == "text/plain" &&
+            attachmentJson.GetProperty("url").GetString()!.Contains("/api/files/"));
     }
 
     [Fact]
