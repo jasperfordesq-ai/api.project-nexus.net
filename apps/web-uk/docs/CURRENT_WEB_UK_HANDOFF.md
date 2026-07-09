@@ -89,7 +89,11 @@ profile/settings slice now routes the profile summary links, settings hub
 cards, profile/security/privacy forms, two-step verification actions, blocked
 member unblock forms, delete-account controls, and settings appearance,
 availability, data-rights, linked-account, and insurance forms through
-`urlFor()`. A follow-up detail/report slice now routes group detail,
+`urlFor()`. A follow-up settings route-redirect slice now sends appearance,
+availability, data-rights, linked-account, and insurance auth, validation,
+success, and API-error redirects through `res.locals.urlFor`, so those no-JS
+POST outcomes stay inside shared tenant mounts and custom-domain contexts
+instead of relying on flat `/settings` targets. A follow-up detail/report slice now routes group detail,
 listing detail, member profile, and report-link partial breadcrumbs, action
 controls, report returns, listing report links, member connection controls, and
 review form actions through `urlFor()`. A follow-up marketplace slice now

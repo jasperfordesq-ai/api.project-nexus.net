@@ -133,7 +133,11 @@ Current gaps:
   profile summary links, settings card links, profile/security/privacy forms,
   two-step verification actions, blocked member unblock forms, delete-account
   controls, and settings appearance, availability, data-rights,
-  linked-account, and insurance form actions. The latest focused source
+  linked-account, and insurance form actions. The latest focused settings
+  route-redirect cleanup sends appearance, availability, data-rights,
+  linked-account, and insurance auth, validation, success, and API-error
+  redirects through `res.locals.urlFor`, keeping no-JS settings outcomes inside
+  shared tenant mounts and custom-domain child paths. The latest focused source
   conversion covers group detail, listing detail, member profile, and the
   shared report-link partial, including breadcrumbs, action controls, report
   return targets, listing report links, member connection controls, and member

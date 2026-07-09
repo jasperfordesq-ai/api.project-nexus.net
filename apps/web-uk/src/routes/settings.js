@@ -129,6 +129,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -181,7 +186,7 @@ function payloadFrom(result) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -413,7 +418,7 @@ function linkedFailureStatus(error) {
 
 router.get('/linked-accounts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let children = [];
   let parents = [];
@@ -464,7 +469,7 @@ router.get('/linked-accounts', asyncRoute(async (req, res) => {
 
 router.get('/appearance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let currentTheme = 'system';
   try {
@@ -494,11 +499,11 @@ router.get('/appearance', asyncRoute(async (req, res) => {
 
 router.post('/appearance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const theme = allowedValue(req.body.theme, SETTINGS_THEMES, null);
   if (theme === null) {
-    return res.redirect(settingsStatusRedirect('/settings/appearance', 'appearance-invalid'));
+    return redirectTo(res, settingsStatusRedirect('/settings/appearance', 'appearance-invalid'));
   }
 
   let status = 'appearance-saved';
@@ -509,12 +514,12 @@ router.post('/appearance', asyncRoute(async (req, res) => {
     status = 'appearance-failed';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/appearance', status));
+  return redirectTo(res, settingsStatusRedirect('/settings/appearance', status));
 }));
 
 router.get('/availability', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let availabilityByDay = {};
   try {
@@ -541,11 +546,11 @@ router.get('/availability', asyncRoute(async (req, res) => {
 
 router.post('/availability', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const { flat, hasInvalid } = flattenAvailabilitySlots(req.body.slots, req.rawUrlencodedBody);
   if (hasInvalid) {
-    return res.redirect(settingsStatusRedirect('/settings/availability', 'availability-invalid', '#availability'));
+    return redirectTo(res, settingsStatusRedirect('/settings/availability', 'availability-invalid', '#availability'));
   }
 
   let status = 'availability-saved';
@@ -556,16 +561,16 @@ router.post('/availability', asyncRoute(async (req, res) => {
     status = 'availability-failed';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/availability', status));
+  return redirectTo(res, settingsStatusRedirect('/settings/availability', status));
 }));
 
 router.post('/data-rights', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const type = allowedValue(req.body.request_type, SETTINGS_GDPR_TYPES, null);
   if (type === null) {
-    return res.redirect(settingsStatusRedirect('/settings/data-rights', 'gdpr-invalid', '#request'));
+    return redirectTo(res, settingsStatusRedirect('/settings/data-rights', 'gdpr-invalid', '#request'));
   }
 
   const notes = trimmed(req.body.notes);
@@ -582,12 +587,12 @@ router.post('/data-rights', asyncRoute(async (req, res) => {
     fragment = '#request';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/data-rights', status, fragment));
+  return redirectTo(res, settingsStatusRedirect('/settings/data-rights', status, fragment));
 }));
 
 router.get('/data-rights', (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const requests = [];
@@ -611,7 +616,7 @@ router.get('/data-rights', (req, res) => {
 
 router.get('/insurance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let certificates = [];
   try {
@@ -646,11 +651,11 @@ router.get('/insurance', asyncRoute(async (req, res) => {
 
 router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const email = trimmed(req.body.email);
   if (email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-email-invalid', '#request'));
+    return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', 'link-email-invalid', '#request'));
   }
 
   const payload = {
@@ -669,12 +674,12 @@ router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
     fragment = '#request';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, fragment));
+  return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', status, fragment));
 }));
 
 router.post('/linked-accounts/approve', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const relationshipId = positiveInteger(req.body.relationship_id);
   let status = 'link-approved';
@@ -689,16 +694,16 @@ router.post('/linked-accounts/approve', asyncRoute(async (req, res) => {
     status = 'link-failed';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#parents'));
+  return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', status, '#parents'));
 }));
 
 router.post('/linked-accounts/permissions', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const relationshipId = positiveInteger(req.body.relationship_id);
   if (relationshipId === null) {
-    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-failed', '#children'));
+    return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', 'link-failed', '#children'));
   }
 
   let status = 'link-permissions-saved';
@@ -711,12 +716,12 @@ router.post('/linked-accounts/permissions', asyncRoute(async (req, res) => {
     status = 'link-failed';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+  return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
 }));
 
 router.post('/linked-accounts/revoke', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const relationshipId = positiveInteger(req.body.relationship_id);
   let status = 'link-revoked';
@@ -731,21 +736,21 @@ router.post('/linked-accounts/revoke', asyncRoute(async (req, res) => {
     status = 'link-failed';
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+  return redirectTo(res, settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
 }));
 
 router.post('/insurance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const insuranceType = allowedValue(req.body.insurance_type, SETTINGS_INSURANCE_TYPES, null);
   if (insuranceType === null) {
-    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
+    return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
   }
 
   const file = uploadedFile(req, 'certificate_file');
   if (!file) {
-    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
+    return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
   }
 
   try {
@@ -767,12 +772,12 @@ router.post('/insurance', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-failed', '#upload'));
+    return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-failed', '#upload'));
   } finally {
     await removeUploadedFile(file);
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-uploaded', '#certificates'));
+  return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-uploaded', '#certificates'));
 }));
 
 module.exports = router;

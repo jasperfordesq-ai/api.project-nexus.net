@@ -233,6 +233,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toContain("urlFor('/settings");
   });
 
+  it('keeps settings action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'settings.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(route).not.toMatch(/res\.redirect\(\s*settingsStatusRedirect/);
+    expect(route).not.toMatch(/res\.redirect\(\s*['"`]\/(?:login|settings)/);
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps group, listing, member detail, and report links behind urlFor()', () => {
     const templates = [
       path.join('groups', 'detail.njk'),
