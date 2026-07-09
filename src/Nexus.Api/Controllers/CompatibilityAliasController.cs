@@ -2164,9 +2164,99 @@ public class CompatibilityAliasController : ControllerBase
     /// PUT /api/gamification/showcase — Update badge showcase.
     /// </summary>
     [HttpPut("api/gamification/showcase")]
-    public IActionResult UpdateShowcase([FromBody] object? request = null)
+    public async Task<IActionResult> UpdateShowcase([FromBody] GamificationShowcaseRequest? request = null)
     {
-        return Ok(new { success = true, message = "Showcase updated" });
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var badgeKeys = request?.BadgeKeys ?? new List<string>();
+        if (badgeKeys.Count > 5)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "You can showcase up to 5 badges.", field = "badge_keys" } },
+                meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+            });
+        }
+
+        var requestedKeys = badgeKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var earnedBadges = await _db.UserBadges
+            .Include(ub => ub.Badge)
+            .Where(ub => ub.TenantId == tenantId && ub.UserId == userId.Value && ub.Badge != null && ub.Badge.IsActive)
+            .ToListAsync();
+        var earnedByKey = earnedBadges
+            .Where(ub => ub.Badge != null)
+            .GroupBy(ub => ub.Badge!.Slug, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var invalidKeys = requestedKeys
+            .Where(k => !earnedByKey.ContainsKey(k))
+            .ToArray();
+        if (invalidKeys.Length > 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_INVALID_VALUE", message = "One or more badges are not owned by this user.", field = "badge_keys" } },
+                data = new { invalid_badge_keys = invalidKeys },
+                meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+            });
+        }
+
+        var existing = await _db.BadgeShowcases
+            .Where(s => s.TenantId == tenantId && s.UserId == userId.Value)
+            .ToListAsync();
+        _db.BadgeShowcases.RemoveRange(existing);
+
+        for (var i = 0; i < requestedKeys.Count; i++)
+        {
+            var userBadge = earnedByKey[requestedKeys[i]];
+            _db.BadgeShowcases.Add(new BadgeShowcase
+            {
+                TenantId = tenantId,
+                UserId = userId.Value,
+                BadgeId = userBadge.BadgeId,
+                DisplayOrder = i,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        var showcasedBadges = requestedKeys
+            .Select((key, index) => new { UserBadge = earnedByKey[key], DisplayOrder = index })
+            .Select(item => new
+            {
+                id = item.UserBadge.BadgeId,
+                key = item.UserBadge.Badge!.Slug,
+                badge_key = item.UserBadge.Badge.Slug,
+                slug = item.UserBadge.Badge.Slug,
+                name = item.UserBadge.Badge.Name,
+                description = item.UserBadge.Badge.Description ?? string.Empty,
+                icon = item.UserBadge.Badge.Icon ?? "medal",
+                type = BadgeTypeFromSlug(item.UserBadge.Badge.Slug),
+                earned = true,
+                is_earned = true,
+                earned_at = item.UserBadge.EarnedAt,
+                is_showcased = true,
+                showcase_order = item.DisplayOrder
+            })
+            .ToArray();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                message = "Showcase updated",
+                showcased_badges = showcasedBadges
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     /// <summary>
@@ -3044,6 +3134,13 @@ public class CompatibilityAliasController : ControllerBase
             : PostReaction.Types.Like;
     }
 
+    private static string BadgeTypeFromSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return "general";
+        var separator = slug.IndexOf('_', StringComparison.Ordinal);
+        return separator > 0 ? slug[..separator] : "general";
+    }
+
     private static string? ReadStringProperty(object? source, params string[] propertyNames)
     {
         if (source == null) return null;
@@ -3669,4 +3766,10 @@ public class ShopPurchaseRequest
 {
     [JsonPropertyName("item_id")]
     public int? ItemId { get; set; }
+}
+
+public class GamificationShowcaseRequest
+{
+    [JsonPropertyName("badge_keys")]
+    public List<string>? BadgeKeys { get; set; }
 }

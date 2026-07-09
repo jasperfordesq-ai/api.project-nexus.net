@@ -182,6 +182,11 @@ public class GamificationController : ControllerBase
         var earned = await _db.UserBadges
             .Where(ub => ub.UserId == userId.Value && ub.TenantId == tenantId.Value)
             .ToDictionaryAsync(ub => ub.BadgeId, ub => ub.EarnedAt);
+        var showcasedBadgeIds = await _db.BadgeShowcases
+            .Where(s => s.UserId == userId.Value && s.TenantId == tenantId.Value)
+            .Select(s => s.BadgeId)
+            .ToListAsync();
+        var showcased = showcasedBadgeIds.ToHashSet();
 
         var badges = await _db.Badges
             .Where(b => b.TenantId == tenantId.Value && b.IsActive)
@@ -220,7 +225,7 @@ public class GamificationController : ControllerBase
                 earned = isEarned,
                 is_earned = isEarned,
                 earned_at = isEarned ? earnedAt : (DateTime?)null,
-                is_showcased = false,
+                is_showcased = showcased.Contains(b.Id),
                 created_at = b.CreatedAt
             };
         }).ToList();
@@ -297,6 +302,8 @@ public class GamificationController : ControllerBase
             .Select(ub => (DateTime?)ub.EarnedAt)
             .FirstOrDefaultAsync();
         var isEarned = earnedAt.HasValue;
+        var isShowcased = await _db.BadgeShowcases
+            .AnyAsync(s => s.UserId == userId.Value && s.TenantId == tenantId.Value && s.BadgeId == badge.Id);
 
         return Ok(new
         {
@@ -317,7 +324,7 @@ public class GamificationController : ControllerBase
                 earned = isEarned,
                 is_earned = isEarned,
                 earned_at = earnedAt,
-                is_showcased = false,
+                is_showcased = isShowcased,
                 created_at = badge.CreatedAt
             },
             meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }

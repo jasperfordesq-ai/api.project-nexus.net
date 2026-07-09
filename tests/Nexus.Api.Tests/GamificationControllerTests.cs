@@ -2,6 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -176,6 +180,62 @@ public class GamificationControllerTests : IntegrationTestBase
         detailData.GetProperty("badge_key").GetString().Should().Be(badge.GetProperty("badge_key").GetString());
         detailData.GetProperty("earned").GetBoolean().Should().BeFalse();
         detailData.GetProperty("is_showcased").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LaravelReactShowcaseV2Alias_PersistsOwnedBadgeSelectionForBadgeReload()
+    {
+        await AuthenticateAsMemberAsync();
+
+        string badgeKey;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var badge = await db.Badges
+                .Where(b => b.TenantId == TestData.Tenant1.Id)
+                .OrderBy(b => b.Id)
+                .FirstAsync();
+            badgeKey = badge.Slug;
+
+            if (!await db.UserBadges.AnyAsync(ub =>
+                    ub.TenantId == TestData.Tenant1.Id &&
+                    ub.UserId == TestData.MemberUser.Id &&
+                    ub.BadgeId == badge.Id))
+            {
+                db.UserBadges.Add(new UserBadge
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    UserId = TestData.MemberUser.Id,
+                    BadgeId = badge.Id,
+                    EarnedAt = DateTime.UtcNow.AddDays(-1)
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        var update = await Client.PutAsJsonAsync("/api/v2/gamification/showcase", new
+        {
+            badge_keys = new[] { badgeKey }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        using (var updateJson = JsonDocument.Parse(await update.Content.ReadAsStringAsync()))
+        {
+            updateJson.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+            var data = updateJson.RootElement.GetProperty("data");
+            data.GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+            data.GetProperty("showcased_badges").EnumerateArray()
+                .Should().Contain(row => row.GetProperty("badge_key").GetString() == badgeKey);
+        }
+
+        var reloaded = await Client.GetAsync("/api/v2/gamification/badges");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var reloadedJson = JsonDocument.Parse(await reloaded.Content.ReadAsStringAsync());
+        var showcased = reloadedJson.RootElement.GetProperty("data").EnumerateArray()
+            .Single(row => row.GetProperty("badge_key").GetString() == badgeKey);
+        showcased.GetProperty("earned").GetBoolean().Should().BeTrue();
+        showcased.GetProperty("is_showcased").GetBoolean().Should().BeTrue();
     }
 
     #endregion
