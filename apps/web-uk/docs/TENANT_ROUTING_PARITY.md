@@ -853,9 +853,23 @@ redirect evidence only; it does not newly certify support-report persistence,
 Laravel rate-limit/error variants, full visual Blade parity, localization, or
 ASP.NET backend compatibility.
 
+The fifty-fifth source slice extends route-level redirect cleanup into the
+Explore gateway. `src/routes/explore.js` now sends unsigned and Laravel-401
+auth-required redirects through `redirectTo(res, ...)`, which delegates to
+`res.locals.urlFor` when shell locals are available. The focused source
+regression first failed on raw `/login?status=auth-required` redirects in
+`src/routes/explore.js`, then passed after conversion. A focused shared-mount
+runtime test also proves unsigned `/acme/accessible/explore` redirects to
+`/acme/accessible/login?status=auth-required`. This is Explore route-redirect
+evidence only; it does not newly certify Explore feature-disabled behavior,
+recent-listing source parity, live broker workflow data, visual Blade parity,
+localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "Explore route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Explore hub"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "contact and report route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "contact validation redirects inside|report-problem redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "server-level redirects"

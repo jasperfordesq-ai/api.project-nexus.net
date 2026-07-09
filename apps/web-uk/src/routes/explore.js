@@ -13,6 +13,8 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
+
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
@@ -76,9 +78,14 @@ function normalizeExplore(result) {
   };
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function renderExploreError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return true;
   }
 
@@ -93,7 +100,7 @@ function renderExploreError(error, res) {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   let explore;
