@@ -32,6 +32,11 @@ const MODULE_LABELS = {
   event: 'Event'
 };
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function reasonFrom(body) {
   const reason = String(body.reason || '').trim();
   return MATCH_REASONS.has(reason) ? reason : 'not_relevant';
@@ -203,7 +208,7 @@ router.post('/:id(\\d+)/dismiss', requireAuth, asyncRoute(async (req, res) => {
     if (isAuthError(error)) throw error;
   }
 
-  return res.redirect('/matches?status=match-dismissed');
+  return redirectTo(res, '/matches?status=match-dismissed');
 }));
 
 router.post('/board/:listingId(\\d+)/dismiss', requireAuth, asyncRoute(async (req, res) => {
@@ -217,7 +222,7 @@ router.post('/board/:listingId(\\d+)/dismiss', requireAuth, asyncRoute(async (re
     status = 'match-dismiss-failed';
   }
 
-  return res.redirect(`/matches/board?source=${sourceFrom(req.body)}&status=${status}#matches-top`);
+  return redirectTo(res, `/matches/board?source=${sourceFrom(req.body)}&status=${status}#matches-top`);
 }));
 
 module.exports = router;

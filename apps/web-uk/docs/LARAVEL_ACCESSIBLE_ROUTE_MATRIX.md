@@ -119,6 +119,9 @@ links tenant-aware when pages are served from `/{tenantSlug}/accessible`.
 AI chat route-level redirects now also use a route-local helper backed by
 `res.locals.urlFor`, keeping auth-required, empty-message, and post-send chat
 redirects inside the active shared accessible mount.
+Matches route-level redirects now also use the same `res.locals.urlFor` helper,
+keeping match dismiss and board dismiss redirects inside the active shared
+accessible mount.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values

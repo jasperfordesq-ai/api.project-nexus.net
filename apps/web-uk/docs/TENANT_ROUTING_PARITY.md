@@ -188,7 +188,9 @@ Current gaps:
   now routes empty-state primary/secondary action hrefs through `urlFor()` and
   updates breadcrumb examples to use tenant-aware local paths. A focused AI
   chat route-redirect cleanup now sends auth-required, empty-message, and
-  post-send redirects through `res.locals.urlFor`.
+  post-send redirects through `res.locals.urlFor`. A focused matches
+  route-redirect cleanup now sends match dismiss and board dismiss redirects
+  through `res.locals.urlFor`.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -782,9 +784,28 @@ Laravel `/chat` runtime smoke also passed. This does not newly certify every
 redirect family, AI assistant persistence, visual Blade parity, localization,
 or ASP.NET backend compatibility.
 
+The fifty-first source slice extends route-level redirect cleanup into matches.
+`src/routes/matches.js` now sends match dismiss and board dismiss redirects
+through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when
+shell locals are available. The focused source regression first failed on raw
+`/matches` and `/matches/board` redirect calls, then passed after conversion. A
+focused runtime test also passed for a signed POST to
+`/acme/accessible/matches/77/dismiss`, proving the redirect target stays inside
+the shared tenant mount as
+`/acme/accessible/matches?status=match-dismissed`. Focused source tests,
+focused matches render/redirect tests, lint, route matrix, the full Web UK
+Jest suite with 763/763 tests passing across 11 suites, and a scoped live
+Laravel `/matches` and `/matches/board` runtime smoke also passed. This does
+not newly certify every redirect family, recommendation persistence, visual
+Blade parity, localization, or ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "matches route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "match dismiss redirects inside"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "matches"
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/matches=>Your matches,/matches/board=>Your matches'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "AI chat route redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "empty Laravel AI chat redirects inside"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "AI chat"

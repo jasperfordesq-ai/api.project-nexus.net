@@ -300,6 +300,17 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('res.locals.urlFor');
   });
 
+  it('keeps matches route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'matches.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\((?:['"`]\/matches|`\/matches)/);
+    expect(route).toContain('redirectTo(res,');
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),
