@@ -369,6 +369,29 @@ Latest full default Laravel runtime-smoke recertification on 2026-07-09:
   `403`. Use the chunked/bucketed shape above for current full-scope local
   certification rather than treating an unchunked wrapper run as authoritative.
 
+Latest focused visual/manual Blade spot-check on 2026-07-09 for the tenant
+home shell and footer meta:
+
+- Browser-style DOM comparison checked Laravel
+  `http://127.0.0.1:8088/hour-timebank/alpha` against a tenant-correct Web UK
+  process at `http://127.0.0.1:6511/hour-timebank/accessible`, started with
+  `TENANT_ID=2`, `ACCESSIBLE_BACKEND_TARGET=laravel`, and
+  `LARAVEL_BASE_URL=http://127.0.0.1:8088`.
+- The tenant home matched the key Blade markers for `Hour Timebank`,
+  `Accessible`, `Connecting Communities`, `Members 946`, `Hours exchanged
+  1,988`, `Active listings 129`, `Communities 1`, service-nav labels, guest
+  `Sign in`/`Register` CTAs, and dashboard auth-required link behavior while
+  keeping Web UK's public links on `/accessible` instead of Laravel's
+  `/alpha`.
+- The comparison found a concrete footer meta copy gap: Laravel's visually
+  hidden meta heading is `Supporting information and attribution`, while Web UK
+  still said `Support and licence information`. The focused shell test first
+  failed on that missing string, then passed after `partials/footer.njk` was
+  aligned.
+- This is the first focused visual/manual tenant-home shell slice only. It does
+  not certify every route family, feature-disabled page behavior, tenant
+  logo/colour depth, localization, or ASP.NET backend switching.
+
 Latest focused verification on 2026-07-09 for the events index/form
 template-helper slice:
 

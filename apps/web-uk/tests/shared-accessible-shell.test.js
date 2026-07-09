@@ -541,6 +541,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Cookie policy');
     expect(response.text).toContain('Accessibility statement');
     expect(response.text).toContain('Report a problem with this page');
+    expect(response.text).toContain('Supporting information and attribution');
     expect(response.text).toContain('href="/cookies"');
     expect(response.text).toContain('Project NEXUS is free software licensed under AGPL-3.0-or-later.');
     expect(response.text).toContain('View the source code on GitHub');
