@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/listings/{{ listing.id }}">Back to listings</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back to listings</a>
 
   {% if status %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -69,7 +69,7 @@
     {% endif %}
   {% endif %}
 
-  <form method="post" action="/listings/{{ listing.id }}/exchange-request" novalidate>
+  <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/exchange-request') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">

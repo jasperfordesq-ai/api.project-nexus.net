@@ -181,7 +181,11 @@ certificate/learn errors, learner actions, instructor course, section, lesson,
 publish/delete, and grading outcomes through `res.locals.urlFor`. The latest listing index/form source slice now routes listing
 breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
 controls, pagination, empty-state CTAs, create/edit form action, and cancel
-link through `urlFor()`. The latest listing route-redirect slice now sends
+link through `urlFor()`. A follow-up listing exchange-request source slice now
+routes the exchange-request back link and POST action through `urlFor()`, so
+Laravel's canonical `/listings/{id}/exchange-request` flow stays source-auditable
+under shared tenant mounts and custom-domain contexts. The latest listing
+route-redirect slice now sends
 legacy listing auth handoffs, generate-description outcomes, like/comment/
 exchange/report actions, owner self-request/edit redirects, create/update
 successes, and delete successes through `res.locals.urlFor`, so listing route
@@ -947,6 +951,18 @@ listing-request gate:
 - This is focused route/source proof. A live Laravel fixture with broker
   exchange workflow disabled and ASP.NET backend switching certification remain
   unproven.
+
+Latest focused verification on 2026-07-10 for listing exchange-request
+tenant-aware source links:
+
+- Laravel source check: `routes/govuk-alpha.php` registers the exchange-request
+  flow as `GET/POST /listings/{listingId}/exchange-request` inside the
+  accessible route set.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "listing exchange request controls"` first failed on raw `/listings` `href` and `action` source targets in `src/views/listings/exchange-request.njk`, then passed after the back link and form action moved through `urlFor()`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "renders the Laravel-backed listing exchange request form"` passed and now asserts the tenant-mounted render keeps the back link and no-JS form action under `/acme/accessible/listings/42...`.
+- This is source/render tenant-routing proof only. It does not newly certify a
+  live Laravel tenant with broker exchange workflow disabled, visual/manual
+  Blade parity, localization, or ASP.NET backend switching.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:

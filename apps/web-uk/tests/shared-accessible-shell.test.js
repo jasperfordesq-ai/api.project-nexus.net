@@ -17180,6 +17180,23 @@ describe('shared accessible frontend shell', () => {
     const signed = await request(app)
       .get('/listings/42/exchange-request?status=compliance-failed')
       .set('Cookie', signedCookieHeader());
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Bike trailer loan',
+        type: 'offer',
+        category_name: 'Transport',
+        location: 'Town shed',
+        hours_estimate: 2.5,
+        user_id: 77,
+        user: { id: 77, name: 'Avery Stone' }
+      }
+    });
+    api.callWalletApi.mockResolvedValueOnce({ data: { balance: 1 } });
+    const mounted = await request(app)
+      .get('/acme/accessible/listings/42/exchange-request?status=compliance-failed')
+      .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
@@ -17206,6 +17223,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Message to the member');
     expect(signed.text).toContain('Send request');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toContain('href="/acme/accessible/listings/42"');
+    expect(mounted.text).toContain('method="post" action="/acme/accessible/listings/42/exchange-request"');
   });
 
   it('redirects listing exchange request GET when broker exchange workflow is disabled', async () => {

@@ -268,7 +268,11 @@ also resolve through `res.locals.urlFor`.
 Listing index/form source templates now also use `urlFor()` for listing
 breadcrumbs, browse filters, clear/create CTAs, row detail/edit/delete
 controls, pagination, empty-state CTAs, create/edit form action, and cancel
-link.
+link. The listing exchange-request template now also routes its back link and
+Laravel canonical `POST /listings/{id}/exchange-request` form action through
+`urlFor()`, with focused source and tenant-mounted render coverage proving the
+page remains under `/acme/accessible/listings/...` when served from a shared
+tenant mount.
 Events index/create/edit source templates now also use `urlFor()` for the
 event list create CTA, search form, event and group links, pagination,
 empty-state actions, create/edit form actions, breadcrumbs, back links, and

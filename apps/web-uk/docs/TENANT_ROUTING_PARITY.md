@@ -537,6 +537,14 @@ self-request/edit redirects, create/update successes, and delete successes
 through `res.locals.urlFor`, so those Laravel named-route equivalents stay
 inside shared tenant mounts and custom-domain child paths without relying only
 on response rewriting.
+The latest listing exchange-request source cleanup now routes the request form
+back link and no-JS POST action through `urlFor('/listings/' + id ...)`.
+Focused source coverage first failed on raw `/listings` `href`/`action`
+targets in `src/views/listings/exchange-request.njk`, then passed after the
+conversion. Focused render coverage now also asserts the same page served at
+`/acme/accessible/listings/42/exchange-request` emits tenant-mounted
+`/acme/accessible/listings/42` back/action targets instead of depending only on
+response rewriting.
 
 The twenty-ninth template-helper source slice extends direct `urlFor()`
 conversion into event index and create/edit form pages.
