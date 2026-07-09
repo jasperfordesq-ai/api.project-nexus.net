@@ -147,6 +147,12 @@ post rows as well as the older local `user` row shape. Focused Laravel runtime
 smoke for the feed source slice passed against Laravel
 `http://127.0.0.1:8088`, covering signed `/feed`, `/feed/hashtags`,
 `/feed/hashtag/timebank`, `/feed/posts/796`, and `/feed/item/listing/42`.
+Knowledge-base source templates now also use `urlFor()` for the public `/kb`
+search form, article links, cursor load-more link, article back link, and
+related-article links, with source regression coverage and focused render
+tests. This is source-level helper coverage only; it does not newly certify
+tenant feature gates, localization, runtime persistence, or ASP.NET backend
+compatibility.
 Tenant-mounted roots now render the Laravel Blade-style tenant home rather than
 the old generic Web UK welcome page. The shared `/{tenantSlug}/accessible` root
 uses Laravel tenant bootstrap and tenant-scoped public platform stats for the
@@ -911,7 +917,7 @@ fell from 28 to 0.
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
 | Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a partial Laravel-backed landing/search/detail candidate with Laravel-backed POST aliases; Blog is a partial Laravel-backed listing/detail/discussion/likers candidate with Laravel-backed POST aliases. |
-| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented. `/about` now renders Laravel's community intro, how-it-works list, values, contributor credits, open-source links, and CTA group. Help centre `/help` now calls Laravel `/api/v2/help/faqs` and renders Blade-style FAQ search, grouped accordions, empty/no-result states, and contact CTA. Trust and safety `/trust-and-safety` now ports the Laravel Blade warning, section list, contact CTA, and community-guidelines link. Knowledge base `/kb` and `/kb/{id}` are Laravel-backed candidates through `/api/v2/kb`, `/api/v2/kb/search`, and `/api/v2/kb/{id}` with Blade-style search, article cards, cursor load-more, article body, and related links. |
+| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented. `/about` now renders Laravel's community intro, how-it-works list, values, contributor credits, open-source links, and CTA group. Help centre `/help` now calls Laravel `/api/v2/help/faqs` and renders Blade-style FAQ search, grouped accordions, empty/no-result states, and contact CTA. Trust and safety `/trust-and-safety` now ports the Laravel Blade warning, section list, contact CTA, and community-guidelines link. Knowledge base `/kb` and `/kb/{id}` are Laravel-backed candidates through `/api/v2/kb`, `/api/v2/kb/search`, and `/api/v2/kb/{id}` with Blade-style search, article cards, cursor load-more, article body, and related links; the real `/kb` templates route local search, article, pagination, back, and related-article links through `urlFor()`. |
 | Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | `/legal`, `/accessibility`, and `/legal/{terms,privacy,cookies,community-guidelines,acceptable-use}` now render Blade-style pages. Legal documents call Laravel `/api/v2/legal/{type}` and fall back to the same GOV.UK-structured policy copy when no tenant document is published. Legacy top-level `/terms` and `/privacy` no longer exist locally. |
 
 ## Explore Contract

@@ -8,7 +8,7 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/kb">Back to the knowledge base</a>
+      <a class="govuk-back-link" href="{{ urlFor('/kb') }}">Back to the knowledge base</a>
 
       <span class="govuk-caption-l">{{ communityName }}</span>
       <h1 class="govuk-heading-xl">{{ article.title }}</h1>
@@ -29,7 +29,7 @@
         <h2 class="govuk-heading-m">Related articles</h2>
         <ul class="govuk-list">
           {% for child in article.children %}
-            <li><a class="govuk-link" href="/kb/{{ child.id }}">{{ child.title }}</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/kb/' + (child.id | string)) }}">{{ child.title }}</a></li>
           {% endfor %}
         </ul>
       {% endif %}

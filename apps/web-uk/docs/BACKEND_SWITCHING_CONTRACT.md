@@ -731,6 +731,14 @@ switching: ASP.NET must still match Laravel's feed collection, hashtag, post,
 typed-item, comment, reaction, share, save, report, mute, upload, tenant,
 feature-gate, localization, status redirect, and custom-domain contracts before
 feed can be called backend-neutral.
+Knowledge-base browse and article pages are backed by Laravel-compatible
+knowledge-base APIs. The `/kb` source templates route their local search form,
+article links, cursor load-more link, article back link, and related-article
+links through `urlFor()` for shared-mount and custom-domain tenant contexts.
+This does not certify ASP.NET backend switching: ASP.NET must still match
+Laravel's knowledge-base list/search/detail contracts, tenant scoping,
+localization, content sanitization, and custom-domain routing before these
+pages can be called backend-neutral.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.

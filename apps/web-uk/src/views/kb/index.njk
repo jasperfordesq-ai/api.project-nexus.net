@@ -12,7 +12,7 @@
       <h1 class="govuk-heading-xl">Knowledge base</h1>
       <p class="govuk-body-l">Guides and articles to help you get the most out of {{ communityName }}.</p>
 
-      <form method="get" action="/kb" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/kb') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <label class="govuk-label" for="q">Search the knowledge base</label>
           <div id="q-hint" class="govuk-hint">Search by title or content.</div>
@@ -28,7 +28,7 @@
           {% for article in articles %}
             <li class="nexus-alpha-card">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                <a class="govuk-link" href="/kb/{{ article.id }}">{{ article.title }}</a>
+                <a class="govuk-link" href="{{ urlFor('/kb/' + (article.id | string)) }}">{{ article.title }}</a>
               </h3>
               {% if article.contentPreview %}
                 <p class="govuk-body govuk-!-margin-bottom-1">{{ article.contentPreview }}</p>
@@ -43,7 +43,7 @@
         {% if nextHref %}
           <nav class="govuk-pagination govuk-pagination--block" role="navigation" aria-label="More articles">
             <div class="govuk-pagination__next">
-              <a class="govuk-link govuk-pagination__link" href="{{ nextHref }}" rel="next">
+              <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
                 <span class="govuk-pagination__link-title">Load more</span>
               </a>
             </div>

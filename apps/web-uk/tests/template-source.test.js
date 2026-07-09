@@ -678,4 +678,22 @@ describe('tenant-aware template helper conversion', () => {
     const source = templates.join('\n');
     expect(source).toMatch(/urlFor\(["']\/courses/);
   });
+
+  it('keeps knowledge-base browse, pagination, and article links behind urlFor()', () => {
+    const templates = [
+      path.join('kb', 'index.njk'),
+      path.join('kb', 'article.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/kb/);
+      expect(template).not.toMatch(/action="\/kb/);
+      expect(template).not.toContain('href="{{ nextHref }}"');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/kb/);
+  });
 });

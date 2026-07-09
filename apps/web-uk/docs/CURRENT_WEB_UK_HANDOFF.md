@@ -156,6 +156,9 @@ The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights
 profile back links through `urlFor()`.
+The latest knowledge-base source slice now routes the public `/kb` search form,
+article links, load-more link, article back link, and related-article links
+through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -297,6 +300,14 @@ ordering slice:
 
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "orders shared-root tenant chooser"` first failed because Web UK preserved Laravel API response order (`Zebra Timebank` before `Acme Timebank`) while Laravel Blade orders chooser tenants by `name`, then passed after `normalizeTenantChooserCommunities()` sorted by display name.
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"` passed: 13 selected tests.
+
+Latest focused verification on 2026-07-09 for the knowledge-base
+template-helper slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "knowledge-base"` first failed on raw `/kb` links/actions and the raw `nextHref` link, then passed after the real `src/views/kb` templates were converted through `urlFor()`.
+- `Select-String -Path apps\web-uk\src\views\kb\*.njk -SimpleMatch -Pattern 'href="/kb','action="/kb','href="{{ nextHref }}'` returned no matches.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 31 tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "knowledge base"` passed: 2 selected tests.
 
 Latest consolidation verification on 2026-07-08:
 

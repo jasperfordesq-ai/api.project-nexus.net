@@ -607,9 +607,21 @@ The focused regression first failed when `Zebra Timebank` rendered before
 tenant-routing route tests pass for 13 selected shared-root/shared-mount/
 custom-domain cases.
 
+The fortieth template-helper source slice extends direct `urlFor()`
+conversion into the real Laravel `/kb` knowledge-base templates.
+`src/views/kb/index.njk` and `article.njk` now route the search form, article
+links, cursor load-more link, article back link, and related-article links
+through `urlFor()`. The source-level regression first failed on raw `/kb`
+links/actions and `href="{{ nextHref }}"`, then passed after conversion; a
+source scan for raw knowledge-base local `href`, `action`, and `nextHref`
+strings returns no matches. Focused knowledge-base render tests pass for the
+public index/search and article pages.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "knowledge-base"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "knowledge base"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "orders shared-root tenant chooser"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "jobs browse"
