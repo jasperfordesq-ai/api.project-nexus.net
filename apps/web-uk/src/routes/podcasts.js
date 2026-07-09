@@ -112,9 +112,14 @@ function isNotFound(error) {
   return error instanceof ApiError && error.status === 404;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function redirectAuthIfNeeded(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -256,7 +261,7 @@ function statusEntry(status) {
 function requireToken(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return '';
   }
   return token;

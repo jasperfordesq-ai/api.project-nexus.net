@@ -685,6 +685,16 @@ first failed on raw `res.redirect(loginRedirect())` and raw `/podcasts` status
 redirects, then passed after conversion; the existing podcast action alias
 behavior test still passes for the flat routes.
 
+The latest podcast GET route-redirect slice moves page-level auth handoffs into
+the same active tenant URL helper. `src/routes/podcasts.js` now sends
+signed-out and Laravel-401 redirects through `redirectTo(res,
+loginRedirect())`, backed by `res.locals.urlFor`, instead of raw flat
+`/login` redirects. The source-level regression first failed on direct
+`res.redirect(loginRedirect())`; the mounted behavior test now covers
+`/acme/accessible/podcasts` redirecting to
+`/acme/accessible/login?status=auth-required` before Laravel podcast APIs are
+called.
+
 The thirty-eighth template-helper source slice extends direct `urlFor()`
 conversion into feed browse, hashtag, post permalink, and typed-item permalink
 pages. `src/views/feed/index.njk`, `hashtags.njk`, `hashtag.njk`, `post.njk`,
@@ -1346,6 +1356,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast action aliases"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast page redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "redirects signed-out visitors away from podcasts"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "author-shaped posts"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed"

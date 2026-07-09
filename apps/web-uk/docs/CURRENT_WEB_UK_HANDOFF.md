@@ -204,6 +204,10 @@ studio create/update/publish/delete, and episode add/publish/delete POST
 outcomes through `res.locals.urlFor`, so podcast workflow redirects no longer
 depend on flat `/login` or `/podcasts` paths before shared-mount/custom-domain
 rewriting.
+The latest podcast GET redirect slice now routes signed-out and Laravel-401
+podcast page auth handoffs through `res.locals.urlFor`, with shared-mount
+coverage proving `/acme/accessible/podcasts` redirects to the tenant-mounted
+login path before any Laravel podcast API call.
 The latest feed source slice now routes feed compose/filter forms, hashtag
 links, post and item permalink links, like/comment/not-interested forms,
 author and group links, pagination, and sign-in CTAs through `urlFor()`.
@@ -524,6 +528,11 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast action redirects"` first failed on raw `res.redirect(loginRedirect())` and raw podcast status redirects in `src/routes/podcast-actions.js`, then passed after those redirects moved through `redirectTo(res, ...)` and `res.locals.urlFor`.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast action aliases"` passed: 1 selected test, preserving the existing Laravel podcast POST alias behavior and flat redirect destinations.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` against temporary Web UK `http://127.0.0.1:6511`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 13/13 checks: base API/health, cookie, login, account, logout, and signed `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new`.
+
+Latest focused verification on 2026-07-09 for the podcast GET redirect slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast page redirects"` first failed on raw `res.redirect(loginRedirect())` calls in `src/routes/podcasts.js`, then passed after signed-out and Laravel-401 auth handoffs moved through `redirectTo(res, loginRedirect())` and `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "redirects signed-out visitors away from podcasts"` passed: 1 selected test, covering both flat `/podcasts` and mounted `/acme/accessible/podcasts` auth-required redirects without calling Laravel.
 
 Latest focused verification on 2026-07-09 for the feed template-helper and
 Laravel live-shape slice:

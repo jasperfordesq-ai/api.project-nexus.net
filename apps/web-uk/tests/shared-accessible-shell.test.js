@@ -17516,6 +17516,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callPodcastApi).not.toHaveBeenCalled();
+
+    api.callPodcastApi.mockClear();
+
+    const mountedResponse = await request(app).get('/acme/accessible/podcasts');
+
+    expect(mountedResponse.status).toBe(302);
+    expect(mountedResponse.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(api.callPodcastApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel-backed podcast detail page', async () => {
