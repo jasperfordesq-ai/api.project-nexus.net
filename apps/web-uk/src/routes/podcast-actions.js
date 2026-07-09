@@ -42,9 +42,14 @@ function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -117,7 +122,7 @@ async function removeUploadedFile(file) {
 
 router.post('/:id(\\d+)/subscribe', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'subscribe-failed';
@@ -131,16 +136,16 @@ router.post('/:id(\\d+)/subscribe', asyncRoute(async (req, res) => {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  return res.redirect(statusRedirect(`/podcasts/${id}`, status));
+  return redirectTo(res, statusRedirect(`/podcasts/${id}`, status));
 }));
 
 router.post('/studio/new', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const payload = showPayload(req.body);
   if (payload.title === '') {
-    return res.redirect(statusRedirect('/podcasts/studio/new', 'show-title-missing'));
+    return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-title-missing'));
   }
 
   try {
@@ -148,23 +153,23 @@ router.post('/studio/new', asyncRoute(async (req, res) => {
     const data = dataFrom(result);
     const showId = positiveInteger(data && (data.id || data.show_id));
     if (showId !== null) {
-      return res.redirect(studioRedirect(showId, 'show-created'));
+      return redirectTo(res, studioRedirect(showId, 'show-created'));
     }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  return res.redirect(statusRedirect('/podcasts/studio/new', 'show-create-failed'));
+  return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-create-failed'));
 }));
 
 router.post('/studio/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = showPayload(req.body);
   if (payload.title === '') {
-    return res.redirect(studioRedirect(id, 'show-title-missing'));
+    return redirectTo(res, studioRedirect(id, 'show-title-missing'));
   }
 
   let status = 'show-saved';
@@ -175,12 +180,12 @@ router.post('/studio/:id(\\d+)/update', asyncRoute(async (req, res) => {
     status = 'show-save-failed';
   }
 
-  return res.redirect(studioRedirect(id, status));
+  return redirectTo(res, studioRedirect(id, status));
 }));
 
 router.post('/studio/:id(\\d+)/publish', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'show-publish-failed';
@@ -194,12 +199,12 @@ router.post('/studio/:id(\\d+)/publish', asyncRoute(async (req, res) => {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  return res.redirect(studioRedirect(id, status));
+  return redirectTo(res, studioRedirect(id, status));
 }));
 
 router.post('/studio/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'show-deleted';
@@ -210,22 +215,22 @@ router.post('/studio/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     status = 'show-delete-failed';
   }
 
-  return res.redirect(statusRedirect('/podcasts/studio', status));
+  return redirectTo(res, statusRedirect('/podcasts/studio', status));
 }));
 
 router.post('/studio/:id(\\d+)/episodes', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = episodePayload(req.body);
   const file = uploadedFile(req, 'audio');
   if (payload.title === '') {
     await removeUploadedFile(file);
-    return res.redirect(studioRedirect(id, 'episode-title-missing'));
+    return redirectTo(res, studioRedirect(id, 'episode-title-missing'));
   }
   if (!payload.audio_url && !file) {
-    return res.redirect(studioRedirect(id, 'episode-audio-missing'));
+    return redirectTo(res, studioRedirect(id, 'episode-audio-missing'));
   }
 
   let status = 'episode-added';
@@ -251,12 +256,12 @@ router.post('/studio/:id(\\d+)/episodes', asyncRoute(async (req, res) => {
     await removeUploadedFile(file);
   }
 
-  return res.redirect(studioRedirect(id, status));
+  return redirectTo(res, studioRedirect(id, status));
 }));
 
 router.post('/studio/:id(\\d+)/episodes/:episodeId(\\d+)/publish', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const episodeId = Number(req.params.episodeId);
@@ -268,12 +273,12 @@ router.post('/studio/:id(\\d+)/episodes/:episodeId(\\d+)/publish', asyncRoute(as
     status = 'episode-publish-failed';
   }
 
-  return res.redirect(studioRedirect(id, status));
+  return redirectTo(res, studioRedirect(id, status));
 }));
 
 router.post('/studio/:id(\\d+)/episodes/:episodeId(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const episodeId = Number(req.params.episodeId);
@@ -285,7 +290,7 @@ router.post('/studio/:id(\\d+)/episodes/:episodeId(\\d+)/delete', asyncRoute(asy
     status = 'episode-delete-failed';
   }
 
-  return res.redirect(studioRedirect(id, status));
+  return redirectTo(res, studioRedirect(id, status));
 }));
 
 module.exports = router;

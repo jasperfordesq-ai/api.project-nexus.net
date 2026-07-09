@@ -332,6 +332,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/podcasts/);
   });
 
+  it('keeps podcast action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'podcast-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(route).not.toMatch(/res\.redirect\(\s*['"`]\/podcasts/);
+    expect(route).not.toMatch(/res\.redirect\(\s*statusRedirect/);
+    expect(route).not.toMatch(/res\.redirect\(\s*studioRedirect/);
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res,');
+  });
+
   it('keeps feed browse, hashtag, permalink, and engagement controls behind urlFor()', () => {
     const templates = [
       path.join('feed', 'hashtag.njk'),

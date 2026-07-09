@@ -1,6 +1,6 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-08
+Last reviewed: 2026-07-09
 
 ## Decision
 
@@ -61,6 +61,14 @@ bootstrap to resolve the host before shared-mount handling; if the host-resolved
 tenant matches `/{tenantSlug}/alpha/...` or `/{tenantSlug}/accessible/...`, the
 request redirects to the slugless path. Future ASP.NET mode must preserve the
 same canonical behavior before it can be certified for tenant-domain routing.
+Route-level no-JS workflow redirects are part of the same contract. Local
+success, validation, auth-required, and API-failure destinations should go
+through the active `res.locals.urlFor` helper before calling `res.redirect`, so
+shared `/{tenantSlug}/accessible`, parent-domain child paths, and slugless
+custom-domain contexts do not rely only on last-mile response rewriting. The
+podcast action routes now follow this rule for subscribe, studio show, and
+episode POST outcomes; future ASP.NET mode must preserve equivalent local
+redirect semantics.
 
 ## Laravel Runtime Smoke
 

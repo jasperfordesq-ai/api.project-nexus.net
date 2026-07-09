@@ -676,6 +676,15 @@ UK `http://127.0.0.1:64493`, Laravel `http://127.0.0.1:8088`, and
 `TENANT_ID=2` passed 16 checks across auth/cookie/logout plus signed
 `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new` body markers.
 
+The latest podcast route-redirect slice moves the podcast POST workflow
+destinations into the active tenant URL helper. `src/routes/podcast-actions.js`
+now sends auth-required, validation, success, and API-failure redirects for
+subscribe, studio show create/update/publish/delete, and episode
+add/publish/delete through `res.locals.urlFor`. The source-level regression
+first failed on raw `res.redirect(loginRedirect())` and raw `/podcasts` status
+redirects, then passed after conversion; the existing podcast action alias
+behavior test still passes for the flat routes.
+
 The thirty-eighth template-helper source slice extends direct `urlFor()`
 conversion into feed browse, hashtag, post permalink, and typed-item permalink
 pages. `src/views/feed/index.njk`, `hashtags.njk`, `hashtag.njk`, `post.njk`,
@@ -1335,6 +1344,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "notifications"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast action redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast action aliases"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed browse"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "author-shaped posts"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "feed"

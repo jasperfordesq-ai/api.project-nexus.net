@@ -199,7 +199,11 @@ pagination, and job POST forms through `urlFor()`. The latest podcast source
 slice now routes podcast browse/studio links, search form, show and episode
 links, subscribe form, create/edit form actions, episode publish/delete/upload
 forms, show publish/delete forms, and studio management links through
-`urlFor()`.
+`urlFor()`. The latest podcast action redirect slice now routes subscribe,
+studio create/update/publish/delete, and episode add/publish/delete POST
+outcomes through `res.locals.urlFor`, so podcast workflow redirects no longer
+depend on flat `/login` or `/podcasts` paths before shared-mount/custom-domain
+rewriting.
 The latest feed source slice now routes feed compose/filter forms, hashtag
 links, post and item permalink links, like/comment/not-interested forms,
 author and group links, pagination, and sign-in CTAs through `urlFor()`.
@@ -513,6 +517,13 @@ slice:
 - `Get-ChildItem -Path apps\web-uk\src\views\podcasts -Filter *.njk | Select-String -SimpleMatch -Pattern 'href="/podcasts','action="/podcasts','href: "/podcasts','baseUrl: "/podcasts','action="{{ action }}','action="{{ episodeStoreAction }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast"` passed: 10 selected tests.
 - A focused exported Laravel runtime smoke against temporary in-process Web UK `http://127.0.0.1:64493`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 16 checks: base API/health, cookie, login, account, logout, signed `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new`, plus body markers `Podcasts`, `Podcast studio`, and `Create a podcast`.
+
+Latest focused verification on 2026-07-09 for the podcast action redirect
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "podcast action redirects"` first failed on raw `res.redirect(loginRedirect())` and raw podcast status redirects in `src/routes/podcast-actions.js`, then passed after those redirects moved through `redirectTo(res, ...)` and `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "podcast action aliases"` passed: 1 selected test, preserving the existing Laravel podcast POST alias behavior and flat redirect destinations.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` against temporary Web UK `http://127.0.0.1:6511`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 13/13 checks: base API/health, cookie, login, account, logout, and signed `/podcasts`, `/podcasts/studio`, and `/podcasts/studio/new`.
 
 Latest focused verification on 2026-07-09 for the feed template-helper and
 Laravel live-shape slice:
