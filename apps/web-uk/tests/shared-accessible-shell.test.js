@@ -18285,6 +18285,61 @@ describe('shared accessible frontend shell', () => {
     expect(api.deleteComment).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel goal action redirects inside the shared accessible mount', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.callGoalApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/acme/accessible/goals', {
+      title: ' Walk daily ',
+      target_value: '30'
+    });
+    expect(createResponse.status).toBe(302);
+    expect(createResponse.headers.location).toBe('/acme/accessible/goals?status=goal-created');
+
+    const buddyNudgeResponse = await post('/acme/accessible/goals/42/buddy-nudge');
+    expect(buddyNudgeResponse.status).toBe(302);
+    expect(buddyNudgeResponse.headers.location).toBe('/acme/accessible/goals/buddying?status=buddy-nudge-sent');
+
+    const commentResponse = await post('/acme/accessible/goals/42/comments', {
+      body: ' Nice work '
+    });
+    expect(commentResponse.status).toBe(302);
+    expect(commentResponse.headers.location).toBe('/acme/accessible/goals/42/social?status=comment-added#comments');
+    expect(api.createComment).toHaveBeenLastCalledWith('test-token', {
+      target_type: 'goal',
+      target_id: 42,
+      content: 'Nice work'
+    });
+
+    api.callGoalApi.mockClear();
+    api.createComment.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/acme/accessible/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/acme/accessible/goals/42/progress')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], increment: '1' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(api.callGoalApi).not.toHaveBeenCalled();
+    expect(api.createComment).not.toHaveBeenCalled();
+  });
+
   it('submits Laravel course learner and instructor action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

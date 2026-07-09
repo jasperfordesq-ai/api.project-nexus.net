@@ -879,6 +879,14 @@ helper. It must not emit flat `/login` or `/events` locations when the request
 is served from `/{tenantSlug}/accessible`, a custom accessible domain, or a
 parent-domain child path.
 
+The goals action redirect slice adds the same backend-neutral requirement for
+goal workflows. Future ASP.NET mode must preserve Laravel-compatible goal
+create, template use, edit, delete, buddy, progress, complete, check-in,
+reminder, buddy-action, like, comment, and auth-required status redirects
+through the active tenant URL helper. It must not emit flat `/login` or
+`/goals` locations when the request is served from `/{tenantSlug}/accessible`,
+a custom accessible domain, or a parent-domain child path.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

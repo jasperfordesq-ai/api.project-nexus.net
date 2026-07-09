@@ -1145,6 +1145,24 @@ full event visual Blade parity, owner/participant authorization depth,
 notification/XP/waitlist side effects, feature gates, localization, broader
 Laravel runtime behavior, or ASP.NET backend compatibility.
 
+The seventy-fourth source slice extends route-level redirect cleanup into goal
+actions. `src/routes/goals.js` now sends goals auth-required handoffs,
+create/template/delete/buddy/progress/complete/check-in/reminder/buddy-action/
+like/comment outcomes, and Laravel-401 fallbacks through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell
+locals are available. Goal helper URLs now build from a shared `/goals`
+constant instead of raw root-relative status strings. The focused source
+regression first failed on raw `res.redirect(loginRedirect())` and raw
+`/goals` redirect targets, then passed after conversion. Focused shared-mount
+coverage proves signed create, buddy-nudge, and comment POSTs plus an unsigned
+progress POST redirect under `/acme/accessible`. A scoped Laravel runtime smoke
+for the goals page family first exposed a stale check-in body marker, then
+passed all 30 focused checks with Laravel's Blade string `Log a check-in`.
+This is goals redirect evidence only; it does not newly certify full goals
+visual Blade parity, owner/buddy authorization depth, feature gates,
+localization, broader Laravel runtime persistence, or ASP.NET backend
+compatibility.
+
 Verification command:
 
 ```powershell

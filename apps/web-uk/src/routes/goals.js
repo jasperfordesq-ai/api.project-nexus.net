@@ -20,6 +20,7 @@ const { normalizeResponse } = require('../lib/normalizeResponse');
 
 const router = express.Router();
 
+const GOALS_PATH = '/goals';
 const GOAL_CHECKIN_MOODS = ['great', 'good', 'neutral', 'okay', 'struggling', 'stuck', 'motivated', 'grateful'];
 const GOAL_CHECKIN_FREQUENCIES = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_REMINDER_FREQUENCIES = ['daily', 'weekly', 'biweekly', 'monthly'];
@@ -90,6 +91,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, target) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(target));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -136,7 +142,7 @@ function isAuthError(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
 
@@ -152,11 +158,19 @@ async function callGoal(token, method, path, data = undefined) {
 }
 
 function goalRedirect(id, status, suffix = '') {
-  return `/goals/${id}?status=${encodeURIComponent(status)}${suffix}`;
+  return `${GOALS_PATH}/${id}?status=${encodeURIComponent(status)}${suffix}`;
 }
 
 function goalSubpageRedirect(id, segment, status, suffix = '') {
-  return `/goals/${id}/${segment}?status=${encodeURIComponent(status)}${suffix}`;
+  return `${GOALS_PATH}/${id}/${segment}?status=${encodeURIComponent(status)}${suffix}`;
+}
+
+function goalsRedirect(status) {
+  return `${GOALS_PATH}?status=${encodeURIComponent(status)}`;
+}
+
+function goalsSubpageStatusRedirect(segment, status) {
+  return `${GOALS_PATH}/${segment}?status=${encodeURIComponent(status)}`;
 }
 
 function goalFormPayload(body) {
@@ -603,11 +617,11 @@ function buddyingStatus(status) {
 
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const payload = goalFormPayload(req.body);
   if (payload === null) {
-    return res.redirect('/goals?status=goal-invalid');
+    return redirectTo(res, goalsRedirect('goal-invalid'));
   }
 
   let status = 'goal-created';
@@ -618,12 +632,12 @@ router.post('/', asyncRoute(async (req, res) => {
     status = 'goal-failed';
   }
 
-  return res.redirect(`/goals?status=${status}`);
+  return redirectTo(res, goalsRedirect(status));
 }));
 
 router.post('/templates/:templateId(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const templateId = Number(req.params.templateId);
   const payload = {
@@ -637,16 +651,19 @@ router.post('/templates/:templateId(\\d+)', asyncRoute(async (req, res) => {
     result = await callGoal(token, 'POST', `/from-template/${templateId}`, payload);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect('/goals/templates?status=goal-failed');
+    return redirectTo(res, goalsSubpageStatusRedirect('templates', 'goal-failed'));
   }
 
   const goalId = goalIdFromResult(result);
-  return res.redirect(goalId ? goalRedirect(goalId, 'goal-created') : '/goals/templates?status=goal-failed');
+  return redirectTo(
+    res,
+    goalId ? goalRedirect(goalId, 'goal-created') : goalsSubpageStatusRedirect('templates', 'goal-failed')
+  );
 }));
 
 router.get('/templates', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const category = trimmed(req.query.category);
   const templateParams = new URLSearchParams({ per_page: '50' });
@@ -685,7 +702,7 @@ router.get('/templates', asyncRoute(async (req, res) => {
 
 router.get('/buddying', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const params = new URLSearchParams({ per_page: '30' });
   const [buddyingResult, availableResult] = await Promise.all([
@@ -712,7 +729,7 @@ router.get('/buddying', asyncRoute(async (req, res) => {
 
 router.get('/discover', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const params = new URLSearchParams({ per_page: '30' });
   if (trimmed(req.query.cursor)) params.set('cursor', trimmed(req.query.cursor));
@@ -737,7 +754,7 @@ router.get('/discover', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const result = await getGoal(token, id);
@@ -761,7 +778,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const [goalResult, checkinResult] = await Promise.all([
@@ -790,7 +807,7 @@ router.get('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const [goalResult, reminderResult] = await Promise.all([
@@ -817,7 +834,7 @@ router.get('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const result = await getGoal(token, id);
@@ -839,7 +856,7 @@ router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const [goalResult, insightsResult] = await Promise.all([
@@ -865,7 +882,7 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/history', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const params = new URLSearchParams({ limit: '30' });
@@ -898,7 +915,7 @@ router.get('/:id(\\d+)/history', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = req.params.id;
   const numericId = Number(id);
@@ -960,103 +977,103 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = goalFormPayload(req.body);
   if (payload === null) {
-    return res.redirect(goalSubpageRedirect(id, 'edit', 'goal-invalid'));
+    return redirectTo(res, goalSubpageRedirect(id, 'edit', 'goal-invalid'));
   }
 
   payload.checkin_frequency = allowedValue(req.body.checkin_frequency, GOAL_CHECKIN_FREQUENCIES, 'none');
 
   try {
     await callGoal(token, 'PUT', `/${id}`, payload);
-    return res.redirect(goalRedirect(id, 'goal-edited'));
+    return redirectTo(res, goalRedirect(id, 'goal-edited'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'edit', 'goal-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'edit', 'goal-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callGoal(token, 'DELETE', `/${id}`);
-    return res.redirect('/goals?status=goal-deleted');
+    return redirectTo(res, goalsRedirect('goal-deleted'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalRedirect(id, 'goal-failed'));
+    return redirectTo(res, goalRedirect(id, 'goal-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/buddy', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callGoal(token, 'POST', `/${id}/buddy`);
-    return res.redirect(goalRedirect(id, 'buddy-joined'));
+    return redirectTo(res, goalRedirect(id, 'buddy-joined'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalRedirect(id, 'buddy-failed'));
+    return redirectTo(res, goalRedirect(id, 'buddy-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/buddy-nudge', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callGoal(token, 'POST', `/${id}/buddy/nudge`, { type: 'nudge' });
-    return res.redirect('/goals/buddying?status=buddy-nudge-sent');
+    return redirectTo(res, goalsSubpageStatusRedirect('buddying', 'buddy-nudge-sent'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect('/goals/buddying?status=buddy-nudge-failed');
+    return redirectTo(res, goalsSubpageStatusRedirect('buddying', 'buddy-nudge-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/progress', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const increment = positiveNumber(req.body.increment);
   if (increment === null) {
-    return res.redirect(goalRedirect(id, 'goal-invalid'));
+    return redirectTo(res, goalRedirect(id, 'goal-invalid'));
   }
 
   try {
     await callGoal(token, 'POST', `/${id}/progress`, { increment });
-    return res.redirect(goalRedirect(id, 'goal-updated'));
+    return redirectTo(res, goalRedirect(id, 'goal-updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalRedirect(id, 'goal-failed'));
+    return redirectTo(res, goalRedirect(id, 'goal-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/complete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callGoal(token, 'POST', `/${id}/complete`);
-    return res.redirect(goalRedirect(id, 'goal-completed'));
+    return redirectTo(res, goalRedirect(id, 'goal-completed'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalRedirect(id, 'goal-failed'));
+    return redirectTo(res, goalRedirect(id, 'goal-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const progressPercent = boundedPercent(req.body.progress_percent || req.body.progress_value);
@@ -1071,16 +1088,16 @@ router.post('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
 
   try {
     await callGoal(token, 'POST', `/${id}/checkins`, payload);
-    return res.redirect(goalSubpageRedirect(id, 'checkin', 'checkin-recorded'));
+    return redirectTo(res, goalSubpageRedirect(id, 'checkin', 'checkin-recorded'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'checkin', 'checkin-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'checkin', 'checkin-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const payload = {
@@ -1090,30 +1107,30 @@ router.post('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
 
   try {
     await callGoal(token, 'PUT', `/${id}/reminder`, payload);
-    return res.redirect(goalSubpageRedirect(id, 'reminder', 'reminder-saved'));
+    return redirectTo(res, goalSubpageRedirect(id, 'reminder', 'reminder-saved'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'reminder', 'reminder-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'reminder', 'reminder-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/reminder/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
     await callGoal(token, 'DELETE', `/${id}/reminder`);
-    return res.redirect(goalSubpageRedirect(id, 'reminder', 'reminder-removed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'reminder', 'reminder-removed'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'reminder', 'reminder-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'reminder', 'reminder-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const type = allowedValue(req.body.type, GOAL_BUDDY_ACTION_TYPES, 'encouragement');
@@ -1125,16 +1142,16 @@ router.post('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
 
   try {
     await callGoal(token, 'POST', `/${id}/buddy/nudge`, payload);
-    return res.redirect(goalSubpageRedirect(id, 'buddy-actions', 'buddy-action-sent'));
+    return redirectTo(res, goalSubpageRedirect(id, 'buddy-actions', 'buddy-action-sent'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'buddy-actions', 'buddy-action-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'buddy-actions', 'buddy-action-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   try {
@@ -1143,21 +1160,21 @@ router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
       target_id: id
     });
     const action = result?.data?.action === 'unliked' ? 'unliked' : 'liked';
-    return res.redirect(goalSubpageRedirect(id, 'social', action));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', action));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'social', 'like-failed'));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', 'like-failed'));
   }
 }));
 
 router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const content = optionalText(req.body.body || req.body.content, 5000);
   if (content === null) {
-    return res.redirect(goalSubpageRedirect(id, 'social', 'comment-invalid', '#comments'));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', 'comment-invalid', '#comments'));
   }
 
   const parentId = positiveInteger(req.body.parent_id);
@@ -1172,31 +1189,34 @@ router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
 
   try {
     await createComment(token, payload);
-    return res.redirect(goalSubpageRedirect(id, 'social', parentId === null ? 'comment-added' : 'reply-added', '#comments'));
+    return redirectTo(
+      res,
+      goalSubpageRedirect(id, 'social', parentId === null ? 'comment-added' : 'reply-added', '#comments')
+    );
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'social', 'comment-failed', '#comments'));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', 'comment-failed', '#comments'));
   }
 }));
 
 router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   const commentId = Number(req.params.commentId);
   try {
     await deleteComment(token, commentId);
-    return res.redirect(goalSubpageRedirect(id, 'social', 'comment-deleted', '#comments'));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', 'comment-deleted', '#comments'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(goalSubpageRedirect(id, 'social', 'comment-delete-failed', '#comments'));
+    return redirectTo(res, goalSubpageRedirect(id, 'social', 'comment-delete-failed', '#comments'));
   }
 }));
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const result = await getGoals(token, { per_page: 30 });
   const goals = collectionFrom(result).map(normalizeGoal).filter((goal) => goal.id !== null);

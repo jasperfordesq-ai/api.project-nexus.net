@@ -242,7 +242,11 @@ create-listing, upcoming-event, quick-link, recent-feed, and recent-listing
 dashboard links through `urlFor()`.
 The latest goals source slice now routes goals browse/detail, template,
 discover, buddying, edit, check-in, reminder, buddy-action, history, insights,
-and social links/forms through `urlFor()`.
+and social links/forms through `urlFor()`. The latest goals route-redirect
+slice now routes goals auth handoffs, create/template/delete/buddy/progress/
+complete/check-in/reminder/buddy-action/like/comment outcomes, and Laravel-401
+fallbacks through `res.locals.urlFor`, with shared-mount coverage proving goal
+POST redirects stay inside the active tenant mount.
 The latest exchanges source slice now routes exchange list tabs, detail links,
 pagination, listing/message links, action forms, and rating form through
 `urlFor()`. The latest exchange redirect slice now routes exchange action and
@@ -696,6 +700,12 @@ slice:
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "goals browse"` first failed on raw `/goals` links/actions, then passed after conversion.
 - `Select-String -Path apps\web-uk\src\views\goals\*.njk -SimpleMatch -Pattern 'href="/goals','action="/goals','href: "/goals','action: "/goals','href="{{ nextHref }}'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goal"` passed: 13 selected tests across goals browse, templates, discover, buddying, edit, check-in, reminder, buddy-action, history, insights, social, and POST action coverage.
+
+Latest focused verification on 2026-07-09 for the goals route-redirect slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "goals route redirects|goal action redirects inside"` first failed on raw `res.redirect(loginRedirect())` and raw `/goals` redirect targets in `src/routes/goals.js`, then passed after those redirects moved through `redirectTo(res, ...)` and `res.locals.urlFor`.
+- The same focused shared-mount test proves create, buddy-nudge, comment, and unsigned progress POST redirects remain under `/acme/accessible`.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` for goals pages first exposed a stale `/goals/162/checkin=>Check in` marker; Laravel's Blade string is `Log a check-in`, and the rerun with `/goals/162/checkin=>Log a check-in` passed all 30 focused checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
 
 Latest focused verification on 2026-07-09 for the exchanges template-helper
 slice:
