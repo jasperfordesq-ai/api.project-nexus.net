@@ -220,7 +220,12 @@ The latest group-exchange action redirect slice now sends auth-required,
 validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed
 `/acme/accessible/group-exchanges/new` submission redirects to
-`/acme/accessible/group-exchanges/new?status=create-invalid`.
+`/acme/accessible/group-exchanges/new?status=create-invalid`. A follow-up
+group-exchange GET redirect slice now sends unsigned list, create, and detail
+auth handoffs through `res.locals.urlFor`, with shared-mount coverage proving
+`/acme/accessible/group-exchanges`, `/acme/accessible/group-exchanges/new`,
+and `/acme/accessible/group-exchanges/7` redirect to the tenant-mounted login
+path.
 The latest ideation action redirect slice now sends challenge, idea, outcome,
 media, conversion, and campaign POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves a signed
@@ -753,6 +758,12 @@ slice:
 
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "activity route redirects|Laravel-style activity"` first failed because `src/routes/activity.js` still emitted direct `res.redirect(loginRedirect())`, then passed after routing activity auth handoffs through `res.locals.urlFor`.
 - Shared-mount behavior coverage proves unsigned `/acme/accessible/activity` and `/acme/accessible/activity/insights` requests redirect to `/acme/accessible/login?status=auth-required`.
+
+Latest focused verification on 2026-07-09 for the group-exchange GET
+route-redirect slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange GET redirects"` first failed because `src/routes/group-exchanges.js` had no `redirectTo(res, pathname)` helper and still emitted direct `res.redirect(loginRedirect())`, then passed after routing unsigned GET auth handoffs through `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed-out visitors away from Laravel group exchange GET pages"` passed, proving flat signed-out redirects still target `/login?status=auth-required` while mounted `/acme/accessible/group-exchanges`, `/acme/accessible/group-exchanges/new`, and `/acme/accessible/group-exchanges/7` redirect to `/acme/accessible/login?status=auth-required` before Laravel APIs are called.
 
 Latest focused verification on 2026-07-09 for the federation hub
 template-helper slice:

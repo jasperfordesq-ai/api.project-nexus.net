@@ -911,6 +911,14 @@ redirects through the active tenant URL helper. It must not emit flat `/login`
 locations when the request is served from `/{tenantSlug}/accessible`, a custom
 accessible domain, or a parent-domain child path.
 
+The group-exchange GET redirect slice adds the same backend-neutral
+requirement for group-exchange list, create, and detail auth handoffs. Future
+ASP.NET mode must preserve Laravel-compatible `/group-exchanges`,
+`/group-exchanges/new`, and `/group-exchanges/{id}` auth-required redirects
+through the active tenant URL helper. It must not emit flat `/login` locations
+when the request is served from `/{tenantSlug}/accessible`, a custom accessible
+domain, or a parent-domain child path.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

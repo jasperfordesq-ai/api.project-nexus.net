@@ -17,6 +17,11 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -173,7 +178,7 @@ function errorMessage(status) {
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const state = ['draft', 'pending', 'active', 'completed', 'cancelled'].includes(trimmed(req.query.state))
     ? trimmed(req.query.state)
@@ -197,7 +202,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
 router.get('/new', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const status = trimmed(req.query.status);
   return res.render('group-exchanges/create', {
@@ -210,7 +215,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const [profileResult, exchangeResult] = await Promise.all([

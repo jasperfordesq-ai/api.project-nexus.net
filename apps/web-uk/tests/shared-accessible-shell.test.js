@@ -14182,6 +14182,9 @@ describe('shared accessible frontend shell', () => {
     const index = await request(app).get('/group-exchanges');
     const create = await request(app).get('/group-exchanges/new');
     const detail = await request(app).get('/group-exchanges/7');
+    const mountedIndex = await request(app).get('/acme/accessible/group-exchanges');
+    const mountedCreate = await request(app).get('/acme/accessible/group-exchanges/new');
+    const mountedDetail = await request(app).get('/acme/accessible/group-exchanges/7');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -14189,6 +14192,12 @@ describe('shared accessible frontend shell', () => {
     expect(create.headers.location).toBe('/login?status=auth-required');
     expect(detail.status).toBe(302);
     expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(mountedIndex.status).toBe(302);
+    expect(mountedIndex.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(mountedCreate.status).toBe(302);
+    expect(mountedCreate.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(mountedDetail.status).toBe(302);
+    expect(mountedDetail.headers.location).toBe('/acme/accessible/login?status=auth-required');
     expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
   });
 

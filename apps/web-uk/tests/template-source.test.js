@@ -916,6 +916,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps group exchange GET redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'group-exchanges.js'),
+      'utf8'
+    );
+
+    expect(route).toContain('function redirectTo(res, pathname)');
+    expect(route).not.toMatch(/res\.redirect\(loginRedirect\(\)/);
+    expect(route).toContain('res.locals.urlFor');
+    expect(route).toContain('redirectTo(res, loginRedirect())');
+  });
+
   it('keeps direct and group message links and forms behind urlFor()', () => {
     const templates = [
       path.join('messages', 'index.njk'),
