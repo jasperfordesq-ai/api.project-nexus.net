@@ -4462,11 +4462,37 @@ describe('shared accessible frontend shell', () => {
     expect(follow.text).toContain('Enter a message');
   });
 
+  it('keeps contact validation redirects inside the shared accessible mount', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/acme/accessible/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/contact')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: '',
+        email: 'not-an-email',
+        message: ''
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/contact?status=contact-validation');
+  });
+
   it('redirects signed-out report-problem users to the contact prefill path', async () => {
     const response = await request(app).get('/report-a-problem?return=/explore');
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/contact?problem_url=%2Fexplore');
+  });
+
+  it('keeps signed-out report-problem redirects inside the shared accessible mount', async () => {
+    const response = await request(app).get('/acme/accessible/report-a-problem?return=/explore');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/contact?problem_url=%2Fexplore');
   });
 
   it('renders the signed-in Laravel-style report-problem form', async () => {

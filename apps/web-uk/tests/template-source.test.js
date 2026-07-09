@@ -334,6 +334,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(server).toContain('res.locals.urlFor');
   });
 
+  it('keeps contact and report route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'contact-support.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:contact|login|report-a-problem)/);
+    expect(route).not.toContain("buildQuery('/contact'");
+    expect(route).not.toContain("buildQuery('/report-a-problem'");
+    expect(route).toContain('redirectTo(res,');
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps group index and form controls behind urlFor()', () => {
     const templates = [
       path.join('groups', 'index.njk'),

@@ -835,9 +835,29 @@ evidence only; it does not newly certify every route redirect family,
 user-return URL prefixing, full organisation workflow persistence, visual Blade
 parity, localization, or ASP.NET backend compatibility.
 
+The fifty-fourth source slice extends route-level redirect cleanup into
+contact and report-a-problem support routes. `src/routes/contact-support.js`
+now sends contact validation, contact API failure/success, signed-out
+report-a-problem handoff to contact prefill, unsigned report POST,
+report-validation, report-sent, and report-failed redirects through
+`redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when shell
+locals are available. The focused source regression first failed on raw
+`/contact`, `/login`, and `/report-a-problem` redirects plus literal
+`buildQuery('/contact')` and `buildQuery('/report-a-problem')` usage, then
+passed after conversion. Focused shared-mount runtime tests also prove
+`/acme/accessible/contact` validation redirects to
+`/acme/accessible/contact?status=contact-validation` and unsigned
+`/acme/accessible/report-a-problem?return=/explore` redirects to
+`/acme/accessible/contact?problem_url=%2Fexplore`. This is support-route
+redirect evidence only; it does not newly certify support-report persistence,
+Laravel rate-limit/error variants, full visual Blade parity, localization, or
+ASP.NET backend compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "contact and report route redirects"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "contact validation redirects inside|report-problem redirects inside"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "server-level redirects"
 npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "server-level"
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js

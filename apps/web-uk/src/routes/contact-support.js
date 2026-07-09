@@ -10,6 +10,10 @@ const { validateReturnUrl } = require('../lib/urlValidator');
 
 const router = express.Router();
 
+const CONTACT_PATH = '/contact';
+const REPORT_PROBLEM_PATH = '/report-a-problem';
+const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
+
 const CONTACT_VALIDATION_ERRORS = {
   name: 'Enter your name',
   email: 'Enter a valid email address',
@@ -58,6 +62,11 @@ function buildQuery(path, params) {
 
   const queryString = query.toString();
   return queryString ? `${path}?${queryString}` : path;
+}
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
 }
 
 function contactStatusFromError(error) {
@@ -120,7 +129,7 @@ router.post('/contact', asyncRoute(async (req, res) => {
     if (req.session) {
       req.session.contactForm = { values, errors };
     }
-    return res.redirect('/contact?status=contact-validation');
+    return redirectTo(res, `${CONTACT_PATH}?status=contact-validation`);
   }
 
   try {
@@ -132,16 +141,16 @@ router.post('/contact', asyncRoute(async (req, res) => {
     if (req.session) {
       req.session.contactForm = { values };
     }
-    return res.redirect(`/contact?status=${contactStatusFromError(error)}`);
+    return redirectTo(res, `${CONTACT_PATH}?status=${contactStatusFromError(error)}`);
   }
 
-  return res.redirect('/contact?status=contact-sent');
+  return redirectTo(res, `${CONTACT_PATH}?status=contact-sent`);
 }));
 
 router.get('/report-a-problem', (req, res) => {
   const pageUrl = validateReturnUrl(req.query.return, '/');
   if (!req.signedCookies.token) {
-    return res.redirect(buildQuery('/contact', { problem_url: pageUrl }));
+    return redirectTo(res, buildQuery(CONTACT_PATH, { problem_url: pageUrl }));
   }
 
   const stored = consumeSessionValue(req, 'reportProblemForm');
@@ -164,7 +173,7 @@ router.get('/report-a-problem', (req, res) => {
 router.post('/report-a-problem', asyncRoute(async (req, res) => {
   const token = req.signedCookies.token;
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
   const pageUrl = validateReturnUrl(req.body.page_url, '/');
@@ -189,7 +198,7 @@ router.post('/report-a-problem', asyncRoute(async (req, res) => {
     if (req.session) {
       req.session.reportProblemForm = { values, errors };
     }
-    return res.redirect(buildQuery('/report-a-problem', {
+    return redirectTo(res, buildQuery(REPORT_PROBLEM_PATH, {
       return: pageUrl,
       status: 'invalid'
     }));
@@ -203,7 +212,7 @@ router.post('/report-a-problem', asyncRoute(async (req, res) => {
       route: '/report-a-problem'
     });
     const reference = asString(result?.data?.report?.reference || result?.report?.reference);
-    return res.redirect(buildQuery('/report-a-problem', {
+    return redirectTo(res, buildQuery(REPORT_PROBLEM_PATH, {
       return: pageUrl,
       status: 'sent',
       ref: reference
@@ -216,7 +225,7 @@ router.post('/report-a-problem', asyncRoute(async (req, res) => {
     if (req.session) {
       req.session.reportProblemForm = { values };
     }
-    return res.redirect(buildQuery('/report-a-problem', {
+    return redirectTo(res, buildQuery(REPORT_PROBLEM_PATH, {
       return: pageUrl,
       status: 'failed'
     }));

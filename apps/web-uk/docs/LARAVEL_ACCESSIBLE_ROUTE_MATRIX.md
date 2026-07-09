@@ -129,6 +129,10 @@ Core server-level redirects now also use `res.locals.urlFor` for deterministic
 cookie, account, and organisation targets, keeping those redirects inside the
 active shared accessible mount while preserving existing safe-return handling
 for user-provided return paths.
+Contact/support route-level redirects now also use `res.locals.urlFor` for
+contact validation/result, signed-out report handoff, report validation,
+report sent/failed, and unsigned report POST targets, keeping public support
+workflow redirects inside the active shared accessible mount.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values
