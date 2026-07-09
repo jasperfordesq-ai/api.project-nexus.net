@@ -152,7 +152,12 @@ pagination base URL, create/edit form actions, breadcrumbs, back links, cancel
 links, and legacy my-groups source controls through `urlFor()`. The latest
 resources source slice now routes resource browse, library, upload, delete,
 download, comment, reaction, reorder, category, search, and pagination
-controls through `urlFor()`. The latest search source slice now routes simple
+controls through `urlFor()`. The latest resources redirect slice now routes
+resource auth-required handoffs, upload/reorder/delete outcomes, and
+comment/reaction result redirects through `res.locals.urlFor`; focused
+shared-mount coverage proves `/acme/accessible/resources/42/delete` POSTs
+redirect to `/acme/accessible/resources/library?status=resource-deleted`.
+The latest search source slice now routes simple
 search, advanced search, saved-search delete, result tabs, result links,
 empty-state CTAs, pagination base URL, and saved-search forms through
 `urlFor()`. The latest saved source slice now routes saved-item filters,

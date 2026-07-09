@@ -48,6 +48,11 @@ function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -72,7 +77,7 @@ function isForbidden(error) {
 
 function redirectAuthIfNeeded(error, res) {
   if (isAuthError(error)) {
-    res.redirect('/login?status=auth-required');
+    redirectTo(res, '/login?status=auth-required');
     return true;
   }
   return false;
@@ -370,7 +375,7 @@ function libraryHref(params) {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const resourcesQuery = trimmed(req.query && req.query.q);
@@ -393,7 +398,7 @@ router.get('/', asyncRoute(async (req, res) => {
 router.get('/library', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const searchQuery = trimmed(req.query && req.query.q);
@@ -461,7 +466,7 @@ router.get('/library', asyncRoute(async (req, res) => {
 router.get('/upload', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let flatCategories = [];
@@ -485,7 +490,7 @@ router.get('/upload', asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const resourceId = Number(req.params.id);
@@ -515,7 +520,7 @@ router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/download', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const resourceId = Number(req.params.id);
@@ -546,7 +551,7 @@ router.get('/:id(\\d+)/download', asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const resourceId = Number(req.params.id);
@@ -660,14 +665,14 @@ async function buildReorderItems(token, body) {
 router.post('/upload', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const file = uploadedFile(req, 'file');
   const title = trimmed(req.body.title, 255);
   if (!title || !file) {
     await removeUploadedFile(file);
-    return res.redirect('/resources/upload?status=resource-upload-failed');
+    return redirectTo(res, '/resources/upload?status=resource-upload-failed');
   }
 
   try {
@@ -686,44 +691,44 @@ router.post('/upload', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     if (isForbidden(error)) throw error;
-    return res.redirect('/resources/upload?status=resource-upload-failed');
+    return redirectTo(res, '/resources/upload?status=resource-upload-failed');
   } finally {
     await removeUploadedFile(file);
   }
 
-  return res.redirect('/resources/library?status=resource-uploaded');
+  return redirectTo(res, '/resources/library?status=resource-uploaded');
 }));
 
 router.post('/reorder', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   try {
     const items = await buildReorderItems(token, req.body);
     if (items === null) {
-      return res.redirect(libraryRedirect(req));
+      return redirectTo(res, libraryRedirect(req));
     }
     if (items.length === 0) {
-      return res.redirect(libraryRedirect(req, 'resource-reorder-failed'));
+      return redirectTo(res, libraryRedirect(req, 'resource-reorder-failed'));
     }
 
     await reorderResources(token, { items });
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     if (isNotFound(error) || isForbidden(error)) throw error;
-    return res.redirect(libraryRedirect(req, 'resource-reorder-failed'));
+    return redirectTo(res, libraryRedirect(req, 'resource-reorder-failed'));
   }
 
-  return res.redirect(libraryRedirect(req));
+  return redirectTo(res, libraryRedirect(req));
 }));
 
 router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   try {
@@ -731,17 +736,17 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     if (isNotFound(error) || isForbidden(error)) throw error;
-    return res.redirect('/resources/library?status=resource-delete-failed');
+    return redirectTo(res, '/resources/library?status=resource-delete-failed');
   }
 
-  return res.redirect('/resources/library?status=resource-deleted');
+  return redirectTo(res, '/resources/library?status=resource-deleted');
 }));
 
 router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const emoji = trimmed(req.body.emoji);
@@ -763,20 +768,20 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
     }
   }
 
-  return res.redirect(commentsRedirect(id, status, 'resource-reactions'));
+  return redirectTo(res, commentsRedirect(id, status, 'resource-reactions'));
 }));
 
 router.post('/:id(\\d+)/comments/add', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   const body = trimmed(req.body.body, 5000);
   const parentId = positiveInteger(req.body.parent_id);
   if (body === '') {
-    return res.redirect(commentsRedirect(id, 'comment-invalid'));
+    return redirectTo(res, commentsRedirect(id, 'comment-invalid'));
   }
 
   let status = parentId !== null ? 'reply-added' : 'comment-added';
@@ -793,7 +798,7 @@ router.post('/:id(\\d+)/comments/add', asyncRoute(async (req, res) => {
     status = 'comment-failed';
   }
 
-  return res.redirect(commentsRedirect(id, status));
+  return redirectTo(res, commentsRedirect(id, status));
 }));
 
 router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req, res) => {
@@ -801,7 +806,7 @@ router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req
   const id = Number(req.params.id);
   const commentId = Number(req.params.commentId);
   if (!token) {
-    return res.redirect('/login?status=auth-required');
+    return redirectTo(res, '/login?status=auth-required');
   }
 
   let status = 'comment-deleted';
@@ -812,7 +817,7 @@ router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req
     status = 'comment-delete-failed';
   }
 
-  return res.redirect(commentsRedirect(id, status));
+  return redirectTo(res, commentsRedirect(id, status));
 }));
 
 module.exports = router;

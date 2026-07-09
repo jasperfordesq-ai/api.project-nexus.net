@@ -548,6 +548,12 @@ API/health, cookie, login, account, and logout checks plus `/resources`,
 `/resources/library`, `/resources/upload`, and `/resources/10/comments` module
 renders and body markers.
 
+A follow-up resources route-redirect cleanup sends auth-required handoffs,
+upload/reorder/delete outcomes, and comment/reaction result redirects through
+`res.locals.urlFor`; focused shared-mount coverage proves
+`/acme/accessible/resources/42/delete` redirects back under
+`/acme/accessible/resources/library?status=resource-deleted`.
+
 The thirty-third template-helper source slice extends direct `urlFor()`
 conversion into search pages. `src/views/search/index.njk`,
 `advanced.njk`, and `saved-delete.njk` now route simple search, advanced

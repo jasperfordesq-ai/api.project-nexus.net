@@ -8664,6 +8664,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/resources/library?status=resource-deleted');
     expect(api.deleteResource).toHaveBeenCalledWith('test-token', 42);
+
+    api.deleteResource.mockClear();
+    const mountedFirst = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const mountedCsrfMatch = mountedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const mountedResponse = await agent
+      .post('/acme/accessible/resources/42/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: mountedCsrfMatch[1] });
+
+    expect(mountedResponse.status).toBe(302);
+    expect(mountedResponse.headers.location).toBe('/acme/accessible/resources/library?status=resource-deleted');
+    expect(api.deleteResource).toHaveBeenCalledWith('test-token', 42);
   });
 
   it('submits the Laravel resource reorder route through the reorder API helper', async () => {
