@@ -633,7 +633,66 @@ public class MemberParityController : ControllerBase
     public IActionResult PremiumTiers() => Ok(new { data = new[] { new { id = "free", price = 0 }, new { id = "supporter", price = 5 } } });
 
     [HttpGet("member-premium/me")]
-    public IActionResult PremiumMe() => Ok(new { data = new { user_id = UserId(), tier = "free", status = "active" } });
+    public async Task<IActionResult> PremiumMe()
+    {
+        var subscription = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .Where(s => s.TenantId == TenantId() && s.UserId == UserId())
+            .OrderByDescending(s => s.Status == SubscriptionStatus.Active)
+            .ThenByDescending(s => s.UpdatedAt)
+            .ThenByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (subscription == null)
+        {
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    subscription = (object?)null,
+                    entitled_tier = (object?)null,
+                    unlocked_features = Array.Empty<string>()
+                }
+            });
+        }
+
+        var plan = subscription.Plan;
+        var features = NormalizePlanFeatures(plan?.Features);
+        var currentPeriodEnd = subscription.NextBillingDate
+            ?? subscription.ExpiresAt
+            ?? subscription.StartedAt.AddMonths(1);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                subscription = new
+                {
+                    id = subscription.Id,
+                    tier_id = subscription.PlanId,
+                    tier_name = plan?.Name ?? string.Empty,
+                    tier_slug = Slugify(plan?.Name ?? $"tier-{subscription.PlanId}"),
+                    status = MemberPremiumStatusForReact(subscription.Status),
+                    billing_interval = "monthly",
+                    current_period_start = subscription.StartedAt,
+                    current_period_end = currentPeriodEnd,
+                    canceled_at = subscription.CancelledAt,
+                    grace_period_ends_at = (DateTime?)null,
+                    is_active = subscription.Status == SubscriptionStatus.Active
+                },
+                entitled_tier = new
+                {
+                    tier_id = subscription.PlanId,
+                    tier_name = plan?.Name ?? string.Empty,
+                    features
+                },
+                unlocked_features = features
+            }
+        });
+    }
 
     [HttpPost("member-premium/checkout")]
     public IActionResult PremiumCheckout([FromBody] JsonElement body)
@@ -1644,6 +1703,85 @@ public class MemberParityController : ControllerBase
             ? value
             : fallback;
     }
+
+    private static string MemberPremiumStatusForReact(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.PastDue => "past_due",
+        SubscriptionStatus.Cancelled => "canceled",
+        SubscriptionStatus.Expired => "canceled",
+        _ => "active"
+    };
+
+    private static string Slugify(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        var previousWasSeparator = false;
+
+        foreach (var c in value.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c);
+                previousWasSeparator = false;
+            }
+            else if (!previousWasSeparator && builder.Length > 0)
+            {
+                builder.Append('-');
+                previousWasSeparator = true;
+            }
+        }
+
+        var slug = builder.ToString().Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "tier" : slug;
+    }
+
+    private static string[] NormalizePlanFeatures(string? features)
+    {
+        if (string.IsNullOrWhiteSpace(features))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(features);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                return root.EnumerateArray()
+                    .Where(item => item.ValueKind == JsonValueKind.String)
+                    .Select(item => item.GetString()?.Trim())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!)
+                    .ToArray();
+            }
+
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                return root.EnumerateObject()
+                    .Where(property => IsTruthyFeatureValue(property.Value))
+                    .Select(property => property.Name)
+                    .ToArray();
+            }
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+
+        return [];
+    }
+
+    private static bool IsTruthyFeatureValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.True => true,
+        JsonValueKind.False or JsonValueKind.Null or JsonValueKind.Undefined => false,
+        JsonValueKind.Number => value.TryGetDecimal(out var number) && number != 0m,
+        JsonValueKind.String => !string.IsNullOrWhiteSpace(value.GetString()),
+        JsonValueKind.Array => value.GetArrayLength() > 0,
+        JsonValueKind.Object => value.EnumerateObject().Any(),
+        _ => false
+    };
 
     private static string? TryGetRawProperty(JsonElement body, string name) =>
         body.ValueKind == JsonValueKind.Object && body.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null

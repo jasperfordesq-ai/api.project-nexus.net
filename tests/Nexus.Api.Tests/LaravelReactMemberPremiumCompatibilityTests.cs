@@ -7,6 +7,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -15,6 +19,85 @@ namespace Nexus.Api.Tests;
 public sealed class LaravelReactMemberPremiumCompatibilityTests : IntegrationTestBase
 {
     public LaravelReactMemberPremiumCompatibilityTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    [Fact]
+    public async Task MemberPremiumMe_ReturnsLaravelReactSubscriptionEnvelope()
+    {
+        var now = DateTime.UtcNow;
+        int planId;
+        int subscriptionId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var existing = await db.UserSubscriptions
+                .Where(s => s.TenantId == TestData.Tenant1.Id && s.UserId == TestData.MemberUser.Id)
+                .ToListAsync();
+            db.UserSubscriptions.RemoveRange(existing);
+
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Community Patron",
+                Description = "Member premium Laravel React test plan",
+                Price = 12.50m,
+                Currency = "EUR",
+                Features = """["priority_support","premium_badge"]""",
+                IsActive = true,
+                IsPublic = true,
+                CreatedAt = now.AddDays(-30),
+                UpdatedAt = now.AddDays(-2)
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+
+            var subscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                StartedAt = now.AddDays(-10),
+                NextBillingDate = now.AddDays(20),
+                StripeSubscriptionId = "sub_member_premium_me_contract",
+                CreatedAt = now.AddDays(-10),
+                UpdatedAt = now.AddDays(-1)
+            };
+            db.UserSubscriptions.Add(subscription);
+            await db.SaveChangesAsync();
+            subscriptionId = subscription.Id;
+        }
+
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/member-premium/me");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.TryGetProperty("user_id", out _).Should().BeFalse();
+
+        var subscriptionJson = data.GetProperty("subscription");
+        subscriptionJson.GetProperty("id").GetInt32().Should().Be(subscriptionId);
+        subscriptionJson.GetProperty("tier_id").GetInt32().Should().Be(planId);
+        subscriptionJson.GetProperty("tier_name").GetString().Should().Be("Community Patron");
+        subscriptionJson.GetProperty("tier_slug").GetString().Should().Be("community-patron");
+        subscriptionJson.GetProperty("status").GetString().Should().Be("active");
+        subscriptionJson.GetProperty("billing_interval").GetString().Should().Be("monthly");
+        subscriptionJson.GetProperty("current_period_start").ValueKind.Should().NotBe(JsonValueKind.Null);
+        subscriptionJson.GetProperty("current_period_end").ValueKind.Should().NotBe(JsonValueKind.Null);
+        subscriptionJson.GetProperty("canceled_at").ValueKind.Should().Be(JsonValueKind.Null);
+        subscriptionJson.GetProperty("grace_period_ends_at").ValueKind.Should().Be(JsonValueKind.Null);
+        subscriptionJson.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var entitledTier = data.GetProperty("entitled_tier");
+        entitledTier.GetProperty("tier_id").GetInt32().Should().Be(planId);
+        entitledTier.GetProperty("tier_name").GetString().Should().Be("Community Patron");
+        entitledTier.GetProperty("features").EnumerateArray().Select(v => v.GetString()).Should().Equal("priority_support", "premium_badge");
+        data.GetProperty("unlocked_features").EnumerateArray().Select(v => v.GetString()).Should().Equal("priority_support", "premium_badge");
+    }
 
     [Fact]
     public async Task MemberPremiumCheckoutAndPortal_ReturnLaravelReactRedirectEnvelopes()
