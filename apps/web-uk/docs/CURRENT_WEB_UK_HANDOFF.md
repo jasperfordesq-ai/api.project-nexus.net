@@ -197,6 +197,10 @@ The latest shared pagination partial slice now changes the documented/default
 members pagination base URL from raw `/members` to `urlFor('/members')`, so a
 caller that omits `paginationConfig.baseUrl` does not leak a flat root path
 under shared tenant mounts or custom-domain child paths.
+The latest shared empty-state/breadcrumb partial slice now routes empty-state
+primary and secondary action links through `urlFor()` and updates breadcrumb
+examples to use `urlFor(...)`, so shared partial usage does not leak flat local
+paths when rendered under `/{tenantSlug}/accessible`.
 The latest shell tenant-gating slice now mirrors Laravel
 `AlphaController::alphaNavItems()` and `alphaFooterColumns()` for shared shell
 links: Dashboard, Feed, Listings, Members, Events, Volunteering, and footer
@@ -404,6 +408,18 @@ template-helper slice:
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, and no unexpected extras.
 - A scoped live Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed for `/members` body text containing `Community members`, with all other smoke buckets disabled.
 - This is shared partial source and focused members runtime evidence only. It does not newly certify visual pagination parity, every pagination caller, localization, or ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for the shared empty-state and
+breadcrumb partial template-helper slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "shared empty-state"` first failed on raw empty-state/breadcrumb example links and direct `emptyState.action.href` rendering, then passed after the shared partials moved to `urlFor(...)`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "prefixes shared empty-state"` passed, proving `/acme/accessible/members?search=zzz` renders the empty-state action link as `href="/acme/accessible/members"` and not `href="/members"`.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js` passed 43/43 source tests.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, and no unexpected extras.
+- `npm --prefix apps/web-uk test -- --runInBand` passed 759/759 tests across 11 suites.
+- A scoped live Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed for `/members` body text containing `Community members`, with all other smoke buckets disabled.
+- This is shared partial source, focused tenant-prefixed render, and scoped `/members` runtime evidence only. It does not newly certify visual empty-state parity, every empty-state caller, localization, or ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the Explore tenant-gated card and
 live-content link slice:

@@ -8,7 +8,7 @@
     message: "Start a conversation with one of your connections.",
     action: {
       text: "Start a conversation",
-      href: "/members"
+      href: urlFor('/members')
     }
   } %}
   {% include "partials/empty-state.njk" %}
@@ -25,20 +25,22 @@
   {% endif %}
 
   {% if emptyState.action %}
+    {% set emptyStateActionHref = urlFor(emptyState.action.href) %}
     {% if emptyState.action.isButton %}
-      <a href="{{ emptyState.action.href }}" class="govuk-button govuk-!-margin-top-3">
+      <a href="{{ emptyStateActionHref }}" class="govuk-button govuk-!-margin-top-3">
         {{ emptyState.action.text }}
       </a>
     {% else %}
       <p class="govuk-body govuk-!-margin-top-3">
-        <a href="{{ emptyState.action.href }}" class="govuk-link">{{ emptyState.action.text }}</a>
+        <a href="{{ emptyStateActionHref }}" class="govuk-link">{{ emptyState.action.text }}</a>
       </p>
     {% endif %}
   {% endif %}
 
   {% if emptyState.secondaryAction %}
+    {% set emptyStateSecondaryActionHref = urlFor(emptyState.secondaryAction.href) %}
     <p class="govuk-body">
-      <a href="{{ emptyState.secondaryAction.href }}" class="govuk-link">{{ emptyState.secondaryAction.text }}</a>
+      <a href="{{ emptyStateSecondaryActionHref }}" class="govuk-link">{{ emptyState.secondaryAction.text }}</a>
     </p>
   {% endif %}
 </div>

@@ -184,7 +184,9 @@ Current gaps:
   links, dismiss forms, empty-state CTAs, and back links. A shared pagination
   partial cleanup now changes the documented/default members pagination base
   URL from raw `/members` to `urlFor('/members')`, so omitted `baseUrl`
-  fallbacks stay tenant-aware.
+  fallbacks stay tenant-aware. A shared empty-state/breadcrumb partial cleanup
+  now routes empty-state primary/secondary action hrefs through `urlFor()` and
+  updates breadcrumb examples to use tenant-aware local paths.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live
@@ -749,9 +751,31 @@ scoped live Laravel runtime smoke for `/members` containing `Community members`.
 This does not newly certify visual pagination parity, every pagination caller,
 localization, or ASP.NET backend compatibility.
 
+The forty-ninth template-helper source slice cleans up shared empty-state and
+breadcrumb partial link handling. `src/views/partials/empty-state.njk` now
+routes primary and secondary action hrefs through `urlFor()`, while
+`src/views/partials/breadcrumbs.njk` documents `urlFor('/groups')` and
+`urlFor('/groups/123')` examples instead of flat local paths. The source-level
+regression first failed on the raw examples and direct empty-state href
+rendering, then passed after conversion. A focused tenant-prefixed render test
+also passed for `/acme/accessible/members?search=zzz`, proving the empty-state
+action link renders as `/acme/accessible/members` rather than `/members`.
+Focused source tests, lint, route matrix, the full Web UK Jest suite with
+759/759 tests passing across 11 suites, and a scoped live Laravel `/members`
+runtime smoke also passed. This does not newly certify visual empty-state
+parity, every empty-state caller, localization, or ASP.NET backend
+compatibility.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "shared empty-state"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "prefixes shared empty-state"
+npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk test -- --runInBand
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:5180'; $env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'; $env:SMOKE_MODULE_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = 'none'; $env:SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_GATED_PAGE_PATHS = 'none'; $env:SMOKE_REDIRECT_PAGE_PATHS = 'none'; $env:SMOKE_CONTENT_TYPE_PAGE_PATHS = 'none'; $env:SMOKE_BODY_TEXT_PAGE_PATHS = '/members=>Community members'; $env:SMOKE_TENANT_DOMAIN_PAGE_PATHS = 'none'; npm --prefix apps/web-uk run smoke:laravel
 npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "shared pagination"
 npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed Laravel members index"

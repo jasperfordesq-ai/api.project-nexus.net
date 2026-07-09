@@ -878,4 +878,25 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).not.toContain('baseUrl: "/members"');
     expect(template).toContain("urlFor('/members')");
   });
+
+  it('keeps shared empty-state and breadcrumb partial links behind urlFor()', () => {
+    const emptyState = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk'),
+      'utf8'
+    );
+    const breadcrumbs = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'partials', 'breadcrumbs.njk'),
+      'utf8'
+    );
+
+    expect(emptyState).not.toContain('href: "/members"');
+    expect(emptyState).not.toContain('href="{{ emptyState.action.href }}"');
+    expect(emptyState).not.toContain('href="{{ emptyState.secondaryAction.href }}"');
+    expect(emptyState).toContain('urlFor(emptyState.action.href)');
+    expect(emptyState).toContain('urlFor(emptyState.secondaryAction.href)');
+
+    expect(breadcrumbs).not.toContain('href: "/groups"');
+    expect(breadcrumbs).not.toContain('href: "/groups/123"');
+    expect(breadcrumbs).toContain("urlFor('/groups')");
+  });
 });

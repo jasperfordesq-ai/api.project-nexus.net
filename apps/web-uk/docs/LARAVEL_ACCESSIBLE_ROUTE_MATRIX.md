@@ -113,6 +113,9 @@ domain aware.
 The shared pagination partial default now also uses `urlFor('/members')`
 instead of a raw `/members` sample/default base URL, keeping omitted pagination
 fallbacks tenant-aware under shared mounts and custom-domain child paths.
+Shared empty-state action links now render through `urlFor()`, and shared
+breadcrumb examples use `urlFor('/groups')` style paths, keeping reused partial
+links tenant-aware when pages are served from `/{tenantSlug}/accessible`.
 The global no-JS language selector now preserves scalar non-`locale` query
 parameters as hidden inputs, matching Laravel Blade's
 `request()->except(['locale'])` behavior so status, filter, and return values

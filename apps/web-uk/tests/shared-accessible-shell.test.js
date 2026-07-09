@@ -7506,6 +7506,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Page not found');
   });
 
+  it('prefixes shared empty-state action links under shared tenant mounts', async () => {
+    const api = require('../src/lib/api');
+
+    api.getUsers.mockResolvedValueOnce({ data: [], pagination: { page: 1, totalPages: 1 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/members?search=zzz')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('No results found');
+    expect(response.text).toContain('href="/acme/accessible/members"');
+    expect(response.text).not.toContain('href="/members"');
+  });
+
   it('renders member connection controls against the Laravel connection route', async () => {
     const api = require('../src/lib/api');
 

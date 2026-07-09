@@ -4,8 +4,8 @@
 
   Pass breadcrumbs as an array of objects with text and href:
   {% set breadcrumbs = [
-    { text: "Groups", href: "/groups" },
-    { text: "My Group", href: "/groups/123" },
+    { text: "Groups", href: urlFor('/groups') },
+    { text: "My Group", href: urlFor('/groups/123') },
     { text: "Members" }
   ] %}
 #}
