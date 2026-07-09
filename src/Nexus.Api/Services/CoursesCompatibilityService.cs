@@ -14,7 +14,7 @@ namespace Nexus.Api.Services;
 
 public sealed class CoursesCompatibilityService
 {
-    private const string StateKey = "courses_compatibility.state";
+    public const string StateKey = "courses_compatibility.state";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {

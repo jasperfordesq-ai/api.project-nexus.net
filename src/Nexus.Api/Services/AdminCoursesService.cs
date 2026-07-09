@@ -38,13 +38,20 @@ public sealed class AdminCoursesService
         CancellationToken ct)
     {
         var courses = await LoadStoredAsync<AdminCourseRecord>(tenantId, CourseKeyPrefix, ct);
+        var adminCourseIds = courses.Select(course => course.Value.Id).ToHashSet();
+        var compatibilityState = await LoadCompatibilityStateAsync(tenantId, ct);
+        var merged = courses
+            .Select(course => ToCourseDto(course.Value))
+            .Concat(compatibilityState.Courses
+                .Where(course => !adminCourseIds.Contains(course.Id))
+                .Select(ToCourseDto));
+
         var filtered = string.IsNullOrWhiteSpace(moderationStatus)
-            ? courses
-            : courses.Where(course =>
-                string.Equals(course.Value.ModerationStatus, moderationStatus, StringComparison.OrdinalIgnoreCase));
+            ? merged
+            : merged.Where(course =>
+                string.Equals(course.ModerationStatus, moderationStatus, StringComparison.OrdinalIgnoreCase));
 
         return filtered
-            .Select(course => ToCourseDto(course.Value))
             .OrderByDescending(course => course.CreatedAt ?? DateTime.MinValue)
             .ThenByDescending(course => course.Id)
             .Take(200)
@@ -86,19 +93,17 @@ public sealed class AdminCoursesService
         string? notes,
         CancellationToken ct)
     {
-        var row = await FindRowAsync(tenantId, CourseKeyPrefix, id, ct)
-            ?? throw new AdminCoursesNotFoundException("Course not found");
+        var row = await FindRowAsync(tenantId, CourseKeyPrefix, id, ct);
+        if (row is null)
+        {
+            return await ModerateCompatibilityCourseAsync(tenantId, id, adminId, action, notes, ct);
+        }
+
         var course = Decode<AdminCourseRecord>(row.Value)
             ?? throw new AdminCoursesNotFoundException("Course not found");
 
-        var normalizedAction = (action ?? string.Empty).Trim().ToLowerInvariant();
-        var moderationStatus = normalizedAction switch
-        {
-            "approve" => "approved",
-            "reject" => "rejected",
-            "flag" => "flagged",
-            _ => throw new AdminCoursesValidationException("Invalid moderation action")
-        };
+        var normalizedAction = NormalizeModerationAction(action);
+        var moderationStatus = ModerationStatusForAction(normalizedAction);
 
         var now = DateTime.UtcNow;
         var updated = course with
@@ -126,15 +131,23 @@ public sealed class AdminCoursesService
     {
         var courses = await LoadStoredAsync<AdminCourseRecord>(tenantId, CourseKeyPrefix, ct);
         var instructors = await LoadStoredAsync<AdminCourseInstructorDto>(tenantId, InstructorKeyPrefix, ct);
-        var courseValues = courses.Select(course => course.Value).ToArray();
+        var adminCourseValues = courses.Select(course => course.Value).ToArray();
+        var adminCourseIds = adminCourseValues.Select(course => course.Id).ToHashSet();
+        var compatibilityState = await LoadCompatibilityStateAsync(tenantId, ct);
+        var courseValues = adminCourseValues
+            .Select(ToCourseDto)
+            .Concat(compatibilityState.Courses
+                .Where(course => !adminCourseIds.Contains(course.Id))
+                .Select(ToCourseDto))
+            .ToArray();
 
         return new AdminCoursesAnalyticsDto(
             courseValues.Length,
             courseValues.Count(course => string.Equals(course.Status, "published", StringComparison.OrdinalIgnoreCase)),
             courseValues.Count(course =>
                 string.Equals(course.ModerationStatus, "pending", StringComparison.OrdinalIgnoreCase)),
-            courseValues.Sum(course => Math.Max(0, course.TotalEnrollments)),
-            courseValues.Sum(course => Math.Max(0, course.CompletedEnrollments)),
+            adminCourseValues.Sum(course => Math.Max(0, course.TotalEnrollments)),
+            adminCourseValues.Sum(course => Math.Max(0, course.CompletedEnrollments)),
             instructors.Count);
     }
 
@@ -276,6 +289,61 @@ public sealed class AdminCoursesService
             course.UpdatedAt);
     }
 
+    private static AdminCourseDto ToCourseDto(CourseCompatDto course)
+    {
+        return new AdminCourseDto(
+            course.Id,
+            course.Title,
+            course.Status,
+            course.ModerationStatus,
+            course.Author is null ? null : new AdminCourseUserDto(course.Author.Id, course.Author.Name),
+            course.Category is null ? null : new AdminCourseCategoryDto(
+                course.Category.Id,
+                course.Category.Name,
+                course.Category.Slug,
+                course.Category.Description,
+                course.Category.Icon,
+                course.Category.Position),
+            null,
+            null,
+            null,
+            course.PublishedAt,
+            course.CreatedAt,
+            course.UpdatedAt);
+    }
+
+    private async Task<AdminCourseDto> ModerateCompatibilityCourseAsync(
+        int tenantId,
+        int id,
+        int adminId,
+        string? action,
+        string? notes,
+        CancellationToken ct)
+    {
+        var state = await LoadCompatibilityStateAsync(tenantId, ct);
+        var course = state.Courses.FirstOrDefault(row => row.Id == id)
+            ?? throw new AdminCoursesNotFoundException("Course not found");
+
+        var normalizedAction = NormalizeModerationAction(action);
+        var moderationStatus = ModerationStatusForAction(normalizedAction);
+        var now = DateTime.UtcNow;
+        var updated = course with
+        {
+            ModerationStatus = moderationStatus,
+            Status = normalizedAction == "reject" ? "draft" : course.Status,
+            PublishedAt = normalizedAction == "approve"
+                && string.Equals(course.Status, "published", StringComparison.OrdinalIgnoreCase)
+                && course.PublishedAt is null
+                    ? now
+                    : course.PublishedAt,
+            UpdatedAt = now
+        };
+
+        Replace(state.Courses, course, updated);
+        await SaveCompatibilityStateAsync(tenantId, state, ct);
+        return ToCourseDto(updated);
+    }
+
     private async Task<TenantConfig?> FindRowAsync(
         int tenantId,
         string prefix,
@@ -330,6 +398,63 @@ public sealed class AdminCoursesService
             .Where(row => row.Value is not null)
             .Select(row => (row.Row, row.Value!))
             .ToArray();
+    }
+
+    private async Task<CourseCompatibilityState> LoadCompatibilityStateAsync(int tenantId, CancellationToken ct)
+    {
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == CoursesCompatibilityService.StateKey, ct);
+
+        return Decode<CourseCompatibilityState>(row?.Value) ?? new CourseCompatibilityState();
+    }
+
+    private async Task SaveCompatibilityStateAsync(int tenantId, CourseCompatibilityState state, CancellationToken ct)
+    {
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == CoursesCompatibilityService.StateKey, ct);
+        var now = DateTime.UtcNow;
+        if (row is null)
+        {
+            row = new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = CoursesCompatibilityService.StateKey,
+                CreatedAt = now
+            };
+            _db.TenantConfigs.Add(row);
+        }
+
+        row.Value = JsonSerializer.Serialize(state, JsonOptions);
+        row.UpdatedAt = now;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static string NormalizeModerationAction(string? action)
+    {
+        var normalized = (action ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized is "approve" or "reject" or "flag"
+            ? normalized
+            : throw new AdminCoursesValidationException("Invalid moderation action");
+    }
+
+    private static string ModerationStatusForAction(string action) => action switch
+    {
+        "approve" => "approved",
+        "reject" => "rejected",
+        "flag" => "flagged",
+        _ => throw new AdminCoursesValidationException("Invalid moderation action")
+    };
+
+    private static void Replace<T>(List<T> list, T oldValue, T newValue)
+    {
+        var index = list.IndexOf(oldValue);
+        if (index >= 0)
+        {
+            list[index] = newValue;
+        }
     }
 
     private static T? Decode<T>(string? value)

@@ -141,6 +141,62 @@ public sealed class AdminCoursesControllerUnitTests
     }
 
     [Fact]
+    public async Task ModerationWorkflow_SeesAndApprovesInstructorPublishedCourses()
+    {
+        var tenant = CreateTenantContext(45);
+        await using var db = CreateDbContext(tenant);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant.GetTenantIdOrThrow(),
+            Key = "courses.moderation_enabled",
+            Value = "true"
+        });
+        await db.SaveChangesAsync();
+
+        var instructorController = CreateCoursesController(db, tenant, userId: 9101);
+        var adminController = CreateController(db, tenant, userId: 9001);
+
+        var created = await instructorController.Store(new CourseCompatCourseRequest
+        {
+            Title = "Shared course"
+        }, CancellationToken.None);
+
+        int courseId;
+        using (var createdDocument = JsonDocument.Parse(JsonSerializer.Serialize(created.Should().BeOfType<ObjectResult>().Subject.Value)))
+        {
+            courseId = createdDocument.RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        }
+
+        await instructorController.Publish(courseId, CancellationToken.None);
+
+        var pending = await adminController.Index("pending", CancellationToken.None);
+        using (var pendingDocument = JsonDocument.Parse(JsonSerializer.Serialize(pending.Should().BeOfType<OkObjectResult>().Subject.Value)))
+        {
+            var pendingCourses = pendingDocument.RootElement.GetProperty("data").EnumerateArray().ToArray();
+            pendingCourses.Should().ContainSingle(course => course.GetProperty("id").GetInt32() == courseId);
+        }
+
+        var approved = await adminController.Moderate(courseId, new AdminCourseModerationRequest
+        {
+            Action = "approve",
+            Notes = "Approved for launch"
+        }, CancellationToken.None);
+
+        using (var approvedDocument = JsonDocument.Parse(JsonSerializer.Serialize(approved.Should().BeOfType<OkObjectResult>().Subject.Value)))
+        {
+            var course = approvedDocument.RootElement.GetProperty("data");
+            course.GetProperty("status").GetString().Should().Be("published");
+            course.GetProperty("moderation_status").GetString().Should().Be("approved");
+            course.GetProperty("published_at").ValueKind.Should().NotBe(JsonValueKind.Null);
+        }
+
+        var browse = await instructorController.Index(page: 1, perPage: 12, q: null, categoryId: null, level: null, CancellationToken.None);
+        using var browseDocument = JsonDocument.Parse(JsonSerializer.Serialize(browse.Should().BeOfType<OkObjectResult>().Subject.Value));
+        browseDocument.RootElement.GetProperty("data").EnumerateArray()
+            .Should().ContainSingle(course => course.GetProperty("id").GetInt32() == courseId);
+    }
+
+    [Fact]
     public async Task InstructorAndCategoryMutations_ReturnLaravelCompatibleShapes()
     {
         var tenant = CreateTenantContext(42);
@@ -263,6 +319,18 @@ public sealed class AdminCoursesControllerUnitTests
                     new Claim("role", role)
                 ], "Test"))
             }
+        };
+    }
+
+    private static CoursesCompatibilityController CreateCoursesController(
+        NexusDbContext db,
+        TenantContext tenant,
+        int userId)
+    {
+        var service = new CoursesCompatibilityService(db);
+        return new CoursesCompatibilityController(service, tenant)
+        {
+            ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow(), "admin")
         };
     }
 }
