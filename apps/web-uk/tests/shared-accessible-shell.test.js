@@ -808,6 +808,87 @@ describe('shared accessible frontend shell', () => {
     }
   });
 
+  it('returns Laravel-style 403 for tenant-mounted disabled core route gates', async () => {
+    const api = require('../src/lib/api');
+    const disabledTenantBootstrap = {
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: {
+          dashboard: false,
+          feed: false,
+          listings: false,
+          messages: false,
+          wallet: false,
+          notifications: false
+        },
+        features: {
+          ai_chat: false,
+          connections: false,
+          events: false,
+          volunteering: false,
+          gamification: false,
+          blog: false,
+          federation: false,
+          goals: false,
+          groups: false,
+          group_exchanges: false,
+          ideation_challenges: false,
+          job_vacancies: false,
+          polls: false,
+          resources: false,
+          reviews: false,
+          search: false
+        }
+      }
+    };
+
+    const paths = [
+      '/acme/accessible/dashboard',
+      '/acme/accessible/feed',
+      '/acme/accessible/listings',
+      '/acme/accessible/exchanges',
+      '/acme/accessible/matches',
+      '/acme/accessible/events',
+      '/acme/accessible/volunteering',
+      '/acme/accessible/organisations',
+      '/acme/accessible/members',
+      '/acme/accessible/connections',
+      '/acme/accessible/messages',
+      '/acme/accessible/wallet',
+      '/acme/accessible/notifications',
+      '/acme/accessible/achievements',
+      '/acme/accessible/leaderboard',
+      '/acme/accessible/nexus-score',
+      '/acme/accessible/blog',
+      '/acme/accessible/chat',
+      '/acme/accessible/federation',
+      '/acme/accessible/goals',
+      '/acme/accessible/groups',
+      '/acme/accessible/group-exchanges',
+      '/acme/accessible/ideation',
+      '/acme/accessible/jobs',
+      '/acme/accessible/polls',
+      '/acme/accessible/resources',
+      '/acme/accessible/reviews',
+      '/acme/accessible/search'
+    ];
+
+    for (let index = 0; index < paths.length; index += 1) {
+      api.getTenantBootstrap.mockResolvedValueOnce(disabledTenantBootstrap);
+    }
+
+    for (const path of paths) {
+      const response = await request(app)
+        .get(path)
+        .set('Cookie', signedCookieHeader());
+
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('Forbidden');
+    }
+  });
+
   it('renders the Laravel-backed public knowledge base index and search pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');

@@ -418,8 +418,8 @@ Snapshot refreshed after consolidating the parallel Web UK streams on
 | Branch | `main` |
 | Head commit | Rerun `git rev-parse --short HEAD` before editing because `main` is actively moving through focused Web UK parity commits. |
 | Dirty files seen | None expected after the consolidation commit; rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `993/1000` implementation/certification parity |
-| Green confidence estimate | about `984/1000`, mainly gated by visual/manual Laravel Blade parity, remaining page-level feature-disabled route responses, and ASP.NET backend switching certification |
+| Working estimate | about `995/1000` implementation/certification parity |
+| Green confidence estimate | about `986/1000`, mainly gated by visual/manual Laravel Blade parity, remaining route-specific compound feature-disabled responses, and ASP.NET backend switching certification |
 | Documentation readiness after this handoff | Current for the consolidated branch state, route declarations, clean lint evidence, local Jest evidence, backend base-URL provenance, Laravel auth-smoke tenant-context evidence, full default Laravel runtime-smoke coverage via chunked/bucketed runs, tenant-domain Host-header smoke evidence, and remaining visual/tenant certification gaps, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -687,6 +687,29 @@ feature page gates:
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 12 suites and 830 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A targeted Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6531`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 15/15 checks. The narrowed `SMOKE_GATED_PAGE_PATHS` asserted signed `403` responses for `/acme/accessible/marketplace`, `/acme/accessible/courses`, `/acme/accessible/podcasts`, `/acme/accessible/coupons`, and `/acme/accessible/premium`; broad module/body/redirect/content-type/tenant-domain buckets were disabled for this focused run.
 - This covers the first default-off page-level feature-gate slice for tenant contexts. It does not certify every Laravel `TenantContext::hasFeature()` or `hasModule()` route gate, visual/manual Blade parity, enabled-tenant depth behavior, or ASP.NET backend compatibility.
+
+Latest focused verification on 2026-07-09 for tenant-mounted core module and
+feature route gates:
+
+- Laravel source evidence came from `TenantContext::hasFeature()`,
+  `TenantContext::hasModule()`, and the generated route matrix `gates` column,
+  which lists `module:` and `feature:` gates for the affected route families.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "disabled core route gates"` first failed because `/acme/accessible/dashboard` returned `200` while the mocked Laravel bootstrap set `modules.dashboard=false`.
+- `src/middleware/tenant-feature-gates.js` now handles both `moduleKey` and
+  `featureKey` prefixes. It blocks tenant-context disabled routes for
+  Dashboard, Feed, Listings, Exchanges, Matches, Events, Volunteering,
+  Organisations, Members, Connections, Messages, Wallet, Notifications,
+  Achievements, Leaderboard, NEXUS score, Blog, AI chat, Federation, Goals,
+  Groups, Group exchanges, Ideation, Jobs, Polls, Resources, Reviews, and
+  Search, while preserving the existing default-off Marketplace, Courses,
+  Podcasts, Coupons, and Premium gates.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "disabled core route gates|default-off feature pages"` passed 2 selected tests.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath` passed 468/468 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 12 suites and 831 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
+- A targeted live smoke against temporary Web UK `http://127.0.0.1:6535`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed 18/18 checks. The live run proved the enabled local Laravel tenant still renders `/hour-timebank/accessible/dashboard=>Quick links`, `/hour-timebank/accessible/wallet=>Wallet`, and `/hour-timebank/accessible/members=>Community members`, and that the five default-off `/acme/accessible/*` feature pages still return `403`.
+- This improves page-level disabled gate proof for shared tenant mounts. It does not live-smoke a real Laravel fixture with core modules disabled, every route-specific compound gate such as maps or organisation jobs, visual/manual Blade parity, or ASP.NET backend compatibility.
 
 Latest focused verification on 2026-07-09 for the AI chat and matches
 template-helper slice:
@@ -2064,8 +2087,9 @@ ASP.NET switching proof over adding more skeleton pages.
    when local Laravel is too slow or stateful for one all-in-one command.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
-4. Add page-level tenant/auth/feature-disabled proof beyond route-level and
-   shell-level gating.
+4. Add remaining route-specific compound gate proof beyond the broad route-level
+   module/feature gates, especially maps, organisation jobs, message
+   translation, active-club evidence, and broker workflow gating.
 5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
 6. Refresh generated route matrix files after route changes.
@@ -2085,13 +2109,13 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `994/1000`.
-Green confidence estimate: `985/1000`, because the consolidated code, static
-tests, route matrix, tenant-domain proof, and full default Laravel runtime
-smoke coverage via chunked/bucketed runs are strong, while visual/manual Blade
-parity spot-checks, remaining page-level feature-disabled route responses beyond
-the newly gated default-off feature families, and
-ASP.NET backend switching proof still need final certification.
+Current working estimate at this handoff: `995/1000`.
+Green confidence estimate: `986/1000`, because the consolidated code, static
+tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
+full default Laravel runtime-smoke coverage via chunked/bucketed runs are
+strong, while visual/manual Blade parity spot-checks, remaining route-specific
+compound feature gates, and ASP.NET backend switching proof still need final
+certification.
 
 ## Final Handoff Checklist
 

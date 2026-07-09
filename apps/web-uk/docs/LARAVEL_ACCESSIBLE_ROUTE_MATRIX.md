@@ -81,9 +81,22 @@ feature-gate slice now also returns Laravel-style `403` responses for
 tenant-mounted Marketplace, Courses, Podcasts, Coupons, and Premium paths when
 Laravel tenant bootstrap omits their disabled-by-default flags. A targeted
 Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6531` passed
-all five signed tenant-mounted gated checks with `403`. This is not yet live
-runtime proof of broker workflow, active-club detection, every feature-disabled
-route response, or enabled-tenant depth behavior.
+all five signed tenant-mounted gated checks with `403`. A follow-up core route
+gate slice now also blocks tenant-mounted disabled Dashboard, Feed, Listings,
+Exchanges, Matches, Events, Volunteering, Organisations, Members, Connections,
+Messages, Wallet, Notifications, Achievements, Leaderboard, NEXUS score, Blog,
+AI chat, Federation, Goals, Groups, Group exchanges, Ideation, Jobs, Polls,
+Resources, Reviews, and Search prefixes through the same Laravel-aligned
+tenant bootstrap defaults. Focused Jest first failed on `/acme/accessible/dashboard`
+returning `200`, then passed once `src/middleware/tenant-feature-gates.js`
+handled `moduleKey` and the additional `featureKey` prefixes. A targeted live
+smoke against temporary Web UK `http://127.0.0.1:6535`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed `18/18` checks: enabled
+`/hour-timebank/accessible/dashboard`, `/wallet`, and `/members` body markers
+plus the five default-off `/acme/accessible/*` `403` checks. This is not yet
+live runtime proof of a real Laravel tenant with disabled core modules, broker
+workflow, active-club detection, every route-specific compound gate, or full
+enabled-tenant depth behavior.
 
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
@@ -199,8 +212,13 @@ rendering, matching the custom-domain path's tenant-data availability and
 preventing omitted default-off feature flags from leaking page cards. The first
 route-level gate slice now also blocks tenant-context Marketplace, Courses,
 Podcasts, Coupons, and Premium paths with `403` when their Laravel feature flags
-are absent or false. Route declarations still do not prove every page-level
-feature-disabled response.
+are absent or false. The next route-level gate slice blocks disabled core
+tenant prefixes for Laravel matrix-declared `module:` and `feature:` gates
+across dashboard, feed, listings/exchanges/matches, events, volunteering/
+organisations, members/connections, messages, wallet, notifications,
+gamification, blog, AI chat, federation, goals, groups, group exchanges,
+ideation, jobs, polls, resources, reviews, and search. Route declarations still
+do not prove every route-specific compound feature-disabled response.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.

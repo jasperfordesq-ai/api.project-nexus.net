@@ -858,6 +858,20 @@ the route modules. A targeted Laravel runtime smoke against temporary Web UK
 signed gated checks for `/acme/accessible/marketplace`, `/courses`, `/podcasts`,
 `/coupons`, and `/premium` returning `403`.
 
+The seventy-eighth tenant feature-gate slice extends the same route-level
+middleware to core Laravel matrix gates. Tenant-mounted disabled Dashboard,
+Feed, Listings, Exchanges, Matches, Events, Volunteering, Organisations,
+Members, Connections, Messages, Wallet, Notifications, Achievements,
+Leaderboard, NEXUS score, Blog, AI chat, Federation, Goals, Groups, Group
+exchanges, Ideation, Jobs, Polls, Resources, Reviews, and Search paths now
+return `403` when the corresponding Laravel bootstrap `module:` or `feature:`
+gate is false. Focused Jest proves those disabled core gates. A live Laravel
+smoke against temporary Web UK `http://127.0.0.1:6535` proves the enabled
+`hour-timebank` fixture still renders tenant-mounted Dashboard, Wallet, and
+Members pages, and the existing default-off `/acme/accessible/*` `403` checks
+stay green. A real Laravel tenant fixture with disabled core modules/features
+is still needed for live disabled core-gate certification.
+
 The forty-seventh template-helper source slice extends direct `urlFor()`
 conversion into AI chat and matches pages. `src/views/ai-chat/index.njk`,
 `src/views/matches/index.njk`, and `src/views/matches/board.njk` now route AI
