@@ -216,8 +216,10 @@ Current gaps:
   `parent-domain.test/courses/login`: the regression first failed because Web
   UK treated `courses` as a reserved parent route segment even though Laravel
   does not reserve it, then passed after the set was made an exact source match.
-  A source comparison now reports no Web UK-only and no Laravel-only reserved
-  child segments.
+  `tests/tenant-routing-source.test.js` now compares Web UK's exported
+  reserved child-segment set with Laravel `TenantContext::getReservedPaths()`,
+  and currently reports no Web UK-only or Laravel-only reserved child
+  segments.
 - Shared tenant-root home rendering is covered by Jest and a scoped live
   Laravel smoke against `/hour-timebank/accessible`, checking `Accessible`,
   `Connecting Communities`, and `What you can do` in the rendered page body.
@@ -523,9 +525,9 @@ look like accessible pages locally but are not reserved by Laravel, such as
 The focused regression first failed because `/courses/login` on
 `parent-domain.test` stayed on the parent route path, then passed after Web UK
 called `getTenantBootstrap({ slug: "courses" })` and served the child login page
-under `/courses`. A source comparison between Laravel
-`TenantContext::getReservedPaths()` and Web UK `RESERVED_CHILD_SEGMENTS` now
-reports no differences.
+under `/courses`. `tests/tenant-routing-source.test.js` now automates the
+source comparison between Laravel `TenantContext::getReservedPaths()` and Web
+UK `RESERVED_CHILD_SEGMENTS`, and currently reports no differences.
 
 A scoped Laravel runtime smoke against temporary in-process Web UK
 `http://127.0.0.1:59115` and Laravel `http://127.0.0.1:8088` passed the base
@@ -1019,6 +1021,7 @@ compatibility.
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "premium links"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "premium"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "search route redirects"

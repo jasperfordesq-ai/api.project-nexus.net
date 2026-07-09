@@ -421,7 +421,7 @@ reserved-path slice:
 
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"` first failed because `/classic` on `parent-domain.test` called `getTenantBootstrap({ slug: "classic" })`, then passed after Web UK's reserved child-segment set was aligned with Laravel `TenantContext::getReservedPaths()`.
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-unreserved accessible route names"` first failed because `/courses/login` on `parent-domain.test` stayed on the parent route path instead of probing `getTenantBootstrap({ slug: "courses" })`, then passed after Web UK's reserved child-segment set was made exact rather than over-broad.
-- A source comparison between Laravel `TenantContext::getReservedPaths()` and Web UK `RESERVED_CHILD_SEGMENTS` now reports `Only Web UK: (none)` and `Only Laravel: (none)`.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand` first failed because Web UK did not export the copied reserved set for automated parity checks, then passed after the middleware exposed it. The test compares Laravel `TenantContext::getReservedPaths()` with Web UK `RESERVED_CHILD_SEGMENTS` and currently reports no differences.
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath` passed: 40 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
 - `npm --prefix apps/web-uk run lint` passed.
