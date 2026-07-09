@@ -19,7 +19,7 @@
         {% for article in articles %}
           <div class="govuk-!-margin-bottom-6">
             <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
-              <a href="/knowledge-base/{{ article.id }}" class="govuk-link govuk-link--no-visited-state">
+              <a href="{{ urlFor('/knowledge-base/' + (article.id | string)) }}" class="govuk-link govuk-link--no-visited-state">
                 {{ article.title }}
               </a>
             </h2>
@@ -47,13 +47,13 @@
           {% for i in range(1, totalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
-              href: "/knowledge-base?page=" + i + ("&category=" + category if category else ""),
+              href: urlFor("/knowledge-base?page=" + i + ("&category=" + category if category else "")),
               current: i == pagination.page
             }), paginationItems) %}
           {% endfor %}
           {{ govukPagination({
-            previous: { href: "/knowledge-base?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
-            next: { href: "/knowledge-base?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
+            previous: { href: urlFor("/knowledge-base?page=" + (pagination.page - 1)) } if pagination.page > 1 else undefined,
+            next: { href: urlFor("/knowledge-base?page=" + (pagination.page + 1)) } if pagination.page < totalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

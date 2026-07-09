@@ -627,6 +627,14 @@ source scan for raw knowledge-base local `href`, `action`, and `nextHref`
 strings returns no matches. Focused knowledge-base render tests pass for the
 public index/search and article pages.
 
+A follow-up source cleanup keeps the legacy, currently unmounted
+`src/views/knowledge-base/*.njk` compatibility templates tenant-safe too.
+Those templates now route article, breadcrumb, back-link, and pagination
+targets through `urlFor()`. The focused regression first failed on raw
+`/knowledge-base` links and passed after conversion. This does not add a
+Laravel route family; the Laravel Blade source-of-truth knowledge-base pages
+remain `/kb` and `/kb/{id}`.
+
 The forty-first template-helper source slice extends direct `urlFor()`
 conversion into the signed Laravel `/dashboard` template.
 `src/views/dashboard/index.njk` now routes onboarding, exchange-attention,

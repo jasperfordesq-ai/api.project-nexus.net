@@ -153,6 +153,11 @@ related-article links, with source regression coverage and focused render
 tests. This is source-level helper coverage only; it does not newly certify
 tenant feature gates, localization, runtime persistence, or ASP.NET backend
 compatibility.
+The unmounted legacy `src/views/knowledge-base` compatibility templates now
+also use `urlFor()` for local article, breadcrumb, back-link, and pagination
+targets. This keeps stale source tenant-safe without changing the Laravel route
+matrix, where the source-of-truth knowledge-base paths remain `/kb` and
+`/kb/{param}`.
 Dashboard source templates now also use `urlFor()` for onboarding,
 exchange-attention, create-listing, upcoming-event, quick-link, recent-feed,
 and recent-listing links, with source regression coverage, focused render

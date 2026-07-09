@@ -167,7 +167,10 @@ nearby filter navigation/forms/member links/load-more links, and insights
 profile back links through `urlFor()`.
 The latest knowledge-base source slice now routes the public `/kb` search form,
 article links, load-more link, article back link, and related-article links
-through `urlFor()`.
+through `urlFor()`. A follow-up cleanup also routes the unmounted legacy
+`knowledge-base` compatibility templates through `urlFor()` so stale source
+does not escape tenant/custom-domain mounts; Laravel's real accessible
+knowledge-base route family remains `/kb`.
 The latest dashboard source slice now routes onboarding, exchange-attention,
 create-listing, upcoming-event, quick-link, recent-feed, and recent-listing
 dashboard links through `urlFor()`.

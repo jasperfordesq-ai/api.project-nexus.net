@@ -731,4 +731,21 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/kb/);
   });
+
+  it('keeps legacy knowledge-base compatibility templates behind urlFor()', () => {
+    const templates = [
+      path.join('knowledge-base', 'index.njk'),
+      path.join('knowledge-base', 'detail.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/knowledge-base/);
+      expect(template).not.toContain('href: "/knowledge-base');
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/knowledge-base/);
+  });
 });
