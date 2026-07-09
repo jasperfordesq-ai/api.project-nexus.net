@@ -2634,6 +2634,52 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PodcastEpisodeMultipartUploadV2_AcceptsLaravelReactAudioFormData()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var createShow = await Client.PostAsJsonAsync("/api/v2/podcasts", new
+        {
+            title = $"Laravel React Multipart Podcast {Guid.NewGuid():N}",
+            summary = "Podcast multipart upload contract show.",
+            language = "en",
+            category = "community",
+            visibility = "public"
+        });
+        createShow.StatusCode.Should().Be(HttpStatusCode.Created);
+        var showId = (await createShow.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("Laravel React Uploaded Episode"), "title");
+        form.Add(new StringContent("Uploaded with the React podcasts API FormData path."), "summary");
+        form.Add(new StringContent("180"), "duration_seconds");
+        form.Add(new StringContent("""[{"title":"Intro","starts_at_seconds":0,"url":"https://example.test/intro"}]"""), "chapters");
+        using var audio = new ByteArrayContent(new byte[] { 0x49, 0x44, 0x33, 0x04, 0x00, 0x00 });
+        audio.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
+        form.Add(audio, "audio", "episode.mp3");
+
+        var response = await Client.PostAsync($"/api/v2/podcasts/{showId}/episodes", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var episode = json.GetProperty("data");
+        episode.GetProperty("title").GetString().Should().Be("Laravel React Uploaded Episode");
+        episode.GetProperty("summary").GetString().Should().Be("Uploaded with the React podcasts API FormData path.");
+        episode.GetProperty("audio_url").GetString().Should().Be($"/api/v2/podcasts/media/{TestData.Tenant1.Id}/{episode.GetProperty("id").GetInt32()}/audio");
+        episode.GetProperty("audio_mime").GetString().Should().Be("audio/mpeg");
+        episode.GetProperty("audio_bytes").GetInt64().Should().Be(6);
+        episode.GetProperty("duration_seconds").GetInt32().Should().Be(180);
+        var chapter = episode.GetProperty("chapters").EnumerateArray().Should().ContainSingle().Subject;
+        chapter.GetProperty("title").GetString().Should().Be("Intro");
+        chapter.GetProperty("starts_at_seconds").GetInt32().Should().Be(0);
+        chapter.GetProperty("url").GetString().Should().Be("https://example.test/intro");
+    }
+
+    [Fact]
     public async Task AdminRegistrationPolicyV2_UsesLaravelReactPolicyProviderAndCredentialShape()
     {
         await AuthenticateAsAdminAsync();

@@ -14,6 +14,8 @@ namespace Nexus.Api.Services;
 
 public sealed class PodcastsCompatibilityService
 {
+    public const string UploadedAudioMarker = "__uploaded_audio__";
+
     private const string StateKey = "podcasts_compatibility.state";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -194,7 +196,8 @@ public sealed class PodcastsCompatibilityService
             throw new PodcastsCompatibilityValidationException("Episode title is required");
         }
 
-        if (string.IsNullOrWhiteSpace(request.AudioUrl))
+        var uploadedAudio = string.Equals(request.AudioUrl?.Trim(), UploadedAudioMarker, StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(request.AudioUrl) && !uploadedAudio)
         {
             throw new PodcastsCompatibilityValidationException("Audio URL is required");
         }
@@ -205,6 +208,9 @@ public sealed class PodcastsCompatibilityService
         var now = DateTime.UtcNow;
         var episodeId = NextId(state.Episodes.Select(row => row.Id));
         var slug = UniqueSlug(state.Episodes.Where(row => row.ShowId == showId).Select(row => row.Slug), request.Slug, request.Title);
+        var audioUrl = uploadedAudio
+            ? $"/api/v2/podcasts/media/{tenantId}/{episodeId}/audio"
+            : request.AudioUrl!.Trim();
         var episode = new PodcastEpisodeCompatDto(
             episodeId,
             showId,
@@ -213,7 +219,7 @@ public sealed class PodcastsCompatibilityService
             slug,
             NormalizeBlank(request.Summary),
             NormalizeBlank(request.Description),
-            request.AudioUrl.Trim(),
+            audioUrl,
             NormalizeBlank(request.AudioMime) ?? "audio/mpeg",
             request.AudioBytes,
             "ready",

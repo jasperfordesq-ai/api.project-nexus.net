@@ -3,7 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Globalization;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
@@ -14,6 +16,11 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 public sealed class PodcastsCompatibilityController : ControllerBase
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly PodcastsCompatibilityService _podcasts;
     private readonly TenantContext _tenant;
 
@@ -187,8 +194,15 @@ public sealed class PodcastsCompatibilityController : ControllerBase
     [Authorize]
     [HttpPost("api/podcasts/{showId:int}/episodes")]
     [HttpPost("api/v2/podcasts/{showId:int}/episodes")]
-    public Task<IActionResult> StoreEpisode(int showId, [FromBody] PodcastCompatEpisodeRequest request, CancellationToken ct) =>
-        RunAsync(() => _podcasts.CreateEpisodeAsync(_tenant.GetTenantIdOrThrow(), showId, UserId(), request, ct), StatusCodes.Status201Created);
+    public async Task<IActionResult> StoreEpisode(int showId, CancellationToken ct)
+    {
+        var request = await ReadEpisodeRequestAsync(ct);
+        return await StoreEpisodeRequestAsync(showId, request, ct);
+    }
+
+    [NonAction]
+    public Task<IActionResult> StoreEpisode(int showId, PodcastCompatEpisodeRequest request, CancellationToken ct) =>
+        StoreEpisodeRequestAsync(showId, request, ct);
 
     [Authorize]
     [HttpPut("api/podcasts/{showId:int}/episodes/{episodeId:int}")]
@@ -362,6 +376,108 @@ public sealed class PodcastsCompatibilityController : ControllerBase
     {
         var id = UserId();
         return id <= 0 ? null : id;
+    }
+
+    private Task<IActionResult> StoreEpisodeRequestAsync(int showId, PodcastCompatEpisodeRequest request, CancellationToken ct) =>
+        RunAsync(() => _podcasts.CreateEpisodeAsync(_tenant.GetTenantIdOrThrow(), showId, UserId(), request, ct), StatusCodes.Status201Created);
+
+    private async Task<PodcastCompatEpisodeRequest> ReadEpisodeRequestAsync(CancellationToken ct)
+    {
+        if (Request.HasFormContentType)
+        {
+            return await ReadEpisodeFormRequestAsync(ct);
+        }
+
+        if (Request.ContentLength is 0 or null)
+        {
+            return new PodcastCompatEpisodeRequest();
+        }
+
+        return await JsonSerializer.DeserializeAsync<PodcastCompatEpisodeRequest>(Request.Body, JsonOptions, ct)
+            ?? new PodcastCompatEpisodeRequest();
+    }
+
+    private async Task<PodcastCompatEpisodeRequest> ReadEpisodeFormRequestAsync(CancellationToken ct)
+    {
+        var form = await Request.ReadFormAsync(ct);
+        var audio = form.Files.GetFile("audio") ?? form.Files.GetFile("file");
+        var audioUrl = FormValue(form, "audio_url");
+
+        return new PodcastCompatEpisodeRequest
+        {
+            Title = FormValue(form, "title"),
+            Slug = FormValue(form, "slug"),
+            Summary = FormValue(form, "summary"),
+            Description = FormValue(form, "description"),
+            AudioUrl = audio is null ? audioUrl : PodcastsCompatibilityService.UploadedAudioMarker,
+            AudioMime = audio?.ContentType ?? FormValue(form, "audio_mime"),
+            AudioBytes = audio?.Length ?? ParseLong(FormValue(form, "audio_bytes")),
+            DurationSeconds = ParseInt(FormValue(form, "duration_seconds")),
+            EpisodeNumber = ParseInt(FormValue(form, "episode_number")),
+            SeasonNumber = ParseInt(FormValue(form, "season_number")),
+            Explicit = ParseBool(FormValue(form, "explicit")),
+            EpisodeType = FormValue(form, "episode_type"),
+            Visibility = FormValue(form, "visibility"),
+            Transcript = FormValue(form, "transcript"),
+            TranscriptLanguage = FormValue(form, "transcript_language"),
+            CoverImageUrl = FormValue(form, "cover_image_url"),
+            ScheduledFor = ParseDateTime(FormValue(form, "scheduled_for")),
+            Chapters = ParseChapters(FormValue(form, "chapters"))
+        };
+    }
+
+    private static string? FormValue(IFormCollection form, string key)
+    {
+        var value = form[key].ToString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static int? ParseInt(string? value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+    private static long? ParseLong(string? value) =>
+        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+    private static bool? ParseBool(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (bool.TryParse(value, out var parsed))
+        {
+            return parsed;
+        }
+
+        return value.Trim() switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => null
+        };
+    }
+
+    private static DateTime? ParseDateTime(string? value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
+            ? parsed
+            : null;
+
+    private static IReadOnlyList<PodcastChapterCompatDto>? ParseChapters(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<PodcastChapterCompatDto>>(value, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private static object LaravelError(string code, string message) => new
