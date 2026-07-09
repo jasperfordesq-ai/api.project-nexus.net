@@ -1469,6 +1469,53 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BillingCheckout_PaidPlanReturnsLaravelReactCheckoutSessionEnvelope()
+    {
+        int planId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Paid Laravel React Checkout Plan",
+                Description = "Paid plan that should return a checkout redirect",
+                Price = 19.99m,
+                Currency = "EUR",
+                Features = "[]",
+                IsActive = true,
+                IsPublic = true
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/admin/billing/checkout", new
+        {
+            plan_id = planId,
+            billing_interval = "yearly"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("activated").GetBoolean().Should().BeFalse();
+        data.GetProperty("checkout_url").GetString().Should().Contain("/admin/billing/checkout-return?session_id=");
+        data.GetProperty("session_id").GetString().Should().StartWith("cs_local_");
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var activeSubscription = await verifyDb.UserSubscriptions
+            .IgnoreQueryFilters()
+            .AnyAsync(s => s.TenantId == TestData.Tenant1.Id && s.PlanId == planId && s.Status == SubscriptionStatus.Active);
+        activeSubscription.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BillingPortal_WithoutStripeCustomerReturnsLaravelNoSubscriptionError()
     {
         await AuthenticateAsAdminAsync();

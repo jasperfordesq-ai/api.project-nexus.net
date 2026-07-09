@@ -81,26 +81,28 @@ tenant-scoped pending `MoneyDonation`, returns the React `client_secret` /
 `donation_id` envelope, and returns JSON receipt data for the receipt component.
 
 The Laravel React billing slice now has focused ASP.NET regression coverage for
-`GET /api/v2/billing/plans`, `GET /api/v2/admin/billing/subscription`, the
-free-plan path of `POST /api/v2/admin/billing/checkout`, and
-`GET /api/v2/admin/billing/invoices` as used by
+`GET /api/v2/billing/plans`, `GET /api/v2/admin/billing/subscription`,
+`POST /api/v2/admin/billing/checkout`, and `GET /api/v2/admin/billing/invoices`
+as used by
 `react-frontend/src/admin/api/billingApi.ts`. The .NET compatibility path uses
 tenant-scoped `SubscriptionPlan`/`UserSubscription` rows instead of placeholder
 lists, returns Laravel React `Plan` fields for public plans, returns the
 singular admin `SubscriptionDetails` object with `plan_id`, `plan_name`,
 `plan_tier_level`, `status`, period dates, cancellation flag, and
 `stripe_subscription_id`, activates zero-price plans with the Laravel React
-`{ activated: true, checkout_url: null }` data envelope, and projects
-subscription-backed invoice rows with the React `number`, `date`, `amount`,
-`currency`, `status`, `hosted_invoice_url`, and `invoice_pdf` fields.
+`{ activated: true, checkout_url: null }` data envelope, returns a local
+Laravel-style `checkout_url` / `session_id` envelope for paid plans instead of a
+generic `501`, and projects subscription-backed invoice rows with the React
+`number`, `date`, `amount`, `currency`, `status`, `hosted_invoice_url`, and
+`invoice_pdf` fields.
 `POST /api/v2/admin/billing/portal` now returns Laravel's `NO_SUBSCRIPTION`
 error envelope instead of a generic compatibility write when no Stripe customer
 is available, and `POST /api/v2/admin/billing/upgrade-request` now returns the
 Laravel `data.sent=true` envelope while recording an `AuditLog` entry for the
-tenant request. Paid checkout, real Stripe portal/invoice retrieval/session
-behavior, provider-backed upgrade email delivery, billing-interval storage, and
-exact Laravel `pay_plans` / `tenant_plan_assignments` schema parity remain
-deeper gaps.
+tenant request. Real Stripe paid checkout session creation, real Stripe
+portal/invoice retrieval/session behavior, provider-backed upgrade email
+delivery, billing-interval storage, and exact Laravel `pay_plans` /
+`tenant_plan_assignments` schema parity remain deeper gaps.
 
 The Laravel React admin matching configuration slice now has focused ASP.NET
 regression coverage for `GET /api/v2/admin/matching/config` and

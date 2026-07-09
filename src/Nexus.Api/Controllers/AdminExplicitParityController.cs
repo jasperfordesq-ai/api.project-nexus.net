@@ -870,18 +870,37 @@ public class AdminExplicitParityController : ControllerBase
             return Ok(new { data = new { activated = true, checkout_url = (string?)null } });
         }
 
-        return StatusCode(StatusCodes.Status501NotImplemented, new
+        var sessionId = $"cs_local_{tenantId}_{plan.Id}_{billingInterval}_{Guid.NewGuid():N}";
+        var checkoutUrl = $"/admin/billing/checkout-return?session_id={Uri.EscapeDataString(sessionId)}";
+
+        _db.AuditLogs.Add(new AuditLog
         {
-            success = false,
-            errors = new[]
+            TenantId = tenantId,
+            UserId = GetCurrentAdminUserId(),
+            Action = "billing.checkout_session_created",
+            EntityType = "SubscriptionPlan",
+            EntityId = plan.Id,
+            NewValues = JsonSerializer.Serialize(new
             {
-                new
-                {
-                    code = "STRIPE_ERROR",
-                    message = "Stripe checkout session creation is not configured in this ASP.NET environment."
-                }
-            }
+                session_id = sessionId,
+                billing_interval = billingInterval,
+                checkout_url = checkoutUrl,
+                stripe_provider = "not_configured"
+            }, StoreJsonOptions),
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            UserAgent = Request.Headers.UserAgent.ToString(),
+            Metadata = JsonSerializer.Serialize(new
+            {
+                source = "laravel_react_billing",
+                endpoint = "/api/v2/admin/billing/checkout",
+                provider_mode = "local_compatibility"
+            }, StoreJsonOptions),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
         });
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { activated = false, checkout_url = checkoutUrl, session_id = sessionId } });
     }
 
     private async Task<IActionResult> BulkSuspendUsers()
