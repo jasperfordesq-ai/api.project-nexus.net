@@ -174,7 +174,11 @@ Current gaps:
   appreciation pagination. The latest focused source conversion covers jobs
   templates, including tabs, browse filters, saved/application/owner links,
   alerts, responses, detail actions, employer pages, talent search/profile
-  links, CSV/CV downloads, pagination, and job POST forms.
+  links, CSV/CV downloads, pagination, and job POST forms. The latest
+  fallback-link conversion covers newsletter-unsubscribe and error-page home
+  links, replacing raw `href="/"` with `urlFor('/')`; a full source scan for
+  raw root-relative local Nunjucks `href`, `action`, and `baseUrl` patterns now
+  returns no matches.
 - Custom-domain routing is covered by Jest for host-resolved root requests,
   including Laravel `domain`, `accessible_domain`, master-domain, cluster-domain,
   forwarded-host, and host-scoped platform-stats lookup behavior. Direct live

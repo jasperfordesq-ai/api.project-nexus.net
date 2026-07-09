@@ -184,7 +184,11 @@ The latest public coupon source slice now routes public coupon list/detail
 links through `urlFor()`. The latest parent-domain reserved-segment slice now
 aligns Web UK's child-slug guard exactly with Laravel
 `TenantContext::getReservedPaths()`, so Laravel-unreserved names such as
-`courses` can still resolve as child tenants on a parent custom domain.
+`courses` can still resolve as child tenants on a parent custom domain. The
+latest public fallback-link slice now routes newsletter-unsubscribe and error
+page home links through `urlFor('/')`, matching Laravel's
+`govuk-alpha.home` route usage and keeping fallback links tenant/custom-domain
+aware.
 
 ## Non-Negotiable Rules
 
@@ -322,6 +326,18 @@ reserved-path slice:
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 748 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` against temporary in-process Web UK `http://127.0.0.1:59115` and Laravel `http://127.0.0.1:8088` passed 11 checks, including `timebank.global|/hour-timebank/login=>Sign in` with no legacy `/alpha` or `/accessible` links.
+
+Latest focused verification on 2026-07-09 for the public fallback home-link
+slice:
+
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public fallback home links"` first failed on raw `href="/"` links in `public-info/newsletter-unsubscribe.njk`, then passed after newsletter-unsubscribe and error-page home links were routed through `urlFor('/')`.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "newsletter unsubscribe"` passed: the missing, success, and invalid-token states still render.
+- `rg -n 'href="/|action="/|href:\s*"/|action:\s*"/|baseUrl:\s*"/' apps/web-uk/src/views -g '*.njk'` returned no matches after the slice.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath` passed: 39 tests.
+- `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 749 tests, with the existing Node `DEP0044 util.isArray` deprecation warning. An earlier concurrent full-suite attempt hit a transient `ENOBUFS` while stale 2026-07-08 Web UK Jest processes were still running; after stopping those stale test runners, the sequential rerun passed.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` against temporary in-process Web UK `http://127.0.0.1:63409` and Laravel `http://127.0.0.1:8088` passed 12 checks, including `/newsletter/unsubscribe=>Unsubscribe from emails`.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:

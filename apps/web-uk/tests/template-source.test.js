@@ -605,6 +605,26 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/report-a-problem/);
   });
 
+  it('keeps public fallback home links behind urlFor()', () => {
+    const templates = [
+      path.join('public-info', 'newsletter-unsubscribe.njk'),
+      'error.njk',
+      path.join('errors', '403.njk'),
+      path.join('errors', '404.njk'),
+      path.join('errors', '429.njk'),
+      path.join('errors', '500.njk'),
+      path.join('errors', '503.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toContain('href="/"');
+      expect(template).toContain("urlFor('/')");
+    }
+  });
+
   it('keeps organisation directory and application controls behind urlFor()', () => {
     const templates = [
       'organisation-detail.njk',

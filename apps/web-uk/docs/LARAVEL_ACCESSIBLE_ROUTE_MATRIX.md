@@ -96,6 +96,10 @@ donation forms.
 Public/auth/support source templates now also use `urlFor()` for contact,
 cookie settings, login, two-factor login, forgot-password, reset-password,
 register, and report-a-problem local links/forms.
+Newsletter-unsubscribe and error-page fallback home links now also use
+`urlFor('/')`, matching Laravel's `route('govuk-alpha.home', ...)` pattern for
+the unsubscribe back-home link and keeping fallback navigation tenant/custom-
+domain aware.
 Organisation source templates now also use `urlFor()` for directory, browse,
 detail, jobs, manage, register, volunteering-opportunity, and apply local
 links/forms.
