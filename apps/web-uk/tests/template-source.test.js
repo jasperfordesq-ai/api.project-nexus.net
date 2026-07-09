@@ -14,6 +14,27 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toContain('urlFor(');
   });
 
+  it('keeps event index and form controls behind urlFor()', () => {
+    const templates = [
+      path.join('events', 'index.njk'),
+      path.join('events', 'new.njk'),
+      path.join('events', 'edit.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:events|groups)/);
+      expect(template).not.toMatch(/action="\/events/);
+      expect(template).not.toContain('href: "/events');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/events/);
+    expect(source).toMatch(/urlFor\(["']\/groups/);
+  });
+
   it('keeps account hub links and logout form behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'account.njk'),

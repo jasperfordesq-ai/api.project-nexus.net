@@ -27,7 +27,7 @@
         <div class="app-page-header__actions">
           {{ govukButton({
             text: "Create an event",
-            href: "/events/new",
+            href: urlFor("/events/new"),
             classes: "govuk-!-margin-bottom-0"
           }) }}
         </div>
@@ -36,7 +36,7 @@
       <p class="govuk-body-l">Discover and join community events.</p>
 
       {# Search and filter form #}
-      <form action="/events" method="get" class="govuk-!-margin-bottom-6">
+      <form action="{{ urlFor('/events') }}" method="get" class="govuk-!-margin-bottom-6">
         <div class="app-search-bar">
           {{ govukInput({
             id: "search",
@@ -84,7 +84,7 @@
               {% endif %}
               <div class="app-card__header">
                 <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
-                  <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">
+                  <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link govuk-link--no-visited-state">
                     {{ event.title }}
                   </a>
                 </h2>
@@ -113,7 +113,7 @@
                 {% if event.group %}
                   <p class="govuk-body-s govuk-!-margin-bottom-1">
                     <strong>Group:</strong>
-                    <a href="/groups/{{ event.group.id }}" class="govuk-link">{{ event.group.name }}</a>
+                    <a href="{{ urlFor('/groups/' + (event.group.id | string)) }}" class="govuk-link">{{ event.group.name }}</a>
                   </p>
                 {% endif %}
 
@@ -141,19 +141,19 @@
         {% if totalPages > 1 %}
           {% set paginationItems = [] %}
           {% for i in range(1, totalPages + 1) %}
-            {% set paginationItems = (paginationItems.push({
-              number: i,
-              href: "/events?page=" + i + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""),
-              current: i == pagination.page
-            }), paginationItems) %}
+              {% set paginationItems = (paginationItems.push({
+                number: i,
+                href: urlFor("/events?page=" + i + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")),
+                current: i == pagination.page
+              }), paginationItems) %}
           {% endfor %}
 
           {{ govukPagination({
             previous: {
-              href: "/events?page=" + (pagination.page - 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")
+              href: urlFor("/events?page=" + (pagination.page - 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""))
             } if pagination.page > 1 else undefined,
             next: {
-              href: "/events?page=" + (pagination.page + 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")
+              href: urlFor("/events?page=" + (pagination.page + 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""))
             } if pagination.page < totalPages else undefined,
             items: paginationItems
           }) }}
@@ -166,7 +166,7 @@
             message: "No events match \"" + searchQuery + "\". Try a different search term.",
             action: {
               text: "Clear search",
-              href: "/events"
+              href: urlFor("/events")
             }
           } %}
         {% else %}
@@ -176,7 +176,7 @@
             message: "Be the first to organise an event for the community.",
             action: {
               text: "Create an event",
-              href: "/events/new",
+              href: urlFor("/events/new"),
               isButton: true
             }
           } %}

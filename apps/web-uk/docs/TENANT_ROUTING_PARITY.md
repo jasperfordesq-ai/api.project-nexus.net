@@ -419,6 +419,20 @@ Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6463` and
 Laravel `http://127.0.0.1:8088` passed the base API/health, cookie, login,
 account, and logout checks plus signed `/listings` containing `Create listing`.
 
+The twenty-ninth template-helper source slice extends direct `urlFor()`
+conversion into event index and create/edit form pages.
+`src/views/events/index.njk`, `src/views/events/new.njk`, and
+`src/views/events/edit.njk` now route the event list create CTA, search form,
+event and group links, pagination, empty-state actions, create/edit form
+actions, breadcrumbs, back links, and cancel links through `urlFor()`. The
+source-level regression first failed on raw `/events` and `/groups`
+links/actions, then passed after conversion; a source scan for event
+index/form raw local `href`/`action` strings returns no matches. A focused
+exported Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6464` and Laravel `http://127.0.0.1:8088` passed the base
+API/health, cookie, login, account, and logout checks plus `/events`
+containing `Events` and `/events/new` containing `Create an event`.
+
 Verification command:
 
 ```powershell
@@ -426,6 +440,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "course"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "listing index"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "signed listing index|owner listing delete"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "event index"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "event"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "blog index"

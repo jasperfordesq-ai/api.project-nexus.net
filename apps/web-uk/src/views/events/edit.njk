@@ -8,8 +8,8 @@
 {% block beforeContent %}
   {{ super() }}
   {% set breadcrumbs = [
-    { text: "Events", href: "/events" },
-    { text: event.title, href: "/events/" + event.id },
+    { text: "Events", href: urlFor("/events") },
+    { text: event.title, href: urlFor("/events/" + (event.id | string)) },
     { text: "Edit" }
   ] %}
   {% include "partials/breadcrumbs.njk" %}
@@ -28,7 +28,7 @@
 
       <h1 class="govuk-heading-xl">Edit event</h1>
 
-      <form action="/events/{{ event.id }}/edit" method="post" enctype="multipart/form-data" novalidate data-validate-form>
+      <form action="{{ urlFor('/events/' + (event.id | string) + '/edit') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
@@ -232,7 +232,7 @@
           {{ govukButton({
             text: "Save changes"
           }) }}
-          <a href="/events/{{ event.id }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">Cancel</a>
         </div>
       </form>
 

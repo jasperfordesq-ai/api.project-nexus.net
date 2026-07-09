@@ -13,7 +13,7 @@
   {{ super() }}
   {{ govukBackLink({
     text: "Back",
-    href: "/events"
+    href: urlFor("/events")
   }) }}
 {% endblock %}
 
@@ -34,7 +34,7 @@
         <div class="govuk-inset-text">{{ setupErrorMessage }}</div>
       {% endif %}
 
-      <form action="/events/new" method="post" enctype="multipart/form-data" novalidate data-validate-form>
+      <form action="{{ urlFor('/events/new') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
@@ -329,7 +329,7 @@
           {{ govukButton({
             text: "Create event"
           }) }}
-          <a href="/events" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/events') }}" class="govuk-link">Cancel</a>
         </div>
       </form>
 
