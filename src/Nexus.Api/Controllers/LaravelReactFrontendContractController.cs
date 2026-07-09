@@ -5,6 +5,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -140,7 +141,7 @@ public class LaravelReactFrontendContractController : ControllerBase
 
         await LogPartnerAnalyticsAccessAsync(subscription, $"/partner-analytics/me/reports/{id}/download");
         var filename = $"regional-analytics-{report.PeriodStart:yyyy-MM-dd}.pdf";
-        return File(Encoding.UTF8.GetBytes("Regional analytics report placeholder"), "application/pdf", filename);
+        return File(BuildRegionalAnalyticsPdf(report, subscription), "application/pdf", filename);
     }
 
     [HttpGet("api/v2/marketplace/sellers/{sellerId:int}/shipping-options")]
@@ -301,6 +302,153 @@ public class LaravelReactFrontendContractController : ControllerBase
     private static bool IsActiveSubscription(RegionalAnalyticsSubscription subscription)
         => subscription.Status.Equals("active", StringComparison.OrdinalIgnoreCase)
             || subscription.Status.Equals("trialing", StringComparison.OrdinalIgnoreCase);
+
+    private static byte[] BuildRegionalAnalyticsPdf(RegionalAnalyticsReport report, RegionalAnalyticsSubscription subscription)
+    {
+        var lines = RenderRegionalAnalyticsReportLines(report, subscription);
+        var textOps = string.Join("", lines.Select(line => $"({EscapePdfText(line)}) Tj T* \n"));
+        var stream = $"BT\n/F1 9 Tf\n50 760 Td\n12 TL\n{textOps}ET";
+        var streamLength = Encoding.UTF8.GetByteCount(stream);
+
+        var objects = new Dictionary<int, string>
+        {
+            [1] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj",
+            [2] = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj",
+            [3] = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj",
+            [4] = $"4 0 obj\n<< /Length {streamLength} >>\nstream\n{stream}\nendstream\nendobj",
+            [5] = "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj"
+        };
+
+        var pdf = new StringBuilder("%PDF-1.4\n");
+        var offsets = new Dictionary<int, int>();
+        foreach (var (number, body) in objects)
+        {
+            offsets[number] = Encoding.UTF8.GetByteCount(pdf.ToString());
+            pdf.Append(body).Append('\n');
+        }
+
+        var xrefOffset = Encoding.UTF8.GetByteCount(pdf.ToString());
+        pdf.Append("xref\n0 ").Append(objects.Count + 1).Append('\n');
+        pdf.Append("0000000000 65535 f \n");
+        for (var i = 1; i <= objects.Count; i++)
+        {
+            pdf.AppendFormat("{0:0000000000} 00000 n \n", offsets[i]);
+        }
+
+        pdf.Append("trailer\n<< /Size ").Append(objects.Count + 1).Append(" /Root 1 0 R >>\n");
+        pdf.Append("startxref\n").Append(xrefOffset).Append("\n%%EOF");
+        return Encoding.UTF8.GetBytes(pdf.ToString());
+    }
+
+    private static List<string> RenderRegionalAnalyticsReportLines(RegionalAnalyticsReport report, RegionalAnalyticsSubscription subscription)
+    {
+        var lines = new List<string>
+        {
+            "PROJECT NEXUS - REGIONAL ANALYTICS REPORT",
+            $"Partner: {SanitizePdfText(subscription.PartnerName)}",
+            $"Plan: {SanitizePdfText(subscription.PlanTier)}",
+            $"Report type: {SanitizePdfText(report.ReportType)}",
+            $"Period: {report.PeriodStart:yyyy-MM-dd} to {report.PeriodEnd:yyyy-MM-dd}",
+            $"Generated: {(report.GeneratedAt ?? report.CreatedAt):O}",
+            new string('=', 70),
+            ""
+        };
+
+        if (string.IsNullOrWhiteSpace(report.PayloadJson))
+        {
+            lines.Add("Summary");
+            lines.Add("  Report metadata is ready for partner download.");
+            lines.Add("  Detailed bucketed metrics were not attached to this compatibility row.");
+            lines.Add("");
+        }
+        else
+        {
+            AddPayloadSummaryLines(lines, report.PayloadJson);
+        }
+
+        lines.Add(new string('-', 70));
+        lines.Add("PRIVACY: All values in regional analytics reports are aggregate or bucketed.");
+        lines.Add("No individual user data appears in this report.");
+        return lines;
+    }
+
+    private static void AddPayloadSummaryLines(List<string> lines, string payloadJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(payloadJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                lines.Add("Payload summary: non-object payload attached.");
+                lines.Add("");
+                return;
+            }
+
+            foreach (var section in document.RootElement.EnumerateObject().Take(8))
+            {
+                lines.Add(SanitizePdfText(section.Name));
+                AddJsonValueLines(lines, section.Value, 1);
+                lines.Add("");
+            }
+        }
+        catch (JsonException)
+        {
+            lines.Add("Payload summary could not be parsed.");
+            lines.Add("");
+        }
+    }
+
+    private static void AddJsonValueLines(List<string> lines, JsonElement value, int depth)
+    {
+        var indent = new string(' ', depth * 2);
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in value.EnumerateObject().Take(12))
+                {
+                    if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                    {
+                        lines.Add($"{indent}{SanitizePdfText(property.Name)}:");
+                        AddJsonValueLines(lines, property.Value, depth + 1);
+                    }
+                    else
+                    {
+                        lines.Add($"{indent}{SanitizePdfText(property.Name)}: {SanitizePdfText(JsonScalarText(property.Value))}");
+                    }
+                }
+                break;
+            case JsonValueKind.Array:
+                lines.Add($"{indent}items: {value.GetArrayLength()}");
+                foreach (var item in value.EnumerateArray().Take(5))
+                {
+                    AddJsonValueLines(lines, item, depth + 1);
+                }
+                break;
+            default:
+                lines.Add($"{indent}{SanitizePdfText(JsonScalarText(value))}");
+                break;
+        }
+    }
+
+    private static string JsonScalarText(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? string.Empty,
+        JsonValueKind.Number => value.GetRawText(),
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        JsonValueKind.Null => "null",
+        _ => value.GetRawText()
+    };
+
+    private static string EscapePdfText(string value)
+        => SanitizePdfText(value).Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("(", "\\(", StringComparison.Ordinal)
+            .Replace(")", "\\)", StringComparison.Ordinal);
+
+    private static string SanitizePdfText(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? "-"
+            : new string(value.Select(ch => ch is >= ' ' and <= '~' ? ch : '-').ToArray());
 
     private static string NormalizePartnerAnalyticsPeriod(string? period)
         => period is "last_90d" or "last_year" or "last_12m" ? period : "last_30d";

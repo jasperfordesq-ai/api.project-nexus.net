@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -56,7 +57,18 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         reports.StatusCode.Should().Be(HttpStatusCode.OK);
         var reportsJson = await reports.Content.ReadFromJsonAsync<JsonElement>();
         reportsJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        reportsJson.GetProperty("data").GetProperty("reports").GetArrayLength().Should().Be(1);
+        var report = reportsJson.GetProperty("data").GetProperty("reports").EnumerateArray().Should().ContainSingle().Subject;
+
+        var download = await Client.GetAsync($"/api/partner-analytics/me/reports/{report.GetProperty("id").GetInt64()}/download?token={token}");
+        download.StatusCode.Should().Be(HttpStatusCode.OK);
+        download.Content.Headers.ContentType?.MediaType.Should().Be("application/pdf");
+        download.Content.Headers.ContentDisposition?.FileName.Should().Contain($"regional-analytics-{report.GetProperty("period_start").GetString()}");
+        var pdf = await download.Content.ReadAsByteArrayAsync();
+        pdf.Length.Should().BeGreaterThan(100);
+        Encoding.UTF8.GetString(pdf[..8]).Should().Be("%PDF-1.4");
+        var pdfText = Encoding.UTF8.GetString(pdf);
+        pdfText.Should().Contain("PROJECT NEXUS - REGIONAL ANALYTICS REPORT");
+        pdfText.Should().NotContain("Regional analytics report placeholder");
     }
 
     [Fact]
