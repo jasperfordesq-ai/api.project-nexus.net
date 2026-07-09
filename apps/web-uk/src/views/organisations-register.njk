@@ -22,7 +22,7 @@
 {% endmacro %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/organisations/browse">Back to organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/organisations/browse') }}">Back to organisations</a>
 
   <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Register a volunteer organisation</h1>
@@ -42,7 +42,7 @@
 
   <p class="govuk-body-l">List your organisation so volunteers can find your opportunities. Organisations are reviewed by an administrator before they appear publicly.</p>
 
-  <form method="post" action="/organisations/register">
+  <form method="post" action="{{ urlFor('/organisations/register') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-grid-row">
@@ -101,7 +101,7 @@
 
         <div class="govuk-button-group">
           <button class="govuk-button" data-module="govuk-button" type="submit">Register organisation</button>
-          <a class="govuk-link" href="/organisations/browse">Cancel</a>
+          <a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">Cancel</a>
         </div>
 
         <div class="govuk-inset-text">

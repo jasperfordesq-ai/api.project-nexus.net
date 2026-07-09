@@ -366,4 +366,30 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/contact/);
     expect(source).toMatch(/urlFor\(["']\/report-a-problem/);
   });
+
+  it('keeps organisation directory and application controls behind urlFor()', () => {
+    const templates = [
+      'organisation-detail.njk',
+      'organisations.njk',
+      'organisations-apply.njk',
+      'organisations-browse.njk',
+      'organisations-jobs.njk',
+      'organisations-manage.njk',
+      'organisations-register.njk'
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:organisations|volunteering|jobs|login)/);
+      expect(template).not.toMatch(/action="\/(?:organisations|volunteering)/);
+      expect(template).not.toContain('href="{{ loadMoreHref }}"');
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/organisations/);
+    expect(source).toMatch(/urlFor\(["']\/volunteering/);
+    expect(source).toMatch(/urlFor\(["']\/jobs/);
+  });
 });

@@ -11,7 +11,7 @@
 {% set reviews = orgReviews or [] %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/organisations">Organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/organisations') }}">Organisations</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">{{ organisationName }}</h1>
@@ -45,7 +45,7 @@
 
   {% if organisation.id %}
     <p class="govuk-body">
-      <a class="govuk-link" href="/organisations/{{ organisation.id }}/jobs">View job openings</a>
+      <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string) + '/jobs') }}">View job openings</a>
     </p>
   {% endif %}
 
@@ -88,7 +88,7 @@
         {% if opportunity.id %}
           <article class="nexus-alpha-card">
             <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
-              <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">{{ opportunity.title or "Organisations" }}</a>
+              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">{{ opportunity.title or "Organisations" }}</a>
             </h3>
 
             {% if opportunity.is_remote %}
@@ -100,8 +100,8 @@
             {% endif %}
 
             <div class="nexus-alpha-actions">
-              <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">View opportunity</a>
-              <a class="govuk-link" href="/organisations/opportunities/{{ opportunity.id }}/apply">Apply to volunteer</a>
+              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">View opportunity</a>
+              <a class="govuk-link" href="{{ urlFor('/organisations/opportunities/' + (opportunity.id | string) + '/apply') }}">Apply to volunteer</a>
             </div>
           </article>
         {% endif %}

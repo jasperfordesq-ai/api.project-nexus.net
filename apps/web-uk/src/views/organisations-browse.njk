@@ -25,12 +25,12 @@
 
   <div class="govuk-button-group">
     {% if manageableCount > 0 %}
-      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/organisations/manage">Manage my organisations</a>
+      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/organisations/manage') }}">Manage my organisations</a>
     {% endif %}
-    <a class="govuk-button" data-module="govuk-button" href="/organisations/register">Register an organisation</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">Register an organisation</a>
   </div>
 
-  <form method="get" action="/organisations/browse" class="govuk-!-margin-bottom-7">
+  <form method="get" action="{{ urlFor('/organisations/browse') }}" class="govuk-!-margin-bottom-7">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">Search organisations</label>
       <div id="q-hint" class="govuk-hint">Search by name or description.</div>
@@ -52,7 +52,7 @@
       {% for organisation in organisations %}
         <article class="nexus-alpha-card">
           <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="/organisations/{{ organisation.id }}">{{ organisation.name }}</a>
+            <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisation.name }}</a>
           </h2>
 
           {% if organisation.summary %}
@@ -83,14 +83,14 @@
             {% endif %}
           </ul>
 
-          <a class="govuk-link" href="/organisations/{{ organisation.id }}">View organisation</a>
+          <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">View organisation</a>
         </article>
       {% endfor %}
     </div>
 
     {% if hasMore and loadMoreHref %}
       <p class="govuk-body">
-        <a class="govuk-link" href="{{ loadMoreHref }}">Load more organisations</a>
+        <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more organisations</a>
       </p>
     {% endif %}
   {% else %}

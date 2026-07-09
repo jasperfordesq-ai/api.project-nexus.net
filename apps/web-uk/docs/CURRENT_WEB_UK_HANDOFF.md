@@ -113,6 +113,9 @@ breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
 donation forms through `urlFor()`. The latest public/auth/support source slice
 now routes contact, cookie settings, login, two-factor login, forgot-password,
 reset-password, register, and report-a-problem links/forms through `urlFor()`.
+The latest organisations source slice now routes organisation directory,
+browse, detail, jobs, manage, register, and opportunity-apply links/forms
+through `urlFor()`.
 
 ## Non-Negotiable Rules
 
@@ -185,6 +188,9 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `722/722` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+- `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"` first failed on raw `/organisations` and `/volunteering` links/actions, then passed after the template conversion.
+- `Select-String` over `organisation-detail.njk`, `organisations.njk`, `organisations-apply.njk`, `organisations-browse.njk`, `organisations-jobs.njk`, `organisations-manage.njk`, and `organisations-register.njk` for raw local organisation/volunteering/job `href` and `action` targets returned no matches.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"` passed `6/6` selected tests.
 
 Latest focused host-domain network landing slice: Web UK now treats Laravel
 `domain` matches as custom domain roots alongside `accessible_domain`. Root `/`
@@ -240,6 +246,12 @@ delete-account controls, and settings form actions through `urlFor()`.
 route group/listing/member detail breadcrumbs and actions, report return
 targets, listing report links, member connection controls, and member review
 actions through `urlFor()`.
+`src/views/organisation-detail.njk`, `organisations.njk`,
+`organisations-apply.njk`, `organisations-browse.njk`,
+`organisations-jobs.njk`, `organisations-manage.njk`, and
+`organisations-register.njk` now route organisation directory, browse, detail,
+jobs, manage, register, volunteer opportunity, and apply controls through
+`urlFor()`.
 `src/views/marketplace/offers.njk` and `src/views/marketplace/manage.njk` now
 route offer tabs, dynamic listing links, accept/decline/withdraw forms,
 my-listings tabs, create/view/edit links, and renew/delete forms through

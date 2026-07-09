@@ -376,9 +376,22 @@ register, legal-cookie-policy, and report-a-problem links/forms through
 `/login` controls, then passed after conversion; a targeted source scan for
 public/auth/support raw `href`/`action` strings returns no matches.
 
+The twenty-fifth template-helper source slice extends direct `urlFor()`
+conversion into organisation directory and application pages.
+`organisation-detail.njk`, `organisations.njk`, `organisations-apply.njk`,
+`organisations-browse.njk`, `organisations-jobs.njk`,
+`organisations-manage.njk`, and `organisations-register.njk` now route local
+organisation, volunteering opportunity, job, manage, register, load-more, and
+apply links/forms through `urlFor()`. The source-level regression first failed
+on raw `/organisations` and `/volunteering` links/actions, then passed after
+conversion; a source scan for organisation-local raw `href`/`action` strings
+returns no matches.
+
 Verification command:
 
 ```powershell
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"
+npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "wallet links"

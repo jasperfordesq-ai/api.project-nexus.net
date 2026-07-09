@@ -11,9 +11,9 @@
 
 {% block mainContent %}
   {% if organisationId %}
-    <a class="govuk-back-link" href="/organisations/{{ organisationId }}">{{ organisationName or "Back to organisations" }}</a>
+    <a class="govuk-back-link" href="{{ urlFor('/organisations/' + (organisationId | string)) }}">{{ organisationName or "Back to organisations" }}</a>
   {% else %}
-    <a class="govuk-back-link" href="/volunteering/opportunities/{{ opportunityId }}">View the opportunity</a>
+    <a class="govuk-back-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">View the opportunity</a>
   {% endif %}
 
   <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
@@ -23,7 +23,7 @@
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">Opportunity</dt>
       <dd class="govuk-summary-list__value">
-        <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">{{ opportunityTitle }}</a>
+        <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">{{ opportunityTitle }}</a>
       </dd>
     </div>
     {% if organisationName %}
@@ -47,10 +47,10 @@
     <div class="govuk-inset-text">
       <h2 class="govuk-heading-m govuk-!-margin-bottom-2">You have already applied</h2>
       <p class="govuk-body">You have an application for this opportunity. The organiser will be in touch.</p>
-      <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">View the opportunity</a>
+      <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">View the opportunity</a>
     </div>
   {% else %}
-    <form method="post" action="/volunteering/opportunities/{{ opportunityId }}/apply">
+    <form method="post" action="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string) + '/apply') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group">
         <label class="govuk-label" for="message">Message to the organiser (optional)</label>
@@ -64,7 +64,7 @@
 
       <div class="govuk-button-group">
         <button class="govuk-button" data-module="govuk-button">Send application</button>
-        <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">Cancel</a>
+        <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">Cancel</a>
       </div>
     </form>
   {% endif %}

@@ -21175,7 +21175,7 @@ describe('shared accessible frontend shell', () => {
     expect(matrix).toContain('Laravel `govuk-alpha*`');
     expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` |');
     expect(matrix).toContain('`/organisations` POST and `/organisations/register` POST validate required fields/terms');
-    expect(matrix).toContain('tenant/feature/runtime gates not certified');
+    expect(matrix).toContain('Auth enforcement depth, volunteering/job feature gates, tenant-prefixed routes, runtime registration persistence');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');

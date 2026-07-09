@@ -12,9 +12,9 @@
 
   <nav class="govuk-!-margin-bottom-6" aria-label="Organisations">
     <ul class="govuk-list govuk-list--spaced">
-      <li><a class="govuk-link" href="/organisations/browse">Browse all organisations</a></li>
-      <li><a class="govuk-link" href="/organisations/register">Register an organisation</a></li>
-      <li><a class="govuk-link" href="/organisations/manage">Manage my organisations</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">Browse all organisations</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/organisations/register') }}">Register an organisation</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/organisations/manage') }}">Manage my organisations</a></li>
     </ul>
   </nav>
 
@@ -51,7 +51,7 @@
     </div>
   {% endif %}
 
-  <form method="get" action="/organisations" class="govuk-!-margin-bottom-7">
+  <form method="get" action="{{ urlFor('/organisations') }}" class="govuk-!-margin-bottom-7">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">Find an organisation</label>
       <div id="q-hint" class="govuk-hint">Search by name.</div>
@@ -75,7 +75,7 @@
       {% for organisation in organisations %}
         <article class="nexus-alpha-card">
           <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="/organisations/{{ organisation.id }}">{{ organisation.name }}</a>
+            <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisation.name }}</a>
           </h2>
           {% if organisation.description %}
             <p class="govuk-body govuk-!-margin-bottom-0">{{ organisation.description }}</p>
@@ -96,7 +96,7 @@
     timebanking tools without creating an organisation.
   </p>
 
-  <form method="post" action="/organisations" novalidate>
+  <form method="post" action="{{ urlFor('/organisations') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
