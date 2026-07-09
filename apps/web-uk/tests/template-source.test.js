@@ -75,6 +75,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toMatch(/urlFor\(["']\/profile/);
   });
 
+  it('keeps Explore live-content links behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'explore.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/(?:listings|events)/);
+    expect(template).not.toContain('href="{{ listing.href }}"');
+    expect(template).not.toContain('href="{{ event.href }}"');
+    expect(template).toMatch(/urlFor\((?:listing|event)\.href\)/);
+    expect(template).toMatch(/urlFor\(["']\/listings/);
+    expect(template).toMatch(/urlFor\(["']\/events/);
+  });
+
   it('keeps achievements navigation and forms behind urlFor()', () => {
     const templates = [
       'index.njk',

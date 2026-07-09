@@ -84,18 +84,22 @@ const exploreLinks = [
     title: 'Exchanges',
     description: 'See your exchange requests, agreements, and time-credit activity.',
     href: '/exchanges',
+    moduleKey: 'listings',
+    workflowKey: 'exchange_workflow',
     status: 'placeholder'
   },
   {
     title: 'AI assistant',
     description: 'Get accessible guidance and help with community tasks when enabled.',
     href: '/chat',
+    featureKey: 'ai_chat',
     status: 'placeholder'
   },
   {
     title: 'Polls',
     description: 'Vote in community polls and see active questions.',
-    href: '/polls'
+    href: '/polls',
+    featureKey: 'polls'
   },
   {
     title: 'Search',
@@ -105,12 +109,14 @@ const exploreLinks = [
   {
     title: 'Groups',
     description: 'Find groups, join conversations, and take part in shared activities.',
-    href: '/groups'
+    href: '/groups',
+    featureKey: 'groups'
   },
   {
     title: 'Goals',
     description: 'Track goals, progress, and community achievements.',
-    href: '/goals'
+    href: '/goals',
+    featureKey: 'goals'
   },
   {
     title: 'Skills',
@@ -122,70 +128,82 @@ const exploreLinks = [
     title: 'Organisations',
     description: 'Find community organisations and volunteering groups.',
     href: '/organisations',
+    featureKey: 'volunteering',
     status: 'placeholder'
   },
   {
     title: 'Blog',
     description: 'Read community news, stories, and updates.',
-    href: '/blog'
+    href: '/blog',
+    featureKey: 'blog'
   },
   {
     title: 'Resources',
     description: 'Browse shared documents, links, and community resources.',
     href: '/resources',
+    featureKey: 'resources',
     status: 'placeholder'
   },
   {
     title: 'Marketplace',
     description: 'Browse marketplace offers, requests, courses, and local goods.',
     href: '/marketplace',
+    featureKey: 'marketplace',
     status: 'placeholder'
   },
   {
     title: 'Jobs',
     description: 'Browse community opportunities and job vacancies when enabled.',
-    href: '/jobs'
+    href: '/jobs',
+    featureKey: 'job_vacancies'
   },
   {
     title: 'Courses',
     description: 'Find learning opportunities and community courses.',
     href: '/courses',
+    featureKey: 'courses',
     status: 'placeholder'
   },
   {
     title: 'Podcasts',
     description: 'Listen to community audio and podcast episodes.',
     href: '/podcasts',
+    featureKey: 'podcasts',
     status: 'placeholder'
   },
   {
     title: 'Coupons',
     description: 'Find merchant coupons and local offers.',
     href: '/coupons',
+    featureKey: 'merchant_coupons',
     status: 'placeholder'
   },
   {
     title: 'Premium',
     description: 'Manage member premium features when enabled.',
     href: '/premium',
+    featureKey: 'member_premium',
     status: 'placeholder'
   },
   {
     title: 'Ideation',
     description: 'Join challenges and contribute ideas for the community.',
     href: '/ideation',
+    featureKey: 'ideation_challenges',
     status: 'placeholder'
   },
   {
     title: 'Federation',
     description: 'Explore cross-community federation features.',
     href: '/federation',
+    featureKey: 'federation',
     status: 'placeholder'
   },
   {
     title: 'Clubs',
     description: 'Browse club organisations when available in this community.',
     href: '/clubs',
+    tenantKey: 'has_clubs',
     status: 'placeholder'
   },
 ];
@@ -219,6 +237,8 @@ function flagEnabled(tenant = {}, key, source, fallback = true) {
 }
 
 function itemEnabledForTenant(item, tenant = {}) {
+  if (item.tenantKey && !tenant[item.tenantKey]) return false;
+  if (item.workflowKey && !workflowEnabled(tenant, item.workflowKey)) return false;
   if (item.moduleKey) return flagEnabled(tenant, item.moduleKey, 'modules', true);
   if (item.featureKey) return flagEnabled(tenant, item.featureKey, 'features', true);
   return true;
@@ -243,6 +263,18 @@ function buildFooterColumns({ tenant = {} } = {}) {
       };
     })
     .filter((column) => column.key !== 'platform' || column.links.length > 0);
+}
+
+function workflowEnabled(tenant = {}, key) {
+  if (Object.prototype.hasOwnProperty.call(tenant, key)) return Boolean(tenant[key]);
+  const brokerControls = tenant.config?.broker_controls || tenant.broker_controls || {};
+  const workflow = brokerControls[key] || brokerControls.exchange_workflow || {};
+  if (Object.prototype.hasOwnProperty.call(workflow, 'enabled')) return Boolean(workflow.enabled);
+  return false;
+}
+
+function buildExploreLinks({ tenant = {} } = {}) {
+  return exploreLinks.filter((item) => itemEnabledForTenant(item, tenant));
 }
 
 function prefixLocalPath(pathname, prefix = '') {
@@ -307,7 +339,7 @@ function buildShellLocals(req, isAuthenticated) {
     alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated, tenant: routedTenant }), routePrefix),
     alphaActiveNav: activeNavForPath(req.path),
     alphaFooterColumns: prefixFooterColumns(buildFooterColumns({ tenant: routedTenant }), routePrefix),
-    alphaExploreLinks: exploreLinks,
+    alphaExploreLinks: prefixNavItems(buildExploreLinks({ tenant: routedTenant }), routePrefix),
     currentPath,
     currentUrl,
     feedbackUrl,
@@ -322,6 +354,7 @@ function buildShellLocals(req, isAuthenticated) {
 module.exports = {
   activeNavForPath,
   buildFooterColumns,
+  buildExploreLinks,
   buildLanguageQueryParams,
   buildNavItems,
   buildShellLocals,

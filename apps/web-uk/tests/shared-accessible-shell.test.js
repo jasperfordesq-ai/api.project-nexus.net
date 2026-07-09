@@ -712,7 +712,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getExplore).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('Explore');
     expect(response.text).toContain('class="nexus-alpha-card-list');
-    expect(response.text).toContain('Exchanges');
+    expect(response.text).not.toContain('href="/exchanges"');
     expect(response.text).toContain('AI assistant');
     expect(response.text).toContain('Polls');
     expect(response.text).toContain('Marketplace');

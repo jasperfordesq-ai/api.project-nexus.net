@@ -224,6 +224,10 @@ Follow the Laravel Blade accessible frontend for:
 - tenant bootstrap module/feature gates for shared service navigation and the
   footer Platform column, matching Laravel Blade's Dashboard, Feed, Listings,
   Members, Events, Volunteering, and Blog visibility rules;
+- tenant bootstrap module/feature gates for Explore cards, matching Laravel
+  Blade candidate semantics: Search and Skills remain card-visible, Exchanges
+  require listings plus broker exchange workflow config, and Clubs require
+  explicit active-club evidence before being shown;
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.

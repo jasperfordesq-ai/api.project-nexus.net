@@ -376,6 +376,17 @@ gating slice:
   hub feature cards, Explore card gating, runtime Laravel tenant fixtures, or
   ASP.NET backend compatibility.
 
+Latest focused verification on 2026-07-09 for the Explore tenant-gated card and
+live-content link slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/accessible-shell.test.js -t "Explore card feature gates"` first failed because Web UK removed the Search card when `features.search` was false, while Laravel Blade keeps the Explore Search card visible. It passed after removing that card-level feature gate.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/accessible-shell.test.js` passed: 4 tests.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "Explore live-content|search forms|event index"` passed: 3 selected tests.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js --runInBand -t "Explore hub"` passed: 1 selected test.
+- A scoped `npm --prefix apps/web-uk run smoke:laravel` with only `/explore=>Explore` in `SMOKE_BODY_TEXT_PAGE_PATHS` and large route lists disabled passed 11/11 checks against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+- The slice pins Blade Explore card gates from tenant bootstrap: Exchanges require `listings` plus broker `exchange_workflow`, AI assistant/Polls/Groups/Goals/Organisations/Blog/Resources/Marketplace/Jobs/Courses/Podcasts/Coupons/Premium/Ideation/Federation use their Blade feature keys, Search and Skills remain card-visible, and Clubs require an explicit tenant `has_clubs` flag until active-club detection has a runtime source.
+- This also routes Explore listing/event live-content links and view-all links through `urlFor()` for shared mounts and custom-domain roots. It does not certify live Laravel broker workflow data, active-club detection, visual/manual Blade parity, localization, or ASP.NET backend compatibility.
+
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
 

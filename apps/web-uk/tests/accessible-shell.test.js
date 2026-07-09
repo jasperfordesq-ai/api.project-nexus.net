@@ -57,4 +57,59 @@ describe('accessible shell tenant gating', () => {
     expect(locals.alphaFooterColumns.find((column) => column.key === 'platform').links.map((link) => link.href))
       .toEqual(['/acme/accessible/listings', '/acme/accessible/volunteering']);
   });
+
+  it('matches Laravel Blade Explore card feature gates from tenant bootstrap', () => {
+    const locals = buildShellLocals({
+      query: {},
+      path: '/explore',
+      originalUrl: '/acme/accessible/explore',
+      accessibleRouting: {
+        tenant: {
+          ...tenant,
+          modules: {
+            ...tenant.modules,
+            listings: false
+          },
+          features: {
+            ...tenant.features,
+            ai_chat: false,
+            polls: true,
+            search: false,
+            groups: false,
+            goals: false,
+            resources: true,
+            marketplace: false,
+            job_vacancies: false,
+            courses: true,
+            podcasts: false,
+            merchant_coupons: false,
+            member_premium: false,
+            ideation_challenges: true,
+            federation: false
+          }
+        },
+        tenantSlug: 'acme',
+        prefix: '/acme/accessible'
+      }
+    }, true);
+
+    expect(locals.alphaExploreLinks.map((item) => item.title)).toEqual([
+      'Polls',
+      'Search',
+      'Skills',
+      'Organisations',
+      'Resources',
+      'Courses',
+      'Ideation'
+    ]);
+    expect(locals.alphaExploreLinks.map((item) => item.href)).toEqual([
+      '/acme/accessible/polls',
+      '/acme/accessible/search',
+      '/acme/accessible/skills',
+      '/acme/accessible/organisations',
+      '/acme/accessible/resources',
+      '/acme/accessible/courses',
+      '/acme/accessible/ideation'
+    ]);
+  });
 });

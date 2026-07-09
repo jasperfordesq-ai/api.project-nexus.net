@@ -54,6 +54,16 @@ set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
 
+The Explore route has additional source-level parity coverage beyond static
+method/path matching: its shared card list now consumes tenant bootstrap
+modules/features using Laravel Blade candidate gates, keeps Search and Skills
+visible like Blade, hides Exchanges unless listings plus broker exchange
+workflow config are enabled, and routes live listing/event links through
+`urlFor()` for tenant mounts and custom-domain roots. A scoped Laravel runtime
+smoke also passed signed `/explore=>Explore` against Web UK `127.0.0.1:5180`
+and Laravel `127.0.0.1:8088`; this is not yet live runtime proof of broker
+workflow or active-club detection.
+
 Tenant-routing parity details live in `docs/TENANT_ROUTING_PARITY.md`. Web UK
 now has a first shared-mount slice for `/{tenantSlug}/accessible`, with legacy
 `/{tenantSlug}/alpha` requests canonicalized to `/accessible`. Shared-mount

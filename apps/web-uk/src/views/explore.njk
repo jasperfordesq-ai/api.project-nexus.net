@@ -29,7 +29,7 @@
       {% for listing in recentListings %}
         <li>
           {% if listing.href %}
-            <a class="govuk-link" href="{{ listing.href }}">{{ listing.title }}</a>
+            <a class="govuk-link" href="{{ urlFor(listing.href) }}">{{ listing.title }}</a>
           {% else %}
             {{ listing.title }}
           {% endif %}
@@ -37,7 +37,7 @@
         </li>
       {% endfor %}
     </ul>
-    <p class="govuk-body"><a class="govuk-link" href="/listings">View all listings</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/listings') }}">View all listings</a></p>
   {% endif %}
 
   {% if upcomingEvents and upcomingEvents.length %}
@@ -46,7 +46,7 @@
       {% for event in upcomingEvents %}
         <li>
           {% if event.href %}
-            <a class="govuk-link" href="{{ event.href }}">{{ event.title }}</a>
+            <a class="govuk-link" href="{{ urlFor(event.href) }}">{{ event.title }}</a>
           {% else %}
             {{ event.title }}
           {% endif %}
@@ -54,6 +54,6 @@
         </li>
       {% endfor %}
     </ul>
-    <p class="govuk-body"><a class="govuk-link" href="/events">View all events</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/events') }}">View all events</a></p>
   {% endif %}
 {% endblock %}
