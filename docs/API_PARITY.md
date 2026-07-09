@@ -315,6 +315,22 @@ Admin/broker notification side effects, trigger re-evaluation, exact Laravel
 `tenant_safeguarding_options` naming, and runtime browser smoke coverage remain
 deeper safeguarding gaps.
 
+The Laravel React linked-accounts settings slice now has focused ASP.NET
+contract coverage for `GET /api/v2/users/me/sub-accounts`, `GET
+/api/v2/users/me/parent-accounts`, `POST /api/v2/users/me/sub-accounts`, `PUT
+/api/v2/users/me/sub-accounts/{id}/approve`, `PUT
+/api/v2/users/me/sub-accounts/{id}/permissions`, and `DELETE
+/api/v2/users/me/sub-accounts/{id}` as used by
+`react-frontend/src/components/subaccounts/SubAccountsManager.tsx`. ASP.NET now
+accepts Laravel React email-based relationship requests, returns pending/active
+relationship rows with `relationship_id`, `relationship_type`, permissions,
+status, user identity fields, and timestamps, allows the child account to
+approve a pending relationship, lets the parent update React permission keys,
+and removes linked rows through the React delete call. Exact Laravel
+`account_relationships` table naming, soft-revoked/rejected history,
+notification side effects, maximum-child/nesting/circular validation parity,
+activity summary fidelity, and browser smoke coverage remain deeper gaps.
+
 The Laravel React link-preview compose hook now has focused runtime coverage for
 `GET /api/v2/link-preview?url=...` and `POST /api/v2/link-preview`. ASP.NET
 now returns Laravel-style `success/data` envelopes with `url`, `title`,

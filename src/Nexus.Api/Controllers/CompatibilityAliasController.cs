@@ -2643,35 +2643,58 @@ public class CompatibilityAliasController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        if (request?.SubUserId is not > 0) return BadRequest(new { error = "sub_user_id is required" });
-        if (request.SubUserId.Value == userId.Value) return BadRequest(new { error = "Cannot add yourself as a sub-account" });
 
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var subUserExists = await _db.Users.AnyAsync(u => u.Id == request.SubUserId.Value);
-        if (!subUserExists) return NotFound(new { error = "Sub-account user not found" });
+        var subUserId = request?.SubUserId ?? 0;
+        if (subUserId <= 0 && !string.IsNullOrWhiteSpace(request?.Email))
+        {
+            subUserId = await _db.Users
+                .Where(u => u.TenantId == tenantId && u.Email == request.Email.Trim())
+                .Select(u => u.Id)
+                .FirstOrDefaultAsync();
+        }
+        if (subUserId <= 0 && !string.IsNullOrWhiteSpace(request?.ChildEmail))
+        {
+            subUserId = await _db.Users
+                .Where(u => u.TenantId == tenantId && u.Email == request.ChildEmail.Trim())
+                .Select(u => u.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        if (subUserId <= 0) return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "The email field is required.", field = "email" } } });
+        if (subUserId == userId.Value) return BadRequest(new { errors = new[] { new { code = "SELF_RELATIONSHIP", message = "Cannot add yourself as a linked account." } } });
+
+        var subUserExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == subUserId);
+        if (!subUserExists) return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "User not found.", field = "email" } } });
 
         var existing = await _db.SubAccounts
-            .FirstOrDefaultAsync(s => s.PrimaryUserId == userId.Value && s.SubUserId == request.SubUserId.Value);
-        if (existing != null) return BadRequest(new { error = "Sub-account already exists" });
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.PrimaryUserId == userId.Value && s.SubUserId == subUserId);
+        if (existing != null)
+        {
+            existing.Relationship = NormalizeSubAccountRelationship(request?.RelationshipType ?? request?.Relationship);
+            ApplySubAccountPermissions(existing, request);
+            existing.IsActive = false;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Created("", new { data = await BuildSubAccountChildrenRowsAsync(userId.Value, tenantId) });
+        }
 
         var subAccount = new SubAccount
         {
             TenantId = tenantId,
             PrimaryUserId = userId.Value,
-            SubUserId = request.SubUserId.Value,
-            Relationship = request.Relationship?.Trim().ToLowerInvariant() ?? "family",
-            DisplayName = request.DisplayName?.Trim(),
-            CanTransact = request.CanTransact ?? true,
-            CanMessage = request.CanMessage ?? true,
-            CanJoinGroups = request.CanJoinGroups ?? true,
-            IsActive = true,
+            SubUserId = subUserId,
+            Relationship = NormalizeSubAccountRelationship(request?.RelationshipType ?? request?.Relationship),
+            DisplayName = request?.DisplayName?.Trim(),
+            IsActive = false,
             CreatedAt = DateTime.UtcNow
         };
+        ApplySubAccountPermissions(subAccount, request);
 
         _db.SubAccounts.Add(subAccount);
         await _db.SaveChangesAsync();
 
-        return Created("", new { success = true, message = "Sub-account created", id = subAccount.Id, sub_user_id = subAccount.SubUserId });
+        return Created("", new { data = await BuildSubAccountChildrenRowsAsync(userId.Value, tenantId) });
     }
 
     /// <summary>
@@ -2683,13 +2706,17 @@ public class CompatibilityAliasController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s => s.Id == id && s.PrimaryUserId == userId.Value);
-        if (subAccount == null) return NotFound(new { error = "Sub-account not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s =>
+            s.TenantId == tenantId &&
+            s.Id == id &&
+            (s.PrimaryUserId == userId.Value || s.SubUserId == userId.Value));
+        if (subAccount == null) return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Sub-account relationship not found." } } });
 
         _db.SubAccounts.Remove(subAccount);
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Sub-account deleted" });
+        return Ok(new { data = new { message = "Relationship revoked" } });
     }
 
     /// <summary>
@@ -2701,14 +2728,19 @@ public class CompatibilityAliasController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s => s.Id == id && s.PrimaryUserId == userId.Value);
-        if (subAccount == null) return NotFound(new { error = "Sub-account not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s =>
+            s.TenantId == tenantId &&
+            s.Id == id &&
+            s.SubUserId == userId.Value &&
+            !s.IsActive);
+        if (subAccount == null) return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Sub-account relationship not found." } } });
 
         subAccount.IsActive = true;
         subAccount.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Sub-account approved", id = subAccount.Id, is_active = subAccount.IsActive });
+        return Ok(new { data = await BuildSubAccountParentRowsAsync(userId.Value, tenantId) });
     }
 
     /// <summary>
@@ -2720,25 +2752,107 @@ public class CompatibilityAliasController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s => s.Id == id && s.PrimaryUserId == userId.Value);
-        if (subAccount == null) return NotFound(new { error = "Sub-account not found" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var subAccount = await _db.SubAccounts.FirstOrDefaultAsync(s =>
+            s.TenantId == tenantId &&
+            s.Id == id &&
+            s.PrimaryUserId == userId.Value &&
+            s.IsActive);
+        if (subAccount == null) return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Sub-account relationship not found." } } });
 
-        if (request?.CanTransact != null) subAccount.CanTransact = request.CanTransact.Value;
-        if (request?.CanMessage != null) subAccount.CanMessage = request.CanMessage.Value;
-        if (request?.CanJoinGroups != null) subAccount.CanJoinGroups = request.CanJoinGroups.Value;
+        ApplySubAccountPermissions(subAccount, request);
         subAccount.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return Ok(new
-        {
-            success = true,
-            message = "Permissions updated",
-            id = subAccount.Id,
-            can_transact = subAccount.CanTransact,
-            can_message = subAccount.CanMessage,
-            can_join_groups = subAccount.CanJoinGroups
-        });
+        return Ok(new { data = await BuildSubAccountChildrenRowsAsync(userId.Value, tenantId) });
     }
+
+    private async Task<List<object>> BuildSubAccountChildrenRowsAsync(int userId, int tenantId)
+    {
+        var rows = await (
+            from relationship in _db.SubAccounts.AsNoTracking()
+            join child in _db.Users.AsNoTracking() on relationship.SubUserId equals child.Id
+            where relationship.TenantId == tenantId
+                && relationship.PrimaryUserId == userId
+                && child.TenantId == tenantId
+            orderby relationship.CreatedAt descending
+            select new { relationship, user = child })
+            .ToListAsync();
+
+        return rows.Select(row => SubAccountRelationshipRow(row.relationship, row.user)).ToList();
+    }
+
+    private async Task<List<object>> BuildSubAccountParentRowsAsync(int userId, int tenantId)
+    {
+        var rows = await (
+            from relationship in _db.SubAccounts.AsNoTracking()
+            join parent in _db.Users.AsNoTracking() on relationship.PrimaryUserId equals parent.Id
+            where relationship.TenantId == tenantId
+                && relationship.SubUserId == userId
+                && parent.TenantId == tenantId
+            orderby relationship.CreatedAt descending
+            select new { relationship, user = parent })
+            .ToListAsync();
+
+        return rows.Select(row => SubAccountRelationshipRow(row.relationship, row.user)).ToList();
+    }
+
+    private static object SubAccountRelationshipRow(SubAccount relationship, User user) => new
+    {
+        relationship_id = relationship.Id,
+        relationship_type = relationship.Relationship,
+        permissions = new
+        {
+            can_view_activity = true,
+            can_manage_listings = relationship.CanJoinGroups,
+            can_transact = relationship.CanTransact,
+            can_view_messages = relationship.CanMessage
+        },
+        status = relationship.IsActive ? "active" : "pending",
+        approved_at = relationship.IsActive ? relationship.UpdatedAt ?? relationship.CreatedAt : (DateTime?)null,
+        created_at = relationship.CreatedAt,
+        user_id = user.Id,
+        first_name = user.FirstName,
+        last_name = user.LastName,
+        avatar_url = user.AvatarUrl,
+        email = user.Email
+    };
+
+    private static string NormalizeSubAccountRelationship(string? relationship)
+    {
+        var normalized = relationship?.Trim().ToLowerInvariant();
+        return normalized is "family" or "guardian" or "carer" or "organization"
+            ? normalized
+            : "family";
+    }
+
+    private static void ApplySubAccountPermissions(SubAccount subAccount, CreateSubAccountAliasRequest? request)
+    {
+        subAccount.CanTransact = PermissionValue(request?.Permissions, "can_transact", request?.CanTransact) ?? false;
+        subAccount.CanMessage = PermissionValue(request?.Permissions, "can_view_messages", request?.CanMessage) ?? false;
+        subAccount.CanJoinGroups = PermissionValue(request?.Permissions, "can_manage_listings", request?.CanJoinGroups) ?? false;
+    }
+
+    private static void ApplySubAccountPermissions(SubAccount subAccount, UpdateSubAccountPermissionsAliasRequest? request)
+    {
+        if (PermissionValue(request?.Permissions, "can_transact", request?.CanTransact) is { } canTransact)
+        {
+            subAccount.CanTransact = canTransact;
+        }
+
+        if (PermissionValue(request?.Permissions, "can_view_messages", request?.CanMessage) is { } canMessage)
+        {
+            subAccount.CanMessage = canMessage;
+        }
+
+        if (PermissionValue(request?.Permissions, "can_manage_listings", request?.CanJoinGroups) is { } canManageListings)
+        {
+            subAccount.CanJoinGroups = canManageListings;
+        }
+    }
+
+    private static bool? PermissionValue(IReadOnlyDictionary<string, bool>? permissions, string key, bool? fallback)
+        => permissions != null && permissions.TryGetValue(key, out var value) ? value : fallback;
 
     /// <summary>
     /// POST /api/users/me/skills — Add skill to user (alias).
@@ -3811,11 +3925,23 @@ public class CreateSubAccountAliasRequest
     [JsonPropertyName("sub_user_id")]
     public int? SubUserId { get; set; }
 
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+
+    [JsonPropertyName("child_email")]
+    public string? ChildEmail { get; set; }
+
     [JsonPropertyName("relationship")]
     public string? Relationship { get; set; }
 
+    [JsonPropertyName("relationship_type")]
+    public string? RelationshipType { get; set; }
+
     [JsonPropertyName("display_name")]
     public string? DisplayName { get; set; }
+
+    [JsonPropertyName("permissions")]
+    public Dictionary<string, bool>? Permissions { get; set; }
 
     [JsonPropertyName("can_transact")]
     public bool? CanTransact { get; set; }
@@ -3829,6 +3955,9 @@ public class CreateSubAccountAliasRequest
 
 public class UpdateSubAccountPermissionsAliasRequest
 {
+    [JsonPropertyName("permissions")]
+    public Dictionary<string, bool>? Permissions { get; set; }
+
     [JsonPropertyName("can_transact")]
     public bool? CanTransact { get; set; }
 
