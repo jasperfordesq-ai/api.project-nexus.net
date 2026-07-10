@@ -140,7 +140,13 @@ Current gaps:
   route-redirect cleanup sends appearance, availability, data-rights,
   linked-account, and insurance auth, validation, success, and API-error
   redirects through `res.locals.urlFor`, keeping no-JS settings outcomes inside
-  shared tenant mounts and custom-domain child paths. The latest focused source
+  shared tenant mounts and custom-domain child paths. The latest focused
+  profile route-redirect cleanup sends settings, profile summary, email,
+  password, language, notifications, passkey, personalisation, match-preference,
+  skill, safeguarding, data-export, delete-account, blocked-member, and
+  two-factor auth/status redirects through `res.locals.urlFor`, keeping no-JS
+  profile outcomes inside shared tenant mounts and custom-domain child paths.
+  The latest focused source
   conversion covers group detail, listing detail, member profile, and the
   shared report-link partial, including breadcrumbs, action controls, report
   return targets, listing report links, member connection controls, and member

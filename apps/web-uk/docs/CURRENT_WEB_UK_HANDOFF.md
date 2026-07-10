@@ -97,7 +97,13 @@ availability, data-rights, linked-account, and insurance forms through
 availability, data-rights, linked-account, and insurance auth, validation,
 success, and API-error redirects through `res.locals.urlFor`, so those no-JS
 POST outcomes stay inside shared tenant mounts and custom-domain contexts
-instead of relying on flat `/settings` targets. A follow-up detail/report slice now routes group detail,
+instead of relying on flat `/settings` targets. A follow-up profile route-redirect
+slice now sends profile settings, profile summary, email, password, language,
+notifications, passkey, personalisation, match-preference, skill, safeguarding,
+data-export, delete-account, blocked-member, and two-factor auth/status
+redirects through `res.locals.urlFor`, so those no-JS profile outcomes stay
+inside shared tenant mounts and custom-domain contexts instead of relying on
+flat `/profile` and `/login` targets. A follow-up detail/report slice now routes group detail,
 listing detail, member profile, and report-link partial breadcrumbs, action
 controls, report returns, listing report links, member connection controls, and
 review form actions through `urlFor()`. A follow-up marketplace slice now

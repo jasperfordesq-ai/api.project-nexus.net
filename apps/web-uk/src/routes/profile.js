@@ -218,6 +218,14 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, pathname) {
+  return typeof res.locals?.urlFor === 'function' ? res.locals.urlFor(pathname) : pathname;
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(urlFor(res, pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -243,7 +251,7 @@ function isAuthError(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
 
@@ -644,7 +652,7 @@ function normalizeBlockedUsers(payload) {
 
 router.get('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const data = {
     profile: {},
@@ -712,7 +720,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
 
 router.post('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const profilePayload = {
     first_name: trimmed(req.body.first_name, 100),
@@ -727,7 +735,7 @@ router.post('/settings', asyncRoute(async (req, res) => {
   };
 
   if (profilePayload.first_name === '' || profilePayload.last_name === '') {
-    return res.redirect(profileSettingsRedirect('profile-update-failed'));
+    return redirectTo(res, profileSettingsRedirect('profile-update-failed'));
   }
 
   let status = 'profile-updated';
@@ -745,16 +753,16 @@ router.post('/settings', asyncRoute(async (req, res) => {
     status = 'profile-update-failed';
   }
 
-  return res.redirect(statusRedirect('/profile', status));
+  return redirectTo(res, statusRedirect('/profile', status));
 }));
 
 router.post('/email', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const email = trimmed(req.body.email, 255);
   if (email === '' || !validEmail(email)) {
-    return res.redirect(profileSettingsRedirect('email-invalid'));
+    return redirectTo(res, profileSettingsRedirect('email-invalid'));
   }
 
   let status = 'email-changed';
@@ -768,12 +776,12 @@ router.post('/email', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 403 ? 'email-password-incorrect' : 'email-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status));
+  return redirectTo(res, profileSettingsRedirect(status));
 }));
 
 router.post('/password', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const currentPassword = String(req.body.current_password || '');
   const newPassword = String(req.body.new_password || '');
@@ -787,7 +795,7 @@ router.post('/password', asyncRoute(async (req, res) => {
         : null;
 
   if (preStatus !== null) {
-    return res.redirect(profileSettingsRedirect(preStatus));
+    return redirectTo(res, profileSettingsRedirect(preStatus));
   }
 
   let status = 'password-changed';
@@ -808,16 +816,16 @@ router.post('/password', asyncRoute(async (req, res) => {
           : 'password-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status));
+  return redirectTo(res, profileSettingsRedirect(status));
 }));
 
 router.post('/language', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const language = allowedValue(req.body.language, PROFILE_LOCALES, null);
   if (language === null) {
-    return res.redirect(profileSettingsRedirect('language-invalid'));
+    return redirectTo(res, profileSettingsRedirect('language-invalid'));
   }
 
   let status = 'language-changed';
@@ -828,12 +836,12 @@ router.post('/language', asyncRoute(async (req, res) => {
     status = 'language-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status));
+  return redirectTo(res, profileSettingsRedirect(status));
 }));
 
 router.post('/notifications', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let status = 'notifications-saved';
   try {
@@ -843,17 +851,17 @@ router.post('/notifications', asyncRoute(async (req, res) => {
     status = 'notifications-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#notifications'));
+  return redirectTo(res, profileSettingsRedirect(status, '#notifications'));
 }));
 
 router.post('/passkeys/rename', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const credentialId = trimmed(req.body.credential_id);
   const deviceName = trimmed(req.body.device_name, 100);
   if (credentialId === '' || deviceName === '') {
-    return res.redirect(profileSettingsRedirect('passkey-name-required', '#passkeys'));
+    return redirectTo(res, profileSettingsRedirect('passkey-name-required', '#passkeys'));
   }
 
   let status = 'passkey-renamed';
@@ -867,16 +875,16 @@ router.post('/passkeys/rename', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 404 ? 'passkey-not-found' : 'passkey-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#passkeys'));
+  return redirectTo(res, profileSettingsRedirect(status, '#passkeys'));
 }));
 
 router.post('/passkeys/remove', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const credentialId = trimmed(req.body.credential_id);
   if (credentialId === '') {
-    return res.redirect(profileSettingsRedirect('passkey-not-found', '#passkeys'));
+    return redirectTo(res, profileSettingsRedirect('passkey-not-found', '#passkeys'));
   }
 
   let status = 'passkey-removed';
@@ -889,12 +897,12 @@ router.post('/passkeys/remove', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 404 ? 'passkey-not-found' : 'passkey-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#passkeys'));
+  return redirectTo(res, profileSettingsRedirect(status, '#passkeys'));
 }));
 
 router.post('/personalisation', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const locale = allowedValue(req.body.auto_translate_target_locale, PROFILE_LOCALES, null);
   let status = 'personalisation-saved';
@@ -913,12 +921,12 @@ router.post('/personalisation', asyncRoute(async (req, res) => {
     status = 'personalisation-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#personalisation'));
+  return redirectTo(res, profileSettingsRedirect(status, '#personalisation'));
 }));
 
 router.post('/match-preferences', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const notificationFrequency = allowedValue(req.body.notification_frequency, PROFILE_MATCH_FREQUENCIES, 'monthly');
   let status = 'match-prefs-saved';
@@ -933,16 +941,16 @@ router.post('/match-preferences', asyncRoute(async (req, res) => {
     status = 'match-prefs-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#match-preferences'));
+  return redirectTo(res, profileSettingsRedirect(status, '#match-preferences'));
 }));
 
 router.post('/skills/add', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const skillName = trimmed(req.body.skill_name, 100);
   if (skillName === '') {
-    return res.redirect(profileSettingsRedirect('skill-name-required', '#skills'));
+    return redirectTo(res, profileSettingsRedirect('skill-name-required', '#skills'));
   }
 
   const isRequesting = checked(req.body.is_requesting);
@@ -958,16 +966,16 @@ router.post('/skills/add', asyncRoute(async (req, res) => {
     status = 'skill-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#skills'));
+  return redirectTo(res, profileSettingsRedirect(status, '#skills'));
 }));
 
 router.post('/skills/remove', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const skillId = positiveInteger(req.body.user_skill_id);
   if (skillId === null) {
-    return res.redirect(profileSettingsRedirect('skill-failed', '#skills'));
+    return redirectTo(res, profileSettingsRedirect('skill-failed', '#skills'));
   }
 
   let status = 'skill-removed';
@@ -978,16 +986,16 @@ router.post('/skills/remove', asyncRoute(async (req, res) => {
     status = 'skill-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#skills'));
+  return redirectTo(res, profileSettingsRedirect(status, '#skills'));
 }));
 
 router.post('/safeguarding/revoke', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const optionId = positiveInteger(req.body.option_id);
   if (optionId === null) {
-    return res.redirect(profileSettingsRedirect('safeguarding-failed', '#safeguarding'));
+    return redirectTo(res, profileSettingsRedirect('safeguarding-failed', '#safeguarding'));
   }
 
   let status = 'safeguarding-revoked';
@@ -1000,12 +1008,12 @@ router.post('/safeguarding/revoke', asyncRoute(async (req, res) => {
     status = 'safeguarding-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status, '#safeguarding'));
+  return redirectTo(res, profileSettingsRedirect(status, '#safeguarding'));
 }));
 
 router.post('/data-export', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let status = 'data-export-requested';
   try {
@@ -1018,19 +1026,19 @@ router.post('/data-export', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 409 ? 'data-export-exists' : 'data-export-failed';
   }
 
-  return res.redirect(profileSettingsRedirect(status));
+  return redirectTo(res, profileSettingsRedirect(status));
 }));
 
 router.post('/delete-account', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const password = String(req.body.password || '');
   if (password === '') {
-    return res.redirect(deleteAccountRedirect('delete-password-required'));
+    return redirectTo(res, deleteAccountRedirect('delete-password-required'));
   }
   if (!checked(req.body.confirm)) {
-    return res.redirect(deleteAccountRedirect('delete-confirm-required'));
+    return redirectTo(res, deleteAccountRedirect('delete-confirm-required'));
   }
 
   try {
@@ -1041,15 +1049,15 @@ router.post('/delete-account', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     const status = error instanceof ApiError && error.status === 403 ? 'delete-password-incorrect' : 'delete-failed';
-    return res.redirect(deleteAccountRedirect(status));
+    return redirectTo(res, deleteAccountRedirect(status));
   }
 
-  return res.redirect('/login?status=account-deletion-requested');
+  return redirectTo(res, '/login?status=account-deletion-requested');
 }));
 
 router.get('/delete-account', (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const errorMessage = DELETE_ACCOUNT_ERRORS[status] || '';
@@ -1067,7 +1075,7 @@ router.get('/delete-account', (req, res) => {
 
 router.get('/two-factor', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let twoFactor = normalizeTwoFactorPayload({});
   try {
@@ -1098,7 +1106,7 @@ router.get('/two-factor', asyncRoute(async (req, res) => {
 
 router.get('/blocked', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   let blocked = [];
   try {
@@ -1121,11 +1129,11 @@ router.get('/blocked', asyncRoute(async (req, res) => {
 
 router.post('/two-factor/verify', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const code = trimmed(req.body.code);
   if (code === '') {
-    return res.redirect(twoFactorRedirect('2fa-code-required'));
+    return redirectTo(res, twoFactorRedirect('2fa-code-required'));
   }
 
   let status = '2fa-enabled';
@@ -1136,16 +1144,16 @@ router.post('/two-factor/verify', asyncRoute(async (req, res) => {
     status = '2fa-code-invalid';
   }
 
-  return res.redirect(twoFactorRedirect(status));
+  return redirectTo(res, twoFactorRedirect(status));
 }));
 
 router.post('/two-factor/disable', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const password = String(req.body.password || '');
   if (password === '') {
-    return res.redirect(twoFactorRedirect('2fa-password-required'));
+    return redirectTo(res, twoFactorRedirect('2fa-password-required'));
   }
 
   let status = '2fa-disabled';
@@ -1156,7 +1164,7 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
     status = '2fa-disable-failed';
   }
 
-  return res.redirect(twoFactorRedirect(status));
+  return redirectTo(res, twoFactorRedirect(status));
 }));
 
 // View profile
