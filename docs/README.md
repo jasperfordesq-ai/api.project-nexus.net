@@ -10,6 +10,7 @@ Edition. The canonical Laravel source for parity is
 
 | Document | Purpose |
 | --- | --- |
+| [FULL_PARITY_REMEDIATION_RUNBOOK.md](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Current cross-workstream audit, prioritized remediation queue, autonomous execution loop, and evidence-backed completion gates for ASP.NET and Web UK parity. |
 | [CURRENT_LARAVEL_PARITY_HANDOFF.md](CURRENT_LARAVEL_PARITY_HANDOFF.md) | Resume protocol, live-state refresh commands, current blockers, and next-step rules for the Laravel backend parity job. Start here if an agent is taking over mid-stream. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime boundaries, application surfaces, and invariants for the .NET edition. |
 | [MODULES.md](MODULES.md) | Module-by-module Laravel source paths, .NET target paths, and parity status. |

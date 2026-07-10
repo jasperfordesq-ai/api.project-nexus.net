@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-07-07
 
+> **Current audit notice (2026-07-10):** Read
+> `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the numeric snapshot or
+> score below. The runbook records the latest cross-repository audit and
+> supersedes older counts while this detailed handoff remains implementation
+> history.
+
 This is the first file to read if an agent needs to resume the Laravel backend
 parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the

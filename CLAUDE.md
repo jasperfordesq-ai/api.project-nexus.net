@@ -118,6 +118,8 @@ committing parity work.
 
 The canonical tracking documents are:
 
+- `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` - current cross-workstream audit,
+  prioritized autonomous execution queue, and completion evidence gates.
 - `docs/CURRENT_LARAVEL_PARITY_HANDOFF.md` - resume protocol and current-state refresh checklist.
 - `docs/LARAVEL_PARITY_MAP.md` - gap register and backlog.
 - `docs/PARITY_BACKLOG.md` - generated backlog rollup and implementation queue rules.

@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-07-10
 
+> **Current audit notice (2026-07-10):** Read
+> `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before relying on completion
+> claims or scores below. The audit found current Jest tenant-routing drift,
+> remaining root-relative template controls, recent Laravel Blade drift, and
+> incomplete accessibility/localization certification.
+
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
 and `codex/web-uk-laravel-parity` work streams were consolidated back onto
