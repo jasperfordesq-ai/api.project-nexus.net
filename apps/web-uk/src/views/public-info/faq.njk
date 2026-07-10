@@ -8,8 +8,8 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <span class="govuk-caption-xl">{{ communityName }}</span>
-      <h1 class="govuk-heading-xl">Frequently asked questions</h1>
-      <p class="govuk-body-l">Answers to common questions about timebanking.</p>
+      <h1 class="govuk-heading-xl">{{ t("faq.title") }}</h1>
+      <p class="govuk-body-l">{{ t("faq.intro") }}</p>
 
       <div class="govuk-accordion" data-module="govuk-accordion" id="faq-accordion">
         {% for faq in faqs %}

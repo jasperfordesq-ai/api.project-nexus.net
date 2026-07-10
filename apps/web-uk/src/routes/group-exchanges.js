@@ -4,8 +4,9 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { callGroupExchangeApi, getProfile, searchUsers } = require('../lib/api');
+const { callGroupExchangeApi, searchUsers } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -219,7 +220,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
 
   const id = positiveInteger(req.params.id);
   const [profileResult, exchangeResult] = await Promise.all([
-    getProfile(token),
+    getRequestProfile(req, token),
     callGroupExchangeApi(token, 'GET', `/${id}`)
   ]);
   const viewerId = profileId(profileResult);

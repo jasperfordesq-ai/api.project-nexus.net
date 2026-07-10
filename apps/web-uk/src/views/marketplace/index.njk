@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <nav class="govuk-!-margin-bottom-5" aria-label="Marketplace">
+  <nav class="govuk-!-margin-bottom-5" aria-label="{{ t("marketplace.title") }}">
     <ul class="govuk-list nexus-alpha-inline-list">
       <li><a class="govuk-link" href="{{ urlFor('/marketplace') }}">Browse</a></li>
       <li><a class="govuk-link" href="{{ urlFor('/marketplace/mine') }}">My listings</a></li>
@@ -29,8 +29,8 @@
   {% endif %}
 
   <span class="govuk-caption-xl">{{ tenantName or serviceName }}</span>
-  <h1 class="govuk-heading-xl">Marketplace</h1>
-  <p class="govuk-body-l">Buy, sell and swap goods and services with your community.</p>
+  <h1 class="govuk-heading-xl">{{ t("marketplace.title") }}</h1>
+  <p class="govuk-body-l">{{ t("marketplace.description") }}</p>
 
   <form method="get" action="{{ urlFor('/marketplace') }}" class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
@@ -40,7 +40,7 @@
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="q">Find an item</label>
+            <label class="govuk-label" for="q">{{ t("marketplace.search_label") }}</label>
             <div id="q-hint" class="govuk-hint">Search by title.</div>
             <input class="govuk-input" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
           </div>
@@ -77,7 +77,7 @@
 
   {% if not listings.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There is nothing in the marketplace yet.</p>
+      <p class="govuk-body">{{ t("marketplace.empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">

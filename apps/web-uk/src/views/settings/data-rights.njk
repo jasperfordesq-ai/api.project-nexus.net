@@ -12,7 +12,7 @@
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="data-rights-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="data-rights-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="data-rights-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -21,7 +21,7 @@
       {% elif statusMessage and infoStatus %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="data-rights-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="data-rights-status-title">Important</h2>
+            <h2 class="govuk-notification-banner__title" id="data-rights-status-title">{{ t("states.important") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -30,7 +30,7 @@
       {% elif statusMessage and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#request_type">{{ statusMessage }}</a></li>
@@ -40,7 +40,7 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">Account settings</span>
+      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
       <h1 class="govuk-heading-xl">Your data rights</h1>
       <p class="govuk-body-l">Under data protection law you have rights over the personal data we hold about you. To download a copy of your data, or to close your account, use the data and privacy section of your settings.</p>
 
@@ -70,7 +70,7 @@
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="notes">Tell us more (optional)</label>
+            <label class="govuk-label" for="notes">{{ t("ideation.idea_content_label") }}</label>
             <div id="notes-hint" class="govuk-hint">Add any detail that will help us deal with your request, for example which information is incorrect.</div>
             <textarea class="govuk-textarea" id="notes" name="notes" rows="4" maxlength="2000" aria-describedby="notes-hint"></textarea>
           </div>

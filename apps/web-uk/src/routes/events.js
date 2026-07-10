@@ -21,13 +21,13 @@ const {
   uploadEventImage,
   callUgcTranslateApi,
   getMyGroups,
-  getProfile,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { localeOptions } = require('../lib/accessible-shell');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -754,7 +754,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
 
   const [eventResult, currentUser] = await Promise.all([
     getEvent(req.token, id),
-    getProfile(req.token)
+    getRequestProfile(req, req.token)
   ]);
   const event = eventFrom(eventResult);
   const ownerId = eventOwnerId(event);

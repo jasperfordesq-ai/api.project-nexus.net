@@ -9,7 +9,7 @@
 {% block beforeContent %}
   {{ super() }}
   {{ govukBackLink({
-    text: "Back to members",
+    text: t("actions.back_to_members"),
     href: urlFor("/members")
   }) }}
 {% endblock %}
@@ -71,7 +71,7 @@
             {% if connection.is_requester %}
               {{ govukTag({ text: "Request sent", classes: "govuk-tag--yellow" }) }}
             {% else %}
-              {{ govukTag({ text: "Wants to connect with you", classes: "govuk-tag--blue" }) }}
+              {{ govukTag({ text: t("connections.wants_to_connect"), classes: "govuk-tag--blue" }) }}
             {% endif %}
           {% endif %}
         </p>
@@ -80,7 +80,7 @@
       {{ govukSummaryList({
         rows: [
           {
-            key: { text: "Email" },
+            key: { text: t("profile.email_label") },
             value: { text: user.email }
           },
           {
@@ -110,7 +110,7 @@
           </form>
         {% elif connection.status == 'accepted' %}
           <a href="{{ urlFor('/messages/new/' + (user.id | string)) }}" class="govuk-button">
-            Send message
+            {{ t("actions.send_message") }}
           </a>
           <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -185,7 +185,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">No reviews yet.</p>
+        <p class="govuk-body">{{ t("fed2.reviews.empty") }}</p>
       {% endif %}
 
       {# Leave a Review Form #}

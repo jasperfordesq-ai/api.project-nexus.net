@@ -6,6 +6,7 @@
 const express = require('express');
 const { callProfileApi, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -88,14 +89,14 @@ function boolFrom(value) {
 }
 
 function formatNumber(value, fractionDigits = 1) {
-  return numberFrom(value).toLocaleString('en-GB', {
+  return numberFrom(value).toLocaleString(getRequestIntlLocale(), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits
   });
 }
 
 function formatInteger(value) {
-  return intFrom(value).toLocaleString('en-GB');
+  return intFrom(value).toLocaleString(getRequestIntlLocale());
 }
 
 function textFrom(value, fallback = '') {
@@ -112,7 +113,7 @@ function formatDate(value) {
     return '';
   }
 
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric'

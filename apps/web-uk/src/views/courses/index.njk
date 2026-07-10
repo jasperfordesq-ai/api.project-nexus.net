@@ -7,15 +7,15 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Courses</h1>
-  <p class="govuk-body-l">Learn new skills with courses shared by your community.</p>
+  <h1 class="govuk-heading-xl">{{ t("courses.title") }}</h1>
+  <p class="govuk-body-l">{{ t("courses.description") }}</p>
 
   {% set activeTab = 'browse' %}
   {% include "courses/_nav.njk" %}
 
   <form method="get" action="{{ urlFor('/courses') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Find a course</label>
+      <label class="govuk-label" for="q">{{ t("courses.search_label") }}</label>
       <div id="q-hint" class="govuk-hint">Search by title.</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ coursesQuery }}" aria-describedby="q-hint">
     </div>
@@ -47,7 +47,7 @@
 
   {% if not courses or not courses.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no courses yet.</p>
+      <p class="govuk-body">{{ t("courses.empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">

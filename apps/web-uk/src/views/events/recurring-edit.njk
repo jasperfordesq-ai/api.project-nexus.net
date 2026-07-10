@@ -19,11 +19,11 @@
 
         <fieldset class="govuk-fieldset">
           <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
-            <h2 class="govuk-fieldset__heading">Event details</h2>
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_details_title") }}</h2>
           </legend>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="title">Title</label>
+            <label class="govuk-label" for="title">{{ t("group_exchanges.form_title_label") }}</label>
             <input class="govuk-input" id="title" name="title" type="text" value="{{ event.title }}" maxlength="255" required>
           </div>
 
@@ -41,7 +41,7 @@
 
         <fieldset class="govuk-fieldset govuk-!-margin-top-7">
           <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
-            <h2 class="govuk-fieldset__heading">Date and time</h2>
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_time_title") }}</h2>
           </legend>
 
           <div class="govuk-form-group">

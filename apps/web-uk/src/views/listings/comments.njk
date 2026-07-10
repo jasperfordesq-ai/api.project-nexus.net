@@ -47,18 +47,18 @@
         <div class="govuk-inset-text"><p class="govuk-body">No comments yet. Be the first to start the conversation.</p></div>
       {% endif %}
 
-      <h2 class="govuk-heading-m govuk-!-margin-top-6" id="add-comment">Add a comment</h2>
+      <h2 class="govuk-heading-m govuk-!-margin-top-6" id="add-comment">{{ t("blog.comment_body_label") }}</h2>
       <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/comments') }}" class="govuk-!-margin-top-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group{% if status and status.anchor == 'body' %} govuk-form-group--error{% endif %}">
           <label class="govuk-label govuk-label--s" for="body">Your comment</label>
           <div id="body-hint" class="govuk-hint">Be kind and keep it relevant to this listing.</div>
           {% if status and status.anchor == 'body' %}
-            <p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+            <p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
           {% endif %}
           <textarea class="govuk-textarea{% if status and status.anchor == 'body' %} govuk-textarea--error{% endif %}" id="body" name="body" rows="4" maxlength="5000" aria-describedby="body-hint{% if status and status.anchor == 'body' %} body-error{% endif %}"></textarea>
         </div>
-        <button type="submit" class="govuk-button" data-module="govuk-button">Post comment</button>
+        <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
       </form>
     </div>
   </div>

@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation/settings') }}" class="govuk-back-link">Back to federation settings</a>
+  <a href="{{ urlFor('/federation/settings') }}" class="govuk-back-link">{{ t("federation.optout.back") }}</a>
 
   <span class="govuk-caption-xl">This community</span>
   <h1 class="govuk-heading-xl">Opt out of federation</h1>
@@ -31,17 +31,17 @@
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
           <span class="govuk-visually-hidden">Warning</span>
-          You are about to opt out of federation
+          {{ t("federation.optout.warning_title") }}
         </strong>
       </div>
 
-      <p class="govuk-body">Your profile will be removed from partner communities and federated searches. Partners will be asked to delete any copy of your federated data.</p>
+      <p class="govuk-body">{{ t("federation.optout.warning_body") }}</p>
 
       <form method="post" action="{{ urlFor('/federation/opt-out') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-button-group">
           <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Opt out of federation</button>
-          <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">Cancel</a>
+          <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
     </div>

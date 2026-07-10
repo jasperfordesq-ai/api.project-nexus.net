@@ -6,7 +6,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  getProfile,
   getExchangeConfig,
   getExchanges,
   getExchange,
@@ -17,6 +16,7 @@ const {
   ApiOfflineError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -209,7 +209,7 @@ router.get('/', asyncRoute(async (req, res) => {
   let errorMessage = null;
   let currentUserId = null;
 
-  const currentUser = await Promise.resolve(getProfile(req.token)).catch(() => null);
+  const currentUser = await getRequestProfile(req, req.token).catch(() => null);
   currentUserId = toNumber(firstPresent(currentUser?.id, currentUser?.data?.id), null);
 
   try {
@@ -246,7 +246,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const [exchangePayload, profilePayload, ratingsPayload] = await Promise.all([
     getExchange(req.token, id),
-    Promise.resolve(getProfile(req.token)).catch(() => null),
+    getRequestProfile(req, req.token).catch(() => null),
     getExchangeRatings(req.token, id).catch(() => ({ data: { ratings: [], has_rated: false } }))
   ]);
   const currentUserId = toNumber(firstPresent(profilePayload?.id, profilePayload?.data?.id), null);

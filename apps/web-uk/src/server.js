@@ -74,7 +74,10 @@ const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { buildShellLocals } = require('./lib/accessible-shell');
+const { formatLocaleDate, translate, translateChoice } = require('./lib/localization');
+const { getRequestLocale } = require('./lib/request-locale-context');
 const { parseMultipartForm } = require('./middleware/multipart');
+const { localization } = require('./middleware/localization');
 const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
 
@@ -136,12 +139,19 @@ nunjucksEnv.addFilter('formatDate', (dateStr) => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    const locale = getRequestLocale() || 'en';
+    if (diffMins < 1) return translate(locale, 'govuk_alpha_connections.common.just_now');
+    if (diffMins < 60) {
+      return translateChoice(locale, 'govuk_alpha_connections.common.minutes_ago', diffMins, { count: diffMins });
+    }
+    if (diffHours < 24) {
+      return translateChoice(locale, 'govuk_alpha_connections.common.hours_ago', diffHours, { count: diffHours });
+    }
+    if (diffDays < 7) {
+      return translateChoice(locale, 'govuk_alpha_connections.common.days_ago', diffDays, { count: diffDays });
+    }
 
-    return date.toLocaleDateString('en-GB', {
+    return formatLocaleDate(date, locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -155,7 +165,7 @@ nunjucksEnv.addFilter('formatEventDate', (dateStr) => {
   if (!dateStr) return '';
   try {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-GB', {
+    return formatLocaleDate(date, getRequestLocale() || 'en', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -173,7 +183,7 @@ nunjucksEnv.addFilter('date', (dateStr) => {
   if (!dateStr) return '';
   try {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-GB', {
+    return formatLocaleDate(date, getRequestLocale() || 'en', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -293,6 +303,10 @@ app.use(session({
 
 // Flash messages
 app.use(flash());
+
+// Laravel-first accessible locale negotiation. This must run after the session
+// middleware so an explicit language choice can persist across requests.
+app.use(localization);
 
 // CSRF protection
 const {

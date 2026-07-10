@@ -8,7 +8,7 @@
   {% if status == 'connection-accepted' or status == 'connection-declined' or status == 'connection-removed' %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="conn-net-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="conn-net-status-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="conn-net-status-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">
@@ -19,7 +19,7 @@
   {% elif status == 'connection-failed' %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p class="govuk-body">Sorry, that action could not be completed. Please try again.</p>
         </div>
@@ -43,7 +43,7 @@
     <div class="govuk-button-group">
       <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
       {% if hasSearch %}
-        <a class="govuk-link" href="{{ urlFor('/connections/network?tab=' + activeTab) }}">Clear search</a>
+        <a class="govuk-link" href="{{ urlFor('/connections/network?tab=' + activeTab) }}">{{ t("polish_members.connections_search_clear") }}</a>
       {% endif %}
     </div>
   </form>
@@ -95,7 +95,7 @@
       </div>
       {% if loadMoreHrefs.accepted and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.accepted) }}">Show more <span class="govuk-visually-hidden">Show more My connections</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.accepted) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">Show more My connections</span></a>
         </p>
       {% endif %}
     {% else %}
@@ -103,7 +103,7 @@
         <h3 class="govuk-heading-s govuk-!-margin-bottom-1">No connections yet</h3>
         <p class="govuk-body">{% if hasSearch %}No connections match your search.{% else %}You have not connected with anyone yet. Find members to grow your network.{% endif %}</p>
         {% if not hasSearch %}
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">Find members</a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("skills.search_button") }}</a>
         {% endif %}
       </div>
     {% endif %}
@@ -122,7 +122,7 @@
             {% if connection.bio %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1"><span class="govuk-visually-hidden">About {{ connection.name }}: </span>{{ connection.bio }}</p>
             {% endif %}
-            <p class="govuk-body-s govuk-!-margin-bottom-3">Wants to connect with you</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("connections.wants_to_connect") }}</p>
             <div class="govuk-button-group">
               {% if connection.acceptAction %}
                 <form method="post" action="{{ urlFor(connection.acceptAction) }}">
@@ -143,7 +143,7 @@
       </div>
       {% if loadMoreHrefs.pending_received and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_received) }}">Show more <span class="govuk-visually-hidden">Show more Pending requests</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_received) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">Show more Pending requests</span></a>
         </p>
       {% endif %}
     {% else %}
@@ -184,7 +184,7 @@
       </div>
       {% if loadMoreHrefs.pending_sent and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_sent) }}">Show more <span class="govuk-visually-hidden">Show more Sent requests</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_sent) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">Show more Sent requests</span></a>
         </p>
       {% endif %}
     {% else %}
@@ -192,7 +192,7 @@
         <h3 class="govuk-heading-s govuk-!-margin-bottom-1">No sent requests</h3>
         <p class="govuk-body">{% if hasSearch %}No sent requests match your search.{% else %}You have not sent any connection requests that are still waiting.{% endif %}</p>
         {% if not hasSearch %}
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">Find members</a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("skills.search_button") }}</a>
         {% endif %}
       </div>
     {% endif %}

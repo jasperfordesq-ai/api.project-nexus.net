@@ -18,7 +18,7 @@
     {% if statusBanner.type == "error" %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
               <li><a href="#fed-actions">{{ statusBanner.message }}</a></li>
@@ -28,7 +28,7 @@
       </div>
     {% else %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="federation-member-status-title">
-        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="federation-member-status-title">Success</h2></div>
+        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="federation-member-status-title">{{ t("states.success_title") }}</h2></div>
         <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
       </div>
     {% endif %}
@@ -140,7 +140,7 @@
           <input type="hidden" name="receiver_tenant_id" value="{{ member.tenantId }}">
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="message-subject">Subject</label>
+            <label class="govuk-label" for="message-subject">{{ t("contact.form.subject_label") }}</label>
             <input class="govuk-input govuk-!-width-two-thirds" id="message-subject" name="subject" type="text">
           </div>
 
@@ -149,7 +149,7 @@
             <textarea class="govuk-textarea" id="message-body" name="body" rows="5"></textarea>
           </div>
 
-          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Send message</button>
+          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.send_message") }}</button>
         </form>
       {% else %}
         <p class="govuk-body-s nexus-alpha-meta">Messaging is not enabled for this member.</p>

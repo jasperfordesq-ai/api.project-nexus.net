@@ -9,7 +9,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Your profile" }
     ]
   }) }}
@@ -60,17 +60,17 @@
       }) }}
 
       {% if profile.bio %}
-        <h2 class="govuk-heading-m govuk-!-margin-top-8">About you</h2>
+        <h2 class="govuk-heading-m govuk-!-margin-top-8">{{ t("onboarding.confirm.bio_row") }}</h2>
         <p class="govuk-body">{{ profile.bio }}</p>
       {% endif %}
 
-      <h2 class="govuk-heading-m govuk-!-margin-top-8">Account</h2>
+      <h2 class="govuk-heading-m govuk-!-margin-top-8">{{ t("home.summary_account_key") }}</h2>
       <ul class="govuk-list">
         <li>
           <a href="{{ urlFor('/achievements') }}" class="govuk-link">Achievements and rewards</a>
         </li>
         <li>
-          <a href="{{ urlFor('/leaderboard') }}" class="govuk-link">Leaderboard</a>
+          <a href="{{ urlFor('/leaderboard') }}" class="govuk-link">{{ t("leaderboard.title") }}</a>
         </li>
       </ul>
 

@@ -20,12 +20,12 @@
     archived: "Archived"
   } %}
 
-  <a href="{{ backHref }}" class="govuk-back-link">Cancel</a>
+  <a href="{{ backHref }}" class="govuk-back-link">{{ t("polish_federation.transfer_cancel") }}</a>
 
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>{{ errorMessage }}</li>
@@ -36,7 +36,7 @@
   {% elseif isInvalid %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#title">Enter a challenge title.</a></li>
@@ -78,10 +78,10 @@
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if isInvalid %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label" for="title">Title</label>
+      <label class="govuk-label" for="title">{{ t("group_exchanges.form_title_label") }}</label>
       <div id="title-hint" class="govuk-hint">Use a short title people can scan in the challenge list.</div>
       {% if isInvalid %}
-        <p id="title-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter a challenge title.</p>
+        <p id="title-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Enter a challenge title.</p>
       {% endif %}
       <input class="govuk-input" id="title" name="title" type="text" maxlength="255" value="{{ challenge.title or '' }}" aria-describedby="title-hint{% if isInvalid %} title-error{% endif %}">
     </div>
@@ -90,7 +90,7 @@
       <label class="govuk-label" for="description">Description</label>
       <div id="description-hint" class="govuk-hint">Explain the problem, who it affects, and what good ideas should consider.</div>
       {% if isInvalid %}
-        <p id="description-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter a challenge description.</p>
+        <p id="description-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Enter a challenge description.</p>
       {% endif %}
       <textarea class="govuk-textarea" id="description" name="description" rows="6" maxlength="5000" aria-describedby="description-hint{% if isInvalid %} description-error{% endif %}">{{ challenge.description or '' }}</textarea>
     </div>
@@ -99,7 +99,7 @@
       <div class="govuk-form-group">
         <label class="govuk-label" for="category_id">Category</label>
         <select class="govuk-select" id="category_id" name="category_id">
-          <option value="">No category</option>
+          <option value="">{{ t("events.no_category") }}</option>
           {% for category in categories %}
             <option value="{{ category.id }}"{% if challenge.categoryId == category.id %} selected{% endif %}>{{ category.name }}</option>
           {% endfor %}
@@ -163,7 +163,7 @@
 
     <div class="govuk-button-group">
       <button type="submit" class="govuk-button" data-module="govuk-button">{{ "Save challenge" if isEdit else "Create challenge" }}</button>
-      <a class="govuk-link" href="{{ backHref }}">Cancel</a>
+      <a class="govuk-link" href="{{ backHref }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 {% endblock %}

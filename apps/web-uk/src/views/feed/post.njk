@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">Back to the feed</a>
+      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">{{ t("feed_t1.permalink_back") }}</a>
 
       <span class="govuk-caption-l">Community feed at {{ communityName }}</span>
       <h1 class="govuk-heading-xl">Post</h1>
@@ -16,7 +16,7 @@
       {% if statusMessage %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="permalink-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="permalink-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="permalink-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p>
@@ -27,12 +27,12 @@
       {% if requiresAuth %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="permalink-auth-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="permalink-auth-title">There is a problem</h2>
+            <h2 class="govuk-notification-banner__title" id="permalink-auth-title">{{ t("states.error_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">Sign in to take part in the feed.</p>
             <div class="govuk-button-group">
-              <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">Sign in</a>
+              <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">{{ t("auth.login_action") }}</a>
             </div>
           </div>
         </div>
@@ -103,11 +103,11 @@
           <form method="post" action="{{ urlFor('/feed/items/post/' + (item.id | string) + '/comments') }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group">
-              <label class="govuk-label" for="permalink-comment-{{ item.id }}">Add a comment</label>
+              <label class="govuk-label" for="permalink-comment-{{ item.id }}">{{ t("blog.comment_body_label") }}</label>
               <div id="permalink-comment-{{ item.id }}-hint" class="govuk-hint">Be respectful. Comments are visible to other members.</div>
               <textarea class="govuk-textarea" id="permalink-comment-{{ item.id }}" name="content" rows="3" aria-describedby="permalink-comment-{{ item.id }}-hint"></textarea>
             </div>
-            <button class="govuk-button" data-module="govuk-button">Comment</button>
+            <button class="govuk-button" data-module="govuk-button">{{ t("actions.comment") }}</button>
           </form>
         {% endif %}
       </article>

@@ -6,6 +6,7 @@
 const express = require('express');
 const { callGamificationApi, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -72,7 +73,7 @@ function textFrom(value, fallback = '') {
 }
 
 function formatInteger(value) {
-  return intFrom(value).toLocaleString('en-GB');
+  return intFrom(value).toLocaleString(getRequestIntlLocale());
 }
 
 function clampPercentage(value) {

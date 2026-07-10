@@ -8,7 +8,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">Back to the feed</a>
+      <a href="{{ urlFor('/feed') }}" class="govuk-back-link">{{ t("feed_t1.permalink_back") }}</a>
 
       <span class="govuk-caption-l">Community feed at {{ communityName }}</span>
       <h1 class="govuk-heading-xl">{% if item.title %}{{ item.title }}{% else %}Activity{% endif %}</h1>
@@ -27,12 +27,12 @@
       {% if requiresAuth %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="item-auth-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="item-auth-title">There is a problem</h2>
+            <h2 class="govuk-notification-banner__title" id="item-auth-title">{{ t("states.error_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">Sign in to take part in the feed.</p>
             <div class="govuk-button-group">
-              <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">Sign in</a>
+              <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">{{ t("auth.login_action") }}</a>
             </div>
           </div>
         </div>
@@ -124,11 +124,11 @@
             <form method="post" action="{{ urlFor('/feed/items/' + item.type + '/' + (item.id | string) + '/comments') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-form-group">
-                <label class="govuk-label" for="item-comment-{{ item.id }}">Add a comment</label>
+                <label class="govuk-label" for="item-comment-{{ item.id }}">{{ t("blog.comment_body_label") }}</label>
                 <div id="item-comment-{{ item.id }}-hint" class="govuk-hint">Be respectful. Comments are visible to other members.</div>
                 <textarea class="govuk-textarea" id="item-comment-{{ item.id }}" name="content" rows="3" aria-describedby="item-comment-{{ item.id }}-hint"></textarea>
               </div>
-              <button class="govuk-button" data-module="govuk-button">Comment</button>
+              <button class="govuk-button" data-module="govuk-button">{{ t("actions.comment") }}</button>
             </form>
           {% endif %}
         {% endif %}

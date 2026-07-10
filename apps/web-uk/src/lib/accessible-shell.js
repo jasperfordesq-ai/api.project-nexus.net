@@ -15,6 +15,7 @@ const serviceName = 'Project NEXUS Accessible';
 const phaseText = 'Beta';
 const feedbackUrl = 'mailto:feedback@project-nexus.ie?subject=NEXUS%20Beta%20feedback';
 const sourceCodeUrl = 'https://github.com/jasperfordesq-ai/nexus-v1';
+const { createTranslator, isSupportedLocale } = require('./localization');
 
 const localeOptions = [
   ['en', 'English'],
@@ -363,6 +364,24 @@ function prefixFooterColumns(columns, prefix) {
   }));
 }
 
+function localizeNavItems(items, t) {
+  return items.map((item) => ({
+    ...item,
+    label: t(`nav.${item.key}`)
+  }));
+}
+
+function localizeFooterColumns(columns, t) {
+  return columns.map((column) => ({
+    ...column,
+    heading: t(`footer.columns.${column.key}.heading`),
+    links: column.links.map((link) => ({
+      ...link,
+      label: t(`footer.columns.${column.key}.${link.key}`)
+    }))
+  }));
+}
+
 function buildLanguageQueryParams(query = {}) {
   return Object.entries(query)
     .filter(([key, value]) => (
@@ -380,7 +399,11 @@ function buildShellLocals(req, isAuthenticated) {
     ? req.accessibleRouting.tenant
     : {};
   const tenantName = routedTenant.name || process.env.ACCESSIBLE_TENANT_NAME || serviceName;
-  const currentLocale = typeof req.query.locale === 'string' ? req.query.locale : 'en';
+  const queryLocale = typeof req.query?.locale === 'string' ? req.query.locale : '';
+  const currentLocale = isSupportedLocale(req.locale)
+    ? req.locale
+    : (isSupportedLocale(queryLocale) ? queryLocale : 'en');
+  const t = typeof req.t === 'function' ? req.t : createTranslator(currentLocale);
   const routePrefix = req.accessibleRouting?.prefix || '';
   const visiblePath = req.originalUrl ? req.originalUrl.split('?')[0] : (req.path || '/');
   const currentPath = visiblePath || '/';
@@ -388,19 +411,28 @@ function buildShellLocals(req, isAuthenticated) {
   const urlFor = (pathname) => prefixLocalPath(pathname, routePrefix);
 
   return {
-    serviceName,
-    phaseText,
+    serviceName: t('service_name'),
+    phaseText: t('phase'),
     tenantName,
     tenantSlug: req.accessibleRouting?.tenantSlug || '',
     accessibleRoutePrefix: routePrefix,
     urlFor,
+    htmlLang: currentLocale,
+    htmlDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
+    t,
     alphaCurrentLocale: currentLocale,
     alphaLocaleOptions: localeOptions,
     alphaLanguageQueryParams: buildLanguageQueryParams(req.query),
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
-    alphaNavItems: prefixNavItems(buildNavItems({ isAuthenticated, tenant: routedTenant }), routePrefix),
+    alphaNavItems: prefixNavItems(
+      localizeNavItems(buildNavItems({ isAuthenticated, tenant: routedTenant }), t),
+      routePrefix
+    ),
     alphaActiveNav: activeNavForPath(req.path),
-    alphaFooterColumns: prefixFooterColumns(buildFooterColumns({ tenant: routedTenant }), routePrefix),
+    alphaFooterColumns: prefixFooterColumns(
+      localizeFooterColumns(buildFooterColumns({ tenant: routedTenant }), t),
+      routePrefix
+    ),
     alphaExploreLinks: prefixNavItems(buildExploreLinks({ tenant: routedTenant }), routePrefix),
     currentPath,
     currentUrl,

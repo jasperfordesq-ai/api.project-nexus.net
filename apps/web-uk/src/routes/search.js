@@ -15,6 +15,7 @@ const {
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -260,13 +261,13 @@ function resultCounts(grouped, total) {
 function resultCountLabel(count) {
   if (count === 0) return 'No results found';
   if (count === 1) return '1 result found';
-  return `${count.toLocaleString('en-GB')} results found`;
+  return `${count.toLocaleString(getRequestIntlLocale())} results found`;
 }
 
 function membersCountLabel(count) {
   if (count === 0) return 'No members';
   if (count === 1) return '1 member';
-  return `${count.toLocaleString('en-GB')} members`;
+  return `${count.toLocaleString(getRequestIntlLocale())} members`;
 }
 
 function savedSearchRows(result) {
@@ -280,7 +281,7 @@ function savedSearchRows(result) {
       query: textFrom(queryParams.q),
       lastResultCount: object.last_result_count === null || object.last_result_count === undefined
         ? ''
-        : intFrom(object.last_result_count).toLocaleString('en-GB')
+        : intFrom(object.last_result_count).toLocaleString(getRequestIntlLocale())
     };
   }).filter((row) => row.id > 0);
 }
@@ -288,7 +289,7 @@ function savedSearchRows(result) {
 function savedCountLabel(count) {
   if (count === 0) return 'No saved searches';
   if (count === 1) return '1 saved search';
-  return `${count.toLocaleString('en-GB')} saved searches`;
+  return `${count.toLocaleString(getRequestIntlLocale())} saved searches`;
 }
 
 function savedSearchById(result, id) {

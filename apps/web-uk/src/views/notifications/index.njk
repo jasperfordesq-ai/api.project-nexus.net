@@ -8,8 +8,8 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor('/') },
-      { text: "Notifications" }
+      { text: t("nav.home"), href: urlFor('/') },
+      { text: t("notifications.title") }
     ]
   }) }}
 {% endblock %}
@@ -89,7 +89,7 @@
                   <p class="govuk-body govuk-!-margin-bottom-1">
                     <strong class="govuk-!-font-weight-bold">{{ notification.title or notification.message or 'Notification' }}</strong>
                     {% if not (notification.isRead or notification.is_read) %}
-                      <span class="govuk-tag govuk-tag--blue app-notification-badge">New</span>
+                      <span class="govuk-tag govuk-tag--blue app-notification-badge">{{ t("notifications.new_tag") }}</span>
                     {% endif %}
                   </p>
                   <p class="govuk-body-s govuk-!-margin-bottom-1">{{ notification.body or notification.content or '' }}</p>
@@ -116,7 +116,7 @@
 
                   <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/delete') }}" style="display: inline" class="govuk-!-margin-left-2">
                     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                    <button type="submit" class="govuk-link app-link-button app-link-button--warning">Delete</button>
+                    <button type="submit" class="govuk-link app-link-button app-link-button--warning">{{ t("jobs_t3.delete_button") }}</button>
                   </form>
                 </div>
               </div>

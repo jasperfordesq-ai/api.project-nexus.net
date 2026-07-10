@@ -74,14 +74,18 @@ route coverage is not a completion score.
 | Static method/path matches | 2,433 matched, 3 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | 361 Laravel tables, 131 exact matches, 230 missing names, 193 ASP.NET-only names |
-| Localization | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
+| ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
+| Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
+| Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
+| Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET Release build | Passed with 0 errors and 4 xUnit warnings |
 | Focused ASP.NET regression | Failed: stale catch-all test expected 202 and received 404 |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
-| Web UK Jest | 870/871 passed; one tenant-routing source-parity failure |
-| Web UK lint and brand guard | Passed |
+| Web UK Jest | 27/27 suites and 986/986 tests passed after the localization/RTL and tenant-boundary review fixes |
+| Web UK lint and CSS build | Passed |
+| Web UK brand guard | Passed at the audit baseline; rerun with the final certification set |
 | Current-source Blade marker spot-check | 19/19 passed; this is not screenshot or WCAG certification |
-| Current-source browser accessibility gate | 9/9 representative public pages passed Chromium structure and serious/critical axe checks; manual certification remains |
+| Current-source browser accessibility gate | Expanded 12/12 Playwright Chromium/axe cases passed: nine representative public shared-mount pages plus three Arabic RTL pages at 320px, covering language/direction, structure, unique IDs, horizontal reflow, and serious/critical violations. Manual certification remains. |
 | Current-source Laravel core smoke | 10/10 passed |
 | Current-source module smoke sample | Chunk 1/8 passed 106/106; exhaustive eight-chunk recertification was not rerun during the audit |
 
@@ -111,6 +115,27 @@ that implementation movement and the lower amount of current green evidence.
   only the intentional root public asset paths.
 - ASP.NET switching remains intentionally labelled future/not-certified in
   `apps\web-uk\src\lib\backend-contract.js:9`.
+
+### Web UK localization/RTL progress after the audit baseline
+
+The current slice adds a real request-scoped localization foundation rather
+than treating the language selector as completion. Locale resolution follows a
+valid query locale, session, an available request user/profile, a signed-token
+profile preference, weighted `Accept-Language`, then English. Valid query and
+profile choices seed the session; responses declare `Content-Language`;
+request-scoped `AsyncLocalStorage` carries the locale into API/download
+requests; signed profile reads are memoized per request; and display formatting,
+document `lang`, and document direction use the resolved locale.
+
+The deterministic catalog sync and audits prove structural parity with the
+read-only Laravel source, while the conservative template pass wires only
+semantically safe exact matches. They do not solve untranslated upstream data
+or contextual route/template copy. In particular, `activity`, `blogreviews`,
+`connections`, `events`, `federation`, `feed`, `gamification`, `ideation`,
+`listings`, `members`, `organisations`, `saved`, `search`, `settings`,
+`volunteering`, and `wallet` are wholly English-identical across every
+non-English Laravel catalog. No score was recalculated from this slice alone,
+and the Laravel-first completion gate remains open.
 
 ## Workstream A: Accessible Frontend To Laravel Completion
 
@@ -148,15 +173,27 @@ smoked against ASP.NET later.
    `apps/web-uk/docs/BLADE_COMPONENT_PORT_AUDIT.md` against current Laravel
    Blade, controllers, API calls, validation, gates, banners, empty states,
    error states, and POST/upload/delete side effects.
-5. Implement real localization, formatting, and RTL behavior for every offered
-   locale. A language selector without translated output is not complete.
-6. **Automated foundation completed 2026-07-10:** Playwright Chromium plus
-   `@axe-core/playwright` now starts a fresh current-checkout Web UK listener
-   and gates nine representative public pages on document structure, unique
-   IDs, and serious/critical axe violations. Continue expanding authenticated,
-   error, upload, destructive, and RTL states, and perform a recorded manual
-   pass for keyboard use, focus order and visibility, screen-reader
-   announcements, zoom/reflow, contrast, error summaries, and RTL behavior.
+5. **Localization/RTL foundation substantially advanced 2026-07-10, but still
+   open:** Web UK imports all 11 offered Laravel locales across 24 namespaces
+   and 7,337 keys with zero structural drift; resolves locale per request;
+   propagates it to API calls and formatters; emits correct `lang`/`dir`; and
+   completed 1,595 conservative substitutions across 257 templates. Finish the
+   contextual route titles, headings, validation/status copy, ARIA labels, and
+   residual unsafe-to-infer strings. The authoritative read-only Laravel
+   catalogs also leave 16 namespaces and 53.2%-53.9% of each non-English locale
+   English-identical, so those source translations need an external owner
+   before every offered locale can be certified. A language selector,
+   structurally complete catalogs, or a zero-safe-match audit is not translated
+   output completion.
+6. **Expanded automated foundation completed 2026-07-10:** Playwright Chromium
+   plus `@axe-core/playwright` now starts a fresh current-checkout Web UK
+   listener and gates 12 cases: nine representative public pages plus three
+   Arabic RTL pages at 320px, covering document direction, structure, unique
+   IDs, horizontal reflow, and serious/critical axe violations. Continue
+   expanding authenticated, error, upload, destructive, and additional RTL
+   states, and perform a recorded manual pass for keyboard use, focus order and
+   visibility, screen-reader announcements, zoom/reflow, contrast, error
+   summaries, and RTL behavior.
    The source-level error-summary focus audit is complete for current Nunjucks
    source: all 135 summaries carry `tabindex="-1"`, down from six omissions at
    the 2026-07-10 audit.
@@ -341,7 +378,10 @@ Accessible baseline:
 cd C:\platforms\htdocs\asp.net-backend\apps\web-uk
 npm run brand:check
 npm run lint
+npm run build:css
 npm test -- --runInBand
+npm run locales:audit
+npm run locales:audit-templates -- --summary
 npm run route:matrix
 npm run visual:blade
 npm run smoke:laravel:local

@@ -6,6 +6,7 @@
 const express = require('express');
 const { callCouponApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -68,7 +69,7 @@ function formatDate(value) {
   if (text === '') return '';
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return text;
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

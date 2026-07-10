@@ -28,7 +28,7 @@
     </div>
     {% if organisationName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Organisation</dt>
+        <dt class="govuk-summary-list__key">{{ t("auth.profile_type_organisation") }}</dt>
         <dd class="govuk-summary-list__value">{{ organisationName }}</dd>
       </div>
     {% endif %}
@@ -64,7 +64,7 @@
 
       <div class="govuk-button-group">
         <button class="govuk-button" data-module="govuk-button">Send application</button>
-        <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">Cancel</a>
+        <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunityId | string)) }}">{{ t("polish_federation.transfer_cancel") }}</a>
       </div>
     </form>
   {% endif %}

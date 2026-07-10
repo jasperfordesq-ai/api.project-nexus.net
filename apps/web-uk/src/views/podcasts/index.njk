@@ -7,8 +7,8 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">Project NEXUS Accessible</span>
-  <h1 class="govuk-heading-xl">Podcasts</h1>
-  <p class="govuk-body-l">Listen to podcasts from your community.</p>
+  <h1 class="govuk-heading-xl">{{ t("podcasts.title") }}</h1>
+  <p class="govuk-body-l">{{ t("podcasts.description") }}</p>
 
   <p class="govuk-body">
     <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">Podcast studio</a>
@@ -18,7 +18,7 @@
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Find a podcast</label>
+          <label class="govuk-label" for="q">{{ t("polish_commerce.podcast_search_label") }}</label>
           <div id="podcast-q-hint" class="govuk-hint">Search by title or description.</div>
           <input class="govuk-input" id="q" name="q" type="search" value="{{ query }}" aria-describedby="podcast-q-hint">
         </div>
@@ -27,10 +27,10 @@
         <div class="govuk-form-group">
           <label class="govuk-label" for="sort">Sort by</label>
           <select class="govuk-select" id="sort" name="sort">
-            <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest first</option>
-            <option value="title" {% if sort == "title" %}selected{% endif %}>Title (A to Z)</option>
-            <option value="episodes" {% if sort == "episodes" %}selected{% endif %}>Most episodes</option>
-            <option value="followers" {% if sort == "followers" %}selected{% endif %}>Most followers</option>
+            <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_newest") }}</option>
+            <option value="title" {% if sort == "title" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_title") }}</option>
+            <option value="episodes" {% if sort == "episodes" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_episodes") }}</option>
+            <option value="followers" {% if sort == "followers" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_followers") }}</option>
           </select>
         </div>
       </div>
@@ -48,7 +48,7 @@
 
   {% if not shows.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no podcasts yet.</p>
+      <p class="govuk-body">{{ t("podcasts.empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">

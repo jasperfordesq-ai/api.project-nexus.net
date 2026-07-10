@@ -7,8 +7,8 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">Project NEXUS Accessible</span>
-  <h1 class="govuk-heading-xl">Saved opportunities</h1>
-  <p class="govuk-body-l">Opportunities you have bookmarked.</p>
+  <h1 class="govuk-heading-xl">{{ t("jobs_t2.saved_title") }}</h1>
+  <p class="govuk-body-l">{{ t("jobs_t2.saved_description") }}</p>
 
   <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
     <h2 class="govuk-tabs__title">Jobs</h2>
@@ -20,19 +20,19 @@
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}" aria-current="page">Saved</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">My applications</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">{{ t("jobs_t2.applications_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}">Responses</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">Job alerts</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">{{ t("jobs_t4.title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">My postings</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">{{ t("jobs_t3.mine_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">Post a job</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.nav_create") }}</a>
       </li>
     </ul>
   </div>
@@ -51,7 +51,7 @@
 
   {% if jobs.length == 0 %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You have not saved any opportunities yet.</p>
+      <p class="govuk-body">{{ t("jobs_t2.saved_empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">
@@ -106,7 +106,7 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">More results</span>
           </a>

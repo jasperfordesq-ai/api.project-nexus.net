@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/courses') }}" class="govuk-back-link">Back to courses</a>
+  <a href="{{ urlFor('/courses') }}" class="govuk-back-link">{{ t("courses.back") }}</a>
 
   {% set activeTab = 'teaching' %}
   {% include "courses/_nav.njk" %}
@@ -15,7 +15,7 @@
     {% if status.type == 'success' %}
       <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="course-instructor-status" data-module="govuk-notification-banner">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="course-instructor-status">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="course-instructor-status">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -24,7 +24,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li>{{ status.message }}</li></ul></div>
         </div>
       </div>

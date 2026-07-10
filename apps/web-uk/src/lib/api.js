@@ -6,6 +6,7 @@
 const TENANT_ID = process.env.TENANT_ID || '';
 const { cache } = require('./cache');
 const { getApiBaseUrl } = require('./backend-contract');
+const { getRequestLocale } = require('./request-locale-context');
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -42,14 +43,27 @@ function hasHostTenantContext(headers) {
   return !!(headers.Host || headers.host || headers.Origin || headers.origin);
 }
 
+function hasHeader(headers, expectedName) {
+  const normalizedExpected = expectedName.toLowerCase();
+  return Object.keys(headers).some((name) => name.toLowerCase() === normalizedExpected);
+}
+
+function addRequestLocaleHeader(headers) {
+  const locale = getRequestLocale();
+  if (locale && !hasHeader(headers, 'Accept-Language')) {
+    headers['Accept-Language'] = locale;
+  }
+  return headers;
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const isFormData = typeof globalThis.FormData !== 'undefined' && options.body instanceof globalThis.FormData;
 
-  const headers = {
+  const headers = addRequestLocaleHeader({
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
-  };
+  });
 
   // Include X-Tenant-ID only when there is no bearer auth, tenant slug, or
   // host/Origin tenant context. Host-scoped custom-domain calls must let
@@ -99,9 +113,9 @@ async function request(endpoint, options = {}) {
 async function downloadRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const headers = {
+  const headers = addRequestLocaleHeader({
     ...options.headers
-  };
+  });
 
   if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug'] && !hasHostTenantContext(headers)) {
     headers['X-Tenant-ID'] = TENANT_ID;

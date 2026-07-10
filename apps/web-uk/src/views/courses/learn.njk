@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/courses/' + (course.id | string)) }}" class="govuk-back-link">Back to courses</a>
+  <a href="{{ urlFor('/courses/' + (course.id | string)) }}" class="govuk-back-link">{{ t("courses.back") }}</a>
 
   <span class="govuk-caption-xl">Learning at {{ tenantName }}</span>
   <h1 class="govuk-heading-xl">{{ course.title }}</h1>
@@ -24,7 +24,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body"><p class="govuk-body">{{ status.message }}</p></div>
         </div>
       </div>
@@ -42,7 +42,7 @@
 
   <div class="govuk-grid-row govuk-!-margin-top-4">
     <div class="govuk-grid-column-one-third">
-      <h2 class="govuk-heading-m">Lessons</h2>
+      <h2 class="govuk-heading-m">{{ t("courses.lessons_label") }}</h2>
       {% if not sections or not sections.length %}
         <p class="govuk-body">This course has no lessons available yet.</p>
       {% else %}
@@ -81,9 +81,9 @@
             <source src="{{ currentLesson.videoUrl }}">
             Your browser cannot play this video. Open it in a new tab below.
           </video>
-          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.videoUrl }}" target="_blank" rel="noopener noreferrer">Open the video<span class="govuk-visually-hidden"> (opens in new tab)</span></a></p>
+          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.videoUrl }}" target="_blank" rel="noopener noreferrer">Open the video<span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span></a></p>
         {% elif currentLesson.contentType == 'embed' and currentLesson.embedUrl %}
-          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.embedUrl }}" target="_blank" rel="noopener noreferrer">Open the video<span class="govuk-visually-hidden"> (opens in new tab)</span></a></p>
+          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.embedUrl }}" target="_blank" rel="noopener noreferrer">Open the video<span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span></a></p>
         {% endif %}
 
         {% if currentLesson.body %}
@@ -91,7 +91,7 @@
         {% endif %}
 
         {% if currentLesson.attachmentUrl %}
-          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.attachmentUrl }}" target="_blank" rel="noopener noreferrer">Download the lesson material<span class="govuk-visually-hidden"> (opens in new tab)</span></a></p>
+          <p class="govuk-body"><a class="govuk-link" href="{{ currentLesson.attachmentUrl }}" target="_blank" rel="noopener noreferrer">Download the lesson material<span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span></a></p>
         {% endif %}
 
         {% if currentLesson.contentType == 'quiz' %}

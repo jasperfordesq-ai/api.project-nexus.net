@@ -15,6 +15,15 @@ function redirectTo(res, pathname) {
   return res.redirect(urlFor(pathname));
 }
 
+function tenantSlugForRequest(req) {
+  const routedTenantSlug = String(req.accessibleRouting?.tenantSlug || '').trim();
+  if (routedTenantSlug) {
+    return routedTenantSlug;
+  }
+
+  return String(req.body?.tenant_slug || '').trim();
+}
+
 router.get('/login', (req, res) => {
   res.render('login', {
     title: 'Sign in',
@@ -25,13 +34,14 @@ router.get('/login', (req, res) => {
 });
 
 router.post('/login', asyncRoute(async (req, res) => {
-  const { email, password, tenant_slug } = req.body;
+  const { email, password } = req.body;
+  const tenantSlug = tenantSlugForRequest(req);
 
-  if (!email || !password || !tenant_slug) {
+  if (!email || !password || !tenantSlug) {
     return res.render('login', {
       title: 'Sign in',
       error: 'Enter your email, password and tenant',
-      values: { email, tenant_slug },
+      values: { email, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -43,7 +53,7 @@ router.post('/login', asyncRoute(async (req, res) => {
   // is the active defence here. Registration + contact keep Turnstile.
 
   try {
-    const result = await login(email.toLowerCase(), password, tenant_slug);
+    const result = await login(email.toLowerCase(), password, tenantSlug);
 
     // Handle 2FA requirement — store pending token in session for verification
     if (result.requires_2fa) {
@@ -80,7 +90,7 @@ router.post('/login', asyncRoute(async (req, res) => {
     res.render('login', {
       title: 'Sign in',
       error: errorMessage,
-      values: { email, tenant_slug },
+      values: { email, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -199,6 +209,8 @@ router.get('/register', (req, res) => {
 });
 
 router.post('/register', asyncRoute(async (req, res) => {
+  const tenantSlug = tenantSlugForRequest(req);
+
   // Bot honeypot — `website` is a hidden field in register.njk that real
   // users never see or fill. Bots auto-fill every input and give themselves
   // away. Render the same "check your email" success page so the bot
@@ -225,13 +237,13 @@ router.post('/register', asyncRoute(async (req, res) => {
       title: 'Register',
       errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
       fieldErrors: {},
-      values: req.body || {},
+      values: { ...(req.body || {}), tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 
-  const { email, password, confirm_password, first_name, last_name, tenant_slug } = req.body;
+  const { email, password, confirm_password, first_name, last_name } = req.body;
 
   const errors = [];
   const fieldErrors = {};
@@ -254,7 +266,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     fieldErrors.email = 'Enter a valid email address';
   }
 
-  if (!tenant_slug || !tenant_slug.trim()) {
+  if (!tenantSlug) {
     errors.push({ text: 'Enter your community code', href: '#tenant_slug' });
     fieldErrors.tenant_slug = 'Enter your community code';
   }
@@ -277,7 +289,7 @@ router.post('/register', asyncRoute(async (req, res) => {
       title: 'Register',
       errors,
       fieldErrors,
-      values: { email, first_name, last_name, tenant_slug },
+      values: { email, first_name, last_name, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -289,11 +301,11 @@ router.post('/register', asyncRoute(async (req, res) => {
       password,
       first_name: first_name.trim(),
       last_name: last_name.trim(),
-      tenant_slug: tenant_slug.trim()
+      tenant_slug: tenantSlug
     });
 
     // Auto-login after registration
-    const result = await login(email.trim().toLowerCase(), password, tenant_slug.trim());
+    const result = await login(email.trim().toLowerCase(), password, tenantSlug);
 
     if (result.access_token) {
       setAuthCookies(res, result.access_token, result.refresh_token);
@@ -327,7 +339,7 @@ router.post('/register', asyncRoute(async (req, res) => {
       title: 'Register',
       errors: [{ text: errorMessage }],
       fieldErrors: error.data?.errors || {},
-      values: { email, first_name, last_name, tenant_slug },
+      values: { email, first_name, last_name, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -376,7 +388,8 @@ function renderForgotPassword(req, res) {
 router.get('/login/forgot-password', renderForgotPassword);
 
 async function handleForgotPasswordPost(req, res) {
-  const { email, tenant_slug } = req.body;
+  const { email } = req.body;
+  const tenantSlug = tenantSlugForRequest(req);
   const formAction = '/login/forgot-password';
 
   // Turnstile gate intentionally removed from forgot-password (2026-05-15).
@@ -392,7 +405,7 @@ async function handleForgotPasswordPost(req, res) {
     fieldErrors.email = 'Enter your email address';
   }
 
-  if (!tenant_slug || !tenant_slug.trim()) {
+  if (!tenantSlug) {
     errors.push({ text: 'Enter your community code', href: '#tenant_slug' });
     fieldErrors.tenant_slug = 'Enter your community code';
   }
@@ -402,7 +415,7 @@ async function handleForgotPasswordPost(req, res) {
       title: 'Reset your password',
       errors,
       fieldErrors,
-      values: { email, tenant_slug },
+      values: { email, tenant_slug: tenantSlug },
       formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
@@ -410,7 +423,7 @@ async function handleForgotPasswordPost(req, res) {
   }
 
   try {
-    await forgotPassword(email.trim(), tenant_slug.trim());
+    await forgotPassword(email.trim(), tenantSlug);
   } catch (error) {
     // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {

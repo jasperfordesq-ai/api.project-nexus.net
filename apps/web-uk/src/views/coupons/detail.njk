@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="{{ urlFor('/coupons') }}" class="govuk-back-link">Back to coupons</a>
+  <a href="{{ urlFor('/coupons') }}" class="govuk-back-link">{{ t("polish_commerce.coupon_detail_back") }}</a>
 
   <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
   <h1 class="govuk-heading-xl">{{ coupon.title }}</h1>
@@ -28,19 +28,19 @@
     </div>
   {% endif %}
 
-  <h2 class="govuk-heading-m">How to use this coupon</h2>
-  <p class="govuk-body">Present this code at the point of purchase or enter it on the merchant website to receive your discount.</p>
+  <h2 class="govuk-heading-m">{{ t("polish_commerce.coupon_redemption_heading") }}</h2>
+  <p class="govuk-body">{{ t("polish_commerce.coupon_redemption_body") }}</p>
 
   <dl class="govuk-summary-list">
     {% if coupon.merchantName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Merchant</dt>
+        <dt class="govuk-summary-list__key">{{ t("coupons.merchant_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ coupon.merchantName }}</dd>
       </div>
     {% endif %}
     {% if coupon.validUntilText %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Valid until</dt>
+        <dt class="govuk-summary-list__key">{{ t("coupons.valid_until_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ coupon.validUntilText }}</dd>
       </div>
     {% endif %}

@@ -54,7 +54,7 @@
       <div class="govuk-warning-text govuk-!-margin-bottom-2">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
-          <span class="govuk-visually-hidden">There is a problem</span>
+          <span class="govuk-visually-hidden">{{ t("states.error_title") }}</span>
           Removing a link cannot be undone. The other account will no longer be linked to yours.
         </strong>
       </div>
@@ -78,7 +78,7 @@
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="linked-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="linked-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="linked-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -87,7 +87,7 @@
       {% elif statusMessage and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#request">{{ statusMessage }}</a></li>
@@ -97,7 +97,7 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">Account settings</span>
+      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
       <h1 class="govuk-heading-xl">Linked accounts</h1>
       <p class="govuk-body-l">Link a family member, dependant or someone you care for to your account so you can help manage their activity. Linked members must approve the link before it becomes active.</p>
 

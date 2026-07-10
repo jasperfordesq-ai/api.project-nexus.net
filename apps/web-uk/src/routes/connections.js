@@ -15,6 +15,7 @@ const {
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -75,7 +76,7 @@ function formatMonthYear(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), { month: 'long', year: 'numeric' }).format(date);
 }
 
 function normaliseConnection(connection) {

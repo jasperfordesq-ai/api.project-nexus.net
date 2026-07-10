@@ -10,7 +10,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Listings", href: urlFor("/listings") },
       { text: listing.title or listing.name or "Listing details" }
     ]
@@ -67,7 +67,7 @@
             value: { text: listing.id }
           },
           {
-            key: { text: "Title" },
+            key: { text: t("group_exchanges.form_title_label") },
             value: { text: listing.title or listing.name or "N/A" }
           },
           {
@@ -87,7 +87,7 @@
             value: { text: (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }
           },
           {
-            key: { text: "Updated" },
+            key: { text: t("blog.updated_label") },
             value: { text: (listing.updatedAt or listing.updated_at) | formatDate if listing.updatedAt or listing.updated_at else "N/A" }
           }
         ]
@@ -96,13 +96,13 @@
       {% if listing.can_edit %}
         <div class="govuk-button-group">
           {{ govukButton({
-            text: "Edit",
+            text: t("jobs_t3.edit_button"),
             href: urlFor("/listings/" + (listing.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}
           <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
           </form>
         </div>
       {% else %}

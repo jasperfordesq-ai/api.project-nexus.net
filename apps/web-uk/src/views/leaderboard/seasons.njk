@@ -11,8 +11,8 @@
   <h1 class="govuk-heading-xl">Leaderboard seasons</h1>
   <p class="govuk-body-l">Each season resets the leaderboard so everyone has a fresh chance to compete.</p>
 
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Leaderboard">
-    <h2 class="govuk-tabs__title">Leaderboard</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
+    <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
         <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive</a>
@@ -79,7 +79,7 @@
           <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Season leaders</caption>
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
-              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rank</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("leaderboard.rank_column") }}</th>
               <th scope="col" class="govuk-table__header">Member</th>
               <th scope="col" class="govuk-table__header govuk-table__header--numeric">Season XP</th>
             </tr>
@@ -105,7 +105,7 @@
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">Season</th>
-          <th scope="col" class="govuk-table__header">Period</th>
+          <th scope="col" class="govuk-table__header">{{ t("leaderboard.period_label") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">

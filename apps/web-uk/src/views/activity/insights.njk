@@ -7,7 +7,7 @@
 {% block content %}
   <a class="govuk-back-link" href="{{ urlFor('/activity') }}">Back to activity</a>
 
-  <span class="govuk-caption-xl">Your activity</span>
+  <span class="govuk-caption-xl">{{ t("profile_settings.notifications.groups.activity") }}</span>
   <h1 class="govuk-heading-xl">Activity insights</h1>
   <p class="govuk-body-l">A detailed view of your contributions, skills and recent activity across the community.</p>
 
@@ -26,7 +26,7 @@
       <dd>{{ activity.connectionsLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Exchanges</dt>
+      <dt>{{ t("exchanges.title") }}</dt>
       <dd>{{ activity.exchangesLabel }}</dd>
     </div>
   </dl>
@@ -88,7 +88,7 @@
         <h3 class="govuk-heading-m">Quick stats</h3>
         <dl class="govuk-summary-list govuk-!-margin-bottom-0">
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Groups joined</dt>
+            <dt class="govuk-summary-list__key">{{ t("activity.groups_joined") }}</dt>
             <dd class="govuk-summary-list__value">{{ activity.groupsJoinedLabel }}</dd>
           </div>
           <div class="govuk-summary-list__row">
@@ -108,7 +108,7 @@
             <dd class="govuk-summary-list__value">{{ activity.engagement.likesReceivedLabel }}</dd>
           </div>
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Net balance</dt>
+            <dt class="govuk-summary-list__key">{{ t("polish_discovery.activity_net_balance") }}</dt>
             <dd class="govuk-summary-list__value">
               <strong class="govuk-tag {{ activity.netBalanceInsight.tagClass }}">{{ activity.netBalanceInsight.label }}</strong>
               <span class="govuk-visually-hidden">{{ activity.netBalanceInsight.meaning }}</span>
@@ -138,7 +138,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          <p class="govuk-body govuk-!-margin-bottom-0">You have not added any skills yet.</p>
+          <p class="govuk-body govuk-!-margin-bottom-0">{{ t("profile_settings.skills.none") }}</p>
         {% endif %}
       </div>
     </div>

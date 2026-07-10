@@ -18,12 +18,13 @@ const {
   getComments,
   toggleFeedLike,
   getListingReviews,
-  getProfile,
   callWalletApi,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -200,13 +201,13 @@ function listingAnalyticsDays(value) {
 
 function integerLabel(value) {
   const number = Number(value);
-  return Number.isFinite(number) ? Math.trunc(number).toLocaleString('en-GB') : '0';
+  return Number.isFinite(number) ? Math.trunc(number).toLocaleString(getRequestIntlLocale()) : '0';
 }
 
 function decimalLabel(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0';
-  return number.toLocaleString('en-GB', { maximumFractionDigits: 1 });
+  return number.toLocaleString(getRequestIntlLocale(), { maximumFractionDigits: 1 });
 }
 
 function dateParts(value) {
@@ -223,7 +224,7 @@ function dateParts(value) {
 function dateLabel(value, month = 'long') {
   const parts = dateParts(value);
   if (!parts) return '';
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month,
     year: month === 'long' ? 'numeric' : undefined,
@@ -530,7 +531,7 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
 
   const [listingResult, profileResult, walletBalance] = await Promise.all([
     callListing(token, 'GET', `/${listingId}`),
-    getProfile(token).catch(() => null),
+    getRequestProfile(req, token).catch(() => null),
     walletBalanceForExchange(token)
   ]);
 
@@ -656,7 +657,7 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const [listingResult, profileResult] = await Promise.all([
     callListing(token, 'GET', `/${id}`),
-    getProfile(token).catch(() => null)
+    getRequestProfile(req, token).catch(() => null)
   ]);
 
   const listing = dataFrom(listingResult) || {};
@@ -687,7 +688,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
 
   const [data, currentUser] = await Promise.all([
     getListings(req.token, params),
-    getProfile(req.token)
+    getRequestProfile(req, req.token)
   ]);
 
   // Handle both array and paginated response formats
@@ -789,7 +790,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const [listing, reviewsResult, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
     getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null })),
-    getProfile(req.token)
+    getRequestProfile(req, req.token)
   ]);
 
   const listingOwnerId = listing.user?.id || listing.userId || listing.user_id;
@@ -810,7 +811,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const [listing, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
-    getProfile(req.token)
+    getRequestProfile(req, req.token)
   ]);
 
   // Only the owner may access the edit form

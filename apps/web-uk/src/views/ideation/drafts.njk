@@ -16,7 +16,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#draft-title-{{ drafts[0].id if drafts and drafts.length else '0' }}">{{ errorMessage }}</a></li>
@@ -55,7 +55,7 @@
             <div class="govuk-form-group{% if status == 'draft-invalid' %} govuk-form-group--error{% endif %}">
               <label class="govuk-label" for="draft-title-{{ draft.id }}">Idea title</label>
               {% if status == 'draft-invalid' %}
-                <p id="draft-title-{{ draft.id }}-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter a title for your draft.</p>
+                <p id="draft-title-{{ draft.id }}-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Enter a title for your draft.</p>
               {% endif %}
               <input class="govuk-input" id="draft-title-{{ draft.id }}" name="draft_title" type="text" maxlength="255" value="{{ draft.title }}" {% if status == 'draft-invalid' %}aria-describedby="draft-title-{{ draft.id }}-error"{% endif %}>
             </div>

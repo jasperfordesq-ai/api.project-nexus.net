@@ -7,14 +7,14 @@
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/account') }}">Back to account settings</a>
 
-  <span class="govuk-caption-xl">Account settings</span>
+  <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
   <h1 class="govuk-heading-xl">Your availability</h1>
   <p class="govuk-body-l">Set your weekly availability so others can find times that work for both of you. You can set different times for each day.</p>
 
   {% if statusMessage and successStatus %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="availability-status">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="availability-status">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="availability-status">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -23,7 +23,7 @@
   {% elif statusMessage and errorStatus %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p class="govuk-body">{{ statusMessage }}</p>
         </div>
@@ -46,13 +46,13 @@
           <div class="govuk-grid-row">
             <div class="govuk-grid-column-one-half">
               <div class="govuk-form-group">
-                <label class="govuk-label" for="start-{{ backendDay }}-{{ slotIndex }}">Start time</label>
+                <label class="govuk-label" for="start-{{ backendDay }}-{{ slotIndex }}">{{ t("events.start_time_label") }}</label>
                 <input class="govuk-input govuk-input--width-5" id="start-{{ backendDay }}-{{ slotIndex }}" name="slots[{{ backendDay }}][{{ slotIndex }}][start]" type="time" value="{{ slot.start or '' }}">
               </div>
             </div>
             <div class="govuk-grid-column-one-half">
               <div class="govuk-form-group">
-                <label class="govuk-label" for="end-{{ backendDay }}-{{ slotIndex }}">End time</label>
+                <label class="govuk-label" for="end-{{ backendDay }}-{{ slotIndex }}">{{ t("events.end_time_label") }}</label>
                 <input class="govuk-input govuk-input--width-5" id="end-{{ backendDay }}-{{ slotIndex }}" name="slots[{{ backendDay }}][{{ slotIndex }}][end]" type="time" value="{{ slot.end or '' }}">
               </div>
             </div>

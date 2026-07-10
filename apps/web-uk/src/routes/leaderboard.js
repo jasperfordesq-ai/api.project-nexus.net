@@ -6,6 +6,7 @@
 const express = require('express');
 const { callGamificationApi, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -94,11 +95,11 @@ function textFrom(value, fallback = '') {
 }
 
 function formatInteger(value) {
-  return intFrom(value).toLocaleString('en-GB');
+  return intFrom(value).toLocaleString(getRequestIntlLocale());
 }
 
 function formatDecimal(value) {
-  return numberFrom(value).toLocaleString('en-GB', {
+  return numberFrom(value).toLocaleString(getRequestIntlLocale(), {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1
   });
@@ -109,7 +110,7 @@ function formatDateLabel(value) {
   if (Number.isNaN(date.getTime())) {
     return '';
   }
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -322,7 +323,7 @@ function isJourneyScalar(value) {
 
 function formatJourneyScalar(value) {
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return value.toLocaleString('en-GB', {
+    return value.toLocaleString(getRequestIntlLocale(), {
       minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
       maximumFractionDigits: 1
     });
@@ -333,7 +334,7 @@ function formatJourneyScalar(value) {
     if (trimmed !== '') {
       const numeric = Number(trimmed);
       if (Number.isFinite(numeric)) {
-        return numeric.toLocaleString('en-GB', {
+        return numeric.toLocaleString(getRequestIntlLocale(), {
           minimumFractionDigits: Number.isInteger(numeric) ? 0 : 1,
           maximumFractionDigits: 1
         });

@@ -25,11 +25,12 @@ const {
   createReview,
   getGamificationProfileByUserId,
   getUserReviews,
-  getProfile,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -168,7 +169,7 @@ function titleLabel(value) {
 function dateLabel(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(getRequestIntlLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function normalizeInsightsProfile(profile) {
@@ -480,7 +481,7 @@ router.get('/nearby', asyncRoute(async (req, res) => {
   let hasLocation = false;
 
   try {
-    const profile = dataFrom(await getProfile(token)) || {};
+    const profile = dataFrom(await getRequestProfile(req, token)) || {};
     const lat = numericCoordinate(profile.latitude ?? profile.lat);
     const lon = numericCoordinate(profile.longitude ?? profile.lon ?? profile.lng);
 
@@ -527,7 +528,7 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
 
   try {
     const [viewerResult, profileResult, verificationResult] = await Promise.all([
-      getProfile(token),
+      getRequestProfile(req, token),
       getUserV2(token, id),
       getMemberVerificationBadges(token, id).catch(() => ({ data: [] }))
     ]);
@@ -641,7 +642,7 @@ router.get('/:id', requireAuth, asyncRoute(async (req, res) => {
     getConnections(req.token).catch(() => ({ data: [] })),
     getGamificationProfileByUserId(req.token, id).catch(() => ({ profile: null })),
     getUserReviews(req.token, id).catch(() => ({ data: [], summary: null })),
-    getProfile(req.token).catch(() => null)
+    getRequestProfile(req, req.token).catch(() => null)
   ]);
 
   if (!user) {

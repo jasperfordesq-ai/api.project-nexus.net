@@ -6,7 +6,7 @@
       <h1 class="govuk-heading-xl">Sorry, there is a problem with the service</h1>
       <p class="govuk-body">Try again later.</p>
       <p class="govuk-body">
-        <a href="{{ urlFor('/') }}" class="govuk-link">Go to the home page</a>
+        <a href="{{ urlFor('/') }}" class="govuk-link">{{ t("nav.home") }}</a>
       </p>
 
       {% if errorDetails %}
@@ -17,7 +17,7 @@
             </span>
           </summary>
           <div class="govuk-details__text">
-            <p class="govuk-body"><strong>Message:</strong> {{ errorDetails.message }}</p>
+            <p class="govuk-body"><strong>{{ t("vol_depth.swap_message_from") }}</strong> {{ errorDetails.message }}</p>
             {% if errorDetails.stack %}
               <pre style="overflow-x: auto; background: #f3f2f1; padding: 15px; font-size: 12px;">{{ errorDetails.stack }}</pre>
             {% endif %}

@@ -9,7 +9,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
 {% block beforeContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/explore') }}">Back</a>
+  <a class="govuk-back-link" href="{{ urlFor('/explore') }}">{{ t("onboarding.back") }}</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -27,7 +27,7 @@
 
   {% if status == "empty" %}
     {{ govukErrorSummary({
-      titleText: "There is a problem",
+      titleText: t("states.error_title"),
       errorList: [
         {
           text: "Enter a message before sending.",

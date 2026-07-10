@@ -14,18 +14,18 @@
 
   <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
     <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/pipeline') }}">View pipeline</a>
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications/export.csv') }}">Download applications (CSV)</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications/export.csv') }}">{{ t("jobs_t3.export_button") }}</a>
     <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id) }}">View opportunity</a>
   </div>
 
   <h2 class="govuk-heading-l">Key metrics</h2>
   <dl class="govuk-summary-list govuk-!-margin-bottom-6">
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Total views</dt>
+      <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_views") }}</dt>
       <dd class="govuk-summary-list__value">{{ analytics.totalViews }}</dd>
     </div>
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Unique viewers</dt>
+      <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_unique") }}</dt>
       <dd class="govuk-summary-list__value">{{ analytics.uniqueViewers }}</dd>
     </div>
     <div class="govuk-summary-list__row">
@@ -33,7 +33,7 @@
       <dd class="govuk-summary-list__value">{{ analytics.totalApplications }}</dd>
     </div>
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Conversion rate</dt>
+      <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_conversion") }}</dt>
       <dd class="govuk-summary-list__value">{{ analytics.conversionRate }}%</dd>
     </div>
     <div class="govuk-summary-list__row">

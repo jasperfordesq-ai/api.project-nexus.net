@@ -10,7 +10,7 @@
   {% set breadcrumbs = [
     { text: "Groups", href: urlFor("/groups") },
     { text: group.name, href: urlFor("/groups/" + (group.id | string)) },
-    { text: "Edit" }
+    { text: t("jobs_t3.edit_button") }
   ] %}
   {% include "partials/breadcrumbs.njk" %}
 {% endblock %}
@@ -21,19 +21,19 @@
 
       {% if errors and errors.length %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: errors
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Edit group</h1>
+      <h1 class="govuk-heading-xl">{{ t("polish_groups.edit_link") }}</h1>
 
       <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {{ govukInput({
           label: {
-            text: "Group name",
+            text: t("groups.create.name_label"),
             classes: "govuk-label--m"
           },
           id: "name",
@@ -70,7 +70,7 @@
           items: [
             {
               value: "false",
-              text: "Public",
+              text: t("groups.visibility_public"),
               hint: { text: "Anyone can find and join this group" },
               checked: not (group.isPrivate or group.is_private)
             },
@@ -87,7 +87,7 @@
           {{ govukButton({
             text: "Save changes"
           }) }}
-          <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
 

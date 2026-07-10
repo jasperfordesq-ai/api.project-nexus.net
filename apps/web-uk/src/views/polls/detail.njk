@@ -43,12 +43,12 @@
 
       {% if statusBanner and statusBanner.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
-          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">Success</h2></div>
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("states.success_title") }}</h2></div>
           <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
         </div>
       {% elif statusBanner and statusBanner.type == "error" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
-          <div role="alert"><h2 class="govuk-error-summary__title">There is a problem</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
+          <div role="alert"><h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
         </div>
       {% endif %}
 
@@ -74,7 +74,7 @@
           <button class="govuk-button govuk-!-margin-top-2" data-module="govuk-button">Vote on this poll</button>
         </form>
       {% elif poll.resultsVisible %}
-        <h2 class="govuk-heading-l">Results</h2>
+        <h2 class="govuk-heading-l">{{ t("listings.results_title") }}</h2>
         {% for option in poll.options %}
           <div class="govuk-!-margin-bottom-3">
             <p class="govuk-body govuk-!-margin-bottom-1">
@@ -113,17 +113,17 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">No comments yet. Be the first to comment.</p>
+        <p class="govuk-body">{{ t("blog.comments_empty") }}</p>
       {% endif %}
 
       <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/comment') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="poll-comment-{{ poll.id }}">Add a comment</label>
+          <label class="govuk-label" for="poll-comment-{{ poll.id }}">{{ t("blog.comment_body_label") }}</label>
           <div id="poll-comment-{{ poll.id }}-hint" class="govuk-hint">Be respectful and keep it on topic.</div>
           <textarea class="govuk-textarea" id="poll-comment-{{ poll.id }}" name="content" rows="3" aria-describedby="poll-comment-{{ poll.id }}-hint" maxlength="10000"></textarea>
         </div>
-        <button class="govuk-button" data-module="govuk-button">Post comment</button>
+        <button class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
       </form>
     </div>
   </div>

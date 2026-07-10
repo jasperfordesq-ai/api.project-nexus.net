@@ -16,7 +16,7 @@
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-half">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Find an item</label>
+          <label class="govuk-label" for="q">{{ t("marketplace.search_label") }}</label>
           <input class="govuk-input" id="q" name="q" type="search" value="{{ state.query }}">
         </div>
       </div>
@@ -52,7 +52,7 @@
 
     <div class="govuk-form-group">
       <fieldset class="govuk-fieldset">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Condition</legend>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("marketplace.condition_label") }}</legend>
         <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
           {% for option in conditionOptions %}
             <div class="govuk-checkboxes__item">
@@ -67,7 +67,7 @@
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="seller_type">Seller</label>
+          <label class="govuk-label" for="seller_type">{{ t("marketplace.seller_label") }}</label>
           <select class="govuk-select" id="seller_type" name="seller_type">
             {% for option in sellerTypeOptions %}
               <option value="{{ option.value }}" {% if option.value == state.sellerType %}selected{% endif %}>{{ option.label }}</option>
@@ -77,7 +77,7 @@
       </div>
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="delivery_method">Delivery</label>
+          <label class="govuk-label" for="delivery_method">{{ t("marketplace.delivery_label") }}</label>
           <select class="govuk-select" id="delivery_method" name="delivery_method">
             {% for option in deliveryOptions %}
               <option value="{{ option.value }}" {% if option.value == state.deliveryMethod %}selected{% endif %}>{{ option.label }}</option>
@@ -115,7 +115,7 @@
       <p class="govuk-body">No items match your filters. Try widening your search.</p>
     </div>
   {% else %}
-    <h2 class="govuk-heading-l">Results</h2>
+    <h2 class="govuk-heading-l">{{ t("listings.results_title") }}</h2>
     <div class="nexus-alpha-card-list">
       {% for item in listings %}
         {% include "marketplace/_listing-card.njk" %}

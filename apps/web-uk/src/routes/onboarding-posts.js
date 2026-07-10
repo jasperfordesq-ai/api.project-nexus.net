@@ -6,7 +6,6 @@
 const express = require('express');
 const fs = require('fs/promises');
 const {
-  getProfile,
   updateProfile,
   uploadProfileAvatar,
   getOnboardingStatus,
@@ -18,6 +17,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 const SESSION_KEY = 'alphaOnboarding';
@@ -247,7 +247,7 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
     }
 
     if (['profile', 'confirm'].includes(step)) {
-      onboardingUser = asObject(dataFrom(await getProfile(token)));
+      onboardingUser = asObject(dataFrom(await getRequestProfile(req, token)));
     }
 
     const stepIndex = slugs.indexOf(step);

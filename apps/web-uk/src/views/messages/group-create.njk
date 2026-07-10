@@ -96,7 +96,7 @@
           <input type="hidden" name="member_ids[]" value="">
         {% endif %}
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="group-name">Group name</label>
+          <label class="govuk-label govuk-label--m" for="group-name">{{ t("groups.create.name_label") }}</label>
           <div id="group-name-hint" class="govuk-hint">For example, the name of a project or a shared activity.</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="group-name" name="name" type="text" value="{{ groupName }}" maxlength="100" aria-describedby="group-name-hint" required>
         </div>

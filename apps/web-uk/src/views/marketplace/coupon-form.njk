@@ -21,7 +21,7 @@
       </legend>
 
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="coupon_title">Title</label>
+        <label class="govuk-label govuk-label--s" for="coupon_title">{{ t("group_exchanges.form_title_label") }}</label>
         <div id="coupon_title-hint" class="govuk-hint">A short name shown to buyers, for example Summer sale.</div>
         <input class="govuk-input" id="coupon_title" name="title" type="text" maxlength="200" value="{{ coupon.title }}" aria-describedby="coupon_title-hint">
       </div>
@@ -77,7 +77,7 @@
       </div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="valid_until">Valid until <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <label class="govuk-label govuk-label--s" for="valid_until">{{ t("coupons.valid_until_label") }} <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
         <div id="valid_until-hint" class="govuk-hint">Optional. The last day the coupon can be used.</div>
         <input class="govuk-input govuk-input--width-10" id="valid_until" name="valid_until" type="date" value="{{ coupon.validUntil }}" aria-describedby="valid_until-hint">
       </div>
@@ -94,7 +94,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
-      <a class="govuk-link" href="{{ urlFor('/marketplace/coupons') }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/coupons') }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 
@@ -103,13 +103,13 @@
     <div class="govuk-warning-text">
       <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
       <strong class="govuk-warning-text__text">
-        <span class="govuk-visually-hidden">Important</span>
+        <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
         Deleting a coupon removes it permanently. Buyers will no longer be able to use it. This cannot be undone.
       </strong>
     </div>
     <form method="post" action="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/delete') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-      <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
+      <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
     </form>
   {% endif %}
 {% endblock %}

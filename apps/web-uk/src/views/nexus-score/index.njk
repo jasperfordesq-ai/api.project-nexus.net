@@ -6,11 +6,11 @@
 
 {% block content %}
   <span class="govuk-caption-xl">{{ communityName }}</span>
-  <h1 class="govuk-heading-xl">NEXUS score</h1>
-  <p class="govuk-body-l">Your reputation score, based on how you take part in the community.</p>
+  <h1 class="govuk-heading-xl">{{ t("nexus_score.title") }}</h1>
+  <p class="govuk-body-l">{{ t("nexus_score.description") }}</p>
 
-  <nav class="govuk-!-margin-bottom-6" aria-label="NEXUS score">
-    <h2 class="govuk-heading-s govuk-!-margin-bottom-1">NEXUS score</h2>
+  <nav class="govuk-!-margin-bottom-6" aria-label="{{ t("nexus_score.title") }}">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("nexus_score.title") }}</h2>
     <ul class="govuk-list">
       <li><a class="govuk-link" href="{{ urlFor('/nexus-score/tiers') }}">Tier ladder</a></li>
     </ul>
@@ -18,7 +18,7 @@
 
   {% if not nexusScore.hasScore %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">Your score is not available yet. Take part in the community and check back soon.</p>
+      <p class="govuk-body">{{ t("nexus_score.unavailable") }}</p>
     </div>
   {% else %}
     <div class="govuk-panel govuk-panel--confirmation nexus-alpha-panel">
@@ -29,12 +29,12 @@
       </div>
     </div>
 
-    <h2 class="govuk-heading-l govuk-!-margin-top-7">How your score breaks down</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("nexus_score.breakdown_title") }}</h2>
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">How your score breaks down</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("nexus_score.breakdown_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Area</th>
+          <th scope="col" class="govuk-table__header">{{ t("nexus_score.category_column") }}</th>
           <th scope="col" class="govuk-table__header">Score</th>
         </tr>
       </thead>
@@ -52,7 +52,7 @@
     </table>
 
     {% if nexusScore.insights.length %}
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">How to improve</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("nexus_score.insights_title") }}</h2>
       <ul class="govuk-list govuk-list--bullet">
         {% for insight in nexusScore.insights %}
           <li>{{ insight }}</li>

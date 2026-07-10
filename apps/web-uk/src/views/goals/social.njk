@@ -28,7 +28,7 @@
       <div class="nexus-alpha-comment-actions govuk-!-margin-bottom-2">
         <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
           <summary class="govuk-details__summary">
-            <span class="govuk-details__summary-text">Reply</span>
+            <span class="govuk-details__summary-text">{{ t("actions.reply") }}</span>
           </summary>
           <div class="govuk-details__text">
             <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/comments') }}">
@@ -38,7 +38,7 @@
                 <label class="govuk-label govuk-label--s" for="reply-{{ comment.id }}">Your reply</label>
                 <textarea class="govuk-textarea" id="reply-{{ comment.id }}" name="body" rows="3" maxlength="5000" required></textarea>
               </div>
-              <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Post reply</button>
+              <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("groups.discussions.reply_submit") }}</button>
             </form>
           </div>
         </details>
@@ -46,7 +46,7 @@
         {% if comment.isOwn %}
           <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
             <summary class="govuk-details__summary">
-              <span class="govuk-details__summary-text">Delete</span>
+              <span class="govuk-details__summary-text">{{ t("jobs_t3.delete_button") }}</span>
             </summary>
             <div class="govuk-details__text">
               <div class="govuk-warning-text">
@@ -58,7 +58,7 @@
               </div>
               <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/comments/' + (comment.id | string) + '/delete') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete</button>
+                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
               </form>
             </div>
           </details>
@@ -67,7 +67,7 @@
     {% elseif comment.id and comment.isOwn %}
       <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
         <summary class="govuk-details__summary">
-          <span class="govuk-details__summary-text">Delete</span>
+          <span class="govuk-details__summary-text">{{ t("jobs_t3.delete_button") }}</span>
         </summary>
         <div class="govuk-details__text">
           <div class="govuk-warning-text">
@@ -79,7 +79,7 @@
           </div>
           <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/comments/' + (comment.id | string) + '/delete') }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete</button>
+            <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
           </form>
         </div>
       </details>
@@ -96,7 +96,7 @@
 {% endmacro %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ t("goals.back_to_goal") }}</a>
 
   {% if statusBanner and statusBanner.type == "success" %}
     {{ govukNotificationBanner({
@@ -121,7 +121,7 @@
   <p class="govuk-body-l">Show your support for this goal and join the conversation.</p>
 
   <section id="likes" class="govuk-!-margin-bottom-6">
-    <h2 class="govuk-heading-l">Support</h2>
+    <h2 class="govuk-heading-l">{{ t("footer.columns.support.heading") }}</h2>
     <p class="govuk-body nexus-alpha-meta govuk-!-margin-bottom-2" aria-live="polite">{{ likeCountLabel }}</p>
     <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/like') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -151,18 +151,18 @@
       </ul>
     {% endif %}
 
-    <h3 class="govuk-heading-m govuk-!-margin-top-6">Add a comment</h3>
+    <h3 class="govuk-heading-m govuk-!-margin-top-6">{{ t("blog.comment_body_label") }}</h3>
     <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/comments') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if statusBanner and statusBanner.message == 'Please enter a comment before posting.' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--s" for="body">Your comment</label>
         <div id="body-hint" class="govuk-hint">Keep it kind and supportive.</div>
         {% if statusBanner and statusBanner.message == 'Please enter a comment before posting.' %}
-          <p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Please enter a comment before posting.</p>
+          <p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Please enter a comment before posting.</p>
         {% endif %}
         <textarea class="govuk-textarea{% if statusBanner and statusBanner.message == 'Please enter a comment before posting.' %} govuk-textarea--error{% endif %}" id="body" name="body" rows="4" maxlength="5000" aria-describedby="body-hint{% if statusBanner and statusBanner.message == 'Please enter a comment before posting.' %} body-error{% endif %}"></textarea>
       </div>
-      <button type="submit" class="govuk-button" data-module="govuk-button">Post comment</button>
+      <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
     </form>
   </section>
 {% endblock %}

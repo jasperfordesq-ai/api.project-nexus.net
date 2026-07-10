@@ -9,8 +9,8 @@
   <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">Federated events</h1>
-  <p class="govuk-body-l">Events shared by communities across the network.</p>
+  <h1 class="govuk-heading-xl">{{ t("federation.events_browse.title") }}</h1>
+  <p class="govuk-body-l">{{ t("federation.events_browse.description") }}</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
@@ -27,7 +27,7 @@
   </nav>
 
   {% if not allowed %}
-    <div class="govuk-inset-text"><p class="govuk-body">Browsing federated events is not available for this community right now.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.events_browse.not_available") }}</p></div>
   {% else %}
     <form method="get" action="{{ urlFor('/federation/events') }}" class="govuk-!-margin-bottom-6">
       <fieldset class="govuk-fieldset">
@@ -134,7 +134,7 @@
 
       {% if loadMoreHref %}
         <p class="govuk-body govuk-!-margin-top-4">
-          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more events</a>
+          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">{{ t("federation.events_browse.load_more") }}</a>
         </p>
       {% endif %}
     {% endif %}

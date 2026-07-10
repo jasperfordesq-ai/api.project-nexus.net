@@ -6,8 +6,8 @@
 
 {% block content %}
   <span class="govuk-caption-xl">{{ communityName }}</span>
-  <h1 class="govuk-heading-xl">My activity</h1>
-  <p class="govuk-body-l">A summary of your contribution to the community.</p>
+  <h1 class="govuk-heading-xl">{{ t("activity.title") }}</h1>
+  <p class="govuk-body-l">{{ t("activity.description") }}</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
     <a class="govuk-link" href="{{ urlFor('/activity/insights') }}">View detailed insights</a>
@@ -27,13 +27,13 @@
       <dd>{{ activity.connectionsLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Groups joined</dt>
+      <dt>{{ t("activity.groups_joined") }}</dt>
       <dd>{{ activity.groupsJoinedLabel }}</dd>
     </div>
   </dl>
 
   {% if activity.hasEngagement %}
-    <h2 class="govuk-heading-l">Recent engagement (last 30 days)</h2>
+    <h2 class="govuk-heading-l">{{ t("polish_discovery.activity_engagement_title") }}</h2>
     <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-6">
       <div class="nexus-alpha-stat">
         <dt>Posts</dt>
@@ -44,16 +44,16 @@
         <dd>{{ activity.engagement.commentsLabel }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Likes given</dt>
+        <dt>{{ t("polish_discovery.activity_likes_given") }}</dt>
         <dd>{{ activity.engagement.likesGivenLabel }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Likes received</dt>
+        <dt>{{ t("polish_discovery.activity_likes_received") }}</dt>
         <dd>{{ activity.engagement.likesReceivedLabel }}</dd>
       </div>
       {% if activity.netBalanceLabel %}
         <div class="nexus-alpha-stat">
-          <dt>Net balance</dt>
+          <dt>{{ t("polish_discovery.activity_net_balance") }}</dt>
           <dd>{{ activity.netBalanceLabel }}</dd>
         </div>
       {% endif %}
@@ -61,7 +61,7 @@
   {% endif %}
 
   {% if activity.skills.length %}
-    <h2 class="govuk-heading-l">Skills breakdown</h2>
+    <h2 class="govuk-heading-l">{{ t("polish_discovery.activity_skills_title") }}</h2>
     <dl class="govuk-summary-list govuk-!-margin-bottom-6">
       {% for skill in activity.skills %}
         <div class="govuk-summary-list__row">
@@ -83,7 +83,7 @@
   {% endif %}
 
   {% if activity.monthly.length %}
-    <h2 class="govuk-heading-l">Hours over the last months</h2>
+    <h2 class="govuk-heading-l">{{ t("activity.monthly_title") }}</h2>
     {% for month in activity.monthly %}
       <div class="govuk-!-margin-bottom-2">
         <p class="govuk-body-s govuk-!-margin-bottom-1">
@@ -106,7 +106,7 @@
     </ul>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You have no recent activity yet.</p>
+      <p class="govuk-body">{{ t("activity.timeline_empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}

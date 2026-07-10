@@ -10,7 +10,7 @@
 {% block beforeContent %}
   {{ super() }}
   {{ govukBackLink({
-    text: "Back to groups",
+    text: t("actions.back_to_groups"),
     href: urlFor("/groups")
   }) }}
 {% endblock %}
@@ -21,7 +21,7 @@
 
       {% if errors and errors.length %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: errors
         }) }}
       {% endif %}
@@ -33,7 +33,7 @@
 
         {{ govukInput({
           label: {
-            text: "Group name",
+            text: t("groups.create.name_label"),
             classes: "govuk-label--m"
           },
           id: "name",
@@ -70,7 +70,7 @@
           items: [
             {
               value: "false",
-              text: "Public",
+              text: t("groups.visibility_public"),
               hint: { text: "Anyone can find and join this group" },
               checked: not values or values.is_private != 'true'
             },
@@ -85,9 +85,9 @@
 
         <div class="govuk-button-group">
           {{ govukButton({
-            text: "Create group"
+            text: t("groups.create.submit")
           }) }}
-          <a href="{{ urlFor('/groups') }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/groups') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
 

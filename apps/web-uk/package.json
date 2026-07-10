@@ -19,7 +19,10 @@
     "smoke:laravel": "node scripts/laravel-runtime-smoke.js",
     "smoke:laravel:local": "node scripts/laravel-runtime-smoke-local-server.js",
     "smoke:federation:local": "node scripts/federation-onboarding-runtime-smoke.js",
-    "test:accessibility": "npm run build:css && node scripts/accessibility-local-server.js"
+    "test:accessibility": "npm run build:css && node scripts/accessibility-local-server.js",
+    "locales:sync": "php scripts/sync-laravel-locales.php",
+    "locales:audit": "node scripts/audit-laravel-locales.js",
+    "locales:audit-templates": "node scripts/audit-template-localization.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",

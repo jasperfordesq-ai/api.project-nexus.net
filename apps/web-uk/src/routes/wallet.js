@@ -10,13 +10,14 @@ const {
   getTransactions,
   transferCredits,
   donateCredits,
-  getProfile,
   callWalletApi,
   callWalletDownload,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ function monthYear(value, style = 'long') {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-GB', { month: style, year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), { month: style, year: 'numeric' }).format(date);
 }
 
 function normalizeWallet(raw) {
@@ -139,7 +140,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const [balanceData, transactionsData, currentUser] = await Promise.all([
     getBalance(req.token),
     getTransactions(req.token, { limit: 5 }),
-    getProfile(req.token)
+    getRequestProfile(req, req.token)
   ]);
 
   const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
@@ -224,7 +225,7 @@ router.post('/transfer', requireAuth, audit.walletTransfer(), asyncRoute(async (
 
   // Fetch profile and balance for self-transfer and insufficient balance checks
   const [currentProfile, balanceData] = await Promise.all([
-    getProfile(req.token),
+    getRequestProfile(req, req.token),
     getBalance(req.token)
   ]);
   const balance = balanceData.balance !== undefined ? balanceData.balance : balanceData;

@@ -28,10 +28,10 @@
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if statusBanner and statusBanner.href == '#ann-title' %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label govuk-label--s" for="edit-ann-title">Title</label>
+      <label class="govuk-label govuk-label--s" for="edit-ann-title">{{ t("group_exchanges.form_title_label") }}</label>
       <div id="edit-ann-title-hint" class="govuk-hint">A short summary of the announcement (max 255 characters).</div>
       {% if statusBanner and statusBanner.href == '#ann-title' %}
-        <p class="govuk-error-message" id="edit-ann-title-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        <p class="govuk-error-message" id="edit-ann-title-error"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
       {% endif %}
       <input class="govuk-input{% if statusBanner and statusBanner.href == '#ann-title' %} govuk-input--error{% endif %}" id="edit-ann-title" name="title" type="text" maxlength="255" aria-describedby="edit-ann-title-hint{% if statusBanner and statusBanner.href == '#ann-title' %} edit-ann-title-error{% endif %}" value="{{ announcement.title }}">
     </div>
@@ -40,7 +40,7 @@
       <label class="govuk-label govuk-label--s" for="edit-ann-content">Content</label>
       <div id="edit-ann-content-hint" class="govuk-hint">The full text of the announcement.</div>
       {% if statusBanner and statusBanner.href == '#ann-content' %}
-        <p class="govuk-error-message" id="edit-ann-content-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        <p class="govuk-error-message" id="edit-ann-content-error"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
       {% endif %}
       <textarea class="govuk-textarea{% if statusBanner and statusBanner.href == '#ann-content' %} govuk-textarea--error{% endif %}" id="edit-ann-content" name="content" rows="5" aria-describedby="edit-ann-content-hint{% if statusBanner and statusBanner.href == '#ann-content' %} edit-ann-content-error{% endif %}">{{ announcement.content }}</textarea>
     </div>

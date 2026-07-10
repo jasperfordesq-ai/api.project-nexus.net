@@ -8,19 +8,19 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ t("goals.back_to_goal") }}</a>
 
   {% if successMessage %}
     {{ govukNotificationBanner({
       type: "success",
-      titleText: "Success",
+      titleText: t("states.success_title"),
       text: successMessage
     }) }}
   {% endif %}
 
   {% if errorMessage %}
     {{ govukErrorSummary({
-      titleText: "There is a problem",
+      titleText: t("states.error_title"),
       errorList: [
         {
           text: errorMessage,
@@ -80,7 +80,7 @@
         <div class="govuk-warning-text">
           <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
           <strong class="govuk-warning-text__text">
-            <span class="govuk-visually-hidden">There is a problem</span>
+            <span class="govuk-visually-hidden">{{ t("states.error_title") }}</span>
             Removing the reminder stops all emails and notifications for this goal. You can set it again at any time.
           </strong>
         </div>

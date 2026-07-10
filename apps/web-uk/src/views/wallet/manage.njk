@@ -11,7 +11,7 @@
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="wallet-manage-success-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="wallet-manage-success-title">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="wallet-manage-success-title">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
               <li><a href="{{ status.href }}">{{ status.message }}</a></li>
@@ -36,7 +36,7 @@
   <p class="govuk-body-l">Use this page to send time credits, donate credits, and review wallet status.</p>
 
   <section aria-labelledby="wallet-balance-heading" id="balance">
-    <h2 class="govuk-heading-l" id="wallet-balance-heading">Your balance</h2>
+    <h2 class="govuk-heading-l" id="wallet-balance-heading">{{ t("fed2.transfer.balance_label") }}</h2>
     <div class="nexus-alpha-card">
       <p class="govuk-heading-l govuk-!-margin-bottom-2">{{ creditsLabel(wallet.balance) }}</p>
       {% if wallet.pendingIn > 0 %}
@@ -51,11 +51,11 @@
     <h2 class="govuk-heading-l govuk-!-margin-top-7" id="wallet-stats-heading">Wallet summary</h2>
     <dl class="nexus-alpha-stat-grid">
       <div class="nexus-alpha-stat">
-        <dt>Total earned</dt>
+        <dt>{{ t("wallet.earned_label") }}</dt>
         <dd>{{ creditsLabel(wallet.earned) }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Total spent</dt>
+        <dt>{{ t("wallet.spent_label") }}</dt>
         <dd>{{ creditsLabel(wallet.spent) }}</dd>
       </div>
       <div class="nexus-alpha-stat">

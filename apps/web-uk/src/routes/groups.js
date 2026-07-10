@@ -26,6 +26,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -249,7 +250,7 @@ function dateLabel(value) {
   if (!text) return '';
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric'

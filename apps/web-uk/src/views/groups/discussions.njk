@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
   <span class="govuk-caption-l">{{ group.name }}</span>
   <h1 class="govuk-heading-xl">Discussions</h1>
@@ -35,11 +35,11 @@
     <div class="govuk-inset-text"><p class="govuk-body">Your membership is pending approval.</p></div>
   {% else %}
     <p class="govuk-body">
-      <a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions/new') }}">Start a discussion</a>
+      <a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions/new') }}">{{ t("groups.discussions.new_link") }}</a>
     </p>
 
     {% if not discussions.length %}
-      <div class="govuk-inset-text"><p class="govuk-body">There are no discussions yet. Start the first one.</p></div>
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.discussions.empty") }}</p></div>
     {% else %}
       <div class="nexus-alpha-card-list">
         {% for discussion in discussions %}

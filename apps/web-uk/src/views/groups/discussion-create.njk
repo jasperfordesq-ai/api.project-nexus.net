@@ -7,11 +7,11 @@
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions') }}">Back to discussions</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions') }}">{{ t("groups.discussions.back") }}</a>
 
   <span class="govuk-caption-l">{{ group.name }}</span>
-  <h1 class="govuk-heading-xl">Start a discussion</h1>
-  <p class="govuk-body-l">Share an update or ask a question with the rest of the group.</p>
+  <h1 class="govuk-heading-xl">{{ t("groups.discussions.new_link") }}</h1>
+  <p class="govuk-body-l">{{ t("groups.discussions.new_description") }}</p>
 
   {% if statusBanner and statusBanner.type == "error" %}
     {{ govukErrorSummary({
@@ -29,20 +29,20 @@
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--m" for="title">Title</label>
-      <div id="title-hint" class="govuk-hint">A short summary of what you want to talk about.</div>
+      <label class="govuk-label govuk-label--m" for="title">{{ t("group_exchanges.form_title_label") }}</label>
+      <div id="title-hint" class="govuk-hint">{{ t("groups.discussions.title_hint") }}</div>
       <input class="govuk-input" id="title" name="title" type="text" maxlength="255" aria-describedby="title-hint">
     </div>
 
     <div class="govuk-form-group{% if statusBanner and statusBanner.type == 'error' %} govuk-form-group--error{% endif %}">
       <label class="govuk-label govuk-label--m" for="content">Message</label>
-      <div id="content-hint" class="govuk-hint">Write your opening message for the discussion.</div>
+      <div id="content-hint" class="govuk-hint">{{ t("groups.discussions.content_hint") }}</div>
       {% if statusBanner and statusBanner.type == "error" %}
-        <p class="govuk-error-message" id="content-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        <p class="govuk-error-message" id="content-error"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
       {% endif %}
       <textarea class="govuk-textarea{% if statusBanner and statusBanner.type == 'error' %} govuk-textarea--error{% endif %}" id="content" name="content" rows="6" aria-describedby="content-hint{% if statusBanner and statusBanner.type == 'error' %} content-error{% endif %}"></textarea>
     </div>
 
-    <button class="govuk-button" data-module="govuk-button">Post discussion</button>
+    <button class="govuk-button" data-module="govuk-button">{{ t("groups.discussions.create_submit") }}</button>
   </form>
 {% endblock %}

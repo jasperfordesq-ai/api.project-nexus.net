@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/jobs') }}">Back to opportunities</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs') }}">{{ t("jobs.back") }}</a>
 
   <div class="nexus-alpha-module-row govuk-!-margin-bottom-2">
     {% if employer.avatarUrl %}
@@ -43,7 +43,7 @@
     </div>
   {% endif %}
 
-  <h2 class="govuk-heading-m">Open opportunities</h2>
+  <h2 class="govuk-heading-m">{{ t("org_depth.stat_opportunities") }}</h2>
   <p class="govuk-body">{{ openJobsMeta.countLabel }}</p>
 
   {% if openJobs.length %}

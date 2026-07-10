@@ -12,7 +12,7 @@
 {% block beforeContent %}
   {{ super() }}
   {{ govukBackLink({
-    text: "Back",
+    text: t("onboarding.back"),
     href: urlFor("/events")
   }) }}
 {% endblock %}
@@ -23,12 +23,12 @@
 
       {% if errors and errors.length > 0 %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: errors
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Create an event</h1>
+      <h1 class="govuk-heading-xl">{{ t("actions.create_event") }}</h1>
 
       {% if setupErrorMessage %}
         <div class="govuk-inset-text">{{ setupErrorMessage }}</div>
@@ -43,7 +43,7 @@
           name: "title",
           value: values.title if values else "",
           label: {
-            text: "Event title",
+            text: t("events.title_label"),
             classes: "govuk-label--m"
           },
           hint: {
@@ -71,7 +71,7 @@
         }) }}
 
         {% set selectedCategoryId = values.category_id if values else "" %}
-        {% set categoryItems = [{value: "", text: "No category", selected: not selectedCategoryId}] %}
+        {% set categoryItems = [{value: "", text: t("events.no_category"), selected: not selectedCategoryId}] %}
         {% for category in categories or [] %}
           {% set categoryItems = (categoryItems.push({
             value: category.id | string,
@@ -116,7 +116,7 @@
           <div class="govuk-checkboxes" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1" data-aria-controls="is-online-conditional" {% if values and values.is_online %}checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="is_online">This is an online event</label>
+              <label class="govuk-label govuk-checkboxes__label" for="is_online">{{ t("events.is_online_label") }}</label>
             </div>
             <div class="govuk-checkboxes__conditional{% if not (values and values.is_online) %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
               {{ govukInput({
@@ -125,7 +125,7 @@
                 type: "url",
                 value: values.online_link if values else "",
                 label: {
-                  text: "Online event link"
+                  text: t("events.online_link_label")
                 }
               }) }}
             </div>
@@ -168,7 +168,7 @@
             </div>
             {% if startDateError %}
               <p class="govuk-error-message">
-                <span class="govuk-visually-hidden">Error:</span>
+                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span>
                 {{ startDateError.text }}
               </p>
             {% endif %}
@@ -212,7 +212,7 @@
           name: "max_attendees",
           value: values.max_attendees if values else "",
           label: {
-            text: "Maximum attendees",
+            text: t("events.max_attendees_label"),
             classes: "govuk-label--m"
           },
           hint: {
@@ -232,20 +232,20 @@
         {% set recurrenceEndsType = (values.recurrence_ends_type if values and values.recurrence_ends_type else "after_count") %}
         <fieldset class="govuk-fieldset govuk-!-margin-top-7">
           <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
-            <h2 class="govuk-fieldset__heading">Recurring event</h2>
+            <h2 class="govuk-fieldset__heading">{{ t("events.polish_events.recurrence_section_title") }}</h2>
           </legend>
-          <div id="recurrence-hint" class="govuk-hint">Creates copies of this event at the selected frequency.</div>
+          <div id="recurrence-hint" class="govuk-hint">{{ t("events.polish_events.recurrence_hint") }}</div>
 
           <div class="govuk-form-group">
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="is_recurring" name="is_recurring" type="checkbox" value="1" aria-describedby="recurrence-hint" data-aria-controls="recurrence-conditional" {% if isRecurring %}checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="is_recurring">Repeat this event</label>
+                <label class="govuk-label govuk-checkboxes__label" for="is_recurring">{{ t("events.polish_events.recurrence_repeat_label") }}</label>
               </div>
               <div class="govuk-checkboxes__conditional{% if not isRecurring %} govuk-checkboxes__conditional--hidden{% endif %}" id="recurrence-conditional">
                 <div class="govuk-form-group">
                   <fieldset class="govuk-fieldset">
-                    <legend class="govuk-fieldset__legend">How often should it repeat?</legend>
+                    <legend class="govuk-fieldset__legend">{{ t("events.polish_events.recurrence_frequency_legend") }}</legend>
                     <div class="govuk-radios govuk-radios--small" data-module="govuk-radios" id="recurrence_frequency">
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="freq-daily" name="recurrence_frequency" type="radio" value="daily" data-recurrence-interval="1" {% if recurrenceFrequency == "daily" %}checked{% endif %}>
@@ -270,27 +270,27 @@
 
                 <div class="govuk-form-group">
                   <fieldset class="govuk-fieldset">
-                    <legend class="govuk-fieldset__legend">When should it end?</legend>
+                    <legend class="govuk-fieldset__legend">{{ t("events.polish_events.recurrence_end_legend") }}</legend>
                     <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="rec-end-count" name="recurrence_ends_type" type="radio" value="after_count" data-aria-controls="rec-count-conditional" {% if recurrenceEndsType == "after_count" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="rec-end-count">After a number of occurrences</label>
+                        <label class="govuk-label govuk-radios__label" for="rec-end-count">{{ t("events.polish_events.recurrence_end_after") }}</label>
                       </div>
                       <div class="govuk-radios__conditional{% if recurrenceEndsType != "after_count" %} govuk-radios__conditional--hidden{% endif %}" id="rec-count-conditional">
                         <div class="govuk-form-group">
-                          <label class="govuk-label" for="recurrence_ends_after_count">Number of occurrences</label>
-                          <div id="rec-count-hint" class="govuk-hint">Maximum 52.</div>
+                          <label class="govuk-label" for="recurrence_ends_after_count">{{ t("events.polish_events.recurrence_count_label") }}</label>
+                          <div id="rec-count-hint" class="govuk-hint">{{ t("events.polish_events.recurrence_count_hint") }}</div>
                           <input class="govuk-input govuk-input--width-3" id="recurrence_ends_after_count" name="recurrence_ends_after_count" type="number" min="1" max="52" value="{{ values.recurrence_ends_after_count if values and values.recurrence_ends_after_count else '10' }}" aria-describedby="rec-count-hint">
                         </div>
                       </div>
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="rec-end-date" name="recurrence_ends_type" type="radio" value="on_date" data-aria-controls="rec-date-conditional" {% if recurrenceEndsType == "on_date" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="rec-end-date">On a specific date</label>
+                        <label class="govuk-label govuk-radios__label" for="rec-end-date">{{ t("events.polish_events.recurrence_end_on_date") }}</label>
                       </div>
                       <div class="govuk-radios__conditional{% if recurrenceEndsType != "on_date" %} govuk-radios__conditional--hidden{% endif %}" id="rec-date-conditional">
                         <div class="govuk-form-group">
                           <label class="govuk-label" for="recurrence_ends_on_date">End date</label>
-                          <div id="rec-date-hint" class="govuk-hint">The series will end on or before this date.</div>
+                          <div id="rec-date-hint" class="govuk-hint">{{ t("events.polish_events.recurrence_end_date_hint") }}</div>
                           <input class="govuk-input govuk-!-width-one-half" id="recurrence_ends_on_date" name="recurrence_ends_on_date" type="date" value="{{ values.recurrence_ends_on_date if values else '' }}" aria-describedby="rec-date-hint">
                         </div>
                       </div>
@@ -329,7 +329,7 @@
           {{ govukButton({
             text: "Create event"
           }) }}
-          <a href="{{ urlFor('/events') }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/events') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
 

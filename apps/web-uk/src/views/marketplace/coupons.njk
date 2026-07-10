@@ -21,7 +21,7 @@
     <table class="govuk-table">
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Code</th>
+          <th scope="col" class="govuk-table__header">{{ t("coupons.code_label") }}</th>
           <th scope="col" class="govuk-table__header">Discount</th>
           <th scope="col" class="govuk-table__header">Status</th>
           <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">View</span></th>
@@ -37,7 +37,7 @@
             <td class="govuk-table__cell">{{ coupon.discountLabel }}</td>
             <td class="govuk-table__cell"><strong class="govuk-tag {{ coupon.statusTagClass }}">{{ coupon.statusLabel }}</strong></td>
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/edit') }}">Edit</a>
+              <a class="govuk-link" href="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/edit') }}">{{ t("jobs_t3.edit_button") }}</a>
             </td>
           </tr>
         {% endfor %}

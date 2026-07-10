@@ -26,7 +26,7 @@
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Events</h1>
         <div class="app-page-header__actions">
           {{ govukButton({
-            text: "Create an event",
+            text: t("actions.create_event"),
             href: urlFor("/events/new"),
             classes: "govuk-!-margin-bottom-0"
           }) }}
@@ -43,7 +43,7 @@
             name: "search",
             value: searchQuery,
             label: {
-              text: "Search events",
+              text: t("events.search_label"),
               classes: "govuk-visually-hidden"
             },
             classes: "app-search-bar__input",
@@ -165,7 +165,7 @@
             heading: "No results found",
             message: "No events match \"" + searchQuery + "\". Try a different search term.",
             action: {
-              text: "Clear search",
+              text: t("polish_members.connections_search_clear"),
               href: urlFor("/events")
             }
           } %}
@@ -175,7 +175,7 @@
             heading: "No events yet",
             message: "Be the first to organise an event for the community.",
             action: {
-              text: "Create an event",
+              text: t("actions.create_event"),
               href: urlFor("/events/new"),
               isButton: true
             }

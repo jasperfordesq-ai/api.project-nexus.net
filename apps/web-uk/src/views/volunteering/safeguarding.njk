@@ -5,13 +5,13 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.back_to_volunteering") }}</a>
 
   {% if status %}
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="safeguarding-success-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="safeguarding-success-title">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="safeguarding-success-title">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
               <li>
@@ -44,7 +44,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
@@ -71,7 +71,7 @@
       <div class="govuk-form-group{% if status.field == 'training_type' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--s" for="training_type">Training type</label>
         {% if status.field == "training_type" %}
-          <p id="training-type-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="training-type-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <select class="govuk-select{% if status.field == 'training_type' %} govuk-select--error{% endif %}" id="training_type" name="training_type"{% if status.field == "training_type" %} aria-describedby="training-type-error"{% endif %}>
           <option value="">Choose a training type</option>
@@ -84,7 +84,7 @@
       <div class="govuk-form-group{% if status.field == 'training_name' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--s" for="training_name">Course or programme name</label>
         {% if status.field == "training_name" %}
-          <p id="training-name-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="training-name-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <input class="govuk-input{% if status.field == 'training_name' %} govuk-input--error{% endif %}" id="training_name" name="training_name" type="text" maxlength="255"{% if status.field == "training_name" %} aria-describedby="training-name-error"{% endif %}>
       </div>
@@ -97,7 +97,7 @@
       <div class="govuk-form-group{% if status.field == 'completed_at' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--s" for="completed_at">Date completed</label>
         {% if status.field == "completed_at" %}
-          <p id="completed-at-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="completed-at-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <input class="govuk-input govuk-input--width-10{% if status.field == 'completed_at' %} govuk-input--error{% endif %}" id="completed_at" name="completed_at" type="date"{% if status.field == "completed_at" %} aria-describedby="completed-at-error"{% endif %}>
       </div>
@@ -157,7 +157,7 @@
       <div class="govuk-form-group{% if status.field == 'title' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label govuk-label--s" for="title">Brief title</label>
         {% if status.field == "title" %}
-          <p id="incident-title-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="incident-title-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <input class="govuk-input{% if status.field == 'title' %} govuk-input--error{% endif %}" id="title" name="title" type="text" maxlength="255"{% if status.field == "title" %} aria-describedby="incident-title-error"{% endif %}>
       </div>
@@ -166,7 +166,7 @@
         <label class="govuk-label govuk-label--s" for="description">Description</label>
         <div id="description-hint" class="govuk-hint">Describe what happened, when, and who was involved. Be as specific as possible. Minimum 20 characters.</div>
         {% if status.field == "description" %}
-          <p id="incident-desc-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="incident-desc-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <textarea class="govuk-textarea{% if status.field == 'description' %} govuk-textarea--error{% endif %}" id="description" name="description" rows="5" maxlength="2000" aria-describedby="description-hint{% if status.field == 'description' %} incident-desc-error{% endif %}"></textarea>
       </div>
@@ -203,7 +203,7 @@
         <caption class="govuk-table__caption govuk-visually-hidden">Your submitted reports</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
-            <th class="govuk-table__header" scope="col">Title</th>
+            <th class="govuk-table__header" scope="col">{{ t("group_exchanges.form_title_label") }}</th>
             <th class="govuk-table__header" scope="col">Severity</th>
             <th class="govuk-table__header" scope="col">Status</th>
             <th class="govuk-table__header" scope="col">Reported</th>

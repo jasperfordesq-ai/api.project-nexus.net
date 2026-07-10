@@ -31,7 +31,7 @@
             name: "search",
             value: searchQuery,
             label: {
-              text: "Search members",
+              text: t("members.search_label"),
               classes: "govuk-visually-hidden"
             },
             classes: "app-search-form__input",
@@ -54,7 +54,7 @@
           heading: "No results found",
           message: "No members match \"" + searchQuery + "\". Try a different search term.",
           action: {
-            text: "Clear search",
+            text: t("polish_members.connections_search_clear"),
             href: urlFor("/members")
           }
         } %}
@@ -64,7 +64,7 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">Name</th>
-              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Actions</th>
             </tr>
@@ -92,7 +92,7 @@
                       {% if conn.is_requester %}
                         {{ govukTag({ text: "Request sent", classes: "govuk-tag--yellow" }) }}
                       {% else %}
-                        {{ govukTag({ text: "Wants to connect", classes: "govuk-tag--blue" }) }}
+                        {{ govukTag({ text: t("members.connection_request_received"), classes: "govuk-tag--blue" }) }}
                       {% endif %}
                     {% endif %}
                   {% else %}

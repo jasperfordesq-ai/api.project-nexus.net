@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">Back to marketplace</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">{{ t("marketplace.back") }}</a>
 
   <span class="govuk-caption-xl">Seller profile at {{ tenantName or serviceName }}</span>
   <h1 class="govuk-heading-xl">{{ seller.name }}</h1>
@@ -18,8 +18,8 @@
     <dl class="govuk-summary-list govuk-!-margin-bottom-0">
       {% if seller.verified %}
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Verified member</dt>
-          <dd class="govuk-summary-list__value"><strong class="govuk-tag govuk-tag--green">Verified member</strong></dd>
+          <dt class="govuk-summary-list__key">{{ t("profile.verified") }}</dt>
+          <dd class="govuk-summary-list__value"><strong class="govuk-tag govuk-tag--green">{{ t("profile.verified") }}</strong></dd>
         </div>
       {% endif %}
       {% if seller.createdAt %}

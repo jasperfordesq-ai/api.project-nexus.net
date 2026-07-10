@@ -13,7 +13,7 @@
   {% if status == "polls-updated" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="polls-updated-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="polls-updated-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="polls-updated-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">Your poll selection has been saved.</p>
@@ -22,7 +22,7 @@
   {% elif status == "polls-failed" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>Your poll selection could not be saved. Please try again.</p>
         </div>

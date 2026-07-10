@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">Back to marketplace</a>
+  <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">{{ t("marketplace.back") }}</a>
   {% include "marketplace/_nav.njk" %}
   {% include "marketplace/_status-banner.njk" %}
 
@@ -21,7 +21,7 @@
   {% if completed %}
     <div class="govuk-notification-banner" role="region" aria-labelledby="seller-setup-complete" data-module="govuk-notification-banner">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="seller-setup-complete">Important</h2>
+        <h2 class="govuk-notification-banner__title" id="seller-setup-complete">{{ t("states.important") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">You have completed seller setup. You can update your details below at any time.</p>
@@ -95,14 +95,14 @@
         <input class="govuk-input govuk-input--width-10" id="address_postal_code" name="address_postal_code" type="text" maxlength="40" value="{{ address.postal_code }}" autocomplete="postal-code">
       </div>
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="address_country">Country</label>
+        <label class="govuk-label govuk-label--s" for="address_country">{{ t("federation.country_label") }}</label>
         <input class="govuk-input govuk-input--width-20" id="address_country" name="address_country" type="text" maxlength="120" value="{{ address.country }}" autocomplete="country-name">
       </div>
     </fieldset>
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">Save and finish</button>
-      <a class="govuk-link" href="{{ urlFor('/marketplace') }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace') }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 {% endblock %}

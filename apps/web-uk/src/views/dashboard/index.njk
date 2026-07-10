@@ -4,7 +4,7 @@
   {% if status == "onboarding-complete" or successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="dashboard-success-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="dashboard-success-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="dashboard-success-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage or "Your profile setup is complete." }}</p>
@@ -13,18 +13,18 @@
   {% endif %}
 
   <span class="govuk-caption-l">{{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Dashboard</h1>
+  <h1 class="govuk-heading-xl">{{ t("dashboard.title") }}</h1>
   <p class="govuk-body-l">Welcome back, {{ firstName }}.</p>
 
   {% if not onboardingCompleted %}
     <div class="govuk-notification-banner" role="region" aria-labelledby="dashboard-onboarding-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="dashboard-onboarding-title">Finish setting up your profile</h2>
+        <h2 class="govuk-notification-banner__title" id="dashboard-onboarding-title">{{ t("dashboard.onboarding_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">Add a few details so other members can find and connect with you.</p>
+        <p class="govuk-notification-banner__heading">{{ t("dashboard.onboarding_body") }}</p>
         <p class="govuk-body">
-          <a class="govuk-notification-banner__link" href="{{ urlFor('/onboarding') }}">Complete your profile</a>
+          <a class="govuk-notification-banner__link" href="{{ urlFor('/onboarding') }}">{{ t("dashboard.onboarding_link") }}</a>
         </p>
       </div>
     </div>
@@ -33,12 +33,12 @@
   {% if exchangeAttention and exchangeAttention.count > 0 %}
     <div class="govuk-notification-banner" role="region" aria-labelledby="dashboard-reviews-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="dashboard-reviews-title">Exchanges need your attention</h2>
+        <h2 class="govuk-notification-banner__title" id="dashboard-reviews-title">{{ t("dashboard.pending_reviews_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ exchangeAttention.body }}</p>
         <p class="govuk-body">
-          <a class="govuk-notification-banner__link" href="{{ urlFor('/exchanges') }}">View your exchanges</a>
+          <a class="govuk-notification-banner__link" href="{{ urlFor('/exchanges') }}">{{ t("dashboard.pending_reviews_link") }}</a>
         </p>
       </div>
     </div>
@@ -50,10 +50,10 @@
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h2 class="govuk-heading-l">Your time bank</h2>
+      <h2 class="govuk-heading-l">{{ t("dashboard.timebank_title") }}</h2>
       <dl class="nexus-alpha-stat-grid">
         <div class="nexus-alpha-stat">
-          <dt>Time-credit balance</dt>
+          <dt>{{ t("dashboard.balance_label") }}</dt>
           <dd>{{ balanceLabel }}</dd>
         </div>
         <div class="nexus-alpha-stat">
@@ -70,7 +70,7 @@
         </div>
       </dl>
 
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">Your progress</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("dashboard.progress_title") }}</h2>
       <p class="govuk-body govuk-!-margin-bottom-1">
         <strong>Level {{ gamification.level }}</strong>
         {% if gamification.levelName %}
@@ -91,7 +91,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">You have not earned any badges yet. Take part in your community to start earning them.</p>
+        <p class="govuk-body">{{ t("dashboard.badges_empty") }}</p>
       {% endif %}
 
       {% if upcomingEvents and upcomingEvents.length %}
@@ -114,7 +114,7 @@
       {% endif %}
 
       {% if endorsements and endorsements.length %}
-        <h2 class="govuk-heading-l govuk-!-margin-top-7">Your skill endorsements</h2>
+        <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("dashboard.endorsements_title") }}</h2>
         <ul class="govuk-list nexus-alpha-skill-list">
           {% for endorsement in endorsements %}
             <li>
@@ -127,11 +127,11 @@
     </div>
 
     <div class="govuk-grid-column-one-third">
-      <h2 class="govuk-heading-l">Quick links</h2>
+      <h2 class="govuk-heading-l">{{ t("dashboard.quick_links_title") }}</h2>
       <ul class="govuk-list govuk-list--spaced">
-        <li><a class="govuk-link" href="{{ urlFor('/profile') }}">View your profile</a></li>
-        <li><a class="govuk-link" href="{{ urlFor('/profile/settings') }}">Edit your profile</a></li>
-        <li><a class="govuk-link" href="{{ urlFor('/feed') }}">View all feed items</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/profile') }}">{{ t("dashboard.view_profile") }}</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/profile/settings') }}">{{ t("dashboard.edit_profile") }}</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/feed') }}">{{ t("dashboard.view_feed") }}</a></li>
         <li><a class="govuk-link" href="{{ urlFor('/messages') }}">Messages</a></li>
         <li><a class="govuk-link" href="{{ urlFor('/members') }}">Members</a></li>
         <li><a class="govuk-link" href="{{ urlFor('/listings') }}">View all listings</a></li>
@@ -143,9 +143,9 @@
 
   <div class="govuk-grid-row govuk-!-margin-top-8">
     <div class="govuk-grid-column-one-half">
-      <h2 class="govuk-heading-l">Recent feed</h2>
+      <h2 class="govuk-heading-l">{{ t("dashboard.recent_feed_title") }}</h2>
       {% if not feedItems or not feedItems.length %}
-        <div class="govuk-inset-text">There are no recent feed items to show.</div>
+        <div class="govuk-inset-text">{{ t("dashboard.empty_feed") }}</div>
       {% else %}
         <div class="nexus-alpha-card-list">
           {% for item in feedItems %}
@@ -170,7 +170,7 @@
     <div class="govuk-grid-column-one-half">
       <h2 class="govuk-heading-l">Recent listings</h2>
       {% if not listings or not listings.length %}
-        <div class="govuk-inset-text">There are no recent listings to show.</div>
+        <div class="govuk-inset-text">{{ t("dashboard.empty_listings") }}</div>
       {% else %}
         <div class="nexus-alpha-card-list">
           {% for listing in listings %}

@@ -94,7 +94,7 @@
         <div class="govuk-button-group">
           <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
           {% if hasFilters %}
-            <a class="govuk-link" href="{{ urlFor(clearHref) }}">Clear search</a>
+            <a class="govuk-link" href="{{ urlFor(clearHref) }}">{{ t("polish_members.connections_search_clear") }}</a>
           {% endif %}
         </div>
       </form>
@@ -156,10 +156,10 @@
 
               <div class="nexus-alpha-actions">
                 {% if resource.downloadHref %}
-                  <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(resource.downloadHref) }}" aria-label="Download {{ resource.title }}">Download</a>
+                  <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(resource.downloadHref) }}" aria-label="Download {{ resource.title }}">{{ t("resources.download") }}</a>
                 {% endif %}
                 {% if resource.canManage %}
-                  <a class="govuk-link" href="{{ urlFor('/resources/' + (resource.id | string) + '/delete') }}" aria-label="Delete {{ resource.title }}">Delete</a>
+                  <a class="govuk-link" href="{{ urlFor('/resources/' + (resource.id | string) + '/delete') }}" aria-label="Delete {{ resource.title }}">{{ t("jobs_t3.delete_button") }}</a>
                 {% endif %}
               </div>
 

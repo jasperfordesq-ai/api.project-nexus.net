@@ -13,9 +13,9 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Listings", href: urlFor("/listings") },
-      { text: "Edit listing" if listing else "New listing" }
+      { text: t("listings.edit.edit_listing") if listing else "New listing" }
     ]
   }) }}
 {% endblock %}
@@ -44,7 +44,7 @@
 
       {% if errors and errors.length %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: errors
         }) }}
       {% endif %}
@@ -56,7 +56,7 @@
 
         {{ govukInput({
           label: {
-            text: "Title",
+            text: t("group_exchanges.form_title_label"),
             classes: "govuk-label--m"
           },
           id: "title",
@@ -111,9 +111,9 @@
 
         <div class="govuk-button-group">
           {{ govukButton({
-            text: "Save listing"
+            text: t("polish_listings.save_listing")
           }) }}
-          <a href="{{ urlFor('/listings') }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/listings') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
 

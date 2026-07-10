@@ -9,7 +9,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Wallet" }
     ]
   }) }}
@@ -28,7 +28,7 @@
       {% if status == "donate-sent" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="wallet-donate-success-title" data-module="govuk-notification-banner">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="wallet-donate-success-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="wallet-donate-success-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">Your time-credit donation was sent.</p>
@@ -37,7 +37,7 @@
       {% elseif status == "donate-failed" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li>
@@ -64,7 +64,7 @@
       <h1 class="govuk-heading-xl">Wallet</h1>
 
       <div class="govuk-!-margin-bottom-8">
-        <p class="govuk-body-l">Your balance</p>
+        <p class="govuk-body-l">{{ t("fed2.transfer.balance_label") }}</p>
         <p class="govuk-heading-xl govuk-!-margin-bottom-2">
           <span class="govuk-!-font-size-80">{{ balance }}</span>
           <span class="govuk-body-l">credits</span>
@@ -80,7 +80,7 @@
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-      <h2 class="govuk-heading-m" id="donate">Donate time credits</h2>
+      <h2 class="govuk-heading-m" id="donate">{{ t("wallet_t1.donate_title") }}</h2>
       <p class="govuk-body">Donate whole credits to the community fund or to another member.</p>
 
       <form method="post" action="{{ urlFor('/wallet/donate') }}" class="govuk-!-margin-bottom-8" novalidate>

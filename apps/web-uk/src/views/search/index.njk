@@ -176,7 +176,7 @@
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
                   {% if group.isPublic or group.is_public %}
-                    {{ govukTag({ text: "Public", classes: "govuk-tag--green" }) }}
+                    {{ govukTag({ text: t("groups.visibility_public"), classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
@@ -256,7 +256,7 @@
             heading: "No results found",
             message: "We couldn't find anything matching \"" + query + "\". Try a different search term.",
             action: {
-              text: "Browse listings",
+              text: t("guide.browse_listings"),
               href: urlFor("/listings")
             }
           } %}

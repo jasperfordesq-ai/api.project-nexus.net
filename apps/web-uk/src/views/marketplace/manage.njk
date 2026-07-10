@@ -37,16 +37,16 @@
         {% include "marketplace/_listing-card.njk" %}
         <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
           <a class="govuk-link govuk-!-margin-right-3" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">View</a>
-          <a class="govuk-link govuk-!-margin-right-3" href="{{ urlFor('/marketplace/' + (item.id | string) + '/edit') }}">Edit</a>
+          <a class="govuk-link govuk-!-margin-right-3" href="{{ urlFor('/marketplace/' + (item.id | string) + '/edit') }}">{{ t("jobs_t3.edit_button") }}</a>
           {% if tab == 'expired' %}
             <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/renew') }}" class="nexus-alpha-inline-form">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Renew</button>
+              <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.renew_button") }}</button>
             </form>
           {% endif %}
           <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/delete') }}" class="nexus-alpha-inline-form">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete</button>
+            <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
           </form>
         </div>
       {% endfor %}

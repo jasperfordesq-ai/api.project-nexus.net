@@ -14,8 +14,8 @@
 
       <form method="get" action="{{ urlFor('/blog') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Search the blog</label>
-          <div id="q-hint" class="govuk-hint">Search by title or content.</div>
+          <label class="govuk-label" for="q">{{ t("blog.search_label") }}</label>
+          <div id="q-hint" class="govuk-hint">{{ t("blog.search_hint") }}</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
         </div>
         {% if categories.length %}
@@ -67,7 +67,7 @@
         </ul>
 
         {% if hasMore and nextCursor %}
-          <nav class="govuk-pagination govuk-pagination--block" role="navigation" aria-label="More posts">
+          <nav class="govuk-pagination govuk-pagination--block" role="navigation" aria-label="{{ t("blog.more_results_label") }}">
             <div class="govuk-pagination__next">
               {% set nextHref = '/blog?q=' + (searchQuery | urlencode) %}
               {% if categoryId %}
@@ -75,7 +75,7 @@
               {% endif %}
               {% set nextHref = nextHref + '&cursor=' + (nextCursor | urlencode) %}
               <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
-                <span class="govuk-pagination__link-title">Load more</span>
+                <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
               </a>
             </div>
           </nav>

@@ -13,7 +13,6 @@ const {
   replyToConversation,
   searchUsers,
   markConversationRead,
-  getProfile,
   callMessageApi,
   uploadVoiceMessage,
   uploadMessageAttachments,
@@ -24,6 +23,7 @@ const {
 const { asyncRoute } = require('../lib/routeHelpers');
 const { flagEnabled } = require('../lib/accessible-shell');
 const { audit } = require('../lib/auditLogger');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -607,7 +607,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   const [messagesResult, participantsResult, profileResult] = await Promise.all([
     callConversation(req.token, 'GET', conversationApiPath(conversationId, req.query)),
     callConversation(req.token, 'GET', `/${conversationId}/participants`),
-    getProfile(req.token).catch(() => null)
+    getRequestProfile(req, req.token).catch(() => null)
   ]);
 
   const profile = dataFrom(profileResult);
@@ -674,7 +674,7 @@ router.get('/new/:userId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const listingId = positiveInteger(req.query.listing);
   const [messagesResult, profileResult, restrictionResult, listingResult] = await Promise.all([
     callMessage(req.token, 'GET', directConversationApiPath(userId, req.query)),
-    getProfile(req.token).catch(() => null),
+    getRequestProfile(req, req.token).catch(() => null),
     callMessage(req.token, 'GET', '/restriction-status').catch(() => ({ data: {} })),
     listingId === null ? Promise.resolve(null) : callListingApi(req.token, 'GET', `/${listingId}`).catch(() => null)
   ]);
@@ -717,7 +717,7 @@ router.get('/new/:userId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const [conversation, profile] = await Promise.all([
     getConversation(req.token, req.params.id),
-    getProfile(req.token).catch(() => null)
+    getRequestProfile(req, req.token).catch(() => null)
   ]);
 
   // Auto-mark conversation as read when viewed

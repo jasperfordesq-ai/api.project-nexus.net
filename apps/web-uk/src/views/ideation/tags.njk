@@ -49,7 +49,7 @@
               <p class="govuk-body govuk-!-margin-bottom-1">{{ challenge.description }}</p>
             {% endif %}
             <p class="govuk-body-s nexus-alpha-actions govuk-!-margin-bottom-0">
-              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">View challenge</a>
+              <a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id) }}">{{ t("ideation.view") }}</a>
             </p>
           </article>
         {% endfor %}

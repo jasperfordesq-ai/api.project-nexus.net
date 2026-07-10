@@ -17,6 +17,7 @@ const {
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { normalizeResponse } = require('../lib/normalizeResponse');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -304,7 +305,7 @@ function dateTimeLabel(value) {
   if (!text) return '';
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('en-GB', {
+  return date.toLocaleString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

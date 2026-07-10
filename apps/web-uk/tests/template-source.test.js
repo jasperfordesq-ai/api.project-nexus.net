@@ -544,8 +544,8 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Accepting commits/);
     expect(groupSignups).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Cancelling releases/);
-    expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">There is a problem</h2>');
-    expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">There is a problem</h2>');
+    expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');
+    expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');
     expect(emergencyAlerts).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
     expect(groupSignups).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
   });

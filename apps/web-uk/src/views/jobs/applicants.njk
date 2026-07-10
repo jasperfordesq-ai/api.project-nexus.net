@@ -6,11 +6,11 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/jobs/mine') }}" class="govuk-back-link">My postings</a>
+  <a href="{{ urlFor('/jobs/mine') }}" class="govuk-back-link">{{ t("jobs_t3.mine_title") }}</a>
 
   <span class="govuk-caption-xl">{{ job.title }}</span>
   <h1 class="govuk-heading-xl">Applications</h1>
-  <p class="govuk-body-l">Review and progress the people who have applied.</p>
+  <p class="govuk-body-l">{{ t("jobs_t3.applicants_description") }}</p>
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -21,7 +21,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>{{ errorMessage }}</li>
@@ -32,14 +32,14 @@
   {% endif %}
 
   {% if analytics %}
-    <h2 class="govuk-heading-m">Performance</h2>
+    <h2 class="govuk-heading-m">{{ t("jobs_t3.analytics_heading") }}</h2>
     <dl class="govuk-summary-list govuk-!-margin-bottom-6">
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Total views</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_views") }}</dt>
         <dd class="govuk-summary-list__value">{{ analytics.total_views or 0 }}</dd>
       </div>
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Unique viewers</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_unique") }}</dt>
         <dd class="govuk-summary-list__value">{{ analytics.unique_viewers or 0 }}</dd>
       </div>
       <div class="govuk-summary-list__row">
@@ -47,7 +47,7 @@
         <dd class="govuk-summary-list__value">{{ analytics.total_applications or 0 }}</dd>
       </div>
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Conversion rate</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_conversion") }}</dt>
         <dd class="govuk-summary-list__value">{{ analytics.conversion_rate or 0 }}%</dd>
       </div>
     </dl>
@@ -60,12 +60,12 @@
   {% endif %}
 
   <p class="govuk-!-margin-bottom-6">
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications/export.csv') }}">Download applications (CSV)</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications/export.csv') }}">{{ t("jobs_t3.export_button") }}</a>
   </p>
 
   {% if applications.length == 0 %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">No one has applied to this opportunity yet.</p>
+      <p class="govuk-body">{{ t("jobs_t3.applicants_empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">
@@ -87,7 +87,7 @@
           <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/applications/' ~ app.id ~ '/status') }}" class="govuk-!-margin-top-2">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group govuk-!-margin-bottom-2">
-              <label class="govuk-label" for="app-status-{{ app.id }}">Move to stage</label>
+              <label class="govuk-label" for="app-status-{{ app.id }}">{{ t("jobs_t3.status_change_label") }}</label>
               <select class="govuk-select" id="app-status-{{ app.id }}" name="app_status">
                 {% for option in statusOptions %}
                   <option value="{{ option.value }}"{% if app.status == option.value %} selected{% endif %}>{{ option.label }}</option>
@@ -95,7 +95,7 @@
               </select>
             </div>
             <div class="govuk-form-group govuk-!-margin-bottom-2">
-              <label class="govuk-label" for="app-notes-{{ app.id }}">Notes for your records (optional)</label>
+              <label class="govuk-label" for="app-notes-{{ app.id }}">{{ t("jobs_t3.notes_label") }}</label>
               <input class="govuk-input govuk-!-width-two-thirds" id="app-notes-{{ app.id }}" name="notes" type="text" maxlength="2000">
             </div>
             <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Update</button>

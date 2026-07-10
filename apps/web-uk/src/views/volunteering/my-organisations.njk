@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering?tab=organisations') }}">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering?tab=organisations') }}">{{ t("actions.back_to_volunteering") }}</a>
 
   <span class="govuk-caption-l">Volunteering</span>
   <h1 class="govuk-heading-xl">My organisations</h1>
@@ -24,7 +24,7 @@
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filter</button>
       {% if roleFilter %}
-        <a class="govuk-link" href="{{ urlFor('/volunteering/my-organisations') }}">Clear filter</a>
+        <a class="govuk-link" href="{{ urlFor('/volunteering/my-organisations') }}">{{ t("polish_members.messages_filter_clear") }}</a>
       {% endif %}
     </div>
   </form>
@@ -32,7 +32,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
@@ -40,7 +40,7 @@
     </div>
   {% elif not organizations.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You do not manage any volunteering organisations yet.</p>
+      <p class="govuk-body">{{ t("volunteering.empty_organisations") }}</p>
       <p class="govuk-body govuk-!-margin-bottom-0">Register an organisation to post opportunities and approve volunteer hours.</p>
     </div>
   {% else %}
@@ -60,7 +60,7 @@
             </div>
             {% if organization.contactEmail %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">Contact email</dt>
+                <dt class="govuk-summary-list__key">{{ t("volunteering.contact_email") }}</dt>
                 <dd class="govuk-summary-list__value">{{ organization.contactEmail }}</dd>
               </div>
             {% endif %}
@@ -99,7 +99,7 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="My organisations pagination">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">more organisations</span>
           </a>

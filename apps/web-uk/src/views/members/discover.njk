@@ -18,7 +18,7 @@
         <a class="govuk-link" href="{{ urlFor('/members') }}">All members</a>
         <a class="govuk-link" href="{{ urlFor('/members?sort=joined&order=DESC') }}">New members</a>
         <a class="govuk-link" href="{{ urlFor('/members?sort=hours_given&order=DESC') }}">Active members</a>
-        <strong class="govuk-tag govuk-tag--blue">Recommended</strong>
+        <strong class="govuk-tag govuk-tag--blue">{{ t("listings.sort_recommended") }}</strong>
         <a class="govuk-link" href="{{ urlFor('/members/nearby') }}">Near me</a>
       </nav>
 
@@ -38,13 +38,13 @@
         </div>
       </form>
 
-      <h2 class="govuk-heading-l">Recommended for you</h2>
+      <h2 class="govuk-heading-l">{{ t("volunteering.recommended_title") }}</h2>
       <p class="govuk-body nexus-alpha-result-count" aria-live="polite">{{ totalItemsLabel }}</p>
 
       {% if errorMessage %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <p>{{ errorMessage }}</p>
             </div>
@@ -52,7 +52,7 @@
         </div>
       {% elif not members or not members.length %}
         <div class="govuk-inset-text">
-          <h2 class="govuk-heading-m">No results found</h2>
+          <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
           <p class="govuk-body">No recommended members match the current filters.</p>
         </div>
       {% else %}
@@ -135,7 +135,7 @@
                 <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
                   <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
                 </svg>
-                <span class="govuk-pagination__link-title">Load more</span>
+                <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
                 <span class="govuk-visually-hidden">:</span>
                 <span class="govuk-pagination__link-label">Recommended members</span>
               </a>

@@ -32,7 +32,7 @@
       {% endif %}
       {% if website %}
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Website (optional)</dt>
+          <dt class="govuk-summary-list__key">{{ t("organisations.website_label") }}</dt>
           <dd class="govuk-summary-list__value">
             <a class="govuk-link" href="{{ websiteHref }}" rel="nofollow noopener noreferrer" target="_blank">
               {{ website }}<span class="govuk-visually-hidden"> opens in a new tab</span>
@@ -49,18 +49,18 @@
     </p>
   {% endif %}
 
-  <h2 class="govuk-heading-l">About this organisation</h2>
+  <h2 class="govuk-heading-l">{{ t("org_depth.stats_heading") }}</h2>
   <dl class="nexus-alpha-inline-list">
     <div>
-      <dt>Open opportunities</dt>
+      <dt>{{ t("org_depth.stat_opportunities") }}</dt>
       <dd>{{ orgStats.opportunity_count or 0 }}</dd>
     </div>
     <div>
-      <dt>Volunteers</dt>
+      <dt>{{ t("org_depth.stat_volunteers") }}</dt>
       <dd>{{ orgStats.volunteer_count or 0 }}</dd>
     </div>
     <div>
-      <dt>Hours contributed</dt>
+      <dt>{{ t("org_depth.stat_hours") }}</dt>
       <dd>{{ orgStats.total_hours or 0 }}</dd>
     </div>
     <div>
@@ -80,7 +80,7 @@
     {% endif %}
   </dl>
 
-  <h2 class="govuk-heading-l">Volunteering opportunities</h2>
+  <h2 class="govuk-heading-l">{{ t("org_depth.opportunities_heading") }}</h2>
   {% if opportunities and opportunities.length %}
     <p class="govuk-body">Open volunteering opportunities posted by {{ organisationName }}.</p>
     <div class="nexus-alpha-card-list">
@@ -108,10 +108,10 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">There are no current volunteering opportunities at this organisation.</div>
+    <div class="govuk-inset-text">{{ t("org_depth.opportunities_empty") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">Volunteer reviews</h2>
+  <h2 class="govuk-heading-l">{{ t("org_depth.reviews_heading") }}</h2>
   {% if reviews and reviews.length %}
     <div class="nexus-alpha-card-list">
       {% for review in reviews %}
@@ -140,6 +140,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">This organisation has no reviews yet.</div>
+    <div class="govuk-inset-text">{{ t("org_depth.reviews_empty") }}</div>
   {% endif %}
 {% endblock %}

@@ -20,24 +20,24 @@
       </form>
     </div>
     <details class="govuk-details">
-      <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Reply</span></summary>
+      <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("actions.reply") }}</span></summary>
       <div class="govuk-details__text">
         <form method="post" action="{{ urlFor('/blog/' + post.slug + '/comments/add') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="parent_id" value="{{ comment.id }}">
           <label class="govuk-label govuk-label--s" for="reply-{{ comment.id }}">Your reply</label>
           <textarea class="govuk-textarea" id="reply-{{ comment.id }}" name="body" rows="3" maxlength="5000"></textarea>
-          <button class="govuk-button" data-module="govuk-button">Post reply</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("groups.discussions.reply_submit") }}</button>
         </form>
       </div>
     </details>
     <details class="govuk-details">
-      <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Edit</span></summary>
+      <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("jobs_t3.edit_button") }}</span></summary>
       <div class="govuk-details__text">
         <form method="post" action="{{ urlFor('/blog/comments/' + (comment.id | string) + '/update') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="slug" value="{{ post.slug }}">
-          <label class="govuk-label govuk-label--s" for="edit-{{ comment.id }}">Edit your comment</label>
+          <label class="govuk-label govuk-label--s" for="edit-{{ comment.id }}">{{ t("feed.edit_comment_label") }}</label>
           <textarea class="govuk-textarea" id="edit-{{ comment.id }}" name="content" rows="3" maxlength="5000">{{ comment.content }}</textarea>
           <button class="govuk-button" data-module="govuk-button">Save changes</button>
         </form>
@@ -65,12 +65,12 @@
 
       {% if statusBanner and statusBanner.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
-          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">Success</h2></div>
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("states.success_title") }}</h2></div>
           <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
         </div>
       {% elif statusBanner and statusBanner.type == "error" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
-          <div role="alert"><h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div role="alert"><h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li><a href="#body">{{ statusBanner.message }}</a></li></ul></div></div>
         </div>
       {% endif %}
@@ -79,7 +79,7 @@
       <h1 class="govuk-heading-xl">{{ post.title }}</h1>
 
       <section id="post-reactions" class="govuk-!-margin-bottom-6">
-        <h2 class="govuk-heading-m">React to this post</h2>
+        <h2 class="govuk-heading-m">{{ t("feed_t1.reactions_legend") }}</h2>
         <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1" aria-live="polite">
           {% if reactions.total == 0 %}No reactions{% elif reactions.total == 1 %}1 reaction{% else %}{{ reactions.total }} reactions{% endif %}
         </p>
@@ -110,7 +110,7 @@
         <h2 class="govuk-heading-l">Comments <span class="govuk-!-font-weight-regular">({{ commentsTotal }})</span></h2>
 
         {% if not comments.length %}
-          <div class="govuk-inset-text"><p class="govuk-body">No comments yet. Be the first to comment.</p></div>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("blog.comments_empty") }}</p></div>
         {% else %}
           <ul class="govuk-list nexus-alpha-comments-list">
             {% for comment in comments %}
@@ -119,7 +119,7 @@
           </ul>
         {% endif %}
 
-        <h3 class="govuk-heading-m govuk-!-margin-top-6">Add a comment</h3>
+        <h3 class="govuk-heading-m govuk-!-margin-top-6">{{ t("blog.comment_body_label") }}</h3>
         <form method="post" action="{{ urlFor('/blog/' + post.slug + '/comments/add') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'body' %} govuk-form-group--error{% endif %}">
@@ -127,7 +127,7 @@
             <div id="body-hint" class="govuk-hint">Be respectful. Comments are visible to other members.</div>
             <textarea class="govuk-textarea" id="body" name="body" rows="4" maxlength="5000" aria-describedby="body-hint"></textarea>
           </div>
-          <button type="submit" class="govuk-button" data-module="govuk-button">Post comment</button>
+          <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
         </form>
       </section>
     </div>

@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
   <span class="govuk-caption-xl">Invite people to {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Invite members</h1>
@@ -63,7 +63,7 @@
       <label class="govuk-label govuk-label--m" for="emails">Email addresses</label>
       <div id="emails-hint" class="govuk-hint">Enter one or more email addresses, separated by commas or new lines. Maximum 50 per request.</div>
       {% if statusBanner and statusBanner.message == 'Enter at least one email address.' %}
-        <p id="emails-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter at least one email address.</p>
+        <p id="emails-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Enter at least one email address.</p>
       {% endif %}
       <textarea class="govuk-textarea{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} govuk-textarea--error{% endif %}" id="emails" name="emails" rows="3" aria-describedby="emails-hint{% if statusBanner and statusBanner.message == 'Enter at least one email address.' %} emails-error{% endif %}"></textarea>
     </div>
@@ -82,7 +82,7 @@
     <table class="govuk-table">
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Email</th>
+          <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
           <th scope="col" class="govuk-table__header">Invited by</th>
           <th scope="col" class="govuk-table__header">Expires</th>
           <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">Revoke</span></th>

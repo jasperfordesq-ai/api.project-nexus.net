@@ -16,7 +16,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>{{ errorMessage }}</li>
@@ -91,7 +91,7 @@
             <label class="govuk-label" for="media_url">Web address (URL)</label>
             <div id="media_url-hint" class="govuk-hint">Paste a link to an image, video, document or web page.</div>
             {% if status == 'media-invalid' %}
-              <p id="media_url-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter a web address for the attachment.</p>
+              <p id="media_url-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> Enter a web address for the attachment.</p>
             {% endif %}
             <input class="govuk-input" id="media_url" name="media_url" type="url" maxlength="1000" aria-describedby="media_url-hint{% if status == 'media-invalid' %} media_url-error{% endif %}">
           </div>
@@ -137,7 +137,7 @@
     <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/convert') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group">
-        <label class="govuk-label" for="group_name">Group name</label>
+        <label class="govuk-label" for="group_name">{{ t("groups.create.name_label") }}</label>
         <input class="govuk-input" id="group_name" name="group_name" type="text" maxlength="255" value="{{ idea.title }}">
       </div>
       <div class="govuk-form-group">
@@ -206,17 +206,17 @@
   {% endif %}
 
   {% if idea.canComment %}
-    <h3 class="govuk-heading-m govuk-!-margin-top-4">Add a comment</h3>
+    <h3 class="govuk-heading-m govuk-!-margin-top-4">{{ t("blog.comment_body_label") }}</h3>
     <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/comments') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if status == 'comment-invalid' %} govuk-form-group--error{% endif %}">
         <label class="govuk-label" for="comment_body">Your comment</label>
         {% if status == 'comment-invalid' %}
-          <p id="comment_body-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter a comment before posting.</p>
+          <p id="comment_body-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ t("blog.comment_states.comment-invalid") }}</p>
         {% endif %}
         <textarea class="govuk-textarea" id="comment_body" name="comment_body" rows="4" maxlength="5000" {% if status == 'comment-invalid' %}aria-describedby="comment_body-error"{% endif %}></textarea>
       </div>
-      <button type="submit" class="govuk-button" data-module="govuk-button">Post comment</button>
+      <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
     </form>
   {% endif %}
 {% endblock %}

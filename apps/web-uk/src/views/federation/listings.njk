@@ -9,8 +9,8 @@
   <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">Federated listings</h1>
-  <p class="govuk-body-l">Offers and requests shared by members across the community network.</p>
+  <h1 class="govuk-heading-xl">{{ t("federation.hub.quick_link_listings") }}</h1>
+  <p class="govuk-body-l">{{ t("federation.listings_browse.description") }}</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
@@ -27,14 +27,14 @@
   </nav>
 
   {% if not allowed %}
-    <div class="govuk-inset-text"><p class="govuk-body">Browsing federated listings is not available for this community right now.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.listings_browse.not_available") }}</p></div>
   {% else %}
     <form method="get" action="{{ urlFor('/federation/listings') }}" class="govuk-!-margin-bottom-6">
       <fieldset class="govuk-fieldset">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter listings</legend>
 
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Search federated listings</label>
+          <label class="govuk-label" for="q">{{ t("federation.listings_browse.search_label") }}</label>
           <div id="q-hint" class="govuk-hint">Search by title or description.</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
         </div>
@@ -74,7 +74,7 @@
         </div>
       </div>
     {% elif not listings.length %}
-      <div class="govuk-inset-text"><p class="govuk-body">No federated listings were found.</p></div>
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.listings_browse.empty") }}</p></div>
     {% else %}
       <div class="nexus-alpha-card-list">
         {% for listing in listings %}
@@ -127,7 +127,7 @@
 
       {% if loadMoreHref %}
         <p class="govuk-body govuk-!-margin-top-4">
-          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more listings</a>
+          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">{{ t("federation.listings_browse.load_more") }}</a>
         </p>
       {% endif %}
     {% endif %}

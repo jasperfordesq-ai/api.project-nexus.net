@@ -51,7 +51,7 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">Name</th>
-              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Connected since</th>
               <th scope="col" class="govuk-table__header">Actions</th>
@@ -107,7 +107,7 @@
                       <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukButton({
-                          text: "Cancel",
+                          text: t("polish_federation.transfer_cancel"),
                           classes: "govuk-button--secondary govuk-!-margin-bottom-0"
                         }) }}
                       </form>

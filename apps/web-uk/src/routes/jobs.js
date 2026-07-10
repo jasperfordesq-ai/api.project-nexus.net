@@ -13,11 +13,12 @@ const {
   callJobDownload,
   getJobs,
   getJob,
-  getProfile,
   getUserV2,
   uploadJobApplication
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -450,7 +451,7 @@ function formatDateLong(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return trimmed(value);
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
@@ -460,7 +461,7 @@ function formatDateLong(value) {
 function formatUtcDateParts(year, month, day) {
   const date = new Date(Date.UTC(year, month - 1, day));
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -493,7 +494,7 @@ function formatMonthYear(value) {
     : new Date(text);
 
   if (Number.isNaN(date.getTime())) return text;
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(getRequestIntlLocale(), {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC'
@@ -518,7 +519,7 @@ function formatDateTimeLong(value) {
 
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return text;
-  return date.toLocaleString('en-GB', {
+  return date.toLocaleString(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -561,7 +562,7 @@ function money(value, currency) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   const amount = Number.isFinite(number)
-    ? number.toLocaleString('en-IE', { maximumFractionDigits: 0 })
+    ? number.toLocaleString(getRequestIntlLocale(), { maximumFractionDigits: 0 })
     : trimmed(value);
   return trimmed(`${currency || ''} ${amount}`);
 }
@@ -707,7 +708,7 @@ function vacancyId(row) {
 function formatPlainNumber(value) {
   const number = Number(value);
   return Number.isFinite(number)
-    ? number.toLocaleString('en-IE', { maximumFractionDigits: 0 })
+    ? number.toLocaleString(getRequestIntlLocale(), { maximumFractionDigits: 0 })
     : trimmed(value);
 }
 
@@ -1139,7 +1140,7 @@ function formatDecimal(value, maximumFractionDigits = 1) {
   const number = Number(value);
   if (!Number.isFinite(number)) return trimmed(value);
 
-  return number.toLocaleString('en-GB', {
+  return number.toLocaleString(getRequestIntlLocale(), {
     maximumFractionDigits,
     minimumFractionDigits: 0
   });
@@ -1919,7 +1920,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   try {
     [result, profileResult] = await Promise.all([
       getJob(token, id),
-      getProfile(token)
+      getRequestProfile(req, token)
     ]);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;

@@ -1175,7 +1175,7 @@ describe('shared accessible frontend shell', () => {
     expect(staticPageRoutes.pages['/features']).toBeUndefined();
     expect(guide.status).toBe(200);
     expect(guide.text).toContain('How timebanking works');
-    expect(guide.text).toContain("Everyone's time is equal");
+    expect(guide.text).toContain('Everyone&#39;s time is equal');
     expect(guide.text).toContain('The three steps');
     expect(guide.text).toContain('Give your time');
     expect(guide.text).toContain('Earn time credits');
@@ -1361,7 +1361,7 @@ describe('shared accessible frontend shell', () => {
       privacy_search: true,
       privacy_contact: true,
       newsletter_opt_in: true,
-      preferred_language: 'ga',
+      preferred_language: 'en',
       prefers_chronological_feed: true,
       auto_translate_ugc: true,
       auto_translate_target_locale: 'ga'
@@ -1371,7 +1371,7 @@ describe('shared accessible frontend shell', () => {
         return {
           data: {
             email: 'ada@example.org',
-            preferred_language: 'ga',
+            preferred_language: 'en',
             newsletter_opt_in: true,
             privacy_contact: true,
             prefers_chronological_feed: true,

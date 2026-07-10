@@ -7,8 +7,8 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">Resources</h1>
-  <p class="govuk-body-l">Guides and reference materials shared with the community.</p>
+  <h1 class="govuk-heading-xl">{{ t("resources.title") }}</h1>
+  <p class="govuk-body-l">{{ t("resources.description") }}</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
     <a class="govuk-link" href="{{ urlFor('/resources/library') }}">Open the full resource library</a>
@@ -16,7 +16,7 @@
 
   <form method="get" action="{{ urlFor('/resources') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Find a resource</label>
+      <label class="govuk-label" for="q">{{ t("resources.search_label") }}</label>
       <div id="q-hint" class="govuk-hint">Search by title.</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ resourcesQuery }}" aria-describedby="q-hint">
     </div>
@@ -24,7 +24,7 @@
   </form>
 
   {% if not resources.length %}
-    <div class="govuk-inset-text"><p class="govuk-body">There are no resources yet.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("resources.empty") }}</p></div>
   {% else %}
     <div class="nexus-alpha-card-list">
       {% for resource in resources %}
@@ -39,7 +39,7 @@
           {% endif %}
 
           {% if resource.href %}
-            <a class="govuk-link" href="{{ resource.href }}" rel="noopener" aria-label="Download {{ resource.title }}">Download</a>
+            <a class="govuk-link" href="{{ resource.href }}" rel="noopener" aria-label="Download {{ resource.title }}">{{ t("resources.download") }}</a>
           {% endif %}
         </article>
       {% endfor %}

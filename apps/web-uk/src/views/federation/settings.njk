@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to Federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("polish_federation.groups_back") }}</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -32,7 +32,7 @@
         {% if statusBanner.type == "error" %}
           <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
             <div role="alert">
-              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
               <div class="govuk-error-summary__body">
                 <ul class="govuk-list govuk-error-summary__list">
                   <li><a href="#profile_visible_federated">{{ statusBanner.message }}</a></li>
@@ -43,7 +43,7 @@
         {% else %}
           <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-settings-status">
             <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title" id="fed-settings-status">Success</h2>
+              <h2 class="govuk-notification-banner__title" id="fed-settings-status">{{ t("states.success_title") }}</h2>
             </div>
             <div class="govuk-notification-banner__content">
               <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
@@ -75,7 +75,7 @@
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="profile_visible_federated" name="profile_visible_federated" type="checkbox" value="1" aria-describedby="profile_visible_federated-hint"{% if settings.profileVisibleFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">Show my profile to partner communities</label>
+                <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">{{ t("federation.settings.profile_visible_label") }}</label>
                 <div id="profile_visible_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities view your federation profile.</div>
               </div>
               <div class="govuk-checkboxes__item">
@@ -102,7 +102,7 @@
           </fieldset>
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Notifications</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("notifications.title") }}</legend>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="email_notifications" name="email_notifications" type="checkbox" value="1" aria-describedby="email_notifications-hint"{% if settings.emailNotifications %} checked{% endif %}>
@@ -148,7 +148,7 @@
           </div>
 
           <div class="govuk-button-group">
-            <button type="submit" class="govuk-button" data-module="govuk-button">Save federation settings</button>
+            <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("federation.settings.submit") }}</button>
           </div>
         </form>
 

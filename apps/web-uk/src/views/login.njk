@@ -1,5 +1,7 @@
 {% extends "layouts/base.njk" %}
 
+{% block pageTitle %}{{ t("auth.two_factor_title") if show2fa else t("auth.login_title") }} - {{ serviceName }}{% endblock %}
+
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
@@ -17,7 +19,7 @@
 
       {% if error %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: [
             {
               text: error,
@@ -28,15 +30,18 @@
       {% endif %}
 
       {% if show2fa %}
-        <h1 class="govuk-heading-xl">Two-factor authentication</h1>
-        <p class="govuk-body">Enter the 6-digit code from your authenticator app.</p>
+        <h1 class="govuk-heading-xl">{{ t("auth.two_factor_title") }}</h1>
+        <p class="govuk-body">{{ t("auth.two_factor_description") }}</p>
 
         <form method="post" action="{{ urlFor('/login/two-factor') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukInput({
             label: {
-              text: "Authentication code",
+              text: t("auth.two_factor_code_label"),
               classes: "govuk-label--m"
+            },
+            hint: {
+              text: t("auth.two_factor_code_hint")
             },
             id: "code",
             name: "code",
@@ -51,22 +56,23 @@
           }) }}
 
           {{ govukButton({
-            text: "Verify"
+            text: t("auth.two_factor_submit")
           }) }}
         </form>
 
         <p class="govuk-body govuk-!-margin-top-4">
-          <a href="{{ urlFor('/login') }}" class="govuk-link">Cancel and return to sign in</a>
+          <a href="{{ urlFor('/login') }}" class="govuk-link">{{ t("auth.back_to_sign_in") }}</a>
         </p>
 
       {% else %}
-        <h1 class="govuk-heading-xl">Sign in</h1>
+        <h1 class="govuk-heading-xl">{{ t("auth.login_title") }}</h1>
+        <p class="govuk-body-l">{{ t("auth.login_description", { community: tenantName or serviceName }) }}</p>
 
-        <form method="post" action="{{ urlFor('/login') }}" novalidate data-validate-form data-loading="Signing in...">
+        <form method="post" action="{{ urlFor('/login') }}" novalidate data-validate-form data-loading="{{ t('auth.login_action') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukInput({
             label: {
-              text: "Email address",
+              text: t("auth.email_label"),
               classes: "govuk-label--m"
             },
             id: "email",
@@ -77,13 +83,13 @@
             value: values.email if values else "",
             attributes: {
               "data-validate": "required email",
-              "data-label": "Email address"
+              "data-label": t("auth.email_label")
             }
           }) }}
 
           {{ govukInput({
             label: {
-              text: "Password",
+              text: t("auth.password_label"),
               classes: "govuk-label--m"
             },
             id: "password",
@@ -92,40 +98,44 @@
             autocomplete: "current-password",
             attributes: {
               "data-validate": "required",
-              "data-label": "Password"
+              "data-label": t("auth.password_label")
             }
           }) }}
 
           <p class="govuk-body govuk-!-margin-bottom-6">
-            <a href="{{ urlFor('/login/forgot-password') }}" class="govuk-link">Forgot your password?</a>
+            <a href="{{ urlFor('/login/forgot-password') }}" class="govuk-link">{{ t("auth.forgot_link") }}</a>
           </p>
 
-          {{ govukInput({
-            label: {
-              text: "Community code",
-              classes: "govuk-label--m"
-            },
-            hint: {
-              text: "Your community identifier (e.g. 'acme')"
-            },
-            id: "tenant_slug",
-            name: "tenant_slug",
-            value: values.tenant_slug if values else "",
-            attributes: {
-              "data-validate": "required",
-              "data-label": "Community code"
-            }
-          }) }}
+          {% if tenantSlug %}
+            <input type="hidden" name="tenant_slug" value="{{ tenantSlug }}">
+          {% else %}
+            {{ govukInput({
+              label: {
+                text: "Community code",
+                classes: "govuk-label--m"
+              },
+              hint: {
+                text: "Your community identifier (e.g. 'acme')"
+              },
+              id: "tenant_slug",
+              name: "tenant_slug",
+              value: values.tenant_slug if values else "",
+              attributes: {
+                "data-validate": "required",
+                "data-label": "Community code"
+              }
+            }) }}
+          {% endif %}
 
           {# Turnstile widget removed from login 2026-05-15 — rate-limit is the active defence #}
 
           {{ govukButton({
-            text: "Sign in"
+            text: t("auth.login_action")
           }) }}
         </form>
 
         <p class="govuk-body govuk-!-margin-top-6">
-          Don't have an account? <a href="{{ urlFor('/register') }}" class="govuk-link">Create one</a>
+          <a href="{{ urlFor('/register') }}" class="govuk-link">{{ t("auth.need_account") }}</a>
         </p>
       {% endif %}
 

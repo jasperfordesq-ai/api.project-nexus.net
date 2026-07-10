@@ -36,7 +36,7 @@
             name: "search",
             value: searchQuery,
             label: {
-              text: "Search groups",
+              text: t("polish_federation.groups_search_label"),
               classes: "govuk-visually-hidden"
             },
             classes: "app-search-form__input",
@@ -59,7 +59,7 @@
           heading: "No results found",
           message: "No groups match \"" + searchQuery + "\". Try a different search term.",
           action: {
-            text: "Clear search",
+            text: t("polish_members.connections_search_clear"),
             href: urlFor("/groups")
           }
         } %}
@@ -75,7 +75,7 @@
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
                   {% if myGroupIds[group.id] %}
-                    {{ govukTag({ text: "Joined", classes: "govuk-tag--green" }) }}
+                    {{ govukTag({ text: t("profile.joined_label"), classes: "govuk-tag--green" }) }}
                   {% endif %}
                 </div>
                 {% if group.description %}

@@ -9,18 +9,18 @@
     <div class="govuk-grid-column-two-thirds">
       {% if state == "success" %}
         <div class="govuk-panel govuk-panel--confirmation">
-          <h1 class="govuk-panel__title">You have been unsubscribed</h1>
-          <div class="govuk-panel__body">You will no longer receive newsletter emails from this community.</div>
+          <h1 class="govuk-panel__title">{{ t("auth.unsubscribe_success_title") }}</h1>
+          <div class="govuk-panel__body">{{ t("auth.unsubscribe_success_body") }}</div>
         </div>
-        <p class="govuk-body govuk-!-margin-top-6">You may still receive essential account and security emails.</p>
+        <p class="govuk-body govuk-!-margin-top-6">{{ t("auth.unsubscribe_success_detail") }}</p>
         <p class="govuk-body">
-          <a class="govuk-link" href="{{ urlFor('/') }}">Return to the home page</a>
+          <a class="govuk-link" href="{{ urlFor('/') }}">{{ t("auth.unsubscribe_back_home") }}</a>
         </p>
       {% else %}
-        <h1 class="govuk-heading-xl">Unsubscribe from emails</h1>
+        <h1 class="govuk-heading-xl">{{ t("auth.unsubscribe_title") }}</h1>
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li>
@@ -35,7 +35,7 @@
           </div>
         </div>
         <p class="govuk-body">
-          <a class="govuk-link" href="{{ urlFor('/') }}">Return to the home page</a>
+          <a class="govuk-link" href="{{ urlFor('/') }}">{{ t("auth.unsubscribe_back_home") }}</a>
         </p>
       {% endif %}
     </div>

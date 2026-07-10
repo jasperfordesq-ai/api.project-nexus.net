@@ -43,7 +43,7 @@
 
       {% if (event.isCancelled or event.is_cancelled) %}
         {{ govukWarningText({
-          text: "This event has been cancelled.",
+          text: t("events.polish_events.cancelled_banner_heading"),
           iconFallbackText: "Warning"
         }) }}
       {% endif %}
@@ -60,7 +60,7 @@
       {{ govukSummaryList({
         rows: [
           {
-            key: { text: "Date and time" },
+            key: { text: t("events.create_time_title") },
             value: {
               html: ((event.startsAt or event.starts_at) | formatEventDate) +
                     ("<br>to " + ((event.endsAt or event.ends_at) | formatEventDate) if event.endsAt or event.ends_at else "")
@@ -84,7 +84,7 @@
             }
           } if organizer,
           {
-            key: { text: "Capacity" },
+            key: { text: t("events.create_capacity_title") },
             value: {
               text: (event.attendeeCount or event.attendee_count or 0) + " attending" +
                     (" / " + (event.maxAttendees or event.max_attendees) + " max" if event.maxAttendees or event.max_attendees else "")
@@ -111,7 +111,7 @@
       {% if not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-        <h2 class="govuk-heading-m">Your RSVP</h2>
+        <h2 class="govuk-heading-m">{{ t("events.rsvp_title") }}</h2>
 
         {% if myRsvp %}
           <p class="govuk-body">
@@ -121,7 +121,7 @@
             {% elif myRsvp.status == 'maybe' %}
               {{ govukTag({ text: "Maybe", classes: "govuk-tag--yellow" }) }}
             {% else %}
-              {{ govukTag({ text: "Not going", classes: "govuk-tag--grey" }) }}
+              {{ govukTag({ text: t("events.rsvp_status.not_going"), classes: "govuk-tag--grey" }) }}
             {% endif %}
           </p>
         {% endif %}
@@ -157,7 +157,7 @@
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="status" value="not_going">
             {{ govukButton({
-              text: "Not going",
+              text: t("events.rsvp_status.not_going"),
               classes: "govuk-button--secondary",
               disabled: myRsvp and myRsvp.status == 'not_going'
             }) }}
@@ -180,7 +180,7 @@
 
         <div class="app-action-buttons">
           {{ govukButton({
-            text: "Edit event",
+            text: t("events.edit_event"),
             href: urlFor("/events/" + (event.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}

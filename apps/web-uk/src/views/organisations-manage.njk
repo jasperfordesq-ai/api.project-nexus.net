@@ -24,7 +24,7 @@
   {% if error %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>We could not load the organisations. Please try again.</li>
@@ -51,7 +51,7 @@
     <div class="govuk-inset-text">
       <h2 class="govuk-heading-m govuk-!-margin-bottom-2">You do not manage any organisations</h2>
       <p class="govuk-body">When you own or administer an organisation, it will appear here.</p>
-      <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">Register an organisation</a>
+      <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">{{ t("organisations.register_title") }}</a>
     </div>
   {% else %}
     {% if manageableOrganisations and manageableOrganisations.length %}
@@ -67,7 +67,7 @@
             </dl>
             <div class="nexus-alpha-actions">
               <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" href="{{ urlFor('/volunteering/organisations/' + (organisation.id | string) + '/manage') }}">Open dashboard</a>
-              <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">View organisation</a>
+              <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ t("organisations.view") }}</a>
             </div>
           </article>
         {% endfor %}

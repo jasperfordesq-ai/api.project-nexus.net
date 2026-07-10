@@ -15,7 +15,7 @@
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ge-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="ge-status-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="ge-status-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
@@ -26,7 +26,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p class="govuk-body">{{ errorMessage }}</p>
         </div>
@@ -49,10 +49,10 @@
     </div>
   </dl>
 
-  <h2 class="govuk-heading-l">People in this exchange</h2>
+  <h2 class="govuk-heading-l">{{ t("group_exchanges.participants_title") }}</h2>
   {% if participants and participants.length %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">People in this exchange</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("group_exchanges.participants_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">Name</th>
@@ -86,19 +86,19 @@
       </tbody>
     </table>
   {% else %}
-    <div class="govuk-inset-text"><p class="govuk-body">No one has been added yet.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("group_exchanges.no_participants") }}</p></div>
   {% endif %}
 
   {% if isParticipant and not isClosed %}
     <section aria-labelledby="confirm-heading" class="govuk-!-margin-top-6">
       <h2 class="govuk-heading-l" id="confirm-heading">Your participation</h2>
       {% if viewerConfirmed %}
-        <div class="govuk-inset-text"><p class="govuk-body">You have confirmed your participation.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("group_exchanges.confirmed_already") }}</p></div>
       {% else %}
-        <p class="govuk-body">Confirm that you agree to take part in this group exchange.</p>
+        <p class="govuk-body">{{ t("group_exchanges.confirm_body") }}</p>
         <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/confirm') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button" data-module="govuk-button">Confirm my participation</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("group_exchanges.confirm_button") }}</button>
         </form>
       {% endif %}
     </section>
@@ -106,7 +106,7 @@
 
   {% if editable %}
     <section aria-labelledby="add-heading" class="govuk-!-margin-top-6">
-      <h2 class="govuk-heading-l" id="add-heading">Add a person</h2>
+      <h2 class="govuk-heading-l" id="add-heading">{{ t("group_exchanges.add_title") }}</h2>
       <form method="get" action="{{ urlFor('/group-exchanges/' + (exchange.id | string)) }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="participant_q">Find a member</label>
@@ -125,17 +125,17 @@
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="participant_id" value="{{ candidate.id }}">
                 <div class="govuk-form-group govuk-!-margin-bottom-3">
-                  <label class="govuk-label" for="role-{{ candidate.id }}">Their role</label>
+                  <label class="govuk-label" for="role-{{ candidate.id }}">{{ t("group_exchanges.add_role_label") }}</label>
                   <select class="govuk-select" id="role-{{ candidate.id }}" name="role">
-                    <option value="provider">Giving time</option>
-                    <option value="receiver">Receiving time</option>
+                    <option value="provider">{{ t("group_exchanges.role_provider") }}</option>
+                    <option value="receiver">{{ t("group_exchanges.role_receiver") }}</option>
                   </select>
                 </div>
                 <div class="govuk-form-group govuk-!-margin-bottom-3">
                   <label class="govuk-label" for="hours-{{ candidate.id }}">Hours</label>
                   <input class="govuk-input govuk-input--width-5" id="hours-{{ candidate.id }}" name="hours" type="number" min="0" max="1000" step="0.25" inputmode="decimal" value="0">
                 </div>
-                <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Add to exchange</button>
+                <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("group_exchanges.add_button") }}</button>
               </form>
             </div>
           {% endfor %}
@@ -148,23 +148,23 @@
 
   {% if isOrganizer and not isClosed %}
     <section aria-labelledby="complete-heading" class="govuk-!-margin-top-7">
-      <h2 class="govuk-heading-l" id="complete-heading">Complete the exchange</h2>
-      <p class="govuk-body">Once everyone has confirmed, completing the exchange moves the time credits. This cannot be undone.</p>
+      <h2 class="govuk-heading-l" id="complete-heading">{{ t("group_exchanges.complete_title") }}</h2>
+      <p class="govuk-body">{{ t("group_exchanges.complete_body") }}</p>
       <div class="govuk-warning-text">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
           <span class="govuk-visually-hidden">Warning</span>
-          Completing this exchange transfers time credits immediately and cannot be reversed.
+          {{ t("group_exchanges.complete_warning") }}
         </strong>
       </div>
       <div class="nexus-alpha-actions">
         <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/complete') }}" class="nexus-alpha-linkform">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button govuk-!-margin-bottom-0 {% if not allConfirmed %}govuk-button--disabled{% endif %}" data-module="govuk-button" {% if not allConfirmed %}disabled aria-disabled="true"{% endif %}>Complete and move credits</button>
+          <button class="govuk-button govuk-!-margin-bottom-0 {% if not allConfirmed %}govuk-button--disabled{% endif %}" data-module="govuk-button" {% if not allConfirmed %}disabled aria-disabled="true"{% endif %}>{{ t("group_exchanges.complete_button") }}</button>
         </form>
         <form method="post" action="{{ urlFor('/group-exchanges/' + (exchange.id | string) + '/cancel') }}" class="nexus-alpha-linkform">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel this exchange</button>
+          <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("group_exchanges.cancel_button") }}</button>
         </form>
       </div>
     </section>

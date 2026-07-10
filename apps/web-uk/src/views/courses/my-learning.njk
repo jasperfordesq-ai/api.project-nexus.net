@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/courses') }}" class="govuk-back-link">Back to courses</a>
+  <a href="{{ urlFor('/courses') }}" class="govuk-back-link">{{ t("courses.back") }}</a>
 
   <span class="govuk-caption-xl">Your courses at {{ tenantName }}</span>
   <h1 class="govuk-heading-xl">My learning</h1>

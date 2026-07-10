@@ -1,14 +1,14 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-l">Exchanges</span>
-  <h1 class="govuk-heading-xl">Exchanges</h1>
+  <span class="govuk-caption-l">{{ t("exchanges.title") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("exchanges.title") }}</h1>
   <p class="govuk-body-l">Review exchange requests and track time-credit work.</p>
 
   {% if statusMessage or successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="exchange-success-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="exchange-success-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="exchange-success-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage or statusMessage }}</p>
@@ -19,7 +19,7 @@
   {% if errorMessage %}
     <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="exchange-error-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="exchange-error-title">Important</h2>
+        <h2 class="govuk-notification-banner__title" id="exchange-error-title">{{ t("states.important") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ errorMessage }}</p>
@@ -42,12 +42,12 @@
     <ul class="nexus-alpha-filter-nav">
       <li><a class="govuk-link{% if activeTab == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=all') }}"{% if activeTab == 'all' %} aria-current="true"{% endif %}>All</a></li>
       <li><a class="govuk-link{% if activeTab == 'active' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=active') }}"{% if activeTab == 'active' %} aria-current="true"{% endif %}>Active</a></li>
-      <li><a class="govuk-link{% if activeTab == 'needs_confirmation' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=needs_confirmation') }}"{% if activeTab == 'needs_confirmation' %} aria-current="true"{% endif %}>Needs confirmation</a></li>
+      <li><a class="govuk-link{% if activeTab == 'needs_confirmation' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=needs_confirmation') }}"{% if activeTab == 'needs_confirmation' %} aria-current="true"{% endif %}>{{ t("polish_listings.exchanges_tab_needs_confirmation") }}</a></li>
       <li><a class="govuk-link{% if activeTab == 'completed' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=completed') }}"{% if activeTab == 'completed' %} aria-current="true"{% endif %}>Completed</a></li>
     </ul>
   </nav>
 
-  <h2 class="govuk-heading-l">Results</h2>
+  <h2 class="govuk-heading-l">{{ t("listings.results_title") }}</h2>
   <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
     {% if exchanges.length == 1 %}1 exchange shown{% else %}{{ exchanges.length }} exchanges shown{% endif %}
   </p>
@@ -68,12 +68,12 @@
           {% if exchange.actionNeeded == 'respond' %}
             <strong class="govuk-tag govuk-tag--red">Respond</strong>
           {% elif exchange.actionNeeded == 'confirm' %}
-            <strong class="govuk-tag govuk-tag--red">Confirm hours</strong>
+            <strong class="govuk-tag govuk-tag--red">{{ t("actions.confirm_hours") }}</strong>
           {% endif %}
 
           <dl class="nexus-alpha-inline-list govuk-!-margin-top-3">
             <div>
-              <dt>Proposed hours</dt>
+              <dt>{{ t("exchanges.proposed_hours_label") }}</dt>
               <dd>{{ exchange.proposedHours }} hours</dd>
             </div>
             <div>
@@ -89,7 +89,7 @@
           </dl>
 
           <p class="govuk-body govuk-!-margin-bottom-0">
-            <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">View exchange</a>
+            <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">{{ t("actions.view_exchange") }}</a>
           </p>
         </article>
       {% endfor %}
@@ -99,7 +99,7 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Exchange pagination">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/exchanges?tab=' + activeTab + '&cursor=' + meta.cursor) }}" rel="next">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">more exchange results</span>
           </a>

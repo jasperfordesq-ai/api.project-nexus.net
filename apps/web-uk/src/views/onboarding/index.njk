@@ -17,7 +17,7 @@
       {% if statusBanner and statusBanner.type == "error" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li>
@@ -34,7 +34,7 @@
       {% elif statusBanner and statusBanner.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ob-status">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="ob-status">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="ob-status">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
@@ -43,29 +43,29 @@
       {% endif %}
 
       {% if step == "welcome" %}
-        <h1 class="govuk-heading-xl">Welcome</h1>
-        <p class="govuk-body-l">Welcome to your community. Set up your profile so others can find and connect with you.</p>
+        <h1 class="govuk-heading-xl">{{ t("onboarding.welcome.title") }}</h1>
+        <p class="govuk-body-l">{{ t("onboarding.welcome.body") }}</p>
         <ul class="govuk-list govuk-list--bullet">
-          <li>Earn time credits by helping others.</li>
-          <li>Meet people in your community.</li>
-          <li>Share the skills you have and find the help you need.</li>
+          <li>{{ t("onboarding.welcome.benefit_earn") }}</li>
+          <li>{{ t("onboarding.welcome.benefit_community") }}</li>
+          <li>{{ t("onboarding.welcome.benefit_skills") }}</li>
         </ul>
         <form method="post" action="{{ urlFor('/onboarding/welcome') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button" data-module="govuk-button">Get started</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.welcome.start") }}</button>
         </form>
 
       {% elif step == "profile" %}
         <h1 class="govuk-heading-xl">Your profile</h1>
-        <p class="govuk-body">Add a photo and a short bio so people know who you are.</p>
+        <p class="govuk-body">{{ t("onboarding.profile.hint") }}</p>
 
         <form method="post" action="{{ urlFor('/onboarding/avatar') }}" enctype="multipart/form-data" class="govuk-!-margin-bottom-6">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'avatar' %} govuk-form-group--error{% endif %}">
             <label class="govuk-label govuk-label--s" for="avatar">Profile photo</label>
-            <div id="avatar-hint" class="govuk-hint">JPG, PNG, GIF or WEBP.</div>
+            <div id="avatar-hint" class="govuk-hint">{{ t("onboarding.profile.avatar_hint") }}</div>
             {% if statusBanner and statusBanner.anchor == "avatar" %}
-              <p id="avatar-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+              <p id="avatar-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
             {% endif %}
             {% if onboardingUser.avatar_url %}
               <p class="govuk-body-s nexus-alpha-meta">Current photo</p>
@@ -73,30 +73,30 @@
             {% endif %}
             <input class="govuk-file-upload" id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="avatar-hint">
           </div>
-          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Upload photo</button>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("onboarding.profile.upload_button") }}</button>
         </form>
 
         <form method="post" action="{{ urlFor('/onboarding/profile') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group{% if statusBanner and statusBanner.anchor == 'bio' %} govuk-form-group--error{% endif %}">
-            <label class="govuk-label govuk-label--s" for="bio">About you</label>
-            <div id="bio-hint" class="govuk-hint">A sentence or two about yourself.</div>
+            <label class="govuk-label govuk-label--s" for="bio">{{ t("onboarding.confirm.bio_row") }}</label>
+            <div id="bio-hint" class="govuk-hint">{{ t("onboarding.profile.bio_hint") }}</div>
             {% if statusBanner and statusBanner.anchor == "bio" %}
-              <p id="bio-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+              <p id="bio-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
             {% endif %}
             <textarea class="govuk-textarea" id="bio" name="bio" rows="4" maxlength="2000" aria-describedby="bio-hint">{{ onboardingUser.bio or "" }}</textarea>
           </div>
-          <button class="govuk-button" data-module="govuk-button">Save and continue</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.profile.save_continue") }}</button>
         </form>
 
       {% elif step == "interests" %}
-        <h1 class="govuk-heading-xl">Your interests</h1>
-        <p class="govuk-body">Choose the topics you are interested in. You can change these later.</p>
+        <h1 class="govuk-heading-xl">{{ t("onboarding.interests.title") }}</h1>
+        <p class="govuk-body">{{ t("onboarding.interests.hint") }}</p>
         <form method="post" action="{{ urlFor('/onboarding/interests') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <fieldset class="govuk-fieldset">
-              <legend class="govuk-fieldset__legend govuk-visually-hidden">Your interests</legend>
+              <legend class="govuk-fieldset__legend govuk-visually-hidden">{{ t("onboarding.interests.title") }}</legend>
               <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
                 {% for category in categories %}
                   <div class="govuk-checkboxes__item">
@@ -107,7 +107,7 @@
               </div>
             </fieldset>
           </div>
-          <button class="govuk-button" data-module="govuk-button">Continue</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.continue") }}</button>
         </form>
 
       {% elif step == "skills" %}
@@ -116,8 +116,8 @@
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <fieldset class="govuk-fieldset" aria-describedby="offers-hint">
-              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Skills you can offer</legend>
-              <div id="offers-hint" class="govuk-hint">Things you can help others with.</div>
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("onboarding.skills.offers_label") }}</legend>
+              <div id="offers-hint" class="govuk-hint">{{ t("onboarding.skills.offers_hint") }}</div>
               <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
                 {% for category in categories %}
                   <div class="govuk-checkboxes__item">
@@ -131,8 +131,8 @@
 
           <div class="govuk-form-group">
             <fieldset class="govuk-fieldset" aria-describedby="needs-hint">
-              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Help you are looking for</legend>
-              <div id="needs-hint" class="govuk-hint">Things you would like help with.</div>
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("onboarding.skills.needs_label") }}</legend>
+              <div id="needs-hint" class="govuk-hint">{{ t("onboarding.skills.needs_hint") }}</div>
               <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
                 {% for category in categories %}
                   <div class="govuk-checkboxes__item">
@@ -144,14 +144,14 @@
             </fieldset>
           </div>
 
-          <button class="govuk-button" data-module="govuk-button">Continue</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.continue") }}</button>
         </form>
 
       {% elif step == "safeguarding" %}
         {% set noneOption = null %}
         <h1 class="govuk-heading-xl">Safeguarding</h1>
-        <p class="govuk-body">Some communities ask a few optional safeguarding questions. These help keep everyone safe.</p>
-        <div class="govuk-inset-text">Your answers are private and only used for safeguarding. You can change or remove them at any time in your settings. Nothing is selected unless you choose it.</div>
+        <p class="govuk-body">{{ t("onboarding.safeguarding.intro") }}</p>
+        <div class="govuk-inset-text">{{ t("onboarding.safeguarding.gdpr_notice") }}</div>
 
         <form method="post" action="{{ urlFor('/onboarding/safeguarding') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -190,7 +190,7 @@
 
           {% if noneOption %}
             <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--m">
-            <p class="govuk-body govuk-!-font-weight-bold">Or</p>
+            <p class="govuk-body govuk-!-font-weight-bold">{{ t("onboarding.safeguarding.none_separator") }}</p>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="sg-{{ noneOption.id }}" name="safeguarding[{{ noneOption.id }}]" type="checkbox" value="1">
@@ -200,15 +200,15 @@
           {% endif %}
 
           <div class="govuk-button-group govuk-!-margin-top-4">
-            <button class="govuk-button" data-module="govuk-button">Continue</button>
+            <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.continue") }}</button>
             {% if not stepRequired %}
-              <button class="govuk-button govuk-button--secondary" name="skip" value="1" data-module="govuk-button">Skip for now</button>
+              <button class="govuk-button govuk-button--secondary" name="skip" value="1" data-module="govuk-button">{{ t("onboarding.skip") }}</button>
             {% endif %}
           </div>
         </form>
 
       {% else %}
-        <h1 class="govuk-heading-xl">Check your answers</h1>
+        <h1 class="govuk-heading-xl">{{ t("onboarding.confirm.title") }}</h1>
         <dl class="govuk-summary-list">
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">Profile photo</dt>
@@ -216,30 +216,30 @@
             <dd class="govuk-summary-list__actions"><a class="govuk-link" href="{{ urlFor('/onboarding/profile') }}">Change</a></dd>
           </div>
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">About you</dt>
+            <dt class="govuk-summary-list__key">{{ t("onboarding.confirm.bio_row") }}</dt>
             <dd class="govuk-summary-list__value">{{ onboardingUser.bio or "" }}</dd>
             <dd class="govuk-summary-list__actions"><a class="govuk-link" href="{{ urlFor('/onboarding/profile') }}">Change</a></dd>
           </div>
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Interests</dt>
+            <dt class="govuk-summary-list__key">{{ t("onboarding.confirm.interests_row") }}</dt>
             <dd class="govuk-summary-list__value">{{ bagInterests.length }} selected</dd>
             <dd class="govuk-summary-list__actions"><a class="govuk-link" href="{{ urlFor('/onboarding/interests') }}">Change</a></dd>
           </div>
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Skills you offer</dt>
+            <dt class="govuk-summary-list__key">{{ t("onboarding.confirm.skills_offers_row") }}</dt>
             <dd class="govuk-summary-list__value">{{ bagOffers.length }} selected</dd>
             <dd class="govuk-summary-list__actions"><a class="govuk-link" href="{{ urlFor('/onboarding/skills') }}">Change</a></dd>
           </div>
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Help you want</dt>
+            <dt class="govuk-summary-list__key">{{ t("onboarding.confirm.skills_needs_row") }}</dt>
             <dd class="govuk-summary-list__value">{{ bagNeeds.length }} selected</dd>
             <dd class="govuk-summary-list__actions"><a class="govuk-link" href="{{ urlFor('/onboarding/skills') }}">Change</a></dd>
           </div>
         </dl>
-        <p class="govuk-body">You can update any of this later from your profile.</p>
+        <p class="govuk-body">{{ t("onboarding.confirm.finish_note") }}</p>
         <form method="post" action="{{ urlFor('/onboarding/confirm') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button" data-module="govuk-button">Finish and go to my dashboard</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("onboarding.confirm.complete_button") }}</button>
         </form>
       {% endif %}
     </div>

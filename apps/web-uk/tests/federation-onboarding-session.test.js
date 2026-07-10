@@ -8,6 +8,7 @@ const express = require('express');
 const session = require('express-session');
 const nunjucks = require('nunjucks');
 const request = require('supertest');
+const { createChoiceTranslator, createTranslator } = require('../src/lib/localization');
 
 jest.mock('../src/lib/api', () => ({
   ApiError: class ApiError extends Error {
@@ -106,7 +107,11 @@ function createApp() {
       feedbackUrl: `${prefix}/feedback`,
       currentPath: `${prefix}/federation/onboarding`,
       alphaLocaleOptions: [],
-      alphaLanguageQueryParams: []
+      alphaLanguageQueryParams: [],
+      htmlLang: 'en',
+      htmlDirection: 'ltr',
+      t: createTranslator('en'),
+      tc: createChoiceTranslator('en')
     });
     next();
   }, federationRoutes, federationActionRoutes);

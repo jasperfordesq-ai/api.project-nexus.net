@@ -38,6 +38,38 @@ src/lib/backend-contract.js
 `API_BASE_URL` reports `api-base-url` so override-driven runs cannot be mistaken
 for certified backend readiness.
 
+## Locale And Direction Contract
+
+Localization is a shared frontend contract and must not branch by backend
+target. The current request locale priority is:
+
+1. a valid `locale` query value;
+2. the persisted Web UK session locale;
+3. an already available request user/profile preference;
+4. the signed-token profile preference returned by the active backend;
+5. weighted `Accept-Language` negotiation;
+6. English fallback.
+
+A valid query or profile preference seeds the session. The HTML response emits
+the resolved `Content-Language`, `<html lang>`, and `<html dir>` values; Arabic
+uses RTL. `AsyncLocalStorage` keeps locale state request-scoped, API and download
+calls propagate `Accept-Language`, and signed profile reads share one
+request-local promise so localization does not introduce duplicate profile API
+calls. Date, number, currency, and list formatting must use the same request
+locale instead of fixed `en-GB` or `en-IE` values.
+
+The catalog boundary is also backend-neutral: Web UK imports the authoritative
+Laravel locale files into 11 generated catalogs, each with 24 namespaces and
+7,337 string keys. Future ASP.NET mode must accept the same locale/profile and
+`Accept-Language` contracts; it must not require ASP.NET-specific template
+branches. Structural catalog parity is not translation completeness. The
+read-only Laravel source still has 3,903-3,951 English-identical values in each
+non-English locale (53.2%-53.9%) and 16 wholly English-identical namespaces.
+Contextual route titles, headings, validation/status copy, ARIA labels, and
+residual template strings also remain under review. Therefore localization and
+RTL are started but not certified for either Laravel-first completion or
+backend switching.
+
 Host-scoped tenant API calls must carry the same tenant context Laravel can
 resolve from browser traffic. Web UK sends `Host` plus `Origin:
 https://{host}` for host-scoped `/api/v2/tenant/bootstrap` and

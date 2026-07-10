@@ -6,10 +6,10 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
+  <a class="govuk-back-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ t("goals.back_to_goal") }}</a>
 
   <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
-  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Progress history</h1>
+  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ t("goals.history_title") }}</h1>
   <p class="govuk-body-l">A chronological record of every event for this goal &mdash; check-ins, milestones, buddy activity and more.</p>
 
   {% if items.length === 0 %}
@@ -43,6 +43,6 @@
   {% endif %}
 
   <p class="govuk-body govuk-!-margin-top-6">
-    <a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">Back to goal</a>
+    <a class="govuk-link" href="{{ urlFor('/goals/' + (goal.id | string)) }}">{{ t("goals.back_to_goal") }}</a>
   </p>
 {% endblock %}

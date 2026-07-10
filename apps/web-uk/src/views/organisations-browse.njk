@@ -7,13 +7,13 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Browse organisations</h1>
+  <h1 class="govuk-heading-xl">{{ t("vol_org.browse_link") }}</h1>
   <p class="govuk-body-l">Find volunteer organisations in your community and the opportunities they offer.</p>
 
   {% if error %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#q">We could not load the organisations. Please try again.</a></li>
@@ -27,7 +27,7 @@
     {% if manageableCount > 0 %}
       <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/organisations/manage') }}">Manage my organisations</a>
     {% endif %}
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">Register an organisation</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">{{ t("organisations.register_title") }}</a>
   </div>
 
   <form method="get" action="{{ urlFor('/organisations/browse') }}" class="govuk-!-margin-bottom-7">
@@ -83,7 +83,7 @@
             {% endif %}
           </ul>
 
-          <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">View organisation</a>
+          <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ t("organisations.view") }}</a>
         </article>
       {% endfor %}
     </div>

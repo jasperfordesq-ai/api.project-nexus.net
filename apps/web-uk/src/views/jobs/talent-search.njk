@@ -31,7 +31,7 @@
 
     <button type="submit" class="govuk-button" data-module="govuk-button">Search candidates</button>
     {% if hasSearched %}
-      <a class="govuk-link govuk-!-margin-left-3" href="{{ urlFor('/jobs/talent-search') }}">Clear search</a>
+      <a class="govuk-link govuk-!-margin-left-3" href="{{ urlFor('/jobs/talent-search') }}">{{ t("polish_members.connections_search_clear") }}</a>
     {% endif %}
   </form>
 

@@ -5,13 +5,13 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.back_to_volunteering") }}</a>
 
   {% if status %}
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="hours-success-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="hours-success-title">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="hours-success-title">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <p>{{ status.message }}</p>
           </div>
@@ -30,7 +30,7 @@
   {% endif %}
 
   <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">Volunteering hours</h1>
+  <h1 class="govuk-heading-xl">{{ t("volunteering.hours_title") }}</h1>
 
   <div class="govuk-inset-text" role="note">
     <p class="govuk-body govuk-!-margin-bottom-0">When an organisation approves your hours, the time credits are added to your wallet automatically - 1 time credit for every hour you give.</p>
@@ -39,7 +39,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
@@ -49,11 +49,11 @@
 
   <dl class="nexus-alpha-stat-grid">
     <div class="nexus-alpha-stat">
-      <dt>Approved hours</dt>
+      <dt>{{ t("volunteering.approved_hours") }}</dt>
       <dd>{{ summary.approvedHoursLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Pending hours</dt>
+      <dt>{{ t("volunteering.pending_hours") }}</dt>
       <dd>{{ summary.pendingHoursLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
@@ -71,13 +71,13 @@
   {% endif %}
 
   {% if summary.byOrganization.length %}
-    <h2 class="govuk-heading-m govuk-!-margin-top-7">Hours by organisation</h2>
+    <h2 class="govuk-heading-m govuk-!-margin-top-7">{{ t("volunteering.hours_by_org_title") }}</h2>
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Hours by organisation</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("volunteering.hours_by_org_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Organisation</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Approved hours</th>
+          <th scope="col" class="govuk-table__header">{{ t("auth.profile_type_organisation") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("volunteering.approved_hours") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -92,13 +92,13 @@
   {% endif %}
 
   {% if summary.byMonth.length %}
-    <h2 class="govuk-heading-m">Hours by month</h2>
+    <h2 class="govuk-heading-m">{{ t("volunteering.hours_by_month_title") }}</h2>
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Hours by month</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("volunteering.hours_by_month_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Month</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Approved hours</th>
+          <th scope="col" class="govuk-table__header">{{ t("volunteering.month_label") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("volunteering.approved_hours") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -116,13 +116,13 @@
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-        <h2 class="govuk-fieldset__heading">Log volunteering hours</h2>
+        <h2 class="govuk-fieldset__heading">{{ t("volunteering.log_hours_title") }}</h2>
       </legend>
       <div class="govuk-hint">Record the time you have already volunteered. The organisation reviews each entry, and approved hours become time credits in your wallet automatically.</div>
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="organization_id">Organisation</label>
+            <label class="govuk-label" for="organization_id">{{ t("auth.profile_type_organisation") }}</label>
             <div id="organization-id-hint" class="govuk-hint">Choose the organisation you volunteered for. They will review and approve the hours.</div>
             <select class="govuk-select" id="organization_id" name="organization_id" aria-describedby="organization-id-hint" required>
               {% for organization in organizations %}
@@ -133,9 +133,9 @@
         </div>
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="opportunity_id">Related opportunity</label>
+            <label class="govuk-label" for="opportunity_id">{{ t("volunteering.opportunity_label") }}</label>
             <select class="govuk-select" id="opportunity_id" name="opportunity_id">
-              <option value="">No related opportunity</option>
+              <option value="">{{ t("volunteering.no_related_opportunity") }}</option>
               {% for application in applications %}
                 {% if application.opportunity.id %}
                   <option value="{{ application.opportunity.id }}">{{ application.opportunity.title }}</option>
@@ -156,24 +156,24 @@
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
             <label class="govuk-label" for="hours">Hours</label>
-            <div id="log-hours-hint" class="govuk-hint">Enter the hours you volunteered, between 0.25 and 24, in quarter-hour steps.</div>
+            <div id="log-hours-hint" class="govuk-hint">{{ t("volunteering.hours_log_hint") }}</div>
             <input class="govuk-input govuk-input--width-5" id="hours" name="hours" type="number" min="0.25" max="24" step="0.25" aria-describedby="log-hours-hint" required>
           </div>
         </div>
       </div>
       <div class="govuk-form-group">
-        <label class="govuk-label" for="description">What did you do?</label>
+        <label class="govuk-label" for="description">{{ t("volunteering.description_label") }}</label>
         <div id="description-hint" class="govuk-hint">Briefly describe what you did. This helps the organisation recognise and approve your hours.</div>
         <textarea class="govuk-textarea" id="description" name="description" rows="5" aria-describedby="description-hint"></textarea>
       </div>
     </fieldset>
-    <button class="govuk-button" data-module="govuk-button"{% if not organizations.length %} disabled{% endif %}>Log hours</button>
+    <button class="govuk-button" data-module="govuk-button"{% if not organizations.length %} disabled{% endif %}>{{ t("actions.log_hours") }}</button>
   </form>
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-8">Recent hour logs</h2>
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("volunteering.recent_hours_title") }}</h2>
   {% if not logs.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">No volunteering hours have been logged yet.</p>
+      <p class="govuk-body">{{ t("volunteering.empty_hours") }}</p>
       <p class="govuk-body govuk-!-margin-bottom-0">When you have given some time, use the form above to log your hours. Once an organisation approves them, the time credits are added to your wallet automatically.</p>
     </div>
   {% else %}
@@ -195,7 +195,7 @@
             </div>
             {% if log.organizationName %}
               <div>
-                <dt>Organisation</dt>
+                <dt>{{ t("auth.profile_type_organisation") }}</dt>
                 <dd>{{ log.organizationName }}</dd>
               </div>
             {% endif %}

@@ -13,7 +13,7 @@
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ge-list-status">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="ge-list-status">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="ge-list-status">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
@@ -22,7 +22,7 @@
   {% endif %}
 
   <p class="govuk-body">
-    <a class="govuk-button" href="{{ urlFor('/group-exchanges/new') }}" role="button" draggable="false" data-module="govuk-button">Start a group exchange</a>
+    <a class="govuk-button" href="{{ urlFor('/group-exchanges/new') }}" role="button" draggable="false" data-module="govuk-button">{{ t("group_exchanges.create_button") }}</a>
   </p>
 
   <nav class="govuk-!-margin-bottom-4" aria-label="Filter by status">
@@ -52,7 +52,7 @@
       <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Group exchanges</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Title</th>
+          <th scope="col" class="govuk-table__header">{{ t("group_exchanges.form_title_label") }}</th>
           <th scope="col" class="govuk-table__header">Status</th>
           <th scope="col" class="govuk-table__header govuk-table__header--numeric">Total hours</th>
         </tr>
@@ -72,6 +72,6 @@
       </tbody>
     </table>
   {% else %}
-    <div class="govuk-inset-text">You have no group exchanges yet.</div>
+    <div class="govuk-inset-text">{{ t("group_exchanges.empty") }}</div>
   {% endif %}
 {% endblock %}

@@ -8,12 +8,12 @@
 {% block content %}
   {% set messageError = status == "appreciation-message-required" %}
 
-  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">{{ t("actions.back_to_profile") }}</a>
 
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           {% if messageError %}
             <ul class="govuk-list govuk-error-summary__list">
@@ -33,7 +33,7 @@
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-appreciation-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="saved-appreciation-status-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="saved-appreciation-status-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage }}</p>

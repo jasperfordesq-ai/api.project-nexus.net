@@ -6,17 +6,19 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  getProfile,
   callUserSettingsApi,
   callProfileApi,
   callWebAuthnApi,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { SUPPORTED_LOCALES } = require('../lib/localization');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
-const PROFILE_LOCALES = ['en', 'ga', 'cy', 'fr', 'de', 'es', 'it', 'pt', 'pl', 'ar', 'ur'];
+const PROFILE_LOCALES = SUPPORTED_LOCALES;
 const PROFILE_DIGEST_FREQUENCIES = ['off', 'instant', 'daily', 'monthly'];
 const PROFILE_PRIVACY_OPTIONS = ['public', 'members', 'connections'];
 const PROFILE_TYPES = ['individual', 'organisation'];
@@ -24,15 +26,15 @@ const PROFILE_MATCH_FREQUENCIES = ['daily', 'weekly', 'monthly', 'fortnightly', 
 const PROFILE_LOCALE_LABELS = {
   en: 'English',
   ga: 'Irish',
-  cy: 'Welsh',
-  fr: 'French',
   de: 'German',
-  es: 'Spanish',
+  fr: 'French',
   it: 'Italian',
   pt: 'Portuguese',
+  es: 'Spanish',
+  nl: 'Dutch',
   pl: 'Polish',
-  ar: 'Arabic',
-  ur: 'Urdu'
+  ja: 'Japanese',
+  ar: 'Arabic'
 };
 const PROFILE_PRIVACY_LABELS = {
   public: 'Anyone signed in to the community',
@@ -240,6 +242,14 @@ function allowedValue(value, allowed, fallback = null) {
   return allowed.includes(text) ? text : fallback;
 }
 
+function profileLocalesForRequest(req) {
+  const configuredLocales = req?.accessibleRouting?.tenant?.supported_languages;
+  if (!Array.isArray(configuredLocales)) return PROFILE_LOCALES;
+
+  const configuredLocaleSet = new Set(configuredLocales);
+  return PROFILE_LOCALES.filter((locale) => configuredLocaleSet.has(locale));
+}
+
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -369,7 +379,7 @@ function formatProfileDate(value, includeTime = false) {
   const options = includeTime
     ? { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }
     : { day: 'numeric', month: 'long', year: 'numeric' };
-  return date.toLocaleString('en-GB', options);
+  return date.toLocaleString(getRequestIntlLocale(), options);
 }
 
 function humanizeProfileLabel(value, fallback = 'Not specified') {
@@ -462,10 +472,12 @@ function normalizeSafeguarding(payload) {
 function buildProfileSettingsViewModel(req, data) {
   const profile = data.profile || {};
   const account = data.account || {};
+  const profileLocales = profileLocalesForRequest(req);
+  const defaultProfileLocale = profileLocales[0] || 'en';
   const preferredLanguage = allowedValue(
     account.preferred_language || profileValue(profile, 'preferred_language'),
-    PROFILE_LOCALES,
-    'en'
+    profileLocales,
+    defaultProfileLocale
   );
   const privacyProfile = allowedValue(
     profileValue(profile, 'privacy_profile', account.privacy_profile),
@@ -475,7 +487,7 @@ function buildProfileSettingsViewModel(req, data) {
   const profileType = allowedValue(profileValue(profile, 'profile_type'), PROFILE_TYPES, 'individual');
   const autoTranslateLocale = allowedValue(
     account.auto_translate_target_locale || profileValue(profile, 'auto_translate_target_locale'),
-    PROFILE_LOCALES,
+    profileLocales,
     preferredLanguage
   );
   const status = typeof req.query.status === 'string' ? req.query.status : '';
@@ -518,8 +530,8 @@ function buildProfileSettingsViewModel(req, data) {
     privacyProfileLabel: PROFILE_PRIVACY_LABELS[privacyProfile] || privacyProfile,
     profileTypeOptions: optionsWithSelected(PROFILE_TYPES, PROFILE_TYPE_LABELS, profileType),
     privacyOptions: optionsWithSelected(PROFILE_PRIVACY_OPTIONS, PROFILE_PRIVACY_LABELS, privacyProfile),
-    localeOptions: optionsWithSelected(PROFILE_LOCALES, PROFILE_LOCALE_LABELS, preferredLanguage),
-    autoTranslateLocaleOptions: optionsWithSelected(PROFILE_LOCALES, PROFILE_LOCALE_LABELS, autoTranslateLocale),
+    localeOptions: optionsWithSelected(profileLocales, PROFILE_LOCALE_LABELS, preferredLanguage),
+    autoTranslateLocaleOptions: optionsWithSelected(profileLocales, PROFILE_LOCALE_LABELS, autoTranslateLocale),
     digestOptions: optionsWithSelected(
       PROFILE_DIGEST_FREQUENCIES,
       PROFILE_DIGEST_LABELS,
@@ -666,7 +678,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
   };
 
   try {
-    data.profile = normalizeProfilePayload(await getProfile(token));
+    data.profile = normalizeProfilePayload(await getRequestProfile(req, token));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -823,7 +835,7 @@ router.post('/language', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const language = allowedValue(req.body.language, PROFILE_LOCALES, null);
+  const language = allowedValue(req.body.language, profileLocalesForRequest(req), null);
   if (language === null) {
     return redirectTo(res, profileSettingsRedirect('language-invalid'));
   }
@@ -831,6 +843,7 @@ router.post('/language', asyncRoute(async (req, res) => {
   let status = 'language-changed';
   try {
     await callUserSettings(token, 'PUT', '/language', { language });
+    if (req.session) req.session.locale = language;
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'language-failed';
@@ -904,7 +917,7 @@ router.post('/personalisation', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const locale = allowedValue(req.body.auto_translate_target_locale, PROFILE_LOCALES, null);
+  const locale = allowedValue(req.body.auto_translate_target_locale, profileLocalesForRequest(req), null);
   let status = 'personalisation-saved';
   try {
     await callUserSettings(token, 'PUT', '/preferences', {
@@ -1169,7 +1182,7 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
 
 // View profile
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const profile = await getProfile(req.token);
+  const profile = await getRequestProfile(req, req.token);
 
   res.render('profile/index', {
     title: 'Your profile',

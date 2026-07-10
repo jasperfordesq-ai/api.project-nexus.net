@@ -5,8 +5,8 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Leaderboard">
-    <h2 class="govuk-tabs__title">Leaderboard</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
+    <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
         <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive leaderboard</a>
@@ -24,19 +24,19 @@
   </nav>
 
   <span class="govuk-caption-xl">{{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Leaderboard</h1>
-  <p class="govuk-body-l">See how members are contributing to the community.</p>
+  <h1 class="govuk-heading-xl">{{ t("leaderboard.title") }}</h1>
+  <p class="govuk-body-l">{{ t("leaderboard.description") }}</p>
 
   {% if leaderboard.impact.hasValues %}
-    <h2 class="govuk-heading-m govuk-!-margin-top-2">Community impact</h2>
-    <p class="govuk-body govuk-!-margin-bottom-4">Aggregate activity across this timebank community.</p>
+    <h2 class="govuk-heading-m govuk-!-margin-top-2">{{ t("polish_gamify.community_impact_title") }}</h2>
+    <p class="govuk-body govuk-!-margin-bottom-4">{{ t("polish_gamify.community_impact_desc") }}</p>
     <div class="nexus-alpha-stat-grid govuk-!-margin-bottom-6">
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Total members</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_members") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalMembers }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Exchanges completed</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_exchanges") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalExchanges }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
@@ -52,7 +52,7 @@
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalConnections }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Badges awarded</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_badges") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalBadgesAwarded }}</dd>
       </dl>
     </div>
@@ -61,12 +61,12 @@
   <form method="get" action="{{ urlFor('/leaderboard') }}" data-alpha-auto-submit class="govuk-!-margin-bottom-6">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-        <h2 class="govuk-fieldset__heading">Filter leaderboard</h2>
+        <h2 class="govuk-fieldset__heading">{{ t("polish_gamify.leaderboard_filter_heading") }}</h2>
       </legend>
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="type">Ranked by</label>
+            <label class="govuk-label" for="type">{{ t("leaderboard.metric_label") }}</label>
             <select class="govuk-select" id="type" name="type">
               {% for type in leaderboard.types %}
                 <option value="{{ type.value }}"{% if type.value == leaderboard.type %} selected{% endif %}>{{ type.label }}</option>
@@ -76,7 +76,7 @@
         </div>
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="period">Period</label>
+            <label class="govuk-label" for="period">{{ t("leaderboard.period_label") }}</label>
             <select class="govuk-select" id="period" name="period">
               {% for period in leaderboard.periods %}
                 <option value="{{ period.value }}"{% if period.value == leaderboard.period %} selected{% endif %}>{{ period.label }}</option>
@@ -91,10 +91,10 @@
 
   {% if leaderboard.rows.length %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Leaderboard</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("leaderboard.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rank</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("leaderboard.rank_column") }}</th>
           <th scope="col" class="govuk-table__header">Member</th>
           <th scope="col" class="govuk-table__header govuk-table__header--numeric">Score</th>
         </tr>
@@ -118,7 +118,7 @@
     </table>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There is nothing to show here yet.</p>
+      <p class="govuk-body">{{ t("leaderboard.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}

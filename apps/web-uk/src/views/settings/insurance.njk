@@ -12,7 +12,7 @@
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="insurance-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="insurance-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="insurance-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -21,7 +21,7 @@
       {% elif statusMessage and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#{{ errorAnchor }}">{{ statusMessage }}</a></li>
@@ -31,7 +31,7 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">Account settings</span>
+      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
       <h1 class="govuk-heading-xl">Insurance certificates</h1>
       <p class="govuk-body-l">Upload proof of insurance so the team can verify your cover. Accepted file types are PDF, JPG and PNG, up to 10MB.</p>
 
@@ -48,7 +48,7 @@
               </h3>
               <dl class="nexus-alpha-inline-list govuk-!-margin-bottom-0">
                 <div>
-                  <dt>Provider</dt>
+                  <dt>{{ t("exchanges.provider_label") }}</dt>
                   <dd>{{ certificate.providerName or "Provider not given" }}</dd>
                 </div>
                 <div>
@@ -74,7 +74,7 @@
             <label class="govuk-label" for="insurance_type">Type of insurance</label>
             {% if typeError %}
               <p id="insurance-type-error" class="govuk-error-message">
-                <span class="govuk-visually-hidden">Error:</span> {{ statusMessage }}
+                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusMessage }}
               </p>
             {% endif %}
             <select class="govuk-select" id="insurance_type" name="insurance_type"{% if typeError %} aria-describedby="insurance-type-error"{% endif %}>
@@ -106,7 +106,7 @@
             <div id="certificate-file-hint" class="govuk-hint">Upload a PDF, JPG or PNG, up to 10MB.</div>
             {% if fileError %}
               <p id="certificate-file-error" class="govuk-error-message">
-                <span class="govuk-visually-hidden">Error:</span> {{ statusMessage }}
+                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusMessage }}
               </p>
             {% endif %}
             <input class="govuk-file-upload" id="certificate_file" name="certificate_file" type="file" accept="application/pdf,image/jpeg,image/png" aria-describedby="certificate-file-hint{% if fileError %} certificate-file-error{% endif %}">

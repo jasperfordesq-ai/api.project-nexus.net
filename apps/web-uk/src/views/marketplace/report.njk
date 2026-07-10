@@ -20,7 +20,7 @@
   {% endif %}
 
   <span class="govuk-caption-xl">Report an item at {{ tenantName or serviceName }}</span>
-  <h1 class="govuk-heading-xl">Report a listing</h1>
+  <h1 class="govuk-heading-xl">{{ t("polish_listings.report_form_title") }}</h1>
   <p class="govuk-body-l">Tell us why you think this listing breaks the rules. Our team will review it.</p>
 
   <dl class="govuk-summary-list govuk-!-margin-bottom-6">
@@ -39,7 +39,7 @@
           <h2 class="govuk-fieldset__heading">Why are you reporting this listing?</h2>
         </legend>
         {% if status and status.type == 'error' %}
-          <p id="reason-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+          <p id="reason-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
         {% endif %}
         <div class="govuk-radios" data-module="govuk-radios">
           {% for reason in reasons %}
@@ -60,7 +60,7 @@
 
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Send report</button>
-      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 {% endblock %}

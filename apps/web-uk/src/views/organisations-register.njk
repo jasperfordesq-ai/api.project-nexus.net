@@ -30,7 +30,7 @@
   {% if activeErrorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#{{ activeErrorField }}">{{ activeErrorMessage }}</a></li>
@@ -69,7 +69,7 @@
         </div>
 
         <div class="govuk-form-group{{ errorClass('website', 'govuk-form-group--error') }}">
-          <label class="govuk-label" for="website">Website (optional)</label>
+          <label class="govuk-label" for="website">{{ t("organisations.website_label") }}</label>
           <div id="website-hint" class="govuk-hint">Start with https:// - for example, https://www.example.org</div>
           {{ errorMessage('website') }}
           <input class="govuk-input{{ errorClass('website', 'govuk-input--error') }}" id="website" name="website" type="url" inputmode="url" aria-describedby="{{ describedBy('website', 'website-hint') }}">
@@ -101,7 +101,7 @@
 
         <div class="govuk-button-group">
           <button class="govuk-button" data-module="govuk-button" type="submit">Register organisation</button>
-          <a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">Cancel</a>
+          <a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
 
         <div class="govuk-inset-text">

@@ -9,7 +9,6 @@ const {
   getResources,
   getResourceCategories,
   getResourceCategoryTree,
-  getProfile,
   getComments,
   getReactionSummary,
   uploadResource,
@@ -22,6 +21,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 const RESOURCE_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
@@ -412,7 +412,7 @@ router.get('/library', asyncRoute(async (req, res) => {
   if (cursor) params.cursor = cursor;
 
   const [profileResult, resourcesResult, categoriesResult, treeResult] = await Promise.all([
-    getProfile(token).catch(() => null),
+    getRequestProfile(req, token).catch(() => null),
     getResources(token, params),
     getResourceCategories(token),
     getResourceCategoryTree(token)
@@ -495,7 +495,7 @@ router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 
   const resourceId = Number(req.params.id);
   const [profileResult, resourcesResult] = await Promise.all([
-    getProfile(token).catch(() => null),
+    getRequestProfile(req, token).catch(() => null),
     getResources(token, { per_page: 50 })
   ]);
   const profile = objectFrom(dataFrom(profileResult));
@@ -556,7 +556,7 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
 
   const resourceId = Number(req.params.id);
   const [profileResult, resourcesResult, commentsResult, reactionsResult] = await Promise.all([
-    getProfile(token).catch(() => null),
+    getRequestProfile(req, token).catch(() => null),
     getResources(token, { per_page: 50 }),
     getComments(token, { target_type: 'resource', target_id: resourceId }),
     getReactionSummary(token, 'resource', resourceId)

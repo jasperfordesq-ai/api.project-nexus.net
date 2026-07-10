@@ -7,8 +7,8 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">Project NEXUS Accessible</span>
-  <h1 class="govuk-heading-xl">My postings</h1>
-  <p class="govuk-body-l">Manage the opportunities you have posted.</p>
+  <h1 class="govuk-heading-xl">{{ t("jobs_t3.mine_title") }}</h1>
+  <p class="govuk-body-l">{{ t("jobs_t3.mine_description") }}</p>
 
   <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
     <h2 class="govuk-tabs__title">Jobs</h2>
@@ -20,19 +20,19 @@
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}">Saved</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">My applications</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">{{ t("jobs_t2.applications_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}">Responses</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">Job alerts</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">{{ t("jobs_t4.title") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}" aria-current="page">My postings</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}" aria-current="page">{{ t("jobs_t3.mine_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">Post a job</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.nav_create") }}</a>
       </li>
     </ul>
   </div>
@@ -46,7 +46,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>{{ errorMessage }}</li>
@@ -63,13 +63,13 @@
   {% endif %}
 
   <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">Post an opportunity</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.create_title") }}</a>
     <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/employer-onboarding') }}">Employer onboarding</a>
   </div>
 
   {% if jobs.length == 0 %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You have not posted any opportunities yet.</p>
+      <p class="govuk-body">{{ t("jobs_t3.mine_empty") }}</p>
       <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/jobs/employer-onboarding') }}">Employer onboarding</a></p>
     </div>
   {% else %}
@@ -88,18 +88,18 @@
           </p>
 
           <div class="nexus-alpha-actions govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">Manage applications</a>
-            <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/edit') }}">Edit</a>
+            <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">{{ t("jobs_t3.manage_button") }}</a>
+            <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/edit') }}">{{ t("jobs_t3.edit_button") }}</a>
           </div>
 
           <div class="nexus-alpha-actions">
             <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/renew') }}" class="nexus-alpha-linkform">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Renew</button>
+              <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.renew_button") }}</button>
             </form>
             <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/delete') }}" class="nexus-alpha-linkform">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete</button>
+              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
             </form>
           </div>
         </article>
@@ -110,7 +110,7 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">More results</span>
           </a>

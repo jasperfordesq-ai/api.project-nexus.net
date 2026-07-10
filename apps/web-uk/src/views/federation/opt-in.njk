@@ -10,7 +10,7 @@
 
   <span class="govuk-caption-xl">This community</span>
   <h1 class="govuk-heading-xl">Opt in to federation</h1>
-  <p class="govuk-body-l">Opting in lets you take part in the wider community network. You can change or turn off these settings at any time.</p>
+  <p class="govuk-body-l">{{ t("federation.optin.description") }}</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
@@ -29,7 +29,7 @@
   {% if statusBanner %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#profile_visible_federated">{{ statusBanner.message }}</a></li>
@@ -70,24 +70,24 @@
       <div class="govuk-checkboxes" data-module="govuk-checkboxes">
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="profile_visible_federated" name="profile_visible_federated" type="checkbox" value="1" checked>
-          <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">Show my profile to partner communities</label>
+          <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">{{ t("federation.settings.profile_visible_label") }}</label>
         </div>
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="appear_in_federated_search" name="appear_in_federated_search" type="checkbox" value="1" checked>
-          <label class="govuk-label govuk-checkboxes__label" for="appear_in_federated_search">Appear in federated member searches</label>
+          <label class="govuk-label govuk-checkboxes__label" for="appear_in_federated_search">{{ t("federation.settings.appear_in_search_label") }}</label>
         </div>
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="show_skills_federated" name="show_skills_federated" type="checkbox" value="1" checked>
-          <label class="govuk-label govuk-checkboxes__label" for="show_skills_federated">Show my skills to partner communities</label>
+          <label class="govuk-label govuk-checkboxes__label" for="show_skills_federated">{{ t("federation.settings.show_skills_label") }}</label>
         </div>
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="show_location_federated" name="show_location_federated" type="checkbox" value="1" aria-describedby="show_location_federated-hint">
-          <label class="govuk-label govuk-checkboxes__label" for="show_location_federated">Show my location to partner communities</label>
+          <label class="govuk-label govuk-checkboxes__label" for="show_location_federated">{{ t("federation.settings.show_location_label") }}</label>
           <div id="show_location_federated-hint" class="govuk-hint govuk-checkboxes__hint">Your location is personal data. It stays hidden unless you turn this on.</div>
         </div>
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="show_reviews_federated" name="show_reviews_federated" type="checkbox" value="1" checked>
-          <label class="govuk-label govuk-checkboxes__label" for="show_reviews_federated">Show my reviews to partner communities</label>
+          <label class="govuk-label govuk-checkboxes__label" for="show_reviews_federated">{{ t("federation.settings.show_reviews_label") }}</label>
         </div>
       </div>
     </fieldset>
@@ -105,7 +105,7 @@
         </div>
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="email_notifications" name="email_notifications" type="checkbox" value="1" checked>
-          <label class="govuk-label govuk-checkboxes__label" for="email_notifications">Email me about federated activity</label>
+          <label class="govuk-label govuk-checkboxes__label" for="email_notifications">{{ t("federation.settings.email_notifications_label") }}</label>
         </div>
       </div>
     </fieldset>
@@ -116,9 +116,9 @@
       <div class="govuk-form-group">
         <label class="govuk-label" for="service_reach">Service reach</label>
         <select class="govuk-select" id="service_reach" name="service_reach">
-          <option value="local_only" selected>Local only</option>
-          <option value="remote_ok">Remote is fine</option>
-          <option value="travel_ok">Willing to travel</option>
+          <option value="local_only" selected>{{ t("federation.settings.reach_local_only") }}</option>
+          <option value="remote_ok">{{ t("federation.settings.reach_remote_ok") }}</option>
+          <option value="travel_ok">{{ t("federation.settings.reach_travel_ok") }}</option>
         </select>
       </div>
 

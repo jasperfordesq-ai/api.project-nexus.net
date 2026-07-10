@@ -37,8 +37,8 @@
     </figure>
 
     <div class="govuk-button-group">
-      <a class="govuk-link" href="{{ map.viewUrl }}" rel="noopener noreferrer" target="_blank">View this location on OpenStreetMap<span class="govuk-visually-hidden"> (opens in new tab)</span></a>
-      <a class="govuk-link" href="{{ map.directionsUrl }}" rel="noopener noreferrer" target="_blank">Get directions on OpenStreetMap<span class="govuk-visually-hidden"> (opens in new tab)</span></a>
+      <a class="govuk-link" href="{{ map.viewUrl }}" rel="noopener noreferrer" target="_blank">View this location on OpenStreetMap<span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span></a>
+      <a class="govuk-link" href="{{ map.directionsUrl }}" rel="noopener noreferrer" target="_blank">Get directions on OpenStreetMap<span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span></a>
     </div>
   {% else %}
     <div class="govuk-inset-text">

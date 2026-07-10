@@ -15,14 +15,14 @@
     {% if status.type == 'success' %}
       <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="course-form-status" data-module="govuk-notification-banner">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="course-form-status">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="course-form-status">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ status.message }}</p></div>
       </div>
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li>{{ status.message }}</li></ul></div>
         </div>
       </div>
@@ -120,7 +120,7 @@
         <div class="govuk-form-group">
           <label class="govuk-label govuk-label--s" for="category_id">Category</label>
           <select class="govuk-select" id="category_id" name="category_id">
-            <option value="">No category</option>
+            <option value="">{{ t("events.no_category") }}</option>
             {% for category in categories %}
               <option value="{{ category.id }}"{% if course.categoryId == category.id %} selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
@@ -131,7 +131,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">{% if mode == 'edit' %}Save changes{% else %}Create course{% endif %}</button>
-      <a class="govuk-link" href="{{ urlFor('/courses/instructor') }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/courses/instructor') }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 
@@ -170,7 +170,7 @@
                   <label class="govuk-label govuk-label--s" for="rename-section-{{ section.id }}">Section title</label>
                   <input class="govuk-input" id="rename-section-{{ section.id }}" name="section_title" type="text" maxlength="200" value="{{ section.title }}">
                 </div>
-                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Rename</button>
+                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.passkeys.rename_submit") }}</button>
               </form>
               <div class="govuk-warning-text">
                 <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
@@ -265,7 +265,7 @@
     </div>
     <form method="post" action="{{ urlFor('/courses/instructor/' + (course.id | string) + '/delete') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-      <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
+      <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
     </form>
   {% endif %}
 {% endblock %}

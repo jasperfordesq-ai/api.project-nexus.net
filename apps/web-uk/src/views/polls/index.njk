@@ -29,20 +29,20 @@
     <div class="govuk-grid-column-two-thirds">
       <span class="govuk-caption-xl">This community</span>
       <h1 class="govuk-heading-xl">Polls</h1>
-      <p class="govuk-body-l">Have your say on questions put to the community.</p>
+      <p class="govuk-body-l">{{ t("polls.description") }}</p>
 
       {% if statusBanner and statusBanner.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
-          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">Success</h2></div>
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("states.success_title") }}</h2></div>
           <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
         </div>
       {% elif statusBanner and statusBanner.type == "error" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
-          <div role="alert"><h2 class="govuk-error-summary__title">There is a problem</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
+          <div role="alert"><h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
         </div>
       {% endif %}
 
-      <div class="govuk-inset-text">You can vote once on each open poll. To keep things fair, the results stay hidden until a poll closes.</div>
+      <div class="govuk-inset-text">{{ t("polls.how_it_works") }}</div>
 
       <form method="get" action="{{ urlFor('/polls') }}" class="govuk-!-margin-bottom-6">
         {% if categories.length %}
@@ -68,22 +68,22 @@
       </form>
 
       <div class="govuk-button-group">
-        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/polls/parity/create') }}">Create a poll</a>
+        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/polls/parity/create') }}">{{ t("polish_discovery.polls_create_summary") }}</a>
         <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" href="{{ urlFor('/polls/parity/manage') }}">Manage my polls</a>
       </div>
 
       <details class="govuk-details govuk-!-margin-bottom-6" data-module="govuk-details">
-        <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Create a poll</span></summary>
+        <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("polish_discovery.polls_create_summary") }}</span></summary>
         <div class="govuk-details__text">
           <form method="post" action="{{ urlFor('/polls') }}" novalidate>
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group">
-              <label class="govuk-label govuk-label--s" for="poll-question">Poll question</label>
-              <div id="poll-question-hint" class="govuk-hint">Ask a clear, specific question</div>
+              <label class="govuk-label govuk-label--s" for="poll-question">{{ t("polish_discovery.polls_create_title_label") }}</label>
+              <div id="poll-question-hint" class="govuk-hint">{{ t("polish_discovery.polls_create_title_hint") }}</div>
               <input class="govuk-input" id="poll-question" name="question" type="text" aria-describedby="poll-question-hint" maxlength="500">
             </div>
             <fieldset class="govuk-fieldset govuk-!-margin-bottom-4">
-              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Poll options <span class="govuk-hint">Add at least 2 options. Leave extra fields blank.</span></legend>
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("polish_discovery.polls_create_options_legend") }} <span class="govuk-hint">{{ t("polish_discovery.polls_create_options_hint") }}</span></legend>
               {% for number in [1, 2, 3, 4] %}
                 <div class="govuk-form-group govuk-!-margin-bottom-2">
                   <label class="govuk-label" for="poll-option-{{ number }}">Option {{ number }}</label>
@@ -91,15 +91,15 @@
                 </div>
               {% endfor %}
             </fieldset>
-            <button class="govuk-button" data-module="govuk-button">Create poll</button>
+            <button class="govuk-button" data-module="govuk-button">{{ t("polish_discovery.polls_create_submit") }}</button>
           </form>
         </div>
       </details>
 
       {% if not polls.length %}
-        <div class="govuk-inset-text"><p class="govuk-body">There are no polls at the moment.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("polls.empty") }}</p></div>
       {% else %}
-        <h2 class="govuk-heading-l">Open polls</h2>
+        <h2 class="govuk-heading-l">{{ t("polls.open_section_title") }}</h2>
         {% set anyOpen = false %}
         {% for poll in polls %}
           {% if poll.status == "open" %}
@@ -118,13 +118,13 @@
               {% if poll.pollType == "ranked" %}
                 <a class="govuk-button" data-module="govuk-button" role="button" href="{{ urlFor('/polls/' + (poll.id | string) + '/rank') }}">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
               {% elif not poll.options.length %}
-                <div class="govuk-inset-text"><p class="govuk-body">This poll has no options.</p></div>
+                <div class="govuk-inset-text"><p class="govuk-body">{{ t("polls.no_options") }}</p></div>
               {% elif not poll.hasVoted %}
                 <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/vote') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <fieldset class="govuk-fieldset" aria-describedby="poll-{{ poll.id }}-hint">
                     <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Choose one option</legend>
-                    <div id="poll-{{ poll.id }}-hint" class="govuk-hint">Choose one option. You cannot change your vote once it is submitted.</div>
+                    <div id="poll-{{ poll.id }}-hint" class="govuk-hint">{{ t("polls.vote_once_hint") }}</div>
                     <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
                       {% for option in poll.options %}
                         <div class="govuk-radios__item">
@@ -137,24 +137,24 @@
                   <button class="govuk-button govuk-!-margin-top-2 govuk-!-margin-bottom-0" data-module="govuk-button">Vote</button>
                 </form>
               {% else %}
-                <div class="govuk-inset-text">You have voted. The results will be shown when this poll closes.</div>
+                <div class="govuk-inset-text">{{ t("polls.results_pending_note") }}</div>
               {% endif %}
 
               <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string)) }}">View and discuss</a></p>
               {% if poll.isCreator %}
                 <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}" class="govuk-!-margin-top-3">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete poll</button>
+                  <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("polls.delete_button") }}</button>
                 </form>
               {% endif %}
             </article>
           {% endif %}
         {% endfor %}
         {% if not anyOpen %}
-          <div class="govuk-inset-text"><p class="govuk-body">There are no open polls right now.</p></div>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("polls.no_open") }}</p></div>
         {% endif %}
 
-        <h2 class="govuk-heading-l govuk-!-margin-top-8">Closed polls</h2>
+        <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("polls.closed_section_title") }}</h2>
         {% for poll in polls %}
           {% if poll.status != "open" %}
             <article class="nexus-alpha-card govuk-!-margin-bottom-6" id="poll-{{ poll.id }}">

@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
   <span class="govuk-caption-xl">Files for {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Group files</h1>
@@ -55,11 +55,11 @@
             <td class="govuk-table__cell">{{ file.uploaderName }}</td>
             <td class="govuk-table__cell">{{ file.uploadedAtLabel }}</td>
             <td class="govuk-table__cell">
-              <a class="govuk-link govuk-!-margin-right-2" href="{{ urlFor('/groups/' + (group.id | string) + '/files/' + (file.id | string) + '/download') }}" aria-label="Download {{ file.fileName }}">Download</a>
+              <a class="govuk-link govuk-!-margin-right-2" href="{{ urlFor('/groups/' + (group.id | string) + '/files/' + (file.id | string) + '/download') }}" aria-label="Download {{ file.fileName }}">{{ t("resources.download") }}</a>
               {% if isAdmin %}
                 <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/files/' + (file.id | string) + '/delete') }}" style="display:inline">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete {{ file.fileName }}">Delete</button>
+                  <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete {{ file.fileName }}">{{ t("jobs_t3.delete_button") }}</button>
                 </form>
               {% endif %}
             </td>
@@ -79,7 +79,7 @@
       <label class="govuk-label govuk-label--s" for="file-input">Choose a file</label>
       <div id="file-input-hint" class="govuk-hint">Accepted formats: images, PDF, Word, Excel, PowerPoint, text, CSV, ZIP, video and audio. Maximum size: 25 MB.</div>
       {% if statusBanner and statusBanner.href == '#file-input' %}
-        <p class="govuk-error-message" id="file-input-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        <p class="govuk-error-message" id="file-input-error"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
       {% endif %}
       <input class="govuk-file-upload{% if statusBanner and statusBanner.href == '#file-input' %} govuk-file-upload--error{% endif %}" id="file-input" name="file" type="file" aria-describedby="file-input-hint{% if statusBanner and statusBanner.href == '#file-input' %} file-input-error{% endif %}">
     </div>

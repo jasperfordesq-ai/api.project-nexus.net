@@ -32,7 +32,7 @@
       </legend>
 
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="title">Title</label>
+        <label class="govuk-label govuk-label--s" for="title">{{ t("group_exchanges.form_title_label") }}</label>
         <div id="title-hint" class="govuk-hint">A short, descriptive name for your item.</div>
         <input class="govuk-input" id="title" name="title" type="text" maxlength="200" value="{{ listing.title if listing.id else '' }}" aria-describedby="title-hint">
       </div>
@@ -99,9 +99,9 @@
       </legend>
 
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="condition">Condition</label>
+        <label class="govuk-label govuk-label--s" for="condition">{{ t("marketplace.condition_label") }}</label>
         <select class="govuk-select" id="condition" name="condition">
-          <option value="">Not specified</option>
+          <option value="">{{ t("jobs_t3.salary_type_none") }}</option>
           {% for option in conditions %}
             <option value="{{ option.value }}" {% if listing.condition == option.value %}selected{% endif %}>{{ option.label }}</option>
           {% endfor %}
@@ -112,7 +112,7 @@
         <div class="govuk-form-group">
           <label class="govuk-label govuk-label--s" for="category_id">Category</label>
           <select class="govuk-select" id="category_id" name="category_id">
-            <option value="">No category</option>
+            <option value="">{{ t("events.no_category") }}</option>
             {% for category in categories %}
               <option value="{{ category.id }}" {% if listing.categoryId == category.id %}selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
@@ -158,7 +158,7 @@
 
     <div class="govuk-button-group govuk-!-margin-top-4">
       <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
-      <a class="govuk-link" href="{{ urlFor('/marketplace/mine') }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/mine') }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 {% endblock %}

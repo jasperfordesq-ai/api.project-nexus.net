@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a href="{{ urlFor('/jobs') }}" class="govuk-back-link">Back to opportunities</a>
+  <a href="{{ urlFor('/jobs') }}" class="govuk-back-link">{{ t("jobs.back") }}</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -20,7 +20,7 @@
   {% if status == "apply-failed" or status == "save-failed" or status == "renew-failed" or status == "cv-invalid" or status == "cv-too-large" or status == "cover-required" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>We could not complete that jobs action. Please try again.</li>
@@ -47,7 +47,7 @@
       <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/save') }}" class="govuk-!-margin-bottom-4">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="from" value="detail">
-        <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Save opportunity</button>
+        <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t2.save_button") }}</button>
       </form>
     {% endif %}
   {% endif %}
@@ -55,7 +55,7 @@
   <dl class="govuk-summary-list govuk-!-margin-bottom-6">
     {% if job.commitmentLabel %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Commitment</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t2.commitment_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ job.commitmentLabel }}</dd>
       </div>
     {% endif %}
@@ -67,22 +67,22 @@
     {% endif %}
     {% if job.salaryLabel %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Pay</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs.salary_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ job.salaryLabel }}</dd>
       </div>
     {% endif %}
     {% if job.deadlineLabel %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Closing date</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs.deadline_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ job.deadlineLabel }}</dd>
       </div>
     {% endif %}
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Views</dt>
+      <dt class="govuk-summary-list__key">{{ t("jobs_t2.views_label") }}</dt>
       <dd class="govuk-summary-list__value">{{ job.viewsCount }}</dd>
     </div>
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Applications received</dt>
+      <dt class="govuk-summary-list__key">{{ t("jobs_t2.applications_label") }}</dt>
       <dd class="govuk-summary-list__value">{{ job.applicationsCount }}</dd>
     </div>
   </dl>
@@ -102,14 +102,14 @@
   {% endif %}
 
   {% if job.isOwner %}
-    <div class="govuk-inset-text govuk-!-margin-top-6">This is your opportunity. Manage applications from your postings.</div>
+    <div class="govuk-inset-text govuk-!-margin-top-6">{{ t("jobs_t2.owner_notice") }}</div>
     <div class="nexus-alpha-actions govuk-!-margin-bottom-2">
-      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">Manage applications</a>
-      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/edit') }}">Edit</a>
+      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/applications') }}">{{ t("jobs_t3.manage_button") }}</a>
+      <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id ~ '/edit') }}">{{ t("jobs_t3.edit_button") }}</a>
     </div>
     <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/renew') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Renew</button>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("jobs_t3.renew_button") }}</button>
     </form>
   {% else %}
     <h2 class="govuk-heading-l govuk-!-margin-top-6" id="apply">Apply for this opportunity</h2>
@@ -121,7 +121,7 @@
       <form method="post" action="{{ urlFor('/jobs/' ~ job.id ~ '/apply') }}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="cover_letter">Why are you a good fit? (optional)</label>
+          <label class="govuk-label" for="cover_letter">{{ t("jobs.cover_letter_label") }}</label>
           <textarea class="govuk-textarea" id="cover_letter" name="cover_letter" rows="5" maxlength="5000"></textarea>
         </div>
         <div class="govuk-form-group">

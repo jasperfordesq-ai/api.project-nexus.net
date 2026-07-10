@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <p class="govuk-body"><a class="govuk-back-link" href="{{ urlFor('/federation') }}">Back to Federation</a></p>
+  <p class="govuk-body"><a class="govuk-back-link" href="{{ urlFor('/federation') }}">{{ t("polish_federation.groups_back") }}</a></p>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Federation partners</h1>

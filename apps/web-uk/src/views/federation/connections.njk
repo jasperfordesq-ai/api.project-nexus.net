@@ -15,8 +15,8 @@
   <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Federated connections</h1>
-  <p class="govuk-body-l">People you are connected with across the community network.</p>
+  <h1 class="govuk-heading-xl">{{ t("fed2.connections.title") }}</h1>
+  <p class="govuk-body-l">{{ t("fed2.connections.description") }}</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
@@ -36,7 +36,7 @@
     {% if statusBanner.type == "error" %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
               <li><a href="#connections-list">{{ statusBanner.message }}</a></li>
@@ -47,7 +47,7 @@
     {% else %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-connections-status">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="fed-connections-status">Success</h2>
+          <h2 class="govuk-notification-banner__title" id="fed-connections-status">{{ t("states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
@@ -57,7 +57,7 @@
   {% endif %}
 
   <div class="govuk-tabs" data-module="govuk-tabs">
-    <h2 class="govuk-tabs__title">Connection status filter</h2>
+    <h2 class="govuk-tabs__title">{{ t("polish_federation.connections_tabs_label") }}</h2>
     <ul class="govuk-tabs__list">
       {% for tab in tabs %}
         <li class="govuk-tabs__list-item{% if activeTab == tab.id %} govuk-tabs__list-item--selected{% endif %}">

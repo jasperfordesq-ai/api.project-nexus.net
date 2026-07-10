@@ -66,6 +66,40 @@
   white-space: nowrap;
 }
 
+// GOV.UK Frontend 6 is primarily authored for left-to-right documents. These
+// shell corrections complement the logical inline properties used by the
+// application components below.
+[dir="rtl"] {
+  .nexus-alpha-header,
+  .govuk-service-navigation,
+  .govuk-footer {
+    text-align: start;
+  }
+
+  @include govuk-media-query($until: tablet) {
+    .govuk-service-navigation__item--active {
+      margin-right: -(govuk-spacing(2) + 4px);
+      margin-left: 0;
+      padding-right: govuk-spacing(2);
+      padding-left: 0;
+      border-right-width: 4px;
+      border-left-width: 0;
+    }
+  }
+
+  @include govuk-media-query($from: tablet) {
+    .govuk-service-navigation__item:not(:last-child) {
+      margin-right: 0;
+      margin-left: govuk-spacing(6);
+    }
+  }
+
+  .govuk-footer__inline-list-item {
+    margin-right: 0;
+    margin-left: govuk-spacing(3);
+  }
+}
+
 .nexus-alpha-nav-badge {
   display: inline-block;
   margin-inline-start: govuk-spacing(1);
@@ -158,7 +192,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: govuk-spacing(2);
-  padding-left: 0;
+  padding-inline-start: 0;
   list-style: none;
 }
 
@@ -185,7 +219,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: govuk-spacing(3);
-  padding-left: 0;
+  padding-inline-start: 0;
   list-style: none;
 }
 
@@ -216,7 +250,7 @@
 .nexus-alpha-avatar--small {
   width: 32px;
   height: 32px;
-  margin-right: govuk-spacing(1);
+  margin-inline-end: govuk-spacing(1);
   border-radius: 50%;
   vertical-align: middle;
 }
@@ -278,7 +312,7 @@
   cursor: pointer;
   padding: govuk-spacing(2) govuk-spacing(3);
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   top: govuk-spacing(2);
 
   &::after {
@@ -289,7 +323,7 @@
     border-style: solid;
     border-width: 8px 6px 0 6px;
     border-color: govuk-colour("white") transparent transparent transparent;
-    margin-left: govuk-spacing(1);
+    margin-inline-start: govuk-spacing(1);
     vertical-align: middle;
   }
 
@@ -347,7 +381,7 @@
 @include govuk-media-query($until: tablet) {
   .app-header__notification-badge {
     position: static;
-    margin-left: govuk-spacing(1);
+    margin-inline-start: govuk-spacing(1);
   }
 }
 
@@ -450,7 +484,7 @@
 .app-conversation-badge {
   position: absolute;
   top: govuk-spacing(3);
-  right: govuk-spacing(3);
+  inset-inline-end: govuk-spacing(3);
 }
 
 // Message thread styling
@@ -470,7 +504,7 @@
   max-width: 80%;
 
   &--own {
-    margin-left: auto;
+    margin-inline-start: auto;
     background: govuk-tint(govuk-colour("blue"), 90%);
   }
 }
@@ -505,7 +539,7 @@
 .app-header__notification-badge {
   position: absolute;
   top: -6px;
-  right: -8px;
+  inset-inline-end: -8px;
   background-color: $govuk-error-colour;
   color: govuk-colour("white");
   font-size: 11px;
@@ -535,10 +569,8 @@
 
   &--unread {
     background-color: govuk-tint(govuk-colour("blue"), 95%);
-    margin-left: govuk-spacing(-3);
-    margin-right: govuk-spacing(-3);
-    padding-left: govuk-spacing(3);
-    padding-right: govuk-spacing(3);
+    margin-inline: govuk-spacing(-3);
+    padding-inline: govuk-spacing(3);
   }
 }
 
@@ -567,7 +599,7 @@
 
 .app-notification-badge {
   vertical-align: middle;
-  margin-left: govuk-spacing(1);
+  margin-inline-start: govuk-spacing(1);
 }
 
 .app-notification-time {
@@ -627,7 +659,7 @@
     display: flex;
     align-items: center;
     gap: govuk-spacing(2);
-    text-align: left;
+    text-align: start;
     padding: govuk-spacing(3) 0;
   }
 }
@@ -703,7 +735,7 @@
     display: inline-block;
     width: 18px;
     height: 18px;
-    margin-right: govuk-spacing(2);
+    margin-inline-end: govuk-spacing(2);
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: govuk-colour("white");
     border-radius: 50%;
@@ -755,8 +787,7 @@ body.app-loading-overlay--active {
 .app-empty-state__message {
   color: $govuk-secondary-text-colour;
   max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 // Pagination component
@@ -873,7 +904,7 @@ body.app-loading-overlay--active {
 }
 
 .app-card--warning {
-  border-left: 4px solid $govuk-error-colour;
+  border-inline-start: 4px solid $govuk-error-colour;
 }
 
 // Page header with actions
@@ -998,14 +1029,14 @@ body.app-loading-overlay--active {
 
 .app-members-preview__avatars {
   display: flex;
-  margin-right: govuk-spacing(1);
+  margin-inline-end: govuk-spacing(1);
 
   .app-avatar {
-    margin-left: -8px;
+    margin-inline-start: -8px;
     border: 2px solid govuk-colour("white");
 
     &:first-child {
-      margin-left: 0;
+      margin-inline-start: 0;
     }
   }
 }
@@ -1035,10 +1066,7 @@ body.app-loading-overlay--active {
 // Session timeout warning modal
 .app-timeout-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -1051,10 +1079,7 @@ body.app-loading-overlay--active {
 
 .app-timeout-modal__overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.5);
 }
 
@@ -1090,7 +1115,7 @@ body.app-timeout-modal--open {
 }
 
 .app-post--pinned {
-  border-left: 4px solid govuk-colour("yellow");
+  border-inline-start: 4px solid govuk-colour("yellow");
 }
 
 .app-post--detail {
@@ -1242,7 +1267,7 @@ body.app-timeout-modal--open {
 }
 
 .app-comment__content {
-  margin-left: govuk-spacing(7); // Align with text after avatar
+  margin-inline-start: govuk-spacing(7); // Align with text after avatar
 }
 
 .app-comment__actions {
@@ -1279,10 +1304,8 @@ body.app-timeout-modal--open {
 
   &--unread {
     background-color: govuk-tint(govuk-colour("blue"), 95%);
-    margin-left: govuk-spacing(-3);
-    margin-right: govuk-spacing(-3);
-    padding-left: govuk-spacing(3);
-    padding-right: govuk-spacing(3);
+    margin-inline: govuk-spacing(-3);
+    padding-inline: govuk-spacing(3);
   }
 }
 
@@ -1485,7 +1508,7 @@ body.app-timeout-modal--open {
 .app-xp-list__amount {
   font-weight: bold;
   white-space: nowrap;
-  margin-left: govuk-spacing(2);
+  margin-inline-start: govuk-spacing(2);
 
   &--positive {
     color: govuk-colour("green");
@@ -1592,7 +1615,7 @@ body.app-timeout-modal--open {
 .app-badge__check {
   position: absolute;
   top: govuk-spacing(2);
-  right: govuk-spacing(2);
+  inset-inline-end: govuk-spacing(2);
   width: 24px;
   height: 24px;
   background-color: govuk-colour("green");
@@ -1606,7 +1629,7 @@ body.app-timeout-modal--open {
 
   .app-badge-grid--compact & {
     top: govuk-spacing(1);
-    right: govuk-spacing(1);
+    inset-inline-end: govuk-spacing(1);
     width: 20px;
     height: 20px;
     font-size: 12px;
@@ -1658,7 +1681,7 @@ body.app-timeout-modal--open {
 .app-leaderboard-position {
   padding: govuk-spacing(3);
   background-color: govuk-tint(govuk-colour("blue"), 90%);
-  border-left: 4px solid $govuk-brand-colour;
+  border-inline-start: 4px solid $govuk-brand-colour;
 }
 
 // XP summary (for xp history page)
@@ -1785,11 +1808,11 @@ body.app-timeout-modal--open {
 // Search results styling
 .app-search-result {
   padding: govuk-spacing(3);
-  border-left: 4px solid govuk-colour("light-grey");
+  border-inline-start: 4px solid govuk-colour("light-grey");
   background-color: govuk-colour("white");
 
   &:hover {
-    border-left-color: $govuk-brand-colour;
+    border-inline-start-color: $govuk-brand-colour;
     background-color: govuk-tint($govuk-brand-colour, 95%);
   }
 }

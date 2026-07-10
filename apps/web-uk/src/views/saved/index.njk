@@ -6,8 +6,8 @@
 
 {% block content %}
   <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
-  <h1 class="govuk-heading-xl">Saved items</h1>
-  <p class="govuk-body-l">Listings, posts and other items you have saved.</p>
+  <h1 class="govuk-heading-xl">{{ t("saved.title") }}</h1>
+  <p class="govuk-body-l">{{ t("saved.description") }}</p>
 
   {% if statusMessage %}
     <div class="govuk-notification-banner{% if not statusIsError %} govuk-notification-banner--success{% endif %}" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-status-title">
@@ -38,7 +38,7 @@
 
   {% if not bookmarks.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You have not saved anything yet.</p>
+      <p class="govuk-body">{{ t("saved.empty") }}</p>
     </div>
   {% else %}
     <ul class="govuk-list govuk-list--spaced">

@@ -34,7 +34,7 @@
         {% if statusBanner.type == "error" %}
           <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
             <div role="alert">
-              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
               <div class="govuk-error-summary__body">
                 <ul class="govuk-list govuk-error-summary__list">
                   <li><a href="#amount">{{ statusBanner.message }}</a></li>
@@ -45,7 +45,7 @@
         {% else %}
           <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-transfer-status">
             <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title" id="fed-transfer-status">Success</h2>
+              <h2 class="govuk-notification-banner__title" id="fed-transfer-status">{{ t("states.success_title") }}</h2>
             </div>
             <div class="govuk-notification-banner__content">
               <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
@@ -56,7 +56,7 @@
 
       <dl class="govuk-summary-list govuk-!-margin-bottom-6">
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Recipient</dt>
+          <dt class="govuk-summary-list__key">{{ t("fed2.transfer.recipient_label") }}</dt>
           <dd class="govuk-summary-list__value">{{ member.name }}</dd>
         </div>
         <div class="govuk-summary-list__row">
@@ -99,7 +99,7 @@
 
           <div class="govuk-button-group">
             <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Send transfer</button>
-            <a class="govuk-link" href="{{ urlFor(backHref) }}">Cancel</a>
+            <a class="govuk-link" href="{{ urlFor(backHref) }}">{{ t("polish_federation.transfer_cancel") }}</a>
           </div>
         </form>
       {% endif %}

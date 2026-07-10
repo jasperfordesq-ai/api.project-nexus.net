@@ -31,7 +31,7 @@
       {% if statusBanner %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#fed-onboarding-form">{{ statusBanner.message }}</a></li>
@@ -86,7 +86,7 @@
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="welcome">
           <div class="govuk-button-group">
-            <button type="submit" class="govuk-button" data-module="govuk-button">Get started</button>
+            <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("onboarding.welcome.start") }}</button>
             <a class="govuk-link" href="{{ urlFor('/federation') }}">Do this later</a>
           </div>
         </form>
@@ -103,7 +103,7 @@
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="profile_visible_federated" name="profile_visible_federated" type="checkbox" value="1"{% if settings.profile_visible_federated %} checked{% endif %} aria-describedby="profile_visible_federated-hint">
-                <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">Show my profile to partner communities</label>
+                <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">{{ t("federation.settings.profile_visible_label") }}</label>
                 <div id="profile_visible_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members of partner communities view your profile.</div>
               </div>
               <div class="govuk-checkboxes__item">
@@ -130,8 +130,8 @@
           </fieldset>
 
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=welcome') }}">Back</a>
-            <button type="submit" class="govuk-button" data-module="govuk-button">Continue</button>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=welcome') }}">{{ t("onboarding.back") }}</a>
+            <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("onboarding.continue") }}</button>
           </div>
         </form>
       {% elif step == "communication" %}
@@ -172,8 +172,8 @@
             <div class="govuk-form-group">
               <label class="govuk-label" for="service_reach">Service availability</label>
               <select class="govuk-select" id="service_reach" name="service_reach">
-                <option value="local_only"{% if settings.service_reach == "local_only" %} selected{% endif %}>Local only</option>
-                <option value="remote_ok"{% if settings.service_reach == "remote_ok" %} selected{% endif %}>Remote is fine</option>
+                <option value="local_only"{% if settings.service_reach == "local_only" %} selected{% endif %}>{{ t("federation.settings.reach_local_only") }}</option>
+                <option value="remote_ok"{% if settings.service_reach == "remote_ok" %} selected{% endif %}>{{ t("federation.settings.reach_remote_ok") }}</option>
                 <option value="travel_ok"{% if settings.service_reach == "travel_ok" %} selected{% endif %}>Happy to travel</option>
               </select>
             </div>
@@ -189,8 +189,8 @@
           </fieldset>
 
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=privacy') }}">Back</a>
-            <button type="submit" class="govuk-button" data-module="govuk-button">Continue</button>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=privacy') }}">{{ t("onboarding.back") }}</a>
+            <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("onboarding.continue") }}</button>
           </div>
         </form>
       {% else %}
@@ -274,7 +274,7 @@
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="step" value="confirm">
           <div class="govuk-button-group">
-            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=communication') }}">Back</a>
+            <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/federation/onboarding?step=communication') }}">{{ t("onboarding.back") }}</a>
             <button type="submit" class="govuk-button" data-module="govuk-button">Enable federation</button>
             <a class="govuk-link" href="{{ urlFor('/federation') }}">Do this later</a>
           </div>

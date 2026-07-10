@@ -14,7 +14,7 @@
 
   <ul class="govuk-list nexus-alpha-actions govuk-!-margin-bottom-6">
     <li><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">View listing</a></li>
-    <li><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}">Edit listing</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}">{{ t("listings.edit.edit_listing") }}</a></li>
   </ul>
 
   <form method="get" action="{{ urlFor('/listings/' + (listing.id | string) + '/analytics') }}" class="govuk-!-margin-bottom-6">
@@ -41,11 +41,11 @@
     <h2 class="govuk-heading-m">Key metrics</h2>
     <dl class="govuk-summary-list govuk-!-margin-bottom-6">
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Total views</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_views") }}</dt>
         <dd class="govuk-summary-list__value">{{ analytics.summary.totalViews }}</dd>
       </div>
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Unique viewers</dt>
+        <dt class="govuk-summary-list__key">{{ t("jobs_t3.stat_unique") }}</dt>
         <dd class="govuk-summary-list__value">{{ analytics.summary.uniqueViewers }}</dd>
       </div>
       <div class="govuk-summary-list__row">

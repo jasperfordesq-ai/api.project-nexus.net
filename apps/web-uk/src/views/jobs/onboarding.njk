@@ -27,7 +27,7 @@
     <p class="govuk-body-l">Post opportunities to find the right people in your community. Whether you need paid staff, volunteers or timebank helpers, it is easy to connect with members.</p>
   {% endif %}
 
-  <h2 class="govuk-heading-m">How it works</h2>
+  <h2 class="govuk-heading-m">{{ t("about.how_it_works.title") }}</h2>
   <ol class="govuk-list govuk-list--number">
     <li>Describe the opportunity - title, what is involved and the kind of help you need.</li>
     <li>Choose the type: paid, volunteer or timebank, and the time commitment.</li>
@@ -47,7 +47,7 @@
   </div>
 
   <p class="govuk-button-group">
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">Post an opportunity</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.create_title") }}</a>
     <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/mine') }}">View my opportunities</a>
     <a class="govuk-link" href="{{ urlFor('/jobs') }}">Browse opportunities</a>
   </p>

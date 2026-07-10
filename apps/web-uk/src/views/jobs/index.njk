@@ -8,7 +8,7 @@
 {% block mainContent %}
   <span class="govuk-caption-xl">Project NEXUS Accessible</span>
   <h1 class="govuk-heading-xl">Jobs</h1>
-  <p class="govuk-body-l">Roles and opportunities in this community.</p>
+  <p class="govuk-body-l">{{ t("jobs.description") }}</p>
 
   <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
     <h2 class="govuk-tabs__title">Jobs</h2>
@@ -20,19 +20,19 @@
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}">Saved</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">My applications</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">{{ t("jobs_t2.applications_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
         <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}">Responses</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">Job alerts</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}">{{ t("jobs_t4.title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">My postings</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">{{ t("jobs_t3.mine_title") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">Post a job</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.nav_create") }}</a>
       </li>
     </ul>
   </div>
@@ -51,7 +51,7 @@
 
   <form method="get" action="{{ urlFor('/jobs') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Find an opportunity</label>
+      <label class="govuk-label" for="q">{{ t("jobs.search_label") }}</label>
       <div id="q-hint" class="govuk-hint">Search by title.</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
     </div>
@@ -62,21 +62,21 @@
           <label class="govuk-label" for="type">Type</label>
           <select class="govuk-select" id="type" name="type">
             <option value=""{% if filters.type == "" %} selected{% endif %}>All types</option>
-            <option value="paid"{% if filters.type == "paid" %} selected{% endif %}>Paid</option>
-            <option value="volunteer"{% if filters.type == "volunteer" %} selected{% endif %}>Volunteer</option>
-            <option value="timebank"{% if filters.type == "timebank" %} selected{% endif %}>Time credits</option>
+            <option value="paid"{% if filters.type == "paid" %} selected{% endif %}>{{ t("jobs.type_paid") }}</option>
+            <option value="volunteer"{% if filters.type == "volunteer" %} selected{% endif %}>{{ t("jobs.type_volunteer") }}</option>
+            <option value="timebank"{% if filters.type == "timebank" %} selected{% endif %}>{{ t("jobs.type_timebank") }}</option>
           </select>
         </div>
       </div>
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="commitment">Commitment</label>
+          <label class="govuk-label" for="commitment">{{ t("jobs_t2.commitment_label") }}</label>
           <select class="govuk-select" id="commitment" name="commitment">
-            <option value=""{% if filters.commitment == "" %} selected{% endif %}>Any commitment</option>
-            <option value="full_time"{% if filters.commitment == "full_time" %} selected{% endif %}>Full time</option>
-            <option value="part_time"{% if filters.commitment == "part_time" %} selected{% endif %}>Part time</option>
-            <option value="flexible"{% if filters.commitment == "flexible" %} selected{% endif %}>Flexible</option>
-            <option value="one_off"{% if filters.commitment == "one_off" %} selected{% endif %}>One-off</option>
+            <option value=""{% if filters.commitment == "" %} selected{% endif %}>{{ t("jobs_t2.commitment_all") }}</option>
+            <option value="full_time"{% if filters.commitment == "full_time" %} selected{% endif %}>{{ t("jobs_t2.commitment_full_time") }}</option>
+            <option value="part_time"{% if filters.commitment == "part_time" %} selected{% endif %}>{{ t("jobs_t2.commitment_part_time") }}</option>
+            <option value="flexible"{% if filters.commitment == "flexible" %} selected{% endif %}>{{ t("jobs_t2.commitment_flexible") }}</option>
+            <option value="one_off"{% if filters.commitment == "one_off" %} selected{% endif %}>{{ t("jobs_t2.commitment_one_off") }}</option>
           </select>
         </div>
       </div>
@@ -85,8 +85,8 @@
           <label class="govuk-label" for="sort">Sort by</label>
           <select class="govuk-select" id="sort" name="sort">
             <option value="newest"{% if filters.sort == "newest" %} selected{% endif %}>Newest</option>
-            <option value="deadline"{% if filters.sort == "deadline" %} selected{% endif %}>Closing soonest</option>
-            <option value="salary_desc"{% if filters.sort == "salary_desc" %} selected{% endif %}>Highest pay</option>
+            <option value="deadline"{% if filters.sort == "deadline" %} selected{% endif %}>{{ t("jobs_t2.sort_deadline") }}</option>
+            <option value="salary_desc"{% if filters.sort == "salary_desc" %} selected{% endif %}>{{ t("jobs_t2.sort_salary_desc") }}</option>
           </select>
         </div>
       </div>
@@ -95,7 +95,7 @@
     <div class="govuk-checkboxes govuk-checkboxes--small govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
       <div class="govuk-checkboxes__item">
         <input class="govuk-checkboxes__input" id="remote" name="remote" type="checkbox" value="1"{% if filters.remote %} checked{% endif %}>
-        <label class="govuk-label govuk-checkboxes__label" for="remote">Remote only</label>
+        <label class="govuk-label govuk-checkboxes__label" for="remote">{{ t("jobs_t2.remote_label") }}</label>
       </div>
     </div>
 
@@ -107,7 +107,7 @@
 
   {% if jobs.length == 0 %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no open opportunities right now.</p>
+      <p class="govuk-body">{{ t("jobs.empty") }}</p>
     </div>
   {% else %}
     <p class="govuk-body govuk-!-font-weight-bold">{{ resultsLabel }}</p>
@@ -161,7 +161,7 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">More results</span>
           </a>

@@ -11,6 +11,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -278,7 +279,7 @@ function formatInsuranceDate(value) {
   if (text === '') return '';
   const date = new Date(text.includes('T') ? text : `${text}T00:00:00Z`);
   if (Number.isNaN(date.getTime())) return text;
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

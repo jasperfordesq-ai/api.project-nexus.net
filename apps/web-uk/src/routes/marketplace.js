@@ -6,6 +6,7 @@
 const express = require('express');
 const { ApiError, callMarketplaceApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -345,7 +346,7 @@ function formatDateTimeLabel(value) {
   if (!text) return 'Not set';
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return 'Not set';
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

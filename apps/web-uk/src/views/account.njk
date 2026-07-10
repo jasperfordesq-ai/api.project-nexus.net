@@ -7,8 +7,8 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">My account</h1>
-  <p class="govuk-body-l">Manage your wallet, messages, connections and personal settings in one place.</p>
+  <h1 class="govuk-heading-xl">{{ t("account.title") }}</h1>
+  <p class="govuk-body-l">{{ t("account.description") }}</p>
 
   <div class="nexus-alpha-card-list govuk-!-margin-top-6">
     {% for item in accountLinks %}

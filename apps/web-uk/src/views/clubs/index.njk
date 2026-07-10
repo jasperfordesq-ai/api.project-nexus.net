@@ -7,12 +7,12 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">Clubs</h1>
-  <p class="govuk-body-l">Clubs and associations organised within your community.</p>
+  <h1 class="govuk-heading-xl">{{ t("clubs.title") }}</h1>
+  <p class="govuk-body-l">{{ t("clubs.description") }}</p>
 
   <form method="get" action="{{ urlFor('/clubs') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Find a club</label>
+      <label class="govuk-label" for="q">{{ t("clubs.search_label") }}</label>
       <div id="q-hint" class="govuk-hint">Search by name.</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ clubsQuery }}" aria-describedby="q-hint">
     </div>
@@ -20,7 +20,7 @@
   </form>
 
   {% if not clubs.length %}
-    <div class="govuk-inset-text"><p class="govuk-body">There are no clubs yet.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("clubs.empty") }}</p></div>
   {% else %}
     <div class="nexus-alpha-card-list">
       {% for club in clubs %}
@@ -39,7 +39,7 @@
 
           <dl class="nexus-alpha-inline-list">
             {% if club.meetingSchedule %}
-              <div><dt>Meets</dt><dd>{{ club.meetingSchedule }}</dd></div>
+              <div><dt>{{ t("clubs.schedule_label") }}</dt><dd>{{ club.meetingSchedule }}</dd></div>
             {% endif %}
             {% if club.contactEmail %}
               <div><dt>Contact</dt><dd><a class="govuk-link" href="mailto:{{ club.contactEmail }}">{{ club.contactEmail }}</a></dd></div>
@@ -48,7 +48,7 @@
 
           {% if club.websiteHref %}
             <p class="govuk-body govuk-!-margin-bottom-0">
-              <a class="govuk-link" href="{{ club.websiteHref }}" rel="noopener noreferrer" target="_blank">Visit website<span class="govuk-visually-hidden"> opens in new tab</span></a>
+              <a class="govuk-link" href="{{ club.websiteHref }}" rel="noopener noreferrer" target="_blank">{{ t("clubs.visit_website") }}<span class="govuk-visually-hidden"> opens in new tab</span></a>
             </p>
           {% endif %}
         </article>

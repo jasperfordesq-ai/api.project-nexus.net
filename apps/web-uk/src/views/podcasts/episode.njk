@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/podcasts/' + (show.id | string)) }}" class="govuk-back-link">Back to podcast</a>
+  <a href="{{ urlFor('/podcasts/' + (show.id | string)) }}" class="govuk-back-link">{{ t("polish_commerce.podcast_episode_back") }}</a>
 
   <span class="govuk-caption-xl">{{ show.title }}</span>
   <h1 class="govuk-heading-xl">{{ episode.title }}</h1>
@@ -23,12 +23,12 @@
     </div>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">No audio is available for this episode.</p>
+      <p class="govuk-body">{{ t("polish_commerce.podcast_episode_no_audio") }}</p>
     </div>
   {% endif %}
 
   {% if episode.transcript %}
-    <h2 class="govuk-heading-m">Read transcript</h2>
+    <h2 class="govuk-heading-m">{{ t("polish_commerce.podcast_episode_transcript") }}</h2>
     <div class="govuk-body">{{ episode.transcript | nl2br | safe }}</div>
   {% endif %}
 {% endblock %}

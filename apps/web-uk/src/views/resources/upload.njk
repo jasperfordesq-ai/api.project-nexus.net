@@ -26,7 +26,7 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="title">Title</label>
+          <label class="govuk-label govuk-label--m" for="title">{{ t("group_exchanges.form_title_label") }}</label>
           <div id="title-hint" class="govuk-hint">Use a clear name so members can recognise the resource.</div>
           <input class="govuk-input" id="title" name="title" type="text" maxlength="255" aria-describedby="title-hint">
         </div>
@@ -42,7 +42,7 @@
             <label class="govuk-label" for="category_id">Category</label>
             <div id="category_id-hint" class="govuk-hint">Choose where this resource should appear in the library.</div>
             <select class="govuk-select" id="category_id" name="category_id" aria-describedby="category_id-hint">
-              <option value="">No category</option>
+              <option value="">{{ t("events.no_category") }}</option>
               {% for category in flatCategories %}
                 <option value="{{ category.id }}">{{ category.name }}</option>
               {% endfor %}
@@ -58,7 +58,7 @@
 
         <div class="govuk-button-group">
           <button class="govuk-button" data-module="govuk-button" type="submit">Upload resource</button>
-          <a class="govuk-link" href="{{ urlFor('/resources/library') }}">Cancel</a>
+          <a class="govuk-link" href="{{ urlFor('/resources/library') }}">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
     </div>

@@ -44,6 +44,70 @@ toward Laravel's accessible contracts.
 
 The Laravel repo is read-only reference material from this workspace.
 
+## 2026-07-10 Localization And RTL Progress
+
+The current localization work is a substantial runtime and template-wiring
+slice, but it is **not** localization completion or Laravel-first `1000/1000`
+certification.
+
+- `scripts/sync-laravel-locales.php` now imports the authoritative Laravel
+  `lang/{locale}/govuk_alpha*.php` catalogs into deterministic generated JSON.
+  The current export covers all 11 offered locales, 24 namespaces, and 7,337
+  string keys per locale, with zero missing or extra keys relative to English.
+- Locale resolution now follows query `locale`, session locale, an already
+  available request user/profile preference, a signed-token profile API
+  preference, weighted `Accept-Language`, then English fallback. A valid query
+  or profile preference seeds the session, and responses declare
+  `Content-Language`.
+- The active locale is request-scoped through `AsyncLocalStorage`. API and
+  download requests propagate `Accept-Language` without mutable process-global
+  state, signed profile reads share one request-local promise, and the route
+  formatting helpers use the request locale rather than fixed `en-GB` or
+  `en-IE` display formats.
+- Profile language and automatic-translation choices now intersect the global
+  catalog allowlist with the routed tenant's `supported_languages` when that
+  bootstrap setting is present. Mounted login, registration, and password
+  recovery also use the authoritative routed tenant slug rather than trusting
+  a tamperable hidden form value; flat parent-domain forms retain their posted
+  community chooser behavior.
+- The base document now emits request-correct `lang` and `dir` values, including
+  RTL for Arabic, while preserving the GOV.UK shell hooks, CSP nonce, container,
+  and single-main-landmark contract. Shared auth, cookie, footer, and error-page
+  surfaces use Laravel catalog keys where semantically equivalent keys exist.
+- A conservative exact-value audit replaced 1,595 safe static template values
+  across 257 templates. It deliberately excludes ambiguous values, runtime
+  context, placeholders, plural forms, URLs, scripts/styles, and copy without a
+  semantically safe Laravel key. `npm run locales:audit-templates -- --summary`
+  now reports 290 templates and zero remaining conservative matches. That zero
+  is an audit boundary, not proof that every rendered word is translated.
+- Current verification passed the full Jest suite (`27` suites, `986` tests),
+  `npm run lint`, `npm run build:css`, and the expanded Playwright Chromium/axe
+  accessibility gate (`12/12`). The browser run covers nine representative
+  public shared-mount pages plus three Arabic RTL pages at a 320px viewport,
+  including document language/direction, one main/h1, unique IDs, horizontal
+  reflow, and serious/critical axe checks. The first expanded run exposed the
+  registration honeypot's physical off-screen overflow; after it moved to a
+  clipped technique, the focused Arabic registration regression and the full
+  rerun passed.
+
+The remaining localization gaps are material:
+
+- The read-only Laravel source catalogs themselves contain 3,903 to 3,951
+  English-identical values in every non-English locale, or 53.2% to 53.9% of
+  the 7,337 strings. Sixteen entire namespaces are English-identical:
+  `activity`, `blogreviews`, `connections`, `events`, `federation`, `feed`,
+  `gamification`, `ideation`, `listings`, `members`, `organisations`, `saved`,
+  `search`, `settings`, `volunteering`, and `wallet`. Web UK must not invent
+  translations that diverge from the authoritative read-only source; the
+  Laravel catalog owner must supply those translations before all offered
+  locales can be certified.
+- Contextual route titles, dynamic headings, validation/status copy, ARIA
+  labels, and residual template strings that cannot be mapped safely by exact
+  value still need route-family review and focused tests.
+- Authenticated, error, upload, destructive, and additional RTL browser states
+  plus recorded manual keyboard, screen-reader, reflow, focus, contrast, and
+  RTL review remain uncertified.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared
@@ -2588,10 +2652,16 @@ ASP.NET switching proof over adding more skeleton pages.
    active-club sourcing now uses live Laravel-backed club evidence. Broker
    workflow-disabled listing exchange requests now have focused Jest/source
    proof; a live disabled-tenant Laravel fixture is still not certified.
-5. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
+5. Finish localization beyond the conservative static-value pass: reconcile
+   contextual route titles, headings, validation/status copy, ARIA labels, and
+   residual strings; keep catalog structural parity green; obtain authoritative
+   translations for the 16 fully English-identical Laravel namespaces; and
+   keep the expanded automated gate green while completing the recorded manual
+   RTL/accessibility pass.
+6. Keep `BACKEND_SWITCHING_CONTRACT.md` honest: ASP.NET target remains
    future/not-certified until proven.
-6. Refresh generated route matrix files after route changes.
-7. Mark stale historical docs as historical rather than relying on them for
+7. Refresh generated route matrix files after route changes.
+8. Mark stale historical docs as historical rather than relying on them for
    current status.
 
 ## Scoring Guide
@@ -2607,13 +2677,14 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `998.9/1000`.
-Green confidence estimate: `992.4/1000`, because the consolidated code, static
-tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
-full default Laravel runtime-smoke coverage via chunked/bucketed runs are
-strong, while visual/manual Blade parity spot-checks, live disabled-tenant
-broker workflow proof, and ASP.NET backend switching proof still need final
-certification.
+The former `998.9/1000` implementation and `992.4/1000` green-confidence
+estimates are superseded by `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md`.
+No new score is issued for the localization slice in isolation. Catalog
+structure, locale plumbing, and broad safe template wiring improved, but the
+authoritative untranslated catalog values, contextual copy review,
+authenticated/error/upload/destructive browser coverage, manual
+accessibility/RTL review, and ASP.NET switching proof keep the completion gate
+open.
 
 ## Final Handoff Checklist
 

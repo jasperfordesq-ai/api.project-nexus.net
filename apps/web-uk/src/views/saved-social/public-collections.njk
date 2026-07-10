@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">{{ t("actions.back_to_profile") }}</a>
 
   <span class="govuk-caption-xl">Collections shared by {{ owner.name }}</span>
   <h1 class="govuk-heading-xl">Public collections of {{ owner.name }}</h1>

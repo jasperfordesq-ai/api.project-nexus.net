@@ -8,7 +8,7 @@
   {% if status == 'search-saved' or status == 'search-deleted' %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="search-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="search-status-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="search-status-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">
@@ -18,7 +18,7 @@
     </div>
   {% elif status == 'search-save-failed' or status == 'search-delete-failed' %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" role="alert" tabindex="-1">
-      <h2 class="govuk-error-summary__title">There is a problem</h2>
+      <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
       <div class="govuk-error-summary__body">
         <ul class="govuk-list govuk-error-summary__list">
           <li>{% if status == 'search-save-failed' %}<a href="#saved-name">We could not save your search. Add a name and a keyword, then try again.</a>{% else %}We could not delete the saved search. Please try again.{% endif %}</li>
@@ -29,7 +29,7 @@
 
   {% if hasSearched and searchError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" role="alert" tabindex="-1">
-      <h2 class="govuk-error-summary__title">There is a problem</h2>
+      <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
       <div class="govuk-error-summary__body">
         <ul class="govuk-list govuk-error-summary__list">
           <li><a href="#q">Something went wrong while searching. Please try again.</a></li>
@@ -88,7 +88,7 @@
             <label class="govuk-label" for="sort">Sort by</label>
             <select class="govuk-select" id="sort" name="sort">
               <option value="relevance"{% if filters.sort == 'relevance' %} selected{% endif %}>Relevance</option>
-              <option value="newest"{% if filters.sort == 'newest' %} selected{% endif %}>Newest first</option>
+              <option value="newest"{% if filters.sort == 'newest' %} selected{% endif %}>{{ t("polish_commerce.podcast_sort_newest") }}</option>
               <option value="oldest"{% if filters.sort == 'oldest' %} selected{% endif %}>Oldest first</option>
             </select>
           </div>
@@ -136,7 +136,7 @@
 
     <div class="govuk-button-group">
       <button type="submit" class="govuk-button" data-module="govuk-button">Search</button>
-      {% if searchQuery %}<a class="govuk-link" href="{{ urlFor('/search/advanced') }}">Clear search</a>{% endif %}
+      {% if searchQuery %}<a class="govuk-link" href="{{ urlFor('/search/advanced') }}">{{ t("polish_members.connections_search_clear") }}</a>{% endif %}
     </div>
   </form>
 
@@ -185,7 +185,7 @@
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Run saved search {{ saved.name }}">Run search</button>
               </form>
-              <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="Delete saved search {{ saved.name }}">Delete</a>
+              <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="Delete saved search {{ saved.name }}">{{ t("jobs_t3.delete_button") }}</a>
             </span>
           </li>
         {% endfor %}
@@ -205,7 +205,7 @@
     </div>
   {% elif not searchError and total == 0 %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">No results found</h2>
+      <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
       <p class="govuk-body">We could not find anything matching {{ searchQuery }}.</p>
       <ul class="govuk-list govuk-list--bullet">
         <li>Check your spelling and try again.</li>
@@ -287,7 +287,7 @@
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ group.name or 'Groups' }}</a></h3>
               {% if group.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(group.description, 200) }}</p>{% endif %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ membersCountLabel(group.members_count or group.member_count or 0) }}</p>
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/groups/' + (group.id | string)) }}">View group</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.view") }}</a></p>
             </article>
           {% endfor %}
         </div>

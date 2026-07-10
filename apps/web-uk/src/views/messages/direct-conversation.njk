@@ -15,7 +15,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Messages", href: urlFor("/messages") },
       { text: conversation.otherUser.name }
     ]
@@ -26,7 +26,7 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <p class="govuk-body">
-        <a href="{{ urlFor('/messages') }}" class="govuk-back-link">Back to messages</a>
+        <a href="{{ urlFor('/messages') }}" class="govuk-back-link">{{ t("actions.back_to_messages") }}</a>
       </p>
 
       {% if statusMessage %}
@@ -37,7 +37,7 @@
 
       {% if errorMessage %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: [{ text: errorMessage, href: "#body" }]
         }) }}
       {% endif %}
@@ -75,8 +75,8 @@
           <input type="hidden" name="listing" value="{{ listingId }}">
         {% endif %}
         {{ govukInput({
-          label: { text: "Search messages", classes: "govuk-label--s" },
-          hint: { text: "Filter messages in this conversation by keyword." },
+          label: { text: t("polish_members.conversation_filter_label"), classes: "govuk-label--s" },
+          hint: { text: t("polish_members.conversation_filter_hint") },
           id: "q",
           name: "q",
           value: query
@@ -89,7 +89,7 @@
 
       {% if meta.hasMore and olderHref %}
         <p class="govuk-body">
-          <a class="govuk-link" href="{{ urlFor(olderHref) }}">Show older messages</a>
+          <a class="govuk-link" href="{{ urlFor(olderHref) }}">{{ t("messages.show_older") }}</a>
         </p>
       {% endif %}
 
@@ -143,7 +143,7 @@
                       <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/m/' + (message.id | string) + '/delete') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         <input type="hidden" name="scope" value="everyone">
-                        {{ govukButton({ text: "Delete message", classes: "govuk-button--warning" }) }}
+                        {{ govukButton({ text: t("messages.delete_button"), classes: "govuk-button--warning" }) }}
                       </form>
                     </div>
                   </details>
@@ -158,7 +158,7 @@
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-      <h2 class="govuk-heading-m">Reply</h2>
+      <h2 class="govuk-heading-m">{{ t("actions.reply") }}</h2>
       <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string)) }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         {% if listingId %}
@@ -176,7 +176,7 @@
           <div id="attachments-hint" class="govuk-hint">Upload images or documents. You can send a message with only attachments.</div>
           <input class="govuk-file-upload" id="attachments" name="attachments[]" type="file" multiple aria-describedby="attachments-hint">
         </div>
-        {{ govukButton({ text: "Reply" }) }}
+        {{ govukButton({ text: t("actions.reply") }) }}
       </form>
 
       <h2 class="govuk-heading-m govuk-!-margin-top-6">Voice note</h2>
@@ -191,7 +191,7 @@
 
       <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/archive') }}" class="govuk-!-margin-top-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-        {{ govukButton({ text: "Archive conversation", classes: "govuk-button--warning" }) }}
+        {{ govukButton({ text: t("actions.archive_conversation"), classes: "govuk-button--warning" }) }}
       </form>
     </div>
   </div>

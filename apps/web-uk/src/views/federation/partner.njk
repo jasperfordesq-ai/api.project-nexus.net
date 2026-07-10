@@ -33,7 +33,7 @@
   </nav>
 
   {% if partner.tagline %}
-    <h2 class="govuk-heading-l">About this community</h2>
+    <h2 class="govuk-heading-l">{{ t("federation.partner.about_label") }}</h2>
     <p class="govuk-body">{{ partner.tagline }}</p>
   {% endif %}
 
@@ -46,7 +46,7 @@
     {% endif %}
     {% if partner.country %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Country</dt>
+        <dt class="govuk-summary-list__key">{{ t("federation.country_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ partner.country }}</dd>
       </div>
     {% endif %}
@@ -89,7 +89,7 @@
         <li><a class="govuk-link" href="{{ urlFor('/federation/members') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse members</a></li>
       {% endif %}
       {% if "listings" in partner.permissions %}
-        <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse listings</a></li>
+        <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">{{ t("guide.browse_listings") }}</a></li>
       {% endif %}
       {% if "events" in partner.permissions %}
         <li><a class="govuk-link" href="{{ urlFor('/federation/events') }}{% if partner.isInternal %}?partner_id={{ partner.id | urlencode }}{% endif %}">Browse events</a></li>

@@ -8,11 +8,11 @@
 {% set opportunityTitle = opportunity.title or "Volunteering opportunity" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.back_to_volunteering") }}</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-xl">Volunteering opportunity</span>
+      <span class="govuk-caption-xl">{{ t("volunteering.detail_title") }}</span>
       <h1 class="govuk-heading-xl">{{ opportunityTitle }}</h1>
 
       {% if opportunity.is_remote %}
@@ -44,7 +44,7 @@
   <dl class="govuk-summary-list">
     {% if opportunity.organisationName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Organisation</dt>
+        <dt class="govuk-summary-list__key">{{ t("auth.profile_type_organisation") }}</dt>
         <dd class="govuk-summary-list__value">{{ opportunity.organisationName }}</dd>
       </div>
     {% endif %}
@@ -62,13 +62,13 @@
     {% endif %}
     {% if opportunity.skills_needed %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Skills needed</dt>
+        <dt class="govuk-summary-list__key">{{ t("volunteering.skills") }}</dt>
         <dd class="govuk-summary-list__value">{{ opportunity.skills_needed }}</dd>
       </div>
     {% endif %}
     {% if opportunity.start_date %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Start date</dt>
+        <dt class="govuk-summary-list__key">{{ t("volunteering.start_date") }}</dt>
         <dd class="govuk-summary-list__value">{{ opportunity.start_date | date }}</dd>
       </div>
     {% endif %}
@@ -80,7 +80,7 @@
     {% endif %}
   </dl>
 
-  <h2 class="govuk-heading-l">Available shifts</h2>
+  <h2 class="govuk-heading-l">{{ t("volunteering.shifts_title") }}</h2>
   {% if opportunity.shifts and opportunity.shifts.length %}
     <div class="nexus-alpha-card-list govuk-!-margin-bottom-7">
       {% for shift in opportunity.shifts %}
@@ -96,7 +96,7 @@
           <dl class="nexus-alpha-inline-list">
             {% if shift.end_time %}
               <div>
-                <dt>Ends</dt>
+                <dt>{{ t("events.ends") }}</dt>
                 <dd>{{ shift.end_time | formatEventDate }}</dd>
               </div>
             {% endif %}
@@ -111,7 +111,7 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">No scheduled shifts are listed for this opportunity.</div>
+    <div class="govuk-inset-text">{{ t("volunteering.no_shifts") }}</div>
   {% endif %}
 
   {% if authRequired %}
@@ -120,7 +120,7 @@
         <h2 class="govuk-notification-banner__title" id="volunteering-detail-auth-title">Sign in required</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-body">Sign in to apply for opportunities and track your volunteering.</p>
+        <p class="govuk-body">{{ t("volunteering.auth_required_detail") }}</p>
       </div>
     </div>
   {% elseif opportunity.hasApplied %}
@@ -129,6 +129,6 @@
 
   <div class="govuk-button-group govuk-!-margin-top-6">
     <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/opportunities/' ~ opportunityId ~ '/apply') }}">Apply for this opportunity</a>
-    <a class="govuk-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
+    <a class="govuk-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.back_to_volunteering") }}</a>
   </div>
 {% endblock %}

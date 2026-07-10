@@ -21,6 +21,12 @@ const PUBLIC_ROUTES = [
   { name: 'accessibility statement', path: `${mountPath}/accessibility` }
 ];
 
+const RTL_ROUTES = [
+  { name: 'Arabic sign in', path: `${mountPath}/login?locale=ar` },
+  { name: 'Arabic register', path: `${mountPath}/register?locale=ar` },
+  { name: 'Arabic password reset request', path: `${mountPath}/login/forgot-password?locale=ar` }
+];
+
 function seriousOrCritical(violations) {
   return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical');
 }
@@ -74,6 +80,47 @@ test.describe('representative public-page accessibility gate', () => {
         formatViolations(blockingViolations),
         `serious or critical axe violations on ${route.path}`
       ).toEqual([]);
+    });
+  }
+});
+
+test.describe('Arabic RTL and narrow reflow gate', () => {
+  for (const route of RTL_ROUTES) {
+    test(`${route.name} has RTL semantics, reflows, and has no high-impact axe violations`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+
+      expect(response, `${route.path} did not return a document response`).not.toBeNull();
+      expect(response.status(), `${route.path} returned HTTP ${response.status()}`).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('main')).toHaveCount(1);
+      await expect(page.locator('#main-content')).toHaveCount(1);
+      await expect(page.locator('h1')).toHaveCount(1);
+
+      const overflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(
+        overflow.scrollWidth,
+        `${route.path} has horizontal overflow at a 320px CSS viewport`
+      ).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('rtl-axe-results', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow,
+          violations: formatViolations(axeResults.violations),
+          incomplete: formatViolations(axeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
     });
   }
 });

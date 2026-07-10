@@ -6,7 +6,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="{{ urlFor('/profile') }}">Back to profile</a>
+  <a class="govuk-back-link" href="{{ urlFor('/profile') }}">{{ t("actions.back_to_profile") }}</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -15,7 +15,7 @@
       {% if statusConfig and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="profile-settings-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="profile-settings-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="profile-settings-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusConfig.message }}</p>
@@ -33,7 +33,7 @@
       {% elif statusConfig and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#{{ errorAnchor }}">{{ statusConfig.message }}</a></li>
@@ -43,10 +43,10 @@
         </div>
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Edit your profile</h1>
-      <p class="govuk-body-l">Update the details people see in the accessible member directory.</p>
+      <h1 class="govuk-heading-xl">{{ t("dashboard.edit_profile") }}</h1>
+      <p class="govuk-body-l">{{ t("profile_settings.description") }}</p>
 
-      <nav class="govuk-!-margin-bottom-8" aria-label="Account settings">
+      <nav class="govuk-!-margin-bottom-8" aria-label="{{ t("account.settings_title") }}">
         <ul class="nexus-alpha-card-list">
           {% for item in settingsLinks %}
             <li class="nexus-alpha-card">
@@ -62,15 +62,15 @@
 
         <section id="avatar" aria-labelledby="profile-photo-heading">
           <h2 class="govuk-heading-l" id="profile-photo-heading">Profile photo</h2>
-          <p class="govuk-body">Upload a JPG, PNG, GIF or WEBP image. We will crop it to a 400 by 400 pixel square.</p>
+          <p class="govuk-body">{{ t("profile_settings.photo_hint") }}</p>
           {% if profile.avatar_url %}
             <img class="govuk-!-margin-bottom-3" src="{{ profile.avatar_url }}" alt="Your current profile photo" width="120" height="120">
           {% else %}
-            <p class="govuk-inset-text">You have not added a profile photo yet.</p>
+            <p class="govuk-inset-text">{{ t("profile_settings.photo_none") }}</p>
           {% endif %}
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="avatar_file">Upload a new photo</label>
+            <label class="govuk-label" for="avatar_file">{{ t("profile_settings.photo_label") }}</label>
             <input class="govuk-file-upload" id="avatar_file" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp">
           </div>
 
@@ -78,33 +78,33 @@
             <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="remove_avatar" name="remove_avatar" type="checkbox" value="1">
-                <label class="govuk-label govuk-checkboxes__label" for="remove_avatar">Remove my current photo</label>
+                <label class="govuk-label govuk-checkboxes__label" for="remove_avatar">{{ t("profile_settings.photo_remove_label") }}</label>
               </div>
             </div>
           {% endif %}
         </section>
 
         <section aria-labelledby="personal-details-heading">
-          <h2 class="govuk-heading-l" id="personal-details-heading">Personal details</h2>
+          <h2 class="govuk-heading-l" id="personal-details-heading">{{ t("profile_settings.personal_details") }}</h2>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="first_name">First name</label>
+            <label class="govuk-label" for="first_name">{{ t("auth.first_name_label") }}</label>
             <input class="govuk-input govuk-!-width-two-thirds" id="first_name" name="first_name" type="text" value="{{ profile.first_name }}" autocomplete="given-name">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="last_name">Last name</label>
+            <label class="govuk-label" for="last_name">{{ t("auth.last_name_label") }}</label>
             <input class="govuk-input govuk-!-width-two-thirds" id="last_name" name="last_name" type="text" value="{{ profile.last_name }}" autocomplete="family-name">
           </div>
           <div class="govuk-form-group">
             <label class="govuk-label" for="phone">Phone number</label>
-            <div id="phone-hint" class="govuk-hint">Use an international format, for example +1 555 123 4567.</div>
+            <div id="phone-hint" class="govuk-hint">{{ t("auth.phone_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="phone" name="phone" type="tel" value="{{ profile.phone }}" autocomplete="tel" aria-describedby="phone-hint">
           </div>
         </section>
 
         <section aria-labelledby="public-profile-heading">
-          <h2 class="govuk-heading-l" id="public-profile-heading">Public profile</h2>
+          <h2 class="govuk-heading-l" id="public-profile-heading">{{ t("profile_settings.public_profile") }}</h2>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="profile_type">Profile type</label>
+            <label class="govuk-label" for="profile_type">{{ t("profile_settings.profile_type_label") }}</label>
             <select class="govuk-select" id="profile_type" name="profile_type">
               {% for option in profileTypeOptions %}
                 <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
@@ -116,24 +116,24 @@
             <input class="govuk-input govuk-!-width-two-thirds" id="organization_name" name="organization_name" type="text" value="{{ profile.organization_name }}">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="tagline">Short introduction</label>
+            <label class="govuk-label" for="tagline">{{ t("profile_settings.tagline_label") }}</label>
             <input class="govuk-input" id="tagline" name="tagline" type="text" value="{{ profile.tagline }}" maxlength="160">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="bio">Profile description</label>
+            <label class="govuk-label" for="bio">{{ t("profile_settings.bio_label") }}</label>
             <textarea class="govuk-textarea" id="bio" name="bio" rows="5">{{ profile.bio }}</textarea>
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="location">Town, city or area</label>
+            <label class="govuk-label" for="location">{{ t("auth.location_label") }}</label>
             <input class="govuk-input govuk-!-width-two-thirds" id="location" name="location" type="text" value="{{ profile.location }}">
           </div>
         </section>
 
         <section aria-labelledby="privacy-heading">
-          <h2 class="govuk-heading-l" id="privacy-heading">Privacy</h2>
+          <h2 class="govuk-heading-l" id="privacy-heading">{{ t("profile_settings.privacy_title") }}</h2>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="privacy_profile">Who can see your full profile</label>
-            <div id="privacy-profile-hint" class="govuk-hint">Member directory searches remain limited to signed-in members.</div>
+            <label class="govuk-label" for="privacy_profile">{{ t("profile_settings.privacy_profile_label") }}</label>
+            <div id="privacy-profile-hint" class="govuk-hint">{{ t("profile_settings.privacy_profile_hint") }}</div>
             <select class="govuk-select" id="privacy_profile" name="privacy_profile" aria-describedby="privacy-profile-hint">
               {% for option in privacyOptions %}
                 <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
@@ -144,7 +144,7 @@
           <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="privacy_search" name="privacy_search" type="checkbox" value="1"{% if profile.privacy_search %} checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="privacy_search">Show my profile in member search results</label>
+              <label class="govuk-label govuk-checkboxes__label" for="privacy_search">{{ t("profile_settings.privacy_search_label") }}</label>
             </div>
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="privacy_contact" name="privacy_contact" type="checkbox" value="1"{% if profile.privacy_contact %} checked{% endif %}>
@@ -154,12 +154,12 @@
         </section>
 
         <section aria-labelledby="marketing-heading">
-          <h2 class="govuk-heading-l" id="marketing-heading">Email preferences</h2>
-          <p class="govuk-body">We will only use this to email you about this community.</p>
+          <h2 class="govuk-heading-l" id="marketing-heading">{{ t("profile_settings.marketing_title") }}</h2>
+          <p class="govuk-body">{{ t("profile_settings.marketing_hint") }}</p>
           <div class="govuk-checkboxes govuk-!-margin-bottom-6" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="newsletter_opt_in" name="newsletter_opt_in" type="checkbox" value="1"{% if profile.newsletter_opt_in %} checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="newsletter_opt_in">Send me occasional newsletters and updates</label>
+              <label class="govuk-label govuk-checkboxes__label" for="newsletter_opt_in">{{ t("profile_settings.marketing_label") }}</label>
             </div>
           </div>
         </section>
@@ -176,8 +176,8 @@
             {% for skill in mySkills %}
               <li class="nexus-alpha-card govuk-!-margin-bottom-3">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ skill.skill_name }}</h3>
-                {% if skill.is_offering %}<strong class="govuk-tag govuk-tag--green">I can offer this</strong>{% endif %}
-                {% if skill.is_requesting %}<strong class="govuk-tag govuk-tag--blue">I am looking for this</strong>{% endif %}
+                {% if skill.is_offering %}<strong class="govuk-tag govuk-tag--green">{{ t("profile_settings.skills.offering") }}</strong>{% endif %}
+                {% if skill.is_requesting %}<strong class="govuk-tag govuk-tag--blue">{{ t("profile_settings.skills.requesting") }}</strong>{% endif %}
                 <p class="govuk-body govuk-!-margin-top-2">{{ skill.endorsement_count }} endorsements</p>
                 <form method="post" action="{{ urlFor('/profile/skills/remove') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -188,37 +188,37 @@
             {% endfor %}
           </ul>
         {% else %}
-          <p class="govuk-body">You have not added any skills yet.</p>
+          <p class="govuk-body">{{ t("profile_settings.skills.none") }}</p>
         {% endif %}
 
         <form method="post" action="{{ urlFor('/profile/skills/add') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="skill_name">Add a skill</label>
+            <label class="govuk-label" for="skill_name">{{ t("profile_settings.skills.add_label") }}</label>
             <input class="govuk-input govuk-!-width-two-thirds" id="skill_name" name="skill_name" type="text">
           </div>
           <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="is_offering" name="is_offering" type="checkbox" value="1" checked>
-              <label class="govuk-label govuk-checkboxes__label" for="is_offering">I can offer this</label>
+              <label class="govuk-label govuk-checkboxes__label" for="is_offering">{{ t("profile_settings.skills.offering") }}</label>
             </div>
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="is_requesting" name="is_requesting" type="checkbox" value="1">
-              <label class="govuk-label govuk-checkboxes__label" for="is_requesting">I am looking for this</label>
+              <label class="govuk-label govuk-checkboxes__label" for="is_requesting">{{ t("profile_settings.skills.requesting") }}</label>
             </div>
           </div>
-          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Add skill</button>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.skills.add_button") }}</button>
         </form>
       </section>
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="security" aria-labelledby="security-heading">
-        <h2 class="govuk-heading-l" id="security-heading">Security</h2>
-        <h3 class="govuk-heading-m">Two-step verification</h3>
-        <p class="govuk-body">Add an authenticator app as a second step when you sign in.</p>
-        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/two-factor') }}">Set up or manage two-step verification</a></p>
-        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked-members') }}">Manage blocked members</a></p>
+        <h2 class="govuk-heading-l" id="security-heading">{{ t("notifications.types.security") }}</h2>
+        <h3 class="govuk-heading-m">{{ t("profile_settings.two_factor_heading") }}</h3>
+        <p class="govuk-body">{{ t("profile_settings.two_factor_intro") }}</p>
+        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/two-factor') }}">{{ t("profile_settings.two_factor_link") }}</a></p>
+        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked-members') }}">{{ t("profile_settings.blocked_link") }}</a></p>
 
         <h3 class="govuk-heading-m">Email address</h3>
         <form method="post" action="{{ urlFor('/profile/email') }}" novalidate>
@@ -228,31 +228,31 @@
             <input class="govuk-input govuk-!-width-two-thirds" id="email" name="email" type="email" value="{{ profile.email }}" autocomplete="email">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="current_password">Current password</label>
+            <label class="govuk-label" for="current_password">{{ t("profile_settings.current_password_label") }}</label>
             <input class="govuk-input govuk-input--width-20" id="current_password" name="current_password" type="password" autocomplete="current-password">
           </div>
           <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Update email address</button>
         </form>
 
-        <h3 class="govuk-heading-m">Password</h3>
+        <h3 class="govuk-heading-m">{{ t("auth.password_label") }}</h3>
         <form method="post" action="{{ urlFor('/profile/password') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="current_password_for_password">Current password</label>
+            <label class="govuk-label" for="current_password_for_password">{{ t("profile_settings.current_password_label") }}</label>
             <input class="govuk-input govuk-input--width-20" id="current_password_for_password" name="current_password" type="password" autocomplete="current-password">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="new_password">New password</label>
+            <label class="govuk-label" for="new_password">{{ t("auth.reset_password_label") }}</label>
             <input class="govuk-input govuk-input--width-20" id="new_password" name="new_password" type="password" autocomplete="new-password">
           </div>
           <div class="govuk-form-group">
-            <label class="govuk-label" for="new_password_confirmation">Confirm new password</label>
+            <label class="govuk-label" for="new_password_confirmation">{{ t("auth.reset_confirm_label") }}</label>
             <input class="govuk-input govuk-input--width-20" id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password">
           </div>
-          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Change password</button>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.password_submit") }}</button>
         </form>
 
-        <h3 class="govuk-heading-m" id="passkeys">Passkeys</h3>
+        <h3 class="govuk-heading-m" id="passkeys">{{ t("profile_settings.passkeys.title") }}</h3>
         {% if passkeys.length %}
           <ul class="govuk-list">
             {% for passkey in passkeys %}
@@ -269,7 +269,7 @@
                 <form method="post" action="{{ urlFor('/profile/passkeys/remove') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
-                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">Remove passkey</button>
+                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("profile_settings.passkeys.remove_submit") }}</button>
                 </form>
               </li>
             {% endfor %}
@@ -278,15 +278,15 @@
           <p class="govuk-body">You have not added any passkeys yet.</p>
         {% endif %}
 
-        <h3 class="govuk-heading-m">Where you are signed in</h3>
+        <h3 class="govuk-heading-m">{{ t("profile_settings.sessions.title") }}</h3>
         {% if sessions.length %}
           <table class="govuk-table">
             <caption class="govuk-table__caption govuk-table__caption--s">Active sessions</caption>
             <thead class="govuk-table__head">
               <tr class="govuk-table__row">
-                <th class="govuk-table__header" scope="col">Device</th>
-                <th class="govuk-table__header" scope="col">IP address</th>
-                <th class="govuk-table__header" scope="col">Last active</th>
+                <th class="govuk-table__header" scope="col">{{ t("profile_settings.sessions.device") }}</th>
+                <th class="govuk-table__header" scope="col">{{ t("profile_settings.sessions.ip") }}</th>
+                <th class="govuk-table__header" scope="col">{{ t("profile_settings.sessions.last_active") }}</th>
               </tr>
             </thead>
             <tbody class="govuk-table__body">
@@ -307,26 +307,26 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="language" aria-labelledby="language-heading">
-        <h2 class="govuk-heading-l" id="language-heading">Language</h2>
+        <h2 class="govuk-heading-l" id="language-heading">{{ t("profile_settings.language_label") }}</h2>
         <p class="govuk-body">Current language: {{ currentLanguageLabel }}</p>
         <form method="post" action="{{ urlFor('/profile/language') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="language_select">Choose a language</label>
+            <label class="govuk-label" for="language_select">{{ t("header.language_label") }}</label>
             <select class="govuk-select" id="language_select" name="language">
               {% for option in localeOptions %}
                 <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
             </select>
           </div>
-          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Save language</button>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.language_submit") }}</button>
         </form>
       </section>
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="notifications" aria-labelledby="notifications-heading">
-        <h2 class="govuk-heading-l" id="notifications-heading">Email and notifications</h2>
+        <h2 class="govuk-heading-l" id="notifications-heading">{{ t("profile_settings.notifications.title") }}</h2>
         <form method="post" action="{{ urlFor('/profile/notifications') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {% for group in notificationGroups %}
@@ -358,7 +358,7 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="match-preferences" aria-labelledby="match-preferences-heading">
-        <h2 class="govuk-heading-l" id="match-preferences-heading">Match notifications</h2>
+        <h2 class="govuk-heading-l" id="match-preferences-heading">{{ t("profile_settings.match.title") }}</h2>
         <form method="post" action="{{ urlFor('/profile/match-preferences') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
@@ -387,7 +387,7 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="personalisation" aria-labelledby="personalisation-heading">
-        <h2 class="govuk-heading-l" id="personalisation-heading">Personalisation and translation</h2>
+        <h2 class="govuk-heading-l" id="personalisation-heading">{{ t("profile_settings.personalisation.title") }}</h2>
         <form method="post" action="{{ urlFor('/profile/personalisation') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
@@ -439,17 +439,17 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="data-export" aria-labelledby="data-heading">
-        <h2 class="govuk-heading-l" id="data-heading">Your data and privacy</h2>
-        <p class="govuk-body">Under data protection law you can ask for a copy of the personal information we hold about you, or ask us to delete your account.</p>
-        <h3 class="govuk-heading-m">Get a copy of your data</h3>
-        <p class="govuk-body">Request a downloadable copy of your personal information. We will prepare it and contact you when it is ready.</p>
+        <h2 class="govuk-heading-l" id="data-heading">{{ t("profile_settings.data_title") }}</h2>
+        <p class="govuk-body">{{ t("profile_settings.data_description") }}</p>
+        <h3 class="govuk-heading-m">{{ t("profile_settings.data_export_heading") }}</h3>
+        <p class="govuk-body">{{ t("profile_settings.data_export_body") }}</p>
         <form method="post" action="{{ urlFor('/profile/data-export') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Request your data</button>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.download_data") }}</button>
         </form>
-        <h3 class="govuk-heading-m">Delete your account</h3>
-        <p class="govuk-body">Deleting your account removes your profile and personal information from this community. This cannot be undone.</p>
-        <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/profile/delete-account') }}">Delete your account</a>
+        <h3 class="govuk-heading-m">{{ t("actions.delete_account") }}</h3>
+        <p class="govuk-body">{{ t("profile_settings.delete_body") }}</p>
+        <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/profile/delete-account') }}">{{ t("actions.delete_account") }}</a>
       </section>
     </div>
   </div>

@@ -12,7 +12,7 @@
   {# Using titleText ensures proper escaping of user content #}
   {{ govukNotificationBanner({
     type: notificationType if notificationType else undefined,
-    titleText: "Success" if notificationType == "success" else "Important",
+    titleText: t("states.success_title") if notificationType == "success" else "Important",
     text: notificationMessage
   }) }}
 {% endif %}

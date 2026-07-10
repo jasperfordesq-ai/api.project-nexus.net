@@ -8,7 +8,7 @@
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">Back to group</a>
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
   <span class="govuk-caption-xl">Images for {{ group.name }}</span>
   <h1 class="govuk-heading-xl">Group images</h1>
@@ -48,13 +48,13 @@
     <input type="hidden" name="type" value="avatar">
     <div class="govuk-form-group">
       <label class="govuk-label" for="avatar-image">Upload a new avatar</label>
-      <div id="avatar-image-hint" class="govuk-hint">Use a JPG, PNG, GIF or WEBP image.</div>
+      <div id="avatar-image-hint" class="govuk-hint">{{ t("groups_t1.compose_image_hint") }}</div>
       <input class="govuk-file-upload" id="avatar-image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="avatar-image-hint" required>
     </div>
     <button class="govuk-button" data-module="govuk-button">Save avatar</button>
   </form>
 
-  <h2 class="govuk-heading-l">Cover image</h2>
+  <h2 class="govuk-heading-l">{{ t("events.polish_events.edit_image_label") }}</h2>
   <p class="govuk-body">A wide banner image shown at the top of the group page.</p>
   {% if group.coverImageUrl %}
     <p class="govuk-body">
@@ -69,7 +69,7 @@
     <input type="hidden" name="type" value="cover">
     <div class="govuk-form-group">
       <label class="govuk-label" for="cover-image">Upload a new cover image</label>
-      <div id="cover-image-hint" class="govuk-hint">Use a JPG, PNG, GIF or WEBP image.</div>
+      <div id="cover-image-hint" class="govuk-hint">{{ t("groups_t1.compose_image_hint") }}</div>
       <input class="govuk-file-upload" id="cover-image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="cover-image-hint" required>
     </div>
     <button class="govuk-button" data-module="govuk-button">Save cover image</button>

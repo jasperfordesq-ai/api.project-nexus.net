@@ -9,7 +9,7 @@
 <footer class="govuk-footer" role="contentinfo">
   <div class="govuk-width-container">
     {% if alphaFooterColumns and alphaFooterColumns.length %}
-      <div class="govuk-footer__navigation" aria-label="Footer navigation">
+      <div class="govuk-footer__navigation" aria-label="{{ t("footer.nav_label") }}">
         {% for column in alphaFooterColumns %}
           <div class="govuk-footer__section govuk-grid-column-one-third">
             <h2 class="govuk-footer__heading govuk-heading-m">{{ column.heading }}</h2>
@@ -28,14 +28,14 @@
 
     <div class="govuk-footer__meta">
       <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
-        <h2 class="govuk-visually-hidden">Supporting information and attribution</h2>
+        <h2 class="govuk-visually-hidden">{{ t("footer.meta_label") }}</h2>
 
         <ul class="govuk-footer__inline-list">
           <li class="govuk-footer__inline-list-item">
-            <a class="govuk-footer__link" href="{{ reportProblemUrl or '/report-a-problem' }}">Report a problem with this page</a>
+            <a class="govuk-footer__link" href="{{ reportProblemUrl or urlFor('/report-a-problem') }}">{{ t("report_problem.footer_link") }}</a>
           </li>
           <li class="govuk-footer__inline-list-item">
-            <a class="govuk-footer__link" href="{{ cookieSettingsUrl or '/cookies' }}">Cookies</a>
+            <a class="govuk-footer__link" href="{{ cookieSettingsUrl or urlFor('/cookies') }}">{{ t("cookie_settings.title") }}</a>
           </li>
         </ul>
 
@@ -44,17 +44,17 @@
             <li class="govuk-footer__inline-list-item">
               <form method="post" action="{{ urlFor('/logout') }}" class="nexus-alpha-linkform">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button type="submit" class="govuk-footer__link nexus-alpha-linkbutton">Sign out</button>
+                <button type="submit" class="govuk-footer__link nexus-alpha-linkbutton">{{ t("footer.sign_out") }}</button>
               </form>
             </li>
           </ul>
         {% endif %}
 
         <div class="govuk-footer__meta-custom">
-          <p class="govuk-!-margin-bottom-2">Project NEXUS is free software licensed under AGPL-3.0-or-later.</p>
-          <p class="govuk-!-margin-bottom-2">Copyright &copy; 2024-2026 Jasper Ford. See NOTICE for attribution and acknowledgements.</p>
+          <p class="govuk-!-margin-bottom-2">{{ t("footer.licence") }}</p>
+          <p class="govuk-!-margin-bottom-2">{{ t("footer.attribution") }}</p>
           <p class="govuk-!-margin-bottom-0">
-            <a class="govuk-footer__link" href="{{ sourceCodeUrl or 'https://github.com/jasperfordesq-ai/nexus-v1' }}" rel="noopener noreferrer">View the source code on GitHub</a>
+            <a class="govuk-footer__link" href="{{ sourceCodeUrl or 'https://github.com/jasperfordesq-ai/nexus-v1' }}" rel="noopener noreferrer">{{ t("footer.source") }}</a>
           </p>
         </div>
       </div>

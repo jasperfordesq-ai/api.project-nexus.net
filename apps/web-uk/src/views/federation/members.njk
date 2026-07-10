@@ -12,10 +12,10 @@
 } %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to Federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("polish_federation.groups_back") }}</a>
 
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Federated members</h1>
+  <h1 class="govuk-heading-xl">{{ t("federation.hub.quick_link_members") }}</h1>
   <p class="govuk-body-l">Find people from partner communities who have chosen to appear in federation search.</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
@@ -37,7 +37,7 @@
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter federated members</legend>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="q">Search members</label>
+        <label class="govuk-label" for="q">{{ t("members.search_label") }}</label>
         <div id="q-hint" class="govuk-hint">Search by name, bio, or shared skills.</div>
         <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
       </div>
@@ -112,7 +112,7 @@
     </div>
 
     {% if loadMoreHref %}
-      <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more members</a></p>
+      <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">{{ t("federation.members_browse.load_more") }}</a></p>
     {% endif %}
   {% else %}
     {% if not partnerOptions.length %}

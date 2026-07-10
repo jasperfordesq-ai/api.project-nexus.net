@@ -7,12 +7,12 @@
 
 {% block content %}
   <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
-  <h1 class="govuk-heading-xl">Ideas</h1>
-  <p class="govuk-body-l">Share ideas and vote on suggestions for the community.</p>
+  <h1 class="govuk-heading-xl">{{ t("ideation.ideas_title") }}</h1>
+  <p class="govuk-body-l">{{ t("ideation.description") }}</p>
 
   <form method="get" action="{{ urlFor('/ideation') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group govuk-!-margin-bottom-4">
-      <label class="govuk-label" for="ideation-q">Search challenges</label>
+      <label class="govuk-label" for="ideation-q">{{ t("polish_discovery.ideation_search_label") }}</label>
       <input class="govuk-input govuk-input--width-30" id="ideation-q" name="q" type="search" value="{{ activeQuery }}">
     </div>
     <div class="govuk-form-group govuk-!-margin-bottom-4">
@@ -60,6 +60,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">There are no challenges yet.</div>
+    <div class="govuk-inset-text">{{ t("ideation.empty") }}</div>
   {% endif %}
 {% endblock %}

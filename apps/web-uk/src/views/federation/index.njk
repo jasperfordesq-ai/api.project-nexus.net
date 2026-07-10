@@ -34,7 +34,7 @@
     {% if statusBanner.type == "error" %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list"><li>{{ statusBanner.message }}</li></ul>
           </div>
@@ -42,7 +42,7 @@
       </div>
     {% else %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="federation-status-title">
-        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="federation-status-title">Success</h2></div>
+        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="federation-status-title">{{ t("states.success_title") }}</h2></div>
         <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
       </div>
     {% endif %}
@@ -58,7 +58,7 @@
     {% if not stats.optedIn %}
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-          <h2 class="govuk-heading-l">Join the federation network</h2>
+          <h2 class="govuk-heading-l">{{ t("federation.hub.optin_banner_title") }}</h2>
           <p class="govuk-body">Choose what profile details, skills, messaging, and time-credit actions you want to make available across trusted partner communities.</p>
           <p class="govuk-body"><a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/federation/onboarding') }}">Opt in to federation</a></p>
         </div>
@@ -81,9 +81,9 @@
         <dt class="govuk-summary-list__key">Federation status</dt>
         <dd class="govuk-summary-list__value">
           {% if stats.optedIn %}
-            <strong class="govuk-tag govuk-tag--green">Opted in</strong>
+            <strong class="govuk-tag govuk-tag--green">{{ t("federation.hub.optin_on") }}</strong>
           {% else %}
-            <strong class="govuk-tag govuk-tag--grey">Not opted in</strong>
+            <strong class="govuk-tag govuk-tag--grey">{{ t("federation.hub.optin_off") }}</strong>
           {% endif %}
         </dd>
       </div>
@@ -150,8 +150,8 @@
             <li><a class="govuk-link" href="{{ urlFor('/federation/members') }}">Find federation members</a></li>
             <li><a class="govuk-link" href="{{ urlFor('/federation/connections') }}">Manage federation connections</a></li>
             <li><a class="govuk-link" href="{{ urlFor('/federation/messages') }}">Federation messages</a></li>
-            <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}">Federated listings</a></li>
-            <li><a class="govuk-link" href="{{ urlFor('/federation/events') }}">Federated events</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/listings') }}">{{ t("federation.hub.quick_link_listings") }}</a></li>
+            <li><a class="govuk-link" href="{{ urlFor('/federation/events') }}">{{ t("federation.events_browse.title") }}</a></li>
             <li><a class="govuk-link" href="{{ urlFor('/federation/groups') }}">Federated groups</a></li>
             <li><a class="govuk-link" href="{{ urlFor('/federation/settings') }}">Federation settings</a></li>
           </ul>

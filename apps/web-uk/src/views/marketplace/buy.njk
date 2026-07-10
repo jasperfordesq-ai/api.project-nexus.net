@@ -34,7 +34,7 @@
     </div>
     {% if item.sellerName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Seller</dt>
+        <dt class="govuk-summary-list__key">{{ t("marketplace.seller_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ item.sellerName }}</dd>
       </div>
     {% endif %}
@@ -43,7 +43,7 @@
   <div class="govuk-warning-text">
     <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
     <strong class="govuk-warning-text__text">
-      <span class="govuk-visually-hidden">Important</span>
+      <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
       Confirming places an order. The seller will be notified and you will arrange payment with them.
     </strong>
   </div>
@@ -61,7 +61,7 @@
     </div>
     <div class="govuk-button-group">
       <button class="govuk-button" data-module="govuk-button">Confirm order</button>
-      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">{{ t("polish_federation.transfer_cancel") }}</a>
     </div>
   </form>
 {% endblock %}

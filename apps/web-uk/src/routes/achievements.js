@@ -13,6 +13,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
@@ -87,7 +88,7 @@ function percentFrom(value) {
 }
 
 function formatInteger(value) {
-  return intFrom(value).toLocaleString('en-GB');
+  return intFrom(value).toLocaleString(getRequestIntlLocale());
 }
 
 function capitalizeLabel(value) {
@@ -100,7 +101,7 @@ function formatDateLabel(value) {
   if (Number.isNaN(date.getTime())) {
     return '';
   }
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

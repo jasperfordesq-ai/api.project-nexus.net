@@ -6,7 +6,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  getProfile,
   getBalance,
   getListings,
   getFeedPosts,
@@ -18,6 +17,8 @@ const {
   getMemberEndorsements
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -52,7 +53,7 @@ function formatOneDecimal(value) {
 }
 
 function formatInteger(value) {
-  return new Intl.NumberFormat('en-GB').format(integerFrom(value));
+  return new Intl.NumberFormat(getRequestIntlLocale()).format(integerFrom(value));
 }
 
 function displayName(profile) {
@@ -222,7 +223,7 @@ router.get('/', asyncRoute(async (req, res) => {
     feedData,
     eventsData
   ] = await Promise.all([
-    getProfile(req.token),
+    getRequestProfile(req, req.token),
     getBalance(req.token).catch(() => ({ balance: 0 })),
     getOnboardingStatus(req.token).catch(() => ({ data: { onboarding_completed: true } })),
     getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, total_xp: 0 } })),

@@ -6,12 +6,12 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a href="{{ urlFor('/ideation') }}" class="govuk-back-link">Back to challenges</a>
+  <a href="{{ urlFor('/ideation') }}" class="govuk-back-link">{{ t("ideation.back") }}</a>
 
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="idea-status">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="idea-status">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="idea-status">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
@@ -22,7 +22,7 @@
   {% if errorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>
@@ -79,7 +79,7 @@
       {% endif %}
       {% if challenge.viewsCount > 0 %}
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Views</dt>
+          <dt class="govuk-summary-list__key">{{ t("jobs_t2.views_label") }}</dt>
           <dd class="govuk-summary-list__value">{{ challenge.viewsCount }}</dd>
         </div>
       {% endif %}
@@ -104,12 +104,12 @@
 
   {% if challenge.prizeDescription %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Prize</h2>
+      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("ideation.prize_label") }}</h2>
       <p class="govuk-body govuk-!-margin-bottom-0">{{ challenge.prizeDescription }}</p>
     </div>
   {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-6" id="ideas">Ideas</h2>
+  <h2 class="govuk-heading-l govuk-!-margin-top-6" id="ideas">{{ t("ideation.ideas_title") }}</h2>
   {% if ideas and ideas.length %}
     <div class="nexus-alpha-card-list">
       {% for idea in ideas %}
@@ -124,7 +124,7 @@
           {% if idea.authorName %}
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Suggested by {{ idea.authorName }}</p>
           {% endif %}
-          <p class="govuk-body-s govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id) }}">Idea</a></p>
+          <p class="govuk-body-s govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id) }}">{{ t("notifications.types.ideation") }}</a></p>
           {% if challenge.isOpenForVotes %}
             <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas/' ~ idea.id ~ '/vote') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -136,26 +136,26 @@
     </div>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">No ideas have been submitted yet. Be the first.</p>
+      <p class="govuk-body">{{ t("ideation.ideas_empty") }}</p>
     </div>
   {% endif %}
 
   {% if challenge.isOpenForIdeas %}
-    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="submit">Submit an idea</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="submit">{{ t("ideation.submit_title") }}</h2>
     <form method="post" action="{{ urlFor('/ideation/' ~ challenge.id ~ '/ideas') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group{% if status == 'idea-invalid' %} govuk-form-group--error{% endif %}">
-        <label class="govuk-label" for="idea_title">Your idea</label>
+        <label class="govuk-label" for="idea_title">{{ t("ideation.idea_title_label") }}</label>
         {% if status == 'idea-invalid' %}
-          <p id="idea_title-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> Enter your idea.</p>
+          <p id="idea_title-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ t("ideation.states.idea-invalid") }}</p>
         {% endif %}
         <input class="govuk-input" id="idea_title" name="idea_title" type="text" maxlength="255" {% if status == 'idea-invalid' %}aria-describedby="idea_title-error"{% endif %}>
       </div>
       <div class="govuk-form-group">
-        <label class="govuk-label" for="idea_content">Tell us more (optional)</label>
+        <label class="govuk-label" for="idea_content">{{ t("ideation.idea_content_label") }}</label>
         <textarea class="govuk-textarea" id="idea_content" name="idea_content" rows="5" maxlength="5000"></textarea>
       </div>
-      <button type="submit" class="govuk-button" data-module="govuk-button">Submit idea</button>
+      <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("ideation.submit_button") }}</button>
     </form>
   {% endif %}
 {% endblock %}

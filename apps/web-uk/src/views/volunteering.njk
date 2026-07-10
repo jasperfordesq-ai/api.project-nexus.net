@@ -8,10 +8,10 @@
 {% block mainContent %}
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Volunteering</h1>
-  <p class="govuk-body-l">Find volunteering opportunities, track applications and log volunteering hours.</p>
+  <p class="govuk-body-l">{{ t("volunteering.description") }}</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
-    <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations') }}">Browse organisations</a>
+    <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations') }}">{{ t("vol_org.browse_link") }}</a>
   </p>
 
   <div class="govuk-inset-text" role="note" aria-labelledby="how-it-works-heading">
@@ -31,7 +31,7 @@
         <h2 class="govuk-notification-banner__title" id="volunteering-auth-title">Sign in required</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-body">Sign in to apply for opportunities and track your volunteering.</p>
+        <p class="govuk-body">{{ t("volunteering.auth_required_detail") }}</p>
       </div>
     </div>
   {% endif %}
@@ -39,13 +39,13 @@
   <form method="get" action="{{ urlFor('/volunteering') }}" class="govuk-!-margin-bottom-7">
     <fieldset class="govuk-fieldset" aria-describedby="volunteering-filter-hint">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-        <h2 class="govuk-fieldset__heading">Search and filter opportunities</h2>
+        <h2 class="govuk-fieldset__heading">{{ t("volunteering.filters_title") }}</h2>
       </legend>
-      <div id="volunteering-filter-hint" class="govuk-hint">Search by keyword, category or remote opportunities.</div>
+      <div id="volunteering-filter-hint" class="govuk-hint">{{ t("volunteering.filters_hint") }}</div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="q">Search opportunities</label>
-        <div id="q-hint" class="govuk-hint">Search by title, description or skills.</div>
+        <label class="govuk-label" for="q">{{ t("volunteering.search_label") }}</label>
+        <div id="q-hint" class="govuk-hint">{{ t("volunteering.search_hint") }}</div>
         <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ volunteeringQuery }}" aria-describedby="q-hint">
       </div>
 
@@ -58,7 +58,7 @@
         <div class="govuk-checkboxes" data-module="govuk-checkboxes">
           <div class="govuk-checkboxes__item">
             <input class="govuk-checkboxes__input" id="is_remote" name="is_remote" type="checkbox" value="1" {% if isRemote %}checked{% endif %}>
-            <label class="govuk-label govuk-checkboxes__label" for="is_remote">Show remote opportunities only</label>
+            <label class="govuk-label govuk-checkboxes__label" for="is_remote">{{ t("volunteering.remote_label") }}</label>
           </div>
         </div>
       </div>
@@ -86,9 +86,9 @@
   {% if error %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
-          <p>Volunteering opportunities could not be loaded. Try again.</p>
+          <p>{{ t("volunteering.error_detail") }}</p>
         </div>
       </div>
     </div>
@@ -109,7 +109,7 @@
           <dl class="nexus-alpha-inline-list govuk-!-margin-top-2">
             {% if opportunity.organizationName %}
               <div>
-                <dt>Organisation</dt>
+                <dt>{{ t("auth.profile_type_organisation") }}</dt>
                 <dd>{{ opportunity.organizationName }}</dd>
               </div>
             {% endif %}
@@ -132,7 +132,7 @@
           {% endif %}
 
           <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-0">
-            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">View details</a></li>
+            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ t("actions.view_details") }}</a></li>
             <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations/opportunities/' ~ opportunity.id ~ '/apply') }}">Apply to volunteer</a></li>
           </ul>
         </article>
@@ -140,12 +140,12 @@
     </div>
 
     {% if hasMore and loadMoreHref %}
-      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Volunteering pages">
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t("volunteering.pagination_label") }}">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor(loadMoreHref) }}" rel="next">
-            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
-            <span class="govuk-pagination__link-label">More opportunities</span>
+            <span class="govuk-pagination__link-label">{{ t("volunteering.more_results_label") }}</span>
           </a>
         </div>
       </nav>
@@ -153,7 +153,7 @@
   {% else %}
     <div class="govuk-inset-text">
       <h2 class="govuk-heading-m">No opportunities found</h2>
-      <p class="govuk-body">No volunteering opportunities match your filters.</p>
+      <p class="govuk-body">{{ t("volunteering.empty") }}</p>
       <p class="govuk-body govuk-!-margin-bottom-0">
         {% if volunteeringQuery or categoryId or isRemote %}
           No opportunities match your filters. Try widening your search or <a class="govuk-link" href="{{ urlFor('/volunteering') }}">clear filters</a>.

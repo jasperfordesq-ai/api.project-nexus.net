@@ -55,7 +55,7 @@
     <table class="govuk-table">
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Area</th>
+          <th scope="col" class="govuk-table__header">{{ t("nexus_score.category_column") }}</th>
           <th scope="col" class="govuk-table__header">Score</th>
           <th scope="col" class="govuk-table__header">Detail</th>
         </tr>
@@ -78,6 +78,6 @@
   {% endif %}
 
   <p>
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ qualification.jobId) }}">View this opportunity</a>
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/' ~ qualification.jobId) }}">{{ t("feed.view_typed.volunteer") }}</a>
   </p>
 {% endblock %}

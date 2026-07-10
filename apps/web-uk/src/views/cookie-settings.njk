@@ -9,52 +9,52 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <span class="govuk-caption-l">Cookies on {{ tenantName }}</span>
-      <h1 class="govuk-heading-xl">Cookies</h1>
+      <h1 class="govuk-heading-xl">{{ t("cookie_settings.title") }}</h1>
 
       {% if status == 'saved' %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" data-module="govuk-notification-banner" aria-labelledby="cookie-saved-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="cookie-saved-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="cookie-saved-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-notification-banner__heading">Your cookie settings were saved</p>
+            <p class="govuk-notification-banner__heading">{{ t("cookie_settings.saved_title") }}</p>
           </div>
         </div>
       {% endif %}
 
-      <p class="govuk-body-l">Cookies are small files saved on your device when you visit a website. We use cookies to make this service work and to improve it.</p>
+      <p class="govuk-body-l">{{ t("cookie_settings.intro") }}</p>
 
-      <h2 class="govuk-heading-m">Essential cookies</h2>
-      <p class="govuk-body">These keep the service secure and remember your language and display choices. They are always on because the service cannot work properly without them.</p>
+      <h2 class="govuk-heading-m">{{ t("cookie_settings.essential_heading") }}</h2>
+      <p class="govuk-body">{{ t("cookie_settings.essential_body") }}</p>
 
       <form method="post" action="{{ urlFor('/cookie-consent') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="cookies" value="save">
 
-        <h2 class="govuk-heading-m">Analytics cookies</h2>
-        <p class="govuk-body">With your permission, we use analytics cookies to understand how the service is used so we can improve it.</p>
+        <h2 class="govuk-heading-m">{{ t("cookie_settings.analytics_heading") }}</h2>
+        <p class="govuk-body">{{ t("cookie_settings.analytics_body") }}</p>
 
         <div class="govuk-form-group">
           <fieldset class="govuk-fieldset">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Do you want to accept analytics cookies?</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("cookie_settings.analytics_legend") }}</legend>
             <div class="govuk-radios" data-module="govuk-radios">
               <div class="govuk-radios__item">
                 <input class="govuk-radios__input" id="analytics-yes" name="analytics" type="radio" value="yes" {% if analyticsOn %}checked{% endif %}>
-                <label class="govuk-label govuk-radios__label" for="analytics-yes">Yes</label>
+                <label class="govuk-label govuk-radios__label" for="analytics-yes">{{ t("cookie_settings.yes") }}</label>
               </div>
               <div class="govuk-radios__item">
                 <input class="govuk-radios__input" id="analytics-no" name="analytics" type="radio" value="no" {% if not analyticsOn %}checked{% endif %}>
-                <label class="govuk-label govuk-radios__label" for="analytics-no">No</label>
+                <label class="govuk-label govuk-radios__label" for="analytics-no">{{ t("cookie_settings.no") }}</label>
               </div>
             </div>
           </fieldset>
         </div>
 
-        <button class="govuk-button" data-module="govuk-button" type="submit">Save cookie settings</button>
+        <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("cookie_settings.save") }}</button>
       </form>
 
       <p class="govuk-body">
-        <a class="govuk-link" href="{{ urlFor('/legal/cookies') }}">Read our full cookies policy</a>
+        <a class="govuk-link" href="{{ urlFor('/legal/cookies') }}">{{ t("cookie_settings.policy_link") }}</a>
       </p>
     </div>
   </div>

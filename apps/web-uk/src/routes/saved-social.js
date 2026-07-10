@@ -6,7 +6,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  getProfile,
   getUserV2,
   getBookmarks,
   getUserPublicCollections,
@@ -17,6 +16,8 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 const APPRECIATION_REACTIONS = new Set(['heart', 'clap', 'star']);
@@ -175,7 +176,7 @@ function formatDate(value) {
   if (!raw) return '';
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
 }
 
 function normalizeAppreciation(item) {
@@ -284,7 +285,7 @@ router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => 
   const page = Math.max(1, Number(req.query.page || 1));
   const status = trimmed(req.query.status);
   const [viewerResult, ownerResult, appreciationsResult] = await Promise.all([
-    getProfile(token),
+    getRequestProfile(req, token),
     getUserV2(token, userId),
     getUserAppreciations(token, userId, { page, per_page: 20 })
   ]);

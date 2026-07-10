@@ -10,7 +10,7 @@
   {% set breadcrumbs = [
     { text: "Events", href: urlFor("/events") },
     { text: event.title, href: urlFor("/events/" + (event.id | string)) },
-    { text: "Edit" }
+    { text: t("jobs_t3.edit_button") }
   ] %}
   {% include "partials/breadcrumbs.njk" %}
 {% endblock %}
@@ -21,12 +21,12 @@
 
       {% if errors and errors.length > 0 %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: errors
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Edit event</h1>
+      <h1 class="govuk-heading-xl">{{ t("events.edit_event") }}</h1>
 
       <form action="{{ urlFor('/events/' + (event.id | string) + '/edit') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -37,7 +37,7 @@
           name: "title",
           value: event.title,
           label: {
-            text: "Event title",
+            text: t("events.title_label"),
             classes: "govuk-label--m"
           },
           hint: {
@@ -65,7 +65,7 @@
         }) }}
 
         {% set selectedCategoryId = event.category_id or event.categoryId or "" %}
-        {% set categoryItems = [{value: "", text: "No category", selected: not selectedCategoryId}] %}
+        {% set categoryItems = [{value: "", text: t("events.no_category"), selected: not selectedCategoryId}] %}
         {% for category in categories or [] %}
           {% set categoryItems = (categoryItems.push({
             value: category.id | string,
@@ -117,7 +117,7 @@
           <div class="govuk-checkboxes" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1" data-aria-controls="is-online-conditional" {% if isOnline %}checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="is_online">This is an online event</label>
+              <label class="govuk-label govuk-checkboxes__label" for="is_online">{{ t("events.is_online_label") }}</label>
             </div>
             <div class="govuk-checkboxes__conditional{% if not isOnline %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
               {{ govukInput({
@@ -126,7 +126,7 @@
                 type: "url",
                 value: event.online_link or event.onlineLink,
                 label: {
-                  text: "Online event link"
+                  text: t("events.online_link_label")
                 }
               }) }}
             </div>
@@ -170,7 +170,7 @@
             </div>
             {% if startDateError %}
               <p class="govuk-error-message">
-                <span class="govuk-visually-hidden">Error:</span>
+                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span>
                 {{ startDateError.text }}
               </p>
             {% endif %}
@@ -214,7 +214,7 @@
           name: "max_attendees",
           value: event.max_attendees,
           label: {
-            text: "Maximum attendees",
+            text: t("events.max_attendees_label"),
             classes: "govuk-label--m"
           },
           hint: {
@@ -232,7 +232,7 @@
           {{ govukButton({
             text: "Save changes"
           }) }}
-          <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">Cancel</a>
+          <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
 

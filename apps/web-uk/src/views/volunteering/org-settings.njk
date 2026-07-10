@@ -10,7 +10,7 @@
   {% if status and status.type == "success" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="org-settings-success-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="org-settings-success-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="org-settings-success-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -19,7 +19,7 @@
   {% elif status and status.type == "error" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           {% if status.field %}
             <ul class="govuk-list govuk-error-summary__list">
@@ -36,7 +36,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body"><p>{{ loadError }}</p></div>
       </div>
     </div>
@@ -52,7 +52,7 @@
       <label class="govuk-label" for="name">Organisation name</label>
       <div id="name-hint" class="govuk-hint">Use the name volunteers recognise.</div>
       {% if status and status.field == 'name' %}
-        <p id="name-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+        <p id="name-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
       {% endif %}
       <input class="govuk-input" id="name" name="name" type="text" value="{{ organization.name }}" aria-describedby="name-hint{% if status and status.field == 'name' %} name-error{% endif %}" required>
     </div>
@@ -64,10 +64,10 @@
     </div>
 
     <div class="govuk-form-group{% if status and status.field == 'contact_email' %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label" for="contact_email">Contact email</label>
+      <label class="govuk-label" for="contact_email">{{ t("volunteering.contact_email") }}</label>
       <div id="contact_email-hint" class="govuk-hint">Volunteers can use this address for questions.</div>
       {% if status and status.field == 'contact_email' %}
-        <p id="contact_email-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+        <p id="contact_email-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
       {% endif %}
       <input class="govuk-input" id="contact_email" name="contact_email" type="email" spellcheck="false" value="{{ organization.contactEmail }}" aria-describedby="contact_email-hint{% if status and status.field == 'contact_email' %} contact_email-error{% endif %}">
     </div>

@@ -10,7 +10,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Listings" }
     ]
   }) }}
@@ -55,7 +55,7 @@
               </div>
               <div class="govuk-grid-column-one-third app-filter-buttons">
                 {{ govukButton({
-                  text: "Filter",
+                  text: t("goals.templates_filter_button"),
                   classes: "govuk-button--secondary"
                 }) }}
                 {% if filters.search or filters.status %}
@@ -75,7 +75,7 @@
         <table class="govuk-table">
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
-              <th scope="col" class="govuk-table__header">Title</th>
+              <th scope="col" class="govuk-table__header">{{ t("group_exchanges.form_title_label") }}</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Created</th>
               <th scope="col" class="govuk-table__header">Actions</th>
@@ -106,10 +106,10 @@
                   {% set listingOwnerId = listing.user_id or listing.userId or listing.author_id or listing.authorId or (listing.user.id if listing.user and listing.user.id else null) %}
                   {% set currentUserId = currentUser.id if currentUser and currentUser.id else null %}
                   {% if listing.can_edit or (listingOwnerId and currentUserId and (listingOwnerId | string) == (currentUserId | string)) %}
-                    <a href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}" class="govuk-link govuk-!-margin-right-2">Edit</a>
+                    <a href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}" class="govuk-link govuk-!-margin-right-2">{{ t("jobs_t3.edit_button") }}</a>
                     <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}" class="nexus-alpha-linkform govuk-!-display-inline-block">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <button type="submit" class="govuk-link app-link--destructive nexus-alpha-linkbutton">Delete</button>
+                      <button type="submit" class="govuk-link app-link--destructive nexus-alpha-linkbutton">{{ t("jobs_t3.delete_button") }}</button>
                     </form>
                   {% endif %}
                 </td>

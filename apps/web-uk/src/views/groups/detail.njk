@@ -68,7 +68,7 @@
           {# User is a member #}
           {% if myMembership.role == 'owner' or myMembership.role == 'admin' %}
             <a href="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" class="govuk-button govuk-button--secondary">
-              Edit group
+              {{ t("polish_groups.edit_link") }}
             </a>
             <a href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}" class="govuk-button govuk-button--secondary">
               Manage members
@@ -79,7 +79,7 @@
             <form action="{{ urlFor('/groups/' + (group.id | string) + '/leave') }}" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
-                text: "Leave group",
+                text: t("groups.leave"),
                 classes: "govuk-button--warning"
               }) }}
             </form>
@@ -89,7 +89,7 @@
             <form action="{{ urlFor('/groups/' + (group.id | string) + '/delete') }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group? This action cannot be undone.');">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
-                text: "Delete group",
+                text: t("groups.delete.link"),
                 classes: "govuk-button--warning"
               }) }}
             </form>
@@ -141,7 +141,7 @@
       {% endif %}
 
       {# Group events section #}
-      <h2 class="govuk-heading-l govuk-!-margin-top-8">Group events</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("groups_t1.events_title") }}</h2>
 
       {% if events and events.length > 0 %}
         <ul class="govuk-list">

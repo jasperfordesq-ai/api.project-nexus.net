@@ -3,10 +3,10 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h1 class="govuk-heading-xl">Choose a community</h1>
+      <h1 class="govuk-heading-xl">{{ t("tenant_chooser.title") }}</h1>
 
       <p class="govuk-body-l">
-        Select the community you want to use with Project NEXUS Accessible.
+        {{ t("tenant_chooser.description") }}
       </p>
 
       {% if tenantLoadError %}
@@ -33,7 +33,7 @@
         </ul>
       {% else %}
         <h2 class="govuk-heading-m">Nothing to show yet</h2>
-        <p class="govuk-body">No active communities are available.</p>
+        <p class="govuk-body">{{ t("tenant_chooser.empty") }}</p>
       {% endif %}
     </div>
   </div>

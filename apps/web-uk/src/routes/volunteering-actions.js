@@ -12,6 +12,7 @@ const {
   uploadVolunteerCredential
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 const ACCESSIBILITY_NEED_TYPES = [
@@ -343,7 +344,7 @@ function dateLabel(value) {
     : new Date(text);
   if (Number.isNaN(date.getTime())) return '';
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -357,7 +358,7 @@ function dateTimeLabel(value) {
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return '';
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -379,7 +380,7 @@ function monthLabel(value) {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
   if (Number.isNaN(date.getTime())) return text;
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC'

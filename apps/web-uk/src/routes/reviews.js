@@ -5,7 +5,6 @@
 
 const express = require('express');
 const {
-  getProfile,
   deleteReview,
   callReviewApi,
   createReview,
@@ -18,6 +17,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -324,7 +324,7 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
 }));
 
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const profile = dataFrom(await getProfile(req.token || tokenFrom(req)));
+  const profile = dataFrom(await getRequestProfile(req, req.token || tokenFrom(req)));
   const userId = profile && (profile.id || profile.user_id || profile.userId);
 
   const [receivedResult, givenResult, pendingResult, statsResult] = await Promise.all([
@@ -357,7 +357,7 @@ router.get('/list', requireAuth, asyncRoute(async (req, res) => {
   let userId = null;
 
   if (tab === 'received') {
-    const profile = dataFrom(await getProfile(token));
+    const profile = dataFrom(await getRequestProfile(req, token));
     userId = profile && (profile.id || profile.user_id || profile.userId);
   }
 

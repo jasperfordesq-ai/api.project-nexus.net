@@ -5,16 +5,16 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.back_to_volunteering") }}</a>
 
   <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">Recommended for you</h1>
+  <h1 class="govuk-heading-xl">{{ t("volunteering.recommended_title") }}</h1>
   <p class="govuk-body-l">Shifts suggested for you, based on your skills, location and availability.</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
@@ -43,7 +43,7 @@
           <dl class="govuk-summary-list govuk-!-margin-top-3 govuk-!-margin-bottom-0">
             {% if shift.organizationName %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">Organisation</dt>
+                <dt class="govuk-summary-list__key">{{ t("auth.profile_type_organisation") }}</dt>
                 <dd class="govuk-summary-list__value">{{ shift.organizationName }}</dd>
               </div>
             {% endif %}

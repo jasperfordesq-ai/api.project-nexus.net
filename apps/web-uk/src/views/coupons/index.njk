@@ -7,8 +7,8 @@
 
 {% block content %}
   <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
-  <h1 class="govuk-heading-xl">Coupons</h1>
-  <p class="govuk-body-l">Discounts and offers from local merchants.</p>
+  <h1 class="govuk-heading-xl">{{ t("coupons.title") }}</h1>
+  <p class="govuk-body-l">{{ t("coupons.description") }}</p>
 
   {% if coupons and coupons.length %}
     <div class="nexus-alpha-card-list">
@@ -39,7 +39,7 @@
     </div>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no coupons available right now.</p>
+      <p class="govuk-body">{{ t("coupons.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}

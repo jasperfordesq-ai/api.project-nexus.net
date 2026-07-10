@@ -9,7 +9,7 @@
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
-      { text: "Home", href: urlFor("/") },
+      { text: t("nav.home"), href: urlFor("/") },
       { text: "Messages", href: urlFor("/messages") },
       { text: conversation.other_user_name or conversation.otherUserName or "Conversation" }
     ]
@@ -28,7 +28,7 @@
 
       {% if error %}
         {{ govukErrorSummary({
-          titleText: "There is a problem",
+          titleText: t("states.error_title"),
           errorList: [{ text: error, href: "#content" }]
         }) }}
       {% endif %}
@@ -115,12 +115,12 @@
         </div>
 
         {{ govukButton({
-          text: "Send message"
+          text: t("actions.send_message")
         }) }}
       </form>
 
       <p class="govuk-body govuk-!-margin-top-6">
-        <a href="{{ urlFor('/messages') }}" class="govuk-link">Back to messages</a>
+        <a href="{{ urlFor('/messages') }}" class="govuk-link">{{ t("actions.back_to_messages") }}</a>
       </p>
 
     </div>

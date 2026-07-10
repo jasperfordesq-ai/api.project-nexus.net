@@ -8,12 +8,12 @@
 {% block mainContent %}
   <span class="govuk-caption-xl">{{ tenantName }}</span>
   <h1 class="govuk-heading-xl">Organisations</h1>
-  <p class="govuk-body-l">Community and partner organisations.</p>
+  <p class="govuk-body-l">{{ t("organisations.description") }}</p>
 
   <nav class="govuk-!-margin-bottom-6" aria-label="Organisations">
     <ul class="govuk-list govuk-list--spaced">
       <li><a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">Browse all organisations</a></li>
-      <li><a class="govuk-link" href="{{ urlFor('/organisations/register') }}">Register an organisation</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/organisations/register') }}">{{ t("organisations.register_title") }}</a></li>
       <li><a class="govuk-link" href="{{ urlFor('/organisations/manage') }}">Manage my organisations</a></li>
     </ul>
   </nav>
@@ -21,16 +21,16 @@
   {% if status == "org-submitted" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="organisations-success-title" data-module="govuk-notification-banner">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="organisations-success-title">Success</h2>
+        <h2 class="govuk-notification-banner__title" id="organisations-success-title">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">Thank you. Your organisation has been submitted for approval.</p>
+        <p class="govuk-notification-banner__heading">{{ t("organisations.states.org-submitted") }}</p>
       </div>
     </div>
   {% elseif status == "org-invalid" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#name">Check the organisation details and agree to the terms.</a></li>
@@ -41,7 +41,7 @@
   {% elseif status == "org-failed" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#name">The organisation could not be submitted. Try again later.</a></li>
@@ -53,7 +53,7 @@
 
   <form method="get" action="{{ urlFor('/organisations') }}" class="govuk-!-margin-bottom-7">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Find an organisation</label>
+      <label class="govuk-label" for="q">{{ t("organisations.search_label") }}</label>
       <div id="q-hint" class="govuk-hint">Search by name.</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ organisationsQuery }}" aria-describedby="q-hint">
     </div>
@@ -84,11 +84,11 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">There are no organisations listed yet.</div>
+    <div class="govuk-inset-text">{{ t("organisations.empty") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-8">Register an organisation</h2>
-  <p class="govuk-body">New organisations are reviewed before they appear.</p>
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("organisations.register_title") }}</h2>
+  <p class="govuk-body">{{ t("organisations.register_note") }}</p>
   <p class="govuk-body">
     Only registered organisations - charities, community groups, voluntary bodies
     and non-profits - should register here. Individual volunteers do not need to
@@ -111,12 +111,12 @@
     </div>
 
     <div class="govuk-form-group">
-      <label class="govuk-label" for="contact_email">Contact email</label>
+      <label class="govuk-label" for="contact_email">{{ t("volunteering.contact_email") }}</label>
       <input class="govuk-input govuk-!-width-two-thirds" id="contact_email" name="contact_email" type="email" autocomplete="email">
     </div>
 
     <div class="govuk-form-group">
-      <label class="govuk-label" for="website">Website (optional)</label>
+      <label class="govuk-label" for="website">{{ t("organisations.website_label") }}</label>
       <input class="govuk-input govuk-!-width-two-thirds" id="website" name="website" type="url" autocomplete="url">
     </div>
 
@@ -142,7 +142,7 @@
       </div>
     </div>
 
-    <button class="govuk-button" data-module="govuk-button" type="submit">Submit for approval</button>
+    <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("organisations.register_button") }}</button>
   </form>
 
   <div class="govuk-inset-text">

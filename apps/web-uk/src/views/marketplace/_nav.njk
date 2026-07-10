@@ -4,8 +4,8 @@
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% set active = activeTab or 'browse' %}
-<nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Marketplace">
-  <h2 class="govuk-tabs__title">Marketplace</h2>
+<nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("marketplace.title") }}">
+  <h2 class="govuk-tabs__title">{{ t("marketplace.title") }}</h2>
   <ul class="govuk-tabs__list">
     <li class="govuk-tabs__list-item{% if active == 'browse' %} govuk-tabs__list-item--selected{% endif %}">
       <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace') }}" {% if active == 'browse' %}aria-current="page"{% endif %}>Browse</a>
@@ -35,7 +35,7 @@
       <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/slots') }}" {% if active == 'slots' %}aria-current="page"{% endif %}>Pickup slots</a>
     </li>
     <li class="govuk-tabs__list-item{% if active == 'coupons' %} govuk-tabs__list-item--selected{% endif %}">
-      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/coupons') }}" {% if active == 'coupons' %}aria-current="page"{% endif %}>Coupons</a>
+      <a class="govuk-tabs__tab" href="{{ urlFor('/marketplace/coupons') }}" {% if active == 'coupons' %}aria-current="page"{% endif %}>{{ t("coupons.title") }}</a>
     </li>
   </ul>
 </nav>

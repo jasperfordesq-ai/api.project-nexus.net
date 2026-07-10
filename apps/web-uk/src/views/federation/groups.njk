@@ -6,11 +6,11 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to Federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("polish_federation.groups_back") }}</a>
 
   <span class="govuk-caption-xl">This community federation</span>
-  <h1 class="govuk-heading-xl">Groups from partner communities</h1>
-  <p class="govuk-body-l">Browse groups from communities in the network that have opened their groups to federation.</p>
+  <h1 class="govuk-heading-xl">{{ t("polish_federation.groups_title") }}</h1>
+  <p class="govuk-body-l">{{ t("polish_federation.groups_description") }}</p>
 
   <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
     <ul class="govuk-service-navigation__list">
@@ -27,12 +27,12 @@
   </nav>
 
   {% if not allowed %}
-    <div class="govuk-inset-text"><p class="govuk-body">Federated groups browsing is not available for this community.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("polish_federation.groups_not_available") }}</p></div>
   {% else %}
     <form method="get" action="{{ urlFor('/federation/groups') }}" class="govuk-!-margin-bottom-6">
       <div class="govuk-form-group">
-        <label class="govuk-label" for="q">Search groups</label>
-        <div id="q-hint" class="govuk-hint">Filter by group name or description.</div>
+        <label class="govuk-label" for="q">{{ t("polish_federation.groups_search_label") }}</label>
+        <div id="q-hint" class="govuk-hint">{{ t("polish_federation.groups_search_hint") }}</div>
         <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
       </div>
 
@@ -84,11 +84,11 @@
 
       {% if loadMoreHref %}
         <p class="govuk-body govuk-!-margin-top-4">
-          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more groups</a>
+          <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">{{ t("polish_federation.groups_load_more") }}</a>
         </p>
       {% endif %}
     {% else %}
-      <div class="govuk-inset-text"><p class="govuk-body">No groups from partner communities are available right now.</p></div>
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("polish_federation.groups_empty") }}</p></div>
     {% endif %}
   {% endif %}
 {% endblock %}

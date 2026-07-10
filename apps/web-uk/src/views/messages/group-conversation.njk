@@ -16,7 +16,7 @@
       {% if statusMessage %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="messages-group-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="messages-group-status-title">Success</h2>
+            <h2 class="govuk-notification-banner__title" id="messages-group-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-body">{{ statusMessage }}</p>
@@ -44,7 +44,7 @@
             {% if isAdmin and participant.id != currentUserId %}
               <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/members/' + (participant.id | string) + '/remove') }}" class="govuk-!-display-inline">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button type="submit" class="govuk-link app-link-button">Remove from group<span class="govuk-visually-hidden"> {{ participant.displayName }}</span></button>
+                <button type="submit" class="govuk-link app-link-button">{{ t("groups.manage.remove") }}<span class="govuk-visually-hidden"> {{ participant.displayName }}</span></button>
               </form>
             {% endif %}
           </li>
@@ -59,9 +59,9 @@
             <input class="govuk-input govuk-!-width-two-thirds" id="group-conv-search" name="q" type="search" value="{{ searchQuery }}" aria-describedby="group-conv-search-hint">
           </div>
           <div class="govuk-button-group">
-            <button type="submit" class="govuk-button govuk-button--secondary">Search messages</button>
+            <button type="submit" class="govuk-button govuk-button--secondary">{{ t("polish_members.conversation_filter_label") }}</button>
             {% if searchQuery %}
-              <a class="govuk-link" href="{{ urlFor('/messages/groups/' + (conversation.id | string)) }}">Clear search</a>
+              <a class="govuk-link" href="{{ urlFor('/messages/groups/' + (conversation.id | string)) }}">{{ t("polish_members.connections_search_clear") }}</a>
             {% endif %}
           </div>
         </form>
@@ -74,7 +74,7 @@
         <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-bottom-4" aria-label="Older messages">
           <div class="govuk-pagination__prev">
             <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/messages/groups/' + (conversation.id | string) + '?cursor=' + (meta.cursor | string)) }}" rel="prev">
-              <span class="govuk-pagination__link-title">Show older messages</span>
+              <span class="govuk-pagination__link-title">{{ t("messages.show_older") }}</span>
             </a>
           </div>
         </nav>
@@ -132,7 +132,7 @@
             <div id="group-body-hint" class="govuk-hint">Everyone in the group will see your message.</div>
             <textarea class="govuk-textarea" id="group-body" name="body" rows="5" aria-describedby="group-body-hint" required></textarea>
           </div>
-          <button class="govuk-button">Send message</button>
+          <button class="govuk-button">{{ t("actions.send_message") }}</button>
         </form>
       {% endif %}
 
@@ -171,7 +171,7 @@
         <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/members/' + (currentUserId | string) + '/remove') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="self_leave" value="1">
-          <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0">Leave group</button>
+          <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0">{{ t("groups.leave") }}</button>
         </form>
       </div>
     </div>
