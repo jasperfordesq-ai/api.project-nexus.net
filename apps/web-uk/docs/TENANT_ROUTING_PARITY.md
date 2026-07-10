@@ -555,6 +555,12 @@ conversion. Focused render coverage now also asserts the same page served at
 `/acme/accessible/listings/42/exchange-request` emits tenant-mounted
 `/acme/accessible/listings/42` back/action targets instead of depending only on
 response rewriting.
+The latest listing auxiliary source cleanup now routes
+`src/views/listings/analytics.njk`, `src/views/listings/comments.njk`, and
+`src/views/listings/report.njk` back links plus GET/POST form actions through
+`urlFor()`. Focused source coverage guards against raw `/listings` template
+targets returning, and focused render coverage keeps the Laravel-backed
+analytics, comments, and report pages green.
 
 The twenty-ninth template-helper source slice extends direct `urlFor()`
 conversion into event index and create/edit form pages.

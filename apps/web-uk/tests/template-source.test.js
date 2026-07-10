@@ -309,6 +309,24 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/report-a-problem/);
   });
 
+  it('keeps listing analytics, comments, and report controls behind urlFor()', () => {
+    const templates = [
+      path.join('listings', 'analytics.njk'),
+      path.join('listings', 'comments.njk'),
+      path.join('listings', 'report.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/listings/);
+      expect(template).not.toMatch(/action="\/listings/);
+    }
+
+    expect(templates.join('\n')).toMatch(/urlFor\(["']\/listings/);
+  });
+
   it('keeps group announcement, group file, and recommended volunteering links behind urlFor()', () => {
     const templates = [
       path.join('groups', 'announcements.njk'),

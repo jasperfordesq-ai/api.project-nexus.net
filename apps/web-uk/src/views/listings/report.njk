@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/listings/{{ listing.id }}">Back</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back</a>
 
   {% if status %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -25,7 +25,7 @@
   <h1 class="govuk-heading-xl">Report listing</h1>
   <p class="govuk-body-l">Tell us why you are reporting this listing. We review all reports and take action where needed.</p>
 
-  <form method="post" action="/listings/{{ listing.id }}/report" novalidate>
+  <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/report') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if status %} govuk-form-group--error{% endif %}">
@@ -55,7 +55,7 @@
 
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--warning" data-module="govuk-button">Send report</button>
-      <a class="govuk-link" href="/listings/{{ listing.id }}">Cancel</a>
+      <a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Cancel</a>
     </div>
   </form>
 {% endblock %}

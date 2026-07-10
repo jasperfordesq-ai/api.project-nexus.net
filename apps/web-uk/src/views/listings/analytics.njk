@@ -6,18 +6,18 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/listings/{{ listing.id }}">Back to listing</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back to listing</a>
 
   <span class="govuk-caption-xl">{{ listingTitle }}</span>
   <h1 class="govuk-heading-xl">Listing analytics</h1>
   <p class="govuk-body-l">See how members are finding and responding to this listing.</p>
 
   <ul class="govuk-list nexus-alpha-actions govuk-!-margin-bottom-6">
-    <li><a class="govuk-link" href="/listings/{{ listing.id }}">View listing</a></li>
-    <li><a class="govuk-link" href="/listings/{{ listing.id }}/edit">Edit listing</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">View listing</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}">Edit listing</a></li>
   </ul>
 
-  <form method="get" action="/listings/{{ listing.id }}/analytics" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/listings/' + (listing.id | string) + '/analytics') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <fieldset class="govuk-fieldset" aria-describedby="days-hint">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Time period</legend>

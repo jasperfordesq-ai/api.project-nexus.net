@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="/listings/{{ listing.id }}">Back to listing</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back to listing</a>
 
   {% if status and status.type == "error" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -48,7 +48,7 @@
       {% endif %}
 
       <h2 class="govuk-heading-m govuk-!-margin-top-6" id="add-comment">Add a comment</h2>
-      <form method="post" action="/listings/{{ listing.id }}/comments" class="govuk-!-margin-top-2">
+      <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/comments') }}" class="govuk-!-margin-top-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group{% if status and status.anchor == 'body' %} govuk-form-group--error{% endif %}">
           <label class="govuk-label govuk-label--s" for="body">Your comment</label>

@@ -184,7 +184,10 @@ controls, pagination, empty-state CTAs, create/edit form action, and cancel
 link through `urlFor()`. A follow-up listing exchange-request source slice now
 routes the exchange-request back link and POST action through `urlFor()`, so
 Laravel's canonical `/listings/{id}/exchange-request` flow stays source-auditable
-under shared tenant mounts and custom-domain contexts. The latest listing
+under shared tenant mounts and custom-domain contexts. A follow-up listing
+auxiliary source slice now routes listing analytics, comments, and report
+back links plus GET/POST form actions through `urlFor()`, with focused source
+and render coverage for those Laravel-backed pages. The latest listing
 route-redirect slice now sends
 legacy listing auth handoffs, generate-description outcomes, like/comment/
 exchange/report actions, owner self-request/edit redirects, create/update
@@ -992,6 +995,16 @@ tenant-aware source links:
 - This is source/render tenant-routing proof only. It does not newly certify a
   live Laravel tenant with broker exchange workflow disabled, visual/manual
   Blade parity, localization, or ASP.NET backend switching.
+
+Latest focused verification on 2026-07-10 for listing analytics/comments/report
+tenant-aware source links:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "listing analytics, comments, and report" --runInBand` passed after first failing on raw `/listings` `href` and `action` source targets.
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Laravel-backed listing report|owner listing analytics|listing comments|submits Laravel listing comment|submits Laravel listing save|listing report"` passed the focused report, analytics, and comments render cases.
+- A scoped Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6621`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `13/13` checks: base Laravel/API, health, cookie/login/account/logout checks, body markers for `/listings/42/report` and `/listings/42/comments`, and the expected signed `403` for `/listings/42/analytics`.
+- This is source/render/runtime proof for this auxiliary slice only. Visual/manual
+  Blade parity, broader listing workflow persistence, localization, and ASP.NET
+  backend switching remain unproven.
 
 Latest focused verification on 2026-07-09 for the shared-root tenant chooser
 ordering slice:
