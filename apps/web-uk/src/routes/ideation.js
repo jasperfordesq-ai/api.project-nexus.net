@@ -17,6 +17,17 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, pathname) {
+  const helper = res?.locals && typeof res.locals.urlFor === 'function'
+    ? res.locals.urlFor
+    : (value) => value;
+  return helper(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(urlFor(res, pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -484,7 +495,7 @@ function campaignErrorMessage(status) {
 
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const status = trimmed(req.query.status);
   const query = trimmed(req.query.q);
@@ -509,7 +520,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
 router.get('/new', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const categoriesResult = await callIdeationApi(token, 'GET', '/ideation-categories');
   const templatesResult = await callIdeationApi(token, 'GET', '/ideation-templates');
@@ -534,7 +545,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 
 router.get('/campaigns', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const result = await callIdeationApi(token, 'GET', '/ideation-campaigns?per_page=50');
   const campaigns = collectionFrom(result)
@@ -554,7 +565,7 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
 
 router.get('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const result = await callIdeationApi(token, 'GET', `/ideation-campaigns/${id}`);
@@ -573,7 +584,7 @@ router.get('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
 
 router.get('/outcomes', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const result = await callIdeationApi(token, 'GET', '/ideation-outcomes/dashboard');
   const dashboard = dashboardFrom(result);
@@ -591,7 +602,7 @@ router.get('/outcomes', asyncRoute(async (req, res) => {
 
 router.get('/tags', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const selectedTag = trimmed(req.query.tag, 100);
   const tagsResult = await callIdeationApi(token, 'GET', '/ideation-tags/popular');
@@ -622,7 +633,7 @@ router.get('/tags', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
@@ -648,7 +659,7 @@ router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
@@ -675,7 +686,7 @@ router.get('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/drafts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
@@ -699,7 +710,7 @@ router.get('/:id(\\d+)/drafts', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/ideas/:ideaId(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const ideaId = positiveInteger(req.params.ideaId);
@@ -737,7 +748,7 @@ router.get('/:id(\\d+)/ideas/:ideaId(\\d+)', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
@@ -760,7 +771,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
   const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);

@@ -312,6 +312,18 @@ challenge list filters, challenge/card links, create/edit/manage/outcome/draft
 forms, idea detail controls, tag links, campaign links, and outcome links
 through `urlFor()`, so rendered ideation pages no longer rely on flat
 `/ideation` source targets before tenant/custom-domain rewriting.
+The latest ideation GET redirect slice now sends unsigned challenge list,
+create/edit/manage/outcome/draft/detail, idea detail, tag, campaign, and
+outcome auth handoffs through `res.locals.urlFor`, so signed-out ideation
+requests also stay inside shared tenant mounts and custom-domain child paths.
+A scoped Laravel runtime smoke against temporary Web UK
+`http://127.0.0.1:6626`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed `23/23` checks, including all 12 flat ideation auth-required redirects.
+Additional temp-process runtime assertions against `http://127.0.0.1:6625`
+proved `/hour-timebank/accessible/ideation`,
+`/hour-timebank/accessible/ideation/23/edit`, and
+`/hour-timebank/accessible/ideation/2/ideas/1` redirect to the tenant-mounted
+login path.
 The latest members source slice now routes
 the member directory search/clear/profile/connection controls, discovery and
 nearby filter navigation/forms/member links/load-more links, and insights

@@ -1375,6 +1375,8 @@ npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --run
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "ideation action"
+npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "ideation GET auth redirects"
+npm --prefix apps/web-uk run smoke:laravel # scoped with SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS for ideation GET auth routes
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "group exchange action redirects"
 npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "group exchange"
 npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "feed action redirects"
