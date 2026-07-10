@@ -9812,6 +9812,12 @@ describe('shared accessible frontend shell', () => {
           total_hours_given: 12,
           total_hours_received: 3,
           connection_state: 'pending_sent'
+        },
+        {
+          id: 99,
+          name: '   ',
+          community_rank_score: 0.5,
+          connection_state: 'pending_received'
         }
       ],
       meta: {
@@ -9838,9 +9844,9 @@ describe('shared accessible frontend shell', () => {
       offset: 20
     });
     expect(signed.text).toContain('href="/members"');
-    expect(signed.text).toContain('Community members at');
+    expect(signed.text).toContain('<span class="govuk-caption-l">Project NEXUS Accessible</span>');
     expect(signed.text).toContain('Recommended members');
-    expect(signed.text).toContain('Recommended members are ordered using community signals');
+    expect(signed.text).toContain('Members ranked by their recent activity, contribution and standing in this community.');
     expect(signed.text).toContain('href="/members?sort=joined&amp;order=DESC"');
     expect(signed.text).toContain('href="/members/nearby"');
     expect(signed.text).toContain('value="repair"');
@@ -9848,23 +9854,56 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Ada Lovelace');
     expect(signed.text).toContain('src="/avatars/ada.jpg"');
     expect(signed.text).toContain('Connects repair volunteers with neighbours.');
-    expect(signed.text).toContain('Recommendation score:');
-    expect(signed.text).toContain('87%');
+    expect(signed.text).toContain('Community rank:');
+    expect(signed.text).toContain('87% match');
     expect(signed.text).toContain('value="87"');
     expect(signed.text).toContain('Bandon');
     expect(signed.text).toContain('42 hours given');
     expect(signed.text).toContain('11 hours received');
-    expect(signed.text).toContain('4.8 out of 5');
+    expect(signed.text).toContain('Rating 4.8');
     expect(signed.text).toContain('Verified');
     expect(signed.text).toContain('Level 5');
     expect(signed.text).toContain('Connected');
     expect(signed.text).toContain('Grace');
     expect(signed.text).toContain('Request sent');
+    expect(signed.text).toContain('Community member');
+    expect(signed.text).toContain('Wants to connect');
     expect(signed.text).toContain('href="/members/77"');
     expect(signed.text).toContain('View profile');
     expect(signed.text).toContain('href="/members/discover?q=repair&amp;offset=40"');
     expect(signed.text).toContain('Load more');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('localizes member discovery semantics and blank-member fallbacks in Arabic', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const { translate } = require('../src/lib/localization');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getMembersV2.mockResolvedValueOnce({
+      data: [{
+        id: 99,
+        name: '',
+        community_rank_score: 0.5,
+        total_hours_given: 2,
+        total_hours_received: 1,
+        connection_state: 'pending_received'
+      }],
+      meta: { total_items: 21, offset: 0, per_page: 20, has_more: true }
+    });
+
+    const response = await request(app)
+      .get('/members/discover?locale=ar')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain(translate('ar', 'members.unknown_member'));
+    expect(response.text).toContain(translate('ar', 'members.hours_given', { count: 2 }));
+    expect(response.text).toContain(translate('ar', 'members.connection_request_received'));
+    expect(response.text).toContain(`aria-label="${translate('ar', 'members.pagination_label')}"`);
   });
 
   it('renders the Laravel nearby members page for signed-in members with a saved location', async () => {
@@ -9947,7 +9986,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Bandon');
     expect(signed.text).toContain('42 hours given');
     expect(signed.text).toContain('11 hours received');
-    expect(signed.text).toContain('4.8 out of 5');
+    expect(signed.text).toContain('Rating 4.8');
     expect(signed.text).toContain('Verified');
     expect(signed.text).toContain('Level 5');
     expect(signed.text).toContain('Connected');

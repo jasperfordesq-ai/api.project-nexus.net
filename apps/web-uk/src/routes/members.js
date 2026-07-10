@@ -209,24 +209,33 @@ function reviewSummaryFrom(result) {
   return data && typeof data === 'object' && !Array.isArray(data) ? (data.summary || null) : null;
 }
 
-function memberName(member) {
+function memberName(member, t = () => 'A community member') {
   const explicit = String(member.name || '').trim();
   if (explicit) return explicit;
   const first = String(member.first_name || member.firstName || '').trim();
   const last = String(member.last_name || member.lastName || '').trim();
-  return `${first} ${last}`.trim() || 'A community member';
+  return `${first} ${last}`.trim() || t('members.unknown_member');
 }
 
-function connectionLabel(state) {
+function connectionLabel(state, t) {
   const labels = {
-    connected: 'Connected',
-    pending_sent: 'Request sent',
-    pending_received: 'Wants to connect'
+    connected: t('members.connection_connected'),
+    pending_sent: t('members.connection_request_sent'),
+    pending_received: t('members.connection_request_received')
   };
   return labels[state] || '';
 }
 
-function normalizeDiscoverMember(member) {
+function connectionTagClass(state) {
+  const classes = {
+    connected: 'govuk-tag--blue',
+    pending_sent: 'govuk-tag--yellow',
+    pending_received: 'govuk-tag--purple'
+  };
+  return classes[state] || '';
+}
+
+function normalizeDiscoverMember(member, t) {
   const score = Number(member.community_rank_score);
   const rankPercent = Number.isFinite(score) ? Math.round(score * 100) : null;
   const level = boundedInteger(member.level, 0, 0, 1000);
@@ -234,21 +243,23 @@ function normalizeDiscoverMember(member) {
   const given = boundedInteger(member.total_hours_given ?? member.hours_given, 0, 0, Number.MAX_SAFE_INTEGER);
   const received = boundedInteger(member.total_hours_received ?? member.hours_received, 0, 0, Number.MAX_SAFE_INTEGER);
 
+  const name = memberName(member, t);
   return {
     id: positiveInteger(member.id) || 0,
-    name: memberName(member),
-    initial: memberName(member).slice(0, 1).toUpperCase() || 'M',
+    name,
+    initial: name.slice(0, 1).toUpperCase() || 'M',
     avatar: String(member.avatar || member.avatar_url || member.avatarUrl || '').trim(),
     tagline: String(member.tagline || '').trim(),
     rankPercent,
     location: String(member.location || '').trim(),
-    hoursGivenLabel: `${given} hour${given === 1 ? '' : 's'} given`,
-    hoursReceivedLabel: `${received} hour${received === 1 ? '' : 's'} received`,
-    ratingLabel: Number.isFinite(rating) && rating > 0 ? `${rating.toFixed(1)} out of 5` : '',
+    hoursGivenLabel: t('members.hours_given', { count: given }),
+    hoursReceivedLabel: t('members.hours_received', { count: received }),
+    ratingLabel: Number.isFinite(rating) && rating > 0 ? t('members.rating', { rating: rating.toFixed(1) }) : '',
     isVerified: !!(member.is_verified || member.identity_verified),
     level,
-    levelLabel: level > 0 ? `Level ${level}` : '',
-    connectionLabel: connectionLabel(member.connection_state || member.connectionState)
+    levelLabel: level > 0 ? t('polish_members.member_level_label', { n: level }) : '',
+    connectionLabel: connectionLabel(member.connection_state || member.connectionState, t),
+    connectionTagClass: connectionTagClass(member.connection_state || member.connectionState)
   };
 }
 
@@ -257,8 +268,8 @@ function numericCoordinate(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function normalizeNearbyMember(member) {
-  const normalized = normalizeDiscoverMember(member);
+function normalizeNearbyMember(member, t) {
+  const normalized = normalizeDiscoverMember(member, t);
   const distance = Number(member.distance);
   return {
     ...normalized,
@@ -572,22 +583,22 @@ router.get('/discover', asyncRoute(async (req, res) => {
       offset
     });
     const meta = metaFrom(result);
-    members = rowsFrom(result).map(normalizeDiscoverMember).filter((member) => member.id > 0);
+    members = rowsFrom(result).map((member) => normalizeDiscoverMember(member, res.locals.t)).filter((member) => member.id > 0);
     totalItems = boundedInteger(meta.total_items, members.length, 0, Number.MAX_SAFE_INTEGER);
     hasMore = !!meta.has_more;
   } catch {
-    errorMessage = 'Sorry, there is a problem loading recommended members.';
+    errorMessage = res.locals.t('govuk_alpha_members.discover.error_detail');
   }
 
   res.render('members/discover', {
-    title: 'Recommended members',
+    title: res.locals.t('govuk_alpha_members.discover.title'),
     activeNav: 'members',
     alphaActiveNav: 'members',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     members,
     search,
     totalItems,
-    totalItemsLabel: `${totalItems} member${totalItems === 1 ? '' : 's'}`,
+    totalItemsLabel: res.locals.tc('members.result_count', totalItems, { count: totalItems }),
     hasMore,
     nextHref: hasMore ? `/members/discover${search ? `?q=${encodeURIComponent(search)}&` : '?'}offset=${offset + limit}` : '',
     errorMessage
@@ -626,7 +637,7 @@ router.get('/nearby', asyncRoute(async (req, res) => {
         offset
       });
       const meta = metaFrom(result);
-      members = rowsFrom(result).map(normalizeNearbyMember).filter((member) => member.id > 0);
+      members = rowsFrom(result).map((member) => normalizeNearbyMember(member, res.locals.t)).filter((member) => member.id > 0);
       hasMore = !!meta.has_more;
     }
   } catch {

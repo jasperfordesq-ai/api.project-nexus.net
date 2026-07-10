@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,400/1,400` tests passed.
+- Jest: `45/45` suites and `1,401/1,401` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,8 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `53/53` cases.
+- Automated browser accessibility: Chromium/axe passed `54/54` cases in
+  `779.1` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +74,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-discovery/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -98,6 +99,34 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Member Discovery Localization And Semantics Slice
+
+The signed `/members/discover` route and template now use Laravel's exact
+`govuk_alpha_members`, `members`, `polish_members`, and shared action/state
+catalog keys for the title, directory navigation, explanation, search, result
+count, empty/error states, avatar text, verification and connection states,
+level, CommunityRank score and progress ARIA, member metrics, profile action,
+and pagination. Member normalization now supplies the localized unknown-member
+fallback for blank identities, preserves localized plural counts, and matches
+Laravel's blue/yellow/purple connection-state tags. The shared nearby mapper
+also receives the request translator; the first full-suite attempt caught that
+missing call-site and the corrected member-family rerun passed `3/3`.
+
+Focused English and Arabic render tests passed, including RTL, localized
+fallbacks and pagination semantics. ESLint passed, and the conservative audit
+remained `290` templates with `0` matches. A live authenticated Arabic browser
+traversal passed at 320 CSS pixels with RTL/reflow and no serious/critical axe
+violations. The complete Jest gate passed `45/45` suites and `1,401/1,401`
+tests; the expanded full Chromium/axe matrix passed `54/54` in `779.1`
+seconds. Laravel's `govuk_alpha_members` namespace is English-identical in
+Arabic, while its shared `members` namespace supplies Arabic member semantics;
+Web UK preserves both authoritative sources. Laravel's server-side
+`MemberRankingService::isEnabled()` disabled state is not exposed by the
+bearer member-list contract, so the exact disabled-recommendations inset
+remains an explicit source-contract gap rather than being guessed from result
+shape. Live ranking configuration changes, manual assistive-technology proof,
+and ASP.NET switching remain open.
 
 ## 2026-07-10 Keyboard, Error Announcement, And Forced-Colour Slice
 

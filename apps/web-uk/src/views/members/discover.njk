@@ -8,37 +8,37 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
-      <a class="govuk-back-link" href="{{ urlFor('/members') }}">Member directory</a>
+      <a class="govuk-back-link" href="{{ urlFor('/members') }}">{{ t("govuk_alpha_members.filters.directory") }}</a>
 
-      <span class="govuk-caption-l">Community members at {{ communityName }}</span>
-      <h1 class="govuk-heading-xl">Recommended members</h1>
-      <p class="govuk-body-l">Recommended members are ordered using community signals such as activity, reputation and shared interests.</p>
+      <span class="govuk-caption-l">{{ t("members.caption", { community: communityName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_members.discover.heading") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_members.discover.description") }}</p>
 
-      <nav class="nexus-alpha-actions govuk-!-margin-bottom-6" aria-label="Member directory filters">
-        <a class="govuk-link" href="{{ urlFor('/members') }}">All members</a>
-        <a class="govuk-link" href="{{ urlFor('/members?sort=joined&order=DESC') }}">New members</a>
-        <a class="govuk-link" href="{{ urlFor('/members?sort=hours_given&order=DESC') }}">Active members</a>
-        <strong class="govuk-tag govuk-tag--blue">{{ t("listings.sort_recommended") }}</strong>
-        <a class="govuk-link" href="{{ urlFor('/members/nearby') }}">Near me</a>
+      <nav class="nexus-alpha-actions govuk-!-margin-bottom-6" aria-label="{{ t('govuk_alpha_members.filters.heading') }}">
+        <a class="govuk-link" href="{{ urlFor('/members') }}">{{ t("govuk_alpha_members.filters.all") }}</a>
+        <a class="govuk-link" href="{{ urlFor('/members?sort=joined&order=DESC') }}">{{ t("govuk_alpha_members.filters.new") }}</a>
+        <a class="govuk-link" href="{{ urlFor('/members?sort=hours_given&order=DESC') }}">{{ t("govuk_alpha_members.filters.active") }}</a>
+        <strong class="govuk-tag govuk-tag--blue">{{ t("govuk_alpha_members.filters.recommended") }}</strong>
+        <a class="govuk-link" href="{{ urlFor('/members/nearby') }}">{{ t("govuk_alpha_members.filters.near_me") }}</a>
       </nav>
 
-      <p class="govuk-hint">Recommendations are recalculated from signals available in this community.</p>
+      <p class="govuk-hint">{{ t("govuk_alpha_members.discover.algorithm_note") }}</p>
 
       <form method="get" action="{{ urlFor('/members/discover') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Search recommended members</label>
-          <div id="discover-q-hint" class="govuk-hint">Search by name, interest, skill or location.</div>
+          <label class="govuk-label" for="q">{{ t("govuk_alpha_members.discover.search_label") }}</label>
+          <div id="discover-q-hint" class="govuk-hint">{{ t("govuk_alpha_members.discover.search_hint") }}</div>
           <input class="govuk-input govuk-input--width-20" id="q" name="q" type="search" value="{{ search }}" aria-describedby="discover-q-hint">
         </div>
         <div class="nexus-alpha-actions">
-          <button class="govuk-button" data-module="govuk-button">Search</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("actions.search") }}</button>
           {% if search %}
-            <a class="govuk-link" href="{{ urlFor('/members/discover') }}">Clear filters</a>
+            <a class="govuk-link" href="{{ urlFor('/members/discover') }}">{{ t("actions.clear_filters") }}</a>
           {% endif %}
         </div>
       </form>
 
-      <h2 class="govuk-heading-l">{{ t("volunteering.recommended_title") }}</h2>
+      <h2 class="govuk-heading-l">{{ t("govuk_alpha_members.discover.results_title") }}</h2>
       <p class="govuk-body nexus-alpha-result-count" aria-live="polite">{{ totalItemsLabel }}</p>
 
       {% if errorMessage %}
@@ -53,7 +53,7 @@
       {% elif not members or not members.length %}
         <div class="govuk-inset-text">
           <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
-          <p class="govuk-body">No recommended members match the current filters.</p>
+          <p class="govuk-body">{{ t("govuk_alpha_members.discover.empty") }}</p>
         </div>
       {% else %}
         <div class="nexus-alpha-card-list">
@@ -62,7 +62,7 @@
               <div class="nexus-alpha-member-row">
                 <div class="nexus-alpha-member-row__media">
                   {% if member.avatar %}
-                    <img class="nexus-alpha-avatar nexus-alpha-avatar--large" src="{{ member.avatar }}" alt="Avatar for {{ member.name }}">
+                    <img class="nexus-alpha-avatar nexus-alpha-avatar--large" src="{{ member.avatar }}" alt="{{ t('members.avatar_alt', { name: member.name }) }}">
                   {% else %}
                     <span class="nexus-alpha-avatar nexus-alpha-avatar--large nexus-alpha-avatar--placeholder" aria-hidden="true">{{ member.initial }}</span>
                   {% endif %}
@@ -73,13 +73,13 @@
                       <a class="govuk-link" href="{{ urlFor('/members/' + (member.id | string)) }}">{{ member.name }}</a>
                     </h3>
                     {% if member.isVerified %}
-                      <strong class="govuk-tag govuk-tag--green">Verified</strong>
+                      <strong class="govuk-tag govuk-tag--green">{{ t("members.verified") }}</strong>
                     {% endif %}
                     {% if member.levelLabel %}
                       <strong class="govuk-tag govuk-tag--turquoise">{{ member.levelLabel }}</strong>
                     {% endif %}
                     {% if member.connectionLabel %}
-                      <strong class="govuk-tag govuk-tag--blue">{{ member.connectionLabel }}</strong>
+                      <strong class="govuk-tag {{ member.connectionTagClass }}">{{ member.connectionLabel }}</strong>
                     {% endif %}
                   </div>
 
@@ -89,29 +89,29 @@
 
                   {% if member.rankPercent !== null %}
                     <p class="govuk-body govuk-!-margin-bottom-1">
-                      <strong>Recommendation score:</strong> {{ member.rankPercent }}%
+                      <strong>{{ t("govuk_alpha_members.discover.rank_score_label") }}:</strong> {{ t("govuk_alpha_members.discover.rank_score", { percent: member.rankPercent }) }}
                     </p>
-                    <progress class="nexus-alpha-progress" value="{{ member.rankPercent }}" max="100" aria-label="Recommendation score {{ member.rankPercent }} percent">{{ member.rankPercent }}%</progress>
+                    <progress class="nexus-alpha-progress" value="{{ member.rankPercent }}" max="100" aria-label="{{ t('govuk_alpha_members.discover.rank_score_aria', { percent: member.rankPercent }) }}">{{ member.rankPercent }}%</progress>
                   {% endif %}
 
                   <dl class="nexus-alpha-inline-list">
                     {% if member.location %}
                       <div>
-                        <dt>Location</dt>
+                        <dt>{{ t("members.location_label") }}</dt>
                         <dd>{{ member.location }}</dd>
                       </div>
                     {% endif %}
                     <div>
-                      <dt>Hours given</dt>
+                      <dt>{{ t("members.hours_given_label") }}</dt>
                       <dd>{{ member.hoursGivenLabel }}</dd>
                     </div>
                     <div>
-                      <dt>Hours received</dt>
+                      <dt>{{ t("members.hours_received_label") }}</dt>
                       <dd>{{ member.hoursReceivedLabel }}</dd>
                     </div>
                     {% if member.ratingLabel %}
                       <div>
-                        <dt>Rating</dt>
+                        <dt>{{ t("members.rating_label") }}</dt>
                         <dd>{{ member.ratingLabel }}</dd>
                       </div>
                     {% endif %}
@@ -119,8 +119,8 @@
                 </div>
                 <div class="nexus-alpha-member-row__action">
                   <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/members/' + (member.id | string)) }}">
-                    View profile
-                    <span class="govuk-visually-hidden"> for {{ member.name }}</span>
+                    {{ t("actions.view_profile") }}
+                    <span class="govuk-visually-hidden">{{ t("members.profile_for", { name: member.name }) }}</span>
                   </a>
                 </div>
               </div>
@@ -129,7 +129,7 @@
         </div>
 
         {% if nextHref %}
-          <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Member pagination">
+          <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('members.pagination_label') }}">
             <div class="govuk-pagination__next">
               <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
                 <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
@@ -137,7 +137,7 @@
                 </svg>
                 <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
                 <span class="govuk-visually-hidden">:</span>
-                <span class="govuk-pagination__link-label">Recommended members</span>
+                <span class="govuk-pagination__link-label">{{ t("govuk_alpha_members.discover.more_results_label") }}</span>
               </a>
             </div>
           </nav>
