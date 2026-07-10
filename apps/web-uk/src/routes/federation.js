@@ -569,6 +569,8 @@ function optInStatusBanner(status) {
 
 const FEDERATION_ONBOARDING_STEPS = ['welcome', 'privacy', 'communication', 'confirm'];
 
+const FEDERATION_ONBOARDING_SESSION_KEY = 'alphaFederationOnboarding';
+
 const FEDERATION_ONBOARDING_DEFAULTS = {
   profile_visible_federated: true,
   appear_in_federated_search: true,
@@ -581,6 +583,37 @@ const FEDERATION_ONBOARDING_DEFAULTS = {
   service_reach: 'local_only',
   travel_radius_km: 25
 };
+
+function onboardingTenantKey(req) {
+  const tenant = req.accessibleRouting?.tenant;
+  const tenantId = trimmed(tenant && tenant.id, 64);
+  if (tenantId) return `id:${tenantId}`;
+
+  const tenantSlug = trimmed(req.accessibleRouting?.tenantSlug || (tenant && tenant.slug), 128).toLowerCase();
+  return `slug:${tenantSlug || 'default'}`;
+}
+
+function onboardingSessionStore(req) {
+  if (!req.session) return null;
+
+  const existing = req.session[FEDERATION_ONBOARDING_SESSION_KEY];
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+    req.session[FEDERATION_ONBOARDING_SESSION_KEY] = {};
+  }
+
+  return req.session[FEDERATION_ONBOARDING_SESSION_KEY];
+}
+
+function onboardingSessionBag(req) {
+  const store = onboardingSessionStore(req);
+  return store ? asObject(store[onboardingTenantKey(req)]) : {};
+}
+
+function saveOnboardingSessionBag(req, settings) {
+  const store = onboardingSessionStore(req);
+  if (!store) return;
+  store[onboardingTenantKey(req)] = { ...settings };
+}
 
 function onboardingStep(value) {
   const step = trimmed(value);
@@ -795,7 +828,11 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
   }
 
   const settingsData = asObject(dataFrom(settingsResult));
-  const settings = normalizeOnboardingSettings(settingsData.settings);
+  const settings = normalizeOnboardingSettings({
+    ...asObject(settingsData.settings),
+    ...onboardingSessionBag(req)
+  });
+  saveOnboardingSessionBag(req, settings);
   const stepNumber = FEDERATION_ONBOARDING_STEPS.indexOf(step) + 1;
   const partners = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner).slice(0, 5);
 

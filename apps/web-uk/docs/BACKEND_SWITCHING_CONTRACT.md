@@ -768,6 +768,15 @@ through `urlFor()`. A scoped Laravel runtime smoke against the same Web UK and
 Laravel bases with `TENANT_ID=2` passed `12/12` checks including signed
 `/federation/onboarding` and
 `/federation/onboarding=>Welcome to the community network`.
+The 2026-07-10 workflow-parity slice points the opted-out hub CTA to
+`/federation/onboarding` and retains privacy/communication choices in an
+Express session bag keyed by the active tenant. The confirm request now needs
+only `step=confirm`; failure retains the bag and success clears it after
+Laravel `/api/v2/federation/setup` succeeds. Six focused session-flow tests
+pass, including tenant isolation and mounted URLs. A current-checkout
+ephemeral Web UK flow at `http://127.0.0.1:58710` completed the live wizard and
+read every chosen value back from Laravel `/api/v2/federation/settings`, then
+restored the disposable account's original settings.
 The same 2026-07-08 temporary process then recertified the remaining chunked
 page sweeps after earlier `1/8` and post-fix `2/8` mixed chunks passed:
 `SMOKE_MODULE_PAGE_CHUNK=3/8` through `8/8` passed with `269/269` repeated

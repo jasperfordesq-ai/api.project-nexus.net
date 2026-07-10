@@ -138,7 +138,11 @@ source slice now routes the hub service navigation, opt-in/opt-out CTAs,
 partner preview links, view-all link, and quick links through `urlFor()`.
 The latest federation onboarding source slice now routes the wizard back link,
 service navigation, step forms, step-back links, and do-this-later links through
-`urlFor()`.
+`urlFor()`. A 2026-07-10 parity slice also points the opted-out hub CTA at that
+wizard and stores privacy and communication choices in a tenant-keyed Express
+session bag. Confirm now submits only the step name, persists the stored
+choices to Laravel `/api/v2/federation/setup`, preserves the bag on failure,
+and clears it only after success.
 The latest wallet route-redirect slice now sends transfer and donation status
 redirects through `res.locals.urlFor`, with shared-mount coverage proving
 `/acme/accessible/wallet/donate` validation redirects stay under the active
@@ -1245,6 +1249,24 @@ template-helper slice:
 - `Select-String -Path apps\web-uk\src\views\federation\onboarding.njk -SimpleMatch -Pattern 'href="/federation','action="/federation'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "Federation onboarding"` passed: 1 selected test.
 - A scoped `npm --prefix apps/web-uk run smoke:laravel` with `SMOKE_MODULE_PAGE_PATHS=/federation/onboarding`, `SMOKE_BODY_TEXT_PAGE_PATHS=/federation/onboarding=>Welcome to the community network`, `TENANT_ID=2`, and unrelated default sweep env vars set to `none` passed `12/12` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`.
+
+Latest focused verification on 2026-07-10 for federation onboarding state
+parity:
+
+- `tests/federation-onboarding-session.test.js` passes 6/6 focused tests for
+  mounted CTA traversal, non-default privacy and communication choices, back
+  navigation, confirm-only finalization, failure retention/retry, success-only
+  clearing, unknown-step clamping, opted-in redirects, and tenant isolation.
+- The pre-existing legacy direct-confirm compatibility test still passes, and
+  the combined Jest run passed 15 suites and 903/903 tests; `npm run lint` and
+  the assigned-file diff check also passed.
+- A current-checkout ephemeral Web UK process at
+  `http://127.0.0.1:58710` traversed the live local Laravel-backed hub,
+  privacy, communication, and confirm forms, posted only `step=confirm`, then
+  read `/api/v2/federation/settings` back from Laravel
+  `http://127.0.0.1:8088` and verified every selected and unselected value.
+  The disposable E2E account's original federation settings were restored in
+  the smoke script's `finally` block.
 
 Latest focused verification on 2026-07-09 for the custom-domain
 canonicalization tenant-routing slice:

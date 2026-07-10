@@ -10,6 +10,21 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+const FEDERATION_ONBOARDING_STEPS = ['welcome', 'privacy', 'communication', 'confirm'];
+const FEDERATION_ONBOARDING_SESSION_KEY = 'alphaFederationOnboarding';
+const FEDERATION_ONBOARDING_DEFAULTS = {
+  profile_visible_federated: true,
+  appear_in_federated_search: true,
+  show_skills_federated: true,
+  show_location_federated: false,
+  show_reviews_federated: true,
+  messaging_enabled_federated: true,
+  transactions_enabled_federated: true,
+  email_notifications: true,
+  service_reach: 'local_only',
+  travel_radius_km: 25
+};
+
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
 }
@@ -65,6 +80,81 @@ function redirectOnAuthError(error, res) {
     return true;
   }
   return false;
+}
+
+function onboardingStep(value) {
+  const step = trimmed(value);
+  return FEDERATION_ONBOARDING_STEPS.includes(step) ? step : 'welcome';
+}
+
+function onboardingTenantKey(req) {
+  const tenant = req.accessibleRouting?.tenant;
+  const tenantId = trimmed(tenant && tenant.id, 64);
+  if (tenantId) return `id:${tenantId}`;
+
+  const tenantSlug = trimmed(req.accessibleRouting?.tenantSlug || (tenant && tenant.slug), 128).toLowerCase();
+  return `slug:${tenantSlug || 'default'}`;
+}
+
+function onboardingSessionStore(req, create = true) {
+  if (!req.session) return null;
+
+  const existing = req.session[FEDERATION_ONBOARDING_SESSION_KEY];
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+    if (!create) return null;
+    req.session[FEDERATION_ONBOARDING_SESSION_KEY] = {};
+  }
+
+  return req.session[FEDERATION_ONBOARDING_SESSION_KEY];
+}
+
+function storedOnboardingSessionBag(req) {
+  const store = onboardingSessionStore(req, false);
+  if (!store) return null;
+
+  const bag = store[onboardingTenantKey(req)];
+  return bag && typeof bag === 'object' && !Array.isArray(bag) ? bag : null;
+}
+
+function onboardingSessionBag(req) {
+  return {
+    ...FEDERATION_ONBOARDING_DEFAULTS,
+    ...(storedOnboardingSessionBag(req) || {})
+  };
+}
+
+function saveOnboardingSessionBag(req, settings) {
+  const store = onboardingSessionStore(req);
+  if (!store) return;
+  store[onboardingTenantKey(req)] = { ...settings };
+}
+
+function clearOnboardingSessionBag(req) {
+  const store = onboardingSessionStore(req, false);
+  if (!store) return;
+
+  delete store[onboardingTenantKey(req)];
+  if (Object.keys(store).length === 0) {
+    delete req.session[FEDERATION_ONBOARDING_SESSION_KEY];
+  }
+}
+
+function legacyConfirmSettings(body, settings) {
+  const keys = Object.keys(FEDERATION_ONBOARDING_DEFAULTS);
+  if (!keys.some((key) => Object.prototype.hasOwnProperty.call(body, key))) return settings;
+
+  const merged = { ...settings };
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+    if (key === 'service_reach') {
+      merged[key] = allowedServiceReach(body[key]);
+    } else if (key === 'travel_radius_km') {
+      merged[key] = boundedInteger(body[key], 0, 500, 25);
+    } else {
+      merged[key] = checked(body[key]);
+    }
+  }
+  return merged;
 }
 
 async function callFederation(token, method, path, data = undefined) {
@@ -304,25 +394,56 @@ router.post('/onboarding', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const step = trimmed(req.body.step) || 'welcome';
+  const step = onboardingStep(req.body.step);
   const nextSteps = {
     welcome: 'privacy',
     privacy: 'communication',
     communication: 'confirm'
   };
-  if (step !== 'confirm') {
-    return redirectTo(res, `/federation/onboarding?step=${encodeURIComponent(nextSteps[step] || 'confirm')}`);
+  const storedBag = storedOnboardingSessionBag(req);
+  let settings = onboardingSessionBag(req);
+
+  if (step === 'privacy') {
+    for (const key of [
+      'profile_visible_federated',
+      'appear_in_federated_search',
+      'show_skills_federated',
+      'show_location_federated',
+      'show_reviews_federated'
+    ]) {
+      settings[key] = checked(req.body[key]);
+    }
+  } else if (step === 'communication') {
+    for (const key of [
+      'messaging_enabled_federated',
+      'transactions_enabled_federated',
+      'email_notifications'
+    ]) {
+      settings[key] = checked(req.body[key]);
+    }
+    settings.service_reach = allowedServiceReach(req.body.service_reach);
+    settings.travel_radius_km = boundedInteger(req.body.travel_radius_km, 0, 500, 25);
+  } else if (step === 'confirm' && !storedBag) {
+    // Keep compatibility with the former single-request form while the
+    // multi-step wizard uses the tenant-scoped session bag as its authority.
+    settings = legacyConfirmSettings(req.body, settings);
   }
 
-  let status = 'opted-in';
+  saveOnboardingSessionBag(req, settings);
+
+  if (step !== 'confirm') {
+    return redirectTo(res, `/federation/onboarding?step=${encodeURIComponent(nextSteps[step])}`);
+  }
+
   try {
-    await callFederation(token, 'POST', '/setup', federationSettingsPayload(req.body));
+    await callFederation(token, 'POST', '/setup', federationSettingsPayload(settings));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    status = 'optin-failed';
+    return redirectTo(res, '/federation/onboarding?step=confirm&status=optin-failed');
   }
 
-  return redirectTo(res, statusRedirect('/federation', status));
+  clearOnboardingSessionBag(req);
+  return redirectTo(res, statusRedirect('/federation', 'opted-in'));
 }));
 
 router.post('/opt-in', asyncRoute(async (req, res) => {

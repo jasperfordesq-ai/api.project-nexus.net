@@ -137,7 +137,10 @@ smoked against ASP.NET later.
    - advisory screen-reader prefixes that say `Warning` rather than
      `There is a problem`;
    - safeguarding error-summary links to the affected fields;
-   - the federation onboarding CTA and route flow.
+   - **Completed 2026-07-10:** the federation hub CTA now enters onboarding,
+     and the tenant-scoped session-backed privacy/communication/confirm flow
+     retains choices, finalizes from a confirm-only request, preserves state on
+     failure, clears it only on success, and has Laravel API read-back proof.
 4. Reconcile every `Partial` and `Started` row in
    `apps/web-uk/docs/BLADE_COMPONENT_PORT_AUDIT.md` against current Laravel
    Blade, controllers, API calls, validation, gates, banners, empty states,

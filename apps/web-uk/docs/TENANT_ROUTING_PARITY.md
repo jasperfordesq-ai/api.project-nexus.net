@@ -190,7 +190,10 @@ Current gaps:
   links, the view-all partners link, and quick links. The latest focused source
   conversion covers the federation onboarding wizard, including the back link,
   service navigation, step form actions, step-back links, and do-this-later
-  links. The federation member detail template conversion covers the back link, federation service navigation,
+  links. The opted-out hub CTA now enters that mounted wizard, and focused
+  multi-request coverage proves its tenant-keyed session choices remain
+  isolated across `/acme/accessible` and `/beta/accessible` before a
+  confirm-only POST. The federation member detail template conversion covers the back link, federation service navigation,
   opt-in CTA, connection/message forms, and transfer CTA. The latest focused
   federation route-redirect cleanup sends signed-out GET handoffs,
   opt-in/settings shortcuts, and invalid/empty conversation fallbacks through
