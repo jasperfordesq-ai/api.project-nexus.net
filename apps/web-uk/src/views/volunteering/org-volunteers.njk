@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering/organisations/{{ orgId }}/dashboard">Back to dashboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">Back to dashboard</a>
 
   <span class="govuk-caption-l">{{ orgName }}</span>
   <h1 class="govuk-heading-xl">Volunteers roster</h1>
@@ -40,7 +40,7 @@
           <tr class="govuk-table__row">
             <th scope="row" class="govuk-table__header">
               {% if volunteer.id %}
-                <a class="govuk-link" href="/members/{{ volunteer.id }}">{{ volunteer.name }}</a>
+                <a class="govuk-link" href="{{ urlFor('/members/' ~ volunteer.id) }}">{{ volunteer.name }}</a>
               {% else %}
                 {{ volunteer.name }}
               {% endif %}
@@ -60,7 +60,7 @@
 
     {% if nextHref %}
       <p class="govuk-body govuk-!-margin-top-4">
-        <a class="govuk-link" href="{{ nextHref }}">Load more volunteers</a>
+        <a class="govuk-link" href="{{ urlFor(nextHref) }}">Load more volunteers</a>
       </p>
     {% endif %}
   {% endif %}

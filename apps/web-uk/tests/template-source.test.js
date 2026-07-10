@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
+function nunjucksFilesUnder(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return nunjucksFilesUnder(entryPath);
+    return entry.isFile() && entry.name.endsWith('.njk') ? [entryPath] : [];
+  });
+}
+
 describe('tenant-aware template helper conversion', () => {
   it('keeps event detail local links and forms behind urlFor()', () => {
     const template = fs.readFileSync(
@@ -460,6 +468,38 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).not.toContain('href="{{ loadMoreHref }}"');
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
     expect(source).toMatch(/urlFor\(["']\/organisations/);
+  });
+
+  it('keeps every Web UK template free of literal root-relative links and form actions', () => {
+    const viewsDirectory = path.join(__dirname, '..', 'src', 'views');
+    const volunteeringDirectory = path.join(viewsDirectory, 'volunteering');
+    const templatePaths = nunjucksFilesUnder(viewsDirectory);
+    const violations = [];
+
+    for (const templatePath of templatePaths) {
+      const source = fs.readFileSync(templatePath, 'utf8');
+      const lines = source.split(/\r?\n/);
+      lines.forEach((line, index) => {
+        const isRootPublicAsset = /\bhref=["']\/(?:assets|css)\//.test(line);
+        if (/\b(?:href|action)=["']\/(?!\/)/.test(line) && !isRootPublicAsset) {
+          violations.push(`${path.relative(viewsDirectory, templatePath)}:${index + 1}: ${line.trim()}`);
+        }
+      });
+    }
+
+    expect(templatePaths.length).toBeGreaterThan(0);
+    expect(violations).toEqual([]);
+
+    const donations = fs.readFileSync(path.join(volunteeringDirectory, 'donations.njk'), 'utf8');
+    const emergencyAlerts = fs.readFileSync(path.join(volunteeringDirectory, 'emergency-alerts.njk'), 'utf8');
+    const myOrganisations = fs.readFileSync(path.join(volunteeringDirectory, 'my-organisations.njk'), 'utf8');
+    const orgVolunteers = fs.readFileSync(path.join(volunteeringDirectory, 'org-volunteers.njk'), 'utf8');
+
+    expect(donations).toContain("urlFor('/volunteering/donations#donate')");
+    expect(myOrganisations).toContain("urlFor('/volunteering?tab=organisations')");
+    expect(emergencyAlerts).toContain('urlFor(dashboard.nextHref)');
+    expect(myOrganisations).toContain('urlFor(nextHref)');
+    expect(orgVolunteers).toContain('urlFor(nextHref)');
   });
 
   it('keeps volunteering action redirects behind the active tenant URL helper', () => {

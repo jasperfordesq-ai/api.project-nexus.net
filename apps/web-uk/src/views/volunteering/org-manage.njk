@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering?tab=organisations">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering?tab=organisations') }}">Back to volunteering</a>
 
   <span class="govuk-caption-l">{{ orgName }}</span>
   <h1 class="govuk-heading-xl">Manage your organisation</h1>
@@ -50,7 +50,7 @@
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
             {% if application.applicant.id %}
-              <a class="govuk-link" href="/members/{{ application.applicant.id }}">{{ application.applicant.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' ~ application.applicant.id) }}">{{ application.applicant.name }}</a>
             {% else %}
               {{ application.applicant.name }}
             {% endif %}
@@ -60,7 +60,7 @@
               <dt class="govuk-summary-list__key">Opportunity</dt>
               <dd class="govuk-summary-list__value">
                 {% if application.opportunity.id %}
-                  <a class="govuk-link" href="/volunteering/opportunities/{{ application.opportunity.id }}">{{ application.opportunity.title }}</a>
+                  <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' ~ application.opportunity.id) }}">{{ application.opportunity.title }}</a>
                 {% else %}
                   {{ application.opportunity.title }}
                 {% endif %}
@@ -83,7 +83,7 @@
             <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-1"><strong>Applicant message</strong></p>
             <div class="govuk-inset-text govuk-!-margin-top-0">{{ application.message }}</div>
           {% endif %}
-          <form method="post" action="/volunteering/organisations/{{ orgId }}/applications/{{ application.id }}">
+          <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/applications/' ~ application.id) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-button-group">
               <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="approve" data-module="govuk-button">Approve application</button>
@@ -108,7 +108,7 @@
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
             {% if log.volunteer.id %}
-              <a class="govuk-link" href="/members/{{ log.volunteer.id }}">{{ log.volunteer.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' ~ log.volunteer.id) }}">{{ log.volunteer.name }}</a>
             {% else %}
               {{ log.volunteer.name }}
             {% endif %}
@@ -134,7 +134,7 @@
           {% if log.description %}
             <p class="govuk-body govuk-!-margin-top-3">{{ log.description }}</p>
           {% endif %}
-          <form method="post" action="/volunteering/organisations/{{ orgId }}/hours/{{ log.id }}">
+          <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/hours/' ~ log.id) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-button-group">
               <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="approve" data-module="govuk-button">Approve hours</button>

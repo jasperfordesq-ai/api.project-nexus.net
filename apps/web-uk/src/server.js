@@ -621,7 +621,12 @@ app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
     req.session.alphaCookieChoice = analyticsOn ? 'accepted' : 'rejected';
   }
 
-  return res.redirect(safeLocalPath(req.body.return, '/'));
+  const returnPath = safeLocalPath(req.body.return, '');
+  if (!returnPath) {
+    return redirectTo(res, '/');
+  }
+
+  return redirectTo(res, returnPath);
 });
 
 app.get('/account', (req, res) => {

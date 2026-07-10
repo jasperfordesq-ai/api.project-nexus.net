@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -87,7 +87,7 @@
           </dl>
 
           {% if entry.shiftId %}
-            <form method="post" action="/volunteering/waitlist/{{ entry.shiftId }}/leave">
+            <form method="post" action="{{ urlFor('/volunteering/waitlist/' ~ entry.shiftId ~ '/leave') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">
                 Leave waitlist<span class="govuk-visually-hidden"> for {{ entry.title }}</span>

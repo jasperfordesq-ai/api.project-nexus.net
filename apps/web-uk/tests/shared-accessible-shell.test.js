@@ -20818,6 +20818,53 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('keeps volunteering links, cursor pagination, and fragments inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 42,
+              name: 'Food Share',
+              status: 'approved',
+              member_role: 'owner',
+              contact_email: 'hello@food.example',
+              website: 'https://food.example'
+            }
+          ],
+          cursor: 'next-page',
+          has_more: true
+        }
+      })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: { items: [] } });
+
+    const response = await request(app)
+      .get('/acme/accessible/volunteering/my-organisations?role=owner')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/my-organisations?per_page=20');
+    expect(response.text).toContain('href="/acme/accessible/volunteering?tab=organisations"');
+    expect(response.text).toContain('action="/acme/accessible/volunteering/my-organisations"');
+    expect(response.text).toContain('href="/acme/accessible/organisations/42"');
+    expect(response.text).toContain('href="/acme/accessible/volunteering/organisations/42/dashboard"');
+    expect(response.text).toContain('href="/acme/accessible/volunteering/my-organisations?role=owner&amp;cursor=next-page"');
+    expect(response.text).toContain('href="https://food.example"');
+    expect(response.text).not.toContain('/acme/accessible/acme/accessible/');
+
+    const donationsResponse = await request(app)
+      .get('/acme/accessible/volunteering/donations')
+      .set('Cookie', signedCookieHeader());
+
+    expect(donationsResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/giving-days');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/donations?per_page=20');
+    expect(donationsResponse.text).toContain('href="/acme/accessible/volunteering"');
+    expect(donationsResponse.text).toContain('action="/acme/accessible/volunteering/donations#donate"');
+  });
+
   it('renders the Laravel volunteering certificates page for signed-in members', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

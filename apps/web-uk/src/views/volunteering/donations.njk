@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -133,7 +133,7 @@
 
   <h2 class="govuk-heading-l" id="donate-form">Make a donation</h2>
   <p class="govuk-body">Record a donation by bank transfer or PayPal. An administrator will confirm it once the payment has arrived.</p>
-  <form id="donate" method="post" action="/volunteering/donations#donate" class="govuk-!-margin-bottom-8">
+  <form id="donate" method="post" action="{{ urlFor('/volunteering/donations#donate') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if status and status.type == 'error' %} govuk-form-group--error{% endif %}">

@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -111,7 +111,7 @@
                 Accepting commits you to covering this shift. The coordinator will be notified.
               </strong>
             </div>
-            <form method="post" action="/volunteering/emergency-alerts/{{ alert.id }}/respond">
+            <form method="post" action="{{ urlFor('/volunteering/emergency-alerts/' ~ alert.id ~ '/respond') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-button-group">
                 <button class="govuk-button govuk-!-margin-bottom-0" name="response" value="accepted" data-module="govuk-button">Accept this shift</button>
@@ -125,7 +125,7 @@
 
     {% if dashboard.nextHref %}
       <p class="govuk-body">
-        <a class="govuk-link" href="{{ dashboard.nextHref }}">Load more urgent shift requests</a>
+        <a class="govuk-link" href="{{ urlFor(dashboard.nextHref) }}">Load more urgent shift requests</a>
       </p>
     {% endif %}
   {% endif %}

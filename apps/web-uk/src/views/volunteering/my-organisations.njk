@@ -5,13 +5,13 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering?tab=organisations">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering?tab=organisations') }}">Back to volunteering</a>
 
   <span class="govuk-caption-l">Volunteering</span>
   <h1 class="govuk-heading-xl">My organisations</h1>
   <p class="govuk-body-l">Organisations you own or help manage. Open one to review applications, approve hours and post new opportunities.</p>
 
-  <form method="get" action="/volunteering/my-organisations" class="govuk-!-margin-bottom-6">
+  <form method="get" action="{{ urlFor('/volunteering/my-organisations') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="role">Filter by your role</label>
       <select class="govuk-select" id="role" name="role">
@@ -24,7 +24,7 @@
     <div class="govuk-button-group">
       <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filter</button>
       {% if roleFilter %}
-        <a class="govuk-link" href="/volunteering/my-organisations">Clear filter</a>
+        <a class="govuk-link" href="{{ urlFor('/volunteering/my-organisations') }}">Clear filter</a>
       {% endif %}
     </div>
   </form>
@@ -48,7 +48,7 @@
       {% for organization in organizations %}
         <article class="nexus-alpha-card">
           <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="/organisations/{{ organization.id }}">{{ organization.name }}</a>
+            <a class="govuk-link" href="{{ urlFor('/organisations/' ~ organization.id) }}">{{ organization.name }}</a>
           </h2>
           <p class="govuk-!-margin-bottom-3">
             <strong class="govuk-tag {{ organization.status.className }}">{{ organization.status.label }}</strong>
@@ -82,7 +82,7 @@
           {% endif %}
 
           {% if organization.canManage and organization.isApproved %}
-            <a class="govuk-button govuk-!-margin-top-2 govuk-!-margin-bottom-0" data-module="govuk-button" role="button" draggable="false" href="/volunteering/organisations/{{ organization.id }}/dashboard">
+            <a class="govuk-button govuk-!-margin-top-2 govuk-!-margin-bottom-0" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/volunteering/organisations/' ~ organization.id ~ '/dashboard') }}">
               Open dashboard<span class="govuk-visually-hidden"> for {{ organization.name }}</span>
             </a>
           {% elif organization.canManage %}
@@ -98,7 +98,7 @@
     {% if nextHref %}
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="My organisations pagination">
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="{{ nextHref }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
             <span class="govuk-pagination__link-title">Load more</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">more organisations</span>

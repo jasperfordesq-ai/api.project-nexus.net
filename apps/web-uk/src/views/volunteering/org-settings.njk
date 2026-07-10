@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering/organisations/{{ orgId }}/dashboard">Back to dashboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">Back to dashboard</a>
 
   {% if status and status.type == "success" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="org-settings-success-title">
@@ -45,7 +45,7 @@
   <h1 class="govuk-heading-xl">Organisation settings</h1>
   <p class="govuk-body-l">Update the public details volunteers see before applying.</p>
 
-  <form method="post" action="/volunteering/organisations/{{ orgId }}/settings">
+  <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/settings') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if status and status.field == 'name' %} govuk-form-group--error{% endif %}">

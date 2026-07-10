@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -49,17 +49,17 @@
   <nav class="govuk-!-margin-bottom-6" aria-label="Safeguarding sections">
     <ul class="govuk-list" style="display:flex;gap:1rem;flex-wrap:wrap;list-style:none;padding:0;margin:0;">
       <li>
-        <a class="govuk-link{% if subView == 'training' %} govuk-link--no-visited-state{% endif %}" href="/volunteering/training"{% if subView == "training" %} aria-current="page"{% endif %}>Training records</a>
+        <a class="govuk-link{% if subView == 'training' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering/training') }}"{% if subView == "training" %} aria-current="page"{% endif %}>Training records</a>
       </li>
       <li>
-        <a class="govuk-link{% if subView == 'incidents' %} govuk-link--no-visited-state{% endif %}" href="/volunteering/incidents"{% if subView == "incidents" %} aria-current="page"{% endif %}>Incident reports</a>
+        <a class="govuk-link{% if subView == 'incidents' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering/incidents') }}"{% if subView == "incidents" %} aria-current="page"{% endif %}>Incident reports</a>
       </li>
     </ul>
   </nav>
 
   {% if subView == "training" %}
     <h2 class="govuk-heading-m">Log a training record</h2>
-    <form method="post" action="/volunteering/training" novalidate>
+    <form method="post" action="{{ urlFor('/volunteering/training') }}" novalidate>
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group{% if status.field == 'training_type' %} govuk-form-group--error{% endif %}">
@@ -145,7 +145,7 @@
       Use this form to report a concern, allegation, near-miss, or any incident that may relate to the safety or welfare of a person. Your report will be reviewed confidentially by a designated person.
     </div>
 
-    <form method="post" action="/volunteering/incidents" novalidate>
+    <form method="post" action="{{ urlFor('/volunteering/incidents') }}" novalidate>
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group{% if status.field == 'title' %} govuk-form-group--error{% endif %}">

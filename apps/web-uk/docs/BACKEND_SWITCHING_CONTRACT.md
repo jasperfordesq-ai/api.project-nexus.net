@@ -74,6 +74,13 @@ success, validation, auth-required, and API-failure destinations should go
 through the active `res.locals.urlFor` helper before calling `res.redirect`, so
 shared `/{tenantSlug}/accessible`, parent-domain child paths, and slugless
 custom-domain contexts do not rely only on last-mile response rewriting. The
+helper is idempotent for already-mounted paths, including query strings and
+fragments. Current source also routes all 54 audited controls in 17
+volunteering templates, three generated volunteering cursor links, and the
+legal-hub document links through `urlFor()`. The session-timeout UI reads its
+mounted login URL from the rendered shell and submits the mounted logout route
+through a CSRF-protected POST form; future backend modes must not replace that
+with a GET logout URL. The
 volunteering action routes now follow this rule for auth-required handoffs,
 direct validation branches, and Laravel API success/failure outcomes. The
 group routes now follow this rule for the shared group action helper and the
@@ -890,6 +897,9 @@ to `/cookie-consent`, and asserting the expected `/cookies` redirects plus
 `nexus_alpha_cookie_consent` cookie as a compatibility fallback so existing
 Laravel Blade consent choices continue to dismiss the banner, but new Web UK
 POSTs do not write the public-facing alpha name.
+Cookie-banner return paths are validated as same-origin local paths and passed
+through the idempotent tenant URL helper, so a missing, already-mounted, or
+unmounted return value cannot escape the active shared tenant mount.
 They do not certify Laravel `cookie_consents` audit persistence, tenant-scoped
 consent behavior, localized copy, report-a-problem workflows, or ASP.NET backend
 readiness.

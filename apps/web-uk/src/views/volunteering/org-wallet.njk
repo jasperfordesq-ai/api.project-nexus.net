@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering/organisations/{{ orgId }}/dashboard">Back to dashboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">Back to dashboard</a>
 
   {% if status and status.type == "success" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="org-wallet-success-title">
@@ -64,7 +64,7 @@
       {% if autoPayEnabled %}Auto-pay is on{% else %}Auto-pay is off{% endif %}
     </strong>
   </p>
-  <form method="post" action="/volunteering/organisations/{{ orgId }}/wallet/auto-pay" class="govuk-!-margin-bottom-8">
+  <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/wallet/auto-pay') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <input type="hidden" name="enabled" value="{% if autoPayEnabled %}0{% else %}1{% endif %}">
     <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">
@@ -80,7 +80,7 @@
       Deposits move credits from your wallet into this organisation's wallet.
     </strong>
   </div>
-  <form method="post" action="/volunteering/organisations/{{ orgId }}/wallet/deposit" class="govuk-!-margin-bottom-8">
+  <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/wallet/deposit') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <div class="govuk-form-group{% if status and status.field == 'amount' %} govuk-form-group--error{% endif %}">
       <label class="govuk-label" for="amount">Amount</label>

@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -37,7 +37,7 @@
   {% if not myShifts.length %}
     <div class="govuk-inset-text">You are not signed up for any upcoming shifts, so there is nothing to swap yet.</div>
   {% else %}
-    <form method="post" action="/volunteering/swaps" class="govuk-!-margin-bottom-8">
+    <form method="post" action="{{ urlFor('/volunteering/swaps') }}" class="govuk-!-margin-bottom-8">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <div class="govuk-form-group">
         <label class="govuk-label" for="from_shift_id">Your shift to give up</label>
@@ -122,7 +122,7 @@
           {% endif %}
 
           {% if swap.direction == "received" and swap.status.value == "pending" %}
-            <form method="post" action="/volunteering/swaps/{{ swap.id }}/respond">
+            <form method="post" action="{{ urlFor('/volunteering/swaps/' ~ swap.id ~ '/respond') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-button-group">
                 <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="accept" data-module="govuk-button">Accept</button>
@@ -130,7 +130,7 @@
               </div>
             </form>
           {% elif swap.direction == "sent" and (swap.status.value == "pending" or swap.status.value == "admin_pending") %}
-            <form method="post" action="/volunteering/swaps/{{ swap.id }}/cancel">
+            <form method="post" action="{{ urlFor('/volunteering/swaps/' ~ swap.id ~ '/cancel') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel request</button>
             </form>

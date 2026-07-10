@@ -115,11 +115,18 @@
 
 {% block content %}
   {% if isAuthenticated %}
-    <div data-authenticated="true" data-csrf-token="{{ csrfToken }}" hidden></div>
+    <div
+      data-authenticated="true"
+      data-csrf-token="{{ csrfToken }}"
+      data-login-url="{{ urlFor('/login') }}"
+      hidden
+    ></div>
+    <form id="session-timeout-logout-form" method="post" action="{{ urlFor('/logout') }}" hidden>
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <input type="hidden" name="timeout" value="true">
+    </form>
   {% endif %}
-  <main id="main-content" class="govuk-main-wrapper" role="main">
-    {% block mainContent %}{% endblock %}
-  </main>
+  {% block mainContent %}{% endblock %}
 {% endblock %}
 
 {% block footer %}

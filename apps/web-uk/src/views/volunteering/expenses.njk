@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -74,7 +74,7 @@
   {% if not dashboard.organizations.length %}
     <div class="govuk-inset-text">You need to be an approved volunteer with an organisation before you can claim expenses.</div>
   {% else %}
-    <form method="post" action="/volunteering/expenses" class="govuk-!-margin-bottom-8">
+    <form method="post" action="{{ urlFor('/volunteering/expenses') }}" class="govuk-!-margin-bottom-8">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group{% if status and status.field == 'organization_id' %} govuk-form-group--error{% endif %}">

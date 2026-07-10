@@ -15,7 +15,7 @@
         {% for document in documents %}
           <article class="nexus-alpha-card">
             <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="{{ document.path }}">{{ document.title }}</a>
+              <a class="govuk-link" href="{{ urlFor(document.path) }}">{{ document.title }}</a>
             </h2>
             <p class="govuk-body govuk-!-margin-bottom-0">{{ document.summary }}</p>
           </article>

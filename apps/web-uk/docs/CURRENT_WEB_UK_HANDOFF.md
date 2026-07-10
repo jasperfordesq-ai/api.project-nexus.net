@@ -5,9 +5,9 @@ Last reviewed: 2026-07-10
 > **Current audit notice (2026-07-10):** Read
 > `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before relying on completion
 > claims or scores below. The audit found reserved-path tenant-routing drift,
-> which is fixed in current source, plus remaining root-relative template
-> controls, recent Laravel Blade drift, and incomplete
-> accessibility/localization certification.
+> which is fixed in current source; the audited root-relative template controls
+> are also fixed in current source. Recent Laravel Blade drift and incomplete
+> accessibility/localization certification remain.
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
@@ -78,9 +78,8 @@ Web UK processes started with `TENANT_ID=2`:
 `timebank.global|/=>Exchange Skills Across Borders`. The API client suppresses
 the default `X-Tenant-ID` whenever Host/Origin tenant context is present so
 Laravel can resolve the browser domain. This is not full tenant-domain parity
-yet: template-helper conversion,
-visual/manual tenant checks, and ASP.NET backend switching certification still
-need work. Focused template-helper
+yet: visual/manual tenant checks and ASP.NET backend switching certification
+still need work. Focused template-helper
 conversion slices now cover the event detail page's breadcrumbs, group/member
 links, RSVP/admin forms, attendee links, and report return path plus the
 account hub's card links and CSRF logout form, the activity dashboard/insights
@@ -776,6 +775,35 @@ reserved-path drift:
 - `npm test -- --runInBand` passed all 13 suites and 891/891 tests; `npm run
   lint` passed; and `npm run route:matrix` remained 608/608 matched, 0 missing,
   0 extra application routes, and 3 ignored infrastructure routes.
+
+Latest focused verification on 2026-07-10 for the complete tenant-URL and
+shared-layout boundary:
+
+- All 54 audited literal root-relative links/forms across 17 volunteering
+  templates now use `urlFor()`, as do the three generated cursor consumers and
+  legal-hub document links. The app-wide Nunjucks source regression reports no
+  tenant-local root-relative `href`/`action` attributes; only `/assets/` and
+  `/css/` public resources are intentionally allowed.
+- `urlFor()` is idempotent for already-mounted paths, cookie-banner return
+  redirects cannot escape the active tenant mount, and the session-timeout UI
+  signs out through the mounted CSRF-protected POST form rather than GET
+  `/logout`. Mounted render/POST coverage proves query strings, fragments,
+  login fallback, cookie returns, and logout redirects stay below
+  `/acme/accessible`.
+- The shared layout now relies on the GOV.UK parent template's main landmark;
+  rendered coverage proves exactly one `<main>` and one `main-content` ID.
+- The combined full Jest run passed 15 suites and 903/903 tests. `npm run lint`,
+  `npm run brand:check`, and `npm run route:matrix` passed; the route matrix
+  remains 608/608 matched, 0 missing, 0 extra application routes, and 3 ignored
+  infrastructure routes. `npm run build:css` passed with only the existing
+  GOV.UK palette deprecation warnings.
+- Current-checkout ephemeral Laravel smoke at Web UK
+  `http://127.0.0.1:54979` passed 11/11 core and parent-domain checks, including
+  `timebank.global|/hour-timebank/login=>Sign in`, cookie POSTs, login, signed
+  account, and logout POST. A separate current-checkout ephemeral Blade visual
+  spot-check at `http://127.0.0.1:57377` passed all 19 tenant-home,
+  master/cluster-domain, public/auth/support/legal comparisons against Laravel
+  `http://127.0.0.1:8088`.
 
 Historical focused verification on 2026-07-09 for the earlier tenant
 parent-domain reserved-path slice:

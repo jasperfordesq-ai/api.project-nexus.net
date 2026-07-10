@@ -118,10 +118,13 @@ Current implemented slice:
 
 Current gaps:
 
-- A 2026-07-10 source audit found no direct root-relative `href`/`action`
-  attributes in `src/views`, no object-style `href: "/"` or `action: "/"`
-  targets in Web UK source, and no raw root-relative `res.redirect("/...")`
-  calls in `src/middleware`, `src/lib`, `src/routes`, or `src/server.js`.
+- A 2026-07-10 source audit and remediation found no tenant-local direct
+  root-relative `href`/`action` attributes in `src/views`, no object-style
+  `href: "/"` or `action: "/"` targets in Web UK source, and no raw
+  root-relative `res.redirect("/...")` calls in `src/middleware`, `src/lib`,
+  `src/routes`, or `src/server.js`. The only direct root paths allowed by the
+  app-wide Nunjucks regression are the intentional `/assets/` and `/css/`
+  public resources.
   Helper-mediated redirects still pass local paths into `urlFor()` and must
   remain covered by route-family tests. Keep these audits green as regression
   guards when adding or replacing Blade-clone templates. Earlier focused

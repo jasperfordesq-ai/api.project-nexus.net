@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -83,7 +83,7 @@
 
   <h2 class="govuk-heading-l">How are you feeling?</h2>
   <p class="govuk-body">Record a quick mood check-in. This helps you track how volunteering is going.</p>
-  <form method="post" action="/volunteering/wellbeing/checkin" class="govuk-!-margin-bottom-8">
+  <form method="post" action="{{ urlFor('/volunteering/wellbeing/checkin') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <fieldset class="govuk-fieldset">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Your mood</legend>

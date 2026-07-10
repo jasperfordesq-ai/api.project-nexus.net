@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering/my-organisations">Back to my organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/my-organisations') }}">Back to my organisations</a>
 
   {% if status %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -46,7 +46,7 @@
       <p class="govuk-body govuk-!-margin-bottom-0">Go back to my organisations to register one or wait for approval.</p>
     </div>
   {% else %}
-    <form method="post" action="/volunteering/opportunities/create">
+    <form method="post" action="{{ urlFor('/volunteering/opportunities/create') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group">

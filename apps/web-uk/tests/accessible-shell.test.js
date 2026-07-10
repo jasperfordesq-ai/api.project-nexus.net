@@ -1,7 +1,8 @@
 const {
   buildFooterColumns,
   buildNavItems,
-  buildShellLocals
+  buildShellLocals,
+  prefixLocalPath
 } = require('../src/lib/accessible-shell');
 
 describe('accessible shell tenant gating', () => {
@@ -56,6 +57,17 @@ describe('accessible shell tenant gating', () => {
     ]);
     expect(locals.alphaFooterColumns.find((column) => column.key === 'platform').links.map((link) => link.href))
       .toEqual(['/acme/accessible/listings', '/acme/accessible/volunteering']);
+  });
+
+  it('does not double-prefix paths that are already inside the active tenant mount', () => {
+    const prefix = '/acme/accessible';
+
+    expect(prefixLocalPath('/cookies', prefix)).toBe('/acme/accessible/cookies');
+    expect(prefixLocalPath('/acme/accessible', prefix)).toBe('/acme/accessible');
+    expect(prefixLocalPath('/acme/accessible/cookies?status=saved', prefix))
+      .toBe('/acme/accessible/cookies?status=saved');
+    expect(prefixLocalPath('/acme/accessible?locale=ar', prefix))
+      .toBe('/acme/accessible?locale=ar');
   });
 
   it('matches Laravel Blade Explore card feature gates from tenant bootstrap', () => {

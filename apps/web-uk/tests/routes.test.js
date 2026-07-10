@@ -27,6 +27,8 @@ jest.mock('../src/lib/api', () => ({
     }
   },
   login: jest.fn(),
+  logout: jest.fn(),
+  invalidateUserCache: jest.fn(),
   register: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
@@ -179,6 +181,8 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('action="/login"');
       expect(response.text).not.toContain('href="/login/forgot-password"');
       expect(response.text).not.toContain('href="/register"');
+      expect(response.text.match(/<main\b/g)).toHaveLength(1);
+      expect(response.text.match(/id="main-content"/g)).toHaveLength(1);
     });
 
     it('keeps auth POST redirects inside the active shared accessible mount', async () => {
@@ -207,6 +211,28 @@ describe('Public Routes', () => {
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe('/acme/accessible/dashboard');
       expect(api.login).toHaveBeenCalledWith('member@acme.test', 'Test123!', 'acme');
+
+      const authenticatedPage = await agent.get('/acme/accessible/cookies');
+      expect(authenticatedPage.status).toBe(200);
+      expect(authenticatedPage.text).toContain('data-login-url="/acme/accessible/login"');
+      expect(authenticatedPage.text).toContain('id="session-timeout-logout-form"');
+      expect(authenticatedPage.text).toContain('method="post" action="/acme/accessible/logout"');
+      expect(authenticatedPage.text).not.toContain('action="/logout"');
+
+      const timeoutCsrfMatch = authenticatedPage.text.match(
+        /id="session-timeout-logout-form"[\s\S]*?name="_csrf" value="([^"]+)"/
+      );
+      expect(timeoutCsrfMatch).not.toBeNull();
+
+      api.logout.mockResolvedValueOnce({ ok: true });
+      const logoutResponse = await agent
+        .post('/acme/accessible/logout')
+        .type('form')
+        .send({ _csrf: timeoutCsrfMatch[1], timeout: 'true' });
+
+      expect(logoutResponse.status).toBe(302);
+      expect(logoutResponse.headers.location).toBe('/acme/accessible/login');
+      expect(api.logout).toHaveBeenCalledWith('test-token');
     });
 
     it('keeps server-level cookie redirects inside the active shared accessible mount', async () => {
@@ -228,6 +254,42 @@ describe('Public Routes', () => {
       expect(response.headers.location).toBe('/acme/accessible/cookies?status=saved');
       expect((response.headers['set-cookie'] || []).join('; ')).toContain('nexus_accessible_cookie_consent=all');
       expect((response.headers['set-cookie'] || []).join('; ')).not.toContain('nexus_alpha_cookie_consent=');
+    });
+
+    it('keeps cookie-banner return redirects inside the active shared accessible mount', async () => {
+      const agent = request.agent(app);
+      const first = await agent.get('/acme/accessible');
+      const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(csrfMatch).not.toBeNull();
+
+      const mountedReturn = await agent
+        .post('/acme/accessible/cookie-consent')
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          cookies: 'reject',
+          return: '/acme/accessible/volunteering?tab=organisations'
+        });
+
+      expect(mountedReturn.status).toBe(302);
+      expect(mountedReturn.headers.location)
+        .toBe('/acme/accessible/volunteering?tab=organisations');
+
+      const second = await agent.get('/acme/accessible/cookies');
+      const secondCsrfMatch = second.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(secondCsrfMatch).not.toBeNull();
+
+      const unmountedReturn = await agent
+        .post('/acme/accessible/cookie-consent')
+        .type('form')
+        .send({
+          _csrf: secondCsrfMatch[1],
+          cookies: 'accept',
+          return: '/admin'
+        });
+
+      expect(unmountedReturn.status).toBe(302);
+      expect(unmountedReturn.headers.location).toBe('/acme/accessible/admin');
     });
 
     it('treats accessible and legacy Laravel cookie choices as banner dismissal signals', async () => {

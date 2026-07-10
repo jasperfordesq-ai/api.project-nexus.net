@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -66,7 +66,7 @@
                 <dt class="govuk-summary-list__key">Opportunity</dt>
                 <dd class="govuk-summary-list__value">
                   {% if reservation.opportunityId %}
-                    <a class="govuk-link" href="/volunteering/opportunities/{{ reservation.opportunityId }}">{{ reservation.opportunityTitle }}</a>
+                    <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' ~ reservation.opportunityId) }}">{{ reservation.opportunityTitle }}</a>
                   {% else %}
                     {{ reservation.opportunityTitle }}
                   {% endif %}
@@ -124,7 +124,7 @@
                     {% if reservation.isLeader and not reservation.isCancelled %}
                       <td class="govuk-table__cell">
                         {% if member.id and member.status.value == "confirmed" %}
-                          <form method="post" action="/volunteering/group-signups/{{ reservation.id }}/members/{{ member.id }}/remove">
+                          <form method="post" action="{{ urlFor('/volunteering/group-signups/' ~ reservation.id ~ '/members/' ~ member.id ~ '/remove') }}">
                             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                             <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">
                               Remove<span class="govuk-visually-hidden"> {{ member.name or ("#" + member.id) }} from this reservation</span>
@@ -142,7 +142,7 @@
           {% if reservation.isLeader and not reservation.isCancelled %}
             {% if reservation.canAddMembers %}
               <h3 class="govuk-heading-s govuk-!-margin-top-4 govuk-!-margin-bottom-2">Add a member</h3>
-              <form method="post" action="/volunteering/group-signups/{{ reservation.id }}/members">
+              <form method="post" action="{{ urlFor('/volunteering/group-signups/' ~ reservation.id ~ '/members') }}">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <div class="govuk-form-group">
                   <label class="govuk-label" for="user_id_{{ reservation.id }}">Member ID</label>
@@ -161,7 +161,7 @@
                 Cancelling releases all reserved slots and removes every member from this reservation. This cannot be undone.
               </strong>
             </div>
-            <form method="post" action="/volunteering/group-signups/{{ reservation.id }}/cancel">
+            <form method="post" action="{{ urlFor('/volunteering/group-signups/' ~ reservation.id ~ '/cancel') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--warning" data-module="govuk-button">
                 Cancel this reservation<span class="govuk-visually-hidden"> for {{ reservation.groupName }}</span>

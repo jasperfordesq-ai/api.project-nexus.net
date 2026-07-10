@@ -50,7 +50,7 @@
             '<button type="button" id="timeout-extend-button" class="govuk-button" data-module="govuk-button">' +
               'Stay signed in' +
             '</button>' +
-            '<a href="/logout" class="govuk-link">Sign out now</a>' +
+            '<button type="submit" form="session-timeout-logout-form" class="app-link-button">Sign out now</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -91,7 +91,7 @@
 
       if (countdownSeconds <= 0) {
         clearInterval(countdownTimer);
-        window.location.href = '/logout?timeout=true';
+        submitLogout();
       }
     }, 1000);
 
@@ -170,12 +170,33 @@
         hideModal();
         resetTimers();
       } else {
-        window.location.href = '/login';
+        redirectToLogin();
       }
     }).catch(function() {
       // If request fails, redirect to login
-      window.location.href = '/login';
+      redirectToLogin();
     });
+  }
+
+  function redirectToLogin() {
+    var authEl = document.querySelector('[data-authenticated="true"]');
+    var loginUrl = authEl ? authEl.getAttribute('data-login-url') : '';
+    window.location.href = loginUrl || '/login';
+  }
+
+  function submitLogout() {
+    var logoutForm = document.getElementById('session-timeout-logout-form');
+    if (!logoutForm) {
+      redirectToLogin();
+      return;
+    }
+
+    if (typeof logoutForm.requestSubmit === 'function') {
+      logoutForm.requestSubmit();
+      return;
+    }
+
+    logoutForm.submit();
   }
 
   // Reset timers
@@ -188,7 +209,7 @@
 
     // Set logout timer (backup)
     logoutTimer = setTimeout(function() {
-      window.location.href = '/logout?timeout=true';
+      submitLogout();
     }, sessionTimeoutMs);
   }
 

@@ -334,6 +334,14 @@ function buildExploreLinks({ tenant = {} } = {}) {
 function prefixLocalPath(pathname, prefix = '') {
   const path = typeof pathname === 'string' && pathname ? pathname : '/';
   if (!prefix || !path.startsWith('/') || path.startsWith('//')) return path;
+  if (
+    path === prefix
+    || path.startsWith(`${prefix}/`)
+    || path.startsWith(`${prefix}?`)
+    || path.startsWith(`${prefix}#`)
+  ) {
+    return path;
+  }
   if (path === '/') return prefix;
   return `${prefix}${path}`;
 }

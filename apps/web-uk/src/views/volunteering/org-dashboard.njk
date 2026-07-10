@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering/my-organisations">Back to my organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/my-organisations') }}">Back to my organisations</a>
 
   <span class="govuk-caption-l">{{ dashboard.orgName }}</span>
   <h1 class="govuk-heading-xl">Organisation dashboard</h1>
@@ -66,10 +66,10 @@
 
   <h2 class="govuk-heading-l">Quick actions</h2>
   <ul class="govuk-list">
-    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/manage">Review applications and hours</a></li>
-    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/volunteers">Volunteers roster</a></li>
-    <li><a class="govuk-link" href="/volunteering/opportunities/create">Post a volunteer opportunity</a></li>
-    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/settings">Organisation settings</a></li>
-    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/wallet">Organisation wallet</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/manage') }}">Review applications and hours</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/volunteers') }}">Volunteers roster</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/create') }}">Post a volunteer opportunity</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/settings') }}">Organisation settings</a></li>
+    <li><a class="govuk-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/wallet') }}">Organisation wallet</a></li>
   </ul>
 {% endblock %}

@@ -104,9 +104,10 @@ that implementation movement and the lower amount of current green evidence.
 - Web UK tenant routing list:
   `apps\web-uk\src\middleware\tenant-routing.js:25`; Laravel source list:
   `C:\platforms\htdocs\staging\app\Core\TenantContext.php:516`.
-- Example remaining root-relative controls:
-  `apps\web-uk\src\views\volunteering\emergency-alerts.njk:114` and
-  `apps\web-uk\src\views\volunteering\safeguarding.njk:52`.
+- Completed tenant-URL source boundary: all 54 audited root-relative controls
+  across 17 volunteering templates now use `urlFor()`, their three generated
+  cursor links use the same helper, and an app-wide Nunjucks regression permits
+  only the intentional root public asset paths.
 - ASP.NET switching remains intentionally labelled future/not-certified in
   `apps\web-uk\src\lib\backend-contract.js:9`.
 
@@ -123,9 +124,14 @@ smoked against ASP.NET later.
    segments added to Laravel `TenantContext`, restored full Jest to green, and
    added behavior coverage for every new segment plus the existing automatic
    source-drift comparison.
-2. Replace the 54 direct root-relative internal `href` and `action` attributes
-   across 17 volunteering templates with the tenant-aware URL helper. Do not
-   rely on response rewriting as the primary correctness mechanism.
+2. **Completed 2026-07-10:** replaced all 54 direct root-relative internal
+   `href` and `action` attributes across 17 volunteering templates with the
+   tenant-aware URL helper, wrapped the three generated cursor consumers, and
+   added app-wide source plus mounted query/fragment render regression
+   coverage. The same slice made `urlFor()` idempotent, tenant-scoped cookie
+   return redirects, the legal-hub document links, and the session-timeout
+   login/logout flow; timeout sign-out is now a CSRF-protected POST rather than
+   an unsupported GET.
 3. Port current Laravel accessible changes:
    - tenant currency instead of hard-coded EUR in donations;
    - advisory screen-reader prefixes that say `Warning` rather than
