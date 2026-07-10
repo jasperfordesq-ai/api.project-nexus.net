@@ -3,9 +3,13 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -21,43 +25,121 @@ public class ShiftManagementController : ControllerBase
     // ── Recurring Patterns ────────────────────────────────────────────────────
 
     [HttpGet("api/volunteering/opportunities/{opportunityId:int}/recurring-patterns")]
-    public async Task<IActionResult> GetPatterns(int opportunityId)
+    [EnableRateLimiting(RateLimitingExtensions.RecurringPatternListPolicy)]
+    public async Task<IActionResult> GetPatterns(
+        int opportunityId,
+        CancellationToken ct = default)
     {
-        var patterns = await _svc.GetPatternsAsync(opportunityId);
-        return Ok(patterns);
+        var userId = User.GetUserId();
+        if (userId == null) return AuthError();
+        SetRecurringHeaders();
+        if (await RecurringFeatureDisabledAsync(ct) is { } featureError) return featureError;
+
+        try
+        {
+            var patterns = await _svc.GetPatternsAsync(opportunityId, ct);
+            return Ok(new
+            {
+                data = new { patterns = patterns.Select(RecurringPatternPayload) },
+                meta = RecurringMeta()
+            });
+        }
+        catch (RecurringPatternContractException exception)
+        {
+            return RecurringPatternError(exception);
+        }
     }
 
     [HttpPost("api/volunteering/opportunities/{opportunityId:int}/recurring-patterns")]
+    [EnableRateLimiting(RateLimitingExtensions.RecurringPatternCreatePolicy)]
     public async Task<IActionResult> CreatePattern(
-        int opportunityId, [FromBody] CreatePatternRequest req)
+        int opportunityId,
+        [FromBody] JsonElement body,
+        CancellationToken ct = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (pattern, error) = await _svc.CreatePatternAsync(opportunityId, userId.Value, req);
-        if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetPatterns),
-            new { opportunityId }, pattern);
+        if (userId == null) return AuthError();
+        SetRecurringHeaders();
+        if (await RecurringFeatureDisabledAsync(ct) is { } featureError) return featureError;
+
+        try
+        {
+            var pattern = await _svc.CreatePatternAsync(
+                opportunityId,
+                userId.Value,
+                body,
+                ct);
+            return StatusCode(StatusCodes.Status201Created, new
+            {
+                data = RecurringPatternPayload(pattern),
+                meta = RecurringMeta()
+            });
+        }
+        catch (RecurringPatternContractException exception)
+        {
+            return RecurringPatternError(exception);
+        }
     }
 
     [HttpPut("api/volunteering/recurring-patterns/{patternId:int}")]
+    [EnableRateLimiting(RateLimitingExtensions.RecurringPatternUpdatePolicy)]
     public async Task<IActionResult> UpdatePattern(
-        int patternId, [FromBody] CreatePatternRequest req)
+        int patternId,
+        [FromBody] JsonElement body,
+        CancellationToken ct = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (pattern, error) = await _svc.UpdatePatternAsync(patternId, userId.Value, req);
-        if (error != null) return NotFound(new { error });
-        return Ok(pattern);
+        if (userId == null) return AuthError();
+        SetRecurringHeaders();
+        if (await RecurringFeatureDisabledAsync(ct) is { } featureError) return featureError;
+
+        try
+        {
+            var pattern = await _svc.UpdatePatternAsync(
+                patternId,
+                userId.Value,
+                body,
+                ct);
+            return Ok(new
+            {
+                data = RecurringPatternPayload(pattern),
+                meta = RecurringMeta()
+            });
+        }
+        catch (RecurringPatternContractException exception)
+        {
+            return RecurringPatternError(exception);
+        }
     }
 
     [HttpDelete("api/volunteering/recurring-patterns/{patternId:int}")]
-    public async Task<IActionResult> DeactivatePattern(int patternId)
+    [EnableRateLimiting(RateLimitingExtensions.RecurringPatternDeletePolicy)]
+    public async Task<IActionResult> DeactivatePattern(
+        int patternId,
+        CancellationToken ct = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var error = await _svc.DeactivatePatternAsync(patternId, userId.Value);
-        if (error != null) return NotFound(new { error });
-        return NoContent();
+        if (userId == null) return AuthError();
+        SetRecurringHeaders();
+        if (await RecurringFeatureDisabledAsync(ct) is { } featureError) return featureError;
+
+        try
+        {
+            var removed = await _svc.DeactivatePatternAsync(patternId, userId.Value, ct);
+            return Ok(new
+            {
+                data = new
+                {
+                    message = "Recurring pattern deactivated",
+                    future_shifts_removed = removed
+                },
+                meta = RecurringMeta()
+            });
+        }
+        catch (RecurringPatternContractException exception)
+        {
+            return RecurringPatternError(exception);
+        }
     }
 
     // ── Shift Swaps ───────────────────────────────────────────────────────────
@@ -317,6 +399,105 @@ public class ShiftManagementController : ControllerBase
         var error = await _svc.CancelGroupReservationAsync(reservationId, userId.Value);
         if (error != null) return WorkflowError(error);
         return NoContent();
+    }
+
+    private static object RecurringPatternPayload(RecurringPatternView pattern) => new
+    {
+        id = pattern.Id,
+        opportunity_id = pattern.OpportunityId,
+        title = pattern.Title,
+        frequency = pattern.Frequency,
+        days_of_week = pattern.DaysOfWeek,
+        start_time = pattern.StartTime.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture),
+        end_time = pattern.EndTime.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture),
+        spots_per_shift = pattern.SpotsPerShift,
+        capacity = pattern.Capacity,
+        start_date = pattern.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        end_date = pattern.EndDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        max_occurrences = pattern.MaxOccurrences,
+        occurrences_generated = pattern.OccurrencesGenerated,
+        is_active = pattern.IsActive,
+        created_by = pattern.CreatedBy,
+        created_by_name = pattern.CreatedByName,
+        created_at = pattern.CreatedAt,
+        updated_at = pattern.UpdatedAt
+    };
+
+    private object RecurringMeta() => new
+    {
+        base_url = $"{Request.Scheme}://{Request.Host}"
+    };
+
+    private void SetRecurringHeaders()
+    {
+        if (!IsCanonicalV2)
+        {
+            return;
+        }
+
+        Response.Headers["API-Version"] = "2.0";
+        var tenantId = User.FindFirst("tenant_id")?.Value;
+        if (!string.IsNullOrWhiteSpace(tenantId))
+        {
+            Response.Headers["X-Tenant-ID"] = tenantId;
+        }
+    }
+
+    private async Task<IActionResult?> RecurringFeatureDisabledAsync(CancellationToken ct)
+    {
+        if (!IsCanonicalV2)
+        {
+            return null;
+        }
+
+        if (HttpContext.Items.ContainsKey(RecurringPatternFeatureGateMiddleware.PassedItemKey))
+        {
+            return null;
+        }
+
+        if (!await _svc.IsVolunteeringEnabledAsync(ct))
+        {
+            return RecurringFeatureError(
+                "Volunteering module is not enabled for this community");
+        }
+
+        if (!await _svc.IsRecurringShiftsEnabledAsync(ct))
+        {
+            return RecurringFeatureError(
+                "This module is not enabled for this community.");
+        }
+
+        return null;
+    }
+
+    private IActionResult RecurringFeatureError(string message) =>
+        StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            errors = new[]
+            {
+                new
+                {
+                    code = "FEATURE_DISABLED",
+                    message
+                }
+            }
+        });
+
+    private IActionResult RecurringPatternError(RecurringPatternContractException exception)
+    {
+        var statusCode = exception.Code switch
+        {
+            "NOT_FOUND" => StatusCodes.Status404NotFound,
+            "FORBIDDEN" or "FEATURE_DISABLED" => StatusCodes.Status403Forbidden,
+            _ => StatusCodes.Status400BadRequest
+        };
+        return StatusCode(statusCode, new
+        {
+            errors = new[]
+            {
+                new { code = exception.Code, message = exception.Message }
+            }
+        });
     }
 
     private bool IsCanonicalV2 => Request.Path.StartsWithSegments("/api/v2");

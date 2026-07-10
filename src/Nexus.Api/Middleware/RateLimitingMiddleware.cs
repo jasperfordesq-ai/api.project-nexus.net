@@ -25,6 +25,10 @@ public static class RateLimitingExtensions
     public const string GuardianConsentRequestPolicy = "guardian-consent-request";
     public const string GuardianConsentVerifyPolicy = "guardian-consent-verify";
     public const string GuardianConsentWithdrawPolicy = "guardian-consent-withdraw";
+    public const string RecurringPatternListPolicy = "volunteering-recurring-pattern-list";
+    public const string RecurringPatternCreatePolicy = "volunteering-recurring-pattern-create";
+    public const string RecurringPatternUpdatePolicy = "volunteering-recurring-pattern-update";
+    public const string RecurringPatternDeletePolicy = "volunteering-recurring-pattern-delete";
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -161,6 +165,34 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:GuardianConsent:WithdrawPermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:WithdrawWindowSeconds", 60)))));
 
+            options.AddPolicy(RecurringPatternListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:RecurringPattern:ListPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:RecurringPattern:ListWindowSeconds", 60)))));
+
+            options.AddPolicy(RecurringPatternCreatePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:RecurringPattern:CreatePermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:RecurringPattern:CreateWindowSeconds", 60)))));
+
+            options.AddPolicy(RecurringPatternUpdatePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:RecurringPattern:UpdatePermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:RecurringPattern:UpdateWindowSeconds", 60)))));
+
+            options.AddPolicy(RecurringPatternDeletePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:RecurringPattern:DeletePermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:RecurringPattern:DeleteWindowSeconds", 60)))));
+
             // Custom rejection response
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -177,7 +209,19 @@ public static class RateLimitingExtensions
                 var isGuardianConsentPath =
                     path.StartsWithSegments("/api/v2/volunteering/guardian-consents")
                     || path.StartsWithSegments("/api/volunteering/guardian-consents");
-                var canonicalLimit = isGuardianConsentPath
+                var isRecurringPatternPath =
+                    path.Value?.Contains("/volunteering/", StringComparison.OrdinalIgnoreCase) == true
+                    && path.Value.Contains("/recurring-patterns", StringComparison.OrdinalIgnoreCase);
+                var canonicalLimit = isRecurringPatternPath
+                    ? context.HttpContext.Request.Method switch
+                    {
+                        "GET" => config.GetValue("RateLimiting:RecurringPattern:ListPermitLimit", 60),
+                        "POST" => config.GetValue("RateLimiting:RecurringPattern:CreatePermitLimit", 10),
+                        "PUT" => config.GetValue("RateLimiting:RecurringPattern:UpdatePermitLimit", 10),
+                        "DELETE" => config.GetValue("RateLimiting:RecurringPattern:DeletePermitLimit", 10),
+                        _ => 10
+                    }
+                    : isGuardianConsentPath
                     ? path.Value?.Contains("/verify/", StringComparison.OrdinalIgnoreCase) == true
                         ? config.GetValue("RateLimiting:GuardianConsent:VerifyPermitLimit", 10)
                         : context.HttpContext.Request.Method switch

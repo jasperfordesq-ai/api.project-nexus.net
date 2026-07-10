@@ -5462,6 +5462,15 @@ public class AdminExplicitParityController : ControllerBase
                 VolunteerGuardianConsentService.GuardianConsentRequiredConfigKey,
                 JsonSerializer.Serialize(guardianConsentRequired, StoreJsonOptions));
         }
+        if (string.Equals(module, "volunteering", StringComparison.OrdinalIgnoreCase)
+            && settings.TryGetValue(
+                ShiftManagementService.RecurringShiftsEnabledConfigKey,
+                out var recurringShiftsEnabled))
+        {
+            await UpsertTenantConfigValueAsync(
+                ShiftManagementService.RecurringShiftsEnabledConfigKey,
+                JsonSerializer.Serialize(recurringShiftsEnabled, StoreJsonOptions));
+        }
         await _db.SaveChangesAsync();
     }
 

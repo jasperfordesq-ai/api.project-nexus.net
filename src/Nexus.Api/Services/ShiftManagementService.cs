@@ -14,16 +14,35 @@ using Nexus.Api.Entities;
 
 namespace Nexus.Api.Services;
 
-public record CreatePatternRequest(
+public sealed record RecurringPatternView(
+    int Id,
+    int OpportunityId,
     string? Title,
     string Frequency,
-    string? DaysOfWeek,
+    JsonElement DaysOfWeek,
     TimeSpan StartTime,
     TimeSpan EndTime,
-    int? Capacity,
+    int SpotsPerShift,
+    int Capacity,
     DateOnly StartDate,
     DateOnly? EndDate,
-    int? MaxOccurrences);
+    int? MaxOccurrences,
+    int OccurrencesGenerated,
+    bool IsActive,
+    int CreatedBy,
+    string? CreatedByName,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public sealed class RecurringPatternContractException : Exception
+{
+    public RecurringPatternContractException(string code, string message) : base(message)
+    {
+        Code = code;
+    }
+
+    public string Code { get; }
+}
 
 public record SwapRequest(
     int FromShiftId,
@@ -77,6 +96,11 @@ public sealed record RecurringShiftGenerationResult(int Processed, int Generated
 
 public class ShiftManagementService
 {
+    public const string RecurringShiftsEnabledConfigKey = "volunteering.enable_recurring_shifts";
+    private const string VolunteeringModuleConfigKey = "admin_explicit.module_config.volunteering";
+    private static readonly HashSet<string> ValidRecurringFrequencies =
+        new(StringComparer.Ordinal) { "daily", "weekly", "biweekly", "monthly" };
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenant;
     private readonly ILogger<ShiftManagementService> _logger;
@@ -102,75 +126,745 @@ public class ShiftManagementService
 
     // ── Recurring Patterns ────────────────────────────────────────────────────
 
-    public async Task<List<RecurringShiftPattern>> GetPatternsAsync(int opportunityId)
+    public async Task<IReadOnlyList<RecurringPatternView>> GetPatternsAsync(
+        int opportunityId,
+        CancellationToken ct = default)
     {
-        return await _db.RecurringShiftPatterns
-            .Where(p => p.OpportunityId == opportunityId && p.IsActive)
-            .OrderBy(p => p.StartDate)
-            .ToListAsync();
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        try
+        {
+            var patterns = await _db.RecurringShiftPatterns
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(pattern =>
+                    pattern.TenantId == tenantId
+                    && pattern.OpportunityId == opportunityId)
+                .OrderByDescending(pattern => pattern.CreatedAt)
+                .ThenByDescending(pattern => pattern.Id)
+                .ToListAsync(ct);
+
+            return await ToRecurringPatternViewsAsync(patterns, tenantId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Recurring shift pattern list failed for opportunity {OpportunityId} in tenant {TenantId}",
+                opportunityId,
+                tenantId);
+            throw new RecurringPatternContractException(
+                "SERVER_ERROR",
+                "An internal error occurred");
+        }
     }
 
-    public async Task<(RecurringShiftPattern? Pattern, string? Error)> CreatePatternAsync(
-        int opportunityId, int userId, CreatePatternRequest req)
+    public async Task<RecurringPatternView> CreatePatternAsync(
+        int opportunityId,
+        int userId,
+        JsonElement body,
+        CancellationToken ct = default)
     {
-        var exists = await _db.VolunteerOpportunities
-            .AnyAsync(o => o.Id == opportunityId);
-        if (!exists) return (null, "Opportunity not found");
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        await EnsureCanManageOpportunityAsync(
+            opportunityId,
+            userId,
+            tenantId,
+            "Opportunity not found",
+            ct);
 
+        EnsureObject(body);
+        var frequency = ReadString(body, "frequency") ?? "weekly";
+        if (!ValidRecurringFrequencies.Contains(frequency))
+        {
+            throw new RecurringPatternContractException("VALIDATION_ERROR", "Invalid frequency");
+        }
+
+        var startTimeText = ReadString(body, "start_time");
+        var endTimeText = ReadString(body, "end_time");
+        if (string.IsNullOrWhiteSpace(startTimeText)
+            || string.IsNullOrWhiteSpace(endTimeText)
+            || startTimeText == "0"
+            || endTimeText == "0"
+            || !TimeSpan.TryParse(startTimeText, CultureInfo.InvariantCulture, out var startTime)
+            || !TimeSpan.TryParse(endTimeText, CultureInfo.InvariantCulture, out var endTime))
+        {
+            throw new RecurringPatternContractException("VALIDATION_ERROR", "Invalid input");
+        }
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (TryGetProperty(body, "start_date", out var startDateElement)
+            && startDateElement.ValueKind is not JsonValueKind.Null)
+        {
+            if (!DateOnly.TryParse(
+                    ToPhpString(startDateElement),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out startDate))
+            {
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+        }
+
+        var endDate = ReadNullableDate(body, "end_date");
+        var capacity = ReadCreateInteger(body, "capacity", 1);
+        var maxOccurrences = ReadCreateNullableInteger(body, "max_occurrences");
+        if (capacity < 0 || maxOccurrences < 0)
+        {
+            throw new RecurringPatternContractException(
+                "SERVER_ERROR",
+                "An internal error occurred");
+        }
+
+        var now = DateTime.UtcNow;
         var pattern = new RecurringShiftPattern
         {
-            TenantId = _tenant.GetTenantIdOrThrow(),
+            TenantId = tenantId,
             OpportunityId = opportunityId,
             CreatedBy = userId,
-            Title = req.Title,
-            Frequency = req.Frequency,
-            DaysOfWeek = req.DaysOfWeek,
-            StartTime = req.StartTime,
-            EndTime = req.EndTime,
-            Capacity = req.Capacity,
-            StartDate = req.StartDate,
-            EndDate = req.EndDate,
-            MaxOccurrences = req.MaxOccurrences
+            Title = ReadString(body, "title"),
+            Frequency = frequency,
+            DaysOfWeek = ReadDaysOfWeekStorage(body),
+            StartTime = startTime,
+            EndTime = endTime,
+            SpotsPerShift = 1,
+            Capacity = capacity,
+            StartDate = startDate,
+            EndDate = endDate,
+            MaxOccurrences = maxOccurrences,
+            OccurrencesGenerated = 0,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
-        _db.RecurringShiftPatterns.Add(pattern);
-        await _db.SaveChangesAsync();
-        return (pattern, null);
+        try
+        {
+            _db.RecurringShiftPatterns.Add(pattern);
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogError(
+                exception,
+                "Recurring shift pattern creation failed for opportunity {OpportunityId} in tenant {TenantId}",
+                opportunityId,
+                tenantId);
+            throw new RecurringPatternContractException(
+                "SERVER_ERROR",
+                "An internal error occurred");
+        }
+
+        return await ToRecurringPatternViewAsync(pattern, tenantId, ct);
     }
 
-    public async Task<(RecurringShiftPattern? Pattern, string? Error)> UpdatePatternAsync(
-        int patternId, int userId, CreatePatternRequest req)
+    public async Task<RecurringPatternView> UpdatePatternAsync(
+        int patternId,
+        int userId,
+        JsonElement body,
+        CancellationToken ct = default)
     {
+        var tenantId = _tenant.GetTenantIdOrThrow();
         var pattern = await _db.RecurringShiftPatterns
-            .FirstOrDefaultAsync(p => p.Id == patternId);
-        if (pattern == null) return (null, "Pattern not found");
-        if (pattern.CreatedBy != userId) return (null, "Not authorized");
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(candidate =>
+                candidate.Id == patternId
+                && candidate.TenantId == tenantId,
+                ct)
+            ?? throw new RecurringPatternContractException("NOT_FOUND", "Not found");
 
-        pattern.Title = req.Title;
-        pattern.Frequency = req.Frequency;
-        pattern.DaysOfWeek = req.DaysOfWeek;
-        pattern.StartTime = req.StartTime;
-        pattern.EndTime = req.EndTime;
-        pattern.Capacity = req.Capacity;
-        pattern.StartDate = req.StartDate;
-        pattern.EndDate = req.EndDate;
-        pattern.MaxOccurrences = req.MaxOccurrences;
-        pattern.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return (pattern, null);
+        await EnsureCanManageOpportunityAsync(
+            pattern.OpportunityId,
+            userId,
+            tenantId,
+            null,
+            ct);
+        EnsureObject(body);
+
+        var touchedAllowedField = false;
+        if (TryGetProperty(body, "title", out var titleElement))
+        {
+            var title = ToNullablePhpString(titleElement);
+            touchedAllowedField = true;
+            pattern.Title = title;
+        }
+
+        if (TryGetProperty(body, "frequency", out var frequencyElement))
+        {
+            var frequency = ToNullablePhpString(frequencyElement);
+            if (frequency is null || !ValidRecurringFrequencies.Contains(frequency))
+            {
+                throw new RecurringPatternContractException("VALIDATION_ERROR", "Invalid frequency");
+            }
+
+            touchedAllowedField = true;
+            pattern.Frequency = frequency;
+        }
+
+        if (TryGetProperty(body, "start_time", out var startTimeElement))
+        {
+            var startTime = ParseRequiredTime(startTimeElement);
+            touchedAllowedField = true;
+            pattern.StartTime = startTime;
+        }
+
+        if (TryGetProperty(body, "end_time", out var endTimeElement))
+        {
+            var endTime = ParseRequiredTime(endTimeElement);
+            touchedAllowedField = true;
+            pattern.EndTime = endTime;
+        }
+
+        if (TryGetProperty(body, "spots_per_shift", out var spotsElement))
+        {
+            var spots = ToPhpInteger(spotsElement);
+            if (spots < 0)
+            {
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+
+            touchedAllowedField = true;
+            pattern.SpotsPerShift = spots;
+        }
+
+        if (TryGetProperty(body, "capacity", out var capacityElement))
+        {
+            var capacity = ToPhpInteger(capacityElement);
+            if (capacity < 0)
+            {
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+
+            touchedAllowedField = true;
+            pattern.Capacity = capacity;
+        }
+
+        if (TryGetProperty(body, "start_date", out var updateStartDateElement))
+        {
+            if (updateStartDateElement.ValueKind == JsonValueKind.Null
+                || !DateOnly.TryParse(
+                    ToPhpString(updateStartDateElement),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var updateStartDate))
+            {
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+
+            touchedAllowedField = true;
+            pattern.StartDate = updateStartDate;
+        }
+
+        if (TryGetProperty(body, "end_date", out var updateEndDateElement))
+        {
+            DateOnly? updateEndDate = null;
+            if (updateEndDateElement.ValueKind != JsonValueKind.Null)
+            {
+                if (!DateOnly.TryParse(
+                    ToPhpString(updateEndDateElement),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var parsedEndDate))
+                {
+                    throw new RecurringPatternContractException(
+                        "SERVER_ERROR",
+                        "An internal error occurred");
+                }
+
+                updateEndDate = parsedEndDate;
+            }
+
+            touchedAllowedField = true;
+            pattern.EndDate = updateEndDate;
+        }
+
+        if (TryGetProperty(body, "max_occurrences", out var maximumElement))
+        {
+            var maximum = ToPhpInteger(maximumElement);
+            if (maximum < 0)
+            {
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+
+            touchedAllowedField = true;
+            pattern.MaxOccurrences = maximum;
+        }
+
+        if (TryGetProperty(body, "days_of_week", out _))
+        {
+            var daysOfWeek = ReadDaysOfWeekStorage(body);
+            touchedAllowedField = true;
+            pattern.DaysOfWeek = daysOfWeek;
+        }
+
+        if (touchedAllowedField)
+        {
+            pattern.UpdatedAt = DateTime.UtcNow;
+            try
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger.LogError(
+                    exception,
+                    "Recurring shift pattern update failed for pattern {PatternId} in tenant {TenantId}",
+                    patternId,
+                    tenantId);
+                throw new RecurringPatternContractException(
+                    "SERVER_ERROR",
+                    "An internal error occurred");
+            }
+        }
+
+        return await ToRecurringPatternViewAsync(pattern, tenantId, ct);
     }
 
-    public async Task<string?> DeactivatePatternAsync(int patternId, int userId)
+    public async Task<int> DeactivatePatternAsync(
+        int patternId,
+        int userId,
+        CancellationToken ct = default)
     {
+        var tenantId = _tenant.GetTenantIdOrThrow();
         var pattern = await _db.RecurringShiftPatterns
-            .FirstOrDefaultAsync(p => p.Id == patternId);
-        if (pattern == null) return "Pattern not found";
-        if (pattern.CreatedBy != userId) return "Not authorized";
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(candidate =>
+                candidate.Id == patternId
+                && candidate.TenantId == tenantId,
+                ct)
+            ?? throw new RecurringPatternContractException("NOT_FOUND", "Not found");
+
+        await EnsureCanManageOpportunityAsync(
+            pattern.OpportunityId,
+            userId,
+            tenantId,
+            null,
+            ct);
 
         pattern.IsActive = false;
         pattern.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return null;
+        try
+        {
+            // Laravel commits deactivation before attempting best-effort cleanup.
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogError(
+                exception,
+                "Recurring shift pattern deactivation failed for pattern {PatternId} in tenant {TenantId}",
+                patternId,
+                tenantId);
+            throw new RecurringPatternContractException(
+                "SERVER_ERROR",
+                "An internal error occurred");
+        }
+
+        try
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+            var now = DateTime.UtcNow;
+            var shiftIds = await _db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .Where(shift =>
+                    shift.TenantId == tenantId
+                    && shift.RecurringPatternId == patternId
+                    && shift.StartsAt > now)
+                .Select(shift => shift.Id)
+                .ToListAsync(ct);
+
+            if (shiftIds.Count == 0)
+            {
+                await transaction.CommitAsync(ct);
+                return 0;
+            }
+
+            await _db.VolunteerEmergencyAlerts
+                .IgnoreQueryFilters()
+                .Where(alert =>
+                    alert.TenantId == tenantId
+                    && alert.IsActive
+                    && alert.ShiftId.HasValue
+                    && shiftIds.Contains(alert.ShiftId.Value))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(alert => alert.IsActive, false)
+                    .SetProperty(alert => alert.UpdatedAt, now), ct);
+
+            // These ASP.NET soft references do not have the SET NULL foreign
+            // keys used by Laravel. Preserve their historical rows explicitly.
+            await _db.VolunteerExpenses
+                .IgnoreQueryFilters()
+                .Where(expense =>
+                    expense.TenantId == tenantId
+                    && expense.ShiftId.HasValue
+                    && shiftIds.Contains(expense.ShiftId.Value))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(expense => expense.ShiftId, (int?)null)
+                    .SetProperty(expense => expense.UpdatedAt, now), ct);
+
+            await _db.VolunteerWellbeings
+                .IgnoreQueryFilters()
+                .Where(wellbeing =>
+                    wellbeing.TenantId == tenantId
+                    && wellbeing.ShiftId.HasValue
+                    && shiftIds.Contains(wellbeing.ShiftId.Value))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(wellbeing => wellbeing.ShiftId, (int?)null)
+                    .SetProperty(wellbeing => wellbeing.UpdatedAt, now), ct);
+
+            // ToShiftId uses NO ACTION; FromShiftId cascades with the deleted
+            // shift and therefore does not need a separate mutation.
+            await _db.ShiftSwapRequests
+                .IgnoreQueryFilters()
+                .Where(swap =>
+                    swap.TenantId == tenantId
+                    && swap.ToShiftId.HasValue
+                    && shiftIds.Contains(swap.ToShiftId.Value))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(swap => swap.ToShiftId, (int?)null)
+                    .SetProperty(swap => swap.UpdatedAt, now), ct);
+
+            var deleted = await _db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .Where(shift =>
+                    shift.TenantId == tenantId
+                    && shiftIds.Contains(shift.Id))
+                .ExecuteDeleteAsync(ct);
+
+            await transaction.CommitAsync(ct);
+            return deleted;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Match Laravel's two-stage lifecycle: the pattern remains inactive
+            // and the endpoint still succeeds when future-shift cleanup fails.
+            _logger.LogError(
+                exception,
+                "Recurring shift cleanup failed for pattern {PatternId} in tenant {TenantId}",
+                patternId,
+                tenantId);
+            return 0;
+        }
+    }
+
+    private async Task EnsureCanManageOpportunityAsync(
+        int opportunityId,
+        int userId,
+        int tenantId,
+        string? notFoundMessage,
+        CancellationToken ct)
+    {
+        var opportunity = await _db.VolunteerOpportunities
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(candidate =>
+                candidate.Id == opportunityId
+                && candidate.TenantId == tenantId)
+            .Select(candidate => new { candidate.Id, candidate.OrganizerId })
+            .SingleOrDefaultAsync(ct);
+
+        if (opportunity is null)
+        {
+            if (notFoundMessage is not null)
+            {
+                throw new RecurringPatternContractException("NOT_FOUND", notFoundMessage);
+            }
+
+            throw new RecurringPatternContractException("FORBIDDEN", "Forbidden");
+        }
+
+        if (opportunity.OrganizerId == userId)
+        {
+            return;
+        }
+
+        var actor = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate =>
+                candidate.Id == userId
+                && candidate.TenantId == tenantId,
+                ct);
+        if (actor?.Role is not ("super_admin" or "admin" or "tenant_admin"))
+        {
+            throw new RecurringPatternContractException("FORBIDDEN", "Forbidden");
+        }
+    }
+
+    private async Task<IReadOnlyList<RecurringPatternView>> ToRecurringPatternViewsAsync(
+        IReadOnlyList<RecurringShiftPattern> patterns,
+        int tenantId,
+        CancellationToken ct)
+    {
+        var creatorIds = patterns
+            .Select(pattern => pattern.CreatedBy)
+            .Distinct()
+            .ToArray();
+        var creators = creatorIds.Length == 0
+            ? new Dictionary<int, string?>()
+            : await _db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(user => user.TenantId == tenantId && creatorIds.Contains(user.Id))
+                .ToDictionaryAsync(
+                    user => user.Id,
+                    user => string.IsNullOrWhiteSpace((user.FirstName + " " + user.LastName).Trim())
+                        ? null
+                        : (user.FirstName + " " + user.LastName).Trim(),
+                    ct);
+
+        return patterns
+            .Select(pattern => ToRecurringPatternView(
+                pattern,
+                creators.GetValueOrDefault(pattern.CreatedBy)))
+            .ToArray();
+    }
+
+    private async Task<RecurringPatternView> ToRecurringPatternViewAsync(
+        RecurringShiftPattern pattern,
+        int tenantId,
+        CancellationToken ct)
+    {
+        var creatorName = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.Id == pattern.CreatedBy && user.TenantId == tenantId)
+            .Select(user => (user.FirstName + " " + user.LastName).Trim())
+            .SingleOrDefaultAsync(ct);
+
+        return ToRecurringPatternView(
+            pattern,
+            string.IsNullOrWhiteSpace(creatorName) ? null : creatorName);
+    }
+
+    private static RecurringPatternView ToRecurringPatternView(
+        RecurringShiftPattern pattern,
+        string? creatorName) => new(
+            pattern.Id,
+            pattern.OpportunityId,
+            pattern.Title,
+            pattern.Frequency,
+            ParseResponseDaysOfWeek(pattern.DaysOfWeek),
+            pattern.StartTime,
+            pattern.EndTime,
+            pattern.SpotsPerShift,
+            pattern.Capacity,
+            pattern.StartDate,
+            pattern.EndDate,
+            pattern.MaxOccurrences is null or 0 ? null : pattern.MaxOccurrences,
+            pattern.OccurrencesGenerated,
+            pattern.IsActive,
+            pattern.CreatedBy,
+            creatorName,
+            pattern.CreatedAt,
+            pattern.UpdatedAt);
+
+    private static JsonElement ParseResponseDaysOfWeek(string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored))
+        {
+            return EmptyJsonArray();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(stored);
+            var decoded = document.RootElement;
+            if (DecodedJsonIsPhpFalsy(decoded))
+            {
+                return EmptyJsonArray();
+            }
+
+            return decoded.Clone();
+        }
+        catch (JsonException)
+        {
+            return EmptyJsonArray();
+        }
+    }
+
+    private static JsonElement EmptyJsonArray() =>
+        JsonSerializer.SerializeToElement(Array.Empty<int>());
+
+    private static bool DecodedJsonIsPhpFalsy(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Null or JsonValueKind.False => true,
+        JsonValueKind.Number => value.TryGetDouble(out var number) && number == 0,
+        JsonValueKind.String => value.GetString() is null or "" or "0",
+        JsonValueKind.Array => value.GetArrayLength() == 0,
+        JsonValueKind.Object => !value.EnumerateObject().Any(),
+        _ => false
+    };
+
+    private static void EnsureObject(JsonElement body)
+    {
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            throw new RecurringPatternContractException("VALIDATION_ERROR", "Invalid input");
+        }
+    }
+
+    private static bool TryGetProperty(
+        JsonElement body,
+        string name,
+        out JsonElement value)
+    {
+        if (body.ValueKind == JsonValueKind.Object)
+        {
+            return body.TryGetProperty(name, out value);
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static string? ReadString(JsonElement body, string name) =>
+        TryGetProperty(body, name, out var value) ? ToNullablePhpString(value) : null;
+
+    private static string? ToNullablePhpString(JsonElement value) =>
+        value.ValueKind == JsonValueKind.Null ? null : ToPhpString(value);
+
+    private static string ToPhpString(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? string.Empty,
+        JsonValueKind.True => "1",
+        JsonValueKind.False or JsonValueKind.Null => string.Empty,
+        _ => value.ToString()
+    };
+
+    private static int ToPhpInteger(JsonElement value)
+    {
+        try
+        {
+            return value.ValueKind switch
+            {
+                JsonValueKind.Number when value.TryGetInt32(out var integer) => integer,
+                JsonValueKind.Number => checked((int)Math.Truncate(value.GetDouble())),
+                JsonValueKind.String when int.TryParse(
+                    value.GetString(),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var parsed) => parsed,
+                JsonValueKind.String when double.TryParse(
+                    value.GetString(),
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out var numeric) => checked((int)Math.Truncate(numeric)),
+                JsonValueKind.True => 1,
+                _ => 0
+            };
+        }
+        catch (Exception exception) when (exception is FormatException or OverflowException)
+        {
+            return 0;
+        }
+    }
+
+    private static int ReadCreateInteger(JsonElement body, string name, int defaultValue)
+    {
+        if (!TryGetProperty(body, name, out var value)
+            || value.ValueKind == JsonValueKind.Null
+            || (value.ValueKind == JsonValueKind.String
+                && string.IsNullOrEmpty(value.GetString())))
+        {
+            return defaultValue;
+        }
+
+        if (value.ValueKind is JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False)
+        {
+            return ToPhpInteger(value);
+        }
+
+        if (value.ValueKind == JsonValueKind.String
+            && double.TryParse(
+                value.GetString(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out _))
+        {
+            return ToPhpInteger(value);
+        }
+
+        return defaultValue;
+    }
+
+    private static int? ReadCreateNullableInteger(JsonElement body, string name)
+    {
+        if (!TryGetProperty(body, name, out var value)
+            || value.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return ToPhpInteger(value);
+    }
+
+    private static string? ReadDaysOfWeekStorage(JsonElement body)
+    {
+        if (!TryGetProperty(body, "days_of_week", out var value)
+            || value.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return value.ValueKind == JsonValueKind.Array
+            ? value.GetRawText()
+            : ToPhpString(value);
+    }
+
+    private static DateOnly? ReadNullableDate(JsonElement body, string name)
+    {
+        if (!TryGetProperty(body, name, out var value)
+            || value.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        if (DateOnly.TryParse(
+            ToPhpString(value),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new RecurringPatternContractException(
+            "SERVER_ERROR",
+            "An internal error occurred");
+    }
+
+    private static TimeSpan ParseRequiredTime(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Null
+            && TimeSpan.TryParse(
+                ToPhpString(value),
+                CultureInfo.InvariantCulture,
+                out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new RecurringPatternContractException(
+            "SERVER_ERROR",
+            "An internal error occurred");
     }
 
     public async Task<int> GenerateOccurrencesAsync(
@@ -253,7 +947,7 @@ public class ShiftManagementService
                          "StartsAt", "EndsAt", "MaxVolunteers", "Status", "CreatedAt")
                     VALUES
                         ({pattern.TenantId}, {pattern.OpportunityId}, {pattern.Id}, {pattern.Title},
-                         {startsAt}, {endsAt}, {pattern.Capacity ?? 1}, {ShiftStatus.Scheduled.ToString()}, {createdAt})
+                         {startsAt}, {endsAt}, {pattern.Capacity}, {ShiftStatus.Scheduled.ToString()}, {createdAt})
                     ON CONFLICT ("TenantId", "RecurringPatternId", "StartsAt")
                     WHERE "RecurringPatternId" IS NOT NULL
                     DO NOTHING
@@ -1358,9 +2052,13 @@ public class ShiftManagementService
         return expired;
     }
 
-    public async Task<bool> IsVolunteeringEnabledAsync(CancellationToken ct = default)
+    public Task<bool> IsVolunteeringEnabledAsync(CancellationToken ct = default) =>
+        IsVolunteeringEnabledAsync(_tenant.GetTenantIdOrThrow(), ct);
+
+    public async Task<bool> IsVolunteeringEnabledAsync(
+        int tenantId,
+        CancellationToken ct = default)
     {
-        var tenantId = _tenant.GetTenantIdOrThrow();
         var value = await _db.TenantConfigs
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -1373,6 +2071,86 @@ public class ShiftManagementService
         return string.IsNullOrWhiteSpace(value)
             || value.Trim().ToLowerInvariant() is not ("0" or "false" or "no" or "off" or "disabled");
     }
+
+    public Task<bool> IsRecurringShiftsEnabledAsync(CancellationToken ct = default) =>
+        IsRecurringShiftsEnabledAsync(_tenant.GetTenantIdOrThrow(), ct);
+
+    public async Task<bool> IsRecurringShiftsEnabledAsync(
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        var values = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config =>
+                config.TenantId == tenantId
+                && (config.Key == RecurringShiftsEnabledConfigKey
+                    || config.Key == VolunteeringModuleConfigKey))
+            .Select(config => new { config.Key, config.Value })
+            .ToListAsync(ct);
+
+        var direct = values.FirstOrDefault(config =>
+            config.Key == RecurringShiftsEnabledConfigKey);
+        if (direct is not null)
+        {
+            return ConfigValueIsEnabled(direct.Value, defaultValue: true);
+        }
+
+        var module = values.FirstOrDefault(config =>
+            config.Key == VolunteeringModuleConfigKey);
+        if (module is null || string.IsNullOrWhiteSpace(module.Value))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(module.Value);
+            return document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty(
+                    RecurringShiftsEnabledConfigKey,
+                    out var configured)
+                || JsonValueIsEnabled(configured, defaultValue: true);
+        }
+        catch (JsonException)
+        {
+            return true;
+        }
+    }
+
+    private static bool ConfigValueIsEnabled(string? value, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            return JsonValueIsEnabled(document.RootElement, defaultValue);
+        }
+        catch (JsonException)
+        {
+            var normalized = value.Trim().Trim('"').ToLowerInvariant();
+            return normalized switch
+            {
+                "1" or "true" or "yes" or "on" or "enabled" => true,
+                "0" or "false" or "no" or "off" or "disabled" => false,
+                _ => defaultValue
+            };
+        }
+    }
+
+    private static bool JsonValueIsEnabled(JsonElement value, bool defaultValue) =>
+        value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number when value.TryGetInt32(out var number) => number != 0,
+            JsonValueKind.String => ConfigValueIsEnabled(value.GetString(), defaultValue),
+            _ => defaultValue
+        };
 
     private async Task<long> GetUsedShiftSlotsAsync(
         int shiftId,

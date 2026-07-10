@@ -462,12 +462,18 @@ app.UseCors("Default");
 // Authentication - populates HttpContext.User from JWT
 app.UseAuthentication();
 
-// Rate limiting follows authentication so authenticated endpoint policies can
-// partition by user. Anonymous auth/general policies still partition by IP.
-app.UseRateLimiter();
-
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();
+
+// Laravel authenticates and runs module/feature gates before action-specific
+// throttles. Preserve that order for recurring patterns so 401/403 responses
+// neither consume nor become a 429 from those endpoint buckets.
+app.UseMiddleware<RecurringPatternFeatureGateMiddleware>();
+
+// Rate limiting follows authentication/authorization so authenticated
+// endpoint policies partition by user while protected anonymous requests
+// short-circuit first. Anonymous [AllowAnonymous] policies still partition by IP.
+app.UseRateLimiter();
 
 // Surname privacy — strips last_name / surname from /api/* JSON responses
 // for non-admin viewers. A member always sees their own surname (object's

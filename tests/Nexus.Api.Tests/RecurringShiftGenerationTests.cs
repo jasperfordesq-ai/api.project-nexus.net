@@ -134,12 +134,14 @@ public sealed class RecurringShiftGenerationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task ProcessAllPatterns_NegativeMaxOccurrencesRecordsPatternError()
+    public async Task DatabaseConstraint_RejectsNegativeMaxOccurrences()
     {
         var today = UtcToday();
-        using (var arrange = Factory.Services.CreateScope())
+        using var arrange = Factory.Services.CreateScope();
+        var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        Func<Task> persist = async () =>
         {
-            var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
             await AddPatternAsync(
                 db,
                 TestData.Tenant1.Id,
@@ -148,17 +150,9 @@ public sealed class RecurringShiftGenerationTests : IntegrationTestBase
                 daysOfWeek: null,
                 startDate: today,
                 maxOccurrences: -1);
-        }
+        };
 
-        using var act = Factory.Services.CreateScope();
-        SetTenant(act.ServiceProvider, TestData.Tenant1.Id);
-        var result = await act.ServiceProvider
-            .GetRequiredService<ShiftManagementService>()
-            .ProcessAllPatternsAsync(daysAhead: 7);
-
-        result.Processed.Should().Be(0);
-        result.Generated.Should().Be(0);
-        result.Errors.Should().Be(1);
+        await persist.Should().ThrowAsync<DbUpdateException>();
     }
 
     [Fact]

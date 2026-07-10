@@ -66,9 +66,11 @@ the core volunteering placeholder successes with PostgreSQL-backed,
 tenant-scoped transactions. The guardian follow-up completes the consent
 lifecycle without exposing raw credentials. The recurring-shift follow-up adds
 Laravel recurrence math, race-safe persistence, and the real daily/manual
-all-active-tenant sweep. The latest source migration is
-`20260710211122_RecurringShiftGenerationParity`; EF discovery/model drift and
-the 78-migration fresh chain are green. The 180-test wider contract result
+all-active-tenant sweep. The recurring CRUD follow-up adds the canonical
+read/create/update/deactivate contract and corrects its creator/capacity schema.
+The latest source migration is
+`20260710221715_RecurringShiftPatternCrudParity`; EF discovery/model drift and
+the 79-migration fresh chain are green. The 180-test wider contract result
 remains the pre-guardian baseline; focused post-change regressions are recorded
 below.
 
@@ -80,7 +82,7 @@ below.
 | Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; per-tenant jobs exclude inactive tenants and aggregate tenant failures, while guardian-consent expiry intentionally remains a global all-tenant sweep. V2 manual execution requires platform-super access. `listing-expiry`, `job-expiry`, `volunteer-expire-consents`, and `recurring-shifts` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports these four mappings active and the other 38 disabled with `execution_supported:false`. | 38 of 42 catalog jobs remain unmapped; cross-replica exactly-one execution still relies on data-level idempotence rather than a distributed job lock. |
 | Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
 | Federation partnership decisions | Canonical `/api[/v2]/admin/federation/partnerships` lists incoming and outgoing rows without changing the legacy outgoing-only route. Approve/reject require the receiving tenant, conditionally transition only `pending`, atomically persist one receiver-to-requester audit row, return Laravel status/error envelopes, and notify initiating-tenant admins only after commit. Same-action and approve-versus-reject races produce one winner and one side-effect set. | Laravel federation-level permission initialization, durable rejection actor/time/reason columns, localized link/push notifications, durable initial-sync scheduling, and canonical audit-log read visibility remain open. This is core decision-state parity, not complete federation parity. |
-| Transactional volunteering core | Selected-shift applications enforce feature, tenant, public/future shift, capacity, duplicate, and guardian-consent gates; optional auto-approval and later admin/organizer decisions share shift-row capacity locks. Admin and organizer decisions conditionally transition pending applications, persist reviewer/org-note state, and apply their surface-specific post-commit bell, link, push, and email policies. Direct signup/cancellation, group reservations and roster mutation, waitlist join/leave/claim, displaced-shift re-offers, stale-offer expiry, and scheduled expiry jobs use tenant-scoped transactions and one-winner capacity/queue locking. Guardian consent has the full hashed-token lifecycle. Recurring shifts now preserve Laravel's original anchor, ISO weekday/empty-day semantics, biweekly parity, monthly clamp, inclusive 14-day/end bounds, and cumulative maximums; a per-pattern lock plus filtered unique occurrence key makes scheduled/manual retries race-safe, and the 06:00 UTC job processes every active tenant while persisting success or failure. | Unchanged-frontend runtime smoke remains pending. Recurring-pattern CRUD still needs canonical envelopes, feature/rate gates, manager authorization, partial writes, inactive reads, creator-FK cleanup, and delete-time future-shift/alert cleanup. Volunteer-organisation status/membership ownership is not represented in the ASP.NET schema. Localized built-in guardian copy and Laravel's complete tenant-link fallback chain, live provider delivery, and unrelated long-tail volunteering compatibility handlers remain open. |
+| Transactional volunteering core | Selected-shift applications enforce feature, tenant, public/future shift, capacity, duplicate, and guardian-consent gates; optional auto-approval and later admin/organizer decisions share shift-row capacity locks. Admin and organizer decisions conditionally transition pending applications, persist reviewer/org-note state, and apply their surface-specific post-commit bell, link, push, and email policies. Direct signup/cancellation, group reservations and roster mutation, waitlist join/leave/claim, displaced-shift re-offers, stale-offer expiry, and scheduled expiry jobs use tenant-scoped transactions and one-winner capacity/queue locking. Guardian consent has the full hashed-token lifecycle. Recurring shifts preserve Laravel's recurrence math and use a race-safe 06:00 UTC all-active-tenant job. Recurring-pattern GET/POST/PUT/DELETE now use canonical payloads, envelopes, errors, headers, feature/rate gates, active-plus-inactive ordering, presence-aware updates, organizer/current-admin checks, and two-stage future-shift cleanup. The creator shadow FK is replaced by required `CreatedBy`; capacity/spots defaults preserve explicit zero writes. | Unchanged-frontend runtime smoke remains pending. Exact Laravel volunteer-organisation owner/admin authorization is still unrepresentable because `VolunteerOpportunity` has no organisation relationship; only organizer and current site/tenant admins can be proven safely. Volunteer-organisation status/membership ownership, localized built-in guardian copy and Laravel's complete tenant-link fallback chain, live provider delivery, and unrelated long-tail volunteering compatibility handlers remain open. |
 | Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
 
 Verification evidence for this slice:
@@ -111,18 +113,24 @@ Verification evidence for this slice:
   that exact case passed 1/1 on an isolated fresh-fixture retry;
 - guardian ownership/migration focus: 97/97 passed; exact admin config, cron,
   and legacy-mutation contracts: 3/3 passed;
+- recurring-pattern CRUD integration: 13/13 passed, including explicit-zero
+  capacity, unsigned failures, lossless decoded day arrays, tenant hiding,
+  exact role authorization, partial/same-value/no-op PUT semantics, two-stage
+  cleanup, pre-throttle auth/feature gates, and the canonical 429 contract;
+- recurring-pattern route ownership: 1/1 passed, proving exactly four v2
+  aliases with authorization and independent list/create/update/delete buckets;
 - recurring-shift generation and scheduled-run regression: 13/13 passed;
 - refreshed admin cron plus migration-discovery contracts: 2/2 passed;
 - current API and test-project Release builds: green with 0 warnings and 0
   compile errors;
 - latest volunteering migration source:
-  `20260710211122_RecurringShiftGenerationParity`;
-- final migration discovery: 107 source classes, 78 EF-discovered, 29 explicitly
+  `20260710221715_RecurringShiftPatternCrudParity`;
+- final migration discovery: 108 source classes, 79 EF-discovered, 29 explicitly
   quarantined; EF reports no pending model changes;
-- blank disposable PostgreSQL: all 78 discovered migrations applied, latest
-  history id `20260710211122_RecurringShiftGenerationParity`; the filtered
-  recurring occurrence uniqueness index and active-pattern scan index exist;
-  container removed;
+- blank disposable PostgreSQL: all 79 discovered migrations applied, latest
+  history id `20260710221715_RecurringShiftPatternCrudParity`; `Capacity` and
+  `SpotsPerShift` are required with defaults, `CreatorId` is absent, and the
+  required `CreatedBy -> users(Id)` FK uses `RESTRICT`; container removed;
 - API route comparator: 2,436/2,436 Laravel/supplemental operations matched,
   0 route-shape gaps;
 - pre-guardian wider volunteering route/auth/notification/legacy contract
@@ -138,12 +146,20 @@ guardian credentials and restore unsafe legacy status/verification semantics.
 `RecurringShiftGenerationParity` is reversible, but its upgrade fails closed
 when historical duplicate occurrences exist because automatically deleting a
 shift could destroy linked operational history.
+`RecurringShiftPatternCrudParity` is reversible and fails its upgrade before
+schema loss if shadow/current creators diverge, the creator is missing, or the
+creator belongs to another tenant. It also rejects negative legacy values before
+installing the four unsigned-equivalent checks. Its downgrade repopulates the
+shadow FK from `CreatedBy` rather than silently disconnecting creator
+navigations. The required creator FK deliberately uses non-destructive
+`RESTRICT` instead of Laravel's user-delete cascade until deletion side effects
+are explicitly reconciled and tested.
 
 Migration discovery now fails closed in CI, but schema reconciliation remains a
 red gate: 29 legacy classes are explicitly quarantined because they are
 not discoverable by EF. Because most contain non-idempotent DDL, do not restore
 their metadata until supported database histories and schemas are reconciled.
-The gate prevents silent inventory drift; the disposable proof certifies the 78
+The gate prevents silent inventory drift; the disposable proof certifies the 79
 discovered migrations, not replay safety for those 29 classes. No production
 database or container was touched.
 
@@ -238,8 +254,9 @@ are mostly closed; the remaining work is contract correctness.
    29-entry migration quarantine before restoring any missing metadata.
 2. Replace the remaining 38 unmapped cron definitions with real jobs or keep
    them explicitly disabled/unsupported until equivalent work executes.
-3. Close recurring-pattern CRUD parity, then the remaining volunteering
-   organisation ownership/status,
+3. Add the missing opportunity-to-volunteer-organisation relationship so
+   recurring-pattern and approval workflows can prove owner/admin membership,
+   then close the remaining volunteering organisation status,
    localization/provider, long-tail handler, and frontend-runtime gaps. Finish
    federation permission/rejection
    schema, initial-sync/outbox, localized notification, and canonical audit-read

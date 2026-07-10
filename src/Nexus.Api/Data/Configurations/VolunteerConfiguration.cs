@@ -64,7 +64,31 @@ public class VolunteerConfiguration : TenantScopedConfiguration
         // RecurringShiftPattern
         modelBuilder.Entity<RecurringShiftPattern>(entity =>
         {
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_RecurringShiftPatterns_SpotsPerShift_NonNegative",
+                    "\"SpotsPerShift\" >= 0");
+                table.HasCheckConstraint(
+                    "CK_RecurringShiftPatterns_Capacity_NonNegative",
+                    "\"Capacity\" >= 0");
+                table.HasCheckConstraint(
+                    "CK_RecurringShiftPatterns_MaxOccurrences_NonNegative",
+                    "\"MaxOccurrences\" IS NULL OR \"MaxOccurrences\" >= 0");
+                table.HasCheckConstraint(
+                    "CK_RecurringShiftPatterns_OccurrencesGenerated_NonNegative",
+                    "\"OccurrencesGenerated\" >= 0");
+            });
+            // Keep database defaults for non-EF writers without treating CLR
+            // zero as "unset"; Laravel accepts explicit zero values here.
+            entity.Property(e => e.SpotsPerShift).HasDefaultValue(1).ValueGeneratedNever();
+            entity.Property(e => e.Capacity).HasDefaultValue(1).ValueGeneratedNever();
+            entity.HasIndex(e => e.CreatedBy);
             entity.HasIndex(e => new { e.TenantId, e.IsActive, e.EndDate });
+            entity.HasOne(e => e.Creator)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 

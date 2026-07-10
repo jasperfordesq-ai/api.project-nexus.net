@@ -18,7 +18,8 @@ public class RecurringShiftPattern : ITenantEntity
     [MaxLength(50)] public string? DaysOfWeek { get; set; }
     public TimeSpan StartTime { get; set; }
     public TimeSpan EndTime { get; set; }
-    public int? Capacity { get; set; }
+    public int SpotsPerShift { get; set; } = 1;
+    public int Capacity { get; set; } = 1;
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public int? MaxOccurrences { get; set; }
