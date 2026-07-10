@@ -1350,15 +1350,17 @@ not newly certify moderation/deletion display, threaded reply depth, feature
 gates, localization, runtime persistence, visual Blade parity, or ASP.NET
 backend compatibility.
 
-A follow-up review redirect slice now sends review deletion success and
-non-auth API-error return redirects through the same `redirectTo(res, ...)`
-helper. The helper preserves already-mounted return paths such as
-`/{tenantSlug}/accessible/members/{id}` and otherwise delegates local return
-paths through `res.locals.urlFor`. The focused source regression first failed
-on `res.redirect(safeReturnUrl)`, then passed after conversion. Focused
-shared-mount coverage proves signed
-`/acme/accessible/reviews/91/delete` with `return_url=/dashboard` redirects to
-`/acme/accessible/dashboard`.
+A follow-up review redirect slice now mirrors Laravel
+`AlphaController::deleteReview()` by sending review deletion success and
+non-auth API-error outcomes to the reviews index status route through the same
+`redirectTo(res, ...)` helper. Focused shared-mount coverage proves signed
+`/acme/accessible/reviews/91/delete` ignores a submitted `return_url=/dashboard`
+and redirects to `/acme/accessible/reviews?status=review-deleted`, while
+non-auth API failures redirect to
+`/acme/accessible/reviews?status=review-delete-failed`. The source regression
+first failed on `validateReturnUrl`/`return_url`, and the behavior regression
+first failed on the old dashboard return, then passed after Web UK matched
+Laravel's reviews-index status redirect.
 
 The seventy-third source slice extends route-level redirect cleanup into event
 actions. `src/routes/events.js` now sends unsigned event handoffs, recurring

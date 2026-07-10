@@ -11071,7 +11071,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
-  it('keeps Laravel review delete return redirects inside the shared accessible mount', async () => {
+  it('keeps Laravel review delete status redirects inside the shared accessible mount', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
@@ -11092,7 +11092,34 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/acme/accessible/dashboard');
+    expect(response.headers.location).toBe('/acme/accessible/reviews?status=review-deleted');
+    expect(api.deleteReview).toHaveBeenCalledWith('test-token', '91');
+  });
+
+  it('maps Laravel review delete API failures to the shared review failed status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.deleteReview.mockRejectedValueOnce(new api.ApiError('forbidden', 403));
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/reviews/91/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        return_url: '/dashboard'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/reviews?status=review-delete-failed');
     expect(api.deleteReview).toHaveBeenCalledWith('test-token', '91');
   });
 
@@ -11163,6 +11190,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/reviews"');
     expect(response.text).toContain('name="receiver_id" value="77"');
     expect(response.text).toContain('name="transaction_id" value="88"');
+  });
+
+  it('renders Laravel review delete status banners on the reviews index', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callReviewApi.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const deleted = await request(app)
+      .get('/reviews?status=review-deleted')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    const failed = await request(app)
+      .get('/reviews?status=review-delete-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(deleted.status).toBe(200);
+    expect(deleted.text).toContain('Your review has been deleted.');
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('Sorry, your review could not be deleted. Try again.');
   });
 
   it('renders the Laravel paginated reviews list tab', async () => {

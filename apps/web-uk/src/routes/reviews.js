@@ -17,7 +17,6 @@ const {
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
-const { validateReturnUrl } = require('../lib/urlValidator');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
@@ -213,7 +212,9 @@ function reviewStatusMessage(status) {
     'review-submitted': { type: 'success', text: 'Your review has been submitted.' },
     'review-invalid': { type: 'error', text: 'Check the review details and try again.' },
     'review-duplicate': { type: 'error', text: 'You have already reviewed this exchange.' },
-    'review-failed': { type: 'error', text: 'Sorry, your review could not be saved. Try again.' }
+    'review-failed': { type: 'error', text: 'Sorry, your review could not be saved. Try again.' },
+    'review-deleted': { type: 'success', text: 'Your review has been deleted.' },
+    'review-delete-failed': { type: 'error', text: 'Sorry, your review could not be deleted. Try again.' }
   };
   return messages[status] || null;
 }
@@ -409,8 +410,7 @@ router.get('/:id(\\d+)/comments', requireAuth, asyncRoute(async (req, res) => {
 // Delete review
 router.post('/:id/delete', requireAuth, audit.reviewDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { return_url } = req.body;
-  const safeReturnUrl = validateReturnUrl(return_url, '/dashboard');
+  let status = 'review-deleted';
 
   try {
     await deleteReview(req.token, id);
@@ -418,17 +418,18 @@ router.post('/:id/delete', requireAuth, audit.reviewDelete(), asyncRoute(async (
     if (req.flash) {
       req.flash('success', 'Review deleted');
     }
-    redirectTo(res, safeReturnUrl);
   } catch (error) {
-    // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
+      status = 'review-delete-failed';
       if (req.flash) {
         req.flash('error', error.message);
       }
-      return redirectTo(res, safeReturnUrl);
+    } else {
+      throw error;
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
   }
+
+  return redirectTo(res, `${REVIEWS_PATH}?status=${status}`);
 }));
 
 module.exports = router;

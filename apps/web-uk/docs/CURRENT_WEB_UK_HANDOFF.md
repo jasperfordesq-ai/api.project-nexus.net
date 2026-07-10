@@ -300,11 +300,13 @@ links, inline create form, detail/rank back links, vote/rank/delete/like/comment
 forms, discussion links, and CSV export links through `urlFor()`, with source
 regression coverage guarding against raw `/polls` template targets returning.
 The latest review action redirect slice now routes auth-required, comment,
-reaction, delete-review return, and Laravel-401 review workflow redirects
-through `res.locals.urlFor`, with shared-mount coverage proving
-`/acme/accessible/reviews` stays under the active tenant mount when redirecting
-to auth-required login and `/acme/accessible/reviews/91/delete` returns to the
-tenant-mounted dashboard.
+reaction, Laravel-401 review workflow redirects, and Laravel-verbatim
+delete-review status redirects through `res.locals.urlFor`, with shared-mount
+coverage proving `/acme/accessible/reviews` stays under the active tenant mount
+when redirecting to auth-required login and `/acme/accessible/reviews/91/delete`
+ignores a submitted `return_url=/dashboard` while redirecting to
+`/acme/accessible/reviews?status=review-deleted` or
+`/acme/accessible/reviews?status=review-delete-failed`.
 The latest review source slice now routes review summary/list/comment links,
 received/given tabs, load-more links, pending-review forms, comment forms, and
 reaction forms through `urlFor()`, with source regression coverage guarding
