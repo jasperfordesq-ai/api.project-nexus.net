@@ -98,28 +98,6 @@ public class AdminToolsController : ControllerBase
         return Ok(new { message = "Redirect deleted" });
     }
 
-    [HttpGet("seo-audit")]
-    public IActionResult SeoAudit()
-    {
-        return Ok(new
-        {
-            score = 85,
-            checks = new[]
-            {
-                new { name = "HTTPS Enabled", status = "pass", message = "Site is served over HTTPS" },
-                new { name = "Sitemap", status = "warn", message = "No sitemap.xml found at /sitemap.xml" },
-                new { name = "Blog Posts", status = "pass", message = "Blog posts are indexed" },
-                new { name = "Meta Descriptions", status = "warn", message = "Some pages missing meta descriptions" }
-            },
-            recommendations = new[]
-            {
-                "Add a sitemap.xml to improve search engine crawlability",
-                "Add meta descriptions to all public pages",
-                "Ensure all images have alt text"
-            }
-        });
-    }
-
     [HttpGet("health")]
     public async Task<IActionResult> DetailedHealth()
     {

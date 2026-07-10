@@ -23,7 +23,45 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
 {
+    private readonly HashSet<int> _syntheticActorIds = [];
+    private readonly List<TenantConfig> _syntheticHubConfigs = [];
+
     public AdminCompatibility3ControllerAuthTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    public override async Task DisposeAsync()
+    {
+        try
+        {
+            if (_syntheticActorIds.Count > 0)
+            {
+                using var scope = Factory.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                var hubConfigIds = _syntheticHubConfigs
+                    .Where(config => config.Id > 0)
+                    .Select(config => config.Id)
+                    .ToArray();
+                if (hubConfigIds.Length > 0)
+                {
+                    await db.TenantConfigs
+                        .IgnoreQueryFilters()
+                        .Where(config => hubConfigIds.Contains(config.Id))
+                        .ExecuteDeleteAsync();
+                }
+                await db.RefreshTokens
+                    .IgnoreQueryFilters()
+                    .Where(token => _syntheticActorIds.Contains(token.UserId))
+                    .ExecuteDeleteAsync();
+                await db.Users
+                    .IgnoreQueryFilters()
+                    .Where(user => _syntheticActorIds.Contains(user.Id))
+                    .ExecuteDeleteAsync();
+            }
+        }
+        finally
+        {
+            await base.DisposeAsync();
+        }
+    }
 
     private const string Path = "/api/admin/enterprise/roles";
 
@@ -59,9 +97,31 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task SuperTenantV2Aliases_ReturnLaravelReactAdminShapes()
+    public async Task SuperRoutes_RequirePlatformAccess_AndGlobalPrivilegeWritesRequireGod()
     {
         await AuthenticateAsAdminAsync();
+        (await Client.GetAsync("/api/v2/admin/super/dashboard")).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.TenantSuperAdmin);
+        (await Client.GetAsync("/api/v2/admin/super/dashboard")).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
+        (await Client.GetAsync("/api/v2/admin/super/dashboard")).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+        (await Client.PostAsync("/api/v2/admin/super/users/999999/grant-global-super-admin", null)).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.God);
+        (await Client.GetAsync("/api/v2/admin/super/dashboard")).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task SuperTenantV2Aliases_ReturnLaravelReactAdminShapes()
+    {
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var list = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/tenants?search=test&is_active=true"));
         list.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
@@ -110,13 +170,14 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var tenantUser = NewSuperPanelUser("super-panel-tenant", TestData.Tenant1.Id);
             var globalUser = NewSuperPanelUser("super-panel-global", TestData.Tenant2.Id);
+            ConfigureHub(db, TestData.Tenant1.Id);
             db.Users.AddRange(tenantUser, globalUser);
             await db.SaveChangesAsync();
             tenantUserId = tenantUser.Id;
             globalUserId = globalUser.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var grantTenant = await ReadJsonAsync(await Client.PostAsync($"/api/v2/admin/super/users/{tenantUserId}/grant-super-admin", null));
         grantTenant.TryGetProperty("success", out _).Should().BeFalse();
@@ -128,7 +189,8 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var user = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == tenantUserId);
-            user.Role.Should().Be("tenant_admin");
+            user.Role.Should().Be("admin");
+            user.IsTenantSuperAdmin.Should().BeTrue();
         }
 
         var revokeTenant = await ReadJsonAsync(await Client.PostAsync($"/api/v2/admin/super/users/{tenantUserId}/revoke-super-admin", null));
@@ -140,9 +202,21 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var user = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == tenantUserId);
-            user.Role.Should().Be("member");
+            user.Role.Should().Be("admin");
+            user.IsTenantSuperAdmin.Should().BeFalse();
         }
 
+        var nonHubGrant = await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/grant-super-admin", null);
+        nonHubGrant.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            ConfigureHub(db, TestData.Tenant2.Id);
+            await db.SaveChangesAsync();
+        }
+
+        var godActorId = await AuthenticateAsSyntheticActorAsync(SyntheticActor.God);
+        var godToken = Client.DefaultRequestHeaders.Authorization!.Parameter!;
         var grantGlobal = await ReadJsonAsync(await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/grant-global-super-admin", null));
         grantGlobal.TryGetProperty("success", out _).Should().BeFalse();
         var grantGlobalData = grantGlobal.GetProperty("data");
@@ -155,10 +229,23 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var user = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == globalUserId);
             user.Role.Should().Be("admin");
-            var config = await db.TenantConfigs.IgnoreQueryFilters().SingleAsync(c =>
-                c.TenantId == TestData.Tenant2.Id && c.Key == "super_admins.global_user_ids");
-            config.Value.Should().Contain(globalUserId.ToString());
+            user.IsSuperAdmin.Should().BeTrue();
+            (await db.TenantConfigs.IgnoreQueryFilters().AnyAsync(c =>
+                c.TenantId == TestData.Tenant2.Id && c.Key == "super_admins.global_user_ids")).Should().BeFalse();
         }
+
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
+        (await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/grant-super-admin", null)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+        (await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/revoke-super-admin", null)).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+
+        SetAuthToken(godToken);
+        (await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/revoke-super-admin", null)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+
+        var selfRevoke = await Client.PostAsync($"/api/v2/admin/super/users/{godActorId}/revoke-global-super-admin", null);
+        selfRevoke.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
         var revokeGlobal = await ReadJsonAsync(await Client.PostAsync($"/api/v2/admin/super/users/{globalUserId}/revoke-global-super-admin", null));
         var revokeGlobalData = revokeGlobal.GetProperty("data");
@@ -169,9 +256,10 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var config = await db.TenantConfigs.IgnoreQueryFilters().SingleAsync(c =>
-                c.TenantId == TestData.Tenant2.Id && c.Key == "super_admins.global_user_ids");
-            config.Value.Should().NotContain(globalUserId.ToString());
+            var user = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == globalUserId);
+            user.Role.Should().Be("admin");
+            user.IsSuperAdmin.Should().BeFalse();
+            user.IsTenantSuperAdmin.Should().BeFalse();
         }
 
         var missing = await Client.PostAsync("/api/v2/admin/super/users/999999/grant-super-admin", null);
@@ -189,14 +277,17 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var moveUser = NewSuperPanelUser("super-panel-move", TestData.Tenant1.Id);
+            moveUser.Role = "admin";
+            moveUser.IsTenantSuperAdmin = true;
             var promoteUser = NewSuperPanelUser("super-panel-promote", TestData.Tenant2.Id);
+            ConfigureHub(db, TestData.Tenant1.Id);
             db.Users.AddRange(moveUser, promoteUser);
             await db.SaveChangesAsync();
             moveUserId = moveUser.Id;
             promoteUserId = promoteUser.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var move = await ReadJsonAsync(await Client.PostAsJsonAsync($"/api/v2/admin/super/users/{moveUserId}/move-tenant", new
         {
@@ -216,6 +307,8 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var movedUser = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == moveUserId);
             movedUser.TenantId.Should().Be(TestData.Tenant2.Id);
+            movedUser.Role.Should().Be("admin");
+            movedUser.IsTenantSuperAdmin.Should().BeFalse();
         }
 
         var promote = await ReadJsonAsync(await Client.PostAsJsonAsync($"/api/v2/admin/super/users/{promoteUserId}/move-and-promote", new
@@ -234,8 +327,15 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var promotedUser = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == promoteUserId);
             promotedUser.TenantId.Should().Be(TestData.Tenant1.Id);
-            promotedUser.Role.Should().Be("tenant_admin");
+            promotedUser.Role.Should().Be("admin");
+            promotedUser.IsTenantSuperAdmin.Should().BeTrue();
         }
+
+        var nonHubPromotion = await Client.PostAsJsonAsync($"/api/v2/admin/super/users/{promoteUserId}/move-and-promote", new
+        {
+            target_tenant_id = TestData.Tenant2.Id
+        });
+        nonHubPromotion.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
         var missingTenant = await Client.PostAsJsonAsync($"/api/v2/admin/super/users/{moveUserId}/move-tenant", new { });
         missingTenant.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -270,6 +370,8 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             var userOne = NewSuperPanelUser("super-panel-bulk-one", TestData.Tenant1.Id);
             var userTwo = NewSuperPanelUser("super-panel-bulk-two", TestData.Tenant2.Id);
             db.Tenants.AddRange(targetTenant, tenantToDeactivate);
+            await db.SaveChangesAsync();
+            ConfigureHub(db, targetTenant.Id);
             db.Users.AddRange(userOne, userTwo);
             await db.SaveChangesAsync();
             userOneId = userOne.Id;
@@ -278,7 +380,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             tenantToDeactivateId = tenantToDeactivate.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var move = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/admin/super/bulk/move-users", new
         {
@@ -302,7 +404,33 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
                 .ToListAsync();
             movedUsers.Should().HaveCount(2);
             movedUsers.Should().OnlyContain(u => u.TenantId == targetTenantId);
-            movedUsers.Should().OnlyContain(u => u.Role == "tenant_admin");
+            movedUsers.Should().OnlyContain(u => u.Role == "admin");
+            movedUsers.Should().OnlyContain(u => u.IsTenantSuperAdmin);
+        }
+
+        var nonHubGrant = await Client.PostAsJsonAsync("/api/v2/admin/super/bulk/move-users", new
+        {
+            user_ids = new[] { userOneId },
+            target_tenant_id = tenantToDeactivateId,
+            grant_super_admin = true
+        });
+        nonHubGrant.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var moveToNonHub = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/admin/super/bulk/move-users", new
+        {
+            user_ids = new[] { userOneId },
+            target_tenant_id = tenantToDeactivateId,
+            grant_super_admin = false
+        }));
+        moveToNonHub.GetProperty("data").GetProperty("moved_count").GetInt32().Should().Be(1);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var movedUser = await db.Users.IgnoreQueryFilters().SingleAsync(user => user.Id == userOneId);
+            movedUser.TenantId.Should().Be(tenantToDeactivateId);
+            movedUser.Role.Should().Be("admin");
+            movedUser.IsTenantSuperAdmin.Should().BeFalse();
         }
 
         var update = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/admin/super/bulk/update-tenants", new
@@ -382,7 +510,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             matchingAuditId = matchingAudit.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var response = await Client.GetAsync("/api/v2/admin/super/audit?action_type=tenant.moved&target_type=user&search=Target&limit=10&offset=0");
         var json = await ReadJsonAsync(response);
@@ -437,7 +565,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             await db.SaveChangesAsync();
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var initial = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation/system-controls"));
         initial.TryGetProperty("success", out _).Should().BeFalse();
@@ -518,7 +646,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             tenantId = tenant.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var add = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/admin/super/federation/whitelist", new
         {
@@ -615,7 +743,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             partnershipId = partnership.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var list = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation/partnerships"));
         list.TryGetProperty("success", out _).Should().BeFalse();
@@ -745,7 +873,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             await db.SaveChangesAsync();
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var overview = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation"));
         overview.TryGetProperty("success", out _).Should().BeFalse();
@@ -768,7 +896,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
     [Fact]
     public async Task SuperFederationJwtStatusV2Alias_ReturnsLaravelReactStatusWithoutSecret()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var status = await ReadJsonAsync(await Client.GetAsync("/api/v2/admin/super/federation/jwt-status"));
 
@@ -848,7 +976,7 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
             await db.SaveChangesAsync();
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsSyntheticActorAsync(SyntheticActor.PlatformSuperAdmin);
 
         var initial = await ReadJsonAsync(await Client.GetAsync($"/api/v2/admin/super/federation/tenant/{tenantId}/features"));
         initial.TryGetProperty("success", out _).Should().BeFalse();
@@ -890,6 +1018,60 @@ public class AdminCompatibility3ControllerAuthTests : IntegrationTestBase
         var refreshed = await ReadJsonAsync(await Client.GetAsync($"/api/v2/admin/super/federation/tenant/{tenantId}/features"));
         refreshed.GetProperty("data").GetProperty("features")
             .GetProperty("cross_tenant_messaging_enabled").GetBoolean().Should().BeFalse();
+    }
+
+    private async Task<int> AuthenticateAsSyntheticActorAsync(SyntheticActor actor)
+    {
+        var email = $"super-route-{actor.ToString().ToLowerInvariant()}-{Guid.NewGuid():N}@test.local";
+        int userId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword),
+                FirstName = "Synthetic",
+                LastName = actor.ToString(),
+                Role = "member",
+                IsAdmin = false,
+                IsSuperAdmin = actor == SyntheticActor.PlatformSuperAdmin,
+                IsTenantSuperAdmin = actor == SyntheticActor.TenantSuperAdmin,
+                IsGod = actor == SyntheticActor.God,
+                IsActive = true,
+                RegistrationStatus = RegistrationStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+        }
+
+        _syntheticActorIds.Add(userId);
+        SetAuthToken(await GetAccessTokenAsync(email, TestData.Tenant1.Slug));
+        return userId;
+    }
+
+    private void ConfigureHub(NexusDbContext db, int tenantId)
+    {
+        var config = new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = "super_admin.allows_subtenants",
+            Value = "true",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _syntheticHubConfigs.Add(config);
+        db.TenantConfigs.Add(config);
+    }
+
+    private enum SyntheticActor
+    {
+        TenantSuperAdmin,
+        PlatformSuperAdmin,
+        God
     }
 
     private static User NewSuperPanelUser(string prefix, int tenantId)

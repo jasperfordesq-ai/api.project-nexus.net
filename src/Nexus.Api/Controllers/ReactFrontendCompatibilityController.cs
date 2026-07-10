@@ -2121,24 +2121,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, new { success = true, data = payload });
     }
 
-    [HttpGet("api/admin/community-analytics/geography")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminCommunityAnalyticsGeography()
-    {
-        var data = await _db.Tenants
-            .OrderBy(t => t.Name)
-            .Select(t => new
-            {
-                location = t.Name,
-                tenant_id = t.Id,
-                members = _db.Users.Count(u => u.TenantId == t.Id)
-            })
-            .OrderByDescending(g => g.members)
-            .ToListAsync();
-
-        return Ok(new { data });
-    }
-
     [HttpGet("api/admin/identity/audit-log")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminIdentityAuditLog()
@@ -3434,8 +3416,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
     [HttpGet("api/admin/crm/export/{id:int}")]
     [HttpPost("api/admin/events/{id:int}/cancel")]
-    [HttpPost("api/admin/listings/{id:int}/approve")]
-    [HttpPost("api/admin/users/{id:int}/suspend")]
     [HttpPost("api/exchanges/{id:int}/accept")]
     [HttpPost("api/exchanges/{id:int}/complete")]
     [HttpPost("api/listings/{id:int}/renew")]
@@ -3443,14 +3423,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [HttpDelete("api/polls/{id:int}")]
     [HttpGet("api/admin/reports/social-value")]
     [HttpGet("api/admin/newsletters/{id:int}/preview")]
-    [HttpGet("api/admin/newsletters/subscribers")]
-    [HttpGet("api/admin/newsletters/send-time-optimizer")]
-    [HttpGet("api/admin/newsletters/bounce-trends")]
-    [HttpGet("api/admin/newsletters/{id:int}/activity")]
-    [HttpGet("api/admin/newsletters/{id:int}/openers")]
-    [HttpGet("api/admin/newsletters/{id:int}/clickers")]
-    [HttpGet("api/admin/newsletters/{id:int}/non-openers")]
-    [HttpGet("api/admin/newsletters/{id:int}/openers-no-click")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminEmptyData()
     {
@@ -3462,8 +3434,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [HttpPut("api/admin/federation/neighborhoods/{id:int}")]
     [HttpPut("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpGet("api/admin/federation/partnerships/{id:int}")]
-    [HttpPost("api/admin/federation/partnerships/{id:int}/approve")]
-    [HttpPost("api/admin/federation/partnerships/{id:int}/reject")]
     [HttpDelete("api/admin/federation/partnerships/{id:int}")]
     [HttpPut("api/admin/federation/credit-agreements/{id:int}/{tenantId:int}")]
     [Authorize(Policy = "AdminOnly")]
@@ -3817,12 +3787,9 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpPost("api/admin/moderation/{id:int}/review")]
-    [HttpPost("api/admin/safeguarding/flagged-messages/{id:int}/review")]
     [HttpPost("api/admin/safeguarding/assignments/{id:int}")]
     [HttpPut("api/admin/safeguarding/assignments/{id:int}")]
-    [HttpDelete("api/admin/safeguarding/assignments/{id:int}")]
     [HttpGet("api/admin/volunteering/approvals/{id:int}")]
-    [HttpPost("api/admin/volunteering/approvals/{id:int}/approve")]
     [HttpPost("api/admin/volunteering/approvals/{id:int}/reject")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminReviewCompatibility()
@@ -3840,7 +3807,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true, data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
     }
 
-    [HttpPost("api/admin/newsletters/suppression-list/{email}/unsuppress")]
     [HttpDelete("api/admin/newsletters/suppression-list/{email}")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminNewsletterSuppressionCompatibility()

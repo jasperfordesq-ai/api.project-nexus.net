@@ -6,6 +6,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -19,7 +20,7 @@ using System.Text.Json;
 namespace Nexus.Api.Controllers;
 
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public class AdminExplicitParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
@@ -208,7 +209,6 @@ public class AdminExplicitParityController : ControllerBase
         _fileUploadService = fileUploadService;
     }
 
-    [HttpDelete("/api/v2/admin/events/{id}")]
     [HttpDelete("/api/v2/admin/enterprise/config/secrets/{key}")]
     [HttpDelete("/api/v2/admin/enterprise/gdpr/consent-types/{id}")]
     [HttpDelete("/api/v2/admin/enterprise/monitoring/log-files/{filename}")]
@@ -217,12 +217,10 @@ public class AdminExplicitParityController : ControllerBase
     [HttpDelete("/api/v2/admin/feed/revoke-announcer/{id}")]
     [HttpDelete("/api/v2/admin/group-auto-assign-rules/{id}")]
     [HttpDelete("/api/v2/admin/group-collections/{id}")]
-    [HttpDelete("/api/v2/admin/groups/{id}")]
     [HttpDelete("/api/v2/admin/group-tags/{tagid}")]
     [HttpDelete("/api/v2/admin/help/faqs/{id}")]
     [HttpDelete("/api/v2/admin/invite-codes/{id}")]
     [HttpDelete("/api/v2/admin/jobs/templates/{id}")]
-    [HttpDelete("/api/v2/admin/listings/{id}")]
     [HttpDelete("/api/v2/admin/member-premium/tiers/{id}")]
     [HttpDelete("/api/v2/admin/reports/municipal-impact/templates/{id}")]
     [HttpDelete("/api/v2/admin/translation/glossary/{id}")]
@@ -235,11 +233,8 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
-            _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await DeleteEvent(eventId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
-            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await DeleteGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
-            _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
             _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await DeleteMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/feed/revoke-announcer/", out var announcerUserId) => await RevokeMunicipalityAnnouncer(announcerUserId),
             _ when TryGetLastInt(path, "/api/v2/admin/translation/glossary/", out var glossaryId) => await DeleteTranslationGlossaryEntry(glossaryId),
@@ -392,6 +387,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/volunteering/guardian-consents")]
     [HttpGet("/api/v2/admin/volunteering/hours")]
     [HttpGet("/api/v2/admin/volunteering/incidents")]
+    [HttpGet("/api/admin/volunteering/organizations")]
     [HttpGet("/api/v2/admin/volunteering/organizations")]
     [HttpGet("/api/v2/admin/volunteering/organizations/{id}/members")]
     [HttpGet("/api/v2/admin/volunteering/organizations/{id}/wallet/transactions")]
@@ -469,6 +465,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
             "/api/v2/admin/super/federation/jwt-status" => GetFederationJwtStatus(),
             "/api/v2/admin/translation/glossary" => await GetTranslationGlossary(),
+            "/api/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             "/api/v2/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/requests/", out var requestId) => await GetGdprRequest(requestId),
@@ -1153,33 +1150,27 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/moderation/{id:int}/review")]
     public Task<IActionResult> PostModerationReview(int id) => ReviewModerationItem(id);
 
-    [ActionName("approve")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/approve")]
     public Task<IActionResult> ApproveFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "approve");
 
-    [ActionName("reject")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/reject")]
     public Task<IActionResult> RejectFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "reject");
 
-    [ActionName("suspend")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/suspend")]
     public Task<IActionResult> SuspendFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "suspend");
 
-    [ActionName("activate")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/activate")]
     public Task<IActionResult> ActivateFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "activate");
 
-    [ActionName("reactivate")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/reactivate")]
     public Task<IActionResult> ReactivateFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "reactivate");
 
-    [ActionName("terminate")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id:int}/terminate")]
     public Task<IActionResult> TerminateFederationCreditAgreement(int id) =>
         UpdateFederationCreditAgreementStatus(id, "terminate");
 
@@ -1207,7 +1198,8 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/gamification/badge-config/{badgekey}")]
     [HttpPut("/api/v2/admin/group-collections/{id}")]
     [HttpPut("/api/v2/admin/group-collections/{id}/groups")]
-    [HttpPut("/api/v2/admin/groups/{id}")]
+    [HttpPut("/api/admin/groups/{id:int}")]
+    [HttpPut("/api/v2/admin/groups/{id:int}")]
     [HttpPut("/api/v2/admin/help/faqs/{id}")]
     [HttpPut("/api/v2/admin/ki-agents/config")]
     [HttpPut("/api/v2/admin/member-premium/settings")]
@@ -1253,7 +1245,8 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await UpdateMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
-            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await UpdateGroup(groupId),
+            _ when TryGetLastInt(path, "/api/admin/groups/", out var legacyGroupId) => await UpdateGroup(legacyGroupId),
+            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var v2GroupId) => await UpdateGroup(v2GroupId),
             _ => await PersistCompatibilityWrite("put")
         };
     }

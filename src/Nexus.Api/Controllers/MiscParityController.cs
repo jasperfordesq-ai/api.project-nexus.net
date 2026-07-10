@@ -1296,11 +1296,34 @@ public class MiscParityController : ControllerBase
 
     [HttpGet("totp/status")]
     [Authorize]
-    public IActionResult TotpStatus() => Ok(new { enabled = false });
+    public async Task<IActionResult> TotpStatus()
+    {
+        var userId = UserId();
+        var state = await _db.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => new
+            {
+                enabled = user.TwoFactorEnabled,
+                setup_required = !user.TwoFactorEnabled && user.TotpSecretEncrypted != null
+            })
+            .SingleOrDefaultAsync();
+        if (state is null)
+            return Unauthorized(new { success = false, error = "Invalid token" });
 
-    [HttpPost("totp/verify")]
-    [Authorize]
-    public IActionResult TotpVerify([FromBody] JsonElement body) => Ok(new { verified = true });
+        var backupCodesRemaining = state.enabled
+            ? await _db.TotpBackupCodes.CountAsync(code => code.UserId == userId && !code.IsUsed)
+            : 0;
+
+        return Ok(new
+        {
+            success = true,
+            state.enabled,
+            state.setup_required,
+            backup_codes_remaining = backupCodesRemaining,
+            trusted_devices = Array.Empty<object>()
+        });
+    }
 
     [HttpPost("ugc-translate")]
     [Authorize]

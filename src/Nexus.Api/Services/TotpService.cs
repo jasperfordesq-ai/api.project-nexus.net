@@ -89,10 +89,17 @@ public class TotpService
 
         user.TwoFactorEnabled = true;
         user.TwoFactorEnabledAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
 
-        // Auto-generate backup codes
-        var (backupCodes, _) = await GenerateBackupCodesAsync(userId, tenantId);
+        // Generate and persist the enabled state plus backup codes in the
+        // same SaveChanges call. A failure cannot leave 2FA enabled without
+        // recovery codes.
+        var (backupCodes, backupError) = await GenerateBackupCodesAsync(userId, tenantId);
+        if (backupCodes is null)
+        {
+            user.TwoFactorEnabled = false;
+            user.TwoFactorEnabledAt = null;
+            return (false, null, backupError ?? "Failed to generate backup codes");
+        }
 
         _logger.LogInformation("TOTP 2FA enabled for user {UserId}", userId);
         return (true, backupCodes, null);
@@ -140,6 +147,33 @@ public class TotpService
                 return (false, "Invalid verification code");
         }
 
+        return await DisableForUserAsync(user);
+    }
+
+    /// <summary>
+    /// Laravel-compatible settings flow: disabling 2FA requires the account
+    /// password, not a current TOTP code.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> DisableWithPasswordAsync(int userId, string password)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return (false, "User not found");
+
+        if (!user.TwoFactorEnabled)
+            return (false, "Two-factor authentication is not enabled");
+
+        if (string.IsNullOrWhiteSpace(password)
+            || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        {
+            return (false, "Invalid password");
+        }
+
+        return await DisableForUserAsync(user);
+    }
+
+    private async Task<(bool Success, string? Error)> DisableForUserAsync(User user)
+    {
         user.TwoFactorEnabled = false;
         user.TotpSecretEncrypted = null;
         user.TwoFactorEnabledAt = null;
@@ -147,13 +181,13 @@ public class TotpService
         // Remove backup codes (include tenant check to prevent cross-tenant deletion)
         var backupCodes = await _db.TotpBackupCodes
             .IgnoreQueryFilters()
-            .Where(c => c.UserId == userId && c.TenantId == user.TenantId)
+            .Where(c => c.UserId == user.Id && c.TenantId == user.TenantId)
             .ToListAsync();
         _db.TotpBackupCodes.RemoveRange(backupCodes);
 
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("TOTP 2FA disabled for user {UserId}", userId);
+        _logger.LogInformation("TOTP 2FA disabled for user {UserId}", user.Id);
         return (true, null);
     }
 

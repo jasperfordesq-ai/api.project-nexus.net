@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -21,7 +22,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/provisioning/requests")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public class AdminProvisioningController : ControllerBase
 {
     private readonly ProvisioningRequestService _service;
@@ -115,6 +116,7 @@ public class AdminProvisioningController : ControllerBase
     }
 
     [HttpGet("/api/v2/super-admin/provisioning-requests")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> LaravelList(
         [FromQuery] string? status,
         [FromQuery(Name = "page")] int page = 1,
@@ -126,6 +128,7 @@ public class AdminProvisioningController : ControllerBase
     }
 
     [HttpGet("/api/v2/super-admin/provisioning-requests/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> LaravelGet(int id, CancellationToken ct)
     {
         var req = await FindByCompatIdAsync(id, ct);
@@ -133,6 +136,7 @@ public class AdminProvisioningController : ControllerBase
     }
 
     [HttpPost("/api/v2/super-admin/provisioning-requests/{id:int}/approve")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> LaravelApprove(int id, CancellationToken ct)
     {
         var req = await FindByCompatIdAsync(id, ct);
@@ -148,6 +152,7 @@ public class AdminProvisioningController : ControllerBase
     }
 
     [HttpPost("/api/v2/super-admin/provisioning-requests/{id:int}/reject")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> LaravelReject(int id, [FromBody] ReasonBody? body, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(body?.Reason))
@@ -166,6 +171,7 @@ public class AdminProvisioningController : ControllerBase
     }
 
     [HttpPost("/api/v2/super-admin/provisioning-requests/{id:int}/retry")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> LaravelRetry(int id, CancellationToken ct)
     {
         var req = await FindByCompatIdAsync(id, ct);

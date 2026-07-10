@@ -105,8 +105,10 @@ public static class ServiceExtensions
                 ?? new HashSet<string> { "http://localhost:5080" };
         });
         services.AddScoped<PasskeyService>();
+        services.AddSingleton<PasskeyChallengeStore>();
         services.AddSingleton<TokenService>();
         services.AddScoped<TotpService>();
+        services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
 
         // Feature services

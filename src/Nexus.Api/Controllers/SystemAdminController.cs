@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -21,7 +22,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/system")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public class SystemAdminController : ControllerBase
 {
     private readonly SystemAdminService _systemAdmin;
@@ -366,6 +367,7 @@ public class SystemAdminController : ControllerBase
     /// Cross-tenant operation using IgnoreQueryFilters.
     /// </summary>
     [HttpPost("users/{userId}/grant-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GrantAdmin(int userId)
     {
         var adminId = GetCurrentUserId();
@@ -405,6 +407,7 @@ public class SystemAdminController : ControllerBase
     /// Cross-tenant operation using IgnoreQueryFilters.
     /// </summary>
     [HttpPost("users/{userId}/revoke-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> RevokeAdmin(int userId)
     {
         var adminId = GetCurrentUserId();
@@ -447,6 +450,7 @@ public class SystemAdminController : ControllerBase
     /// Cross-tenant operation using IgnoreQueryFilters.
     /// </summary>
     [HttpPost("users/{userId}/move-tenant")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> MoveTenant(int userId, [FromBody] MoveTenantRequest request)
     {
         var adminId = GetCurrentUserId();
@@ -498,6 +502,7 @@ public class SystemAdminController : ControllerBase
     /// Cross-tenant operation using IgnoreQueryFilters.
     /// </summary>
     [HttpGet("users/admins")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> ListAdmins()
     {
         var admins = await _db.Users
@@ -525,6 +530,7 @@ public class SystemAdminController : ControllerBase
     /// Cross-tenant operation using IgnoreQueryFilters.
     /// </summary>
     [HttpPost("bulk/deactivate-users")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> BulkDeactivateUsers([FromBody] BulkDeactivateRequest request)
     {
         var adminId = GetCurrentUserId();

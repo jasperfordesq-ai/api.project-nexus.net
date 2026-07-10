@@ -62,6 +62,7 @@ Route::post('/v2/supplemental/{id}', [SupplementalController::class, 'store']);
 use Illuminate\Support\Facades\Route;
 
 Route::post('/v2/supplemental/{id}', [SupplementalController::class, 'storeFromApi']);
+Route::post('/v2/admin/federation/credit-agreements/{id}/{action}', [CreditAgreementController::class, 'action']);
 '@ | Set-Content -LiteralPath (Join-Path $sourceRoot 'routes\api.php')
 
     New-Item -ItemType Directory -Force -Path (Join-Path $sourceRoot 'routes\govuk-alpha-parity') | Out-Null
@@ -108,6 +109,29 @@ public sealed class SupplementalController : ControllerBase
     [HttpPost("{id:guid}")]
     public IActionResult Store(Guid id) => Ok();
 }
+
+[ApiController]
+[Route("api/admin/federation/credit-agreements")]
+public sealed class CreditAgreementController : ControllerBase
+{
+    [HttpPost("{id:int}/approve")]
+    public IActionResult Approve(int id) => Ok();
+
+    [HttpPost("{id:int}/reject")]
+    public IActionResult Reject(int id) => Ok();
+
+    [HttpPost("{id:int}/suspend")]
+    public IActionResult Suspend(int id) => Ok();
+
+    [HttpPost("{id:int}/activate")]
+    public IActionResult Activate(int id) => Ok();
+
+    [HttpPost("{id:int}/reactivate")]
+    public IActionResult Reactivate(int id) => Ok();
+
+    [HttpPost("{id:int}/terminate")]
+    public IActionResult Terminate(int id) => Ok();
+}
 '@ | Set-Content -LiteralPath (Join-Path $targetRoot 'src\Nexus.Api\Controllers\ListingsController.cs')
 
     & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -TargetRoot $targetRoot -SourceRoot $sourceRoot -OutDir $outDir
@@ -123,10 +147,10 @@ public sealed class SupplementalController : ControllerBase
     $report = Get-Content -Raw -LiteralPath $jsonPath | ConvertFrom-Json
     $matrix = @($report.matrix)
 
-    Assert-True ($report.summary.aspnet_operations -eq 4) 'Expected four ASP.NET operations.'
+    Assert-True ($report.summary.aspnet_operations -eq 10) 'Expected ten ASP.NET operations.'
     Assert-True ($report.summary.laravel_openapi_operations -eq 5) 'Expected five Laravel OpenAPI operations.'
-    Assert-True ($report.summary.supplemental_route_operations -eq 1) 'Expected one supplemental route operation.'
-    Assert-True ($report.summary.matched_operations -eq 4) 'Expected four matched operations.'
+    Assert-True ($report.summary.supplemental_route_operations -eq 2) 'Expected two supplemental route operations.'
+    Assert-True ($report.summary.matched_operations -eq 5) 'Expected five matched operations.'
     Assert-True ($report.summary.missing_operations -eq 2) 'Expected two missing operations.'
 
     Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'GET' -and $_.normalized_path -eq '/api/listings' -and $_.status -eq 'matched' }).Count -eq 1) 'Expected GET /api/listings to match.'
@@ -135,6 +159,9 @@ public sealed class SupplementalController : ControllerBase
     Assert-True ($supplementalRow.source_file.Contains('api.php')) 'Expected duplicate supplemental source evidence to include api.php.'
     Assert-True ($supplementalRow.source_file.Contains('supplemental-routes.txt')) 'Expected duplicate supplemental source evidence to include supplemental-routes.txt.'
     Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'DELETE' -and $_.normalized_path -eq '/api/listings/{id}' -and $_.status -eq 'missing' }).Count -eq 1) 'Expected DELETE /api/listings/{id} to be missing.'
+    $actionRow = @($matrix | Where-Object { $_.source -eq 'supplemental-route' -and $_.method -eq 'POST' -and $_.normalized_path -eq '/api/admin/federation/credit-agreements/{id}/{action}' })[0]
+    Assert-True ($actionRow.status -eq 'matched') 'Expected the constrained Laravel action route to match all six ASP.NET literal owners.'
+    Assert-True (($actionRow.aspnet_actions -split ';').Count -eq 6) 'Expected evidence from all six literal credit-agreement actions.'
 
     $markdown = Get-Content -Raw -LiteralPath $markdownPath
     Assert-True ($markdown.Contains('/api/missing-feature')) 'Expected markdown report to include missing-feature gap.'

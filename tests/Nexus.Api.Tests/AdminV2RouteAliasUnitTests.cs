@@ -11,11 +11,21 @@ namespace Nexus.Api.Tests;
 
 public class AdminV2RouteAliasUnitTests
 {
+    [Fact]
+    public void AdminBroker_UsesBrokerOrAdminPolicy()
+    {
+        typeof(AdminBrokerController)
+            .GetCustomAttributes<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+            .Select(attribute => attribute.Policy)
+            .Should().Contain("BrokerOrAdmin");
+    }
+
     [Theory]
     [InlineData(typeof(AdminController), "api/v2/admin")]
     [InlineData(typeof(AdminCompatibilityController), "api/v2/admin")]
     [InlineData(typeof(AdminCompatibility2Controller), "api/v2/admin")]
     [InlineData(typeof(AdminBlogController), "api/v2/admin/blog")]
+    [InlineData(typeof(AdminBrokerController), "api/v2/admin/broker")]
     public void AdminControllers_ExposeLaravelReactV2AdminPrefix(Type controllerType, string expectedRoute)
     {
         controllerType
@@ -39,7 +49,7 @@ public class AdminV2RouteAliasUnitTests
     [InlineData(typeof(AdminCompatibilityController), "DeleteGamificationCampaign", typeof(HttpDeleteAttribute), "gamification/campaigns/{id:int}")]
     [InlineData(typeof(AdminCompatibilityController), "RunSeoAudit", typeof(HttpGetAttribute), "tools/seo-audit")]
     [InlineData(typeof(AdminCompatibilityController), "RunSeoAudit", typeof(HttpPostAttribute), "tools/seo-audit")]
-    [InlineData(typeof(AdminController), "SuspendUser", typeof(HttpPostAttribute), "users/{id:int}/suspend")]
+    [InlineData(typeof(AdminCompatibilityController), "SuspendUser", typeof(HttpPostAttribute), "users/{id:int}/suspend")]
     [InlineData(typeof(AdminController), "ApproveListing", typeof(HttpPostAttribute), "listings/{id:int}/approve")]
     [InlineData(typeof(AdminBlogController), "ListPosts", typeof(HttpGetAttribute), null)]
     [InlineData(typeof(AdminBlogController), "CreatePost", typeof(HttpPostAttribute), null)]
@@ -47,24 +57,24 @@ public class AdminV2RouteAliasUnitTests
     [InlineData(typeof(AdminBlogController), "UpdatePost", typeof(HttpPutAttribute), "{id:int}")]
     [InlineData(typeof(AdminBlogController), "DeletePost", typeof(HttpDeleteAttribute), "{id:int}")]
     [InlineData(typeof(AdminBlogController), "ToggleStatus", typeof(HttpPostAttribute), "{id:int}/toggle-status")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerDashboard", typeof(HttpGetAttribute), "broker/dashboard")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerExchanges", typeof(HttpGetAttribute), "broker/exchanges")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerExchangeDetail", typeof(HttpGetAttribute), "broker/exchanges/{id:int}")]
-    [InlineData(typeof(AdminCompatibility2Controller), "ApproveBrokerExchange", typeof(HttpPostAttribute), "broker/exchanges/{id:int}/approve")]
-    [InlineData(typeof(AdminCompatibility2Controller), "RejectBrokerExchange", typeof(HttpPostAttribute), "broker/exchanges/{id:int}/reject")]
-    [InlineData(typeof(AdminCompatibility2Controller), "ListRiskTags", typeof(HttpGetAttribute), "broker/risk-tags")]
-    [InlineData(typeof(AdminCompatibility2Controller), "SaveRiskTag", typeof(HttpPostAttribute), "broker/risk-tags/{listingId}")]
-    [InlineData(typeof(AdminCompatibility2Controller), "RemoveRiskTag", typeof(HttpDeleteAttribute), "broker/risk-tags/{listingId}")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerMessages", typeof(HttpGetAttribute), "broker/messages")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerMessageDetail", typeof(HttpGetAttribute), "broker/messages/{id:int}")]
-    [InlineData(typeof(AdminCompatibility2Controller), "UnreviewedMessageCount", typeof(HttpGetAttribute), "broker/messages/unreviewed-count")]
-    [InlineData(typeof(AdminCompatibility2Controller), "ReviewMessage", typeof(HttpPostAttribute), "broker/messages/{id:int}/review")]
-    [InlineData(typeof(AdminCompatibility2Controller), "FlagMessage", typeof(HttpPostAttribute), "broker/messages/{id:int}/flag")]
-    [InlineData(typeof(AdminCompatibility2Controller), "ApproveMessage", typeof(HttpPostAttribute), "broker/messages/{id:int}/approve")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerMonitoring", typeof(HttpGetAttribute), "broker/monitoring")]
-    [InlineData(typeof(AdminCompatibility2Controller), "SetMonitoring", typeof(HttpPostAttribute), "broker/monitoring/{userId}")]
-    [InlineData(typeof(AdminCompatibility2Controller), "BrokerConfiguration", typeof(HttpGetAttribute), "broker/configuration")]
-    [InlineData(typeof(AdminCompatibility2Controller), "SaveBrokerConfiguration", typeof(HttpPostAttribute), "broker/configuration")]
+    [InlineData(typeof(AdminBrokerController), "Dashboard", typeof(HttpGetAttribute), "dashboard")]
+    [InlineData(typeof(AdminBrokerController), "Exchanges", typeof(HttpGetAttribute), "exchanges")]
+    [InlineData(typeof(AdminBrokerController), "ShowExchange", typeof(HttpGetAttribute), "exchanges/{id:int}")]
+    [InlineData(typeof(AdminBrokerController), "ApproveExchange", typeof(HttpPostAttribute), "exchanges/{id:int}/approve")]
+    [InlineData(typeof(AdminBrokerController), "RejectExchange", typeof(HttpPostAttribute), "exchanges/{id:int}/reject")]
+    [InlineData(typeof(AdminBrokerController), "RiskTags", typeof(HttpGetAttribute), "risk-tags")]
+    [InlineData(typeof(AdminBrokerController), "SaveRiskTag", typeof(HttpPostAttribute), "risk-tags/{listingId}")]
+    [InlineData(typeof(AdminBrokerController), "RemoveRiskTag", typeof(HttpDeleteAttribute), "risk-tags/{listingId}")]
+    [InlineData(typeof(AdminBrokerController), "Messages", typeof(HttpGetAttribute), "messages")]
+    [InlineData(typeof(AdminBrokerController), "ShowMessage", typeof(HttpGetAttribute), "messages/{id:int}")]
+    [InlineData(typeof(AdminBrokerController), "UnreviewedCount", typeof(HttpGetAttribute), "messages/unreviewed-count")]
+    [InlineData(typeof(AdminBrokerController), "ReviewMessage", typeof(HttpPostAttribute), "messages/{id:int}/review")]
+    [InlineData(typeof(AdminBrokerController), "ReviewMessage", typeof(HttpPostAttribute), "messages/{id:int}/approve")]
+    [InlineData(typeof(AdminBrokerController), "FlagMessage", typeof(HttpPostAttribute), "messages/{id:int}/flag")]
+    [InlineData(typeof(AdminBrokerController), "Monitoring", typeof(HttpGetAttribute), "monitoring")]
+    [InlineData(typeof(AdminBrokerController), "SetMonitoring", typeof(HttpPostAttribute), "monitoring/{userId}")]
+    [InlineData(typeof(AdminBrokerController), "GetConfiguration", typeof(HttpGetAttribute), "configuration")]
+    [InlineData(typeof(AdminBrokerController), "SaveConfiguration", typeof(HttpPostAttribute), "configuration")]
     [InlineData(typeof(AdminCompatibility2Controller), "BrokerArchives", typeof(HttpGetAttribute), "broker/archives")]
     [InlineData(typeof(AdminCompatibility2Controller), "BrokerArchiveDetail", typeof(HttpGetAttribute), "broker/archives/{id:int}")]
     public void LaravelReactAdminActions_HaveExpectedRouteTemplates(
@@ -76,10 +86,11 @@ public class AdminV2RouteAliasUnitTests
         var method = controllerType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
 
         method.Should().NotBeNull();
-        var attribute = method!.GetCustomAttributes()
-            .FirstOrDefault(attr => attr.GetType() == httpAttributeType);
+        var templates = method!.GetCustomAttributes()
+            .Where(attr => attr.GetType() == httpAttributeType)
+            .Cast<HttpMethodAttribute>()
+            .Select(attribute => attribute.Template);
 
-        attribute.Should().NotBeNull();
-        ((HttpMethodAttribute)attribute!).Template.Should().Be(expectedTemplate);
+        templates.Should().Contain(expectedTemplate);
     }
 }

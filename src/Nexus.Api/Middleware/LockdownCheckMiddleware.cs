@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using Microsoft.Extensions.Caching.Memory;
+using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Middleware;
@@ -38,11 +39,13 @@ public class LockdownCheckMiddleware
             return;
         }
 
-        // Allow admin endpoints only if the user actually has admin or super_admin role
-        if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase))
+        // Privilege claims have already been rehydrated from the database by
+        // JWT validation. Apply the same semantics as AdminOnly for both route aliases.
+        var isAdminPath = path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/v2/admin/", StringComparison.OrdinalIgnoreCase);
+        if (isAdminPath)
         {
-            var role = context.User?.FindFirst("role")?.Value;
-            if (role == "admin" || role == "super_admin")
+            if (context.User?.IsAdmin() == true)
             {
                 await _next(context);
                 return;

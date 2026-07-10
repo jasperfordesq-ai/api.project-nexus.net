@@ -77,6 +77,12 @@ public class AdminController : ControllerBase
         };
     }
 
+    private IActionResult LaravelValidationError(string message, string field)
+        => UnprocessableEntity(new
+        {
+            errors = new[] { new { code = "VALIDATION_ERROR", message, field } }
+        });
+
     private string FormatAdminUserStatus(User user)
     {
         if (user.IsActive && user.SuspendedAt == null) return "active";
@@ -85,43 +91,58 @@ public class AdminController : ControllerBase
         return "pending";
     }
 
-    private object MapLaravelAdminUser(User user, int listingCount = 0, IReadOnlyCollection<string>? assignedRoles = null) => new
+    private object MapLaravelAdminUser(
+        User user,
+        int listingCount = 0,
+        IReadOnlyCollection<string>? assignedRoles = null,
+        bool includeDetailFlags = true)
     {
-        id = user.Id,
-        name = $"{user.FirstName} {user.LastName}".Trim(),
-        first_name = user.FirstName,
-        last_name = user.LastName,
-        email = user.Email,
-        avatar_url = user.AvatarUrl,
-        location = (string?)null,
-        bio = user.Bio,
-        tagline = (string?)null,
-        phone = (string?)null,
-        role = user.Role,
-        status = FormatAdminUserStatus(user),
-        is_super_admin = user.Role is "super_admin" or "god",
-        is_god = user.Role == "god",
-        is_tenant_super_admin = user.Role is "tenant_admin",
-        is_admin = user.Role is "admin" or "tenant_admin",
-        balance = 0m,
-        listing_count = listingCount,
-        profile_type = "individual",
-        organization_name = (string?)null,
-        tenant_id = user.TenantId,
-        tenant_name = user.Tenant?.Name ?? "Unknown",
-        has_2fa_enabled = user.TwoFactorEnabled,
-        is_approved = user.IsActive,
-        email_verified_at = user.EmailVerifiedAt,
-        is_verified = user.EmailVerified,
-        vetting_status = "none",
-        insurance_status = "none",
-        created_at = user.CreatedAt,
-        last_active_at = user.LastLoginAt,
-        last_login_at = user.LastLoginAt,
-        onboarding_completed = true,
-        badges = Array.Empty<object>(),
-        roles = assignedRoles ?? Array.Empty<string>()
-    };
+        var payload = new Dictionary<string, object?>
+        {
+            ["id"] = user.Id,
+            ["name"] = $"{user.FirstName} {user.LastName}".Trim(),
+            ["first_name"] = user.FirstName,
+            ["last_name"] = user.LastName,
+            ["email"] = user.Email,
+            ["avatar_url"] = user.AvatarUrl,
+            ["location"] = null,
+            ["bio"] = user.Bio,
+            ["tagline"] = null,
+            ["phone"] = null,
+            ["role"] = user.Role,
+            ["status"] = FormatAdminUserStatus(user),
+            // Laravel's list resource exposes only these two raw flags.
+            ["is_super_admin"] = user.IsSuperAdmin,
+            ["is_tenant_super_admin"] = user.IsTenantSuperAdmin
+        };
+
+        // Laravel show/update adds raw god plus its role-derived is_admin field.
+        if (includeDetailFlags)
+        {
+            payload["is_god"] = user.IsGod;
+            payload["is_admin"] = user.Role is "admin" or "tenant_admin";
+        }
+
+        payload["balance"] = 0m;
+        payload["listing_count"] = listingCount;
+        payload["profile_type"] = "individual";
+        payload["organization_name"] = null;
+        payload["tenant_id"] = user.TenantId;
+        payload["tenant_name"] = user.Tenant?.Name ?? "Unknown";
+        payload["has_2fa_enabled"] = user.TwoFactorEnabled;
+        payload["is_approved"] = user.IsActive;
+        payload["email_verified_at"] = user.EmailVerifiedAt;
+        payload["is_verified"] = user.EmailVerified;
+        payload["vetting_status"] = "none";
+        payload["insurance_status"] = "none";
+        payload["created_at"] = user.CreatedAt;
+        payload["last_active_at"] = user.LastLoginAt;
+        payload["last_login_at"] = user.LastLoginAt;
+        payload["onboarding_completed"] = true;
+        payload["badges"] = Array.Empty<object>();
+        payload["roles"] = assignedRoles ?? Array.Empty<string>();
+        return payload;
+    }
 
     private async Task<Dictionary<int, string[]>> LoadAssignedRolesAsync(IEnumerable<int> userIds)
     {
@@ -361,7 +382,8 @@ public class AdminController : ControllerBase
                 data = userEntities.Select(u => MapLaravelAdminUser(
                     u,
                     listingCounts.GetValueOrDefault(u.Id),
-                    assignedRoles.GetValueOrDefault(u.Id, Array.Empty<string>()))).ToArray(),
+                    assignedRoles.GetValueOrDefault(u.Id, Array.Empty<string>()),
+                    includeDetailFlags: false)).ToArray(),
                 meta = new
                 {
                     base_url = $"{Request.Scheme}://{Request.Host}",
@@ -489,12 +511,12 @@ public class AdminController : ControllerBase
                 : NotFound(new { error = "User not found" });
         }
 
-        // Prevent admin from demoting themselves
-        if (id == adminUserId && request.Role != null && request.Role != "admin")
+        // The legacy endpoint keeps its historical self-demotion guard. Laravel
+        // v2 permits regular role edits here and reserves privilege flags for
+        // the dedicated super-admin toggles.
+        if (!IsLaravelV2Request && id == adminUserId && request.Role != null && request.Role != "admin")
         {
-            return IsLaravelV2Request
-                ? LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot change your own admin role", StatusCodes.Status403Forbidden)
-                : BadRequest(new { error = "Cannot change your own admin role" });
+            return BadRequest(new { error = "Cannot change your own admin role" });
         }
 
         // Input validation
@@ -512,16 +534,19 @@ public class AdminController : ControllerBase
 
         if (request.Role != null && request.Role != user.Role)
         {
-            if (request.Role != "admin" && request.Role != "member")
+            if (IsLaravelV2Request)
             {
-                var allowedRoles = new[] { "member", "admin", "broker", "moderator", "newsletter_admin" };
-                if (!IsLaravelV2Request || !allowedRoles.Contains(request.Role))
+                var allowedRoles = new[] { "member", "admin", "broker" };
+                if (!allowedRoles.Contains(request.Role, StringComparer.Ordinal))
                 {
-                    return IsLaravelV2Request
-                        ? LaravelError("VALIDATION_ERROR", "Invalid role", StatusCodes.Status422UnprocessableEntity)
-                        : BadRequest(new { error = "Role must be 'admin' or 'member'" });
+                    return LaravelValidationError("Invalid role", "role");
                 }
             }
+            else if (request.Role != "admin" && request.Role != "member")
+            {
+                return BadRequest(new { error = "Role must be 'admin' or 'member'" });
+            }
+
             user.Role = request.Role;
             updated = true;
         }

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
@@ -39,6 +40,7 @@ public class AuthController : ControllerBase
     private readonly RegistrationOrchestrator _registrationOrchestrator;
     private readonly IEmailService _emailService;
     private readonly TokenService _tokenService;
+    private readonly TwoFactorChallengeManager _twoFactorChallenges;
     private readonly ITurnstileVerifier _turnstile;
     private readonly IPwnedPasswordChecker _pwnedPassword;
 
@@ -48,7 +50,17 @@ public class AuthController : ControllerBase
     // (audit finding) — industry baseline for password-reset windows.
     private const int PasswordResetExpiryMinutes = 30;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService, ITurnstileVerifier turnstile, IPwnedPasswordChecker pwnedPassword)
+    public AuthController(
+        NexusDbContext db,
+        IConfiguration config,
+        ILogger<AuthController> logger,
+        IEventPublisher eventPublisher,
+        RegistrationOrchestrator registrationOrchestrator,
+        IEmailService emailService,
+        TokenService tokenService,
+        TwoFactorChallengeManager twoFactorChallenges,
+        ITurnstileVerifier turnstile,
+        IPwnedPasswordChecker pwnedPassword)
     {
         _db = db;
         _config = config;
@@ -57,6 +69,7 @@ public class AuthController : ControllerBase
         _registrationOrchestrator = registrationOrchestrator;
         _emailService = emailService;
         _tokenService = tokenService;
+        _twoFactorChallenges = twoFactorChallenges;
         _turnstile = turnstile;
         _pwnedPassword = pwnedPassword;
     }
@@ -153,41 +166,6 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
         }
 
-        // Step 3b: ADMIN 2FA ENFORCEMENT — gated behind FORCE_ADMIN_2FA env
-        // flag. Disabled by default until the dedicated first-time setup
-        // page ships and existing admins have enrolled. When enabled,
-        // admins / super-admins without 2FA get a setup-scoped JWT (the
-        // TwoFactorSetupGate filter restricts it to /api/auth/2fa/* only)
-        // and must complete setup via /verify-setup before getting normal
-        // access tokens.
-        var isAdminAccount = string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(user.Role, "super_admin", StringComparison.OrdinalIgnoreCase);
-        var forceAdmin2Fa = _config.GetValue("ForceAdmin2Fa", false);
-        if (forceAdmin2Fa && isAdminAccount && !user.TwoFactorEnabled)
-        {
-            user.LastLoginAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-
-            var setupJwt = _tokenService.GenerateSetupJwt(user);
-            var emailPartsX = user.Email.Split('@');
-            var localPartX = emailPartsX[0];
-            var maskedLocalX = localPartX.Length <= 2 ? localPartX + "***" : localPartX[..2] + "***";
-            var emailMaskedX = maskedLocalX + "@" + emailPartsX[1];
-
-            _logger.LogInformation("Admin {UserId} blocked at login — 2FA setup required (tenant {TenantId})", user.Id, tenant.Id);
-
-            return Ok(new
-            {
-                success = false,
-                requires_2fa_setup = true,
-                error_code = "AUTH_2FA_SETUP_REQUIRED",
-                setup_token = setupJwt,
-                token_type = "Bearer",
-                user = new { id = user.Id, first_name = user.FirstName, email_masked = emailMaskedX },
-                message = "Two-factor authentication is required for administrator accounts. Please set up 2FA to continue.",
-            });
-        }
-
         // Step 4: Check if 2FA is required
         if (user.TwoFactorEnabled)
         {
@@ -195,7 +173,11 @@ public class AuthController : ControllerBase
             user.LastLoginAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var tempToken = _tokenService.GenerateJwt(user);
+            var challengeToken = _twoFactorChallenges.Create(
+                user.Id,
+                user.TenantId,
+                ["totp", "backup_code"],
+                user.TwoFactorEnabledAt);
 
             // Build masked email (e.g. "ja***@example.com")
             var emailParts = user.Email.Split('@');
@@ -209,19 +191,18 @@ public class AuthController : ControllerBase
 
             return Ok(new
             {
-                success = true,
+                success = false,
                 requires_2fa = true,
-                temp_token = tempToken,
-                two_factor_token = tempToken,
-                token_type = "Bearer",
-                methods = new[] { "totp" },
+                two_factor_token = challengeToken,
+                methods = new[] { "totp", "backup_code" },
+                code = "AUTH_2FA_REQUIRED",
                 user = new
                 {
                     id = user.Id,
                     first_name = user.FirstName,
                     email_masked = emailMasked
                 },
-                message = "Two-factor authentication required. Submit code to /api/auth/2fa/verify."
+                message = "Two-factor authentication required."
             });
         }
 
@@ -284,6 +265,10 @@ public class AuthController : ControllerBase
                 first_name = user.FirstName,
                 last_name = user.LastName,
                 role = user.Role,
+                is_admin = NexusUserAccessEvaluator.HasProfileAdminIndicator(user),
+                is_super_admin = user.IsSuperAdmin,
+                is_tenant_super_admin = user.IsTenantSuperAdmin,
+                is_god = user.IsGod,
                 tenant_id = user.TenantId,
                 tenant_slug = tenant.Slug,
                 preferred_language = preferredLanguage,

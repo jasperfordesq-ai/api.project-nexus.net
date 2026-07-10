@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -20,7 +21,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/super-admin/regional-analytics")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
 public sealed class RegionalAnalyticsSuperAdminController : ControllerBase
 {
     private static readonly string[] AllowedModules = ["trends", "demand_supply", "demographics", "footfall"];

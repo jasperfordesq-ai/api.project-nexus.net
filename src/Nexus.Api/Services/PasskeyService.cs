@@ -39,6 +39,11 @@ public class PasskeyService
     /// </summary>
     public async Task<CredentialCreateOptions> BeginRegistrationAsync(User user)
     {
+        if (!await IsEligibleUserAsync(user.Id, user.TenantId))
+        {
+            throw new InvalidOperationException("User account is not eligible for passkey registration");
+        }
+
         // Enforce passkey count limit
         var existingCount = await _db.UserPasskeys
             .IgnoreQueryFilters()
@@ -97,6 +102,14 @@ public class PasskeyService
         User user,
         string? displayName)
     {
+        // Re-check the account after the challenge ceremony. An administrator
+        // may have suspended the user or tenant while the browser prompt was
+        // open, and a stale challenge must not create a credential afterwards.
+        if (!await IsEligibleUserAsync(user.Id, user.TenantId))
+        {
+            throw new InvalidOperationException("User account is not eligible for passkey registration");
+        }
+
         // Verify the attestation response
         var credential = await _fido2.MakeNewCredentialAsync(
             new MakeNewCredentialParams
@@ -164,15 +177,32 @@ public class PasskeyService
 
         if (tenantId.HasValue && !string.IsNullOrEmpty(email))
         {
-            // User-specific: only allow credentials for this user
-            var userPasskeys = await _db.UserPasskeys
-                .IgnoreQueryFilters()
-                .Where(p => p.TenantId == tenantId.Value && p.User!.Email == email)
-                .ToListAsync();
+            var tenantIsActive = await _db.Tenants
+                .AsNoTracking()
+                .AnyAsync(tenant => tenant.Id == tenantId.Value && tenant.IsActive);
 
-            allowedCredentials = userPasskeys.Select(p =>
-                new PublicKeyCredentialDescriptor(p.CredentialId)
-            ).ToList();
+            if (tenantIsActive)
+            {
+                var normalizedEmail = email.Trim().ToLowerInvariant();
+
+                // User-specific challenges expose only credentials belonging to
+                // an account that is currently allowed to authenticate.
+                var userPasskeys = await _db.UserPasskeys
+                    .IgnoreQueryFilters()
+                    .Where(passkey =>
+                        passkey.TenantId == tenantId.Value
+                        && passkey.User != null
+                        && passkey.User.TenantId == tenantId.Value
+                        && passkey.User.Email.ToLower() == normalizedEmail
+                        && passkey.User.IsActive
+                        && passkey.User.SuspendedAt == null
+                        && passkey.User.RegistrationStatus == RegistrationStatus.Active)
+                    .ToListAsync();
+
+                allowedCredentials = userPasskeys
+                    .Select(passkey => new PublicKeyCredentialDescriptor(passkey.CredentialId))
+                    .ToList();
+            }
         }
 
         var options = _fido2.GetAssertionOptions(
@@ -192,24 +222,41 @@ public class PasskeyService
     /// </summary>
     public async Task<User> FinishAuthenticationAsync(
         AssertionOptions options,
-        AuthenticatorAssertionRawResponse assertionResponse)
+        AuthenticatorAssertionRawResponse assertionResponse,
+        int? expectedTenantId = null)
     {
         // Look up the stored credential by credential ID
         // In fido2-net-lib v4, assertionResponse.Id is base64url-encoded
         var credentialId = Base64UrlEncoder.DecodeBytes(assertionResponse.Id);
-        var passkey = await _db.UserPasskeys
+        var passkeyQuery = _db.UserPasskeys
             .IgnoreQueryFilters()
             .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.CredentialId == credentialId);
+            .AsQueryable();
+
+        if (expectedTenantId.HasValue)
+        {
+            passkeyQuery = passkeyQuery.Where(passkey => passkey.TenantId == expectedTenantId.Value);
+        }
+
+        var passkey = await passkeyQuery
+            .FirstOrDefaultAsync(stored => stored.CredentialId == credentialId);
 
         if (passkey == null)
         {
             throw new InvalidOperationException("Unknown credential");
         }
 
-        if (passkey.User == null || !passkey.User.IsActive)
+        var tenantIsActive = await _db.Tenants
+            .AsNoTracking()
+            .AnyAsync(tenant => tenant.Id == passkey.TenantId && tenant.IsActive);
+        if (!tenantIsActive
+            || passkey.User == null
+            || passkey.User.TenantId != passkey.TenantId
+            || !passkey.User.IsActive
+            || passkey.User.SuspendedAt != null
+            || passkey.User.RegistrationStatus != RegistrationStatus.Active)
         {
-            throw new InvalidOperationException("User account is inactive");
+            throw new InvalidOperationException("Passkey authentication is unavailable for this account");
         }
 
         // Verify the assertion
@@ -224,7 +271,12 @@ public class PasskeyService
                 {
                     var owned = await _db.UserPasskeys
                         .IgnoreQueryFilters()
-                        .AnyAsync(p => p.UserHandle == args.UserHandle && p.CredentialId == args.CredentialId, ct);
+                        .AnyAsync(p =>
+                            p.TenantId == passkey.TenantId
+                            && p.UserId == passkey.UserId
+                            && p.UserHandle == args.UserHandle
+                            && p.CredentialId == args.CredentialId,
+                            ct);
                     return owned;
                 }
             }
@@ -308,6 +360,82 @@ public class PasskeyService
     }
 
     /// <summary>
+    /// Delete a canonical WebAuthn credential by its opaque browser credential
+    /// ID. The user and tenant predicates are intentionally part of the lookup.
+    /// </summary>
+    public async Task<bool> DeleteCredentialAsync(
+        string credentialId,
+        int userId,
+        int tenantId)
+    {
+        if (!TryDecodeCredentialId(credentialId, out var decodedCredentialId))
+        {
+            return false;
+        }
+
+        var passkey = await _db.UserPasskeys
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(candidate =>
+                candidate.CredentialId == decodedCredentialId
+                && candidate.UserId == userId
+                && candidate.TenantId == tenantId);
+        if (passkey is null)
+        {
+            return false;
+        }
+
+        _db.UserPasskeys.Remove(passkey);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Rename a canonical WebAuthn credential owned by the current user in the
+    /// current tenant.
+    /// </summary>
+    public async Task<bool> RenameCredentialAsync(
+        string credentialId,
+        int userId,
+        int tenantId,
+        string displayName)
+    {
+        if (!TryDecodeCredentialId(credentialId, out var decodedCredentialId))
+        {
+            return false;
+        }
+
+        var passkey = await _db.UserPasskeys
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(candidate =>
+                candidate.CredentialId == decodedCredentialId
+                && candidate.UserId == userId
+                && candidate.TenantId == tenantId);
+        if (passkey is null)
+        {
+            return false;
+        }
+
+        passkey.DisplayName = displayName;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Remove every credential owned by one user in one tenant.
+    /// </summary>
+    public async Task<int> RemoveAllUserPasskeysAsync(int userId, int tenantId)
+    {
+        var passkeys = await _db.UserPasskeys
+            .IgnoreQueryFilters()
+            .Where(passkey => passkey.UserId == userId && passkey.TenantId == tenantId)
+            .ToListAsync();
+
+        _db.UserPasskeys.RemoveRange(passkeys);
+        await _db.SaveChangesAsync();
+        return passkeys.Count;
+    }
+
+    /// <summary>
     /// Get or create a stable user handle for WebAuthn.
     /// The user handle is a random opaque identifier (not the DB user ID)
     /// that's consistent across all of a user's credentials.
@@ -330,5 +458,45 @@ public class PasskeyService
         var handle = new byte[64];
         System.Security.Cryptography.RandomNumberGenerator.Fill(handle);
         return handle;
+    }
+
+    private async Task<bool> IsEligibleUserAsync(int userId, int tenantId)
+    {
+        var tenantIsActive = await _db.Tenants
+            .AsNoTracking()
+            .AnyAsync(tenant => tenant.Id == tenantId && tenant.IsActive);
+        if (!tenantIsActive)
+        {
+            return false;
+        }
+
+        return await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(user =>
+                user.Id == userId
+                && user.TenantId == tenantId
+                && user.IsActive
+                && user.SuspendedAt == null
+                && user.RegistrationStatus == RegistrationStatus.Active);
+    }
+
+    private static bool TryDecodeCredentialId(string? credentialId, out byte[] decoded)
+    {
+        decoded = Array.Empty<byte>();
+        if (string.IsNullOrWhiteSpace(credentialId))
+        {
+            return false;
+        }
+
+        try
+        {
+            decoded = Base64UrlEncoder.DecodeBytes(credentialId.Trim());
+            return decoded.Length > 0;
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            return false;
+        }
     }
 }

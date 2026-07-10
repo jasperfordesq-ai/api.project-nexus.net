@@ -3,6 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,7 +34,33 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class Phase73NewScheduledJobsTests : IntegrationTestBase
 {
+    private readonly HashSet<int> _syntheticPlatformSuperAdminIds = [];
+
     public Phase73NewScheduledJobsTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    public override async Task DisposeAsync()
+    {
+        try
+        {
+            if (_syntheticPlatformSuperAdminIds.Count > 0)
+            {
+                using var scope = Factory.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                await db.RefreshTokens
+                    .IgnoreQueryFilters()
+                    .Where(token => _syntheticPlatformSuperAdminIds.Contains(token.UserId))
+                    .ExecuteDeleteAsync();
+                await db.Users
+                    .IgnoreQueryFilters()
+                    .Where(user => _syntheticPlatformSuperAdminIds.Contains(user.Id))
+                    .ExecuteDeleteAsync();
+            }
+        }
+        finally
+        {
+            await base.DisposeAsync();
+        }
+    }
 
     // ─── Test-only subclasses ──────────────────────────────────────────────
 
@@ -59,6 +88,86 @@ public class Phase73NewScheduledJobsTests : IntegrationTestBase
     {
         public TestableExpiredTokenCleanupJob(IServiceScopeFactory s, IConfiguration c, ILogger<ExpiredTokenCleanupJob> l) : base(s, c, l) { }
         public Task RunGlobalPublic(IServiceProvider sp, CancellationToken ct = default) => RunGlobalAsync(sp, ct);
+    }
+
+    private sealed class ThrowingManualJob : ScheduledHostedService
+    {
+        public ThrowingManualJob(
+            IServiceScopeFactory scopeFactory,
+            IConfiguration configuration,
+            ILogger<ThrowingManualJob> logger)
+            : base(scopeFactory, configuration, logger) { }
+
+        protected override string JobName => "ManualFailureProbe";
+        protected override TimeSpan DefaultInterval => TimeSpan.FromDays(1);
+        protected override bool PerTenant => false;
+
+        protected override Task RunGlobalAsync(IServiceProvider services, CancellationToken ct) =>
+            throw new InvalidOperationException("intentional manual scheduled-job failure");
+    }
+
+    private sealed class BlockingScheduledJob : ScheduledHostedService
+    {
+        private readonly TaskCompletionSource<bool> _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _bodyCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly object _concurrencyLock = new();
+        private int _active;
+
+        public BlockingScheduledJob(
+            IServiceScopeFactory scopeFactory,
+            IConfiguration configuration,
+            ILogger<BlockingScheduledJob> logger)
+            : base(scopeFactory, configuration, logger) { }
+
+        protected override string JobName => "ManualConcurrencyProbe";
+        protected override TimeSpan DefaultInterval => TimeSpan.FromDays(1);
+        protected override TimeSpan StartupDelay => TimeSpan.Zero;
+        protected override bool PerTenant => false;
+
+        public Task Entered => _entered.Task;
+        public Task BodyCompleted => _bodyCompleted.Task;
+        public int MaxConcurrent { get; private set; }
+        public void Release() => _release.TrySetResult(true);
+
+        protected override async Task RunGlobalAsync(IServiceProvider services, CancellationToken ct)
+        {
+            var active = Interlocked.Increment(ref _active);
+            lock (_concurrencyLock)
+                MaxConcurrent = Math.Max(MaxConcurrent, active);
+            _entered.TrySetResult(true);
+            try
+            {
+                await _release.Task.WaitAsync(ct);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _active);
+                _bodyCompleted.TrySetResult(true);
+            }
+        }
+    }
+
+    private sealed class TenantRecordingJob : ScheduledHostedService
+    {
+        public TenantRecordingJob(
+            IServiceScopeFactory scopeFactory,
+            IConfiguration configuration,
+            ILogger<TenantRecordingJob> logger)
+            : base(scopeFactory, configuration, logger) { }
+
+        protected override string JobName => "ActiveTenantProbe";
+        protected override TimeSpan DefaultInterval => TimeSpan.FromDays(1);
+        public List<int> VisitedTenantIds { get; } = [];
+
+        protected override Task RunForTenantAsync(
+            IServiceProvider services,
+            int tenantId,
+            CancellationToken ct)
+        {
+            VisitedTenantIds.Add(tenantId);
+            return Task.CompletedTask;
+        }
     }
 
     // ─── 1. JobVacancyExpiryJob ────────────────────────────────────────────
@@ -252,6 +361,141 @@ public class Phase73NewScheduledJobsTests : IntegrationTestBase
         notifsAfter.Should().Be(notifsBefore, "expired listings must not be re-notified");
     }
 
+    [Fact]
+    public async Task AdminCronRun_MappedJob_AsOrdinaryAdmin_ReturnsForbiddenWithoutRunLog()
+    {
+        await AuthenticateAsAdminAsync();
+        var numericId = await GetCronNumericIdAsync("listing-expiry");
+        var before = await CountRunRowsAsync("ListingExpiry");
+
+        var response = await Client.PostAsync($"/api/v2/admin/system/cron-jobs/{numericId}/run", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var error = payload.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("forbidden");
+        (await CountRunRowsAsync("ListingExpiry")).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task AdminCronRun_ListingExpiry_ExecutesDomainJobAndPersistsMatchingOutcome()
+    {
+        var startedAfter = DateTime.UtcNow;
+        int listingId;
+        using (var arrange = Factory.Services.CreateScope())
+        {
+            var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var listing = new Listing
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                Title = "Manual cron expiry",
+                Type = ListingType.Offer,
+                Status = ListingStatus.Active,
+                ExpiresAt = DateTime.UtcNow.AddHours(-1),
+                CreatedAt = DateTime.UtcNow.AddDays(-5)
+            };
+            db.Listings.Add(listing);
+            await db.SaveChangesAsync();
+            listingId = listing.Id;
+        }
+
+        await AuthenticateAsSyntheticPlatformSuperAdminAsync();
+        var numericId = await GetCronNumericIdAsync("listing-expiry");
+        var response = await Client.PostAsync($"/api/v2/admin/system/cron-jobs/{numericId}/run", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = payload.GetProperty("data");
+        data.GetProperty("triggered").GetBoolean().Should().BeTrue();
+        data.GetProperty("job_slug").GetString().Should().Be("listing-expiry");
+        data.GetProperty("job_name").GetString().Should().Be("Listing Expiry Processing");
+        data.GetProperty("status").GetString().Should().Be("success");
+        data.GetProperty("duration").GetDouble().Should().BeGreaterThanOrEqualTo(0);
+        var output = data.GetProperty("output").GetString();
+        output.Should().Be("ListingExpiry manual run completed successfully.");
+
+        using var verify = Factory.Services.CreateScope();
+        var verifyDb = verify.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var listingStatus = await verifyDb.Listings.IgnoreQueryFilters()
+            .Where(l => l.Id == listingId)
+            .Select(l => l.Status)
+            .SingleAsync();
+        listingStatus.Should().Be(ListingStatus.Expired);
+
+        var run = await verifyDb.ScheduledJobRuns
+            .Where(r => r.JobName == "ListingExpiry" && r.StartedAt >= startedAfter)
+            .OrderByDescending(r => r.StartedAt)
+            .FirstAsync();
+        run.Status.Should().Be(ScheduledJobRunStatus.Success);
+        run.CompletedAt.Should().NotBeNull();
+        run.ErrorMessage.Should().Be(output);
+        run.ErrorType.Should().BeNull();
+
+        var health = Factory.Services.GetRequiredService<ScheduledJobsRegistry>()
+            .Snapshot()
+            .Single(h => h.JobName == "ListingExpiry");
+        health.Status.Should().Be("idle");
+        health.LastSucceededAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AdminCronRun_JobVacancyExpiry_ExecutesMappedDomainJob()
+    {
+        int vacancyId;
+        using (var arrange = Factory.Services.CreateScope())
+        {
+            var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var vacancy = new JobVacancy
+            {
+                TenantId = TestData.Tenant1.Id,
+                PostedByUserId = TestData.AdminUser.Id,
+                Title = "Manual vacancy expiry",
+                Category = "Test",
+                Status = "active",
+                ExpiresAt = DateTime.UtcNow.AddHours(-1),
+                CreatedAt = DateTime.UtcNow.AddDays(-5)
+            };
+            db.JobVacancies.Add(vacancy);
+            await db.SaveChangesAsync();
+            vacancyId = vacancy.Id;
+        }
+
+        await AuthenticateAsSyntheticPlatformSuperAdminAsync();
+        var numericId = await GetCronNumericIdAsync("job-expiry");
+        var response = await Client.PostAsync($"/api/v2/admin/system/cron-jobs/{numericId}/run", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        data.GetProperty("triggered").GetBoolean().Should().BeTrue();
+        data.GetProperty("job_slug").GetString().Should().Be("job-expiry");
+        data.GetProperty("status").GetString().Should().Be("success");
+        data.GetProperty("output").GetString().Should().Be("JobVacancyExpiry manual run completed successfully.");
+
+        using var verify = Factory.Services.CreateScope();
+        var verifyDb = verify.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var status = await verifyDb.JobVacancies.IgnoreQueryFilters()
+            .Where(j => j.Id == vacancyId)
+            .Select(j => j.Status)
+            .SingleAsync();
+        status.Should().Be("expired");
+    }
+
+    [Fact]
+    public async Task AdminCronRun_UnmappedJob_AsPlatformSuperAdmin_ReturnsExplicitUnsupportedWithoutSuccessLog()
+    {
+        await AuthenticateAsSyntheticPlatformSuperAdminAsync();
+        var before = await CountRunRowsAsync("run-all");
+
+        var response = await Client.PostAsync("/api/v2/admin/system/cron-jobs/1/run", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var error = payload.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("UNSUPPORTED_OPERATION");
+        (await CountRunRowsAsync("run-all")).Should().Be(before);
+    }
+
     // ─── 4. OnboardingNurtureJob ──────────────────────────────────────────
 
     [Fact]
@@ -364,5 +608,176 @@ public class Phase73NewScheduledJobsTests : IntegrationTestBase
             .Select(t => t.Id)
             .ToListAsync();
         remaining.Should().BeEquivalentTo(new[] { validId });
+    }
+
+    [Fact]
+    public async Task ManualRun_Failure_PersistsFailedOutcomeAndRegistryFailure()
+    {
+        var runner = new ThrowingManualJob(
+            Factory.Services.GetRequiredService<IServiceScopeFactory>(),
+            Factory.Services.GetRequiredService<IConfiguration>(),
+            Factory.Services.GetRequiredService<ILogger<ThrowingManualJob>>());
+
+        var result = await runner.RunNowAsync();
+
+        result.Outcome.Should().Be(ScheduledJobExecutionOutcome.Failed);
+        result.Persisted.Should().BeTrue();
+        result.RunRecordId.Should().NotBeNull();
+        result.Output.Should().Contain("intentional manual scheduled-job failure");
+
+        using var verify = Factory.Services.CreateScope();
+        var db = verify.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var run = await db.ScheduledJobRuns.SingleAsync(r => r.Id == result.RunRecordId);
+        run.Status.Should().Be(ScheduledJobRunStatus.Failed);
+        run.ErrorMessage.Should().Be(result.Output);
+        run.ErrorType.Should().Be(nameof(InvalidOperationException));
+
+        var health = Factory.Services.GetRequiredService<ScheduledJobsRegistry>()
+            .Snapshot()
+            .Single(h => h.JobName == "ManualFailureProbe");
+        health.Status.Should().Be("failing");
+        health.LastFailureMessage.Should().Contain("intentional manual scheduled-job failure");
+    }
+
+    [Fact]
+    public async Task NaturalAndManualRuns_CannotOverlap_AndBusyAttemptIsPersistedAsSkipped()
+    {
+        var runner = new BlockingScheduledJob(
+            Factory.Services.GetRequiredService<IServiceScopeFactory>(),
+            Factory.Services.GetRequiredService<IConfiguration>(),
+            Factory.Services.GetRequiredService<ILogger<BlockingScheduledJob>>());
+
+        await runner.StartAsync(CancellationToken.None);
+        try
+        {
+            await runner.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+
+            var busy = await runner.RunNowAsync();
+
+            busy.Outcome.Should().Be(ScheduledJobExecutionOutcome.Busy);
+            busy.Persisted.Should().BeTrue();
+            busy.RunRecordId.Should().NotBeNull();
+            busy.Output.Should().Contain("already running");
+            runner.MaxConcurrent.Should().Be(1);
+
+            using (var busyScope = Factory.Services.CreateScope())
+            {
+                var db = busyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                var busyRun = await db.ScheduledJobRuns.SingleAsync(r => r.Id == busy.RunRecordId);
+                busyRun.Status.Should().Be(ScheduledJobRunStatus.Skipped);
+                busyRun.ErrorType.Should().Be("JobAlreadyRunning");
+                busyRun.ErrorMessage.Should().Be(busy.Output);
+            }
+
+            runner.Release();
+            await runner.BodyCompleted.WaitAsync(TimeSpan.FromSeconds(10));
+
+            ScheduledJobRun? naturalRun = null;
+            for (var attempt = 0; attempt < 50 && naturalRun is null; attempt++)
+            {
+                using var naturalScope = Factory.Services.CreateScope();
+                var db = naturalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                naturalRun = await db.ScheduledJobRuns
+                    .Where(r => r.JobName == "ManualConcurrencyProbe" && r.Status == ScheduledJobRunStatus.Success)
+                    .OrderByDescending(r => r.StartedAt)
+                    .FirstOrDefaultAsync();
+                if (naturalRun is null)
+                    await Task.Delay(20);
+            }
+
+            naturalRun.Should().NotBeNull();
+            naturalRun!.ErrorMessage.Should().Be("ManualConcurrencyProbe scheduled run completed successfully.");
+            runner.MaxConcurrent.Should().Be(1);
+        }
+        finally
+        {
+            runner.Release();
+            await runner.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task ManualPerTenantRun_ExcludesInactiveTenants()
+    {
+        using (var arrange = Factory.Services.CreateScope())
+        {
+            var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var inactiveTenant = await db.Tenants.SingleAsync(tenant => tenant.Id == TestData.Tenant2.Id);
+            inactiveTenant.IsActive = false;
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            var runner = new TenantRecordingJob(
+                Factory.Services.GetRequiredService<IServiceScopeFactory>(),
+                Factory.Services.GetRequiredService<IConfiguration>(),
+                Factory.Services.GetRequiredService<ILogger<TenantRecordingJob>>());
+
+            var result = await runner.RunNowAsync();
+
+            result.Outcome.Should().Be(ScheduledJobExecutionOutcome.Success);
+            runner.VisitedTenantIds.Should().Contain(TestData.Tenant1.Id);
+            runner.VisitedTenantIds.Should().NotContain(TestData.Tenant2.Id);
+        }
+        finally
+        {
+            using var restore = Factory.Services.CreateScope();
+            var db = restore.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var inactiveTenant = await db.Tenants.SingleAsync(tenant => tenant.Id == TestData.Tenant2.Id);
+            inactiveTenant.IsActive = true;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private async Task<int> GetCronNumericIdAsync(string slug)
+    {
+        var response = await Client.GetAsync("/api/v2/admin/system/cron-jobs");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return payload.GetProperty("data")
+            .EnumerateArray()
+            .Single(job => job.GetProperty("slug").GetString() == slug)
+            .GetProperty("id")
+            .GetInt32();
+    }
+
+    private async Task AuthenticateAsSyntheticPlatformSuperAdminAsync()
+    {
+        var email = $"cron-platform-super-{Guid.NewGuid():N}@test.local";
+        int userId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword),
+                FirstName = "Cron",
+                LastName = "Platform Super",
+                Role = "member",
+                IsAdmin = false,
+                IsSuperAdmin = true,
+                IsTenantSuperAdmin = false,
+                IsGod = false,
+                IsActive = true,
+                RegistrationStatus = RegistrationStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+        }
+
+        _syntheticPlatformSuperAdminIds.Add(userId);
+        SetAuthToken(await GetAccessTokenAsync(email, TestData.Tenant1.Slug));
+    }
+
+    private async Task<int> CountRunRowsAsync(string jobName)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        return await db.ScheduledJobRuns.CountAsync(r => r.JobName == jobName);
     }
 }

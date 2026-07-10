@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -24,7 +25,7 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Route("api/v2/admin")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public class AdminCompatibility3Controller : ControllerBase
 {
     private readonly NexusDbContext _db;
@@ -46,7 +47,6 @@ public class AdminCompatibility3Controller : ControllerBase
 
     private int? GetCurrentUserId() => User.GetUserId();
     private int GetTenantId() => _tenantContext.GetTenantIdOrThrow();
-    private const string GlobalSuperAdminIdsKey = "super_admins.global_user_ids";
     private const string FederationMaxLevelKey = "federation.max_federation_level";
     private const string FederationProfilesKey = "federation.cross_tenant_profiles_enabled";
     private const string FederationMessagingKey = "federation.cross_tenant_messaging_enabled";
@@ -589,6 +589,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/dashboard - Super admin dashboard.</summary>
     [HttpGet("super/dashboard")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult GetSuperDashboard()
     {
         return Ok(new
@@ -604,6 +605,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/tenants - List tenants.</summary>
     [HttpGet("super/tenants")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult ListSuperTenants([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
         return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
@@ -611,6 +613,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/tenants/{id} - Get tenant.</summary>
     [HttpGet("super/tenants/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult GetSuperTenant(int id)
     {
         return Ok(new { id, name = "", slug = "", is_active = true, created_at = DateTime.UtcNow });
@@ -618,6 +621,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/tenants/hierarchy - Tenant hierarchy.</summary>
     [HttpGet("super/tenants/hierarchy")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult GetSuperTenantHierarchy()
     {
         return Ok(new { data = Array.Empty<object>(), total = 0 });
@@ -625,6 +629,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/tenants - Create tenant.</summary>
     [HttpPost("super/tenants")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult CreateSuperTenant()
     {
         return Ok(new { success = true, message = "Tenant created", id = 0 });
@@ -632,6 +637,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>PUT /api/admin/super/tenants/{id} - Update tenant.</summary>
     [HttpPut("super/tenants/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult UpdateSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant updated", id });
@@ -639,6 +645,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>DELETE /api/admin/super/tenants/{id} - Delete tenant.</summary>
     [HttpDelete("super/tenants/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult DeleteSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant deleted", id });
@@ -646,6 +653,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/tenants/{id}/reactivate - Reactivate tenant.</summary>
     [HttpPost("super/tenants/{id:int}/reactivate")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult ReactivateSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant reactivated", id });
@@ -653,6 +661,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/tenants/{id}/toggle-hub - Toggle hub status.</summary>
     [HttpPost("super/tenants/{id:int}/toggle-hub")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult ToggleSuperTenantHub(int id)
     {
         return Ok(new { success = true, message = "Hub status toggled", id });
@@ -660,6 +669,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/tenants/{id}/move - Move tenant.</summary>
     [HttpPost("super/tenants/{id:int}/move")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult MoveSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant moved", id });
@@ -667,6 +677,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/users - List users cross-tenant.</summary>
     [HttpGet("super/users")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult ListSuperUsers([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? search = null)
     {
         return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
@@ -674,6 +685,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/users/{id} - Get user cross-tenant.</summary>
     [HttpGet("super/users/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult GetSuperUser(int id)
     {
         return Ok(new { id, email = "", first_name = "", last_name = "", role = "", tenant_id = 0, is_active = true });
@@ -681,6 +693,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users - Create user cross-tenant.</summary>
     [HttpPost("super/users")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult CreateSuperUser()
     {
         return Ok(new { success = true, message = "User created", id = 0 });
@@ -688,6 +701,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>PUT /api/admin/super/users/{id} - Update user cross-tenant.</summary>
     [HttpPut("super/users/{id:int}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public IActionResult UpdateSuperUser(int id)
     {
         return Ok(new { success = true, message = "User updated", id });
@@ -695,13 +709,23 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users/{userId}/grant-super-admin - Grant super admin.</summary>
     [HttpPost("super/users/{userId}/grant-super-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GrantSuperAdmin(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        user.Role = "tenant_admin";
+        if (!await TenantAllowsSubtenantsAsync(user.TenantId))
+        {
+            return LaravelError(
+                "VALIDATION_ERROR",
+                "Tenant does not support sub-tenants.",
+                StatusCodes.Status422UnprocessableEntity);
+        }
+
+        user.Role = "admin";
+        user.IsTenantSuperAdmin = true;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -711,14 +735,22 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users/{userId}/revoke-super-admin - Revoke super admin.</summary>
     [HttpPost("super/users/{userId}/revoke-super-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> RevokeSuperAdmin(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        if (user.Role == "tenant_admin" || user.Role == "super_admin")
-            user.Role = "member";
+        if (user.IsSuperAdmin && !await CurrentActorIsGodAsync())
+        {
+            return LaravelError(
+                "AUTH_INSUFFICIENT_PERMISSIONS",
+                "Only god-level administrators can revoke tenant privileges from a global super-admin.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        user.IsTenantSuperAdmin = false;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -728,6 +760,8 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users/{userId}/grant-global-super-admin - Grant global super admin.</summary>
     [HttpPost("super/users/{userId}/grant-global-super-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     public async Task<IActionResult> GrantGlobalSuperAdmin(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
@@ -736,36 +770,43 @@ public class AdminCompatibility3Controller : ControllerBase
 
         if (user.Role == "member")
             user.Role = "admin";
+        user.IsSuperAdmin = true;
         user.UpdatedAt = DateTime.UtcNow;
-
-        var globalIds = await GetGlobalSuperAdminIdsAsync(user.TenantId);
-        globalIds.Add(userId);
-        await SaveGlobalSuperAdminIdsAsync(user.TenantId, globalIds, saveChanges: false);
         await _db.SaveChangesAsync();
 
-        _logger.LogWarning("Admin {AdminId} granted global super-admin compatibility metadata to user {UserId}", GetCurrentUserId(), userId);
+        _logger.LogWarning("Admin {AdminId} granted global super-admin privileges to user {UserId}", GetCurrentUserId(), userId);
         return LaravelData(new { granted = true, user_id = userId, level = "global" });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/revoke-global-super-admin - Revoke global super admin.</summary>
     [HttpPost("super/users/{userId}/revoke-global-super-admin")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     public async Task<IActionResult> RevokeGlobalSuperAdmin(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        var globalIds = await GetGlobalSuperAdminIdsAsync(user.TenantId);
-        globalIds.Remove(userId);
-        await SaveGlobalSuperAdminIdsAsync(user.TenantId, globalIds, saveChanges: false);
+        if (GetCurrentUserId() == userId)
+        {
+            return LaravelError(
+                "VALIDATION_ERROR",
+                "You cannot revoke global super-admin privileges from yourself.",
+                StatusCodes.Status422UnprocessableEntity);
+        }
+
+        user.IsSuperAdmin = false;
+        user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        _logger.LogWarning("Admin {AdminId} revoked global super-admin compatibility metadata from user {UserId}", GetCurrentUserId(), userId);
+        _logger.LogWarning("Admin {AdminId} revoked global super-admin privileges from user {UserId}", GetCurrentUserId(), userId);
         return LaravelData(new { revoked = true, user_id = userId, level = "global" });
     }
 
     /// <summary>POST /api/admin/super/users/{userId}/move-tenant - Move user to tenant.</summary>
     [HttpPost("super/users/{userId}/move-tenant")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> MoveSuperUserTenant(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
@@ -782,6 +823,8 @@ public class AdminCompatibility3Controller : ControllerBase
 
         var oldTenantId = user.TenantId;
         user.TenantId = newTenantId;
+        if (!await TenantAllowsSubtenantsAsync(newTenantId))
+            user.IsTenantSuperAdmin = false;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -799,6 +842,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/users/{userId}/move-and-promote - Move and promote user.</summary>
     [HttpPost("super/users/{userId}/move-and-promote")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> MoveAndPromoteSuperUser(int userId)
     {
         var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
@@ -813,9 +857,18 @@ public class AdminCompatibility3Controller : ControllerBase
         if (!targetTenantExists)
             return LaravelError("VALIDATION_ERROR", "Target tenant not found", StatusCodes.Status422UnprocessableEntity);
 
+        if (!await TenantAllowsSubtenantsAsync(targetTenantId))
+        {
+            return LaravelError(
+                "VALIDATION_ERROR",
+                "Target tenant must be configured as a hub.",
+                StatusCodes.Status422UnprocessableEntity);
+        }
+
         var oldTenantId = user.TenantId;
         user.TenantId = targetTenantId;
-        user.Role = "tenant_admin";
+        user.Role = "admin";
+        user.IsTenantSuperAdmin = true;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -832,6 +885,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/bulk/move-users - Bulk move users.</summary>
     [HttpPost("super/bulk/move-users")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> BulkMoveUsers()
     {
         using var doc = await JsonDocument.ParseAsync(Request.Body);
@@ -850,6 +904,15 @@ public class AdminCompatibility3Controller : ControllerBase
         var targetTenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == targetTenantId);
         if (targetTenant == null)
             return LaravelError("NOT_FOUND", "Target tenant not found", StatusCodes.Status404NotFound);
+
+        var targetAllowsSubtenants = await TenantAllowsSubtenantsAsync(targetTenantId);
+        if (grantSuperAdmin && !targetAllowsSubtenants)
+        {
+            return LaravelError(
+                "VALIDATION_ERROR",
+                "Target tenant must be configured as a hub before granting tenant super-admin privileges.",
+                StatusCodes.Status422UnprocessableEntity);
+        }
 
         var errors = new List<string>();
         var movedCount = 0;
@@ -871,7 +934,14 @@ public class AdminCompatibility3Controller : ControllerBase
 
             user.TenantId = targetTenantId;
             if (grantSuperAdmin)
-                user.Role = "tenant_admin";
+            {
+                user.Role = "admin";
+                user.IsTenantSuperAdmin = true;
+            }
+            else if (!targetAllowsSubtenants)
+            {
+                user.IsTenantSuperAdmin = false;
+            }
             user.UpdatedAt = now;
             movedCount++;
         }
@@ -889,6 +959,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/bulk/update-tenants - Bulk update tenants.</summary>
     [HttpPost("super/bulk/update-tenants")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> BulkUpdateTenants()
     {
         using var doc = await JsonDocument.ParseAsync(Request.Body);
@@ -966,6 +1037,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/audit - Audit log.</summary>
     [HttpGet("super/audit")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperAuditLog(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 50,
@@ -1221,54 +1293,30 @@ public class AdminCompatibility3Controller : ControllerBase
         => !string.IsNullOrWhiteSpace(value) &&
            value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
-    private async Task<HashSet<int>> GetGlobalSuperAdminIdsAsync(int tenantId)
+    private async Task<bool> TenantAllowsSubtenantsAsync(int tenantId)
     {
         var raw = await _db.TenantConfigs
             .IgnoreQueryFilters()
-            .Where(c => c.TenantId == tenantId && c.Key == GlobalSuperAdminIdsKey)
-            .Select(c => c.Value)
+            .Where(config => config.TenantId == tenantId && config.Key == "super_admin.allows_subtenants")
+            .Select(config => config.Value)
             .FirstOrDefaultAsync();
 
-        if (string.IsNullOrWhiteSpace(raw))
-            return [];
-
-        try
-        {
-            return JsonSerializer.Deserialize<int[]>(raw)?.Where(id => id > 0).ToHashSet() ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
+        return raw == "1" ||
+               string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(raw, "yes", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(raw, "on", StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task SaveGlobalSuperAdminIdsAsync(int tenantId, HashSet<int> ids, bool saveChanges = true)
+    private async Task<bool> CurrentActorIsGodAsync()
     {
-        var now = DateTime.UtcNow;
-        var value = JsonSerializer.Serialize(ids.OrderBy(id => id));
-        var row = await _db.TenantConfigs
+        var actorId = GetCurrentUserId();
+        if (!actorId.HasValue)
+            return false;
+
+        return await _db.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == GlobalSuperAdminIdsKey);
-
-        if (row == null)
-        {
-            _db.TenantConfigs.Add(new TenantConfig
-            {
-                TenantId = tenantId,
-                Key = GlobalSuperAdminIdsKey,
-                Value = value,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-        }
-        else
-        {
-            row.Value = value;
-            row.UpdatedAt = now;
-        }
-
-        if (saveChanges)
-            await _db.SaveChangesAsync();
+            .Where(user => user.Id == actorId.Value)
+            .AnyAsync(user => user.IsGod);
     }
 
     private async Task UpsertTenantConfigValueAsync(int tenantId, string key, string value, bool saveChanges = true)
@@ -1558,6 +1606,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation - Federation status.</summary>
     [HttpGet("super/federation")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperFederation()
     {
         var control = await GetFederationSystemControlAsync();
@@ -1588,6 +1637,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation/system-controls - System controls.</summary>
     [HttpGet("super/federation/system-controls")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperFederationSystemControls()
     {
         var control = await GetFederationSystemControlAsync();
@@ -1596,6 +1646,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>PUT /api/admin/super/federation/system-controls - Update system controls.</summary>
     [HttpPut("super/federation/system-controls")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> UpdateSuperFederationSystemControls()
     {
         if (Request.ContentLength == 0)
@@ -1646,6 +1697,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/emergency-lockdown - Emergency lockdown.</summary>
     [HttpPost("super/federation/emergency-lockdown")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> SuperFederationEmergencyLockdown()
     {
         var reason = "Emergency lockdown triggered via API";
@@ -1675,6 +1727,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/lift-lockdown - Lift lockdown.</summary>
     [HttpPost("super/federation/lift-lockdown")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> SuperFederationLiftLockdown()
     {
         var control = await GetFederationSystemControlAsync();
@@ -1687,6 +1740,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation/whitelist - Whitelist.</summary>
     [HttpGet("super/federation/whitelist")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperFederationWhitelist()
     {
         var rows = await _db.FederationTenantWhitelists
@@ -1715,6 +1769,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/whitelist - Add to whitelist.</summary>
     [HttpPost("super/federation/whitelist")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> AddToSuperFederationWhitelist()
     {
         if (Request.ContentLength == 0)
@@ -1770,6 +1825,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>DELETE /api/admin/super/federation/whitelist/{tenantId} - Remove from whitelist.</summary>
     [HttpDelete("super/federation/whitelist/{tenantId}")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> RemoveFromSuperFederationWhitelist(int tenantId)
     {
         if (tenantId <= 0)
@@ -1789,6 +1845,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation/partnerships - Partnerships.</summary>
     [HttpGet("super/federation/partnerships")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperFederationPartnerships([FromQuery] int page = 1, [FromQuery] int limit = 100)
     {
         limit = Math.Clamp(limit, 1, 100);
@@ -1820,6 +1877,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/suspend - Suspend partnership.</summary>
     [HttpPost("super/federation/partnerships/{id:int}/suspend")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> SuspendSuperFederationPartnership(int id)
     {
         var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
@@ -1838,6 +1896,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/terminate - Terminate partnership.</summary>
     [HttpPost("super/federation/partnerships/{id:int}/terminate")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> TerminateSuperFederationPartnership(int id)
     {
         var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
@@ -1853,6 +1912,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/reactivate - Reactivate partnership.</summary>
     [HttpPost("super/federation/partnerships/{id:int}/reactivate")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> ReactivateSuperFederationPartnership(int id)
     {
         var partnership = await _db.FederationPartners.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
@@ -1871,6 +1931,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/super/federation/tenant/{tenantId}/features - Tenant features.</summary>
     [HttpGet("super/federation/tenant/{tenantId}/features")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> GetSuperFederationTenantFeatures(int tenantId)
     {
         if (tenantId <= 0)
@@ -1935,6 +1996,7 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>PUT /api/admin/super/federation/tenant/{tenantId}/features - Update tenant features.</summary>
     [HttpPut("super/federation/tenant/{tenantId}/features")]
+    [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> UpdateSuperFederationTenantFeatures(int tenantId)
     {
         if (tenantId <= 0)
@@ -4968,8 +5030,11 @@ public class AdminCompatibility3Controller : ControllerBase
 
     private static string ToLaravelCronStatus(ScheduledJobRunStatus status) => status switch
     {
+        ScheduledJobRunStatus.Running => "running",
+        ScheduledJobRunStatus.Success => "success",
         ScheduledJobRunStatus.Failed => "failed",
-        _ => "success"
+        ScheduledJobRunStatus.Skipped => "skipped",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown scheduled job status.")
     };
 
     private static ScheduledJobRunStatus FromLaravelCronStatus(string status)

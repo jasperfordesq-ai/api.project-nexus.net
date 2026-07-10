@@ -6,6 +6,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using System.Text.Json.Serialization;
 using Nexus.Api.Extensions;
@@ -14,7 +15,7 @@ namespace Nexus.Api.Controllers;
 
 [ApiController]
 [Route("api/super-admin/bulk")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
 public class BulkOperationsController : ControllerBase
 {
     private readonly NexusDbContext _db;
@@ -109,7 +110,7 @@ public class BulkOperationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Role))
             return BadRequest(new { error = "Role required" });
 
-        var validRoles = new[] { "member", "admin", "super_admin", "coordinator", "moderator" };
+        var validRoles = new[] { "member", "admin", "broker" };
         if (!validRoles.Contains(request.Role.ToLower()))
             return BadRequest(new { error = $"Valid roles: {string.Join(", ", validRoles)}" });
 
@@ -122,6 +123,10 @@ public class BulkOperationsController : ControllerBase
             .Where(u => u.TenantId == tenantId && request.UserIds.Contains(u.Id))
             .ExecuteUpdateAsync(u => u
                 .SetProperty(x => x.Role, request.Role.ToLower())
+                .SetProperty(x => x.IsAdmin, false)
+                .SetProperty(x => x.IsSuperAdmin, false)
+                .SetProperty(x => x.IsTenantSuperAdmin, false)
+                .SetProperty(x => x.IsGod, false)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
         _logger.LogWarning("Super admin {AdminId} bulk assigned role '{Role}' to {Count} users in tenant {TenantId}", adminId, request.Role, count, tenantId);

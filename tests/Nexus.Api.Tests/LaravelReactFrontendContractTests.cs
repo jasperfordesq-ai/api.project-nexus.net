@@ -865,6 +865,24 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         detailData.GetProperty("job_id").GetString().Should().Be(jobId);
         detailData.GetProperty("status").GetString().Should().Be("failed");
 
+        var otherStatuses = new[]
+        {
+            (Status: ScheduledJobRunStatus.Running, Expected: "running"),
+            (Status: ScheduledJobRunStatus.Success, Expected: "success"),
+            (Status: ScheduledJobRunStatus.Skipped, Expected: "skipped")
+        };
+        foreach (var (status, expected) in otherStatuses)
+        {
+            var statusRunId = await SeedScheduledJobRunAsync(
+                $"{jobId}-{expected}",
+                status,
+                $"Contract cron {expected} output");
+            var statusDetail = await Client.GetAsync($"/api/v2/admin/system/cron-jobs/logs/{statusRunId}");
+            statusDetail.StatusCode.Should().Be(HttpStatusCode.OK);
+            var statusData = (await statusDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            statusData.GetProperty("status").GetString().Should().Be(expected);
+        }
+
         var updateJobSettings = await Client.PutAsJsonAsync($"/api/v2/admin/system/cron-jobs/{jobId}/settings", new
         {
             is_enabled = false,
@@ -920,7 +938,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AdminCronV2_UsesLaravelReactDefinitionListAndManualRunShape()
+    public async Task AdminCronV2_UsesLaravelReactDefinitionListAndRequiresPlatformSuperAdminForManualRun()
     {
         await AuthenticateAsAdminAsync();
 
@@ -936,21 +954,30 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         master.GetProperty("name").GetString().Should().Be("Master Cron Runner");
         master.GetProperty("command").GetString().Should().Be("runAll");
         master.GetProperty("schedule").GetString().Should().Be("* * * * *");
-        master.GetProperty("status").GetString().Should().Be("active");
+        master.GetProperty("status").GetString().Should().Be("disabled");
+        master.GetProperty("execution_supported").GetBoolean().Should().BeFalse();
         master.GetProperty("category").GetString().Should().Be("master");
         master.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
         master.GetProperty("last_run_at").ValueKind.Should().Be(JsonValueKind.Null);
         master.GetProperty("last_status").ValueKind.Should().Be(JsonValueKind.Null);
 
+        jobs.Count(job => job.GetProperty("status").GetString() == "active").Should().Be(2);
+        jobs.Count(job => job.GetProperty("execution_supported").GetBoolean()).Should().Be(2);
+        jobs.Should().ContainSingle(job =>
+            job.GetProperty("slug").GetString() == "listing-expiry" &&
+            job.GetProperty("status").GetString() == "active" &&
+            job.GetProperty("execution_supported").GetBoolean());
+        jobs.Should().ContainSingle(job =>
+            job.GetProperty("slug").GetString() == "job-expiry" &&
+            job.GetProperty("status").GetString() == "active" &&
+            job.GetProperty("execution_supported").GetBoolean());
+
         var run = await Client.PostAsJsonAsync("/api/v2/admin/system/cron-jobs/1/run", new { });
-        run.StatusCode.Should().Be(HttpStatusCode.OK);
-        var runData = (await run.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        runData.GetProperty("triggered").GetBoolean().Should().BeTrue();
-        runData.GetProperty("job_slug").GetString().Should().Be("run-all");
-        runData.GetProperty("job_name").GetString().Should().Be("Master Cron Runner");
-        runData.GetProperty("status").GetString().Should().Be("success");
-        runData.GetProperty("duration").GetDouble().Should().BeGreaterThanOrEqualTo(0);
-        runData.GetProperty("output").GetString().Should().Contain("recorded");
+        run.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var runError = await run.Content.ReadFromJsonAsync<JsonElement>();
+        var error = runError.GetProperty("errors").EnumerateArray().Should().ContainSingle().Subject;
+        error.GetProperty("code").GetString().Should().Be("forbidden");
+        error.GetProperty("message").GetString().Should().Contain("Platform super-admin access is required");
     }
 
     [Fact]
@@ -3042,6 +3069,85 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var memberList = await Client.GetAsync("/api/v2/admin/feed/posts?type=post&page=1&limit=20");
 
         memberList.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AdminBrokerV2_CanonicalRiskAndMonitoringWritesPersistForBroker()
+    {
+        var brokerEmail = $"broker-write-{Guid.NewGuid():N}@test.com";
+        var brokerToken = await SeedAndLoginUserAsync(brokerEmail, "broker");
+        var brokerId = await GetUserIdByEmailAsync(brokerEmail);
+        var listingId = await SeedAdminFeedListingAsync(
+            $"Laravel React broker write {Guid.NewGuid():N}",
+            brokerId);
+
+        try
+        {
+            SetAuthToken(brokerToken);
+
+            var saveRisk = await Client.PostAsJsonAsync($"/api/v2/admin/broker/risk-tags/{listingId}", new
+            {
+                risk_level = "high",
+                risk_category = "safeguarding",
+                risk_notes = "Canonical broker risk persistence"
+            });
+            saveRisk.StatusCode.Should().Be(HttpStatusCode.OK);
+            var riskData = (await saveRisk.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            riskData.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+            riskData.GetProperty("risk_level").GetString().Should().Be("high");
+            riskData.GetProperty("risk_category").GetString().Should().Be("safeguarding");
+            riskData.GetProperty("risk_notes").GetString().Should().Be("Canonical broker risk persistence");
+
+            var monitoring = await Client.PostAsJsonAsync($"/api/v2/admin/broker/monitoring/{brokerId}", new
+            {
+                under_monitoring = true,
+                reason = "Canonical monitoring persistence",
+                expires_days = 2
+            });
+            monitoring.StatusCode.Should().Be(HttpStatusCode.OK);
+            var monitoringData = (await monitoring.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            monitoringData.GetProperty("user_id").GetInt32().Should().Be(brokerId);
+            monitoringData.GetProperty("under_monitoring").GetBoolean().Should().BeTrue();
+
+            var configuration = await Client.GetAsync("/api/v2/admin/broker/configuration");
+            configuration.StatusCode.Should().Be(HttpStatusCode.OK);
+            var unsafeBrokerWrite = await Client.PostAsJsonAsync("/api/v2/admin/broker/configuration", new
+            {
+                enforce_vetting_on_exchanges = false
+            });
+            unsafeBrokerWrite.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+            using (var verify = Factory.Services.CreateScope())
+            {
+                var db = verify.ServiceProvider.GetRequiredService<NexusDbContext>();
+                var storedRisk = await db.BrokerRiskTags.SingleAsync(tag => tag.ListingId == listingId);
+                storedRisk.RiskLevel.Should().Be("high");
+                storedRisk.RiskType.Should().Be("safeguarding");
+                storedRisk.Notes.Should().Be("Canonical broker risk persistence");
+
+                var storedMonitoring = await db.UserMonitoringRestrictions.SingleAsync(row => row.UserId == brokerId);
+                storedMonitoring.UnderMonitoring.Should().BeTrue();
+                storedMonitoring.Reason.Should().Be("Canonical monitoring persistence");
+                storedMonitoring.MonitoringExpiresAt.Should().BeAfter(DateTime.UtcNow.AddHours(47));
+            }
+
+            var removeRisk = await Client.DeleteAsync($"/api/v2/admin/broker/risk-tags/{listingId}");
+            removeRisk.StatusCode.Should().Be(HttpStatusCode.OK);
+            var removeData = (await removeRisk.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            removeData.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+            removeData.GetProperty("removed").GetBoolean().Should().BeTrue();
+        }
+        finally
+        {
+            ClearAuthToken();
+            using var cleanup = Factory.Services.CreateScope();
+            var db = cleanup.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await db.BrokerRiskTags.IgnoreQueryFilters().Where(tag => tag.ListingId == listingId).ExecuteDeleteAsync();
+            await db.UserMonitoringRestrictions.IgnoreQueryFilters().Where(row => row.UserId == brokerId).ExecuteDeleteAsync();
+            await db.RefreshTokens.IgnoreQueryFilters().Where(token => token.UserId == brokerId).ExecuteDeleteAsync();
+            await db.Listings.IgnoreQueryFilters().Where(listing => listing.Id == listingId).ExecuteDeleteAsync();
+            await db.Users.IgnoreQueryFilters().Where(user => user.Id == brokerId).ExecuteDeleteAsync();
+        }
     }
 
     [Fact]

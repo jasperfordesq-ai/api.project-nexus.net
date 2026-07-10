@@ -14,10 +14,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
+using Nexus.Api.Services.Scheduled;
 
 namespace Nexus.Api.Controllers;
 
@@ -29,7 +33,7 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Route("api/v2/admin")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public class AdminCompatibilityController : ControllerBase
 {
     private const int PasswordResetExpiryMinutes = 30;
@@ -87,6 +91,16 @@ public class AdminCompatibilityController : ControllerBase
         ("goal-reminders", "Goal Reminders", "goalReminders", "0 8 * * *", "notifications", "Sends reminders for goals that are due or behind schedule."),
         ("retry-failed-webhooks", "Retry Failed Webhooks", "retryFailedWebhooks", "*/5 * * * *", "maintenance", "Retries webhook deliveries that previously failed.")
     ];
+
+    // Only jobs whose ASP.NET domain behavior genuinely matches the Laravel
+    // CronJobRunner operation belong here. An absent mapping is an explicit
+    // unsupported result, never a fabricated success record.
+    private static readonly IReadOnlyDictionary<string, string> LaravelCronToScheduledJob =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["listing-expiry"] = "ListingExpiry",
+            ["job-expiry"] = "JobVacancyExpiry"
+        };
 
     private static readonly (int Id, string Name, string Location)[] MenuDefinitions =
     [
@@ -160,8 +174,26 @@ public class AdminCompatibilityController : ControllerBase
         return await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId.Value);
     }
 
-    private static bool IsProtectedAdmin(User user)
-        => user.Role is "admin" or "tenant_admin" or "super_admin" or "god";
+    private static bool IsProtectedSuperAdmin(User user)
+        => user.IsSuperAdmin || user.IsTenantSuperAdmin || user.IsGod;
+
+    private async Task<IActionResult?> RequireV2PolicyAsync(string policyName, string message)
+    {
+        if (!IsLaravelV2Request)
+            return null;
+
+        var authorization = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+        var result = await authorization.AuthorizeAsync(
+            User,
+            resource: null,
+            policyName: policyName);
+        return result.Succeeded
+            ? null
+            : LaravelError(
+                "AUTH_INSUFFICIENT_PERMISSIONS",
+                message,
+                StatusCodes.Status403Forbidden);
+    }
 
     private async Task<bool> ReadGrantFlagAsync(bool defaultValue)
     {
@@ -339,7 +371,7 @@ public class AdminCompatibilityController : ControllerBase
             ? Convert.ToHexString(RandomNumberGenerator.GetBytes(12)).ToLowerInvariant()
             : request.Password;
         var role = string.IsNullOrWhiteSpace(request.Role) ? "member" : request.Role.Trim();
-        var allowedRoles = new[] { "member", "admin", "broker", "moderator", "newsletter_admin" };
+        var allowedRoles = new[] { "member", "admin", "broker" };
         var errors = new List<object>();
 
         if (string.IsNullOrWhiteSpace(firstName))
@@ -402,7 +434,7 @@ public class AdminCompatibilityController : ControllerBase
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        if (IsProtectedAdmin(user))
+        if (IsProtectedSuperAdmin(user))
             return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot delete super admin", StatusCodes.Status403Forbidden);
 
         _db.Users.Remove(user);
@@ -447,7 +479,7 @@ public class AdminCompatibilityController : ControllerBase
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        if (IsProtectedAdmin(user))
+        if (IsProtectedSuperAdmin(user))
             return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot suspend super admin", StatusCodes.Status403Forbidden);
 
         user.IsActive = false;
@@ -473,7 +505,7 @@ public class AdminCompatibilityController : ControllerBase
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        if (IsProtectedAdmin(user))
+        if (IsProtectedSuperAdmin(user))
             return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot ban super admin", StatusCodes.Status403Forbidden);
 
         user.IsActive = false;
@@ -515,7 +547,7 @@ public class AdminCompatibilityController : ControllerBase
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
-        if (id != adminId && IsProtectedAdmin(user))
+        if (id != adminId && IsProtectedSuperAdmin(user))
             return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Insufficient permissions", StatusCodes.Status403Forbidden);
 
         user.TwoFactorEnabled = false;
@@ -702,10 +734,11 @@ public class AdminCompatibilityController : ControllerBase
         if (adminId == null)
             return Unauthorized(new { error = "Invalid token" });
 
-        if (adminId.Value == userId)
-            return IsLaravelV2Request
-                ? LaravelValidationError("Cannot impersonate yourself", "user_id")
-                : BadRequest(new { error = "Cannot impersonate yourself" });
+        var policyFailure = await RequireV2PolicyAsync(
+            NexusAuthorizationPolicies.PlatformSuperAdminOnly,
+            "Platform super-admin access is required to impersonate users");
+        if (policyFailure is not null)
+            return policyFailure;
 
         var tenantId = _tenant.TenantId;
         var user = IsLaravelV2Request && tenantId.HasValue
@@ -715,8 +748,12 @@ public class AdminCompatibilityController : ControllerBase
             return IsLaravelV2Request
                 ? LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound)
                 : NotFound(new { error = "User not found" });
-        if (IsLaravelV2Request && IsProtectedAdmin(user))
+        if (IsLaravelV2Request && IsProtectedSuperAdmin(user))
             return LaravelError("AUTH_INSUFFICIENT_PERMISSIONS", "Cannot impersonate super admin", StatusCodes.Status403Forbidden);
+        if (adminId.Value == userId)
+            return IsLaravelV2Request
+                ? LaravelError("VALIDATION_ERROR", "Cannot impersonate yourself", StatusCodes.Status422UnprocessableEntity)
+                : BadRequest(new { error = "Cannot impersonate yourself" });
         if (!user.IsActive)
             return IsLaravelV2Request
                 ? LaravelError("CONFLICT", "Cannot impersonate inactive user", StatusCodes.Status409Conflict)
@@ -765,6 +802,12 @@ public class AdminCompatibilityController : ControllerBase
     public async Task<IActionResult> SetSuperAdmin(int userId)
     {
         var adminId = GetCurrentUserId();
+        var policyFailure = await RequireV2PolicyAsync(
+            NexusAuthorizationPolicies.PlatformSuperAdminOnly,
+            "Only platform super-admins may manage tenant super-admin status");
+        if (policyFailure is not null)
+            return policyFailure;
+
         if (IsLaravelV2Request && adminId == userId)
             return LaravelError("VALIDATION_ERROR", "Cannot modify your own super admin status", StatusCodes.Status422UnprocessableEntity);
 
@@ -778,8 +821,17 @@ public class AdminCompatibilityController : ControllerBase
 
         var grant = await ReadGrantFlagAsync(defaultValue: !IsLaravelV2Request);
 
-        if (grant)
-            user.Role = IsLaravelV2Request ? "tenant_admin" : "admin";
+        if (IsLaravelV2Request)
+        {
+            if (grant)
+                user.Role = "admin";
+            user.IsTenantSuperAdmin = grant;
+        }
+        else if (grant)
+        {
+            user.Role = "admin";
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -797,6 +849,12 @@ public class AdminCompatibilityController : ControllerBase
     public async Task<IActionResult> SetGlobalSuperAdmin(int userId)
     {
         var adminId = GetCurrentUserId();
+        var policyFailure = await RequireV2PolicyAsync(
+            NexusAuthorizationPolicies.GodOnly,
+            "Only God users may manage global super-admin status");
+        if (policyFailure is not null)
+            return policyFailure;
+
         if (IsLaravelV2Request && adminId == userId)
             return LaravelError("VALIDATION_ERROR", "Cannot modify your own super admin status", StatusCodes.Status422UnprocessableEntity);
 
@@ -809,25 +867,26 @@ public class AdminCompatibilityController : ControllerBase
                 : NotFound(new { error = "User not found" });
 
         var grant = await ReadGrantFlagAsync(defaultValue: !IsLaravelV2Request);
-        if (grant)
-            user.Role = "admin";
+        user.IsSuperAdmin = grant;
         user.UpdatedAt = DateTime.UtcNow;
-
-        var globalAdminIds = await GetGlobalSuperAdminIdsAsync();
-        if (grant)
-            globalAdminIds.Add(userId);
-        else
-            globalAdminIds.Remove(userId);
-        await SaveGlobalSuperAdminIdsAsync(globalAdminIds);
+        await _db.SaveChangesAsync();
 
         if (IsLaravelV2Request)
         {
-            _logger.LogWarning("Admin {AdminId} set global super-admin grant={Grant} for user {UserId} through compatibility metadata", adminId, grant, userId);
+            _logger.LogWarning("Admin {AdminId} set global super-admin grant={Grant} for user {UserId}", adminId, grant, userId);
             return LaravelData(new { id = userId, is_super_admin = grant });
         }
 
-        _logger.LogWarning("Admin {AdminId} marked user {UserId} as global super-admin compatibility metadata", adminId, userId);
-        return Ok(new { success = true, user_id = userId, role = user.Role, scope = "global", message = "Global super-admin compatibility flag recorded" });
+        _logger.LogWarning("Admin {AdminId} set global super-admin grant={Grant} for user {UserId}", adminId, grant, userId);
+        return Ok(new
+        {
+            success = true,
+            user_id = userId,
+            role = user.Role,
+            is_super_admin = user.IsSuperAdmin,
+            scope = "global",
+            message = grant ? "Global super-admin flag granted" : "Global super-admin flag revoked"
+        });
     }
 
     [HttpPost("users/{userId:int}/badges/recheck")]
@@ -1033,6 +1092,11 @@ public class AdminCompatibilityController : ControllerBase
     [HttpPost("users/import")]
     public async Task<IActionResult> ImportUsers()
     {
+        // Canonical Laravel v2 accepts multipart CSV only. Keeping JSON import
+        // on the legacy alias must never let v2 mint arbitrary retired roles.
+        if (IsLaravelV2Request)
+            return await ImportUsersFromMultipartCsv();
+
         if (Request.HasFormContentType)
             return await ImportUsersFromMultipartCsv();
 
@@ -1104,6 +1168,9 @@ public class AdminCompatibilityController : ControllerBase
 
     private async Task<IActionResult> ImportUsersFromMultipartCsv()
     {
+        if (!Request.HasFormContentType)
+            return LaravelError("VALIDATION_ERROR", "CSV file is required", StatusCodes.Status400BadRequest);
+
         var form = await Request.ReadFormAsync();
         var file = form.Files["csv_file"];
         if (file == null || file.Length == 0)
@@ -3923,16 +3990,24 @@ public class AdminCompatibilityController : ControllerBase
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
         var slugs = LaravelReactCronJobs.Select(j => j.Slug).ToList();
+        var persistedJobNames = slugs
+            .Concat(LaravelCronToScheduledJob.Values)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
         var lastRuns = await _db.ScheduledJobRuns
             .AsNoTracking()
-            .Where(r => (r.TenantId == tenantId || r.TenantId == null) && slugs.Contains(r.JobName))
+            .Where(r => (r.TenantId == tenantId || r.TenantId == null) && persistedJobNames.Contains(r.JobName))
             .GroupBy(r => r.JobName)
-            .Select(g => g.OrderByDescending(r => r.StartedAt).First())
+            .Select(group => group.OrderByDescending(r => r.StartedAt).First())
             .ToListAsync();
 
         return LaravelReactCronJobs.Select((job, index) =>
         {
-            var lastRun = lastRuns.FirstOrDefault(r => r.JobName == job.Slug);
+            var executionSupported = LaravelCronToScheduledJob.TryGetValue(job.Slug, out var scheduledJobName);
+            var lastRun = lastRuns
+                .Where(r => r.JobName == job.Slug || r.JobName == scheduledJobName)
+                .OrderByDescending(r => r.StartedAt)
+                .FirstOrDefault();
             return (object)new
             {
                 id = index + 1,
@@ -3940,7 +4015,8 @@ public class AdminCompatibilityController : ControllerBase
                 name = job.Name,
                 command = job.Command,
                 schedule = job.Schedule,
-                status = "active",
+                status = executionSupported ? "active" : "disabled",
+                execution_supported = executionSupported,
                 category = job.Category,
                 description = job.Description,
                 last_run_at = lastRun?.StartedAt,
@@ -3954,6 +4030,19 @@ public class AdminCompatibilityController : ControllerBase
 
     private async Task<IActionResult> RunLaravelReactCronJobAsync(string id)
     {
+        var authorization = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+        var platformAccess = await authorization.AuthorizeAsync(
+            User,
+            resource: null,
+            NexusAuthorizationPolicies.PlatformSuperAdminOnly);
+        if (!platformAccess.Succeeded)
+        {
+            return LaravelError(
+                "forbidden",
+                "Platform super-admin access is required to run cron jobs manually.",
+                StatusCodes.Status403Forbidden);
+        }
+
         if (!int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId) || numericId < 1)
         {
             return LaravelError("VALIDATION_ERROR", "Invalid cron job id.", StatusCodes.Status400BadRequest);
@@ -3965,33 +4054,60 @@ public class AdminCompatibilityController : ControllerBase
         }
 
         var job = LaravelReactCronJobs[numericId - 1];
-        var startedAt = DateTime.UtcNow;
-        var completedAt = DateTime.UtcNow;
-        var duration = Math.Round(Math.Max(0, (completedAt - startedAt).TotalSeconds), 2);
-        var output = $"Manual compatibility run recorded for {job.Slug}; ASP.NET did not execute the Laravel CronJobRunner.";
-
-        _db.ScheduledJobRuns.Add(new ScheduledJobRun
+        if (!LaravelCronToScheduledJob.TryGetValue(job.Slug, out var scheduledJobName))
         {
-            TenantId = _tenant.GetTenantIdOrThrow(),
-            JobName = job.Slug,
-            StartedAt = startedAt,
-            CompletedAt = completedAt,
-            Status = ScheduledJobRunStatus.Success,
-            ItemsProcessed = 0,
-            ErrorMessage = output,
-            DurationMs = duration * 1000
-        });
-        await _db.SaveChangesAsync();
+            return LaravelError(
+                "UNSUPPORTED_OPERATION",
+                $"Cron job '{job.Slug}' does not yet have a fully equivalent ASP.NET implementation.",
+                StatusCodes.Status501NotImplemented);
+        }
 
-        return LaravelData(new
+        var scheduledJob = HttpContext.RequestServices
+            .GetServices<IHostedService>()
+            .OfType<ScheduledHostedService>()
+            .SingleOrDefault(candidate => candidate.Name == scheduledJobName);
+        if (scheduledJob is null)
         {
-            triggered = true,
+            return LaravelError(
+                "SERVICE_UNAVAILABLE",
+                $"ASP.NET scheduled job '{scheduledJobName}' is not registered.",
+                StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var result = await scheduledJob.RunNowAsync(HttpContext.RequestAborted);
+        var duration = Math.Round(Math.Max(0, result.Elapsed.TotalSeconds), 2);
+        var output = result.Output.Length <= 500 ? result.Output : result.Output[..500];
+
+        if (result.Outcome == ScheduledJobExecutionOutcome.Disabled)
+        {
+            return LaravelValidationError($"Cron job '{job.Slug}' is disabled.", "status");
+        }
+
+        var triggered = result.Outcome is ScheduledJobExecutionOutcome.Success or ScheduledJobExecutionOutcome.Failed;
+        var status = result.Outcome switch
+        {
+            ScheduledJobExecutionOutcome.Success when result.Persisted => "success",
+            ScheduledJobExecutionOutcome.Busy => "busy",
+            _ => "error"
+        };
+
+        var response = new
+        {
+            triggered,
             job_slug = job.Slug,
             job_name = job.Name,
-            status = "success",
+            status,
             duration,
             output
-        });
+        };
+
+        if (result.Outcome == ScheduledJobExecutionOutcome.Busy)
+            return LaravelData(response, StatusCodes.Status409Conflict);
+
+        if (result.Outcome != ScheduledJobExecutionOutcome.Success || !result.Persisted)
+            return LaravelData(response, StatusCodes.Status500InternalServerError);
+
+        return LaravelData(response);
     }
 
     private static string? CalculateLaravelReactNextRun(string cronExpression)
@@ -4059,7 +4175,7 @@ public class AdminCompatibilityController : ControllerBase
         => value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
     private static string LaravelReactCronRunStatus(ScheduledJobRunStatus status)
-        => status == ScheduledJobRunStatus.Failed ? "error" : "success";
+        => status is ScheduledJobRunStatus.Failed or ScheduledJobRunStatus.Skipped ? "error" : "success";
 
     private async Task<object?> RecordScheduledTaskRunAsync(string id)
     {
@@ -4935,33 +5051,6 @@ public class AdminCompatibilityController : ControllerBase
         return MenuDefinitions.Any(m => m.Location.Equals(normalized, StringComparison.OrdinalIgnoreCase))
             ? normalized
             : null;
-    }
-
-    private async Task<HashSet<int>> GetGlobalSuperAdminIdsAsync()
-    {
-        var raw = await _db.TenantConfigs
-            .AsNoTracking()
-            .Where(c => c.Key == "super_admins.global_user_ids")
-            .Select(c => c.Value)
-            .FirstOrDefaultAsync();
-
-        if (string.IsNullOrWhiteSpace(raw))
-            return [];
-
-        try
-        {
-            return JsonSerializer.Deserialize<int[]>(raw)?.Where(id => id > 0).ToHashSet() ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
-    }
-
-    private async Task SaveGlobalSuperAdminIdsAsync(HashSet<int> ids)
-    {
-        await UpsertTenantConfigAsync("super_admins.global_user_ids", JsonSerializer.Serialize(ids.OrderBy(id => id)));
-        await _db.SaveChangesAsync();
     }
 
     private async Task<List<AdminCompatibilityMenuDefinition>> GetMenuDefinitionsAsync(bool includeDeleted = false)

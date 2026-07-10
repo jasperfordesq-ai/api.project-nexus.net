@@ -586,107 +586,8 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     // =====================================================================
-    // BROKER — Extended (no conflicts with AdminBrokerController)
-    // AdminBrokerController owns: assignments/*, notes, stats/*, brokers, members/*/notes, exchanges/*/notes
-    // These routes are NEW sub-paths under /api/admin/broker/
+    // BROKER — Legacy compatibility routes not owned by AdminBrokerController.
     // =====================================================================
-
-    /// <summary>GET /api/admin/broker/dashboard - Broker dashboard stats.</summary>
-    [HttpGet("broker/dashboard")]
-    public IActionResult BrokerDashboard()
-        => Ok(new
-        {
-            data = new
-            {
-                total_exchanges = 0, pending_approval = 0, active_assignments = 0,
-                flagged_messages = 0, monitored_users = 0, risk_tags = 0
-            }
-        });
-
-    /// <summary>GET /api/admin/broker/exchanges - List exchanges for broker review.</summary>
-    [HttpGet("broker/exchanges")]
-    public IActionResult BrokerExchanges([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? status = null)
-        => Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
-
-    /// <summary>GET /api/admin/broker/exchanges/{id} - Exchange detail for broker.</summary>
-    [HttpGet("broker/exchanges/{id:int}")]
-    public IActionResult BrokerExchangeDetail(int id)
-        => Ok(new { data = new { id, status = "pending", provider_id = 0, receiver_id = 0, hours = 0, created_at = DateTime.UtcNow } });
-
-    /// <summary>POST /api/admin/broker/exchanges/{id}/approve - Approve exchange.</summary>
-    [HttpPost("broker/exchanges/{id:int}/approve")]
-    public IActionResult ApproveBrokerExchange(int id)
-        => Ok(new { message = "Exchange approved", exchange_id = id });
-
-    /// <summary>POST /api/admin/broker/exchanges/{id}/reject - Reject exchange.</summary>
-    [HttpPost("broker/exchanges/{id:int}/reject")]
-    public IActionResult RejectBrokerExchange(int id)
-        => Ok(new { message = "Exchange rejected", exchange_id = id });
-
-    /// <summary>GET /api/admin/broker/risk-tags - List risk tags.</summary>
-    [HttpGet("broker/risk-tags")]
-    public IActionResult ListRiskTags()
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
-
-    /// <summary>POST /api/admin/broker/risk-tags/{listingId} - Save risk tag for listing.</summary>
-    [HttpPost("broker/risk-tags/{listingId}")]
-    public IActionResult SaveRiskTag(int listingId, [FromBody] object body)
-        => Ok(new { message = "Risk tag saved", listing_id = listingId });
-
-    /// <summary>DELETE /api/admin/broker/risk-tags/{listingId} - Remove risk tag.</summary>
-    [HttpDelete("broker/risk-tags/{listingId}")]
-    public IActionResult RemoveRiskTag(int listingId)
-        => Ok(new { message = "Risk tag removed", listing_id = listingId });
-
-    /// <summary>GET /api/admin/broker/messages - List messages for broker review.</summary>
-    [HttpGet("broker/messages")]
-    public IActionResult BrokerMessages([FromQuery] int page = 1, [FromQuery] int limit = 20)
-        => Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
-
-    /// <summary>GET /api/admin/broker/messages/unreviewed-count - Unreviewed message count.</summary>
-    [HttpGet("broker/messages/unreviewed-count")]
-    public IActionResult UnreviewedMessageCount()
-        => Ok(new { count = 0 });
-
-    /// <summary>GET /api/admin/broker/messages/{id} - Message detail.</summary>
-    [HttpGet("broker/messages/{id:int}")]
-    public IActionResult BrokerMessageDetail(int id)
-        => Ok(new { data = new { id, content = "", sender_id = 0, receiver_id = 0, reviewed = false, created_at = DateTime.UtcNow } });
-
-    /// <summary>POST /api/admin/broker/messages/{id}/review - Review message.</summary>
-    [HttpPost("broker/messages/{id:int}/review")]
-    public IActionResult ReviewMessage(int id, [FromBody] object body)
-        => Ok(new { message = "Message reviewed", message_id = id });
-
-    /// <summary>POST /api/admin/broker/messages/{id}/flag - Flag message.</summary>
-    [HttpPost("broker/messages/{id:int}/flag")]
-    public IActionResult FlagMessage(int id, [FromBody] object body)
-        => Ok(new { message = "Message flagged", message_id = id });
-
-    /// <summary>POST /api/admin/broker/messages/{id}/approve - Approve message.</summary>
-    [HttpPost("broker/messages/{id:int}/approve")]
-    public IActionResult ApproveMessage(int id)
-        => Ok(new { message = "Message approved", message_id = id });
-
-    /// <summary>GET /api/admin/broker/monitoring - Monitored users.</summary>
-    [HttpGet("broker/monitoring")]
-    public IActionResult BrokerMonitoring()
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
-
-    /// <summary>POST /api/admin/broker/monitoring/{userId} - Set monitoring for user.</summary>
-    [HttpPost("broker/monitoring/{userId}")]
-    public IActionResult SetMonitoring(int userId, [FromBody] object body)
-        => Ok(new { message = "Monitoring updated", user_id = userId });
-
-    /// <summary>GET /api/admin/broker/configuration - Broker configuration.</summary>
-    [HttpGet("broker/configuration")]
-    public IActionResult BrokerConfiguration()
-        => Ok(new { data = new { auto_assign = false, max_assignments_per_broker = 10, review_required = true } });
-
-    /// <summary>POST /api/admin/broker/configuration - Save broker configuration.</summary>
-    [HttpPost("broker/configuration")]
-    public IActionResult SaveBrokerConfiguration([FromBody] object body)
-        => Ok(new { message = "Configuration saved" });
 
     /// <summary>GET /api/admin/broker/archives - List archived exchanges.</summary>
     [HttpGet("broker/archives")]
@@ -763,11 +664,6 @@ public class AdminCompatibility2Controller : ControllerBase
     [HttpPut("groups/types/{typeId}/policies")]
     public IActionResult SetGroupTypePolicies(int typeId, [FromBody] object body)
         => Ok(new { message = "Policies updated", type_id = typeId });
-
-    /// <summary>PUT /api/admin/groups/{id} - Update group (admin).</summary>
-    [HttpPut("groups/{id:int}")]
-    public IActionResult UpdateGroup(int id, [FromBody] object body)
-        => Ok(new { message = "Group updated", group_id = id });
 
     /// <summary>GET /api/admin/groups/{groupId}/members - List group members.</summary>
     [HttpGet("groups/{groupId}/members")]
@@ -993,11 +889,6 @@ public class AdminCompatibility2Controller : ControllerBase
     [HttpPost("volunteering/approvals/{id:int}/decline")]
     public IActionResult DeclineVolunteering(int id)
         => Ok(new { message = "Volunteering declined", id });
-
-    /// <summary>GET /api/admin/volunteering/organizations - List volunteering organisations.</summary>
-    [HttpGet("volunteering/organizations")]
-    public IActionResult VolunteeringOrganizations()
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     // =====================================================================
     // FEDERATION (at /api/admin/federation/... — no conflict with AdminFederationController at /api/admin/system/federation/...)

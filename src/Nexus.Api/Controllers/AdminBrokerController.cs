@@ -21,7 +21,8 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/broker")]
-[Authorize(Policy = "AdminOnly")]
+[Route("api/v2/admin/broker")]
+[Authorize(Policy = "BrokerOrAdmin")]
 public class AdminBrokerController : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -430,6 +431,7 @@ public class AdminBrokerController : ControllerBase
     }
 
     [HttpPost("listings/{listingId:int}/risk-tag")]
+    [HttpPost("risk-tags/{listingId}")]
     public async Task<IActionResult> SaveRiskTag(int listingId, [FromBody] SaveRiskTagRequest request)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -445,21 +447,22 @@ public class AdminBrokerController : ControllerBase
         }
 
         tag.RiskLevel = request.RiskLevel;
-        tag.RiskType = request.RiskType;
-        tag.Notes = request.Notes;
+        tag.RiskType = request.RiskCategory ?? request.RiskType;
+        tag.Notes = request.RiskNotes ?? request.Notes;
         tag.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(new { data = MapRiskTag(tag) });
     }
 
     [HttpDelete("listings/{listingId:int}/risk-tag")]
+    [HttpDelete("risk-tags/{listingId}")]
     public async Task<IActionResult> RemoveRiskTag(int listingId)
     {
         var tag = await _db.BrokerRiskTags.FirstOrDefaultAsync(t => t.ListingId == listingId);
         if (tag == null) return NotFound(new { error = "Risk tag not found" });
         _db.BrokerRiskTags.Remove(tag);
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Risk tag removed" });
+        return Ok(new { data = new { listing_id = listingId, removed = true } });
     }
 
     [HttpGet("monitoring")]
@@ -476,6 +479,7 @@ public class AdminBrokerController : ControllerBase
     }
 
     [HttpPost("users/{userId:int}/monitoring")]
+    [HttpPost("monitoring/{userId}")]
     public async Task<IActionResult> SetMonitoring(int userId, [FromBody] SetMonitoringRequest request)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -493,7 +497,8 @@ public class AdminBrokerController : ControllerBase
         {
             row.RequiresBrokerApproval = request.RequiresBrokerApproval.Value;
         }
-        row.MonitoringExpiresAt = request.ExpiresAt;
+        row.MonitoringExpiresAt = request.ExpiresAt
+            ?? (request.ExpiresDays is > 0 ? DateTime.UtcNow.AddDays(request.ExpiresDays.Value) : null);
         row.Reason = request.Reason;
         row.SetByUserId = User.GetUserId();
         row.UpdatedAt = DateTime.UtcNow;
@@ -509,6 +514,8 @@ public class AdminBrokerController : ControllerBase
     }
 
     [HttpPut("configuration")]
+    [HttpPost("configuration")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> SaveConfiguration([FromBody] JsonElement request)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -533,6 +540,7 @@ public class AdminBrokerController : ControllerBase
     }
 
     [HttpGet("unreviewed-count")]
+    [HttpGet("messages/unreviewed-count")]
     public async Task<IActionResult> UnreviewedCount()
     {
         var count = await _db.SafeguardingMessageReviews.CountAsync(r => r.IsFlagged && r.ReviewedAt == null);
@@ -685,8 +693,10 @@ public class AdminBrokerController : ControllerBase
         listing_id = t.ListingId,
         listing_title = t.Listing?.Title,
         risk_level = t.RiskLevel,
+        risk_category = t.RiskType,
+        risk_notes = t.Notes,
         risk_type = t.RiskType,
-        t.Notes,
+        notes = t.Notes,
         created_by = MapBrokerUser(t.CreatedBy, t.CreatedByUserId),
         created_at = t.CreatedAt,
         updated_at = t.UpdatedAt
@@ -757,7 +767,9 @@ public class AdminBrokerController : ControllerBase
 
     public class SaveRiskTagRequest
     {
-        [JsonPropertyName("risk_level"), MaxLength(30)] public string RiskLevel { get; set; } = "medium";
+        [JsonPropertyName("risk_level"), MaxLength(30)] public string RiskLevel { get; set; } = "low";
+        [JsonPropertyName("risk_category"), MaxLength(120)] public string? RiskCategory { get; set; }
+        [JsonPropertyName("risk_notes"), MaxLength(2000)] public string? RiskNotes { get; set; }
         [JsonPropertyName("risk_type"), MaxLength(120)] public string RiskType { get; set; } = "manual";
         [JsonPropertyName("notes"), MaxLength(2000)] public string? Notes { get; set; }
     }
@@ -767,6 +779,7 @@ public class AdminBrokerController : ControllerBase
         [JsonPropertyName("under_monitoring")] public bool UnderMonitoring { get; set; } = true;
         [JsonPropertyName("requires_broker_approval")] public bool? RequiresBrokerApproval { get; set; }
         [JsonPropertyName("expires_at")] public DateTime? ExpiresAt { get; set; }
+        [JsonPropertyName("expires_days")] public int? ExpiresDays { get; set; }
         [JsonPropertyName("reason"), MaxLength(2000)] public string? Reason { get; set; }
     }
 }

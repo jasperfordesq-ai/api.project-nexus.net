@@ -47,6 +47,9 @@ public class TenantResolutionMiddleware
         "/api/auth/register",        // Register determines tenant from request body
         "/api/v2/auth/register",     // Laravel-compatible register
         "/api/auth/refresh",         // Refresh determines tenant from token lookup
+        "/api/totp/verify",          // Public 2FA exchange resolves user and tenant from opaque challenge
+        "/api/webauthn/auth-challenge", // Public passkey authentication bootstrap
+        "/api/webauthn/auth-verify", // Public passkey exchange resolves tenant from cached challenge
         "/api/auth/forgot-password",           // Forgot password determines tenant from request body
         "/api/auth/reset-password",            // Reset password determines tenant from token lookup
         "/api/auth/registration-info",         // Public registration mode discovery

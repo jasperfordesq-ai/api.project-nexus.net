@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -15,7 +16,7 @@ using Nexus.Api.Services;
 namespace Nexus.Api.Controllers;
 
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.RouteAwareAdmin)]
 public sealed class AdminSystemUtilityCompatibilityController : ControllerBase
 {
     private const int MinRetentionDays = 30;
@@ -176,12 +177,14 @@ public sealed class AdminSystemUtilityCompatibilityController : ControllerBase
 
     [HttpPost("/api/admin/settings/powered-by-image-light")]
     [HttpPost("/api/v2/admin/settings/powered-by-image-light")]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     [RequestSizeLimit(2 * 1024 * 1024)]
     public Task<IActionResult> UploadPoweredByImageLight([FromForm] IFormFile? logo, CancellationToken ct) =>
         UploadPoweredByImageAsync("light", logo, ct);
 
     [HttpPost("/api/admin/settings/powered-by-image-dark")]
     [HttpPost("/api/v2/admin/settings/powered-by-image-dark")]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     [RequestSizeLimit(2 * 1024 * 1024)]
     public Task<IActionResult> UploadPoweredByImageDark([FromForm] IFormFile? logo, CancellationToken ct) =>
         UploadPoweredByImageAsync("dark", logo, ct);
@@ -213,6 +216,7 @@ public sealed class AdminSystemUtilityCompatibilityController : ControllerBase
 
     [HttpGet("/api/admin/super/tenants/{id:int}/purge-preview")]
     [HttpGet("/api/v2/admin/super/tenants/{id:int}/purge-preview")]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     public async Task<IActionResult> TenantPurgePreview(int id)
     {
         var tenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);
@@ -226,6 +230,7 @@ public sealed class AdminSystemUtilityCompatibilityController : ControllerBase
 
     [HttpPost("/api/admin/super/tenants/{id:int}/purge")]
     [HttpPost("/api/v2/admin/super/tenants/{id:int}/purge")]
+    [Authorize(Policy = NexusAuthorizationPolicies.GodOnly)]
     public async Task<IActionResult> TenantPurge(int id)
     {
         var tenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == id);

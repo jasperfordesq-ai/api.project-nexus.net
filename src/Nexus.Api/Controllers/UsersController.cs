@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -438,6 +439,10 @@ public class UsersController : ControllerBase
             last_name = user.LastName,
             name = displayName,
             role = user.Role,
+            is_admin = NexusUserAccessEvaluator.HasProfileAdminIndicator(user),
+            is_super_admin = user.IsSuperAdmin,
+            is_tenant_super_admin = user.IsTenantSuperAdmin,
+            is_god = user.IsGod,
             tenant_id = user.TenantId,
             avatar_url = user.AvatarUrl,
             bio = user.Bio,

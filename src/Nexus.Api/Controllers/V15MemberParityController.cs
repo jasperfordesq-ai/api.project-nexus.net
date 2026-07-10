@@ -976,60 +976,6 @@ public class V15MemberParityController : ControllerBase
     [HttpGet("api/v2/vereine/{organizationId:int}/shared-events")]
     public IActionResult V2PartnerLightweight() => Ok(new { success = true, data = Array.Empty<object>() });
 
-    [HttpGet("api/webauthn/status")]
-    public async Task<IActionResult> WebAuthnStatus()
-    {
-        var userId = CurrentUserId();
-        var count = userId == null ? 0 : await _db.UserPasskeys.CountAsync(p => p.UserId == userId.Value);
-        return Ok(new { enabled = count > 0, credential_count = count });
-    }
-
-    [HttpGet("api/webauthn/credentials")]
-    public async Task<IActionResult> WebAuthnCredentials()
-    {
-        var userId = CurrentUserId();
-        var data = await _db.UserPasskeys.AsNoTracking().Where(p => p.UserId == userId)
-            .Select(p => new { id = p.Id, name = p.DisplayName, created_at = p.CreatedAt, last_used_at = p.LastUsedAt, transports = p.Transports }).ToListAsync();
-        return Ok(new { data });
-    }
-
-    [HttpPost("api/webauthn/remove")]
-    [HttpPost("api/webauthn/rename")]
-    public async Task<IActionResult> WebAuthnMutate([FromBody] JsonElement body)
-    {
-        var id = GetInt(body, "id") ?? GetInt(body, "credential_id");
-        if (id == null) return BadRequest(new { error = "credential id is required" });
-        var credential = await _db.UserPasskeys.FirstOrDefaultAsync(p => p.Id == id.Value);
-        if (credential == null) return NotFound(new { error = "Credential not found" });
-        if (Request.Path.Value?.Contains("rename", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            credential.DisplayName = GetString(body, "name") ?? GetString(body, "display_name") ?? credential.DisplayName;
-        }
-        else
-        {
-            _db.UserPasskeys.Remove(credential);
-        }
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true });
-    }
-
-    [HttpPost("api/webauthn/remove-all")]
-    public async Task<IActionResult> WebAuthnRemoveAll()
-    {
-        var userId = CurrentUserId();
-        var credentials = await _db.UserPasskeys.Where(p => p.UserId == userId).ToListAsync();
-        _db.UserPasskeys.RemoveRange(credentials);
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, removed = credentials.Count });
-    }
-
-    [HttpPost("api/webauthn/register-challenge")]
-    [HttpPost("api/webauthn/register-verify")]
-    [HttpPost("api/webauthn/auth-challenge")]
-    [HttpPost("api/webauthn/auth-verify")]
-    [AllowAnonymous]
-    public IActionResult WebAuthnLegacyChallenge() => Ok(new { success = true, use = "/api/passkeys", challenge = Guid.NewGuid().ToString("N") });
-
     [HttpPost("api/webhooks/sendgrid/events")]
     [AllowAnonymous]
     public IActionResult SendgridEvents() => Accepted(new { success = true });

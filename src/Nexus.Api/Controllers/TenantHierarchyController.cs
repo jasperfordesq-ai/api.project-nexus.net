@@ -6,6 +6,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexus.Api.Authorization;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -15,7 +16,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/system/tenant-hierarchy")]
-[Authorize(Roles = "super_admin,admin")]
+[Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
 public class TenantHierarchyController : ControllerBase
 {
     private readonly TenantHierarchyService _hierarchy;

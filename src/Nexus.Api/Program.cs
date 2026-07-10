@@ -23,6 +23,11 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The historical forced-admin login gate has no compatible first-time setup
+// client and would lock unenrolled administrators out. Reject either legacy
+// configuration spelling before constructing the application.
+ForcedAdminTwoFactorGuard.Validate(builder.Configuration);
+
 // Sentry error tracking (configure via Sentry:Dsn env var or appsettings)
 builder.WebHost.UseSentry(o =>
 {
@@ -93,13 +98,8 @@ if (!builder.Environment.IsDevelopment())
 // =============================================================================
 
 // Add controllers with request body size limit.
-// TwoFactorSetupGate runs globally — when a JWT carries scope=2fa_setup
-// (issued by AuthController.Login for admins without 2FA), every
-// non-2FA endpoint returns 403 requires_2fa_setup. See
-// Middleware/TwoFactorSetupGate.cs.
 builder.Services.AddControllers(opt =>
 {
-    opt.Filters.Add<Nexus.Api.Middleware.TwoFactorSetupGate>();
     opt.Conventions.Add(new AdminV2RouteAliasConvention());
 });
 

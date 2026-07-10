@@ -21,6 +21,27 @@ public class User : ITenantEntity
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Role { get; set; } = "member";
+
+    /// <summary>
+    /// Grants tenant-admin access independently of the legacy role string.
+    /// </summary>
+    public bool IsAdmin { get; set; }
+
+    /// <summary>
+    /// Grants platform-wide super-admin access.
+    /// </summary>
+    public bool IsSuperAdmin { get; set; }
+
+    /// <summary>
+    /// Grants super-admin access within the user's own tenant.
+    /// </summary>
+    public bool IsTenantSuperAdmin { get; set; }
+
+    /// <summary>
+    /// Grants the platform break-glass privilege tier.
+    /// </summary>
+    public bool IsGod { get; set; }
+
     public bool IsActive { get; set; } = true;
     public int TrustTier { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

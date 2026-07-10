@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Security.Claims;
+using Nexus.Api.Authorization;
 
 namespace Nexus.Api.Extensions;
 
@@ -59,15 +60,17 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
-    /// Checks if the current user has an admin-level role (admin or super_admin).
-    /// Use this instead of manually comparing GetRole() to "admin" to ensure
-    /// super_admin users are not accidentally excluded.
+    /// Checks the database-rehydrated role and privilege claims using the same
+    /// semantics as the AdminOnly policy.
     /// </summary>
     public static bool IsAdmin(this ClaimsPrincipal principal)
     {
-        var role = principal.GetRole();
-        return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, "super_admin", StringComparison.OrdinalIgnoreCase);
+        return NexusUserAccessEvaluator.HasAdminAccess(
+            principal.GetRole(),
+            principal.HasEnabledClaim(NexusPrivilegeClaimTypes.IsAdmin),
+            principal.HasEnabledClaim(NexusPrivilegeClaimTypes.IsSuperAdmin),
+            principal.HasEnabledClaim(NexusPrivilegeClaimTypes.IsTenantSuperAdmin),
+            principal.HasEnabledClaim(NexusPrivilegeClaimTypes.IsGod));
     }
 
     /// <summary>
@@ -79,5 +82,13 @@ public static class ClaimsPrincipalExtensions
     {
         return principal.FindFirst(ClaimTypes.Email)?.Value
             ?? principal.FindFirst("email")?.Value;
+    }
+
+    private static bool HasEnabledClaim(this ClaimsPrincipal principal, string claimType)
+    {
+        var value = principal.FindFirst(claimType)?.Value;
+        return bool.TryParse(value, out var enabled)
+            ? enabled
+            : string.Equals(value, "1", StringComparison.Ordinal);
     }
 }

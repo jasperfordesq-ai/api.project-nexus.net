@@ -364,6 +364,22 @@ function Compare-Operations {
 
     $rows = New-Object System.Collections.Generic.List[object]
 
+    # Laravel intentionally exposes this workflow through one constrained
+    # terminal {action} parameter. ASP.NET uses six literal routes instead so
+    # endpoint ownership is unambiguous and unsupported actions never enter a
+    # catch-all handler. Treat the source operation as covered only when every
+    # Laravel-accepted literal action is present.
+    $literalActionRequirements = @{
+        'POST /api/admin/federation/credit-agreements/{id}/{action}' = @(
+            'approve',
+            'reject',
+            'suspend',
+            'activate',
+            'reactivate',
+            'terminate'
+        )
+    }
+
     foreach ($operation in $SourceOperations) {
         $pathKey = "$($operation.method) $($operation.path)"
         $shapeKey = "$($operation.method) $($operation.shape)"
@@ -376,6 +392,25 @@ function Compare-Operations {
         } elseif ($AspNetIndex.ByMethodShape.ContainsKey($shapeKey)) {
             $matches = Get-IndexMatches $AspNetIndex 'ByMethodShape' $shapeKey
             $status = 'matched'
+        } elseif ($literalActionRequirements.ContainsKey($pathKey)) {
+            $literalMatches = @()
+            $allLiteralActionsPresent = $true
+
+            foreach ($action in $literalActionRequirements[$pathKey]) {
+                $literalPath = $operation.path -replace '\{action\}$', $action
+                $literalKey = "$($operation.method) $literalPath"
+                if (-not $AspNetIndex.ByMethodPath.ContainsKey($literalKey)) {
+                    $allLiteralActionsPresent = $false
+                    break
+                }
+
+                $literalMatches += Get-IndexMatches $AspNetIndex 'ByMethodPath' $literalKey
+            }
+
+            if ($allLiteralActionsPresent) {
+                $matches = $literalMatches
+                $status = 'matched'
+            }
         }
 
         $rows.Add([pscustomobject]@{

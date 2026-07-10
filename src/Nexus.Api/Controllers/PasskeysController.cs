@@ -5,13 +5,14 @@
 
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Asp.Versioning;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
@@ -32,23 +33,32 @@ public class PasskeysController : ControllerBase
     private readonly PasskeyService _passkeyService;
     private readonly NexusDbContext _db;
     private readonly TokenService _tokenService;
-    private readonly IMemoryCache _cache;
+    private readonly PasskeyChallengeStore _challengeStore;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<PasskeysController> _logger;
 
-    // Challenge TTL: 5 minutes (standard WebAuthn recommendation)
+    // The legacy /api/passkeys ceremony retains its historical five-minute
+    // window. Canonical Laravel /api/webauthn challenges expire after 120s.
     private static readonly TimeSpan ChallengeTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CanonicalChallengeTtl = TimeSpan.FromSeconds(120);
+    private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public PasskeysController(
         PasskeyService passkeyService,
         NexusDbContext db,
         TokenService tokenService,
-        IMemoryCache cache,
+        PasskeyChallengeStore challengeStore,
+        TenantContext tenantContext,
         ILogger<PasskeysController> logger)
     {
         _passkeyService = passkeyService;
         _db = db;
         _tokenService = tokenService;
-        _cache = cache;
+        _challengeStore = challengeStore;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -76,7 +86,7 @@ public class PasskeysController : ControllerBase
 
             // Store options by user ID (registration requires auth so this is safe)
             var cacheKey = $"passkey:reg:{user.Id}:{user.TenantId}";
-            _cache.Set(cacheKey, options, ChallengeTtl);
+            _challengeStore.Set(cacheKey, options, ChallengeTtl);
 
             return Ok(options);
         }
@@ -101,15 +111,10 @@ public class PasskeysController : ControllerBase
 
         // Retrieve stored options (keyed by user ID since registration requires auth)
         var cacheKey = $"passkey:reg:{user.Id}:{user.TenantId}";
-        var options = _cache.Get<CredentialCreateOptions>(cacheKey);
-
-        if (options == null)
+        if (!_challengeStore.TryTake<CredentialCreateOptions>(cacheKey, out var options))
         {
             return BadRequest(new { error = "Registration session expired or not started. Call begin first." });
         }
-
-        // Remove from cache (single use)
-        _cache.Remove(cacheKey);
 
         try
         {
@@ -137,9 +142,293 @@ public class PasskeysController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Canonical Laravel/React registration challenge. The opaque challenge ID
+    /// is bound to the authenticated user and tenant and is valid once only.
+    /// </summary>
+    [HttpPost("/api/webauthn/register-challenge")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> BeginCanonicalRegistration()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError(
+                "AUTH_REQUIRED",
+                "Authentication required",
+                StatusCodes.Status401Unauthorized);
+        }
+
+        try
+        {
+            var options = await _passkeyService.BeginRegistrationAsync(user);
+            var challengeId = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+            _challengeStore.Set(
+                $"passkey:reg:canonical:{challengeId}",
+                new PasskeyRegistrationChallenge(options, user.Id, user.TenantId),
+                CanonicalChallengeTtl);
+
+            // CredentialCreateOptions already owns the browser-facing FIDO
+            // shape and converters. Preserve that exact JSON while adding the
+            // Laravel challenge identifier used by the React client.
+            var serialized = JsonSerializer.SerializeToElement(options, WebJsonOptions);
+            var data = serialized.EnumerateObject()
+                .ToDictionary(
+                    property => property.Name,
+                    property => (object?)property.Value.Clone(),
+                    StringComparer.Ordinal);
+            data["challenge"] = Base64UrlEncoder.Encode(options.Challenge);
+            data["challenge_id"] = challengeId;
+
+            return CanonicalWebAuthnData(data);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                "Canonical passkey registration challenge denied for user {UserId}: {Error}",
+                user.Id,
+                ex.Message);
+            return CanonicalWebAuthnError(
+                "AUTH_WEBAUTHN_FAILED",
+                "Passkey registration is unavailable",
+                StatusCodes.Status409Conflict);
+        }
+    }
+
+    /// <summary>
+    /// Canonical Laravel/React registration verification. The challenge is
+    /// removed before parsing or FIDO verification so every attempt is single-use.
+    /// </summary>
+    [HttpPost("/api/webauthn/register-verify")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> FinishCanonicalRegistration([FromBody] JsonElement body)
+    {
+        var challengeId = ReadJsonString(body, "challenge_id");
+        if (string.IsNullOrWhiteSpace(challengeId))
+        {
+            return CanonicalWebAuthnError(
+                "VALIDATION_REQUIRED_FIELD",
+                "challenge_id is required",
+                StatusCodes.Status400BadRequest);
+        }
+
+        var cacheKey = $"passkey:reg:canonical:{challengeId}";
+        if (!_challengeStore.TryTake<PasskeyRegistrationChallenge>(cacheKey, out var challenge))
+        {
+            return CanonicalWebAuthnError(
+                "AUTH_WEBAUTHN_CHALLENGE_EXPIRED",
+                "Registration challenge expired",
+                StatusCodes.Status401Unauthorized);
+        }
+        var user = await GetCurrentUserAsync();
+        if (user is null
+            || user.Id != challenge.UserId
+            || user.TenantId != challenge.TenantId)
+        {
+            return CanonicalWebAuthnError(
+                "AUTH_WEBAUTHN_CHALLENGE_INVALID",
+                "Registration challenge does not belong to this account",
+                StatusCodes.Status401Unauthorized);
+        }
+
+        AuthenticatorAttestationRawResponse? attestation;
+        try
+        {
+            attestation = body.Deserialize<AuthenticatorAttestationRawResponse>(WebJsonOptions);
+        }
+        catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException)
+        {
+            attestation = null;
+        }
+
+        if (attestation is null
+            || string.IsNullOrWhiteSpace(attestation.Id)
+            || attestation.Response is null)
+        {
+            return CanonicalWebAuthnError(
+                "VALIDATION_REQUIRED_FIELD",
+                "Invalid WebAuthn credential",
+                StatusCodes.Status400BadRequest);
+        }
+
+        try
+        {
+            await _passkeyService.FinishRegistrationAsync(
+                challenge.Options,
+                attestation,
+                user,
+                ReadJsonString(body, "device_name"));
+
+            return CanonicalWebAuthnData(new
+            {
+                message = "Passkey registered successfully"
+            });
+        }
+        catch (Fido2VerificationException ex)
+        {
+            _logger.LogWarning(
+                "Canonical passkey registration verification failed for user {UserId}: {Error}",
+                user.Id,
+                ex.Message);
+            return CanonicalWebAuthnError(
+                "AUTH_WEBAUTHN_FAILED",
+                "Passkey registration failed",
+                StatusCodes.Status400BadRequest);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                "Canonical passkey registration denied for user {UserId}: {Error}",
+                user.Id,
+                ex.Message);
+            return CanonicalWebAuthnError(
+                "AUTH_WEBAUTHN_FAILED",
+                "Passkey registration is unavailable",
+                StatusCodes.Status403Forbidden);
+        }
+    }
+
     // =========================================================================
     // AUTHENTICATION (public - used to sign in)
     // =========================================================================
+
+    /// <summary>
+    /// Canonical Laravel/React WebAuthn challenge contract. Unlike the legacy
+    /// compatibility owner, this returns a real FIDO assertion challenge and
+    /// stores the original options for one verification attempt.
+    /// </summary>
+    [HttpPost("/api/webauthn/auth-challenge")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> BeginCanonicalAuthentication([FromBody] PasskeyAuthBeginRequest? request)
+    {
+        var tenantId = await ResolveAuthenticationTenantAsync(request);
+        var tenantWasExplicitlyRequested = HasExplicitTenantHint(request);
+        var challengeTenantId = tenantId ?? (tenantWasExplicitlyRequested ? 0 : null);
+        var options = await _passkeyService.BeginAuthenticationAsync(challengeTenantId, request?.Email);
+        var challengeId = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+        _challengeStore.Set(
+            $"passkey:auth:{challengeId}",
+            new PasskeyAuthenticationChallenge(options, challengeTenantId),
+            CanonicalChallengeTtl);
+
+        var allowCredentials = options.AllowCredentials?
+            .Select(credential => new
+            {
+                type = "public-key",
+                id = Base64UrlEncoder.Encode(credential.Id)
+            })
+            .ToArray();
+
+        return Ok(new
+        {
+            data = new
+            {
+                challenge = Base64UrlEncoder.Encode(options.Challenge),
+                challenge_id = challengeId,
+                rpId = options.RpId,
+                timeout = options.Timeout,
+                userVerification = options.UserVerification?.ToString().ToLowerInvariant() ?? "preferred",
+                allowCredentials = allowCredentials is { Length: > 0 } ? allowCredentials : null
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
+    /// <summary>
+    /// Canonical Laravel/React WebAuthn verification contract. A challenge is
+    /// removed before signature verification, so failed assertions cannot be
+    /// replayed against the same ceremony.
+    /// </summary>
+    [HttpPost("/api/webauthn/auth-verify")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> FinishCanonicalAuthentication([FromBody] JsonElement body)
+    {
+        var challengeId = body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty("challenge_id", out var challengeElement)
+            && challengeElement.ValueKind == JsonValueKind.String
+                ? challengeElement.GetString()
+                : null;
+        if (string.IsNullOrWhiteSpace(challengeId))
+            return CanonicalWebAuthnError("VALIDATION_REQUIRED_FIELD", "challenge_id is required", StatusCodes.Status400BadRequest);
+
+        var cacheKey = $"passkey:auth:{challengeId}";
+        if (!_challengeStore.TryTake<PasskeyAuthenticationChallenge>(cacheKey, out var challenge))
+            return CanonicalWebAuthnError("AUTH_WEBAUTHN_CHALLENGE_EXPIRED", "Authentication challenge expired", StatusCodes.Status401Unauthorized);
+
+        AuthenticatorAssertionRawResponse? assertion;
+        try
+        {
+            assertion = body.Deserialize<AuthenticatorAssertionRawResponse>(WebJsonOptions);
+        }
+        catch (JsonException)
+        {
+            assertion = null;
+        }
+
+        if (assertion is null
+            || string.IsNullOrWhiteSpace(assertion.Id)
+            || assertion.Response is null)
+        {
+            return CanonicalWebAuthnError("VALIDATION_REQUIRED_FIELD", "Invalid WebAuthn assertion", StatusCodes.Status400BadRequest);
+        }
+
+        try
+        {
+            var user = await _passkeyService.FinishAuthenticationAsync(
+                challenge.Options,
+                assertion,
+                challenge.TenantId);
+            var accessToken = _tokenService.GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
+            _db.RefreshTokens.Add(new Entities.RefreshToken
+            {
+                TenantId = user.TenantId,
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                ClientType = "passkey",
+                CreatedByIp = HttpContext.Connection.RemoteIpAddress?.ToString()
+            });
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Passkey authentication successful.",
+                user = new
+                {
+                    id = user.Id,
+                    first_name = user.FirstName,
+                    last_name = user.LastName,
+                    email = user.Email
+                },
+                access_token = accessToken,
+                refresh_token = refreshToken,
+                token_type = "Bearer",
+                expires_in = _tokenService.AccessTokenExpirySeconds,
+                is_mobile = false
+            });
+        }
+        catch (Fido2VerificationException ex)
+        {
+            _logger.LogWarning("Canonical passkey verification failed: {Error}", ex.Message);
+            return CanonicalWebAuthnError("AUTH_WEBAUTHN_FAILED", "Passkey authentication failed", StatusCodes.Status401Unauthorized);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Canonical passkey authentication failed: {Error}", ex.Message);
+            return CanonicalWebAuthnError("AUTH_WEBAUTHN_FAILED", "Passkey authentication failed", StatusCodes.Status401Unauthorized);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            _logger.LogWarning("Canonical passkey assertion was malformed: {Error}", ex.Message);
+            return CanonicalWebAuthnError("VALIDATION_REQUIRED_FIELD", "Invalid WebAuthn assertion", StatusCodes.Status400BadRequest);
+        }
+    }
 
     /// <summary>
     /// Begin passkey authentication. Returns WebAuthn assertion options.
@@ -155,18 +444,27 @@ public class PasskeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> BeginAuthentication([FromBody] PasskeyAuthBeginRequest? request)
     {
-        int? tenantId = null;
+        int? tenantId;
         string? email = request?.Email;
 
         // Resolve tenant if provided
         if (!string.IsNullOrEmpty(request?.TenantSlug))
         {
-            var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Slug == request.TenantSlug);
+            var tenant = await _db.Tenants
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Slug == request.TenantSlug && t.IsActive);
             if (tenant != null) tenantId = tenant.Id;
+            else tenantId = 0;
         }
         else if (request?.TenantId.HasValue == true)
         {
-            tenantId = request.TenantId;
+            tenantId = await IsActiveTenantAsync(request.TenantId.Value)
+                ? request.TenantId.Value
+                : 0;
+        }
+        else
+        {
+            tenantId = await ResolveAuthenticationTenantAsync(request);
         }
 
         var options = await _passkeyService.BeginAuthenticationAsync(tenantId, email);
@@ -174,7 +472,7 @@ public class PasskeysController : ControllerBase
         // Store options by a session ID for retrieval in finish
         var sessionId = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var cacheKey = $"passkey:auth:{sessionId}";
-        _cache.Set(cacheKey, options, ChallengeTtl);
+        _challengeStore.Set(cacheKey, new PasskeyAuthenticationChallenge(options, tenantId), ChallengeTtl);
 
         // Return options + session ID
         return Ok(new
@@ -202,19 +500,17 @@ public class PasskeysController : ControllerBase
 
         // Retrieve stored assertion options
         var cacheKey = $"passkey:auth:{request.SessionId}";
-        var options = _cache.Get<AssertionOptions>(cacheKey);
-
-        if (options == null)
+        if (!_challengeStore.TryTake<PasskeyAuthenticationChallenge>(cacheKey, out var challenge))
         {
             return BadRequest(new { error = "Authentication session expired or not started" });
         }
 
-        // Remove from cache (single use)
-        _cache.Remove(cacheKey);
-
         try
         {
-            var user = await _passkeyService.FinishAuthenticationAsync(options, request.AssertionResponse);
+            var user = await _passkeyService.FinishAuthenticationAsync(
+                challenge.Options,
+                request.AssertionResponse,
+                challenge.TenantId);
 
             // Resolve tenant for response
             var tenant = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == user.TenantId);
@@ -352,6 +648,141 @@ public class PasskeysController : ControllerBase
     }
 
     // =========================================================================
+    // CANONICAL LARAVEL / REACT MANAGEMENT
+    // =========================================================================
+
+    [HttpGet("/api/webauthn/status")]
+    [Authorize]
+    public async Task<IActionResult> CanonicalStatus()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        }
+
+        var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, user.TenantId);
+        return CanonicalWebAuthnData(new
+        {
+            registered = passkeys.Count > 0,
+            count = passkeys.Count
+        });
+    }
+
+    [HttpGet("/api/webauthn/credentials")]
+    [Authorize]
+    public async Task<IActionResult> CanonicalCredentials()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        }
+
+        var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, user.TenantId);
+        var credentials = passkeys.Select(passkey => new
+        {
+            credential_id = Base64UrlEncoder.Encode(passkey.CredentialId),
+            device_name = passkey.DisplayName,
+            authenticator_type = passkey.CredType,
+            created_at = passkey.CreatedAt,
+            last_used_at = passkey.LastUsedAt
+        }).ToArray();
+
+        return CanonicalWebAuthnData(new
+        {
+            credentials,
+            count = credentials.Length
+        });
+    }
+
+    [HttpPost("/api/webauthn/remove")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> CanonicalRemove([FromBody] JsonElement body)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        }
+
+        var credentialId = ReadJsonString(body, "credential_id");
+        if (string.IsNullOrWhiteSpace(credentialId))
+        {
+            // Laravel retains this legacy behavior for callers predating the
+            // dedicated remove-all route.
+            await _passkeyService.RemoveAllUserPasskeysAsync(user.Id, user.TenantId);
+        }
+        else
+        {
+            await _passkeyService.DeleteCredentialAsync(credentialId, user.Id, user.TenantId);
+        }
+
+        return CanonicalWebAuthnData(new
+        {
+            message = "Credential(s) removed"
+        });
+    }
+
+    [HttpPost("/api/webauthn/rename")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> CanonicalRename([FromBody] JsonElement body)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        }
+
+        var credentialId = ReadJsonString(body, "credential_id");
+        var deviceName = ReadJsonString(body, "device_name")?.Trim();
+        if (string.IsNullOrWhiteSpace(credentialId) || string.IsNullOrWhiteSpace(deviceName))
+        {
+            return CanonicalWebAuthnError(
+                "VALIDATION_ERROR",
+                "credential_id and device_name are required",
+                StatusCodes.Status400BadRequest);
+        }
+
+        deviceName = deviceName[..Math.Min(deviceName.Length, 100)];
+        var renamed = await _passkeyService.RenameCredentialAsync(
+            credentialId,
+            user.Id,
+            user.TenantId,
+            deviceName);
+        if (!renamed)
+        {
+            return CanonicalWebAuthnError(
+                "RESOURCE_NOT_FOUND",
+                "Credential not found",
+                StatusCodes.Status404NotFound);
+        }
+
+        return CanonicalWebAuthnData(new { device_name = deviceName });
+    }
+
+    [HttpPost("/api/webauthn/remove-all")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> CanonicalRemoveAll()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        }
+
+        var removedCount = await _passkeyService.RemoveAllUserPasskeysAsync(user.Id, user.TenantId);
+        return CanonicalWebAuthnData(new
+        {
+            message = $"Removed {removedCount} passkey(s). You can now re-register on any device.",
+            removed_count = removedCount
+        });
+    }
+
+    // =========================================================================
     // Private helpers
     // =========================================================================
 
@@ -364,9 +795,20 @@ public class PasskeysController : ControllerBase
         if (!int.TryParse(userIdClaim, out var userId) || !int.TryParse(tenantIdClaim, out var tenantId))
             return null;
 
-        return await _db.Users
+        var user = await _db.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId && u.IsActive);
+            .FirstOrDefaultAsync(candidate =>
+                candidate.Id == userId
+                && candidate.TenantId == tenantId
+                && candidate.IsActive
+                && candidate.SuspendedAt == null
+                && candidate.RegistrationStatus == Entities.RegistrationStatus.Active);
+        if (user is null || !await IsActiveTenantAsync(tenantId))
+        {
+            return null;
+        }
+
+        return user;
     }
 
     private (int userId, int tenantId) GetUserContext()
@@ -379,6 +821,135 @@ public class PasskeysController : ControllerBase
             return (userId, tenantId);
 
         return (0, 0);
+    }
+
+    private IActionResult CanonicalWebAuthnError(string code, string message, int status)
+    {
+        Response.Headers["API-Version"] = "2.0";
+        return StatusCode(status, new
+        {
+            success = false,
+            errors = new[] { new { code, message } }
+        });
+    }
+
+    private IActionResult CanonicalWebAuthnData(object data)
+    {
+        Response.Headers["API-Version"] = "2.0";
+        return Ok(new
+        {
+            data,
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
+
+    private async Task<int?> ResolveAuthenticationTenantAsync(PasskeyAuthBeginRequest? request)
+    {
+        var tokenTenantId = User.FindFirst("tenant_id")?.Value;
+        if (int.TryParse(tokenTenantId, out var claimedTenantId)
+            && await IsActiveTenantAsync(claimedTenantId))
+        {
+            return claimedTenantId;
+        }
+
+        if (_tenantContext.TenantId is { } contextTenantId
+            && await IsActiveTenantAsync(contextTenantId))
+        {
+            return contextTenantId;
+        }
+
+        if (request?.TenantId is { } requestedTenantId)
+        {
+            return await IsActiveTenantAsync(requestedTenantId)
+                ? requestedTenantId
+                : null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request?.TenantSlug))
+        {
+            return await _db.Tenants
+                .AsNoTracking()
+                .Where(tenant => tenant.IsActive && tenant.Slug == request.TenantSlug)
+                .Select(tenant => (int?)tenant.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        if (Request.Headers.TryGetValue("X-Tenant-ID", out var tenantHeader)
+            && int.TryParse(tenantHeader.FirstOrDefault(), out var headerTenantId))
+        {
+            return await IsActiveTenantAsync(headerTenantId)
+                ? headerTenantId
+                : null;
+        }
+
+        var requestHost = Request.Host.Host;
+        if (!string.IsNullOrWhiteSpace(requestHost)
+            && !requestHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            && !requestHost.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            var hostTenantId = await _db.Tenants
+                .AsNoTracking()
+                .Where(tenant =>
+                    tenant.IsActive
+                    && tenant.Domain != null
+                    && tenant.Domain.ToLower() == requestHost.ToLower())
+                .Select(tenant => (int?)tenant.Id)
+                .FirstOrDefaultAsync();
+            if (hostTenantId.HasValue)
+            {
+                return hostTenantId;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request?.Email))
+        {
+            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            var candidateTenantIds = await _db.UserPasskeys
+                .IgnoreQueryFilters()
+                .Where(passkey =>
+                    passkey.User != null
+                    && passkey.User.TenantId == passkey.TenantId
+                    && passkey.User.Email.ToLower() == normalizedEmail
+                    && passkey.User.IsActive
+                    && passkey.User.SuspendedAt == null
+                    && passkey.User.RegistrationStatus == Entities.RegistrationStatus.Active
+                    && passkey.Tenant != null
+                    && passkey.Tenant.IsActive)
+                .Select(passkey => passkey.TenantId)
+                .Distinct()
+                .Take(2)
+                .ToListAsync();
+            if (candidateTenantIds.Count == 1)
+            {
+                return candidateTenantIds[0];
+            }
+        }
+
+        return null;
+    }
+
+    private bool HasExplicitTenantHint(PasskeyAuthBeginRequest? request)
+    {
+        return request?.TenantId.HasValue == true
+            || !string.IsNullOrWhiteSpace(request?.TenantSlug)
+            || Request.Headers.ContainsKey("X-Tenant-ID")
+            || User.FindFirst("tenant_id") is not null;
+    }
+
+    private Task<bool> IsActiveTenantAsync(int tenantId)
+    {
+        return _db.Tenants
+            .AsNoTracking()
+            .AnyAsync(tenant => tenant.Id == tenantId && tenant.IsActive);
+    }
+
+    private static string? ReadJsonString(JsonElement body, string propertyName)
+    {
+        return body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+                ? property.GetString()
+                : null;
     }
 
 }
@@ -422,3 +993,12 @@ public record RenamePasskeyRequest
     [System.Text.Json.Serialization.JsonPropertyName("display_name")]
     public string DisplayName { get; init; } = string.Empty;
 }
+
+internal sealed record PasskeyRegistrationChallenge(
+    CredentialCreateOptions Options,
+    int UserId,
+    int TenantId);
+
+internal sealed record PasskeyAuthenticationChallenge(
+    AssertionOptions Options,
+    int? TenantId);
