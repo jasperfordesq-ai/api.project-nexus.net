@@ -130,127 +130,127 @@ const moduleDefaults = {
 
 const exploreLinks = [
   {
-    title: 'Exchanges',
-    description: 'See your exchange requests, agreements, and time-credit activity.',
+    titleKey: 'exchanges.title',
+    descriptionKey: 'exchanges.description',
     href: '/exchanges',
     moduleKey: 'listings',
     workflowKey: 'exchange_workflow',
     status: 'placeholder'
   },
   {
-    title: 'AI assistant',
-    description: 'Get accessible guidance and help with community tasks when enabled.',
+    titleKey: 'govuk_alpha_aichat.title',
+    descriptionKey: 'govuk_alpha_aichat.description',
     href: '/chat',
     featureKey: 'ai_chat',
     status: 'placeholder'
   },
   {
-    title: 'Polls',
-    description: 'Vote in community polls and see active questions.',
+    titleKey: 'polls.title',
+    descriptionKey: 'polls.description',
     href: '/polls',
     featureKey: 'polls'
   },
   {
-    title: 'Search',
-    description: 'Search across people, listings, events, groups, and community content.',
+    titleKey: 'search.title',
+    descriptionKey: 'search.description',
     href: '/search'
   },
   {
-    title: 'Groups',
-    description: 'Find groups, join conversations, and take part in shared activities.',
+    titleKey: 'groups.title',
+    descriptionKey: 'groups.description',
     href: '/groups',
     featureKey: 'groups'
   },
   {
-    title: 'Goals',
-    description: 'Track goals, progress, and community achievements.',
+    titleKey: 'goals.title',
+    descriptionKey: 'goals.description',
     href: '/goals',
     featureKey: 'goals'
   },
   {
-    title: 'Skills',
-    description: 'Browse member skills and capabilities across the community.',
+    titleKey: 'skills.title',
+    descriptionKey: 'skills.description',
     href: '/skills',
     status: 'placeholder'
   },
   {
-    title: 'Organisations',
-    description: 'Find community organisations and volunteering groups.',
+    titleKey: 'organisations.title',
+    descriptionKey: 'organisations.description',
     href: '/organisations',
     featureKey: 'volunteering',
     status: 'placeholder'
   },
   {
-    title: 'Blog',
-    description: 'Read community news, stories, and updates.',
+    titleKey: 'blog.title',
+    descriptionKey: 'blog.description',
     href: '/blog',
     featureKey: 'blog'
   },
   {
-    title: 'Resources',
-    description: 'Browse shared documents, links, and community resources.',
+    titleKey: 'resources.title',
+    descriptionKey: 'resources.description',
     href: '/resources',
     featureKey: 'resources',
     status: 'placeholder'
   },
   {
-    title: 'Marketplace',
-    description: 'Browse marketplace offers, requests, courses, and local goods.',
+    titleKey: 'marketplace.title',
+    descriptionKey: 'marketplace.description',
     href: '/marketplace',
     featureKey: 'marketplace',
     status: 'placeholder'
   },
   {
-    title: 'Jobs',
-    description: 'Browse community opportunities and job vacancies when enabled.',
+    titleKey: 'jobs.title',
+    descriptionKey: 'jobs.description',
     href: '/jobs',
     featureKey: 'job_vacancies'
   },
   {
-    title: 'Courses',
-    description: 'Find learning opportunities and community courses.',
+    titleKey: 'courses.title',
+    descriptionKey: 'courses.description',
     href: '/courses',
     featureKey: 'courses',
     status: 'placeholder'
   },
   {
-    title: 'Podcasts',
-    description: 'Listen to community audio and podcast episodes.',
+    titleKey: 'podcasts.title',
+    descriptionKey: 'podcasts.description',
     href: '/podcasts',
     featureKey: 'podcasts',
     status: 'placeholder'
   },
   {
-    title: 'Coupons',
-    description: 'Find merchant coupons and local offers.',
+    titleKey: 'coupons.title',
+    descriptionKey: 'coupons.description',
     href: '/coupons',
     featureKey: 'merchant_coupons',
     status: 'placeholder'
   },
   {
-    title: 'Premium',
-    description: 'Manage member premium features when enabled.',
+    titleKey: 'premium.title',
+    descriptionKey: 'premium.description',
     href: '/premium',
     featureKey: 'member_premium',
     status: 'placeholder'
   },
   {
-    title: 'Ideation',
-    description: 'Join challenges and contribute ideas for the community.',
+    titleKey: 'ideation.title',
+    descriptionKey: 'ideation.description',
     href: '/ideation',
     featureKey: 'ideation_challenges',
     status: 'placeholder'
   },
   {
-    title: 'Federation',
-    description: 'Explore cross-community federation features.',
+    titleKey: 'federation.title',
+    descriptionKey: 'federation.description',
     href: '/federation',
     featureKey: 'federation',
     status: 'placeholder'
   },
   {
-    title: 'Clubs',
-    description: 'Browse club organisations when available in this community.',
+    titleKey: 'clubs.title',
+    descriptionKey: 'clubs.description',
     href: '/clubs',
     tenantKey: 'has_clubs',
     status: 'placeholder'
@@ -328,8 +328,15 @@ function workflowEnabled(tenant = {}, key) {
   return false;
 }
 
-function buildExploreLinks({ tenant = {} } = {}) {
-  return exploreLinks.filter((item) => itemEnabledForTenant(item, tenant));
+function buildExploreLinks({ tenant = {}, t = createTranslator('en') } = {}) {
+  const translate = typeof t === 'function' ? t : createTranslator('en');
+  return exploreLinks
+    .filter((item) => itemEnabledForTenant(item, tenant))
+    .map((item) => ({
+      ...item,
+      title: translate(item.titleKey),
+      description: translate(item.descriptionKey)
+    }));
 }
 
 function prefixLocalPath(pathname, prefix = '') {
@@ -433,7 +440,7 @@ function buildShellLocals(req, isAuthenticated) {
       localizeFooterColumns(buildFooterColumns({ tenant: routedTenant }), t),
       routePrefix
     ),
-    alphaExploreLinks: prefixNavItems(buildExploreLinks({ tenant: routedTenant }), routePrefix),
+    alphaExploreLinks: prefixNavItems(buildExploreLinks({ tenant: routedTenant, t }), routePrefix),
     currentPath,
     currentUrl,
     feedbackUrl,

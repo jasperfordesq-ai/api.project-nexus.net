@@ -6,10 +6,10 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Explore</h1>
+  <span class="govuk-caption-xl">{{ t("explore.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("explore.title") }}</h1>
   <p class="govuk-body-l">
-    Find the main community spaces from one simpler accessible page.
+    {{ t("explore.description") }}
   </p>
 
   <div class="nexus-alpha-card-list govuk-!-margin-top-6">
@@ -24,7 +24,7 @@
   </div>
 
   {% if recentListings and recentListings.length %}
-    <h2 class="govuk-heading-l govuk-!-margin-top-8">Recent listings</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("polish_discovery.explore_listings_title") }}</h2>
     <ul class="govuk-list govuk-list--spaced govuk-!-margin-bottom-2">
       {% for listing in recentListings %}
         <li>
@@ -33,15 +33,15 @@
           {% else %}
             {{ listing.title }}
           {% endif %}
-          <strong class="govuk-tag {{ listing.tagClass }} govuk-!-margin-left-1">{{ listing.type }}</strong>
+          <strong class="govuk-tag {{ listing.tagClass }} govuk-!-margin-left-1">{{ t("listings." + listing.type) }}</strong>
         </li>
       {% endfor %}
     </ul>
-    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/listings') }}">View all listings</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/listings') }}">{{ t("polish_discovery.explore_view_all_listings") }}</a></p>
   {% endif %}
 
   {% if upcomingEvents and upcomingEvents.length %}
-    <h2 class="govuk-heading-l govuk-!-margin-top-6">Upcoming events</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">{{ t("polish_discovery.explore_events_title") }}</h2>
     <ul class="govuk-list govuk-list--spaced govuk-!-margin-bottom-2">
       {% for event in upcomingEvents %}
         <li>

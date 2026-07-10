@@ -123,7 +123,8 @@ async function applyExploreCardEvidence(req, res) {
     tenant: {
       ...routedTenantFrom(req),
       has_clubs: hasClubs
-    }
+    },
+    t: res.locals.t
   }), res);
 }
 
@@ -134,7 +135,10 @@ function renderExploreError(error, res) {
   }
 
   if (error instanceof ApiOfflineError || error instanceof ApiError) {
-    res.status(503).render('errors/503', { title: 'Explore' });
+    res.status(503).render('errors/503', {
+      title: 'Explore',
+      titleKey: 'explore.title'
+    });
     return true;
   }
 
@@ -158,6 +162,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   res.render('explore', {
     title: 'Explore',
+    titleKey: 'explore.title',
     activeNav: 'explore',
     recentListings: explore.recentListings,
     upcomingEvents: explore.upcomingEvents

@@ -132,6 +132,34 @@ runtime reverse-English lookup:
   changed-test lint, the zero-safe-match template audit, CSS compilation, and
   the full `12/12` Playwright Chromium/axe public and Arabic RTL gate.
 
+The following Explore/profile slice is also complete and published-ready:
+
+- Explore now uses explicit authoritative keys for its page identity, all 19
+  feature-gated cards, live listing/event headings and links, and listing type
+  tags. The card filtering and tenant-aware URLs are unchanged. Laravel's
+  non-English `premium.*` values are stale and still describe paid Premium
+  features while current English describes donations; that source discrepancy
+  must be fixed upstream rather than rewritten locally.
+- Profile/settings now translates 45 exact status/error keys at render time,
+  including data export, email, password, language, notifications, passkeys,
+  personalisation, matches, skills, safeguarding, delete-account, and two-factor
+  states. `avatar-invalid`, `language-failed`, and `passkey-failed` retain their
+  English fallbacks because no exact Laravel key exists.
+- The combined gate now passes `31/31` Jest suites and `1,021/1,021` tests,
+  source/touched-test lint, and the zero-safe-match template audit. The earlier
+  full `12/12` browser gate remains the current public/RTL evidence because this
+  slice changes authenticated Explore/profile surfaces outside that matrix.
+
+An immutable `92357a95` residual audit measured 381 effective hard-coded title
+sites, 153 static H1s, 3,178 pure static template nodes, 21 templates without a
+translator call, 53 dynamic hard-coded accessible labels, and about 715 raw
+route-message literal candidates. After the Explore/profile slice the expected
+headline counts are approximately 379 titles, 152 H1s, and 3,173 static nodes;
+45 profile statuses are effectively localized even though their English
+fallback maps remain in source. Jobs is the next highest-yield coherent family,
+followed by Marketplace. Federation and Volunteering are deferred behind them
+because their authoritative feature namespaces are wholly English upstream.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared

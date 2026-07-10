@@ -12,11 +12,12 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
-const { SUPPORTED_LOCALES } = require('../lib/localization');
+const { createTranslator, SUPPORTED_LOCALES } = require('../lib/localization');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
+const fallbackTranslator = createTranslator('en');
 
 const PROFILE_LOCALES = SUPPORTED_LOCALES;
 const PROFILE_DIGEST_FREQUENCIES = ['off', 'instant', 'daily', 'monthly'];
@@ -164,6 +165,45 @@ const PROFILE_STATUS_MESSAGES = {
     anchor: 'safeguarding'
   }
 };
+// Keep this map limited to semantically exact Laravel catalog entries. Unmapped
+// statuses deliberately retain their English fallback from PROFILE_STATUS_MESSAGES.
+const PROFILE_STATUS_MESSAGE_KEYS = Object.freeze({
+  'profile-updated': 'profile_settings.success',
+  'profile-update-failed': 'profile_settings.failed',
+  'data-export-requested': 'states.data-export-requested',
+  'data-export-exists': 'states.data-export-exists',
+  'data-export-failed': 'states.data-export-failed',
+  'email-changed': 'profile_settings.email_changed',
+  'email-unchanged': 'profile_settings.email_unchanged',
+  'email-invalid': 'profile_settings.email_invalid',
+  'email-password-incorrect': 'profile_settings.email_password_incorrect',
+  'email-failed': 'profile_settings.email_failed',
+  'password-changed': 'profile_settings.password_changed',
+  'password-current-required': 'profile_settings.password_current_required',
+  'password-current-incorrect': 'profile_settings.password_current_incorrect',
+  'password-weak': 'profile_settings.password_weak',
+  'password-mismatch': 'profile_settings.password_mismatch',
+  'password-reused': 'profile_settings.password_reused',
+  'password-failed': 'profile_settings.password_failed',
+  'language-changed': 'profile_settings.language_changed',
+  'language-invalid': 'profile_settings.language_invalid',
+  'notifications-saved': 'profile_settings.notifications.saved',
+  'notifications-failed': 'profile_settings.notifications.failed',
+  'passkey-renamed': 'profile_settings.passkeys.renamed',
+  'passkey-removed': 'profile_settings.passkeys.removed',
+  'passkey-name-required': 'profile_settings.passkeys.name_required',
+  'passkey-not-found': 'profile_settings.passkeys.not_found',
+  'personalisation-saved': 'profile_settings.personalisation.saved',
+  'personalisation-failed': 'profile_settings.personalisation.failed',
+  'match-prefs-saved': 'profile_settings.match.saved',
+  'match-prefs-failed': 'profile_settings.match.failed',
+  'skill-added': 'profile_settings.skills.added',
+  'skill-removed': 'profile_settings.skills.removed',
+  'skill-name-required': 'profile_settings.skills.name_required',
+  'skill-failed': 'profile_settings.skills.failed',
+  'safeguarding-revoked': 'profile_settings.safeguarding.revoked',
+  'safeguarding-failed': 'profile_settings.safeguarding.failed'
+});
 const PROFILE_NOTIFICATION_KEYS = [
   'email_messages',
   'email_connections',
@@ -187,6 +227,12 @@ const DELETE_ACCOUNT_ERRORS = {
   'delete-password-incorrect': 'The password you entered is incorrect.',
   'delete-failed': 'Your account could not be deleted. Try again or contact support.'
 };
+const DELETE_ACCOUNT_ERROR_KEYS = Object.freeze({
+  'delete-password-required': 'delete_account.error_password',
+  'delete-confirm-required': 'delete_account.error_confirm',
+  'delete-password-incorrect': 'delete_account.error_password_incorrect',
+  'delete-failed': 'delete_account.error_failed'
+});
 const TWO_FACTOR_STATUS_MESSAGES = {
   '2fa-enabled': { type: 'success', message: 'Two-step verification is now turned on.' },
   '2fa-disabled': { type: 'success', message: 'Two-step verification has been turned off.' },
@@ -211,6 +257,14 @@ const TWO_FACTOR_STATUS_MESSAGES = {
     anchor: 'tfa-form'
   }
 };
+const TWO_FACTOR_STATUS_MESSAGE_KEYS = Object.freeze({
+  '2fa-enabled': 'security_2fa.enabled_success',
+  '2fa-disabled': 'security_2fa.disabled_success',
+  '2fa-code-required': 'security_2fa.code_required',
+  '2fa-code-invalid': 'security_2fa.code_invalid',
+  '2fa-password-required': 'security_2fa.password_required',
+  '2fa-disable-failed': 'security_2fa.disable_failed'
+});
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -391,8 +445,32 @@ function humanizeProfileLabel(value, fallback = 'Not specified') {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function profileStatusConfig(status) {
-  return PROFILE_STATUS_MESSAGES[status] || null;
+function translateStatusMessage(req, key, fallbackMessage = '') {
+  if (!key) return fallbackMessage;
+
+  const requestTranslator = typeof req?.t === 'function' ? req.t : fallbackTranslator;
+  const translated = requestTranslator(key);
+  if (typeof translated === 'string' && translated !== '' && translated !== key) return translated;
+
+  const english = fallbackTranslator(key);
+  return typeof english === 'string' && english !== '' && english !== key ? english : fallbackMessage;
+}
+
+function localizedStatusConfig(req, status, messages, messageKeys) {
+  const config = messages[status] || null;
+  if (!config) return null;
+
+  const messageKey = messageKeys[status];
+  if (!messageKey) return config;
+
+  return {
+    ...config,
+    message: translateStatusMessage(req, messageKey, config.message)
+  };
+}
+
+function profileStatusConfig(req, status) {
+  return localizedStatusConfig(req, status, PROFILE_STATUS_MESSAGES, PROFILE_STATUS_MESSAGE_KEYS);
 }
 
 function normalizeNotificationPrefs(payload) {
@@ -491,7 +569,7 @@ function buildProfileSettingsViewModel(req, data) {
     preferredLanguage
   );
   const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const statusConfig = profileStatusConfig(status);
+  const statusConfig = profileStatusConfig(req, status);
 
   return {
     title: 'Edit your profile',
@@ -613,8 +691,8 @@ function buildProfileSettingsViewModel(req, data) {
   };
 }
 
-function twoFactorStatusConfig(status) {
-  return TWO_FACTOR_STATUS_MESSAGES[status] || null;
+function twoFactorStatusConfig(req, status) {
+  return localizedStatusConfig(req, status, TWO_FACTOR_STATUS_MESSAGES, TWO_FACTOR_STATUS_MESSAGE_KEYS);
 }
 
 function backupCodesRemainingLabel(count) {
@@ -1073,7 +1151,11 @@ router.get('/delete-account', (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const errorMessage = DELETE_ACCOUNT_ERRORS[status] || '';
+  const errorMessage = translateStatusMessage(
+    req,
+    DELETE_ACCOUNT_ERROR_KEYS[status],
+    DELETE_ACCOUNT_ERRORS[status] || ''
+  );
 
   return res.render('profile/delete', {
     title: 'Delete your account',
@@ -1098,7 +1180,7 @@ router.get('/two-factor', asyncRoute(async (req, res) => {
   }
 
   const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const statusConfig = twoFactorStatusConfig(status);
+  const statusConfig = twoFactorStatusConfig(req, status);
 
   return res.render('profile/two-factor', {
     title: 'Authenticator app (two-step verification)',
@@ -1183,11 +1265,14 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
 // View profile
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const profile = await getRequestProfile(req, req.token);
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const statusConfig = status === 'profile-updated' ? profileStatusConfig(req, status) : null;
+  const flashSuccess = req.flash ? req.flash('success')[0] : null;
 
   res.render('profile/index', {
     title: 'Your profile',
     profile,
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: statusConfig?.message || flashSuccess
   });
 }));
 

@@ -81,7 +81,7 @@ route coverage is not a completion score.
 | ASP.NET Release build | Passed with 0 errors and 4 xUnit warnings |
 | Focused ASP.NET regression | Failed: stale catch-all test expected 202 and received 404 |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
-| Web UK Jest | 29/29 suites and 999/999 tests passed after the localization/RTL, tenant-boundary, and contextual identity/auth/accessibility slices |
+| Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
 | Web UK brand guard | Passed at the audit baseline; rerun with the final certification set |
 | Current-source Blade marker spot-check | 19/19 passed; this is not screenshot or WCAG certification |
@@ -144,6 +144,15 @@ ARIA/visually-hidden labels in advanced search, saved collections, connection
 network, and course learning. The full Jest and 12-case browser gates remain
 green. This narrows the contextual backlog; it does not remove the hundreds of
 remaining family-specific strings or the authoritative untranslated namespaces.
+
+Explore now delegates its page and 19 feature-gated cards to explicit Laravel
+keys, and profile/settings translates 45 exact status/error keys at render time.
+The immutable `92357a95` residual audit still measured 381 effective hard-coded
+title sites, 153 static H1s, 3,178 pure static nodes, 53 dynamic accessible-label
+occurrences, and about 715 raw route-message candidates before those two slices.
+Jobs and Marketplace are the next high-yield families. Laravel's non-English
+`premium.*` Explore copy is also stale relative to current English donation
+semantics and requires an upstream catalog fix.
 
 ## Workstream A: Accessible Frontend To Laravel Completion
 

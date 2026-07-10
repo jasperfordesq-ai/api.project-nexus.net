@@ -730,7 +730,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Clubs');
     expect(response.text).toContain('href="/clubs"');
     expect(response.text).not.toContain('Marketplace');
-    expect(response.text).toContain('Federation');
+    expect(response.text).toContain('Partner communities');
     expect(response.text).toContain('Recent listings');
     expect(response.text).toContain('Borrow a repair kit');
     expect(response.text).toContain('Need a folding table');
@@ -1475,7 +1475,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to profile');
     expect(signed.text).toContain('Success');
-    expect(signed.text).toContain('Your data export request has been received. We will email you when it is ready.');
+    expect(signed.text).toContain('We have received your request. We will prepare a copy of your data and contact you when it is ready.');
     expect(signed.text).toContain('Edit your profile');
     expect(signed.text).toContain('Update the details people see in the accessible member directory.');
     expect(signed.text).toContain('Linked accounts');

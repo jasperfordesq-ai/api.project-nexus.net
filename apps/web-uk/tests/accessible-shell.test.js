@@ -1,9 +1,12 @@
 const {
+  buildExploreLinks,
   buildFooterColumns,
+  featureDefaults,
   buildNavItems,
   buildShellLocals,
   prefixLocalPath
 } = require('../src/lib/accessible-shell');
+const { createTranslator } = require('../src/lib/localization');
 
 describe('accessible shell tenant gating', () => {
   const tenant = {
@@ -108,11 +111,11 @@ describe('accessible shell tenant gating', () => {
     expect(locals.alphaExploreLinks.map((item) => item.title)).toEqual([
       'Polls',
       'Search',
-      'Skills',
+      'Skills directory',
       'Organisations',
       'Resources',
       'Courses',
-      'Ideation'
+      'Ideas'
     ]);
     expect(locals.alphaExploreLinks.map((item) => item.href)).toEqual([
       '/acme/accessible/polls',
@@ -123,5 +126,39 @@ describe('accessible shell tenant gating', () => {
       '/acme/accessible/courses',
       '/acme/accessible/ideation'
     ]);
+  });
+
+  it.each(['ga', 'ar'])('localizes every enabled Explore card from explicit Laravel keys in %s', (locale) => {
+    const t = createTranslator(locale);
+    const links = buildExploreLinks({
+      tenant: {
+        has_clubs: true,
+        exchange_workflow: true,
+        modules: { listings: true },
+        features: Object.fromEntries(Object.keys(featureDefaults).map((key) => [key, true]))
+      },
+      t
+    });
+
+    expect(links).toHaveLength(19);
+    for (const item of links) {
+      expect(item.title).toBe(t(item.titleKey));
+      expect(item.description).toBe(t(item.descriptionKey));
+      expect(item.title).not.toBe(item.titleKey);
+      expect(item.description).not.toBe(item.descriptionKey);
+    }
+
+    expect(links.find((item) => item.href === '/exchanges')).toMatchObject({
+      title: t('exchanges.title'),
+      description: t('exchanges.description')
+    });
+    expect(links.find((item) => item.href === '/chat')).toMatchObject({
+      title: t('govuk_alpha_aichat.title'),
+      description: t('govuk_alpha_aichat.description')
+    });
+    expect(links.find((item) => item.href === '/clubs')).toMatchObject({
+      title: t('clubs.title'),
+      description: t('clubs.description')
+    });
   });
 });
