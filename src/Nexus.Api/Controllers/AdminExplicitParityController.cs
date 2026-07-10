@@ -240,6 +240,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await DeleteGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
+            _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await DeleteMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/feed/revoke-announcer/", out var announcerUserId) => await RevokeMunicipalityAnnouncer(announcerUserId),
             _ when TryGetLastInt(path, "/api/v2/admin/translation/glossary/", out var glossaryId) => await DeleteTranslationGlossaryEntry(glossaryId),
             _ => await PersistCompatibilityWrite("delete")
@@ -451,6 +452,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/gift-aid-export" => await GetMemberPremiumGiftAidCsv(),
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
+            "/api/v2/admin/member-premium/subscribers" => await GetMemberPremiumAdminSubscribers(),
             "/api/v2/admin/member-premium/tiers" => await GetMemberPremiumAdminTiers(),
             "/api/v2/admin/moderation/queue" => await GetModerationQueue(),
             "/api/v2/admin/moderation/settings" => await GetModerationSettings(),
@@ -4132,6 +4134,121 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> DeleteMemberPremiumAdminTier(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var hasActiveSubscribers = await _db.UserSubscriptions
+            .AsNoTracking()
+            .AnyAsync(s => s.TenantId == tenantId
+                && s.PlanId == id
+                && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.PastDue));
+
+        if (hasActiveSubscribers)
+        {
+            return Conflict(new
+            {
+                error = "DELETE_FAILED",
+                message = "Cannot delete a tier with active subscribers. Deactivate it instead."
+            });
+        }
+
+        var plan = await _db.SubscriptionPlans
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (plan != null)
+        {
+            _db.SubscriptionPlans.Remove(plan);
+        }
+
+        var metadataKey = MemberPremiumTierMetadataKey(id);
+        var metadata = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.Key == metadataKey);
+        if (metadata != null)
+        {
+            _db.TenantConfigs.Remove(metadata);
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                deleted = true
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetMemberPremiumAdminSubscribers()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var perPage = QueryInt("per_page", 25, 1, 100);
+        var statusFilter = (Request.Query["status"].FirstOrDefault() ?? string.Empty).Trim().ToLowerInvariant();
+
+        var query = _db.UserSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .Include(s => s.User)
+            .Where(s => s.TenantId == tenantId);
+
+        query = statusFilter switch
+        {
+            "active" => query.Where(s => s.Status == SubscriptionStatus.Active),
+            "past_due" => query.Where(s => s.Status == SubscriptionStatus.PastDue),
+            "canceled" or "cancelled" => query.Where(s => s.Status == SubscriptionStatus.Cancelled || s.Status == SubscriptionStatus.Expired),
+            "grace" or "trialing" or "incomplete" => query.Where(s => false),
+            _ => query
+        };
+
+        var total = await query.CountAsync();
+        var subscriptions = await query
+            .OrderByDescending(s => s.CreatedAt)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .ToListAsync();
+
+        var rows = new List<object>();
+        foreach (var subscription in subscriptions)
+        {
+            var plan = subscription.Plan;
+            var user = subscription.User;
+            var metadata = plan == null ? null : await LoadMemberPremiumTierMetadata(plan.Id);
+            rows.Add(new
+            {
+                id = subscription.Id,
+                user_id = subscription.UserId,
+                tier_id = subscription.PlanId,
+                status = MemberPremiumSubscriptionStatusForReact(subscription.Status),
+                billing_interval = "monthly",
+                current_period_end = subscription.NextBillingDate ?? subscription.ExpiresAt,
+                canceled_at = subscription.CancelledAt,
+                grace_period_ends_at = (DateTime?)null,
+                created_at = subscription.CreatedAt,
+                tier_name = plan?.Name ?? string.Empty,
+                tier_slug = metadata?.Slug ?? (plan == null ? string.Empty : Slugify(plan.Name)),
+                email = user?.Email,
+                user_name = user == null ? null : (user.FirstName + " " + user.LastName).Trim(),
+                first_name = user?.FirstName
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                rows,
+                total,
+                page,
+                per_page = perPage
+            }
+        });
+    }
+
     private async Task<IActionResult> PutMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -6478,6 +6595,14 @@ public class AdminExplicitParityController : ControllerBase
         SubscriptionStatus.PastDue => "past_due",
         SubscriptionStatus.Cancelled => "cancelled",
         SubscriptionStatus.Expired => "expired",
+        _ => "active"
+    };
+
+    private static string MemberPremiumSubscriptionStatusForReact(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.PastDue => "past_due",
+        SubscriptionStatus.Cancelled => "canceled",
+        SubscriptionStatus.Expired => "canceled",
         _ => "active"
     };
 

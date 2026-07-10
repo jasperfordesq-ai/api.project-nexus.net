@@ -2083,6 +2083,187 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTierDelete_ReturnsLaravelDeletedEnvelopeAndProtectsActiveSubscribers()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id
+                    && (p.Name == "Archive Circle" || p.Name == "Protected Circle"))
+                .ToListAsync();
+            var stalePlanIds = stalePlans.Select(p => p.Id).ToList();
+            var staleSubscriptions = await db.UserSubscriptions
+                .Where(s => s.TenantId == TestData.Tenant1.Id && stalePlanIds.Contains(s.PlanId))
+                .ToListAsync();
+            db.UserSubscriptions.RemoveRange(staleSubscriptions);
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var protectedCreate = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "protected-circle",
+            name = "Protected Circle",
+            monthly_price_cents = 500,
+            yearly_price_cents = 5000,
+            features = Array.Empty<string>(),
+            sort_order = 1,
+            is_active = true
+        });
+        protectedCreate.StatusCode.Should().Be(HttpStatusCode.Created);
+        var protectedJson = await protectedCreate.Content.ReadFromJsonAsync<JsonElement>();
+        var protectedId = protectedJson.GetProperty("data").GetProperty("tier").GetProperty("id").GetInt32();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.UserSubscriptions.Add(new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = protectedId,
+                Status = SubscriptionStatus.Active,
+                StartedAt = DateTime.UtcNow.AddDays(-3),
+                NextBillingDate = DateTime.UtcNow.AddDays(27),
+                Notes = "member-premium-delete-protected",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var protectedDelete = await Client.DeleteAsync($"/api/v2/admin/member-premium/tiers/{protectedId}");
+        protectedDelete.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var protectedDeleteJson = await protectedDelete.Content.ReadFromJsonAsync<JsonElement>();
+        protectedDeleteJson.GetProperty("error").GetString().Should().Be("DELETE_FAILED");
+        protectedDeleteJson.GetProperty("message").GetString()
+            .Should().Contain("Cannot delete a tier with active subscribers");
+
+        var removableCreate = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "archive-circle",
+            name = "Archive Circle",
+            monthly_price_cents = 700,
+            yearly_price_cents = 7000,
+            features = new[] { "archive_badge" },
+            sort_order = 2,
+            is_active = false
+        });
+        removableCreate.StatusCode.Should().Be(HttpStatusCode.Created);
+        var removableJson = await removableCreate.Content.ReadFromJsonAsync<JsonElement>();
+        var removableId = removableJson.GetProperty("data").GetProperty("tier").GetProperty("id").GetInt32();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/member-premium/tiers/{removableId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.SubscriptionPlans.IgnoreQueryFilters().AnyAsync(p => p.Id == removableId))
+                .Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task MemberPremiumAdminSubscribers_ReturnsLaravelReactPaginatedRows()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id && p.Name == "Subscriber Circle")
+                .ToListAsync();
+            var stalePlanIds = stalePlans.Select(p => p.Id).ToList();
+            var staleSubscriptions = await db.UserSubscriptions
+                .Where(s => s.TenantId == TestData.Tenant1.Id && stalePlanIds.Contains(s.PlanId))
+                .ToListAsync();
+            db.UserSubscriptions.RemoveRange(staleSubscriptions);
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "subscriber-circle",
+            name = "Subscriber Circle",
+            monthly_price_cents = 900,
+            yearly_price_cents = 9000,
+            features = new[] { "subscriber_badge" },
+            sort_order = 5,
+            is_active = true
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var tierId = createJson.GetProperty("data").GetProperty("tier").GetProperty("id").GetInt32();
+        int activeSubscriptionId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var activeSubscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = tierId,
+                Status = SubscriptionStatus.Active,
+                StartedAt = DateTime.UtcNow.AddDays(-10),
+                NextBillingDate = DateTime.UtcNow.AddDays(20),
+                Notes = "member-premium-subscriber-list-active",
+                CreatedAt = DateTime.UtcNow.AddDays(-10),
+                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            var cancelledSubscription = new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = tierId,
+                Status = SubscriptionStatus.Cancelled,
+                StartedAt = DateTime.UtcNow.AddDays(-30),
+                CancelledAt = DateTime.UtcNow.AddDays(-1),
+                Notes = "member-premium-subscriber-list-cancelled",
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            db.UserSubscriptions.AddRange(activeSubscription, cancelledSubscription);
+            await db.SaveChangesAsync();
+            activeSubscriptionId = activeSubscription.Id;
+        }
+
+        var response = await Client.GetAsync("/api/v2/admin/member-premium/subscribers?page=1&per_page=1&status=active");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.GetProperty("total").GetInt32().Should().Be(1);
+        data.GetProperty("page").GetInt32().Should().Be(1);
+        data.GetProperty("per_page").GetInt32().Should().Be(1);
+        var row = data.GetProperty("rows").EnumerateArray().Single();
+        row.GetProperty("id").GetInt32().Should().Be(activeSubscriptionId);
+        row.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        row.GetProperty("tier_id").GetInt32().Should().Be(tierId);
+        row.GetProperty("status").GetString().Should().Be("active");
+        row.GetProperty("billing_interval").GetString().Should().Be("monthly");
+        row.GetProperty("tier_name").GetString().Should().Be("Subscriber Circle");
+        row.GetProperty("tier_slug").GetString().Should().Be("subscriber-circle");
+        row.GetProperty("email").GetString().Should().Be(TestData.MemberUser.Email);
+        row.GetProperty("user_name").GetString().Should().NotBeNullOrWhiteSpace();
+        row.GetProperty("first_name").GetString().Should().NotBeNullOrWhiteSpace();
+        row.GetProperty("current_period_end").GetDateTime().Should().BeAfter(DateTime.UtcNow);
+        row.GetProperty("canceled_at").ValueKind.Should().Be(JsonValueKind.Null);
+        row.GetProperty("created_at").ValueKind.Should().Be(JsonValueKind.String);
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();
