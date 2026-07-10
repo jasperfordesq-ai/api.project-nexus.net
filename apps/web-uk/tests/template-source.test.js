@@ -148,6 +148,17 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('res.locals.urlFor');
   });
 
+  it('keeps member onboarding wizard links and forms behind urlFor()', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'onboarding', 'index.njk'),
+      'utf8'
+    );
+
+    expect(template).not.toMatch(/href="\/onboarding/);
+    expect(template).not.toMatch(/action="\/onboarding/);
+    expect(template).toMatch(/urlFor\(["']\/onboarding/);
+  });
+
   it('keeps Explore live-content links behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'explore.njk'),

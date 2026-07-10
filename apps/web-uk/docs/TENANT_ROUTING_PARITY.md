@@ -146,6 +146,10 @@ Current gaps:
   skill, safeguarding, data-export, delete-account, blocked-member, and
   two-factor auth/status redirects through `res.locals.urlFor`, keeping no-JS
   profile outcomes inside shared tenant mounts and custom-domain child paths.
+  The latest member-onboarding source conversion covers the wizard step forms
+  and confirm-page change links, keeping welcome, avatar, profile, interests,
+  skills, safeguarding, and confirm controls behind `urlFor()` for shared
+  mounts and custom-domain child paths.
   The latest focused source
   conversion covers group detail, listing detail, member profile, and the
   shared report-link partial, including breadcrumbs, action controls, report

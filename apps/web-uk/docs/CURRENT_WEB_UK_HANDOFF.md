@@ -178,6 +178,11 @@ handoff redirects through `res.locals.urlFor`, matching Laravel's named-route
 redirect behavior for shared mounts and custom-domain contexts. A scoped
 Laravel runtime smoke proves the current completed fixture redirects signed
 `/onboarding/profile` to `/dashboard`.
+The latest member-onboarding source slice now also routes the wizard step form
+actions plus confirm-page change links through `urlFor()`, so the no-JS
+onboarding controls stay inside the active `/{tenantSlug}/accessible` mount or
+custom-domain child path at source level rather than relying only on rendered
+HTML response rewriting.
 The latest organisations source slice now routes organisation directory,
 browse, detail, jobs, manage, register, and opportunity-apply links/forms
 through `urlFor()`. The latest blog source slice now routes blog index, post
