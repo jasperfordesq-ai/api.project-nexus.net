@@ -68,7 +68,15 @@
         <h1 class="govuk-heading-xl">{{ t("auth.login_title") }}</h1>
         <p class="govuk-body-l">{{ t("auth.login_description", { community: tenantName or serviceName }) }}</p>
 
-        <form method="post" action="{{ urlFor('/login') }}" novalidate data-validate-form data-loading="{{ t('auth.login_action') }}">
+        <form
+          method="post"
+          action="{{ urlFor('/login') }}"
+          novalidate
+          data-validate-form
+          data-validation-error-title="{{ t('states.error_title') }}"
+          data-validation-error-prefix="{{ t('states.error_prefix') }}"
+          data-loading="{{ t('auth.login_action') }}"
+        >
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukInput({
             label: {
@@ -83,7 +91,9 @@
             value: values.email if values else "",
             attributes: {
               "data-validate": "required email",
-              "data-label": t("auth.email_label")
+              "data-label": t("auth.email_label"),
+              "data-required-message": t("auth.forgot_invalid"),
+              "data-email-message": t("auth.forgot_invalid")
             }
           }) }}
 
@@ -98,7 +108,8 @@
             autocomplete: "current-password",
             attributes: {
               "data-validate": "required",
-              "data-label": t("auth.password_label")
+              "data-label": t("auth.password_label"),
+              "data-required-message": t("auth.login_failed")
             }
           }) }}
 

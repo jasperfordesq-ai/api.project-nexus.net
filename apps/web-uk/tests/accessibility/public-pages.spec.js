@@ -56,6 +56,15 @@ function formatViolations(violations) {
   }));
 }
 
+async function hideCookieBanner(page, baseURL) {
+  await page.context().addCookies([{
+    name: 'nexus_accessible_cookie_consent',
+    value: 'essential',
+    url: new URL(baseURL).origin,
+    sameSite: 'Lax'
+  }]);
+}
+
 test.describe('representative public-page accessibility gate', () => {
   for (const route of PUBLIC_ROUTES) {
     test(`${route.name} has a valid document structure and no high-impact axe violations`, async ({ page }, testInfo) => {
@@ -140,6 +149,130 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
   }
 });
 
+test.describe('keyboard, focus, error, and forced-colour gate', () => {
+  test('cookie controls and the skip link follow the visible document order', async ({ page }) => {
+    const response = await page.goto(`${mountPath}/login`, { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+
+    const acceptCookies = page.getByRole('button', { name: 'Accept analytics cookies' });
+    const rejectCookies = page.getByRole('button', { name: 'Reject analytics cookies' });
+    const cookieSettings = page.getByRole('link', { name: 'View cookies' });
+    const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+
+    await page.keyboard.press('Tab');
+    await expect(acceptCookies).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(rejectCookies).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(cookieSettings).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(skipLink).toBeFocused();
+    await expect(skipLink).toBeVisible();
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+  });
+
+  test('client validation focuses an actionable summary and connects every error to its field', async ({ page, baseURL }) => {
+    await hideCookieBanner(page, baseURL);
+    const response = await page.goto(`${mountPath}/login`, { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+
+    const submit = page.getByRole('button', { name: 'Sign in', exact: true });
+    await submit.focus();
+    await page.keyboard.press('Enter');
+
+    const summary = page.locator('form[data-validate-form] .govuk-error-summary');
+    await expect(summary).toHaveCount(1);
+    await expect(summary).toBeFocused();
+    await expect(summary).toHaveAttribute('role', 'alert');
+
+    const errorLinks = summary.locator('a');
+    await expect(errorLinks).toHaveCount(2);
+    expect(await errorLinks.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual([
+      '#email',
+      '#password'
+    ]);
+
+    const email = page.locator('#email');
+    const password = page.locator('#password');
+    await expect(email).toHaveAttribute('aria-describedby', /(^|\s)email-error(\s|$)/);
+    await expect(password).toHaveAttribute('aria-describedby', /(^|\s)password-error(\s|$)/);
+    await expect(page.locator('#email-error .govuk-visually-hidden')).toHaveText('Error:');
+    await expect(page.locator('#password-error .govuk-visually-hidden')).toHaveText('Error:');
+
+    await page.keyboard.press('Tab');
+    await expect(page.locator('a[href="#email"]')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(email).toBeFocused();
+  });
+
+  test('client validation announcements use the active Arabic locale', async ({ page, baseURL }) => {
+    await hideCookieBanner(page, baseURL);
+    const response = await page.goto(`${mountPath}/login?locale=ar`, { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+
+    const submit = page.locator('form[data-validate-form] button[type="submit"]');
+    await expect(submit).toHaveCount(1);
+    await submit.focus();
+    await page.keyboard.press('Enter');
+
+    const summary = page.locator('form[data-validate-form] .govuk-error-summary');
+    await expect(summary).toBeFocused();
+    const announcement = await summary.innerText();
+    expect(announcement).not.toContain('There is a problem');
+    expect(announcement).not.toContain('Enter a valid email address');
+    expect(announcement).not.toContain('Enter the correct email address and password.');
+
+    const prefixes = await page.locator('form[data-validate-form] .govuk-error-message .govuk-visually-hidden').allTextContents();
+    expect(prefixes).toHaveLength(2);
+    expect(prefixes).not.toContain('Error:');
+  });
+
+  test('forced colours preserve visible focus and 320px reflow in RTL', async ({ page, baseURL }, testInfo) => {
+    await hideCookieBanner(page, baseURL);
+    await page.emulateMedia({ colorScheme: 'dark', contrast: 'more', forcedColors: 'active' });
+    await page.setViewportSize({ width: 320, height: 640 });
+    const response = await page.goto(`${mountPath}/login?locale=ar`, { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+    expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+
+    await page.keyboard.press('Tab');
+    const skipLink = page.locator('.govuk-skip-link');
+    await expect(skipLink).toBeFocused();
+    await expect(skipLink).toBeVisible();
+
+    const evidence = await page.evaluate(() => {
+      const focused = document.activeElement;
+      const style = focused ? getComputedStyle(focused) : null;
+      return {
+        activeElement: focused?.className || focused?.tagName || '',
+        backgroundColor: style?.backgroundColor || '',
+        boxShadow: style?.boxShadow || '',
+        color: style?.color || '',
+        outlineStyle: style?.outlineStyle || '',
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      };
+    });
+    expect(evidence.scrollWidth).toBeLessThanOrEqual(evidence.clientWidth + 1);
+    expect(
+      evidence.outlineStyle !== 'none'
+        || evidence.boxShadow !== 'none'
+        || evidence.backgroundColor !== 'rgba(0, 0, 0, 0)'
+    ).toBe(true);
+
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    await testInfo.attach('forced-colour-evidence', {
+      body: Buffer.from(JSON.stringify({ evidence, violations: formatViolations(axeResults.violations) }, null, 2)),
+      contentType: 'application/json'
+    });
+    expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+  });
+});
+
 test.describe('representative authenticated-page accessibility gate', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -147,6 +280,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   let authenticatedMountPath;
 
   test.beforeAll(async ({ browser, baseURL }) => {
+    test.setTimeout(90_000);
     const smoke = accessibilitySmoke;
     authenticatedMountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
     const context = await browser.newContext({ baseURL });
@@ -156,7 +290,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     await page.locator('input[name="email"]').fill(smoke.email);
     await page.locator('input[name="password"]').fill(smoke.password);
     await Promise.all([
-      page.waitForURL((url) => url.pathname.endsWith('/dashboard')),
+      page.waitForURL((url) => url.pathname.endsWith('/dashboard'), { timeout: 60_000 }),
       page.locator('form:has(input[name="password"]) button[type="submit"]').click()
     ]);
 

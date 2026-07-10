@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,386/1,386` tests passed.
+- Jest: `45/45` suites and `1,388/1,388` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,16 +62,19 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `22/22` cases.
+- Automated browser accessibility: Chromium/axe passed `26/26` cases.
 - Live Blade marker comparison: `19/19` checks passed.
-- Current manual browser inspection proved `lang="ar"`, `dir="rtl"`, one
-  `main`/H1, unique IDs, and no horizontal overflow at 320 CSS pixels on the
-  Arabic login and signed dashboard. The skip link targets the focusable
-  `#main-content`, and forced-colour emulation kept the page visible and free
-  of horizontal overflow. This is useful browser evidence, not a completed
-  keyboard or assistive-technology record: native Tab traversal could not be
-  advanced through the browser-control session, and the Arabic dashboard still
-  exposed English contextual strings such as `Welcome back`, `Messages`, and
+- Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
+  unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
+  and signed dashboard. The expanded gate now drives native Chromium Tab/Enter
+  input through cookie controls and the skip link, proves focus moves to
+  `#main-content`, verifies client-error summary focus and error-link field
+  focus, checks localized Arabic error announcements, and runs axe under forced
+  colours. Live current-source inspection independently confirmed the summary
+  is the active `role="alert"` element and the forced-colour select/footer pairs
+  resolve to white on black without overflow. This is still not a completed
+  screen-reader or assistive-technology record, and the Arabic dashboard still
+  exposes English contextual strings such as `Welcome back`, `Messages`, and
   `Hours given`.
 
 The current-source Laravel runtime smoke is now certified in deterministic
@@ -92,6 +95,26 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Keyboard, Error Announcement, And Forced-Colour Slice
+
+The shared progressive-validation script no longer moves focus away from its
+new error summary to the first invalid input. The `role="alert"`,
+`tabindex="-1"` summary retains focus so its heading and linked errors are
+announced; activating an error link then focuses the corresponding field. Field
+errors preserve existing `aria-describedby` values and use the request-locale
+screen-reader prefix. Login supplies localized required/email/password copy,
+and all five enhanced forms supply localized summary title/prefix attributes.
+
+Forced-colour CSS now uses the active system `ButtonText`/`ButtonFace` and
+`CanvasText`/`Canvas` pairs for the locale selector and footer attribution.
+This fixed the two serious contrast failures the new forced-colour axe pass
+first exposed. Focused browser coverage passed `4/4`; the complete current-
+source Chromium/axe suite passed `26/26`. The full Jest suite passed `45/45`
+and `1,388/1,388`; lint, brand, CSS, route, locale, template, and diff gates
+also passed. The first full accessibility rerun reached authenticated setup but
+timed out its 30-second login hook under concurrent Jest load; the isolated
+rerun passed after giving only that real Laravel login setup a 90-second budget.
 
 Laravel remains the authoritative backend and accessible visual/workflow source
 and is read-only from this workspace. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains

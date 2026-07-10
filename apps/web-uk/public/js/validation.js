@@ -86,12 +86,6 @@
       if (errors.length > 0) {
         e.preventDefault();
         showErrorSummary(form, errors);
-
-        // Focus first error field
-        const firstErrorField = form.querySelector('.govuk-form-group--error input, .govuk-form-group--error textarea, .govuk-form-group--error select');
-        if (firstErrorField) {
-          firstErrorField.focus();
-        }
       }
     });
   }
@@ -116,8 +110,10 @@
       const isValid = validator.validate(value, ...params, form);
 
       if (!isValid) {
-        const message = validator.message(label, ...params);
-        showFieldError(field, message);
+        const message = field.dataset[`${ruleName}Message`]
+          || form.dataset[`${ruleName}Message`]
+          || validator.message(label, ...params);
+        showFieldError(field, message, form.dataset.validationErrorPrefix || 'Error:');
         return { field: field.id || field.name, message, href: `#${field.id || field.name}` };
       }
     }
@@ -171,7 +167,7 @@
    * @param {HTMLElement} field - The field with the error
    * @param {string} message - The error message
    */
-  function showFieldError(field, message) {
+  function showFieldError(field, message, errorPrefix = 'Error:') {
     const formGroup = field.closest('.govuk-form-group');
     if (!formGroup) return;
 
@@ -194,7 +190,7 @@
     const errorSpan = document.createElement('p');
     errorSpan.id = `${field.id || field.name}-error`;
     errorSpan.className = 'govuk-error-message';
-    errorSpan.innerHTML = '<span class="govuk-visually-hidden">Error:</span> ' + escapeHtml(message);
+    errorSpan.innerHTML = '<span class="govuk-visually-hidden">' + escapeHtml(errorPrefix) + '</span> ' + escapeHtml(message);
 
     // Insert before the input
     const inputWrapper = field.closest('.govuk-input__wrapper') || field;
@@ -264,7 +260,7 @@
 
     summary.innerHTML = `
       <div>
-        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <h2 class="govuk-error-summary__title">${escapeHtml(form.dataset.validationErrorTitle || 'There is a problem')}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             ${errorList}
@@ -272,6 +268,15 @@
         </div>
       </div>
     `;
+
+    summary.querySelectorAll('a[href^="#"]').forEach(link => {
+      link.addEventListener('click', () => {
+        const target = document.getElementById(link.getAttribute('href').slice(1));
+        if (target && typeof target.focus === 'function') {
+          target.focus();
+        }
+      });
+    });
 
     // Insert at top of form or before first form group
     const firstFormGroup = form.querySelector('.govuk-form-group');

@@ -28,7 +28,7 @@
 
       <h1 class="govuk-heading-xl">{{ t("polish_groups.edit_link") }}</h1>
 
-      <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" novalidate data-validate-form>
+      <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" novalidate data-validate-form data-validation-error-title="{{ t('states.error_title') }}" data-validation-error-prefix="{{ t('states.error_prefix') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {{ govukInput({
@@ -41,7 +41,7 @@
           value: group.name,
           attributes: {
             "data-validate": "required maxLength:255",
-            "data-label": "Group name"
+            "data-label": t("groups.create.name_label")
           }
         }) }}
 

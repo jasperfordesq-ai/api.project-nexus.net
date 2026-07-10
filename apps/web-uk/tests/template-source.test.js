@@ -1934,3 +1934,35 @@ describe('tenant-aware template helper conversion', () => {
     expect(breadcrumbs).toContain("urlFor('/groups')");
   });
 });
+
+describe('localized progressive validation source contract', () => {
+  it('gives every enhanced form localized summary and screen-reader prefix copy', () => {
+    const viewsRoot = path.join(__dirname, '..', 'src', 'views');
+    const enhancedForms = nunjucksFilesUnder(viewsRoot)
+      .map((file) => ({ file, source: fs.readFileSync(file, 'utf8') }))
+      .filter(({ source }) => source.includes('data-validate-form'));
+
+    expect(enhancedForms).toHaveLength(5);
+    for (const { file, source } of enhancedForms) {
+      const openingTag = source.match(/<form\b[^>]*data-validate-form[^>]*>/s)?.[0] || '';
+      expect({
+        file,
+        hasErrorTitle: openingTag.includes('data-validation-error-title="{{ t(\'states.error_title\') }}"'),
+        hasErrorPrefix: openingTag.includes('data-validation-error-prefix="{{ t(\'states.error_prefix\') }}"')
+      }).toEqual({ file, hasErrorTitle: true, hasErrorPrefix: true });
+    }
+  });
+
+  it('keeps focus on the actionable summary and supports field-level localized messages', () => {
+    const validation = fs.readFileSync(
+      path.join(__dirname, '..', 'public', 'js', 'validation.js'),
+      'utf8'
+    );
+
+    expect(validation).toContain('form.dataset.validationErrorTitle');
+    expect(validation).toContain('form.dataset.validationErrorPrefix');
+    expect(validation).toContain('field.dataset[`${ruleName}Message`]');
+    expect(validation).toContain('summary.focus()');
+    expect(validation).not.toContain('firstErrorField.focus()');
+  });
+});

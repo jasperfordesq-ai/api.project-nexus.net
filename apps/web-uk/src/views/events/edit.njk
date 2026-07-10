@@ -28,7 +28,7 @@
 
       <h1 class="govuk-heading-xl">{{ t("events.edit_event") }}</h1>
 
-      <form action="{{ urlFor('/events/' + (event.id | string) + '/edit') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form>
+      <form action="{{ urlFor('/events/' + (event.id | string) + '/edit') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form data-validation-error-title="{{ t('states.error_title') }}" data-validation-error-prefix="{{ t('states.error_prefix') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
@@ -46,7 +46,7 @@
           errorMessage: { text: titleError.text } if titleError else undefined,
           attributes: {
             "data-validate": "required maxLength:255",
-            "data-label": "event title"
+            "data-label": t("events.title_label")
           }
         }) }}
 
@@ -66,7 +66,7 @@
           errorMessage: { text: descriptionError.text } if descriptionError else undefined,
           attributes: {
             "data-validate": "required",
-            "data-label": "event description",
+            "data-label": "Description",
             "required": "required"
           }
         }) }}
@@ -204,7 +204,7 @@
           errorMessage: { text: startTimeError.text } if startTimeError else undefined,
           attributes: {
             "data-validate": "required",
-            "data-label": "start time",
+            "data-label": t("events.start_time_label"),
             "required": "required"
           }
         }) }}
@@ -239,7 +239,7 @@
           inputmode: "numeric",
           attributes: {
             "data-validate": "number min:1",
-            "data-label": "maximum attendees"
+            "data-label": t("events.max_attendees_label")
           }
         }) }}
 

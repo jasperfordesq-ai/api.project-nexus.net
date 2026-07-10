@@ -77,6 +77,27 @@
   white-space: nowrap;
 }
 
+// Explicit system colours keep form controls and footer attribution readable
+// when Windows High Contrast or another forced-colour mode is active. System
+// colour keywords follow the user's palette; forced-color-adjust is disabled
+// only for these elements so the declared foreground/background pair remains
+// atomic instead of being partially remapped by the user agent.
+@media screen and (forced-colors: active) {
+  .nexus-alpha-lang__select {
+    border-color: ButtonText;
+    background-color: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .govuk-footer__meta-custom,
+  .govuk-footer__meta-custom p {
+    background-color: Canvas;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
 // GOV.UK Frontend 6 is primarily authored for left-to-right documents. These
 // shell corrections complement the logical inline properties used by the
 // application components below.
