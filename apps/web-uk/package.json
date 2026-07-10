@@ -18,6 +18,7 @@
     "visual:blade": "node scripts/blade-visual-spotcheck.js",
     "smoke:laravel": "node scripts/laravel-runtime-smoke.js",
     "smoke:laravel:local": "node scripts/laravel-runtime-smoke-local-server.js",
+    "smoke:federation:local": "node scripts/federation-onboarding-runtime-smoke.js",
     "test:accessibility": "npm run build:css && node scripts/accessibility-local-server.js"
   },
   "dependencies": {

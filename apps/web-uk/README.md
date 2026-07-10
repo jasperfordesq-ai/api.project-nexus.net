@@ -331,6 +331,12 @@ nexus-uk-frontend/
 | `npm test` | Run tests with Jest |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run test:watch` | Run tests in watch mode |
+| `npm run lint` | Lint the Web UK server source |
+| `npm run route:matrix` | Refresh and verify Laravel accessible route coverage |
+| `npm run visual:blade` | Compare scoped Web UK and Laravel Blade text markers |
+| `npm run smoke:laravel:local` | Run the core Laravel smoke against a fresh ephemeral Web UK listener |
+| `npm run smoke:federation:local` | Traverse federation onboarding, read settings back, and restore the E2E fixture |
+| `npm run test:accessibility` | Run the Playwright/axe public-page browser gate against a fresh listener |
 
 ## Docker
 

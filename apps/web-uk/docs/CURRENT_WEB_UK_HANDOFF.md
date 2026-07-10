@@ -1282,6 +1282,10 @@ parity:
   `http://127.0.0.1:8088` and verified every selected and unselected value.
   The disposable E2E account's original federation settings were restored in
   the smoke script's `finally` block.
+- That proof is now repeatable as `npm run smoke:federation:local`. A clean
+  rerun at `http://127.0.0.1:62351` passed the CTA, privacy retention,
+  communication retention, confirm-only submit, Laravel settings read-back,
+  and verified fixture-restoration checks.
 
 Latest focused verification on 2026-07-09 for the custom-domain
 canonicalization tenant-routing slice:

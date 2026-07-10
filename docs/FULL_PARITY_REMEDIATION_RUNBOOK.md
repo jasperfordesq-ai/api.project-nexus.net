@@ -340,6 +340,7 @@ npm test -- --runInBand
 npm run route:matrix
 npm run visual:blade
 npm run smoke:laravel:local
+npm run smoke:federation:local
 ```
 
 Use the chunk controls documented in

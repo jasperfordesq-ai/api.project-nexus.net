@@ -107,6 +107,7 @@ The Laravel-backed runtime proof command is:
 ```bash
 npm run smoke:laravel
 npm run smoke:laravel:local
+npm run smoke:federation:local
 ```
 
 `smoke:laravel` runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
@@ -118,6 +119,14 @@ same harness at that local server, then closes it. Prefer the local command
 when no already-running tenant-correct Web UK process is available or when
 PowerShell background process management produces false `fetch failed` smoke
 results.
+
+`smoke:federation:local` is the repeatable side-effect proof for the federation
+wizard. It starts the current checkout on an ephemeral port, signs in with the
+configured disposable smoke account, traverses privacy and communication with
+non-default choices, finalizes with only `step=confirm`, reads every value back
+from Laravel `/api/v2/federation/settings`, and restores plus verifies the
+account's original opt-in state and settings before exiting. It refuses to
+mutate when Laravel does not expose the complete restorable settings contract.
 
 The harness checks Laravel API
 reachability, web-uk health, unsigned `/account` redirect behavior, `/login`
