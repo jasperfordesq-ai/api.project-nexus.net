@@ -311,6 +311,12 @@ The latest review source slice now routes review summary/list/comment links,
 received/given tabs, load-more links, pending-review forms, comment forms, and
 reaction forms through `urlFor()`, with source regression coverage guarding
 against raw `/reviews` template targets returning.
+The latest review status-banner slice now matches Laravel Blade presentation
+for the reviews index status outcomes: `review-submitted` and `review-deleted`
+render success notification banners, while failed/invalid statuses render the
+GOV.UK error summary with Laravel English copy. Focused Jest first failed on
+the old submitted/delete-failed copy and notification-banner presentation, then
+passed after the Nunjucks status branch and route copy were aligned.
 The latest group-exchange action redirect slice now sends auth-required,
 validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed

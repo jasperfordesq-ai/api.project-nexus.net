@@ -11179,7 +11179,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/pending?per_page=20');
     expect(api.callReviewApi).toHaveBeenCalledWith('test-token', 'GET', '/user/101/stats');
     expect(response.text).toContain('Reviews');
-    expect(response.text).toContain('Your review has been submitted.');
+    expect(response.text).toContain('Thank you. Your review has been submitted.');
     expect(response.text).toContain('View all reviews');
     expect(response.text).toContain('4.8 / 5');
     expect(response.text).toContain('12');
@@ -11210,7 +11210,10 @@ describe('shared accessible frontend shell', () => {
     expect(deleted.status).toBe(200);
     expect(deleted.text).toContain('Your review has been deleted.');
     expect(failed.status).toBe(200);
-    expect(failed.text).toContain('Sorry, your review could not be deleted. Try again.');
+    expect(failed.text).toContain('govuk-error-summary');
+    expect(failed.text).toContain('There is a problem');
+    expect(failed.text).toContain('We could not delete this review. Please try again.');
+    expect(failed.text).not.toContain('govuk-notification-banner__heading">We could not delete this review. Please try again.');
   });
 
   it('renders the Laravel paginated reviews list tab', async () => {

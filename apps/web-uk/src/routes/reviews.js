@@ -209,12 +209,12 @@ function listHref(tab, cursor = '') {
 
 function reviewStatusMessage(status) {
   const messages = {
-    'review-submitted': { type: 'success', text: 'Your review has been submitted.' },
-    'review-invalid': { type: 'error', text: 'Check the review details and try again.' },
-    'review-duplicate': { type: 'error', text: 'You have already reviewed this exchange.' },
-    'review-failed': { type: 'error', text: 'Sorry, your review could not be saved. Try again.' },
+    'review-submitted': { type: 'success', text: 'Thank you. Your review has been submitted.' },
+    'review-invalid': { type: 'error', text: 'Check your review and try again. A rating between 1 and 5 is required.' },
+    'review-duplicate': { type: 'error', text: 'You have already reviewed this exchange or member.' },
+    'review-failed': { type: 'error', text: 'Sorry, your review could not be submitted. Try again.' },
     'review-deleted': { type: 'success', text: 'Your review has been deleted.' },
-    'review-delete-failed': { type: 'error', text: 'Sorry, your review could not be deleted. Try again.' }
+    'review-delete-failed': { type: 'error', text: 'We could not delete this review. Please try again.' }
   };
   return messages[status] || null;
 }
