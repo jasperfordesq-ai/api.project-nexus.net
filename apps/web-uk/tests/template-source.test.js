@@ -515,6 +515,41 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps volunteering money copy tenant-neutral and exposes the tenant currency code', () => {
+    const donations = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'volunteering', 'donations.njk'),
+      'utf8'
+    );
+    const expenses = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'volunteering', 'expenses.njk'),
+      'utf8'
+    );
+
+    expect(donations).toContain('<div class="govuk-input__prefix">{{ tenantCurrency }}</div>');
+    expect(donations).not.toMatch(/aria-hidden="true">(?:&euro;|€)/i);
+    expect(donations).not.toMatch(/\beuro\b/i);
+    expect(expenses).toContain('Leave blank to use the community currency.');
+    expect(expenses).not.toMatch(/\buse euro\b/i);
+  });
+
+  it('uses Warning only for the emergency and group-cancellation advisory prefixes', () => {
+    const emergencyAlerts = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'volunteering', 'emergency-alerts.njk'),
+      'utf8'
+    );
+    const groupSignups = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'volunteering', 'group-signups.njk'),
+      'utf8'
+    );
+
+    expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Accepting commits/);
+    expect(groupSignups).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Cancelling releases/);
+    expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">There is a problem</h2>');
+    expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">There is a problem</h2>');
+    expect(emergencyAlerts).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
+    expect(groupSignups).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
+  });
+
   it('keeps volunteering certificate and credential controls behind urlFor()', () => {
     const templates = [
       path.join('volunteering', 'certificates.njk'),

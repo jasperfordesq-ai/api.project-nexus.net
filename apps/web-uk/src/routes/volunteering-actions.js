@@ -182,6 +182,11 @@ function trimmed(value, limit = null) {
   return limit === null ? text : text.slice(0, limit);
 }
 
+function tenantCurrency(req) {
+  const configuredCurrency = trimmed(req.accessibleRouting?.tenant?.settings?.default_currency).toUpperCase();
+  return /^[A-Z]{3}$/.test(configuredCurrency) ? configuredCurrency : 'EUR';
+}
+
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -2240,6 +2245,7 @@ router.get('/donations', asyncRoute(async (req, res) => {
     title: 'Donations and giving',
     activeNav: 'volunteering',
     dashboard,
+    tenantCurrency: tenantCurrency(req),
     loadError,
     status: donationStatus(trimmed(req.query.status), trimmed(req.query.donate_error)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -2605,11 +2611,13 @@ router.post('/donations', asyncRoute(async (req, res) => {
   if (amount <= 0) {
     return redirectTo(res, '/volunteering/donations?status=donate-failed&donate_error=amount#donate');
   }
+  if (amount > 1000000) {
+    return redirectTo(res, '/volunteering/donations?status=donate-failed&donate_error=amount-max#donate');
+  }
 
   const givingDayId = positiveInteger(req.body.giving_day_id);
   const payload = {
     amount,
-    currency: 'EUR',
     payment_method: trimmed(req.body.payment_method) === 'paypal' ? 'paypal' : 'bank_transfer',
     message: trimmed(req.body.message, 500),
     is_anonymous: checked(req.body.is_anonymous)

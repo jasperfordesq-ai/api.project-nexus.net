@@ -933,6 +933,19 @@ does not certify applications, recommended shifts, hours, organisation owner
 tools, apply POST, shift signup/cancel, feature gates, tenant routing, auth
 redirects, or POST workflows.
 
+The signed volunteering workflow refresh on 2026-07-10 also aligned current
+Laravel semantics that are independent of the future ASP.NET adapter. Donation
+GET resolves the tenant bootstrap `settings.default_currency`, normalizes the
+display code to uppercase, and uses EUR only as a defensive fallback. Donation
+POST omits a client-supplied `currency` value and rejects amounts above
+`1,000,000` before calling Laravel. Focused tests prove a GBP tenant render and
+the currency-free POST contract. The two advisory panels announce `Warning`,
+while genuine validation summaries retain `There is a problem`; safeguarding
+field failures link to all five affected controls and the two generic failures
+remain plain text. Read-only discovery found no non-EUR currency in the 15
+locally available tenant bootstraps, so live non-EUR donation persistence is
+not claimed and still needs a disposable non-EUR tenant fixture.
+
 `/organisations`, `/organisations/browse`, `/organisations/register`,
 `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, and
 `/organisations/opportunities/{id}/apply` GET are local Blade-style visual/data

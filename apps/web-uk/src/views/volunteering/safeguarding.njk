@@ -23,7 +23,13 @@
           <h2 class="govuk-error-summary__title">There is a problem</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
-              <li>{{ status.message }}</li>
+              <li>
+                {% if status.field %}
+                  <a href="#{{ status.field }}">{{ status.message }}</a>
+                {% else %}
+                  {{ status.message }}
+                {% endif %}
+              </li>
             </ul>
           </div>
         </div>

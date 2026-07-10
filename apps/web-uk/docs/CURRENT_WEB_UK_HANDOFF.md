@@ -828,6 +828,29 @@ Latest browser accessibility-gate verification on 2026-07-10:
   browse/jobs/status, feed hashtags, and wallet failure states; all six are
   fixed and the current source violation count is zero.
 
+Latest focused verification on 2026-07-10 for current Laravel volunteering
+semantic drift:
+
+- Donation GET resolves and uppercases
+  `req.accessibleRouting.tenant.settings.default_currency`, with EUR only as a
+  defensive fallback. The form exposes the currency code to assistive
+  technology, donation and expense hints are currency-neutral, donation POST
+  omits `currency`, and values above `1,000,000` fail before any API call.
+- Only the emergency-acceptance and group-cancellation advisories now announce
+  `Warning`; real validation summaries still use `There is a problem`.
+  Safeguarding summaries link `training_type`, `training_name`, `completed_at`,
+  `title`, and `description` failures to existing controls, while
+  `training-failed` and `incident-failed` remain plain text.
+- Template-source coverage passed 108/108, focused semantic/render/action
+  coverage passed 17/17, the full volunteering selection passed 34/34, and
+  ESLint plus the scoped diff check passed.
+- Read-only discovery checked all 15 tenants returned by the local Laravel
+  tenant API; none currently exposes a non-EUR bootstrap currency. The GBP
+  render and client-currency-omission contracts are therefore proved with
+  focused current-source tests, while live non-EUR donation persistence remains
+  blocked on a disposable non-EUR tenant fixture. No persistent donation was
+  created merely to manufacture evidence.
+
 Historical focused verification on 2026-07-09 for the earlier tenant
 parent-domain reserved-path slice:
 

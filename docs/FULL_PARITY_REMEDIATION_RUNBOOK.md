@@ -133,11 +133,13 @@ smoked against ASP.NET later.
    return redirects, the legal-hub document links, and the session-timeout
    login/logout flow; timeout sign-out is now a CSRF-protected POST rather than
    an unsupported GET.
-3. Port current Laravel accessible changes:
-   - tenant currency instead of hard-coded EUR in donations;
-   - advisory screen-reader prefixes that say `Warning` rather than
-     `There is a problem`;
-   - safeguarding error-summary links to the affected fields;
+3. **Completed 2026-07-10:** ported the current Laravel accessible changes:
+   - donation display resolves the uppercase tenant currency and donation POST
+     no longer sends hard-coded EUR; amounts above 1,000,000 are rejected;
+   - the two advisory screen-reader prefixes say `Warning` while genuine error
+     summaries retain `There is a problem`;
+   - safeguarding field failures link to all five affected controls while the
+     two generic failures remain plain text;
    - **Completed 2026-07-10:** the federation hub CTA now enters onboarding,
      and the tenant-scoped session-backed privacy/communication/confirm flow
      retains choices, finalizes from a confirm-only request, preserves state on

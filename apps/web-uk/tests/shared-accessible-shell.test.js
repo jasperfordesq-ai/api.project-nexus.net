@@ -21341,6 +21341,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Bank transfer');
     expect(response.text).toContain('Make a donation');
     expect(response.text).toContain('method="post" action="/volunteering/donations#donate"');
+    expect(response.text).toContain('<div class="govuk-input__prefix">EUR</div>');
     expect(response.text).toContain('id="donate-amount" name="amount" type="text"');
     expect(response.text).toContain('id="donate-giving-day" name="giving_day_id"');
     expect(response.text).toContain('value="7"');
@@ -21350,6 +21351,32 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('id="donate-anonymous" name="is_anonymous" type="checkbox" value="1"');
     expect(response.text).toContain('Record donation');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the shared-mount donation form with the uppercase tenant currency code', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        settings: { default_currency: 'gbp' },
+        modules: { feed: true, listings: true, wallet: true },
+        features: { connections: true, events: true, volunteering: true }
+      }
+    });
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: { items: [] } });
+
+    const response = await request(app)
+      .get('/acme/accessible/volunteering/donations')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<div class="govuk-input__prefix">GBP</div>');
+    expect(response.text).not.toContain('class="govuk-input__prefix" aria-hidden');
+    expect(response.text).not.toMatch(/\beuro\b|&euro;|€/i);
   });
 
   it('renders the Laravel volunteering expenses page for signed-in members', async () => {
@@ -21541,6 +21568,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Message from the coordinator');
     expect(response.text).toContain('The evening food-bank shift needs cover.');
     expect(response.text).toContain('Accepting commits you to covering this shift.');
+    expect(response.text).toContain('<span class="govuk-visually-hidden">Warning</span>');
     expect(response.text).toContain('method="post" action="/volunteering/emergency-alerts/91/respond"');
     expect(response.text).toContain('name="response" value="accepted"');
     expect(response.text).toContain('Accept this shift');
@@ -21651,6 +21679,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Add member');
     expect(response.text).toContain('Cancel reservation');
     expect(response.text).toContain('Cancelling releases all reserved slots');
+    expect(response.text).toContain('<span class="govuk-visually-hidden">Warning</span>');
     expect(response.text).toContain('method="post" action="/volunteering/group-signups/30/cancel"');
     expect(response.text).toContain('Cancel this reservation');
     expect(response.text).toContain('Saturday Garden Team');
@@ -21776,6 +21805,43 @@ describe('shared accessible frontend shell', () => {
     expect(incidentResponse.text).toContain('Low');
     expect(incidentResponse.text).toContain('Open');
     expect(incidentResponse.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it.each([
+    ['/volunteering/training?status=training-type-required', 'training_type', 'Select a training type'],
+    ['/volunteering/training?status=training-name-required', 'training_name', 'Enter the name of the course or programme'],
+    ['/volunteering/training?status=training-date-required', 'completed_at', 'Enter the date you completed the training'],
+    ['/volunteering/incidents?status=incident-title-required', 'title', 'Enter a brief title for the incident'],
+    ['/volunteering/incidents?status=incident-description-too-short', 'description', 'Describe what happened in at least 20 characters']
+  ])('links safeguarding validation status on %s to #%s', async (requestPath, field, message) => {
+    const response = await request(app)
+      .get(requestPath)
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    const summaryStart = response.text.indexOf('<ul class="govuk-list govuk-error-summary__list">');
+    const summaryEnd = response.text.indexOf('</ul>', summaryStart);
+    const summary = response.text.slice(summaryStart, summaryEnd);
+    expect(summaryStart).toBeGreaterThan(-1);
+    expect(summary).toContain(`<a href="#${field}">${message}</a>`);
+    expect(response.text).toContain(`id="${field}"`);
+  });
+
+  it.each([
+    ['/volunteering/training?status=training-failed', 'Your training record could not be saved. Please try again.'],
+    ['/volunteering/incidents?status=incident-failed', 'Your report could not be submitted. Please try again.']
+  ])('keeps generic safeguarding failure on %s as plain error-summary text', async (requestPath, message) => {
+    const response = await request(app)
+      .get(requestPath)
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    const summaryStart = response.text.indexOf('<ul class="govuk-list govuk-error-summary__list">');
+    const summaryEnd = response.text.indexOf('</ul>', summaryStart);
+    const summary = response.text.slice(summaryStart, summaryEnd);
+    expect(summaryStart).toBeGreaterThan(-1);
+    expect(summary).toContain(message);
+    expect(summary).not.toContain('<a href="#');
   });
 
   it('renders the Laravel volunteering waitlist and shift swaps pages for signed-in members', async () => {
@@ -22447,12 +22513,25 @@ describe('shared accessible frontend shell', () => {
     expect(donationResponse.headers.location).toBe('/volunteering/donations?status=donate-recorded#donate');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/donations', {
       amount: 25,
-      currency: 'EUR',
       payment_method: 'paypal',
       giving_day_id: 7,
       message: 'For supplies',
       is_anonymous: true
     });
+    expect(api.callVolunteeringApi.mock.calls.at(-1)[3]).not.toHaveProperty('currency');
+
+    const callsBeforeOversizedDonation = api.callVolunteeringApi.mock.calls.length;
+    const oversizedDonationResponse = await agent
+      .post('/volunteering/donations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        amount: '1000000.01',
+        payment_method: 'bank_transfer'
+      });
+    expect(oversizedDonationResponse.headers.location).toBe('/volunteering/donations?status=donate-failed&donate_error=amount-max#donate');
+    expect(api.callVolunteeringApi).toHaveBeenCalledTimes(callsBeforeOversizedDonation);
 
     const groupAddResponse = await agent
       .post('/volunteering/group-signups/30/members')
