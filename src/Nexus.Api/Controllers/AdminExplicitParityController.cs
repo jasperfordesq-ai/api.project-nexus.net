@@ -34,6 +34,7 @@ public class AdminExplicitParityController : ControllerBase
     private const string CompatibilityWritesKey = "admin_explicit.compatibility_writes";
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
+    private const string MemberPremiumTierMetadataKeyPrefix = "member_premium.tier_meta.";
     private const string SupportReportsKey = "admin_explicit.support_reports";
     private const string ApiPartnersKey = "admin_explicit.api_partners";
     private const string AdminUserRolesKeyPrefix = "admin.user_roles.";
@@ -643,6 +644,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
+            "/api/v2/admin/member-premium/tiers" => await CreateMemberPremiumAdminTier(),
             "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
             "/api/v2/admin/users/bulk-approve" => await BulkApproveUsers(),
             "/api/v2/admin/users/bulk-suspend" => await BulkSuspendUsers(),
@@ -3886,10 +3888,17 @@ public class AdminExplicitParityController : ControllerBase
             .Select(g => new { PlanId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(row => row.PlanId, row => row.Count);
 
-        var tiers = plans.Select((plan, index) => MapMemberPremiumAdminTier(
-            plan,
-            index,
-            activeSubscriberCounts.GetValueOrDefault(plan.Id)));
+        var tiers = new List<object>();
+        for (var index = 0; index < plans.Count; index++)
+        {
+            var plan = plans[index];
+            var metadata = await LoadMemberPremiumTierMetadata(plan.Id);
+            tiers.Add(MapMemberPremiumAdminTier(
+                plan,
+                metadata,
+                index,
+                activeSubscriberCounts.GetValueOrDefault(plan.Id)));
+        }
 
         return Ok(new
         {
@@ -3924,7 +3933,88 @@ public class AdminExplicitParityController : ControllerBase
             success = true,
             data = new
             {
-                tier = MapMemberPremiumAdminTierDetail(plan)
+                tier = MapMemberPremiumAdminTierDetail(plan, await LoadMemberPremiumTierMetadata(plan.Id))
+            }
+        });
+    }
+
+    private async Task<IActionResult> CreateMemberPremiumAdminTier()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var slug = JsonString(payload, "slug") ?? string.Empty;
+        var name = JsonString(payload, "name") ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return UnprocessableEntity(new
+            {
+                error = "VALIDATION_ERROR",
+                message = "Missing required field: slug",
+                field = "slug"
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return UnprocessableEntity(new
+            {
+                error = "VALIDATION_ERROR",
+                message = "Missing required field: name",
+                field = "name"
+            });
+        }
+
+        if (!IsValidMemberPremiumTierSlug(slug))
+        {
+            return UnprocessableEntity(new
+            {
+                error = "VALIDATION_ERROR",
+                message = "Invalid member premium tier slug.",
+                field = "slug"
+            });
+        }
+
+        var monthlyPriceCents = JsonInt(payload, "monthly_price_cents", 0, 0, int.MaxValue);
+        var yearlyPriceCents = JsonInt(payload, "yearly_price_cents", 0, 0, int.MaxValue);
+        var features = JsonStringList(payload, "features");
+        var now = DateTime.UtcNow;
+        var plan = new SubscriptionPlan
+        {
+            TenantId = tenantId,
+            Name = name,
+            Description = JsonString(payload, "description"),
+            Price = monthlyPriceCents / 100m,
+            Currency = "EUR",
+            Features = JsonSerializer.Serialize(features, StoreJsonOptions),
+            IsActive = JsonBool(payload, "is_active", fallback: false),
+            IsPublic = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.SubscriptionPlans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        var metadata = new MemberPremiumTierMetadata
+        {
+            Slug = slug,
+            MonthlyPriceCents = monthlyPriceCents,
+            YearlyPriceCents = yearlyPriceCents,
+            SortOrder = JsonInt(payload, "sort_order", 0, int.MinValue, int.MaxValue),
+            Features = features,
+            CreatedAt = plan.CreatedAt,
+            UpdatedAt = plan.UpdatedAt
+        };
+        await SaveMemberPremiumTierMetadata(plan.Id, metadata);
+        await _db.SaveChangesAsync();
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = new
+            {
+                tier = MapMemberPremiumAdminTierDetail(plan, metadata)
             }
         });
     }
@@ -4295,42 +4385,83 @@ public class AdminExplicitParityController : ControllerBase
         };
     }
 
-    private static object MapMemberPremiumAdminTier(SubscriptionPlan plan, int sortOrder, int activeSubscriberCount) => new
+    private static object MapMemberPremiumAdminTier(
+        SubscriptionPlan plan,
+        MemberPremiumTierMetadata? metadata,
+        int fallbackSortOrder,
+        int activeSubscriberCount) => new
     {
         id = plan.Id,
         tenant_id = plan.TenantId,
-        slug = Slugify(plan.Name),
+        slug = metadata?.Slug ?? Slugify(plan.Name),
         name = plan.Name,
         description = plan.Description,
-        monthly_price_cents = ToCents(plan.Price),
-        yearly_price_cents = ToCents(plan.Price * 12m),
-        stripe_price_id_monthly = (string?)null,
-        stripe_price_id_yearly = (string?)null,
-        stripe_price_account_id = (string?)null,
-        features = NormalizePlanFeatures(plan.Features),
-        sort_order = sortOrder,
+        monthly_price_cents = metadata?.MonthlyPriceCents ?? ToCents(plan.Price),
+        yearly_price_cents = metadata?.YearlyPriceCents ?? ToCents(plan.Price * 12m),
+        stripe_price_id_monthly = metadata?.StripePriceIdMonthly,
+        stripe_price_id_yearly = metadata?.StripePriceIdYearly,
+        stripe_price_account_id = metadata?.StripePriceAccountId,
+        features = metadata?.Features.ToArray() ?? NormalizePlanFeatures(plan.Features),
+        sort_order = metadata?.SortOrder ?? fallbackSortOrder,
         is_active = plan.IsActive,
         active_subscriber_count = activeSubscriberCount
     };
 
-    private static object MapMemberPremiumAdminTierDetail(SubscriptionPlan plan) => new
+    private static object MapMemberPremiumAdminTierDetail(SubscriptionPlan plan, MemberPremiumTierMetadata? metadata) => new
     {
         id = plan.Id,
         tenant_id = plan.TenantId,
-        slug = Slugify(plan.Name),
+        slug = metadata?.Slug ?? Slugify(plan.Name),
         name = plan.Name,
         description = plan.Description,
-        monthly_price_cents = ToCents(plan.Price),
-        yearly_price_cents = ToCents(plan.Price * 12m),
-        stripe_price_id_monthly = (string?)null,
-        stripe_price_id_yearly = (string?)null,
-        stripe_price_account_id = (string?)null,
-        features = NormalizePlanFeatures(plan.Features),
-        sort_order = 0,
+        monthly_price_cents = metadata?.MonthlyPriceCents ?? ToCents(plan.Price),
+        yearly_price_cents = metadata?.YearlyPriceCents ?? ToCents(plan.Price * 12m),
+        stripe_price_id_monthly = metadata?.StripePriceIdMonthly,
+        stripe_price_id_yearly = metadata?.StripePriceIdYearly,
+        stripe_price_account_id = metadata?.StripePriceAccountId,
+        features = metadata?.Features.ToArray() ?? NormalizePlanFeatures(plan.Features),
+        sort_order = metadata?.SortOrder ?? 0,
         is_active = plan.IsActive,
         created_at = plan.CreatedAt,
         updated_at = plan.UpdatedAt
     };
+
+    private async Task<MemberPremiumTierMetadata?> LoadMemberPremiumTierMetadata(int tierId)
+    {
+        var raw = await GetTenantConfigValueAsync(MemberPremiumTierMetadataKey(tierId));
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<MemberPremiumTierMetadata>(raw, StoreJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task SaveMemberPremiumTierMetadata(int tierId, MemberPremiumTierMetadata metadata)
+    {
+        await UpsertTenantConfigValueAsync(
+            MemberPremiumTierMetadataKey(tierId),
+            JsonSerializer.Serialize(metadata, StoreJsonOptions));
+    }
+
+    private static string MemberPremiumTierMetadataKey(int tierId) => $"{MemberPremiumTierMetadataKeyPrefix}{tierId}";
+
+    private static bool IsValidMemberPremiumTierSlug(string slug)
+    {
+        if (slug.Length is < 1 or > 80 || !char.IsLetterOrDigit(slug[0]))
+        {
+            return false;
+        }
+
+        return slug.All(ch => char.IsAsciiLetterOrDigit(ch) || ch == '-' || ch == '_');
+    }
 
     private static string[] NormalizePlanFeatures(string? features)
     {
@@ -6477,6 +6608,20 @@ public class AdminExplicitParityController : ControllerBase
         public string? Ip { get; set; }
         public string? UserAgent { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class MemberPremiumTierMetadata
+    {
+        public string Slug { get; set; } = string.Empty;
+        public int MonthlyPriceCents { get; set; }
+        public int YearlyPriceCents { get; set; }
+        public string? StripePriceIdMonthly { get; set; }
+        public string? StripePriceIdYearly { get; set; }
+        public string? StripePriceAccountId { get; set; }
+        public List<string> Features { get; set; } = [];
+        public int SortOrder { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     private sealed class SupportReportRecord

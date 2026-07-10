@@ -1944,6 +1944,68 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTierCreate_ReturnsLaravelReactCreatedTierAndPersistsMetadata()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id && p.Name == "Founding Circle")
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "founding-circle",
+            name = "Founding Circle",
+            description = "Founding supporter recognition tier",
+            monthly_price_cents = 1234,
+            yearly_price_cents = 12000,
+            features = new[] { "founder_badge", "priority_support" },
+            sort_order = 7,
+            is_active = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tier = json.GetProperty("data").GetProperty("tier");
+        var id = tier.GetProperty("id").GetInt32();
+        tier.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        tier.GetProperty("slug").GetString().Should().Be("founding-circle");
+        tier.GetProperty("name").GetString().Should().Be("Founding Circle");
+        tier.GetProperty("description").GetString().Should().Be("Founding supporter recognition tier");
+        tier.GetProperty("monthly_price_cents").GetInt32().Should().Be(1234);
+        tier.GetProperty("yearly_price_cents").GetInt32().Should().Be(12000);
+        tier.GetProperty("features").EnumerateArray().Select(v => v.GetString())
+            .Should().Equal("founder_badge", "priority_support");
+        tier.GetProperty("sort_order").GetInt32().Should().Be(7);
+        tier.GetProperty("is_active").GetBoolean().Should().BeFalse();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = await db.SubscriptionPlans.IgnoreQueryFilters().SingleAsync(p => p.Id == id);
+            plan.TenantId.Should().Be(TestData.Tenant1.Id);
+            plan.Price.Should().Be(12.34m);
+            plan.IsActive.Should().BeFalse();
+            plan.Features.Should().Contain("founder_badge");
+        }
+
+        var detailResponse = await Client.GetAsync($"/api/v2/admin/member-premium/tiers/{id}");
+        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detailResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var detailTier = detailJson.GetProperty("data").GetProperty("tier");
+        detailTier.GetProperty("slug").GetString().Should().Be("founding-circle");
+        detailTier.GetProperty("yearly_price_cents").GetInt32().Should().Be(12000);
+        detailTier.GetProperty("sort_order").GetInt32().Should().Be(7);
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();
