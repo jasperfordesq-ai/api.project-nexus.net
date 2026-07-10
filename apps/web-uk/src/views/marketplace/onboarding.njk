@@ -8,6 +8,7 @@
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/marketplace') }}">{{ t("marketplace.back") }}</a>
   {% include "marketplace/_nav.njk" %}
+  {% set marketplaceStatusSuccessHeadingKey = "states.success_title" %}
   {% include "marketplace/_status-banner.njk" %}
 
   <span class="govuk-caption-xl">Set up selling at {{ tenantName or serviceName }}</span>

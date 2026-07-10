@@ -154,8 +154,12 @@ Jobs now delegates 16 fixed document titles, its exact status/error families,
 and selected high-impact detail/history/talent/bias/qualification copy to
 authoritative keys while preserving user-authored dynamic content. Fresh
 ephemeral Laravel proof passed 41/41 signed/gated/redirect/body checks plus a
-13/13 Irish/Arabic rendered-output run. Marketplace is the next high-yield
-family. Laravel's non-English
+13/13 Irish/Arabic rendered-output run. Marketplace now delegates 20 fixed
+document titles, 56 exact status/error tokens, its shared navigation, and its
+high-impact browse chrome to Laravel keys. A fresh current-source Laravel run
+passed 33/33 base, signed-page, feature-gate, and Irish/Arabic output checks.
+The remaining family-specific hard-coded copy and mutation/upload/destructive
+proof keep Marketplace open. Laravel's non-English
 `premium.*` Explore copy is also stale relative to current English donation
 semantics and requires an upstream catalog fix.
 

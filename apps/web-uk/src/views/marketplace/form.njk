@@ -7,6 +7,7 @@
 
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/marketplace/mine') }}">Back to my listings</a>
+  {% include "marketplace/_nav.njk" %}
 
   {% if status %}
     <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">

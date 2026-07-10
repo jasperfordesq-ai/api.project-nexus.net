@@ -8,6 +8,7 @@
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/marketplace/slots') }}">Back to pickup slots</a>
   {% include "marketplace/_nav.njk" %}
+  {% set marketplaceStatusSuccessHeadingKey = "states.success_title" %}
   {% include "marketplace/_status-banner.njk" %}
 
   <h1 class="govuk-heading-xl">Edit pickup slot</h1>

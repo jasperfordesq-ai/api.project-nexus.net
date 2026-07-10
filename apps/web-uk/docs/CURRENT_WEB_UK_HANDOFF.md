@@ -191,6 +191,35 @@ namespaces are wholly English upstream.
   still required for applications, alerts, interview/offer responses, CV
   upload/download, owner updates, renewals, and deletion.
 
+### 2026-07-10 Marketplace Contextual Localization Follow-up
+
+- Twenty fixed Marketplace document-title sites now pass their exact Laravel
+  keys to the shared layout; category, seller, and listing titles remain
+  user-authored dynamic content.
+- Twenty-four success tokens and 32 error tokens now translate at render time
+  through the Laravel catalogs. Unknown and neutral redirect tokens remain
+  non-user-facing, and the three messages without an unambiguous source key
+  retain their exact English fallback.
+- The landing page now reuses the shared Marketplace tab strip instead of a
+  shortened duplicate. Its tab order, seller-onboarding destination, active
+  state, accessible name, and tenant `merchant_coupons` visibility follow the
+  Blade partial. The browse filter, category controls, status headings, and
+  high-impact navigation chrome use exact Laravel keys.
+- All 97 keys exercised by this slice resolve in every one of the 11 imported
+  catalogs (1,067 checks). Focused localization passed 101 tests; the existing
+  Marketplace route/template selection passed another 36 assertions; source
+  and touched-test lint, the conservative 290-template audit, and
+  `git diff --check` passed.
+- A fresh current-checkout Laravel smoke passed 33/33 checks: base
+  auth/cookie/session behavior, 19 signed Marketplace pages, the two expected
+  merchant-coupon 403 gates, and live Irish plus Arabic Marketplace filter
+  output.
+- This is not full Marketplace certification. Listing/order/offer/slot/coupon
+  mutations, the currently non-parity payment-intent flow (Laravel uses hosted
+  checkout with a 303 redirect), uploads, destructive actions, remaining
+  contextual template copy, manual/visual accessibility, and ASP.NET backend
+  compatibility still require evidence.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared

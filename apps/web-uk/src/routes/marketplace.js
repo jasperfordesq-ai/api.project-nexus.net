@@ -5,10 +5,21 @@
 
 const express = require('express');
 const { ApiError, callMarketplaceApi } = require('../lib/api');
+const { flagEnabled } = require('../lib/accessible-shell');
+const { createTranslator } = require('../lib/localization');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
+const fallbackTranslator = createTranslator('en');
+
+router.use((req, res, next) => {
+  const tenant = req.accessibleRouting?.tenant;
+  res.locals.marketplaceCouponsEnabled = tenant && typeof tenant === 'object'
+    ? flagEnabled(tenant, 'merchant_coupons', 'features', true)
+    : true;
+  next();
+});
 
 const PRICE_TYPES = ['fixed', 'negotiable', 'free', 'contact'];
 const CONDITIONS = ['new', 'like_new', 'good', 'fair', 'poor'];
@@ -57,6 +68,7 @@ const MARKETPLACE_SUCCESS_MESSAGES = {
   accepted: 'You accepted the offer.',
   declined: 'You declined the offer.',
   withdrawn: 'You withdrew your offer.',
+  'offer-sent': 'Your offer was sent to the seller.',
   ordered: 'Your order was placed.',
   'payment-submitted': 'Thank you. Your payment is being confirmed - your order will update to paid shortly.',
   'payment-cancelled': 'Your card payment was cancelled. Your order is still awaiting payment.',
@@ -73,10 +85,38 @@ const MARKETPLACE_SUCCESS_MESSAGES = {
   'coupon-saved': 'Your changes were saved.',
   'coupon-deleted': 'Your coupon was deleted.'
 };
+const MARKETPLACE_SUCCESS_MESSAGE_KEYS = {
+  unsaved: 'govuk_alpha_commerce.saved.status_unsaved',
+  reported: 'govuk_alpha_commerce.report.status_reported',
+  'listing-created': 'listings.create.created',
+  deleted: 'govuk_alpha_commerce.my_listings.status_deleted',
+  renewed: 'govuk_alpha_commerce.my_listings.status_renewed',
+  accepted: 'govuk_alpha_commerce.offers.status_accepted_done',
+  declined: 'govuk_alpha_commerce.offers.status_declined_done',
+  withdrawn: 'govuk_alpha_commerce.offers.status_withdrawn_done',
+  'offer-sent': 'govuk_alpha_commerce.offers.status_offer_sent',
+  ordered: 'govuk_alpha_commerce.orders.status_ordered',
+  'payment-submitted': 'govuk_alpha_commerce.orders.status_payment_submitted',
+  'payment-cancelled': 'govuk_alpha_commerce.orders.status_payment_cancelled',
+  shipped: 'govuk_alpha_commerce.orders.status_shipped_done',
+  confirmed: 'govuk_alpha_commerce.orders.status_confirmed',
+  cancelled: 'govuk_alpha_commerce.orders.status_cancelled_done',
+  rated: 'govuk_alpha_commerce.orders.status_rated',
+  'onboarding-complete': 'govuk_alpha_commerce.onboarding.status_complete',
+  'slot-created': 'govuk_alpha_commerce.slots.status_slot_created',
+  'slot-saved': 'govuk_alpha_commerce.slots.status_slot_saved',
+  'slot-deleted': 'govuk_alpha_commerce.slots.status_slot_deleted',
+  'pickup-confirmed': 'govuk_alpha_commerce.slots.status_pickup_confirmed',
+  'coupon-created': 'govuk_alpha_commerce.coupons.status_coupon_created',
+  'coupon-saved': 'govuk_alpha_commerce.coupons.status_coupon_saved',
+  'coupon-deleted': 'govuk_alpha_commerce.coupons.status_coupon_deleted'
+};
 const MARKETPLACE_ERROR_MESSAGES = {
   'listing-validation': 'Check the listing details and try again.',
   'listing-create-failed': 'Sorry, your listing could not be created. Please try again.',
   'listing-save-failed': 'Sorry, your changes could not be saved. Please try again.',
+  'save-failed': 'Sorry, this item could not be saved. Please try again.',
+  'unsave-failed': 'Sorry, this item could not be removed from your saved list. Please try again.',
   'delete-failed': 'Sorry, the listing could not be deleted.',
   'renew-failed': 'Sorry, the listing could not be renewed.',
   'order-failed': 'Sorry, your order could not be placed. Please try again.',
@@ -107,6 +147,40 @@ const MARKETPLACE_ERROR_MESSAGES = {
   'coupon-create-failed': 'Sorry, your coupon could not be created. Please try again.',
   'coupon-save-failed': 'Sorry, your changes could not be saved. Please try again.',
   'coupon-delete-failed': 'Sorry, your coupon could not be deleted. Please try again.'
+};
+const MARKETPLACE_ERROR_MESSAGE_KEYS = {
+  'listing-create-failed': 'govuk_alpha_commerce.listing_form.error_create',
+  'listing-save-failed': 'govuk_alpha_commerce.listing_form.error_update',
+  'delete-failed': 'govuk_alpha_commerce.my_listings.status_delete_failed',
+  'renew-failed': 'govuk_alpha_commerce.my_listings.status_renew_failed',
+  'order-failed': 'govuk_alpha_commerce.buy.error_generic',
+  'offer-amount-invalid': 'govuk_alpha_commerce.offer.error_amount',
+  'offer-failed': 'govuk_alpha_commerce.offer.error_generic',
+  'report-validation': 'govuk_alpha_commerce.report.error_reason',
+  'report-failed': 'govuk_alpha_commerce.report.status_report_failed',
+  'accept-failed': 'govuk_alpha_commerce.offers.status_action_failed',
+  'decline-failed': 'govuk_alpha_commerce.offers.status_action_failed',
+  'withdraw-failed': 'govuk_alpha_commerce.offers.status_action_failed',
+  'pay-not-pending': 'govuk_alpha_commerce.orders.status_pay_not_pending',
+  'pay-not-required': 'govuk_alpha_commerce.orders.status_pay_not_required',
+  'pay-unavailable': 'govuk_alpha_commerce.orders.status_pay_unavailable',
+  'pay-failed': 'govuk_alpha_commerce.orders.status_pay_failed',
+  'ship-failed': 'govuk_alpha_commerce.orders.status_ship_failed',
+  'confirm-failed': 'govuk_alpha_commerce.orders.status_confirm_failed',
+  'cancel-failed': 'govuk_alpha_commerce.orders.status_cancel_failed',
+  'rate-failed': 'govuk_alpha_commerce.orders.status_rate_failed',
+  'rate-invalid': 'govuk_alpha_commerce.orders.status_rate_invalid',
+  'business-name-required': 'govuk_alpha_commerce.onboarding.error_business_name',
+  'display-name-required': 'govuk_alpha_commerce.onboarding.error_display_name',
+  'onboarding-failed': 'govuk_alpha_commerce.onboarding.status_failed',
+  'slot-create-failed': 'govuk_alpha_commerce.slots.status_slot_create_failed',
+  'slot-save-failed': 'govuk_alpha_commerce.slots.status_slot_save_failed',
+  'slot-delete-failed': 'govuk_alpha_commerce.slots.status_slot_delete_failed',
+  'pickup-scan-failed': 'govuk_alpha_commerce.slots.status_pickup_scan_failed',
+  'coupon-title-required': 'govuk_alpha_commerce.coupons.error_title',
+  'coupon-create-failed': 'govuk_alpha_commerce.coupons.error_create',
+  'coupon-save-failed': 'govuk_alpha_commerce.coupons.status_coupon_save_failed',
+  'coupon-delete-failed': 'govuk_alpha_commerce.coupons.status_coupon_delete_failed'
 };
 const LISTING_STATUS_TABS = ['active', 'draft', 'sold', 'expired'];
 const OFFER_TABS = ['received', 'sent'];
@@ -760,13 +834,39 @@ function ordersPath(role, tab) {
   return `${base}?${params.toString()}`;
 }
 
-function statusEntry(status) {
+function translateMarketplaceMessage(req, translationKey, fallbackMessage) {
+  if (!translationKey) return fallbackMessage;
+
+  const requestTranslator = typeof req?.t === 'function'
+    ? req.t
+    : fallbackTranslator;
+  const translated = requestTranslator(translationKey);
+  return typeof translated === 'string' && translated !== '' && translated !== translationKey
+    ? translated
+    : fallbackMessage;
+}
+
+function statusEntry(req, status) {
   const key = trimmed(status);
   if (MARKETPLACE_SUCCESS_MESSAGES[key]) {
-    return { type: 'success', message: MARKETPLACE_SUCCESS_MESSAGES[key] };
+    return {
+      type: 'success',
+      message: translateMarketplaceMessage(
+        req,
+        MARKETPLACE_SUCCESS_MESSAGE_KEYS[key],
+        MARKETPLACE_SUCCESS_MESSAGES[key]
+      )
+    };
   }
   if (MARKETPLACE_ERROR_MESSAGES[key]) {
-    return { type: 'error', message: MARKETPLACE_ERROR_MESSAGES[key] };
+    return {
+      type: 'error',
+      message: translateMarketplaceMessage(
+        req,
+        MARKETPLACE_ERROR_MESSAGE_KEYS[key],
+        MARKETPLACE_ERROR_MESSAGES[key]
+      )
+    };
   }
   return null;
 }
@@ -885,12 +985,14 @@ router.get('/', asyncRoute(async (req, res) => {
     ]);
     return res.render('marketplace/index', {
       title: 'Marketplace',
+      titleKey: 'marketplace.title',
       activeNav: 'explore',
+      activeTab: 'browse',
       listings: rowsFrom(listingResult).map(decorateListing),
       categories,
       query: trimmed(req.query.q),
       categoryId: positiveInteger(req.query.category_id),
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res);
@@ -905,14 +1007,16 @@ router.get('/create', asyncRoute(async (req, res) => {
     const categories = await loadCategories(token);
     return res.render('marketplace/form', {
       title: 'Create a listing',
+      titleKey: 'govuk_alpha_commerce.listing_form.title_create',
       activeNav: 'explore',
+      activeTab: 'mine',
       mode: 'create',
       isEdit: false,
       listing: blankListing(),
       categories,
       action: '/marketplace/create',
       submitLabel: 'Publish listing',
-      status: statusEntry(req.query.status),
+      status: statusEntry(req, req.query.status),
       ...formOptions()
     });
   } catch (error) {
@@ -930,12 +1034,13 @@ router.get('/mine', asyncRoute(async (req, res) => {
     const counts = countsByStatus(allListings);
     return res.render('marketplace/manage', {
       title: 'My listings',
+      titleKey: 'govuk_alpha_commerce.my_listings.title',
       activeNav: 'explore',
       activeTab: 'mine',
       listings: allListings.filter((listing) => trimmed(listing.status) === tab),
       tab,
       tabs: listingTabs(tab, counts),
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My listings');
@@ -950,6 +1055,7 @@ router.get('/saved', asyncRoute(async (req, res) => {
     const { rows: listings } = await loadListingRows(token, savedListingsPath());
     return res.render('marketplace/listing-list', {
       title: 'Saved items',
+      titleKey: 'govuk_alpha_commerce.saved.title',
       heading: 'Saved items',
       caption: 'Your saved items',
       description: 'Items you have saved to look at later.',
@@ -958,7 +1064,7 @@ router.get('/saved', asyncRoute(async (req, res) => {
       activeTab: 'saved',
       listings,
       mode: 'saved',
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Saved items');
@@ -973,6 +1079,7 @@ router.get('/free', asyncRoute(async (req, res) => {
     const { rows: listings } = await loadListingRows(token, freeListingsPath());
     return res.render('marketplace/listing-list', {
       title: 'Free items',
+      titleKey: 'govuk_alpha_commerce.free_items.title',
       heading: 'Free items',
       caption: 'Free items',
       description: 'Items being given away for free by members of your community.',
@@ -1032,6 +1139,7 @@ router.get('/search', asyncRoute(async (req, res) => {
     ]);
     return res.render('marketplace/search', {
       title: 'Advanced search',
+      titleKey: 'govuk_alpha_commerce.marketplace_advanced.title',
       activeNav: 'explore',
       activeTab: 'browse',
       listings: listingResult.rows,
@@ -1074,11 +1182,12 @@ router.get('/offers', asyncRoute(async (req, res) => {
     const result = await callMarketplace(token, 'GET', offersPath(tab));
     return res.render('marketplace/offers', {
       title: 'My offers',
+      titleKey: 'govuk_alpha_commerce.offers.title',
       activeNav: 'explore',
       activeTab: 'offers',
       tab,
       offers: rowsFrom(result).map((offer) => decorateOffer(offer, tab)),
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My offers');
@@ -1096,6 +1205,9 @@ async function ordersViewModel(req, res, role) {
     const result = await callMarketplace(token, 'GET', ordersPath(role, tab));
     return {
       title: isSeller ? 'Sales' : 'My orders',
+      titleKey: isSeller
+        ? 'govuk_alpha_commerce.orders_seller.title'
+        : 'govuk_alpha_commerce.orders_buyer.title',
       activeNav: 'explore',
       activeTab: isSeller ? 'sales' : 'orders',
       role,
@@ -1108,7 +1220,7 @@ async function ordersViewModel(req, res, role) {
         active: value === tab
       })),
       orders: rowsFrom(result).map((order) => decorateOrder(order, role)),
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     };
   } catch (error) {
     renderMarketplaceError(error, res, isSeller ? 'Sales' : 'My orders');
@@ -1133,8 +1245,9 @@ router.get('/pickups', asyncRoute(async (req, res) => {
     const result = await callMarketplace(token, 'GET', '/me/pickups');
     return res.render('marketplace/pickups', {
       title: 'My collections',
+      titleKey: 'govuk_alpha_commerce.pickups.title',
       activeNav: 'explore',
-      activeTab: 'pickups',
+      activeTab: 'orders',
       reservations: rowsFrom(result).map(decorateReservation)
     });
   } catch (error) {
@@ -1158,6 +1271,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
     const onboarding = onboardingProfile(result);
     return res.render('marketplace/onboarding', {
       title: 'Become a seller',
+      titleKey: 'govuk_alpha_commerce.onboarding.title',
       activeNav: 'explore',
       activeTab: 'sell',
       sellerTypes: SELLER_TYPES.map((value) => ({
@@ -1167,7 +1281,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
       })),
       ...onboarding,
       setupErrorMessage,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Become a seller');
@@ -1182,6 +1296,7 @@ router.get('/slots', asyncRoute(async (req, res) => {
     const slots = await loadPickupSlots(token);
     return res.render('marketplace/slots', {
       title: 'Pickup slots',
+      titleKey: 'govuk_alpha_commerce.slots.title',
       activeNav: 'explore',
       activeTab: 'slots',
       slots,
@@ -1192,7 +1307,7 @@ router.get('/slots', asyncRoute(async (req, res) => {
         isRecurring: false,
         isActive: true
       },
-      status: statusEntry(req.query.status),
+      status: statusEntry(req, req.query.status),
       orderReference: positiveInteger(req.query.order_id)
     });
   } catch (error) {
@@ -1208,12 +1323,13 @@ router.get('/slots/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     const slot = await loadPickupSlot(token, req.params.id);
     return res.render('marketplace/slot-form', {
       title: 'Edit pickup slot',
+      titleKey: 'govuk_alpha_commerce.slots.title_edit',
       activeNav: 'explore',
       activeTab: 'slots',
       slot,
       action: `/marketplace/slots/${slot.id}/update`,
       submitLabel: 'Save changes',
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Edit pickup slot');
@@ -1228,10 +1344,11 @@ router.get('/coupons', asyncRoute(async (req, res) => {
     const coupons = await loadSellerCoupons(token);
     return res.render('marketplace/coupons', {
       title: 'My coupons',
+      titleKey: 'govuk_alpha_commerce.coupons.title',
       activeNav: 'explore',
-      activeTab: 'coupons',
+      activeTab: 'sell',
       coupons,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My coupons');
@@ -1244,8 +1361,9 @@ router.get('/coupons/new', asyncRoute(async (req, res) => {
 
   return res.render('marketplace/coupon-form', {
     title: 'Create a coupon',
+    titleKey: 'govuk_alpha_commerce.coupons.title_create',
     activeNav: 'explore',
-    activeTab: 'coupons',
+    activeTab: 'sell',
     mode: 'create',
     isEdit: false,
     coupon: decorateCoupon({ discount_type: 'percent', status: 'draft' }),
@@ -1253,7 +1371,7 @@ router.get('/coupons/new', asyncRoute(async (req, res) => {
     submitLabel: 'Create coupon',
     discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
     statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
-    status: statusEntry(req.query.status)
+    status: statusEntry(req, req.query.status)
   });
 }));
 
@@ -1265,8 +1383,9 @@ router.get('/coupons/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     const coupon = await loadSellerCoupon(token, req.params.id);
     return res.render('marketplace/coupon-form', {
       title: 'Edit your coupon',
+      titleKey: 'govuk_alpha_commerce.coupons.title_edit',
       activeNav: 'explore',
-      activeTab: 'coupons',
+      activeTab: 'sell',
       mode: 'edit',
       isEdit: true,
       coupon,
@@ -1274,7 +1393,7 @@ router.get('/coupons/:id(\\d+)/edit', asyncRoute(async (req, res) => {
       submitLabel: 'Save changes',
       discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
       statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Edit your coupon');
@@ -1292,14 +1411,16 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     ]);
     return res.render('marketplace/form', {
       title: 'Edit your listing',
+      titleKey: 'govuk_alpha_commerce.listing_form.title_edit',
       activeNav: 'explore',
+      activeTab: 'mine',
       mode: 'edit',
       isEdit: true,
       listing,
       categories,
       action: `/marketplace/${listing.id}/update`,
       submitLabel: 'Save changes',
-      status: statusEntry(req.query.status),
+      status: statusEntry(req, req.query.status),
       ...formOptions()
     });
   } catch (error) {
@@ -1315,9 +1436,10 @@ router.get('/:id(\\d+)/buy', asyncRoute(async (req, res) => {
     const listing = await loadListing(token, req.params.id);
     return res.render('marketplace/buy', {
       title: 'Confirm your purchase',
+      titleKey: 'govuk_alpha_commerce.buy.title',
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Confirm your purchase');
@@ -1332,9 +1454,10 @@ router.get('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
     const listing = await loadListing(token, req.params.id);
     return res.render('marketplace/offer', {
       title: 'Make an offer',
+      titleKey: 'govuk_alpha_commerce.offer.title',
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Make an offer');
@@ -1349,9 +1472,10 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
     const listing = await loadListing(token, req.params.id);
     return res.render('marketplace/report', {
       title: 'Report a listing',
+      titleKey: 'govuk_alpha_commerce.report.title',
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req.query.status),
+      status: statusEntry(req, req.query.status),
       reasons: reportReasons()
     });
   } catch (error) {
@@ -1369,7 +1493,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
       title: listing.title,
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req, req.query.status)
     });
   } catch (error) {
     return renderMarketplaceError(error, res);
