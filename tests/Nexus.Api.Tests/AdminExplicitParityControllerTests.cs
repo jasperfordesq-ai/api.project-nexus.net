@@ -2006,6 +2006,83 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTierUpdate_ReturnsLaravelReactTierAndPersistsMetadata()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id
+                    && (p.Name == "Steward Circle" || p.Name == "Steward Circle Plus"))
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "steward-circle",
+            name = "Steward Circle",
+            monthly_price_cents = 2500,
+            yearly_price_cents = 24000,
+            features = new[] { "old_feature" },
+            sort_order = 3,
+            is_active = true
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var id = createJson.GetProperty("data").GetProperty("tier").GetProperty("id").GetInt32();
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/member-premium/tiers/{id}", new
+        {
+            slug = "steward-circle-plus",
+            name = "Steward Circle Plus",
+            description = "Updated stewardship recognition",
+            monthly_price_cents = 3000,
+            yearly_price_cents = 30000,
+            features = new[] { "new_feature", "priority_support" },
+            sort_order = 4,
+            is_active = false
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tier = updateJson.GetProperty("data").GetProperty("tier");
+        tier.GetProperty("id").GetInt32().Should().Be(id);
+        tier.GetProperty("slug").GetString().Should().Be("steward-circle-plus");
+        tier.GetProperty("name").GetString().Should().Be("Steward Circle Plus");
+        tier.GetProperty("description").GetString().Should().Be("Updated stewardship recognition");
+        tier.GetProperty("monthly_price_cents").GetInt32().Should().Be(3000);
+        tier.GetProperty("yearly_price_cents").GetInt32().Should().Be(30000);
+        tier.GetProperty("features").EnumerateArray().Select(v => v.GetString())
+            .Should().Equal("new_feature", "priority_support");
+        tier.GetProperty("sort_order").GetInt32().Should().Be(4);
+        tier.GetProperty("is_active").GetBoolean().Should().BeFalse();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var plan = await db.SubscriptionPlans.IgnoreQueryFilters().SingleAsync(p => p.Id == id);
+            plan.Name.Should().Be("Steward Circle Plus");
+            plan.Description.Should().Be("Updated stewardship recognition");
+            plan.Price.Should().Be(30.00m);
+            plan.IsActive.Should().BeFalse();
+            plan.Features.Should().Contain("new_feature");
+        }
+
+        var detail = await Client.GetAsync($"/api/v2/admin/member-premium/tiers/{id}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var detailTier = detailJson.GetProperty("data").GetProperty("tier");
+        detailTier.GetProperty("slug").GetString().Should().Be("steward-circle-plus");
+        detailTier.GetProperty("yearly_price_cents").GetInt32().Should().Be(30000);
+        detailTier.GetProperty("sort_order").GetInt32().Should().Be(4);
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();

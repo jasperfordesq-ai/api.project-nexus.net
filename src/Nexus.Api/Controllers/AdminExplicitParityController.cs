@@ -1123,6 +1123,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
             "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
+            _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await UpdateMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await UpdateGroup(groupId),
@@ -4019,6 +4020,118 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> UpdateMemberPremiumAdminTier(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var plan = await _db.SubscriptionPlans
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (plan == null)
+        {
+            return NotFound(new
+            {
+                error = "TIER_NOT_FOUND",
+                message = "Member premium tier not found."
+            });
+        }
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var metadata = await LoadMemberPremiumTierMetadata(id) ?? new MemberPremiumTierMetadata
+        {
+            Slug = Slugify(plan.Name),
+            MonthlyPriceCents = ToCents(plan.Price),
+            YearlyPriceCents = ToCents(plan.Price * 12m),
+            Features = NormalizePlanFeatures(plan.Features).ToList(),
+            CreatedAt = plan.CreatedAt,
+            UpdatedAt = plan.UpdatedAt
+        };
+
+        if (TryGetPayloadProperty(payload, "slug", out _))
+        {
+            var slug = JsonString(payload, "slug") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                return UnprocessableEntity(new
+                {
+                    error = "VALIDATION_ERROR",
+                    message = "Missing required field: slug",
+                    field = "slug"
+                });
+            }
+
+            if (!IsValidMemberPremiumTierSlug(slug))
+            {
+                return UnprocessableEntity(new
+                {
+                    error = "VALIDATION_ERROR",
+                    message = "Invalid member premium tier slug.",
+                    field = "slug"
+                });
+            }
+
+            metadata.Slug = slug;
+        }
+
+        if (TryGetPayloadProperty(payload, "name", out _))
+        {
+            plan.Name = JsonString(payload, "name") ?? string.Empty;
+        }
+
+        if (TryGetPayloadProperty(payload, "description", out _))
+        {
+            var description = JsonString(payload, "description");
+            plan.Description = string.IsNullOrWhiteSpace(description) ? null : description;
+        }
+
+        if (TryGetPayloadProperty(payload, "monthly_price_cents", out _))
+        {
+            metadata.MonthlyPriceCents = JsonInt(payload, "monthly_price_cents", 0, 0, int.MaxValue);
+            metadata.StripePriceIdMonthly = null;
+            metadata.StripePriceAccountId = null;
+            plan.Price = metadata.MonthlyPriceCents / 100m;
+        }
+
+        if (TryGetPayloadProperty(payload, "yearly_price_cents", out _))
+        {
+            metadata.YearlyPriceCents = JsonInt(payload, "yearly_price_cents", 0, 0, int.MaxValue);
+            metadata.StripePriceIdYearly = null;
+            metadata.StripePriceAccountId = null;
+        }
+
+        if (TryGetPayloadProperty(payload, "sort_order", out _))
+        {
+            metadata.SortOrder = JsonInt(payload, "sort_order", 0, int.MinValue, int.MaxValue);
+        }
+
+        if (TryGetPayloadProperty(payload, "features", out _))
+        {
+            metadata.Features = JsonStringList(payload, "features");
+            plan.Features = JsonSerializer.Serialize(metadata.Features, StoreJsonOptions);
+        }
+
+        if (TryGetPayloadProperty(payload, "is_active", out _))
+        {
+            plan.IsActive = JsonBool(payload, "is_active", fallback: plan.IsActive);
+        }
+
+        var now = DateTime.UtcNow;
+        plan.UpdatedAt = now;
+        metadata.UpdatedAt = now;
+        await SaveMemberPremiumTierMetadata(id, metadata);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                tier = MapMemberPremiumAdminTierDetail(plan, metadata)
+            }
+        });
+    }
+
     private async Task<IActionResult> PutMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -6125,6 +6238,21 @@ public class AdminExplicitParityController : ControllerBase
         }
 
         return null;
+    }
+
+    private static bool TryGetPayloadProperty(Dictionary<string, JsonElement> payload, string key, out JsonElement value)
+    {
+        foreach (var item in payload)
+        {
+            if (string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                value = item.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     private static bool JsonBool(Dictionary<string, JsonElement> payload, string key, bool fallback)
