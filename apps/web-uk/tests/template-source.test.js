@@ -1224,6 +1224,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/listings/);
   });
 
+  it('keeps message route redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'messages.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|messages)/);
+    expect(route).not.toMatch(/res\.redirect\(`\/messages/);
+    expect(route).not.toContain('res.redirect(loginRedirect())');
+    expect(route).toContain('redirectTo(res,');
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps wallet links and forms behind urlFor()', () => {
     const templates = [
       path.join('wallet', 'index.njk'),

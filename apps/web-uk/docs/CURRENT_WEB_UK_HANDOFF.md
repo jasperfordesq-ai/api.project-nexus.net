@@ -1473,6 +1473,17 @@ accessible `/messages/new/{userId}` route, and generated prep pages preserve
 Laravel `whereNumber(...)` constraints so `/messages/{userId}` no longer
 overmatches `/messages/new`.
 
+Latest focused messages redirect slice: direct and group message POST outcomes
+now route through the active `res.locals.urlFor` helper. This covers archive,
+restore, direct edit/delete/translate/voice/send outcomes, group create/reply,
+member add/remove, self-leave, and reaction redirects so shared tenant mounts
+and custom-domain child paths do not rely only on response rewriting for
+Laravel-style `/messages...` status locations. A scoped Laravel runtime smoke
+against temporary Web UK `http://127.0.0.1:6623`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed base auth/cookie/logout
+checks plus `/messages/groups`, `/messages/groups/new`, `/messages/77`, and
+`/messages/new/77` body markers.
+
 Latest focused wallet route slice: legacy local GET-only `/wallet/transactions`,
 `/wallet/transactions/{id}`, and `/wallet/transfer` pages were removed. Wallet
 navigation now points to Laravel's accessible `/wallet/manage` flow while

@@ -35,6 +35,17 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, pathname) {
+  const helper = res?.locals && typeof res.locals.urlFor === 'function'
+    ? res.locals.urlFor
+    : (value) => value;
+  return helper(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(urlFor(res, pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -93,7 +104,7 @@ function isAuthError(error) {
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -309,7 +320,7 @@ function translateFailureStatus(error) {
 
 router.post('/:id(\\d+)/archive', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'conversation-archived';
@@ -320,12 +331,12 @@ router.post('/:id(\\d+)/archive', asyncRoute(async (req, res) => {
     status = 'conversation-archive-failed';
   }
 
-  return res.redirect(statusRedirect('/messages', status));
+  return redirectTo(res, statusRedirect('/messages', status));
 }));
 
 router.post('/:id(\\d+)/restore', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
   let status = 'conversation-restored';
@@ -336,18 +347,18 @@ router.post('/:id(\\d+)/restore', asyncRoute(async (req, res) => {
     status = 'conversation-restore-failed';
   }
 
-  return res.redirect(`/messages?archived=1&status=${encodeURIComponent(status)}`);
+  return redirectTo(res, `/messages?archived=1&status=${encodeURIComponent(status)}`);
 }));
 
 router.post('/:userId(\\d+)/m/:messageId(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const messageId = Number(req.params.messageId);
   const body = trimmed(req.body.body, 10000);
   if (body === '') {
-    return res.redirect(messageRedirect(userId, 'message-empty'));
+    return redirectTo(res, messageRedirect(userId, 'message-empty'));
   }
 
   let status = 'message-edited';
@@ -358,12 +369,12 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/edit', asyncRoute(async (req, res
     status = editFailureStatus(error);
   }
 
-  return res.redirect(messageRedirect(userId, status));
+  return redirectTo(res, messageRedirect(userId, status));
 }));
 
 router.post('/:userId(\\d+)/m/:messageId(\\d+)/delete', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const messageId = Number(req.params.messageId);
@@ -376,17 +387,17 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/delete', asyncRoute(async (req, r
     status = 'message-delete-failed';
   }
 
-  return res.redirect(messageRedirect(userId, status));
+  return redirectTo(res, messageRedirect(userId, status));
 }));
 
 router.post('/:userId(\\d+)/m/:messageId(\\d+)/translate', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const messageId = Number(req.params.messageId);
   if (!tenantFeatureEnabled(req, 'message_translation', true)) {
-    return res.redirect(messageRedirect(userId, 'translate-unavailable', `#m-${messageId}`));
+    return redirectTo(res, messageRedirect(userId, 'translate-unavailable', `#m-${messageId}`));
   }
 
   const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
@@ -400,17 +411,17 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/translate', asyncRoute(async (req
     status = translateFailureStatus(error);
   }
 
-  return res.redirect(messageRedirect(userId, status, `#m-${messageId}`));
+  return redirectTo(res, messageRedirect(userId, status, `#m-${messageId}`));
 }));
 
 router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const userId = Number(req.params.userId);
   const file = uploadedFile(req, 'voice');
   if (!file) {
-    return res.redirect(messageRedirect(userId, 'voice-required'));
+    return redirectTo(res, messageRedirect(userId, 'voice-required'));
   }
 
   try {
@@ -426,17 +437,17 @@ router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(messageRedirect(userId, 'voice-failed'));
+    return redirectTo(res, messageRedirect(userId, 'voice-failed'));
   } finally {
     await removeUploadedFile(file);
   }
 
-  return res.redirect(messageRedirect(userId, 'message-sent'));
+  return redirectTo(res, messageRedirect(userId, 'message-sent'));
 }));
 
 router.post('/groups', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const payload = {
     name: trimmed(req.body.name),
@@ -448,23 +459,23 @@ router.post('/groups', asyncRoute(async (req, res) => {
     const data = dataFrom(result);
     const conversationId = positiveInteger(data && (data.id || data.conversation_id || (data.conversation && data.conversation.id)));
     if (conversationId !== null) {
-      return res.redirect(groupRedirect(conversationId, 'group-created'));
+      return redirectTo(res, groupRedirect(conversationId, 'group-created'));
     }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
-  return res.redirect(statusRedirect('/messages/groups/new', 'group-create-failed'));
+  return redirectTo(res, statusRedirect('/messages/groups/new', 'group-create-failed'));
 }));
 
 router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const conversationId = Number(req.params.conversationId);
   const body = trimmed(req.body.body, 10000);
-  if (body === '') return res.redirect(groupRedirect(conversationId, 'group-message-empty'));
-  if (String(req.body.body || '').length > 10000) return res.redirect(groupRedirect(conversationId, 'group-message-too-long'));
+  if (body === '') return redirectTo(res, groupRedirect(conversationId, 'group-message-empty'));
+  if (String(req.body.body || '').length > 10000) return redirectTo(res, groupRedirect(conversationId, 'group-message-too-long'));
 
   let status = 'group-message-sent';
   try {
@@ -474,16 +485,16 @@ router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 403 ? 'group-message-forbidden' : 'group-message-failed';
   }
 
-  return res.redirect(groupRedirect(conversationId, status));
+  return redirectTo(res, groupRedirect(conversationId, status));
 }));
 
 router.post('/groups/:conversationId(\\d+)/members', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const conversationId = Number(req.params.conversationId);
   const userId = positiveInteger(req.body.user_id);
-  if (userId === null) return res.redirect(groupRedirect(conversationId, 'group-member-invalid'));
+  if (userId === null) return redirectTo(res, groupRedirect(conversationId, 'group-member-invalid'));
 
   let status = 'group-member-added';
   try {
@@ -493,12 +504,12 @@ router.post('/groups/:conversationId(\\d+)/members', asyncRoute(async (req, res)
     status = groupMemberFailureStatus(error);
   }
 
-  return res.redirect(groupRedirect(conversationId, status));
+  return redirectTo(res, groupRedirect(conversationId, status));
 }));
 
 router.post('/groups/:conversationId(\\d+)/members/:targetUserId(\\d+)/remove', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const conversationId = Number(req.params.conversationId);
   const targetUserId = Number(req.params.targetUserId);
@@ -512,18 +523,18 @@ router.post('/groups/:conversationId(\\d+)/members/:targetUserId(\\d+)/remove', 
   }
 
   return selfLeave
-    ? res.redirect(statusRedirect('/messages/groups', status))
-    : res.redirect(groupRedirect(conversationId, status));
+    ? redirectTo(res, statusRedirect('/messages/groups', status))
+    : redirectTo(res, groupRedirect(conversationId, status));
 }));
 
 router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
 
   const conversationId = Number(req.params.conversationId);
   const messageId = Number(req.params.messageId);
   const emoji = trimmed(req.body.emoji, 16);
-  if (emoji === '') return res.redirect(groupRedirect(conversationId, 'reaction-invalid', `#m-${messageId}`));
+  if (emoji === '') return redirectTo(res, groupRedirect(conversationId, 'reaction-invalid', `#m-${messageId}`));
 
   let status = 'reaction-added';
   try {
@@ -535,7 +546,7 @@ router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute
     status = error instanceof ApiError && error.status === 403 ? 'reaction-forbidden' : 'reaction-failed';
   }
 
-  return res.redirect(groupRedirect(conversationId, status, `#m-${messageId}`));
+  return redirectTo(res, groupRedirect(conversationId, status, `#m-${messageId}`));
 }));
 
 router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
@@ -737,7 +748,7 @@ router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (re
     if (req.flash) {
       req.flash('error', 'Enter a message or add an attachment');
     }
-    return res.redirect(`/messages/${conversationId}`);
+    return redirectTo(res, `/messages/${conversationId}`);
   }
 
   try {
@@ -760,13 +771,13 @@ router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (re
     if (req.flash) {
       req.flash('success', 'Message sent');
     }
-    res.redirect(`/messages/${conversationId}`);
+    return redirectTo(res, `/messages/${conversationId}`);
   } catch (error) {
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to send message');
       }
-      return res.redirect(`/messages/${conversationId}`);
+      return redirectTo(res, `/messages/${conversationId}`);
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   } finally {

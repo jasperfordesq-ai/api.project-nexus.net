@@ -474,6 +474,14 @@ group create/search/member/reaction forms, and leave-group controls through
 `urlFor()`. The source-level regression first failed on raw `/messages`,
 `/members`, and `/connections` targets, then passed after conversion; a source
 scan for message-local raw `href`/`action` strings returns no matches.
+Message route-level redirects now also use a route-local helper backed by
+`res.locals.urlFor` for direct archive/restore/edit/delete/translate/voice/send
+outcomes and group create/reply/member/reaction outcomes. A focused source
+regression guards against raw `/login` and `/messages` `res.redirect(...)`
+targets returning to `src/routes/messages.js`. A scoped Laravel runtime smoke
+against temporary Web UK `http://127.0.0.1:6623`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed base auth/cookie/logout
+checks plus signed message list/create/detail body markers.
 
 The twenty-third template-helper source slice extends direct `urlFor()`
 conversion into wallet pages. `src/views/wallet/index.njk` and
