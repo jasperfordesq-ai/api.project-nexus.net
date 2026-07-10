@@ -148,6 +148,7 @@ router.get('/accessibility', (req, res) => {
 
   return res.render('legal/accessibility', {
     title: 'Accessibility statement',
+    titleKey: 'accessibility.title',
     activeNav: 'accessibility',
     communityName: community,
     features: ACCESSIBILITY_FEATURES
@@ -159,6 +160,7 @@ router.get('/legal', (req, res) => {
 
   return res.render('legal/hub', {
     title: 'Legal',
+    titleKey: 'legal.hub_title',
     activeNav: 'legal',
     communityName: community,
     documents: [

@@ -75,7 +75,7 @@
           {% if isOwner and item.id %}
             <form method="post" action="{{ urlFor('/me/collections/' + (collection.id | string) + '/items/' + (item.id | string) + '/remove') }}" class="govuk-!-margin-bottom-0">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="Remove {{ item.title }} from this collection">Remove</button>
+              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="{{ t('govuk_alpha_saved.detail.remove_item_label', { title: item.title }) }}">Remove</button>
             </form>
           {% endif %}
         </li>
@@ -89,7 +89,7 @@
   {% endif %}
 
   {% if lastPage > 1 %}
-    <nav class="govuk-pagination" role="navigation" aria-label="Page {{ currentPage }} of {{ lastPage }}">
+    <nav class="govuk-pagination" role="navigation" aria-label="{{ t('govuk_alpha_saved.pagination.page_of', { current: currentPage, last: lastPage }) }}">
       {% if currentPage > 1 %}
         <div class="govuk-pagination__prev">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/me/collections/' + (collection.id | string) + '?page=' + ((currentPage - 1) | string)) }}" rel="prev">
@@ -119,7 +119,7 @@
           <div class="govuk-form-group{% if editNameError %} govuk-form-group--error{% endif %}">
             <label class="govuk-label" for="edit-collection-name">Collection name</label>
             {% if editNameError %}
-              <p id="edit-collection-name-error" class="govuk-error-message"><span class="govuk-visually-hidden">There is a problem:</span> {{ errorMessage }}</p>
+              <p id="edit-collection-name-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_title") }}:</span> {{ errorMessage }}</p>
             {% endif %}
             <input class="govuk-input govuk-!-width-two-thirds{% if editNameError %} govuk-input--error{% endif %}" id="edit-collection-name" name="name" type="text" maxlength="255" value="{{ collection.name }}" {% if editNameError %}aria-describedby="edit-collection-name-error"{% endif %}>
           </div>
@@ -129,7 +129,7 @@
           </div>
           <div class="govuk-form-group">
             <fieldset class="govuk-fieldset">
-              <legend class="govuk-fieldset__legend govuk-visually-hidden">Make this collection public</legend>
+              <legend class="govuk-fieldset__legend govuk-visually-hidden">{{ t("govuk_alpha_saved.edit.public_label") }}</legend>
               <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
                 <div class="govuk-checkboxes__item">
                   <input class="govuk-checkboxes__input" id="edit-collection-public" name="is_public" type="checkbox" value="1" {% if collection.isPublic %}checked{% endif %}>
@@ -150,7 +150,7 @@
         </div>
         <form method="post" action="{{ urlFor('/me/collections/' + (collection.id | string) + '/delete') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button" aria-label="Delete the collection {{ collection.name }}">Delete collection</button>
+          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button" aria-label="{{ t('govuk_alpha_saved.edit.delete_confirm_label', { name: collection.name }) }}">Delete collection</button>
         </form>
       </div>
     </details>

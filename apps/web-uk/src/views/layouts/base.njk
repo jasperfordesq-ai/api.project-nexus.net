@@ -28,12 +28,13 @@
 {% set shellRegister = t('nav.register') if t else 'Register' %}
 {% set shellPhase = t('phase') if t else 'Beta' %}
 {% set shellFeedback = t('feedback') if t else 'Give feedback' %}
+{% set resolvedPageTitle = t(titleKey, titleReplacements) if titleKey and t else title %}
 
 <!DOCTYPE html>
 <html lang="{{ htmlLang or 'en' }}" dir="{{ htmlDirection or 'ltr' }}" class="govuk-template{% if htmlClasses %} {{ htmlClasses }}{% endif %}">
   <head>
     <meta charset="utf-8">
-    <title{% if pageTitleLang %} lang="{{ pageTitleLang }}"{% endif %}>{% block pageTitle %}{{ title }} - {{ serviceName }}{% endblock %}</title>
+    <title{% if pageTitleLang %} lang="{{ pageTitleLang }}"{% endif %}>{% block pageTitle %}{{ resolvedPageTitle }} - {{ serviceName }}{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="{{ themeColor }}">
 

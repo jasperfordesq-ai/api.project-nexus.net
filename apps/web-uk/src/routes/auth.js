@@ -7,8 +7,103 @@ const express = require('express');
 const { login, register, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
 const { setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { createTranslator } = require('../lib/localization');
 
 const router = express.Router();
+const fallbackTranslator = createTranslator('en');
+
+const LOGIN_SUCCESS_STATUS_KEYS = Object.freeze({
+  'verification-resent': 'auth.verification_resent',
+  'password-reset': 'auth.password_reset',
+  'register-created': 'auth.register_created',
+  'signed-out': 'auth.signed_out',
+  'account-deletion-requested': 'delete_account.success'
+});
+
+const LOGIN_ERROR_STATUS_KEYS = Object.freeze({
+  'auth-required': 'states.auth_required',
+  'login-failed': 'auth.login_failed',
+  'two-factor-required': 'auth.two_factor_required',
+  'two-factor-expired': 'auth.two_factor_expired',
+  'rate-limited': 'auth.rate_limited',
+  'email-not-verified': 'auth.email_not_verified',
+  'pending-verification': 'auth.pending_verification',
+  'account-suspended': 'auth.account_suspended'
+});
+
+const TWO_FACTOR_ERROR_STATUS_KEYS = Object.freeze({
+  'two-factor-code-required': 'auth.two_factor_code_required',
+  'two-factor-invalid': 'auth.two_factor_invalid',
+  'two-factor-failed': 'auth.two_factor_failed'
+});
+
+const REGISTER_ERROR_STATUS_KEYS = Object.freeze({
+  'register-failed': 'auth.register_failed',
+  'register-duplicate': 'auth.register_duplicate',
+  'register-password-pwned': 'auth.register_password_pwned',
+  'register-password-mismatch': 'auth.register_password_mismatch',
+  'register-validation': 'auth.register_validation'
+});
+
+const RESET_ERROR_STATUS_KEYS = Object.freeze({
+  'reset-token-missing': 'auth.reset_link_invalid_title',
+  'reset-token-invalid': 'auth.reset_link_invalid_title',
+  'reset-weak': 'auth.reset_weak',
+  'reset-pwned': 'auth.reset_pwned',
+  'reset-reused': 'auth.reset_reused',
+  'reset-mismatch': 'auth.reset_mismatch',
+  'reset-failed': 'auth.reset_failed',
+  'reset-rate-limited': 'auth.reset_rate_limited'
+});
+
+function translate(req, key, replacements = {}) {
+  const requestTranslator = typeof req.t === 'function' ? req.t : fallbackTranslator;
+  return requestTranslator(key, replacements);
+}
+
+function statusMessage(req, status, statusKeys) {
+  const key = statusKeys[String(status || '')];
+  return key ? translate(req, key) : '';
+}
+
+function firstFlashValue(req, name) {
+  if (typeof req.flash !== 'function') return '';
+  const values = req.flash(name);
+  return Array.isArray(values) ? values[0] || '' : '';
+}
+
+function setAuthStatus(req, status) {
+  if (typeof req.flash === 'function') {
+    req.flash('authStatus', status);
+  }
+}
+
+function errorCode(error) {
+  const data = error?.data;
+  const firstError = Array.isArray(data?.errors) ? data.errors[0] : null;
+  return String(firstError?.code || data?.code || '').trim().toUpperCase();
+}
+
+function registrationErrorKey(error) {
+  const code = errorCode(error);
+  if (code === 'VALIDATION_DUPLICATE' || error?.status === 409) return 'auth.register_duplicate';
+  if (code === 'PASSWORD_PWNED') return 'auth.register_password_pwned';
+  if (code === 'PASSWORD_MISMATCH') return 'auth.register_password_mismatch';
+  if (code === 'VALIDATION_ERROR') return 'auth.register_validation';
+  return 'auth.register_failed';
+}
+
+function resetErrorKey(error) {
+  const code = errorCode(error);
+  if (code.includes('PWNED')) return 'auth.reset_pwned';
+  if (code.includes('REUSED')) return 'auth.reset_reused';
+  if (code.includes('WEAK')) return 'auth.reset_weak';
+  if (code.includes('TOKEN') || error?.status === 400 || error?.status === 404) {
+    return 'auth.reset_link_invalid_title';
+  }
+  if (error?.status === 429) return 'auth.reset_rate_limited';
+  return 'auth.reset_failed';
+}
 
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
@@ -25,10 +120,16 @@ function tenantSlugForRequest(req) {
 }
 
 router.get('/login', (req, res) => {
+  const flashedStatus = firstFlashValue(req, 'authStatus');
+  const legacySuccessMessage = firstFlashValue(req, 'success');
+  const status = String(req.query.status || flashedStatus || '');
   res.render('login', {
-    title: 'Sign in',
+    title: translate(req, 'auth.login_title'),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
+    successMessage: statusMessage(req, status, LOGIN_SUCCESS_STATUS_KEYS)
+      || legacySuccessMessage
+      || null,
+    error: statusMessage(req, status, LOGIN_ERROR_STATUS_KEYS) || null,
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
 });
@@ -39,7 +140,7 @@ router.post('/login', asyncRoute(async (req, res) => {
 
   if (!email || !password || !tenantSlug) {
     return res.render('login', {
-      title: 'Sign in',
+      title: translate(req, 'auth.login_title'),
       error: 'Enter your email, password and tenant',
       values: { email, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
@@ -79,16 +180,23 @@ router.post('/login', asyncRoute(async (req, res) => {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
-    let errorMessage = 'Unable to sign in. Check your details and try again.';
+    let errorMessage = translate(req, 'auth.login_failed');
 
     if (error instanceof ApiError) {
-      if (error.status === 401) {
-        errorMessage = 'Email, password or tenant is incorrect';
+      const code = errorCode(error);
+      if (error.status === 429 || ['RATE_LIMIT_EXCEEDED', 'RATE_LIMITED'].includes(code)) {
+        errorMessage = translate(req, 'auth.rate_limited');
+      } else if (code === 'AUTH_EMAIL_NOT_VERIFIED') {
+        errorMessage = translate(req, 'auth.email_not_verified');
+      } else if (code === 'AUTH_PENDING_VERIFICATION') {
+        errorMessage = translate(req, 'auth.pending_verification');
+      } else if (code === 'AUTH_ACCOUNT_SUSPENDED') {
+        errorMessage = translate(req, 'auth.account_suspended');
       }
     }
 
     res.render('login', {
-      title: 'Sign in',
+      title: translate(req, 'auth.login_title'),
       error: errorMessage,
       values: { email, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',
@@ -108,9 +216,9 @@ async function handleTwoFactorPost(req, res) {
 
   if (!code || !code.trim()) {
     return res.render('login', {
-      title: 'Sign in',
+      title: translate(req, 'auth.two_factor_title'),
       show2fa: true,
-      error: 'Enter your authentication code',
+      error: translate(req, 'auth.two_factor_code_required'),
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
@@ -131,9 +239,9 @@ async function handleTwoFactorPost(req, res) {
     }
 
     res.render('login', {
-      title: 'Sign in',
+      title: translate(req, 'auth.two_factor_title'),
       show2fa: true,
-      error: 'Invalid code. Please try again.',
+      error: translate(req, 'auth.two_factor_invalid'),
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -146,9 +254,9 @@ router.get('/login/two-factor', (req, res) => {
   }
 
   res.render('login', {
-    title: 'Two-factor authentication',
+    title: translate(req, 'auth.two_factor_title'),
     show2fa: true,
-    error: req.query.status ? 'Enter your authentication code' : '',
+    error: statusMessage(req, req.query.status, TWO_FACTOR_ERROR_STATUS_KEYS),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -201,8 +309,10 @@ async function verifyTurnstile(token, remoteIp) {
 
 // Registration
 router.get('/register', (req, res) => {
+  const statusError = statusMessage(req, req.query.status, REGISTER_ERROR_STATUS_KEYS);
   res.render('register', {
-    title: 'Register',
+    title: translate(req, 'auth.register_title'),
+    errors: statusError ? [{ text: statusError }] : [],
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -234,7 +344,7 @@ router.post('/register', asyncRoute(async (req, res) => {
   const turnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
   if (!(await verifyTurnstile(turnstileToken, req.ip))) {
     return res.render('register', {
-      title: 'Register',
+      title: translate(req, 'auth.register_title'),
       errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
       fieldErrors: {},
       values: { ...(req.body || {}), tenant_slug: tenantSlug },
@@ -259,11 +369,13 @@ router.post('/register', asyncRoute(async (req, res) => {
   }
 
   if (!email || !email.trim()) {
-    errors.push({ text: 'Enter your email address', href: '#email' });
-    fieldErrors.email = 'Enter your email address';
+    const message = translate(req, 'auth.forgot_invalid');
+    errors.push({ text: message, href: '#email' });
+    fieldErrors.email = message;
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.push({ text: 'Enter a valid email address', href: '#email' });
-    fieldErrors.email = 'Enter a valid email address';
+    const message = translate(req, 'auth.forgot_invalid');
+    errors.push({ text: message, href: '#email' });
+    fieldErrors.email = message;
   }
 
   if (!tenantSlug) {
@@ -280,13 +392,14 @@ router.post('/register', asyncRoute(async (req, res) => {
   }
 
   if (password !== confirm_password) {
-    errors.push({ text: 'Passwords do not match', href: '#confirm_password' });
-    fieldErrors.confirm_password = 'Passwords do not match';
+    const message = translate(req, 'auth.register_password_mismatch');
+    errors.push({ text: message, href: '#confirm_password' });
+    fieldErrors.confirm_password = message;
   }
 
   if (errors.length > 0) {
     return res.render('register', {
-      title: 'Register',
+      title: translate(req, 'auth.register_title'),
       errors,
       fieldErrors,
       values: { email, first_name, last_name, tenant_slug: tenantSlug },
@@ -317,9 +430,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     }
 
     // If auto-login fails, redirect to login page
-    if (req.flash) {
-      req.flash('success', 'Account created. Please sign in.');
-    }
+    setAuthStatus(req, 'register-created');
     return redirectTo(res, '/login');
   } catch (error) {
     // Handle ApiOfflineError specially for 503
@@ -327,16 +438,14 @@ router.post('/register', asyncRoute(async (req, res) => {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
-    let errorMessage = 'Unable to create account. Please try again.';
+    let errorMessage = translate(req, 'auth.register_failed');
 
     if (error instanceof ApiError) {
-      if (error.status === 400 || error.status === 409) {
-        errorMessage = error.message || 'This email address is already registered';
-      }
+      errorMessage = translate(req, registrationErrorKey(error));
     }
 
     res.render('register', {
-      title: 'Register',
+      title: translate(req, 'auth.register_title'),
       errors: [{ text: errorMessage }],
       fieldErrors: error.data?.errors || {},
       values: { email, first_name, last_name, tenant_slug: tenantSlug },
@@ -374,12 +483,17 @@ router.post('/logout', asyncRoute(async (req, res) => {
 // Forgot password
 function renderForgotPassword(req, res) {
   const status = req.query.status || '';
+  const errorKey = status === 'forgot-rate-limited'
+    ? 'auth.forgot_rate_limited'
+    : (status === 'forgot-invalid' ? 'auth.forgot_invalid' : '');
   res.render('forgot-password', {
-    title: 'Reset your password',
+    title: translate(req, 'auth.forgot_title'),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: status === 'forgot-sent'
-      ? 'If an account exists with this email, we have sent password reset instructions.'
-      : (req.flash ? req.flash('success')[0] : null),
+      ? translate(req, 'auth.forgot_sent_detail')
+      : null,
+    errors: errorKey ? [{ text: translate(req, errorKey), href: '#email' }] : [],
+    fieldErrors: errorKey ? { email: translate(req, errorKey) } : {},
     formAction: '/login/forgot-password',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -401,8 +515,9 @@ async function handleForgotPasswordPost(req, res) {
   const fieldErrors = {};
 
   if (!email || !email.trim()) {
-    errors.push({ text: 'Enter your email address', href: '#email' });
-    fieldErrors.email = 'Enter your email address';
+    const message = translate(req, 'auth.forgot_invalid');
+    errors.push({ text: message, href: '#email' });
+    fieldErrors.email = message;
   }
 
   if (!tenantSlug) {
@@ -412,7 +527,7 @@ async function handleForgotPasswordPost(req, res) {
 
   if (errors.length > 0) {
     return res.render('forgot-password', {
-      title: 'Reset your password',
+      title: translate(req, 'auth.forgot_title'),
       errors,
       fieldErrors,
       values: { email, tenant_slug: tenantSlug },
@@ -433,9 +548,6 @@ async function handleForgotPasswordPost(req, res) {
   }
 
   // Always show success message (security: don't reveal if email exists)
-  if (req.flash) {
-    req.flash('success', 'If an account exists with this email, we have sent password reset instructions.');
-  }
   return redirectTo(res, '/login/forgot-password?status=forgot-sent');
 }
 
@@ -449,9 +561,11 @@ function renderResetPassword(req, res) {
     return redirectTo(res, '/login/forgot-password');
   }
 
+  const statusError = statusMessage(req, req.query.status, RESET_ERROR_STATUS_KEYS);
   res.render('reset-password', {
-    title: 'Choose a new password',
+    title: translate(req, 'auth.reset_title'),
     resetToken: token,
+    errors: statusError ? [{ text: statusError }] : [],
     formAction: '/password/reset',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -469,7 +583,7 @@ async function handleResetPasswordPost(req, res) {
   const fieldErrors = {};
 
   if (!token) {
-    errors.push({ text: 'Invalid or expired reset link', href: '#' });
+    errors.push({ text: translate(req, 'auth.reset_link_invalid_title'), href: '#' });
   }
 
   if (!password) {
@@ -481,13 +595,14 @@ async function handleResetPasswordPost(req, res) {
   }
 
   if (password !== confirmPassword) {
-    errors.push({ text: 'Passwords do not match', href: '#password_confirmation' });
-    fieldErrors.password_confirmation = 'Passwords do not match';
+    const message = translate(req, 'auth.reset_mismatch');
+    errors.push({ text: message, href: '#password_confirmation' });
+    fieldErrors.password_confirmation = message;
   }
 
   if (errors.length > 0) {
     return res.render('reset-password', {
-      title: 'Choose a new password',
+      title: translate(req, 'auth.reset_title'),
       errors,
       fieldErrors,
       resetToken: token,
@@ -499,9 +614,7 @@ async function handleResetPasswordPost(req, res) {
   try {
     await resetPassword(token, password, confirmPassword);
 
-    if (req.flash) {
-      req.flash('success', 'Your password has been reset. Please sign in with your new password.');
-    }
+    setAuthStatus(req, 'password-reset');
     return redirectTo(res, '/login');
   } catch (error) {
     // Handle ApiOfflineError specially for 503
@@ -509,13 +622,10 @@ async function handleResetPasswordPost(req, res) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
-    let errorMessage = 'Unable to reset password. The link may have expired.';
-    if (error instanceof ApiError && error.message) {
-      errorMessage = error.message;
-    }
+    const errorMessage = translate(req, resetErrorKey(error));
 
     res.render('reset-password', {
-      title: 'Choose a new password',
+      title: translate(req, 'auth.reset_title'),
       errors: [{ text: errorMessage }],
       fieldErrors: {},
       resetToken: token,

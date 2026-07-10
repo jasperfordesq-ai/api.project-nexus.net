@@ -34,7 +34,16 @@ jest.mock('../src/lib/api', () => ({
       this.status = 503;
     }
   },
-  getTenantBootstrap: jest.fn(),
+  getTenantBootstrap: jest.fn().mockResolvedValue({
+    data: {
+      id: 2,
+      name: 'Acme Timebank',
+      slug: 'acme',
+      modules: {},
+      features: {}
+    }
+  }),
+  getPlatformStats: jest.fn().mockResolvedValue({ data: {} }),
   getProfile: jest.fn(),
   getNotificationUnreadCount: jest.fn(),
   getUnreadCount: jest.fn(),
@@ -141,6 +150,35 @@ describe('localized accessible document shell', () => {
 
   beforeAll(() => {
     app = require('../src/server');
+  });
+
+  it.each([
+    { locale: 'ga', direction: 'ltr' },
+    { locale: 'ar', direction: 'rtl' }
+  ])('renders $locale document titles and primary headings for the public browser gate', async ({ locale, direction }) => {
+    const mountPath = '/acme/accessible';
+    const pages = [
+      { path: '', key: 'home.title' },
+      { path: '/about', key: 'about.title', replacements: { name: 'Acme Timebank' } },
+      { path: '/guide', key: 'guide.title' },
+      { path: '/faq', key: 'faq.title' },
+      { path: '/login', key: 'auth.login_title' },
+      { path: '/register', key: 'auth.register_title' },
+      { path: '/contact', key: 'contact.title' },
+      { path: '/legal', key: 'legal.hub_title' },
+      { path: '/accessibility', key: 'accessibility.title' }
+    ];
+
+    for (const page of pages) {
+      const expectedIdentity = translate(locale, page.key, page.replacements);
+      const response = await request(app).get(`${mountPath}${page.path}?locale=${locale}`);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe(locale);
+      expect(response.text).toContain(`<html lang="${locale}" dir="${direction}" class="govuk-template">`);
+      expect(response.text).toContain(`<title>${expectedIdentity} - `);
+      expect(response.text).toContain(`<h1 class="govuk-heading-xl">${expectedIdentity}</h1>`);
+    }
   });
 
   it('renders and persists the Irish shell with exactly one main landmark', async () => {

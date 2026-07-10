@@ -531,9 +531,9 @@ async function loadTenantHomeData(req, res) {
   const communityName = tenant.name || tenant.slug || req.accessibleRouting?.tenantSlug || res.locals.tenantName;
   const networkCommunities = normalizeNetworkCommunities(tenant, req);
   const usesNetworkLanding = networkCommunities.length > 0 || Number(tenant.id) === 1;
-  const homeHeading = usesNetworkLanding
-    ? tenant.seo?.h1_headline || 'Accessible'
-    : 'Accessible';
+  const configuredHomeHeading = usesNetworkLanding ? tenant.seo?.h1_headline : '';
+  const homeHeading = configuredHomeHeading || 'Accessible';
+  const homeHeadingKey = configuredHomeHeading ? '' : 'home.title';
   const homeDescription = usesNetworkLanding
     ? tenant.seo?.hero_intro || `Use a simpler, accessible version of ${communityName} for core community tasks.`
     : `Use a simpler, accessible version of ${communityName} for core community tasks.`;
@@ -542,6 +542,7 @@ async function loadTenantHomeData(req, res) {
     tenant,
     communityName,
     homeHeading,
+    homeHeadingKey,
     homeDescription,
     tagline: tenant.tagline || '',
     networkCommunities,
@@ -561,6 +562,7 @@ app.get('/', async (req, res) => {
     const homeData = await loadTenantHomeData(req, res);
     return res.render('home', {
       title: 'Accessible',
+      titleKey: 'home.title',
       activeNav: 'home',
       status: typeof req.query.status === 'string' ? req.query.status : '',
       ...homeData

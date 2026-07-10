@@ -107,6 +107,8 @@ router.get('/about', (req, res) => {
 
   res.render('public-info/about', {
     title: `About ${name}`,
+    titleKey: 'about.title',
+    titleReplacements: { name },
     activeNav: 'about',
     communityName: name,
     steps: ABOUT_STEPS,
@@ -120,6 +122,7 @@ router.get('/about', (req, res) => {
 router.get('/guide', (req, res) => {
   res.render('public-info/guide', {
     title: 'How timebanking works',
+    titleKey: 'guide.title',
     activeNav: 'guide',
     communityName: communityName(res),
     isAuthenticated: res.locals.isAuthenticated
@@ -138,6 +141,7 @@ router.get('/features', (req, res) => {
 router.get('/faq', (req, res) => {
   res.render('public-info/faq', {
     title: 'Frequently asked questions',
+    titleKey: 'faq.title',
     activeNav: 'faq',
     communityName: communityName(res),
     faqs: FAQS

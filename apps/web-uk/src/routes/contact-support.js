@@ -96,6 +96,7 @@ router.get('/contact', (req, res) => {
 
   res.render('contact', {
     title: 'Contact Us',
+    titleKey: 'contact.title',
     activeNav: 'contact',
     status,
     values,

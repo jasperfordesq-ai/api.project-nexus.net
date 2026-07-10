@@ -10,7 +10,7 @@
       <a class="govuk-back-link" href="{{ urlFor('/legal') }}">{{ t("legal.back_to_hub") }}</a>
 
       <span class="govuk-caption-l">{{ communityName }}</span>
-      <h1 class="govuk-heading-xl">{{ t("accessibility.title") }}</h1>
+      <h1 class="govuk-heading-xl">{{ t("accessibility.title") if t else title }}</h1>
       <p class="govuk-body-l">This statement applies to the accessible version of {{ communityName }}. We want as many people as possible to be able to use this service.</p>
 
       <h2 class="govuk-heading-m">{{ t("accessibility.commitment_title") }}</h2>

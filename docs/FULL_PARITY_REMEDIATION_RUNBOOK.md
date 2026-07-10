@@ -81,7 +81,7 @@ route coverage is not a completion score.
 | ASP.NET Release build | Passed with 0 errors and 4 xUnit warnings |
 | Focused ASP.NET regression | Failed: stale catch-all test expected 202 and received 404 |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
-| Web UK Jest | 27/27 suites and 986/986 tests passed after the localization/RTL and tenant-boundary review fixes |
+| Web UK Jest | 29/29 suites and 999/999 tests passed after the localization/RTL, tenant-boundary, and contextual identity/auth/accessibility slices |
 | Web UK lint and CSS build | Passed |
 | Web UK brand guard | Passed at the audit baseline; rerun with the final certification set |
 | Current-source Blade marker spot-check | 19/19 passed; this is not screenshot or WCAG certification |
@@ -136,6 +136,14 @@ or contextual route/template copy. In particular, `activity`, `blogreviews`,
 `volunteering`, and `wallet` are wholly English-identical across every
 non-English Laravel catalog. No score was recalculated from this slice alone,
 and the Laravel-first completion gate remains open.
+
+A follow-up now gives all nine representative public browser-gate pages
+localized document titles and primary headings, translates exact auth
+validation/status/API-code states at render time, and localizes scoped dynamic
+ARIA/visually-hidden labels in advanced search, saved collections, connection
+network, and course learning. The full Jest and 12-case browser gates remain
+green. This narrows the contextual backlog; it does not remove the hundreds of
+remaining family-specific strings or the authoritative untranslated namespaces.
 
 ## Workstream A: Accessible Frontend To Laravel Completion
 

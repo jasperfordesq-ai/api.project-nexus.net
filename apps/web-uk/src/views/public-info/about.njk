@@ -8,7 +8,7 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <span class="govuk-caption-l">{{ communityName }}</span>
-      <h1 class="govuk-heading-xl">About {{ communityName }}</h1>
+      <h1 class="govuk-heading-xl">{{ t("about.title", { name: communityName }) if t else title }}</h1>
       <p class="govuk-body-l">{{ communityName }} is a modern time banking platform where every hour of service is valued equally. We help communities exchange skills, build trust, and create a fairer local economy - one hour at a time.</p>
     </div>
   </div>

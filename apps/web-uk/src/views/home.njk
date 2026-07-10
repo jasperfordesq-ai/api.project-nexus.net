@@ -17,7 +17,7 @@
       {% endif %}
 
       <span class="govuk-caption-xl">{{ communityName }}</span>
-      <h1 class="govuk-heading-xl">{{ homeHeading or "Accessible" }}</h1>
+      <h1 class="govuk-heading-xl">{{ t(homeHeadingKey) if homeHeadingKey and t else (homeHeading or "Accessible") }}</h1>
       <p class="govuk-body-l">{{ homeDescription or ("Use a simpler, accessible version of " + communityName + " for core community tasks.") }}</p>
       {% if tagline %}
         <p class="govuk-body-l govuk-!-font-weight-bold">{{ tagline }}</p>

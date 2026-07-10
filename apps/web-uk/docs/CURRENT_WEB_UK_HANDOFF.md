@@ -108,6 +108,30 @@ The remaining localization gaps are material:
   plus recorded manual keyboard, screen-reader, reflow, focus, contrast, and
   RTL review remain uncertified.
 
+### 2026-07-10 Contextual Localization Follow-up
+
+The next focused slice moved beyond exact static substitutions without using
+runtime reverse-English lookup:
+
+- The base layout now accepts an explicit `titleKey` plus replacements and
+  retains the existing English `title` fallback. Tenant home, About, Guide,
+  FAQ, Contact, Legal, and Accessibility now render localized document titles
+  and primary headings; the existing Sign in and Register title blocks complete
+  all nine public browser-gate identities. Custom tenant SEO headings remain
+  tenant content and are not translated.
+- Login, registration, two-factor, forgotten-password, and reset-password
+  routes translate exact validation, status, and known API error codes at
+  render time. Redirects persist neutral status tokens rather than translated
+  strings. Combined messages with no exact Laravel key remain English.
+- Dynamic and visually hidden labels in advanced search, saved-collection
+  detail, connection network, and course learning views now delegate to exact
+  Laravel keys with escaped interpolation. Several of those feature-namespace
+  keys remain English-identical upstream, so wiring is complete for the scoped
+  labels but native output still depends on Laravel catalog translation.
+- Final verification passed `29/29` Jest suites and `999/999` tests, source and
+  changed-test lint, the zero-safe-match template audit, CSS compilation, and
+  the full `12/12` Playwright Chromium/axe public and Arabic RTL gate.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared

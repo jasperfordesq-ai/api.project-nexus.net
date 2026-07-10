@@ -31,8 +31,8 @@
     {% endif %}
   {% endif %}
 
-  <p class="govuk-body-s nexus-alpha-meta">Course progress: {{ progressPercent }}% complete</p>
-  <progress value="{{ progressPercent }}" max="100" aria-label="Course progress: {{ progressPercent }}% complete">{{ progressPercent }}%</progress>
+  <p class="govuk-body-s nexus-alpha-meta">{{ t("govuk_alpha_commerce.learn.progress_label", { percent: progressPercent }) }}</p>
+  <progress value="{{ progressPercent }}" max="100" aria-label="{{ t('govuk_alpha_commerce.learn.progress_label', { percent: progressPercent }) }}">{{ progressPercent }}%</progress>
 
   {% if isCompleted %}
     <div class="govuk-panel govuk-panel--confirmation govuk-!-margin-top-4 govuk-!-margin-bottom-4">
