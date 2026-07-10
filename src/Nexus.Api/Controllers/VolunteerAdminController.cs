@@ -6,6 +6,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
@@ -24,10 +25,17 @@ namespace Nexus.Api.Controllers;
 public class VolunteerAdminController : ControllerBase
 {
     private readonly VolunteerAdminService _service;
+    private readonly VolunteerGuardianConsentService _guardianConsent;
+    private readonly TenantContext _tenantContext;
 
-    public VolunteerAdminController(VolunteerAdminService service)
+    public VolunteerAdminController(
+        VolunteerAdminService service,
+        VolunteerGuardianConsentService guardianConsent,
+        TenantContext tenantContext)
     {
         _service = service;
+        _guardianConsent = guardianConsent;
+        _tenantContext = tenantContext;
     }
 
     // ─── Training courses ──────────────────────────────────────────────────
@@ -102,43 +110,66 @@ public class VolunteerAdminController : ControllerBase
         return Ok(new { data = rows.Select(MapConsent), total = rows.Count, status = s?.ToString() ?? "all" });
     }
 
-    [HttpPost("api/admin/volunteer/guardian-consents")]
-    public async Task<IActionResult> CreateConsent([FromBody] CreateConsentRequest req)
+    /// <summary>
+    /// Canonical Laravel/React cursor-paginated guardian-consent read.
+    /// Secret credential material is intentionally absent from the projection.
+    /// </summary>
+    [HttpGet("api/v2/admin/volunteering/guardian-consents")]
+    public async Task<IActionResult> ListCanonicalGuardianConsents(
+        [FromQuery] string? status = null,
+        [FromQuery] int? cursor = null,
+        [FromQuery] int limit = 20,
+        CancellationToken cancellationToken = default)
     {
-        try
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
         {
-            var entity = await _service.CreateConsentAsync(
-                req.MinorUserId, req.GuardianName ?? string.Empty,
-                req.GuardianEmail ?? string.Empty, req.GuardianRelationship, req.ConsentDocumentUrl);
-            return Created($"/api/admin/volunteer/guardian-consents/{entity.Id}", new { data = MapConsent(entity) });
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "FEATURE_DISABLED",
+                        message = "Volunteering module is not enabled for this community"
+                    }
+                }
+            });
         }
-        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+
+        var page = await _guardianConsent.GetAdminPageAsync(
+            tenantId,
+            status,
+            cursor,
+            limit,
+            cancellationToken);
+        return Ok(new
+        {
+            data = new
+            {
+                items = page.Items.Select(MapCanonicalConsent),
+                page.Cursor,
+                has_more = page.HasMore
+            },
+            meta = new { base_url = BaseUrl() }
+        });
     }
+
+    [HttpPost("api/admin/volunteer/guardian-consents")]
+    public IActionResult CreateConsent([FromBody] CreateConsentRequest req) =>
+        LegacyGuardianDecisionGone();
 
     [HttpPost("api/admin/volunteer/guardian-consents/{id:int}/approve")]
-    public async Task<IActionResult> ApproveConsent(int id, [FromBody] ReviewConsentRequest? req)
-    {
-        var reviewer = User.GetUserId();
-        if (reviewer is null) return Unauthorized();
-        var entity = await _service.ApproveConsentAsync(id, reviewer.Value, req?.Note);
-        return entity == null ? NotFound() : Ok(new { data = MapConsent(entity) });
-    }
+    public IActionResult ApproveConsent(int id, [FromBody] ReviewConsentRequest? req) =>
+        LegacyGuardianDecisionGone();
 
     [HttpPost("api/admin/volunteer/guardian-consents/{id:int}/reject")]
-    public async Task<IActionResult> RejectConsent(int id, [FromBody] ReviewConsentRequest? req)
-    {
-        var reviewer = User.GetUserId();
-        if (reviewer is null) return Unauthorized();
-        var entity = await _service.RejectConsentAsync(id, reviewer.Value, req?.Note);
-        return entity == null ? NotFound() : Ok(new { data = MapConsent(entity) });
-    }
+    public IActionResult RejectConsent(int id, [FromBody] ReviewConsentRequest? req) =>
+        LegacyGuardianDecisionGone();
 
     [HttpPost("api/admin/volunteer/guardian-consents/{id:int}/revoke")]
-    public async Task<IActionResult> RevokeConsent(int id, [FromBody] ReviewConsentRequest? req)
-    {
-        var entity = await _service.RevokeConsentAsync(id, req?.Note);
-        return entity == null ? NotFound() : Ok(new { data = MapConsent(entity) });
-    }
+    public IActionResult RevokeConsent(int id, [FromBody] ReviewConsentRequest? req) =>
+        LegacyGuardianDecisionGone();
 
     // ─── Tenant policy (singleton) ────────────────────────────────────────
 
@@ -200,6 +231,42 @@ public class VolunteerAdminController : ControllerBase
         created_at = c.CreatedAt,
         updated_at = c.UpdatedAt
     };
+
+    private static object MapCanonicalConsent(GuardianConsentAdminItem consent) => new
+    {
+        consent.Id,
+        minor_user_id = consent.MinorUserId,
+        minor_name = consent.MinorName,
+        minor_email = consent.MinorEmail,
+        guardian_name = consent.GuardianName,
+        guardian_email = consent.GuardianEmail,
+        guardian_phone = consent.GuardianPhone,
+        relationship = consent.Relationship,
+        opportunity_id = consent.OpportunityId,
+        opportunity_title = consent.OpportunityTitle,
+        status = consent.Status,
+        consent_given_at = consent.ConsentedAt,
+        consent_withdrawn_at = consent.WithdrawnAt,
+        expires_at = consent.ExpiresAt,
+        created_at = consent.CreatedAt,
+        consent_date = consent.ConsentDate,
+        expires_date = consent.ExpiresAt
+    };
+
+    private ObjectResult LegacyGuardianDecisionGone() =>
+        StatusCode(StatusCodes.Status410Gone, new
+        {
+            errors = new[]
+            {
+                new
+                {
+                    code = "ENDPOINT_RETIRED",
+                    message = "Guardian consent must be granted by the guardian using the secure email verification link."
+                }
+            }
+        });
+
+    private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
     private static object MapPolicy(VolunteerTenantPolicy p) => new
     {

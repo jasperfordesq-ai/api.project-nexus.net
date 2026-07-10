@@ -53,6 +53,14 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 ["RateLimiting:Auth:WindowSeconds"] = "1",
                 ["RateLimiting:General:PermitLimit"] = "10000",
                 ["RateLimiting:General:WindowSeconds"] = "1",
+                ["RateLimiting:GuardianConsent:ListPermitLimit"] = "1000",
+                ["RateLimiting:GuardianConsent:ListWindowSeconds"] = "1",
+                ["RateLimiting:GuardianConsent:RequestPermitLimit"] = "1000",
+                ["RateLimiting:GuardianConsent:RequestWindowSeconds"] = "1",
+                ["RateLimiting:GuardianConsent:VerifyPermitLimit"] = "1000",
+                ["RateLimiting:GuardianConsent:VerifyWindowSeconds"] = "1",
+                ["RateLimiting:GuardianConsent:WithdrawPermitLimit"] = "1000",
+                ["RateLimiting:GuardianConsent:WithdrawWindowSeconds"] = "1",
                 ["RabbitMq:Enabled"] = "false", // Disable RabbitMQ for tests
                 ["LlamaService:BaseUrl"] = "http://localhost:11434", // Mock URL
                 // Disable the outbound-network security gates in the test host.

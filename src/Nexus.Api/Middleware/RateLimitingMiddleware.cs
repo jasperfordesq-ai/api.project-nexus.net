@@ -21,6 +21,10 @@ public static class RateLimitingExtensions
     public const string AiProviderTestPolicy = "ai-provider-test";
     public const string VolunteerWellbeingAlertsPolicy = "volunteer-wellbeing-alerts";
     public const string VolunteerWellbeingAlertUpdatePolicy = "volunteer-wellbeing-alert-update";
+    public const string GuardianConsentListPolicy = "guardian-consent-list";
+    public const string GuardianConsentRequestPolicy = "guardian-consent-request";
+    public const string GuardianConsentVerifyPolicy = "guardian-consent-verify";
+    public const string GuardianConsentWithdrawPolicy = "guardian-consent-withdraw";
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -129,6 +133,34 @@ public static class RateLimitingExtensions
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(GuardianConsentListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:GuardianConsent:ListPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:ListWindowSeconds", 60)))));
+
+            options.AddPolicy(GuardianConsentRequestPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:GuardianConsent:RequestPermitLimit", 5),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:RequestWindowSeconds", 60)))));
+
+            options.AddPolicy(GuardianConsentVerifyPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:GuardianConsent:VerifyPermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:VerifyWindowSeconds", 300)))));
+
+            options.AddPolicy(GuardianConsentWithdrawPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:GuardianConsent:WithdrawPermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:WithdrawWindowSeconds", 60)))));
+
             // Custom rejection response
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -142,7 +174,19 @@ public static class RateLimitingExtensions
                 context.HttpContext.Response.Headers.RetryAfter = retryAfter.ToString("0");
 
                 var path = context.HttpContext.Request.Path;
-                var canonicalLimit = path.StartsWithSegments("/api/v2/admin/volunteering/wellbeing/alerts")
+                var isGuardianConsentPath =
+                    path.StartsWithSegments("/api/v2/volunteering/guardian-consents")
+                    || path.StartsWithSegments("/api/volunteering/guardian-consents");
+                var canonicalLimit = isGuardianConsentPath
+                    ? path.Value?.Contains("/verify/", StringComparison.OrdinalIgnoreCase) == true
+                        ? config.GetValue("RateLimiting:GuardianConsent:VerifyPermitLimit", 10)
+                        : context.HttpContext.Request.Method switch
+                        {
+                            "POST" => config.GetValue("RateLimiting:GuardianConsent:RequestPermitLimit", 5),
+                            "DELETE" => config.GetValue("RateLimiting:GuardianConsent:WithdrawPermitLimit", 10),
+                            _ => config.GetValue("RateLimiting:GuardianConsent:ListPermitLimit", 30)
+                        }
+                    : path.StartsWithSegments("/api/v2/admin/volunteering/wellbeing/alerts")
                     ? 30
                     : path.StartsWithSegments("/api/ai/test-provider") || path.StartsWithSegments("/api/v2/ai/test-provider")
                         ? 10
@@ -183,6 +227,15 @@ public static class RateLimitingExtensions
 
         return services;
     }
+
+    private static FixedWindowRateLimiterOptions FixedWindow(int permitLimit, TimeSpan window) => new()
+    {
+        AutoReplenishment = true,
+        PermitLimit = permitLimit,
+        Window = window,
+        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        QueueLimit = 0
+    };
 
     private static string GetAuthenticatedUserOrClientIdentifier(HttpContext context, string[] trustedProxies)
     {

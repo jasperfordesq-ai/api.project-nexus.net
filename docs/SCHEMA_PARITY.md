@@ -7,12 +7,14 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 ## Current Source Counts
 
-Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-09.
+Static schema-table counts were generated with
+`scripts/compare-laravel-schema-parity.ps1` on 2026-07-09. The EF migration
+inventory was refreshed and runtime-verified on 2026-07-10.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 323 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 105 | Release discovery verifies 76 runtime migrations and 29 explicitly quarantined classes. |
+| ASP.NET EF migrations | 106 | Release discovery verifies 77 runtime migrations and 29 explicitly quarantined classes. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
@@ -29,26 +31,34 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-10 Volunteering Migration And Discovery Status
 
-`20260710171315_AdminVolunteerApprovalWorkflow` is the current latest migration.
-It adds nullable `ShiftId` and `OrgNote` fields to volunteer applications,
-stores canonical notification `Link` values, and replaces the former unique
-tenant/opportunity/user application index with a non-unique lookup index so
-legitimate declined or withdrawn history can be followed by a new application.
-It also adds shift/capacity indexes and `SET NULL` relationships from
-applications to shifts.
+`20260710192521_GuardianConsentLifecycle` is the current latest migration. It
+builds on `20260710171315_AdminVolunteerApprovalWorkflow`, which added nullable
+`ShiftId` and `OrgNote` application fields, canonical notification `Link`
+values, a non-unique tenant/opportunity/user lookup that permits legitimate
+reapplication history, shift/capacity indexes, nullable guardian opportunity/
+expiry scope, and `SET NULL` shift/opportunity relationships.
 
-Guardian consent now has nullable `OpportunityId` and `ExpiresAt` fields. A null
-opportunity represents tenant-wide consent; a populated value scopes consent to
-one opportunity, and expired or revoked grants do not satisfy the safeguarding
-gate. The migration adds the opportunity relationship and a tenant/minor/status/
-opportunity/expiry lookup index. The API and test projects build cleanly, and
-the transactional volunteering regression slice passes 61/61 focused tests.
+The lifecycle migration adds nullable `GuardianPhone`, `ConsentIp`, and unique
+filtered `ConsentTokenHash` fields; expands guardian name storage; requires and
+backfills `GuardianRelationship`; and adds `(TenantId, MinorUserId, Id)` and
+`(TenantId, Status, Id)` read indexes. It normalizes `Granted` to `Active` and
+`Revoked`/`Rejected` to `Withdrawn`, expires all legacy pending or active rows
+that lack a guardian-held credential, removes orphan minor rows, and replaces
+the historical minor-user relationship with a cascade foreign key. A null
+opportunity still represents tenant-wide consent; a populated value scopes it
+to one opportunity.
 
-The verified inventory is 105 main migration classes: 76 discoverable by EF and
-29 explicitly quarantined legacy classes. The Release discovery gate passes and
-EF reports no pending model changes. All 76 discovered migrations apply to a
-blank disposable PostgreSQL database through
-`20260710171315_AdminVolunteerApprovalWorkflow`.
+Storing only a SHA-256 credential hash is an intentional security divergence
+from Laravel's raw `consent_token` column while preserving the external
+single-use verification contract. The API and test projects build cleanly, the
+prior transactional core passes 61/61 focused tests, and the guardian lifecycle
+passes a clean 7/7 PostgreSQL-backed regression.
+
+The verified inventory is 106 main migration classes: 77 discoverable by EF and
+29 explicitly quarantined legacy classes. The Release discovery gate passes,
+EF reports no pending model changes, and all 77 discovered migrations apply to
+a blank disposable PostgreSQL database through
+`20260710192521_GuardianConsentLifecycle`.
 
 Most quarantined classes contain non-idempotent DDL, so adding metadata blindly
 could replay tables or columns against existing databases. Treat those 29
@@ -66,7 +76,9 @@ production database was inspected or modified for this audit.
 `AdminVolunteerApprovalWorkflow.Down()` is intentionally irreversible. Restoring
 the former unique application index after valid reapplication history could
 fail or require silent data loss, so `Down()` throws before dropping any of the
-new constraints or columns.
+new constraints or columns. `GuardianConsentLifecycle.Down()` is also
+intentionally irreversible because rollback would discard hashed credentials
+and restore unsafe legacy status/verification semantics.
 
 ## Generated Artifacts
 
@@ -94,7 +106,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
-| `vol_*` | 19 | `vol_logs` is represented for Caring recipient-circle and KPI inputs. The renamed .NET volunteering schema now has migration-backed `ShiftId`/`OrgNote` application state, shared application/group-reservation capacity indexes, canonical notification links, and opportunity-scoped or tenant-wide expiring guardian consent. The transactional application, signup, waitlist, and group-reservation slice passes 61/61 focused tests. Exact Laravel `vol_*` name aliases and the remaining volunteering schema families still require table-by-table reconciliation. |
+| `vol_*` | 19 | `vol_logs` is represented for Caring recipient-circle and KPI inputs. The renamed .NET volunteering schema now has migration-backed `ShiftId`/`OrgNote` application state, shared application/group-reservation capacity indexes, canonical notification links, and opportunity-scoped or tenant-wide guardian consent with hashed credentials, canonical lifecycle statuses, safe read indexes, expiry, and cascade cleanup. The prior transactional application/signup/waitlist/group-reservation core passes 61/61 focused tests and the guardian lifecycle passes 7/7. Exact Laravel `vol_*` name aliases and the remaining volunteering schema families still require table-by-table reconciliation. |
 | `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |

@@ -99,7 +99,8 @@ public class AdminCompatibilityController : ControllerBase
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["listing-expiry"] = "ListingExpiry",
-            ["job-expiry"] = "JobVacancyExpiry"
+            ["job-expiry"] = "JobVacancyExpiry",
+            ["volunteer-expire-consents"] = "VolunteerGuardianConsentExpiry"
         };
 
     private static readonly (int Id, string Name, string Location)[] MenuDefinitions =

@@ -8,11 +8,13 @@ using System.Text.Json;
 using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -458,16 +460,165 @@ public class VolunteeringParityController : ControllerBase
     public IActionResult GivingDayStats(int dayId) => Ok(new { data = new { id = dayId, volunteers = 0, hours = 0 } });
 
     [HttpGet("guardian-consents")]
-    public IActionResult GuardianConsents() => Ok(new { data = Array.Empty<object>() });
+    [EnableRateLimiting(RateLimitingExtensions.GuardianConsentListPolicy)]
+    public async Task<IActionResult> GuardianConsents(CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return GuardianConsentError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
+
+        var consents = await _guardianConsent.ListForMinorAsync(
+            UserId(),
+            tenantId,
+            cancellationToken);
+        return Ok(new
+        {
+            data = consents.Select(MapGuardianConsent),
+            meta = new { base_url = BaseUrl() }
+        });
+    }
 
     [HttpPost("guardian-consents")]
-    public IActionResult CreateGuardianConsent([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(UserId(), Str(body, "guardian_email"))), status = "pending" } });
+    [EnableRateLimiting(RateLimitingExtensions.GuardianConsentRequestPolicy)]
+    public async Task<IActionResult> CreateGuardianConsent(
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return GuardianConsentError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
 
-    [HttpGet("guardian-consents/verify/{code}")]
-    public IActionResult VerifyGuardianConsent(string code) => Ok(new { data = new { code, verified = true } });
+        int? opportunityId = null;
+        if (body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty("opportunity_id", out var opportunityValue)
+            && opportunityValue.ValueKind is not JsonValueKind.Null)
+        {
+            if (!int.TryParse(opportunityValue.ToString(), out var parsedOpportunityId)
+                || parsedOpportunityId <= 0)
+            {
+                return GuardianConsentError(
+                    StatusCodes.Status422UnprocessableEntity,
+                    "VALIDATION_ERROR",
+                    "Opportunity ID must be a positive integer.");
+            }
+
+            opportunityId = parsedOpportunityId;
+        }
+
+        try
+        {
+            var consent = await _guardianConsent.RequestConsentAsync(
+                UserId(),
+                tenantId,
+                new GuardianConsentRequest(
+                    Str(body, "guardian_name"),
+                    Str(body, "guardian_email"),
+                    Str(body, "relationship"),
+                    Str(body, "guardian_phone"),
+                    opportunityId),
+                cancellationToken);
+            return StatusCode(
+                StatusCodes.Status201Created,
+                new
+                {
+                    data = MapGuardianConsent(consent),
+                    meta = new { base_url = BaseUrl() }
+                });
+        }
+        catch (GuardianConsentValidationException exception)
+        {
+            return GuardianConsentError(
+                StatusCodes.Status422UnprocessableEntity,
+                "VALIDATION_ERROR",
+                exception.Message);
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("guardian-consents/verify/{token}")]
+    [EnableRateLimiting(RateLimitingExtensions.GuardianConsentVerifyPolicy)]
+    public async Task<IActionResult> VerifyGuardianConsent(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return GuardianConsentError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+        var granted = await _guardianConsent.GrantConsentAsync(
+            token,
+            ipAddress,
+            tenantId,
+            cancellationToken);
+        if (!granted)
+        {
+            return GuardianConsentError(
+                StatusCodes.Status400BadRequest,
+                "INVALID_TOKEN",
+                "Consent token is invalid or expired");
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                message = "Guardian consent has been granted successfully."
+            },
+            meta = new { base_url = BaseUrl() }
+        });
+    }
 
     [HttpDelete("guardian-consents/{consentId:int}")]
-    public IActionResult DeleteGuardianConsent(int consentId) => NoContent();
+    [EnableRateLimiting(RateLimitingExtensions.GuardianConsentWithdrawPolicy)]
+    public async Task<IActionResult> DeleteGuardianConsent(
+        int consentId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return GuardianConsentError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
+
+        var withdrawn = await _guardianConsent.WithdrawConsentAsync(
+            consentId,
+            UserId(),
+            tenantId,
+            cancellationToken);
+        if (!withdrawn)
+        {
+            return GuardianConsentError(
+                StatusCodes.Status404NotFound,
+                "NOT_FOUND",
+                "Consent not found");
+        }
+
+        return Ok(new
+        {
+            data = new { success = true },
+            meta = new { base_url = BaseUrl() }
+        });
+    }
 
     [HttpPost("organisations")]
     public IActionResult CreateOrganisation([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(Str(body, "name"), TenantId())), name = Str(body, "name") ?? "Volunteer organisation" } });
@@ -741,10 +892,53 @@ public class VolunteeringParityController : ControllerBase
             }
         });
 
+    private ObjectResult GuardianConsentError(
+        int statusCode,
+        string code,
+        string message,
+        string? field = null)
+    {
+        if (field is null)
+        {
+            return StatusCode(statusCode, new
+            {
+                errors = new[]
+                {
+                    new { code, message }
+                }
+            });
+        }
+
+        return StatusCode(statusCode, new
+        {
+            errors = new[]
+            {
+                new { code, message, field }
+            }
+        });
+    }
+
+    private static object MapGuardianConsent(GuardianConsentView consent) => new
+    {
+        consent.Id,
+        minor_user_id = consent.MinorUserId,
+        guardian_name = consent.GuardianName,
+        guardian_email = consent.GuardianEmail,
+        guardian_phone = consent.GuardianPhone,
+        relationship = consent.Relationship,
+        opportunity_id = consent.OpportunityId,
+        status = consent.Status,
+        consent_given_at = consent.ConsentedAt,
+        consent_withdrawn_at = consent.WithdrawnAt,
+        expires_at = consent.ExpiresAt,
+        created_at = consent.CreatedAt
+    };
+
     private sealed record ApprovedApplicationLock(int Id, int? ShiftId);
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
+    private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;

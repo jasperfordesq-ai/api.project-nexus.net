@@ -151,7 +151,7 @@ public sealed class VolunteerShiftSignupWorkflowTests : IntegrationTestBase
                 OpportunityId = null,
                 GuardianName = "Test Guardian",
                 GuardianEmail = "guardian@test.local",
-                Status = VolunteerGuardianConsentStatus.Granted,
+                Status = VolunteerGuardianConsentStatus.Active,
                 ConsentedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(30),
                 CreatedAt = DateTime.UtcNow

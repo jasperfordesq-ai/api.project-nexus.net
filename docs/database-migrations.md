@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Discovery Quarantine
 
-The repository currently contains 105 main `Migration` classes. EF Release
-discovery verifies 76 while the known legacy quarantine remains 29 classes.
+The repository currently contains 106 main `Migration` classes. EF Release
+discovery verifies 77 while the known legacy quarantine remains 29 classes.
 Two designer-less migrations are
 valid because they carry inline `[Migration]` and `[DbContext]` metadata; a
 `.Designer.cs` file is not itself the contract.
@@ -23,20 +23,30 @@ metadata blindly. First inventory the source class, intended migration id,
 schema effects, and each supported environment's history/schema state. No
 production inspection or change is implied by the source audit.
 
-`20260710171315_AdminVolunteerApprovalWorkflow` is the current latest migration.
-It adds application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped
-and expiring guardian consent, and the indexes and `SET NULL` foreign keys used
-by transactional volunteering capacity checks. The API and test projects build
-cleanly, and the focused transactional volunteering suite passes 61/61. Final
-discovery reports `source=105, discovered=76, quarantined=29`, EF reports no
-pending model changes, and all 76 discovered migrations apply to a blank
-disposable PostgreSQL database through this exact migration id.
+`20260710192521_GuardianConsentLifecycle` is the current latest migration. It
+adds guardian phone, consent IP, a unique nullable SHA-256 token hash, required
+relationship storage, canonical lifecycle-status cleanup, safe read indexes,
+and a cascade minor-user relationship. It expires unverifiable legacy pending/
+active rows and removes orphan minor rows before enforcing the new constraint.
+The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
+application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
+and the indexes and `SET NULL` foreign keys used by transactional volunteering
+capacity checks. The API and test projects build cleanly; the prior focused
+transactional suite passes 61/61 and the guardian lifecycle passes 7/7. Final
+discovery reports `source=106, discovered=77, quarantined=29`, EF reports no
+pending model changes, and all 77 discovered migrations apply to a blank
+disposable PostgreSQL database through the latest migration id.
 
-The migration deliberately changes the tenant/opportunity/user application
-index from unique to non-unique. Declined or withdrawn history can therefore be
-retained when a volunteer reapplies. Its `Down()` method intentionally throws
-before any destructive operation because recreating the former unique index
-could fail after valid use or require data loss.
+Before applying `GuardianConsentLifecycle` to production, take the normal
+pre-migration backup and review affected-row counts. The migration deliberately
+expires legacy pending/active rows that cannot prove guardian possession of a
+credential and removes consent rows whose minor user no longer exists.
+
+`AdminVolunteerApprovalWorkflow` deliberately changes the tenant/opportunity/
+user application index from unique to non-unique. Declined or withdrawn history
+can therefore be retained when a volunteer reapplies. Its `Down()` method
+intentionally throws before any destructive operation because recreating the
+former unique index could fail after valid use or require data loss.
 
 The historical `20260706120000_AddTenantInviteCodes` migration now uses the
 quoted PostgreSQL principal column `Id`, not lowercase `id`, for its tenant and
@@ -48,7 +58,7 @@ neither discovered by EF nor listed in the explicit 29-entry legacy quarantine,
 if a quarantined class becomes discoverable without review, or if an intended
 migration id no longer matches its type. Commit `bcc317e3` introduced the gate
 and corrected the EF drift step so its zero exit code is treated as a clean
-model. The verified inventory is `source=105, discovered=76, quarantined=29`.
+model. The verified inventory is `source=106, discovered=77, quarantined=29`.
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -137,7 +147,7 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The reflection/quarantine gate is expected to cover all 105 compiled migration
+The reflection/quarantine gate is expected to cover all 106 compiled migration
 subclasses, including the 29 classes that EF cannot currently discover. It
 prevents a new class from becoming silently invisible, but it does not prove
 that the quarantined DDL is safe to replay. A successful `database update`
@@ -233,6 +243,11 @@ automatic down-migration: its `Down()` throws before changing schema because
 restoring the former unique volunteer-application index is not data-safe after
 legitimate reapplications. Use a tested forward remediation or restore the
 pre-migration backup instead.
+
+`20260710192521_GuardianConsentLifecycle` is also intentionally irreversible:
+its `Down()` throws before changing schema because rollback would discard
+hashed guardian credentials and restore unsafe legacy status and verification
+semantics. Use a tested forward remediation or restore the pre-migration backup.
 
 ### Connection Strings
 

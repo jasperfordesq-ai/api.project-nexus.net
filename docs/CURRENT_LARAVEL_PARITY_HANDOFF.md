@@ -63,19 +63,21 @@ exit-code interpretation; `b6ab9d17` documents it. Commit `92440f48` replaces
 the canonical federation partnership list/approve/reject stubs with the first
 real receiver-scoped decision workflow. The current follow-up slice replaces
 the core volunteering placeholder successes with PostgreSQL-backed,
-tenant-scoped transactions. Its latest source migration is
-`20260710171315_AdminVolunteerApprovalWorkflow`; EF discovery/model drift, the
-76-migration fresh chain, and the wider 180-test contract regression are green.
+tenant-scoped transactions. The guardian follow-up completes the consent
+lifecycle without exposing raw credentials. Its latest source migration is
+`20260710192521_GuardianConsentLifecycle`; EF discovery/model drift and the
+77-migration fresh chain are green. The 180-test wider contract result remains
+the pre-guardian baseline; focused post-change regressions are recorded below.
 
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
 | Roles | `CanonicalRoleSemantics` adds `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god`; named policies read current DB state and reject inactive, deleted, role-drifted, or tenant-drifted users; v2 failures use canonical errors. Role-only `god` never satisfies `GodOnly`, and explicit-God targets cannot be deleted, suspended, banned, reset, or impersonated by lower privilege tiers. | Resource-level SuperPanel/hub rules, notifications, audit side effects, and full application-runtime proof remain. |
 | 2FA | Password login uses opaque 64-character challenges bound to user, tenant, and TOTP enrollment; `/api/totp/verify` supports TOTP and backup codes, limits attempts, consumes successful or drifted challenges, and rechecks account/tenant state. Canonical setup/verify/disable uses a real SVG QR code, atomic enabled-state/backup-code persistence, and password-confirmed disable. Unsupported forced first-login admin enrollment now fails startup when either legacy flag is enabled instead of emitting a lockout challenge. | Challenges are process-local; trusted-device lifecycle, security notifications, a TOTP-specific encryption key, multi-node proof, and a compatible first-login enrollment client remain open. |
 | Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
-| Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; inactive tenants are excluded and per-tenant failures aggregate. V2 manual execution requires platform-super access. `listing-expiry` and `job-expiry` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports only these two mappings active and the other 40 disabled with `execution_supported:false`. | 40 of 42 catalog jobs remain unmapped; fresh-runtime `scheduled_job_runs` proof remains open. |
+| Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; inactive tenants are excluded and per-tenant failures aggregate. V2 manual execution requires platform-super access. `listing-expiry`, `job-expiry`, and `volunteer-expire-consents` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports these three mappings active and the other 39 disabled with `execution_supported:false`. | 39 of 42 catalog jobs remain unmapped; fresh-runtime `scheduled_job_runs` proof remains open. |
 | Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
 | Federation partnership decisions | Canonical `/api[/v2]/admin/federation/partnerships` lists incoming and outgoing rows without changing the legacy outgoing-only route. Approve/reject require the receiving tenant, conditionally transition only `pending`, atomically persist one receiver-to-requester audit row, return Laravel status/error envelopes, and notify initiating-tenant admins only after commit. Same-action and approve-versus-reject races produce one winner and one side-effect set. | Laravel federation-level permission initialization, durable rejection actor/time/reason columns, localized link/push notifications, durable initial-sync scheduling, and canonical audit-log read visibility remain open. This is core decision-state parity, not complete federation parity. |
-| Transactional volunteering core | Selected-shift applications enforce feature, tenant, public/future shift, capacity, duplicate, and guardian-consent gates; optional auto-approval and later admin/organizer decisions share shift-row capacity locks. Admin and organizer decisions conditionally transition pending applications, persist reviewer/org-note state, and apply their surface-specific post-commit bell, link, push, and email policies. Direct signup/cancellation, group reservations and roster mutation, waitlist join/leave/claim, displaced-shift re-offers, stale-offer expiry, and the scheduled expiry job use tenant-scoped transactions and one-winner capacity/queue locking. Guardian consent is shared across apply, signup, waitlist, and group-add entry paths and supports opportunity scope plus expiry. | Unchanged-frontend runtime smoke remains pending. Volunteer-organisation status/membership ownership is not represented in the ASP.NET schema, so organisation fields/manager grants remain narrower. Localized built-in notification/email copy, live provider delivery, and unrelated long-tail volunteering compatibility handlers remain open. |
+| Transactional volunteering core | Selected-shift applications enforce feature, tenant, public/future shift, capacity, duplicate, and guardian-consent gates; optional auto-approval and later admin/organizer decisions share shift-row capacity locks. Admin and organizer decisions conditionally transition pending applications, persist reviewer/org-note state, and apply their surface-specific post-commit bell, link, push, and email policies. Direct signup/cancellation, group reservations and roster mutation, waitlist join/leave/claim, displaced-shift re-offers, stale-offer expiry, and scheduled expiry jobs use tenant-scoped transactions and one-winner capacity/queue locking. Guardian consent is shared across apply, signup, waitlist, and group-add entry paths. The full lifecycle now persists safe pending requests, stores only a hashed single-use token, emails the raw credential, supports tenant-scoped anonymous activation and authorized withdrawal, exposes redacted member and cursor-paginated admin reads, bridges the React toggle to the gate, rate-limits canonical endpoints, audits email attempts, emits post-commit bells, retires bypassing legacy mutations with 410, and globally expires overdue pending/active rows. | Unchanged-frontend runtime smoke remains pending. Volunteer-organisation status/membership ownership is not represented in the ASP.NET schema, so organisation fields/manager grants remain narrower. Localized built-in guardian copy and Laravel's complete tenant-link fallback chain, live provider delivery, and unrelated long-tail volunteering compatibility handlers remain open. |
 | Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
 
 Verification evidence for this slice:
@@ -98,27 +100,39 @@ Verification evidence for this slice:
 - post-federation-review API Release build: 0 warnings, 0 errors; test-project
   build: 4 pre-existing `xUnit1031` warnings, 0 errors; EF reported no model
   drift at that pre-volunteering baseline.
-- current transactional volunteering focused regression: 61/61 passed;
-- current API and test-project Release builds: green with no compile errors;
+- prior transactional volunteering core regression: 61/61 passed;
+- clean guardian-consent lifecycle regression: 7/7 passed;
+- combined workflow/guardian/ownership filter: 67/68 passed in one run; the
+  only failure was a PostgreSQL fixture-clear timeout before its test body, and
+  that exact case passed 1/1 on an isolated fresh-fixture retry;
+- guardian ownership/migration focus: 97/97 passed; exact admin config, cron,
+  and legacy-mutation contracts: 3/3 passed;
+- current API and test-project Release builds: green with 0 warnings and 0
+  compile errors;
 - latest volunteering migration source:
-  `20260710171315_AdminVolunteerApprovalWorkflow`;
-- final migration discovery: 105 source classes, 76 EF-discovered, 29 explicitly
+  `20260710192521_GuardianConsentLifecycle`;
+- final migration discovery: 106 source classes, 77 EF-discovered, 29 explicitly
   quarantined; EF reports no pending model changes;
-- blank disposable PostgreSQL: all 76 discovered migrations applied, latest
-  history id `20260710171315_AdminVolunteerApprovalWorkflow`; container removed;
-- wider volunteering route/auth/notification/legacy contract regression:
-  180/180 passed.
+- blank disposable PostgreSQL: all 77 discovered migrations applied, latest
+  history id `20260710192521_GuardianConsentLifecycle`; the verified guardian
+  columns and unique token-hash index match the model; container removed;
+- API route comparator: 2,436/2,436 Laravel/supplemental operations matched,
+  0 route-shape gaps;
+- pre-guardian wider volunteering route/auth/notification/legacy contract
+  baseline: 180/180 passed.
 
-The new migration deliberately has no destructive downgrade path. Its `Down`
-fails before changing schema because the former unique
-tenant/opportunity/user application index cannot be restored after legitimate
-declined/withdrawn reapplication history without data loss.
+Both new volunteering migrations deliberately reject unsafe downgrade paths.
+`AdminVolunteerApprovalWorkflow.Down()` fails before changing schema because
+the former unique tenant/opportunity/user application index cannot be restored
+after legitimate declined/withdrawn reapplication history without data loss.
+`GuardianConsentLifecycle.Down()` fails because rollback would discard hashed
+guardian credentials and restore unsafe legacy status/verification semantics.
 
 Migration discovery now fails closed in CI, but schema reconciliation remains a
 red gate: 29 legacy classes are explicitly quarantined because they are
 not discoverable by EF. Because most contain non-idempotent DDL, do not restore
 their metadata until supported database histories and schemas are reconciled.
-The gate prevents silent inventory drift; the disposable proof certifies the 76
+The gate prevents silent inventory drift; the disposable proof certifies the 77
 discovered migrations, not replay safety for those 29 classes. No production
 database or container was touched.
 
@@ -211,7 +225,7 @@ are mostly closed; the remaining work is contract correctness.
 
 1. Reconcile supported database histories and schemas for the explicit
    29-entry migration quarantine before restoring any missing metadata.
-2. Replace the remaining 40 unmapped cron definitions with real jobs or keep
+2. Replace the remaining 39 unmapped cron definitions with real jobs or keep
    them explicitly disabled/unsupported until equivalent work executes.
 3. Close the remaining volunteering organisation ownership/status,
    localization/provider, long-tail handler, and frontend-runtime gaps. Finish

@@ -146,7 +146,7 @@ public sealed class VolunteerSelectedShiftApplicationWorkflowTests : Integration
                 MinorUserId = TestData.MemberUser.Id,
                 GuardianName = "Test Guardian",
                 GuardianEmail = "guardian@test.local",
-                Status = VolunteerGuardianConsentStatus.Granted,
+                Status = VolunteerGuardianConsentStatus.Active,
                 ConsentedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
             });

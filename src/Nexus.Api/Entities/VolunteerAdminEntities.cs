@@ -75,9 +75,9 @@ public class VolunteerTrainingCompletion : ITenantEntity
 public enum VolunteerGuardianConsentStatus
 {
     Pending = 0,
-    Granted = 1,
-    Revoked = 2,
-    Rejected = 3
+    Active = 1,
+    Expired = 2,
+    Withdrawn = 3
 }
 
 public class VolunteerGuardianConsent : ITenantEntity
@@ -93,16 +93,30 @@ public class VolunteerGuardianConsent : ITenantEntity
     /// </summary>
     public int? OpportunityId { get; set; }
 
-    [Required, MaxLength(200)]
+    [Required, MaxLength(255)]
     public string GuardianName { get; set; } = string.Empty;
 
     [Required, MaxLength(320)]
     public string GuardianEmail { get; set; } = string.Empty;
 
-    [MaxLength(100)]
-    public string? GuardianRelationship { get; set; }
+    [MaxLength(50)]
+    public string? GuardianPhone { get; set; }
+
+    [Required, MaxLength(100)]
+    public string GuardianRelationship { get; set; } = string.Empty;
+
+    /// <summary>
+    /// SHA-256 hash of the one-time 64-hex-character email credential. The raw
+    /// token is never persisted or returned by an API.
+    /// </summary>
+    [MaxLength(64)]
+    public string? ConsentTokenHash { get; set; }
 
     public DateTime? ConsentedAt { get; set; }
+
+    [MaxLength(45)]
+    public string? ConsentIp { get; set; }
+
     public DateTime? RevokedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }
 

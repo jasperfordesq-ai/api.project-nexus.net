@@ -598,7 +598,7 @@ public sealed class VolunteerWaitlistClaimAndCancellationTests : IntegrationTest
                     OpportunityId = opportunity.Id,
                     GuardianName = "Expired Guardian",
                     GuardianEmail = "expired-guardian@test.local",
-                    Status = VolunteerGuardianConsentStatus.Granted,
+                    Status = VolunteerGuardianConsentStatus.Active,
                     ConsentedAt = DateTime.UtcNow.AddDays(-2),
                     ExpiresAt = DateTime.UtcNow.AddMinutes(-1),
                     CreatedAt = DateTime.UtcNow.AddDays(-2)
@@ -639,7 +639,7 @@ public sealed class VolunteerWaitlistClaimAndCancellationTests : IntegrationTest
                 OpportunityId = null,
                 GuardianName = "Global Guardian",
                 GuardianEmail = "global-guardian@test.local",
-                Status = VolunteerGuardianConsentStatus.Granted,
+                Status = VolunteerGuardianConsentStatus.Active,
                 ConsentedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(30),
                 CreatedAt = DateTime.UtcNow

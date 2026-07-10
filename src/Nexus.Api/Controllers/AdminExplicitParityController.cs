@@ -384,7 +384,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/volunteering/giving-days")]
     [HttpGet("/api/v2/admin/volunteering/giving-days/{id}/donors")]
     [HttpGet("/api/v2/admin/volunteering/giving-days/{id}/trends")]
-    [HttpGet("/api/v2/admin/volunteering/guardian-consents")]
     [HttpGet("/api/v2/admin/volunteering/hours")]
     [HttpGet("/api/v2/admin/volunteering/incidents")]
     [HttpGet("/api/admin/volunteering/organizations")]
@@ -5454,6 +5453,15 @@ public class AdminExplicitParityController : ControllerBase
     {
         var json = JsonSerializer.Serialize(settings, StoreJsonOptions);
         await UpsertTenantConfigValueAsync(ModuleConfigPrefix + module, json);
+        if (string.Equals(module, "volunteering", StringComparison.OrdinalIgnoreCase)
+            && settings.TryGetValue(
+                VolunteerGuardianConsentService.GuardianConsentRequiredConfigKey,
+                out var guardianConsentRequired))
+        {
+            await UpsertTenantConfigValueAsync(
+                VolunteerGuardianConsentService.GuardianConsentRequiredConfigKey,
+                JsonSerializer.Serialize(guardianConsentRequired, StoreJsonOptions));
+        }
         await _db.SaveChangesAsync();
     }
 

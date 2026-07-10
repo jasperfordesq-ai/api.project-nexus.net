@@ -97,7 +97,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 998.8/1000 | 2,433 of 2,436 Laravel operations matched |
+| ASP.NET static API method/path inventory | 1000/1000 | 2,436 of 2,436 Laravel operations matched; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -108,7 +108,7 @@ route coverage is not a completion score.
 
 | Check | 2026-07-10 result |
 | --- | --- |
-| ASP.NET static operations | 4,309 |
+| ASP.NET static operations | 4,322 |
 | Laravel source operations | 2,436 |
 | Static method/path matches | 2,436 matched, 0 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
@@ -118,8 +118,8 @@ route coverage is not a completion score.
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test Release builds | Current builds passed with no compile errors |
-| Transactional volunteering regression | 61/61 focused tests and 180/180 wider route/auth/notification/legacy contract tests passed |
-| Migration runtime chain | 105 source classes = 76 EF-discovered + 29 quarantined; no model drift; all 76 discovered migrations applied to blank disposable PostgreSQL through `20260710171315_AdminVolunteerApprovalWorkflow` |
+| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; combined workflow/guardian/ownership run 67/68 with the sole PostgreSQL fixture-clear timeout occurring before its test body, then that exact case passed 1/1 in isolation; guardian ownership/migration focus 97/97; targeted config/cron/legacy contracts 3/3; pre-guardian wider baseline 180/180 |
+| Migration runtime chain | 106 source classes = 77 EF-discovered + 29 quarantined; no model drift; all 77 discovered migrations applied to blank disposable PostgreSQL through `20260710192521_GuardianConsentLifecycle` |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -159,11 +159,16 @@ that implementation movement and the lower amount of current green evidence.
   `src\Nexus.Api\Services\VolunteerService.cs`,
   `src\Nexus.Api\Services\AdminVolunteerApprovalService.cs`,
   `src\Nexus.Api\Services\ShiftManagementService.cs`, and
-  `src\Nexus.Api\Controllers\VolunteeringParityController.cs`; focused proof is
-  the 61/61 volunteering workflow set. Migration source is
-  `src\Nexus.Api\Migrations\20260710171315_AdminVolunteerApprovalWorkflow.cs`,
-  with 105/76/29 discovery, no model drift, and a green 76-migration disposable
-  fresh chain. The adjacent wider contract set is 180/180.
+  `src\Nexus.Api\Controllers\VolunteeringParityController.cs`. Guardian
+  lifecycle anchors are `src\Nexus.Api\Services\VolunteerGuardianConsentService.cs`,
+  `src\Nexus.Api\Controllers\VolunteerAdminController.cs`,
+  `src\Nexus.Api\Services\Scheduled\VolunteerGuardianConsentExpiryJob.cs`,
+  `src\Nexus.Api\Migrations\20260710192521_GuardianConsentLifecycle.cs`,
+  `tests\Nexus.Api.Tests\GuardianConsentLifecycleTests.cs`, and
+  `tests\Nexus.Api.Tests\GuardianConsentRouteOwnershipTests.cs`. Focused proof
+  is the prior 61/61 core plus the clean 7/7 guardian lifecycle. Migration
+  discovery is 106/77/29 with no model drift and a green 77-migration
+  disposable fresh chain. The pre-guardian wider contract baseline is 180/180.
 
 ### Web UK localization/RTL progress after the audit baseline
 
@@ -358,11 +363,13 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > manual-run endpoint executes real `ListingExpiry` and `JobVacancyExpiry`
 > jobs, persists their outcomes, prevents overlapping scheduled/manual
 > execution, excludes inactive tenants, and returns explicit unsupported,
-> busy, disabled, and failure responses. Only 2 of the 42 Laravel cron
-> definitions are mapped; the other 40 are reported disabled/unsupported. P0
+> busy, disabled, and failure responses. `volunteer-expire-consents` now maps
+> to the real global guardian-consent expiry job, so 3 of the 42 Laravel cron
+> definitions are executable and the other 39 are reported disabled/
+> unsupported. P0
 > item 5 now has explicit user privilege columns, DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
-> targets, and focused role regression coverage. The 76-migration discovered
+> targets, and focused role regression coverage. The 77-migration discovered
 > chain is fresh-database certified; full application runtime remains open. P0
 > item 3 now includes real canonical federation
 > partnership list/approve/reject behavior: receiver-only pending transitions,
@@ -375,18 +382,28 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > join/leave/claim, displaced-shift re-offers, and stale-offer expiry use
 > tenant-scoped persistence, conditional transitions, shared capacity locks,
 > and surface-specific post-commit notification delivery. The shared guardian
-> gate covers apply, signup, waitlist, and group-add entry paths with opportunity
-> scope and expiry. The focused PostgreSQL-backed volunteering set is 61/61, and
-> the API and test-project Release builds are green. The latest source migration
-> is `20260710171315_AdminVolunteerApprovalWorkflow`; discovery is 105/76/29,
-> EF reports no model drift, the 76 discovered migrations apply to blank
-> PostgreSQL, and the wider contract regression is 180/180. Unchanged-frontend
-> runtime smoke remains open. The migration's
-> downgrade deliberately fails before destructive changes because the former
-> unique application index cannot be restored after legitimate reapplication
-> history without data loss. Volunteer-organisation status/membership ownership,
-> localized built-in delivery copy, live provider proof, and unrelated long-tail
-> volunteering scaffolds also remain. This progress does not close the catch-all
+> gate covers apply, signup, waitlist, and group-add entry paths. Its full
+> lifecycle now provides safe member requests/reads, hashed single-use email
+> credentials, tenant-scoped anonymous activation, authorized withdrawal,
+> cursor-paginated admin reads, canonical throttling, admin-config convergence,
+> audited email attempts, post-commit bells, global expiry, and explicit 410s
+> for legacy mutation bypasses. The prior core is 61/61, the guardian lifecycle
+> is clean at 7/7, and the combined workflow/guardian/ownership run was 67/68;
+> its sole PostgreSQL fixture-clear timeout occurred before the test body and
+> that exact case then passed 1/1 in isolation. The guardian ownership/migration
+> focus is 97/97. The API and test-project Release builds are
+> green. The latest source migration is
+> `20260710192521_GuardianConsentLifecycle`; discovery is 106/77/29, EF reports
+> no model drift, and the 77 discovered migrations apply to blank PostgreSQL.
+> The 180/180 wider contract result is the pre-guardian baseline.
+> Unchanged-frontend runtime smoke remains open. Both new volunteering
+> migrations reject unsafe downgrades: the former unique application index
+> cannot be restored after legitimate reapplication history, and hashed
+> guardian credentials/status semantics cannot be safely discarded.
+> Volunteer-organisation status/membership ownership, localized built-in
+> guardian delivery copy and the full tenant-link fallback chain, live provider
+> proof, and unrelated long-tail volunteering scaffolds also remain. This
+> progress does not close the catch-all
 > inventory, wider scheduled/provider backlog, or the backend 1000/1000 gate.
 
 ### P1: replace compatibility scaffolding with domain behavior

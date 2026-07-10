@@ -138,69 +138,6 @@ public class VolunteerAdminService
         return q.OrderByDescending(c => c.CreatedAt).Take(500).ToListAsync();
     }
 
-    public async Task<VolunteerGuardianConsent> CreateConsentAsync(
-        int minorUserId, string guardianName, string guardianEmail, string? relationship, string? documentUrl)
-    {
-        if (string.IsNullOrWhiteSpace(guardianName))
-            throw new ArgumentException("Guardian name required", nameof(guardianName));
-        if (string.IsNullOrWhiteSpace(guardianEmail))
-            throw new ArgumentException("Guardian email required", nameof(guardianEmail));
-
-        var entity = new VolunteerGuardianConsent
-        {
-            TenantId = _tenant.GetTenantIdOrThrow(),
-            MinorUserId = minorUserId,
-            GuardianName = guardianName.Trim(),
-            GuardianEmail = guardianEmail.Trim(),
-            GuardianRelationship = relationship,
-            ConsentDocumentUrl = documentUrl,
-            Status = VolunteerGuardianConsentStatus.Pending,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.VolunteerGuardianConsents.Add(entity);
-        await _db.SaveChangesAsync();
-        return entity;
-    }
-
-    public async Task<VolunteerGuardianConsent?> ApproveConsentAsync(int id, int reviewerUserId, string? note)
-    {
-        var entity = await _db.VolunteerGuardianConsents.FirstOrDefaultAsync(c => c.Id == id);
-        if (entity == null) return null;
-        entity.Status = VolunteerGuardianConsentStatus.Granted;
-        entity.ConsentedAt = DateTime.UtcNow;
-        entity.ReviewedByUserId = reviewerUserId;
-        entity.ReviewedAt = DateTime.UtcNow;
-        entity.ReviewerNote = note;
-        entity.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return entity;
-    }
-
-    public async Task<VolunteerGuardianConsent?> RejectConsentAsync(int id, int reviewerUserId, string? note)
-    {
-        var entity = await _db.VolunteerGuardianConsents.FirstOrDefaultAsync(c => c.Id == id);
-        if (entity == null) return null;
-        entity.Status = VolunteerGuardianConsentStatus.Rejected;
-        entity.ReviewedByUserId = reviewerUserId;
-        entity.ReviewedAt = DateTime.UtcNow;
-        entity.ReviewerNote = note;
-        entity.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return entity;
-    }
-
-    public async Task<VolunteerGuardianConsent?> RevokeConsentAsync(int id, string? note)
-    {
-        var entity = await _db.VolunteerGuardianConsents.FirstOrDefaultAsync(c => c.Id == id);
-        if (entity == null) return null;
-        entity.Status = VolunteerGuardianConsentStatus.Revoked;
-        entity.RevokedAt = DateTime.UtcNow;
-        entity.ReviewerNote = note;
-        entity.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return entity;
-    }
-
     // ─── Tenant policy (singleton) ────────────────────────────────────────
 
     public async Task<VolunteerTenantPolicy> GetPolicyAsync()

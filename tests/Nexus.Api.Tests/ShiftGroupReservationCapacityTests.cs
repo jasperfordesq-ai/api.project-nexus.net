@@ -466,7 +466,7 @@ public sealed class ShiftGroupReservationCapacityTests : IntegrationTestBase
                 OpportunityId = globalConsent ? null : opportunityId,
                 GuardianName = "Test Guardian",
                 GuardianEmail = "guardian@test.local",
-                Status = VolunteerGuardianConsentStatus.Granted,
+                Status = VolunteerGuardianConsentStatus.Active,
                 ConsentedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(30),
                 CreatedAt = DateTime.UtcNow
