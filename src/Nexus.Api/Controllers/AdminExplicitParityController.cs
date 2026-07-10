@@ -641,6 +641,8 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/billing/checkout" => await CreateBillingCheckout(),
             "/api/v2/admin/billing/portal" => CreateBillingPortal(),
             "/api/v2/admin/billing/upgrade-request" => await CreateBillingUpgradeRequest(),
+            "/api/v2/admin/blog/bulk-delete" => await BulkDeleteBlogPosts(),
+            "/api/v2/admin/blog/bulk-publish" => await BulkPublishBlogPosts(),
             "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
@@ -750,6 +752,128 @@ public class AdminExplicitParityController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { data = new { sent = true } });
+    }
+
+    private async Task<IActionResult> BulkDeleteBlogPosts()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var idsResult = await ReadBlogBulkIds();
+        if (idsResult.Error != null) return idsResult.Error;
+
+        var ids = idsResult.Ids;
+        var posts = await _db.BlogPosts
+            .Where(post => post.TenantId == tenantId && ids.Contains(post.Id))
+            .ToListAsync();
+
+        var eligibleIds = posts.Select(post => post.Id).ToHashSet();
+        var skippedIds = ids.Where(id => !eligibleIds.Contains(id)).ToList();
+        var success = posts.Count;
+
+        _db.BlogPosts.RemoveRange(posts);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success,
+                failed = skippedIds.Count,
+                skipped_ids = skippedIds
+            }
+        });
+    }
+
+    private async Task<IActionResult> BulkPublishBlogPosts()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var idsResult = await ReadBlogBulkIds();
+        if (idsResult.Error != null) return idsResult.Error;
+
+        var ids = idsResult.Ids;
+        var posts = await _db.BlogPosts
+            .Where(post => post.TenantId == tenantId && ids.Contains(post.Id))
+            .ToListAsync();
+
+        var existingIds = posts.Select(post => post.Id).ToHashSet();
+        var skippedIds = ids.Where(id => !existingIds.Contains(id)).ToList();
+        var missingCount = skippedIds.Count;
+        var success = 0;
+        var now = DateTime.UtcNow;
+
+        foreach (var post in posts)
+        {
+            if (string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase))
+            {
+                skippedIds.Add(post.Id);
+                continue;
+            }
+
+            post.Status = "published";
+            post.PublishedAt ??= now;
+            post.UpdatedAt = now;
+            success++;
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success,
+                failed = missingCount,
+                skipped_ids = skippedIds
+            }
+        });
+    }
+
+    private async Task<(List<int> Ids, IActionResult? Error)> ReadBlogBulkIds()
+    {
+        var payload = await ReadJsonObjectPayloadAsync();
+        var ids = JsonIntArray(payload, "post_ids")
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return (ids, UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_FAILED",
+                        message = "post_ids is required.",
+                        field = "post_ids"
+                    }
+                }
+            }));
+        }
+
+        if (ids.Count > 100)
+        {
+            return (ids, UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_FAILED",
+                        message = "A maximum of 100 blog posts can be processed at once.",
+                        field = "post_ids"
+                    }
+                }
+            }));
+        }
+
+        return (ids, null);
     }
 
     private async Task<IActionResult> BulkApproveUsers()
