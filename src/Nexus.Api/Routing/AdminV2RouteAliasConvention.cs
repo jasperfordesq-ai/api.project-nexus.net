@@ -948,7 +948,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/ads/active",
             "api/appreciations",
             "api/billing/plans",
-            "api/blog",
             "api/categories",
             "api/clubs",
             "api/config",
