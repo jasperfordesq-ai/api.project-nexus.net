@@ -43,6 +43,45 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-10 Current Web UK Checkpoint
+
+This checkpoint supersedes the Web UK scores and test counts in the audit
+baseline below. It does not change the ASP.NET workstream scores.
+
+| Surface | Score | Meaning |
+| --- | ---: | --- |
+| Web UK Laravel-first implementation | 900/1000 | An independent pre-publication audit scored 896; publishing the clean, documented `apps/web-uk` slice supplies the remaining repository-hygiene points, but substantive component, workflow, localization, and manual-accessibility gaps remain. |
+| Web UK Laravel-first certification | 765/1000 | An independent pre-publication audit scored 760; publication improves reproducibility, while live mutation/upload/destructive evidence and manual certification remain materially incomplete. |
+| Web UK ASP.NET switchability proof | 80/1000 | Unchanged and outside this Laravel-first session. |
+
+Current evidence at commit `702ece83`:
+
+- `45/45` Jest suites and `1,386/1,386` tests passed; lint, brand policy, CSS
+  compilation, and scoped diff checks passed.
+- The route matrix reports `608/608` Laravel routes matched, `0` missing, `0`
+  extra parity routes, and `3` ignored infrastructure routes. This remains
+  declaration evidence, not workflow certification.
+- Locale structure is complete across `11` locales, `24` namespaces, and
+  `7,337` keys, but every non-English catalog still has `3,903-3,951`
+  English-identical values and `16` wholly English namespaces.
+- The conservative source audit reports `290` templates and `0` remaining safe
+  exact-value substitutions; current browser inspection still found English
+  contextual copy on the Arabic dashboard.
+- Chromium/axe passed `22/22`; the live Blade marker comparator passed `19/19`.
+  Limited 320-pixel RTL/reflow/forced-colour inspection is recorded, but native
+  keyboard traversal, screen-reader, and full manual WCAG evidence remain open.
+- Deterministic serial Laravel smoke covered all `639` distinct current default
+  read/auth/gate/body checks: base `93/93`, all `276` module pages, and all
+  `270` body markers. Two 60-second request aborts passed isolated `11/11`
+  retries. This does not prove mutation, upload, download, or destructive side
+  effects.
+- Component reconciliation still records `111` Partial and `19` Started rows,
+  `130` open in total and `0` Complete. Some rows also mention future ASP.NET
+  switching, so use their explicit Laravel gaps rather than status alone.
+
+The Laravel-first 1000/1000 gate is therefore not met, and meaningful local
+work remains. The permitted external-blocker-only stop condition is not met.
+
 ## 2026-07-10 Audit Baseline
 
 Repository snapshot at audit time:
