@@ -18,6 +18,9 @@ public static class RateLimitingExtensions
     public const string AuthPolicy = "auth";
     public const string GeneralPolicy = "general";
     public const string AiPolicy = "Ai";
+    public const string AiProviderTestPolicy = "ai-provider-test";
+    public const string VolunteerWellbeingAlertsPolicy = "volunteer-wellbeing-alerts";
+    public const string VolunteerWellbeingAlertUpdatePolicy = "volunteer-wellbeing-alert-update";
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -86,6 +89,46 @@ public static class RateLimitingExtensions
                         QueueLimit = 5 // Allow some queuing for AI requests
                     }));
 
+            // Provider connectivity tests can trigger paid or resource-intensive
+            // upstream calls. Laravel limits these to 10 attempts per user/minute.
+            options.AddPolicy(AiProviderTestPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromSeconds(60),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            // Laravel uses independent 30/minute buckets for listing and updating
+            // coordinator wellbeing alerts.
+            options.AddPolicy(VolunteerWellbeingAlertsPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = 30,
+                        Window = TimeSpan.FromSeconds(60),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy(VolunteerWellbeingAlertUpdatePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = 30,
+                        Window = TimeSpan.FromSeconds(60),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
             // Custom rejection response
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -98,6 +141,37 @@ public static class RateLimitingExtensions
 
                 context.HttpContext.Response.Headers.RetryAfter = retryAfter.ToString("0");
 
+                var path = context.HttpContext.Request.Path;
+                var canonicalLimit = path.StartsWithSegments("/api/v2/admin/volunteering/wellbeing/alerts")
+                    ? 30
+                    : path.StartsWithSegments("/api/ai/test-provider") || path.StartsWithSegments("/api/v2/ai/test-provider")
+                        ? 10
+                        : (int?)null;
+
+                if (canonicalLimit.HasValue)
+                {
+                    var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter));
+                    context.HttpContext.Response.Headers["X-RateLimit-Limit"] = canonicalLimit.Value.ToString();
+                    context.HttpContext.Response.Headers["X-RateLimit-Remaining"] = "0";
+                    context.HttpContext.Response.Headers["X-RateLimit-Reset"] =
+                        (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + retryAfterSeconds).ToString();
+                    context.HttpContext.Response.Headers["API-Version"] = "2.0";
+
+                    var tenantId = context.HttpContext.User.FindFirst("tenant_id")?.Value;
+                    if (!string.IsNullOrWhiteSpace(tenantId))
+                    {
+                        context.HttpContext.Response.Headers["X-Tenant-ID"] = tenantId;
+                    }
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        success = false,
+                        error = "Rate limit exceeded. Please try again later.",
+                        code = "RATE_LIMIT_EXCEEDED"
+                    }, cancellationToken);
+                    return;
+                }
+
                 await context.HttpContext.Response.WriteAsJsonAsync(new
                 {
                     error = "Too many requests",
@@ -108,6 +182,22 @@ public static class RateLimitingExtensions
         });
 
         return services;
+    }
+
+    private static string GetAuthenticatedUserOrClientIdentifier(HttpContext context, string[] trustedProxies)
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = context.User.FindFirst("sub")?.Value
+                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var tenantId = context.User.FindFirst("tenant_id")?.Value ?? "unknown";
+                return $"user:{tenantId}:{userId}";
+            }
+        }
+
+        return $"client:{GetClientIdentifier(context, trustedProxies)}";
     }
 
     /// <summary>

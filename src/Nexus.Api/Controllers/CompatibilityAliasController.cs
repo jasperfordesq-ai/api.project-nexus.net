@@ -1663,26 +1663,6 @@ public class CompatibilityAliasController : ControllerBase
     // Group-exchange extras, group announcements
     // ──────────────────────────────────────────────
 
-    /// <summary>
-    /// POST /api/group-exchanges/{id}/confirm — Confirm group exchange.
-    /// </summary>
-    [HttpPost("api/group-exchanges/{id:int}/confirm")]
-    public async Task<IActionResult> ConfirmGroupExchange(int id)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var participant = await _db.GroupExchangeParticipants
-            .FirstOrDefaultAsync(p => p.GroupExchangeId == id && p.UserId == userId.Value);
-        if (participant == null) return NotFound(new { error = "Group exchange participant not found" });
-
-        participant.IsConfirmed = true;
-        participant.ConfirmedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        return Ok(new { success = true, message = "Group exchange confirmed", id, user_id = userId.Value });
-    }
-
     // Group announcements routes removed — served by GroupFeaturesController
 
     /// <summary>

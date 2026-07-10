@@ -10,6 +10,8 @@
  */
 
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -49,6 +51,36 @@ public class AdminAiProvidersControllerAuthTests : IntegrationTestBase
         else
         {
             ((int)resp.StatusCode).Should().Be(expectedStatus);
+        }
+    }
+
+    [Theory]
+    [InlineData("anonymous", (int)HttpStatusCode.Unauthorized)]
+    [InlineData("member", (int)HttpStatusCode.Forbidden)]
+    [InlineData("admin", (int)HttpStatusCode.OK)]
+    public async Task LaravelProviderTest_IsAdminOnlyAndNeverFabricatesSuccess(string role, int expectedStatus)
+    {
+        if (role == "anonymous")
+        {
+            ClearAuthToken();
+        }
+        else if (role == "admin")
+        {
+            await AuthenticateAsAdminAsync();
+        }
+        else
+        {
+            await AuthenticateAsMemberAsync();
+        }
+
+        var response = await Client.PostAsJsonAsync("/api/v2/ai/test-provider", new { provider = "not-configured" });
+
+        ((int)response.StatusCode).Should().Be(expectedStatus);
+        if (role == "admin")
+        {
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+            body.GetProperty("data").GetProperty("success").GetBoolean().Should().BeFalse();
+            body.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
         }
     }
 }

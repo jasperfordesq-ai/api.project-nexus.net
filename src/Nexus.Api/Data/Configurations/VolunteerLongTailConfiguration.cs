@@ -48,6 +48,28 @@ public class VolunteerLongTailConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<VolunteerWellbeingAlert>(entity =>
+        {
+            entity.ToTable("vol_wellbeing_alerts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RiskLevel).HasColumnName("risk_level").HasMaxLength(20).HasDefaultValue("moderate");
+            entity.Property(e => e.RiskScore).HasColumnName("risk_score").HasPrecision(5, 2).HasDefaultValue(0m);
+            entity.Property(e => e.Indicators).HasColumnName("indicators").HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
+            entity.Property(e => e.CoordinatorNotified).HasColumnName("coordinator_notified").HasDefaultValue(false);
+            entity.Property(e => e.CoordinatorNotes).HasColumnName("coordinator_notes").HasColumnType("text");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("active");
+            entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).HasDatabaseName("idx_vol_wellbeing_alerts_tenant_user");
+            entity.HasIndex(e => new { e.TenantId, e.Status }).HasDatabaseName("idx_vol_wellbeing_alerts_tenant_status");
+            entity.HasIndex(e => new { e.RiskLevel, e.Status }).HasDatabaseName("idx_vol_wellbeing_alerts_risk_level_status");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<VolunteerCertificate>(entity =>
         {
             entity.ToTable("volunteer_certificates");

@@ -954,7 +954,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/users",
             "api/connections",
             "api/exchanges",
-            "api/group-exchanges",
             "api/group-collections",
             "api/group-tags",
             "api/group-templates",

@@ -161,11 +161,24 @@ public class GroupConfiguration : TenantScopedConfiguration
         modelBuilder.Entity<GroupExchange>(entity =>
         {
             entity.ToTable("group_exchanges");
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_group_exchanges_Status",
+                    "\"Status\" IN ('draft', 'pending_participants', 'pending_broker', 'active', 'pending_confirmation', 'completed', 'cancelled', 'disputed')");
+                table.HasCheckConstraint(
+                    "CK_group_exchanges_SplitType",
+                    "\"SplitType\" IN ('equal', 'custom', 'weighted')");
+            });
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.SplitType).HasMaxLength(20).HasDefaultValue("equal").IsRequired();
             entity.Property(e => e.TotalHours).HasPrecision(10, 2);
-            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.BrokerNotes).HasColumnType("text");
+            entity.HasIndex(e => new { e.TenantId, e.CreatedById });
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
@@ -176,9 +189,17 @@ public class GroupConfiguration : TenantScopedConfiguration
         modelBuilder.Entity<GroupExchangeParticipant>(entity =>
         {
             entity.ToTable("group_exchange_participants");
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_group_exchange_participants_Role",
+                "\"Role\" IN ('provider', 'receiver')"));
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Role).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Hours).HasPrecision(10, 2);
+            entity.Property(e => e.Weight).HasPrecision(5, 2).HasDefaultValue(1m);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            // A user may participate once per role (provider and receiver are
+            // intentionally allowed for the same user).
+            entity.HasIndex(e => new { e.GroupExchangeId, e.UserId, e.Role }).IsUnique();
             entity.HasOne(e => e.GroupExchange).WithMany(g => g.Participants).HasForeignKey(e => e.GroupExchangeId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });

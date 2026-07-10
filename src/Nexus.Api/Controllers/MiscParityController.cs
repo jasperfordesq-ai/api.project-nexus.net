@@ -161,10 +161,6 @@ public class MiscParityController : ControllerBase
     [Authorize]
     public IActionResult GenerateListing([FromBody] JsonElement body) => Ok(new { data = new { title = Str(body, "title") ?? "Community listing", description = "Generated listing draft." } });
 
-    [HttpPost("ai/test-provider")]
-    [Authorize]
-    public IActionResult TestAiProvider() => Ok(new { data = new { ok = true } });
-
     [HttpPost("app/log")]
     [AllowAnonymous]
     public IActionResult AppLog([FromBody] JsonElement body) => Ok(new { accepted = true });
@@ -1313,10 +1309,6 @@ public class MiscParityController : ControllerBase
     [HttpGet("vol_opportunities")]
     [Authorize]
     public async Task<IActionResult> LegacyVolOpportunities() => Ok(new { data = await _db.VolunteerOpportunities.Take(50).ToListAsync() });
-
-    [HttpPost("group-exchanges/{id:int}/complete")]
-    [Authorize]
-    public IActionResult CompleteGroupExchange(int id) => Ok(new { data = new { id, status = "completed" } });
 
     [HttpPost("webhooks/identity/{provider}")]
     [AllowAnonymous]

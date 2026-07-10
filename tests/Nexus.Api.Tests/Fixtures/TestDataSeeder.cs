@@ -397,6 +397,7 @@ public static class TestDataSeeder
                 balance_alerts,
                 transaction_limits,
                 transaction_categories,
+                vol_wellbeing_alerts,
                 volunteer_check_ins,
                 volunteer_applications,
                 volunteer_shifts,

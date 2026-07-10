@@ -239,6 +239,7 @@ public class NexusDbContext : DbContext
 
     public DbSet<VolunteerExpense> VolunteerExpenses => Set<VolunteerExpense>();
     public DbSet<VolunteerWellbeing> VolunteerWellbeings => Set<VolunteerWellbeing>();
+    public DbSet<VolunteerWellbeingAlert> VolunteerWellbeingAlerts => Set<VolunteerWellbeingAlert>();
     public DbSet<VolunteerCertificate> VolunteerCertificates => Set<VolunteerCertificate>();
     public DbSet<VolunteerEmergencyAlert> VolunteerEmergencyAlerts => Set<VolunteerEmergencyAlert>();
     public DbSet<VolunteerTrainingCourse> VolunteerTrainingCourses => Set<VolunteerTrainingCourse>();

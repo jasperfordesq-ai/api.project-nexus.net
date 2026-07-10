@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+// Copyright (c) 2024-2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -6,234 +6,482 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Nexus.Api.Data;
-using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
+/// <summary>
+/// Group-exchange contract shared by the legacy /api path and Laravel React's
+/// canonical /api/v2 path. Both routes execute the same tenant-safe service.
+/// </summary>
 [ApiController]
 [Route("api/group-exchanges")]
+[Route("api/v2/group-exchanges")]
 [Authorize]
 public class GroupExchangeController : ControllerBase
 {
-    private readonly NexusDbContext _db;
-    private readonly TenantContext _tenantContext;
-    private readonly ILogger<GroupExchangeController> _logger;
+    private readonly GroupExchangeService _service;
 
-    public GroupExchangeController(NexusDbContext db, TenantContext tenantContext, ILogger<GroupExchangeController> logger)
-    { _db = db; _tenantContext = tenantContext; _logger = logger; }
-
-    [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int? group_id, [FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public GroupExchangeController(GroupExchangeService service)
     {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        if (page < 1) page = 1;
-        limit = Math.Clamp(limit, 1, 100);
-        var query = _db.GroupExchanges.AsNoTracking().AsQueryable();
-        if (group_id.HasValue)
-        {
-            if (!await _db.GroupMembers.AnyAsync(gm => gm.GroupId == group_id.Value && gm.UserId == userId))
-                return StatusCode(403, new { error = "You must be a member of the group" });
-            query = query.Where(ge => ge.GroupId == group_id.Value);
-        }
-        else
-        {
-            var myGroupIds = await _db.GroupMembers.Where(gm => gm.UserId == userId).Select(gm => gm.GroupId).ToListAsync();
-            query = query.Where(ge => myGroupIds.Contains(ge.GroupId));
-        }
-        var total = await query.CountAsync();
-        var exchanges = await query.OrderByDescending(ge => ge.CreatedAt).Skip((page - 1) * limit).Take(limit)
-            .Select(ge => new
-            {
-                ge.Id, ge.Title, ge.Description, total_hours = ge.TotalHours, ge.Status, group_id = ge.GroupId,
-                created_by = ge.CreatedBy != null ? new { ge.CreatedBy.Id, first_name = ge.CreatedBy.FirstName, last_name = ge.CreatedBy.LastName } : null,
-                participant_count = ge.Participants.Count,
-                created_at = ge.CreatedAt, approved_at = ge.ApprovedAt, completed_at = ge.CompletedAt
-            }).ToListAsync();
-        return Ok(new { data = exchanges, pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) } });
+        _service = service;
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> Get(int id)
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] string? status,
+        [FromQuery] int limit = 20,
+        [FromQuery] int offset = 0,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.AsNoTracking().Where(ge => ge.Id == id)
-            .Select(ge => new
-            {
-                ge.Id, ge.Title, ge.Description, total_hours = ge.TotalHours, ge.Status, group_id = ge.GroupId,
-                created_by = ge.CreatedBy != null ? new { ge.CreatedBy.Id, first_name = ge.CreatedBy.FirstName, last_name = ge.CreatedBy.LastName } : null,
-                approved_by = ge.ApprovedBy != null ? new { ge.ApprovedBy.Id, first_name = ge.ApprovedBy.FirstName, last_name = ge.ApprovedBy.LastName } : null,
-                approved_at = ge.ApprovedAt, completed_at = ge.CompletedAt, created_at = ge.CreatedAt, updated_at = ge.UpdatedAt,
-                participants = ge.Participants.Select(p => new
-                {
-                    p.Id, user = p.User != null ? new { p.User.Id, first_name = p.User.FirstName, last_name = p.User.LastName } : null,
-                    p.Hours, p.Role, is_confirmed = p.IsConfirmed, confirmed_at = p.ConfirmedAt
-                })
-            }).FirstOrDefaultAsync();
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (!await _db.GroupMembers.AnyAsync(gm => gm.GroupId == exchange.group_id && gm.UserId == userId))
-            return StatusCode(403, new { error = "You must be a member of the group" });
-        return Ok(exchange);
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var result = await _service.ListForUserAsync(
+            userId.Value,
+            status,
+            Math.Clamp(limit, 1, 100),
+            Math.Max(offset, 0),
+            cancellationToken);
+
+        return Ok(new
+        {
+            data = result.Items,
+            meta = new { base_url = BaseUrl(), has_more = result.HasMore }
+        });
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateGroupExchangeRequest request)
+    public async Task<IActionResult> Create(
+        [FromBody] CreateGroupExchangeRequest? request,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        if (string.IsNullOrWhiteSpace(request.Title)) return BadRequest(new { error = "Title is required" });
-        if (request.GroupId <= 0) return BadRequest(new { error = "group_id is required" });
-        if (!await _db.Groups.AnyAsync(g => g.Id == request.GroupId)) return NotFound(new { error = "Group not found" });
-        if (!await _db.GroupMembers.AnyAsync(gm => gm.GroupId == request.GroupId && gm.UserId == userId))
-            return StatusCode(403, new { error = "You must be a member of the group" });
-        var tenantId = _tenantContext.GetTenantIdOrThrow();
-        await using var transaction = await _db.Database.BeginTransactionAsync();
-        var exchange = new GroupExchange
+        if (!userId.HasValue) return UnauthorizedError();
+
+        if (request == null || !HasPhpNonEmptyString(request.Title))
         {
-            TenantId = tenantId, GroupId = request.GroupId, Title = request.Title.Trim(),
-            Description = request.Description?.Trim(), TotalHours = 0, Status = "draft", CreatedById = userId.Value
-        };
-        _db.GroupExchanges.Add(exchange);
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-        _logger.LogInformation("User {UserId} created group exchange {ExchangeId} in group {GroupId}", userId, exchange.Id, request.GroupId);
-        return CreatedAtAction(nameof(Get), new { id = exchange.Id },
-            new { success = true, message = "Group exchange created", exchange = new { exchange.Id, exchange.Title, total_hours = exchange.TotalHours, exchange.Status, created_at = exchange.CreatedAt } });
+            return Error("VALIDATION_ERROR", "Title is required", "title", StatusCodes.Status400BadRequest);
+        }
+
+        if (!request.TotalHours.HasValue || request.TotalHours.Value <= 0m)
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "Total hours must be greater than 0",
+                "total_hours",
+                StatusCodes.Status400BadRequest);
+        }
+
+        var participants = (request.Participants ?? Array.Empty<GroupExchangeParticipantRequest>())
+            .Where(item => item.UserId > 0 && HasPhpNonEmptyString(item.Role))
+            .Select(item => new GroupExchangeParticipantInput(
+                item.UserId,
+                item.Role!,
+                item.Hours ?? 0m,
+                item.Weight ?? 1m))
+            .ToArray();
+
+        var result = await _service.CreateAsync(
+            userId.Value,
+            new CreateGroupExchangeInput(
+                request.Title!,
+                request.Description,
+                request.Status,
+                request.SplitType,
+                request.TotalHours.Value,
+                request.ListingId,
+                request.BrokerId,
+                request.BrokerNotes,
+                participants),
+            cancellationToken);
+
+        if (!result.Success || !result.ExchangeId.HasValue)
+        {
+            return result.Error == "Failed to create exchange"
+                ? Error("INTERNAL_ERROR", "Failed to create exchange", null, StatusCodes.Status500InternalServerError)
+                : Error(
+                    "VALIDATION_ERROR",
+                    result.Error ?? "Failed to add participant (may already exist)",
+                    null,
+                    StatusCodes.Status400BadRequest);
+        }
+
+        var exchange = await _service.GetAsync(result.ExchangeId.Value, cancellationToken: cancellationToken);
+        return exchange == null
+            ? Error("INTERNAL_ERROR", "Failed to create exchange", null, StatusCodes.Status500InternalServerError)
+            : StatusCode(StatusCodes.Status201Created, Data(exchange));
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> Show(int id, CancellationToken cancellationToken = default)
+    {
+        var userId = User.GetUserId();
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, includeCalculatedSplit: true, cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (!CanView(exchange, userId.Value))
+        {
+            return Error(
+                "FORBIDDEN",
+                "You do not have permission to view this exchange",
+                null,
+                StatusCodes.Status403Forbidden);
+        }
+
+        return Ok(Data(exchange));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(
+        int id,
+        [FromBody] UpdateGroupExchangeRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = User.GetUserId();
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
+        }
+
+        if (exchange.Status is "completed" or "cancelled")
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "Cannot update a completed or cancelled exchange",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        request ??= new UpdateGroupExchangeRequest();
+        await _service.UpdateAsync(
+            id,
+            new UpdateGroupExchangeInput(
+                request.Title,
+                request.Description,
+                request.SplitType,
+                request.TotalHours,
+                request.BrokerId,
+                request.BrokerNotes,
+                request.ListingId),
+            cancellationToken);
+
+        var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        return Ok(Data(updated!));
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Destroy(int id, CancellationToken cancellationToken = default)
+    {
+        var userId = User.GetUserId();
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can cancel", null, StatusCodes.Status403Forbidden);
+        }
+
+        await _service.CancelAsync(id, cancellationToken);
+        return Ok(Data(new { message = "Exchange cancelled" }));
     }
 
     [HttpPost("{id:int}/participants")]
-    public async Task<IActionResult> AddParticipant(int id, [FromBody] AddParticipantRequest request)
+    public async Task<IActionResult> AddParticipant(
+        int id,
+        [FromBody] GroupExchangeParticipantRequest? request,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status != "draft") return BadRequest(new { error = "Can only add participants to draft exchanges" });
-        if (exchange.CreatedById != userId.Value) return StatusCode(403, new { error = "Only the creator can add participants" });
-        if (!await _db.GroupMembers.AnyAsync(gm => gm.GroupId == exchange.GroupId && gm.UserId == request.UserId))
-            return BadRequest(new { error = "User must be a member of the group" });
-        if (await _db.GroupExchangeParticipants.AnyAsync(p => p.GroupExchangeId == id && p.UserId == request.UserId))
-            return BadRequest(new { error = "User is already a participant" });
-        var participant = new GroupExchangeParticipant
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
         {
-            GroupExchangeId = id, UserId = request.UserId, Hours = request.Hours, Role = request.Role ?? "provider",
-            IsConfirmed = request.UserId == userId.Value
-        };
-        if (participant.IsConfirmed) participant.ConfirmedAt = DateTime.UtcNow;
-        _db.GroupExchangeParticipants.Add(participant);
-        exchange.TotalHours = await _db.GroupExchangeParticipants.Where(p => p.GroupExchangeId == id).SumAsync(p => p.Hours) + request.Hours;
-        exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return StatusCode(201, new { success = true, message = "Participant added", participant = new { participant.Id, participant.UserId, participant.Hours, participant.Role, is_confirmed = participant.IsConfirmed } });
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
+        }
+
+        if (request == null || request.UserId <= 0 || !HasPhpNonEmptyString(request.Role))
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "user_id and role are required",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        var added = await _service.AddParticipantAsync(
+            id,
+            userId.Value,
+            new GroupExchangeParticipantInput(
+                request.UserId,
+                request.Role!,
+                request.Hours ?? 0m,
+                request.Weight ?? 1m),
+            cancellationToken);
+
+        if (!added)
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "Failed to add participant (may already exist)",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        return Ok(Data(updated!));
     }
 
-    [HttpDelete("{id:int}/participants/{participantId:int}")]
-    public async Task<IActionResult> RemoveParticipant(int id, int participantId)
+    [HttpDelete("{id:int}/participants/{userId:int}")]
+    public async Task<IActionResult> RemoveParticipant(
+        int id,
+        [FromRoute(Name = "userId")] int participantUserId,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status != "draft") return BadRequest(new { error = "Can only remove participants from draft exchanges" });
-        if (exchange.CreatedById != userId.Value) return StatusCode(403, new { error = "Only the creator can remove participants" });
-        var participant = await _db.GroupExchangeParticipants.FirstOrDefaultAsync(p => p.Id == participantId && p.GroupExchangeId == id);
-        if (participant == null) return NotFound(new { error = "Participant not found" });
-        _db.GroupExchangeParticipants.Remove(participant);
-        exchange.TotalHours = await _db.GroupExchangeParticipants.Where(p => p.GroupExchangeId == id && p.Id != participantId).SumAsync(p => p.Hours);
-        exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Participant removed" });
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
+        }
+
+        await _service.RemoveParticipantAsync(id, participantUserId, cancellationToken);
+        var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        return Ok(Data(updated!));
     }
 
-    [HttpPut("{id:int}/submit")]
-    public async Task<IActionResult> Submit(int id)
+    [HttpPost("{id:int}/start")]
+    public async Task<IActionResult> Start(int id, CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.Include(ge => ge.Participants).FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.CreatedById != userId.Value) return StatusCode(403, new { error = "Only the creator can submit" });
-        if (exchange.Status != "draft") return BadRequest(new { error = "Exchange must be in draft status to submit" });
-        if (exchange.Participants.Count == 0) return BadRequest(new { error = "Exchange must have at least one participant" });
-        var unconfirmed = exchange.Participants.Count(p => !p.IsConfirmed);
-        if (unconfirmed > 0) return BadRequest(new { error = unconfirmed + " participant(s) have not confirmed yet" });
-        exchange.Status = "pending"; exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Exchange submitted for approval", exchange = new { exchange.Id, exchange.Status } });
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
+        }
+
+        var result = await _service.StartAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                result.Error ?? "This exchange cannot be started from its current status.",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        return Ok(Data(updated!));
     }
 
-    [HttpPut("{id:int}/approve")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> Approve(int id)
-    {
-        var adminId = User.GetUserId();
-        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.Include(ge => ge.Participants).FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status != "pending") return BadRequest(new { error = "Exchange must be in pending status to approve" });
-        exchange.Status = "approved"; exchange.ApprovedById = adminId.Value; exchange.ApprovedAt = DateTime.UtcNow; exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Group exchange approved", exchange = new { exchange.Id, exchange.Status, approved_at = exchange.ApprovedAt } });
-    }
-
-    [HttpPut("{id:int}/complete")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> Complete(int id)
-    {
-        var adminId = User.GetUserId();
-        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status != "approved") return BadRequest(new { error = "Exchange must be approved before completion" });
-        exchange.Status = "completed"; exchange.CompletedAt = DateTime.UtcNow; exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Group exchange completed", exchange = new { exchange.Id, exchange.Status, completed_at = exchange.CompletedAt } });
-    }
-
-    [HttpPut("{id:int}/confirm")]
-    public async Task<IActionResult> Confirm(int id)
+    [HttpPost("{id:int}/confirm")]
+    public async Task<IActionResult> Confirm(int id, CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status != "draft") return BadRequest(new { error = "Exchange is not in a confirmable state" });
-        var participant = await _db.GroupExchangeParticipants.FirstOrDefaultAsync(p => p.GroupExchangeId == id && p.UserId == userId);
-        if (participant == null) return NotFound(new { error = "You are not a participant in this exchange" });
-        if (participant.IsConfirmed) return BadRequest(new { error = "You have already confirmed participation" });
-        participant.IsConfirmed = true; participant.ConfirmedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Participation confirmed", is_confirmed = true, exchange_status = exchange.Status });
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (!exchange.Participants.Any(item => item.UserId == userId.Value))
+        {
+            return Error(
+                "FORBIDDEN",
+                "You must be a participant in this exchange",
+                null,
+                StatusCodes.Status403Forbidden);
+        }
+
+        if (!await _service.ConfirmParticipationAsync(id, userId.Value, cancellationToken))
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "Failed to confirm participation",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        return Ok(Data(updated!));
     }
 
-    [HttpPut("{id:int}/cancel")]
-    public async Task<IActionResult> Cancel(int id)
+    [HttpPost("{id:int}/complete")]
+    public async Task<IActionResult> Complete(int id, CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var isAdmin = User.IsAdmin();
-        var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
-        if (exchange == null) return NotFound(new { error = "Group exchange not found" });
-        if (exchange.Status == "completed") return BadRequest(new { error = "Cannot cancel a completed exchange" });
-        if (exchange.Status == "cancelled") return BadRequest(new { error = "Exchange is already cancelled" });
-        if (exchange.CreatedById != userId.Value && !isAdmin) return StatusCode(403, new { error = "Only the creator or an admin can cancel" });
-        exchange.Status = "cancelled"; exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        _logger.LogInformation("User {UserId} cancelled group exchange {ExchangeId}", userId, id);
-        return Ok(new { success = true, message = "Group exchange cancelled", exchange = new { exchange.Id, exchange.Status } });
+        if (!userId.HasValue) return UnauthorizedError();
+
+        var exchange = await _service.GetAsync(id, cancellationToken: cancellationToken);
+        if (exchange == null)
+        {
+            return Error("NOT_FOUND", "Exchange not found.", null, StatusCodes.Status404NotFound);
+        }
+
+        if (exchange.OrganizerId != userId.Value)
+        {
+            return Error("FORBIDDEN", "Only the organizer can complete", null, StatusCodes.Status403Forbidden);
+        }
+
+        var result = await _service.CompleteAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                result.Error ?? "Exchange is already completed",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
+
+        return Ok(Data(new
+        {
+            message = "Exchange completed",
+            transaction_ids = result.TransactionIds
+        }));
     }
 
-    public record CreateGroupExchangeRequest(
-        [property: JsonPropertyName("title")] string Title,
-        [property: JsonPropertyName("description")] string? Description,
-        [property: JsonPropertyName("group_id")] int GroupId);
+    private object Data(object value) => new
+    {
+        data = value,
+        meta = new { base_url = BaseUrl() }
+    };
 
-    public record AddParticipantRequest(
-        [property: JsonPropertyName("user_id")] int UserId,
-        [property: JsonPropertyName("hours")] decimal Hours,
-        [property: JsonPropertyName("role")] string? Role);
+    private IActionResult Error(string code, string message, string? field, int status)
+    {
+        return StatusCode(status, new
+        {
+            errors = new[] { new GroupExchangeApiError(code, message, field) }
+        });
+    }
+
+    private IActionResult UnauthorizedError() => Error(
+        "AUTH_REQUIRED",
+        "Authentication required",
+        null,
+        StatusCodes.Status401Unauthorized);
+
+    private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
+
+    private static bool HasPhpNonEmptyString(string? value) =>
+        !string.IsNullOrEmpty(value) && value != "0";
+
+    private static bool CanView(GroupExchangeDetail exchange, int userId) =>
+        exchange.OrganizerId == userId || exchange.Participants.Any(item => item.UserId == userId);
 }
+
+public sealed class CreateGroupExchangeRequest
+{
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; init; }
+
+    [JsonPropertyName("split_type")]
+    public string? SplitType { get; init; }
+
+    [JsonPropertyName("total_hours")]
+    public decimal? TotalHours { get; init; }
+
+    [JsonPropertyName("listing_id")]
+    public int? ListingId { get; init; }
+
+    [JsonPropertyName("broker_id")]
+    public int? BrokerId { get; init; }
+
+    [JsonPropertyName("broker_notes")]
+    public string? BrokerNotes { get; init; }
+
+    [JsonPropertyName("participants")]
+    public IReadOnlyCollection<GroupExchangeParticipantRequest>? Participants { get; init; }
+}
+
+public sealed class UpdateGroupExchangeRequest
+{
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("split_type")]
+    public string? SplitType { get; init; }
+
+    [JsonPropertyName("total_hours")]
+    public decimal? TotalHours { get; init; }
+
+    [JsonPropertyName("broker_id")]
+    public int? BrokerId { get; init; }
+
+    [JsonPropertyName("broker_notes")]
+    public string? BrokerNotes { get; init; }
+
+    [JsonPropertyName("listing_id")]
+    public int? ListingId { get; init; }
+}
+
+public sealed class GroupExchangeParticipantRequest
+{
+    [JsonPropertyName("user_id")]
+    public int UserId { get; init; }
+
+    [JsonPropertyName("role")]
+    public string? Role { get; init; }
+
+    [JsonPropertyName("hours")]
+    public decimal? Hours { get; init; }
+
+    [JsonPropertyName("weight")]
+    public decimal? Weight { get; init; }
+}
+
+public sealed record GroupExchangeApiError(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("field")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Field);

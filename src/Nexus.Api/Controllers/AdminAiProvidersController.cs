@@ -3,9 +3,12 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services.Ai;
 
 namespace Nexus.Api.Controllers;
@@ -74,11 +77,78 @@ public class AdminAiProvidersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Laravel-compatible provider connection test. This operation is kept on
+    /// the member-facing AI route because that is where the canonical admin UI
+    /// calls it, but it remains admin-only and spends real provider credit.
+    /// </summary>
+    [HttpPost("/api/ai/test-provider")]
+    [HttpPost("/api/v2/ai/test-provider")]
+    [EnableRateLimiting(RateLimitingExtensions.AiProviderTestPolicy)]
+    public async Task<IActionResult> TestLaravelProvider([FromBody] LaravelTestRequest? req, CancellationToken ct)
+    {
+        var providerName = string.IsNullOrWhiteSpace(req?.Provider)
+            ? "gemini"
+            : req.Provider.Trim().ToLowerInvariant();
+        var provider = _factory.All.FirstOrDefault(p =>
+            string.Equals(p.Name, providerName, StringComparison.OrdinalIgnoreCase));
+
+        if (provider is null || !provider.IsConfigured)
+        {
+            return Ok(new
+            {
+                data = new
+                {
+                    success = false,
+                    message = "AI provider connection test failed."
+                }
+            });
+        }
+
+        var timer = Stopwatch.StartNew();
+        try
+        {
+            await provider.ChatAsync(
+                systemPrompt: "You are a connection test. Reply concisely.",
+                userPrompt: "Reply with the single word OK.",
+                ct: ct);
+            timer.Stop();
+
+            return Ok(new
+            {
+                data = new
+                {
+                    success = true,
+                    message = "AI provider connection test succeeded.",
+                    latency_ms = (int)Math.Round(timer.Elapsed.TotalMilliseconds)
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            timer.Stop();
+            _logger.LogWarning(ex, "Laravel-compatible AI provider test failed for {Provider}", provider.Name);
+            return Ok(new
+            {
+                data = new
+                {
+                    success = false,
+                    message = "AI provider connection test failed."
+                }
+            });
+        }
+    }
+
     public class TestRequest
     {
         [JsonPropertyName("provider")] public string? Provider { get; set; }
         [JsonPropertyName("system_prompt")] public string? SystemPrompt { get; set; }
         [JsonPropertyName("user_prompt")] public string? UserPrompt { get; set; }
+    }
+
+    public class LaravelTestRequest
+    {
+        [JsonPropertyName("provider")] public string? Provider { get; set; }
     }
 }
 

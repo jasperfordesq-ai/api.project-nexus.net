@@ -405,9 +405,9 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
 // 2. Response Compression - compress responses early
 // 3. Swagger (dev only)
 // 4. HTTPS redirect (prod only)
-// 5. Rate Limiting - MUST be early to protect all endpoints
-// 6. CORS
-// 7. Authentication - parses JWT, populates HttpContext.User
+// 5. CORS
+// 6. Authentication - parses JWT, populates HttpContext.User
+// 7. Rate Limiting - authenticated policies can partition by user
 // 8. Authorization - checks [Authorize] attributes
 // 9. TenantResolution - reads tenant_id from JWT claims (MUST be after auth)
 // 10. Controllers
@@ -456,14 +456,15 @@ app.UseSecurityHeaders();
 // Local demo/static assets for generated showcase imagery under wwwroot.
 app.UseStaticFiles();
 
-// Rate Limiting - early in pipeline to protect all endpoints
-app.UseRateLimiter();
-
 // CORS
 app.UseCors("Default");
 
 // Authentication - populates HttpContext.User from JWT
 app.UseAuthentication();
+
+// Rate limiting follows authentication so authenticated endpoint policies can
+// partition by user. Anonymous auth/general policies still partition by IP.
+app.UseRateLimiter();
 
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();

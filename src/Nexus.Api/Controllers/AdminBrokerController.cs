@@ -489,6 +489,10 @@ public class AdminBrokerController : ControllerBase
         }
 
         row.UnderMonitoring = request.UnderMonitoring;
+        if (request.RequiresBrokerApproval.HasValue)
+        {
+            row.RequiresBrokerApproval = request.RequiresBrokerApproval.Value;
+        }
         row.MonitoringExpiresAt = request.ExpiresAt;
         row.Reason = request.Reason;
         row.SetByUserId = User.GetUserId();
@@ -694,6 +698,7 @@ public class AdminBrokerController : ControllerBase
         user_id = m.UserId,
         user = MapBrokerUser(m.User, m.UserId),
         under_monitoring = m.UnderMonitoring,
+        requires_broker_approval = m.RequiresBrokerApproval,
         monitoring_expires_at = m.MonitoringExpiresAt,
         m.Reason,
         set_by = MapBrokerUser(m.SetBy, m.SetByUserId),
@@ -760,6 +765,7 @@ public class AdminBrokerController : ControllerBase
     public class SetMonitoringRequest
     {
         [JsonPropertyName("under_monitoring")] public bool UnderMonitoring { get; set; } = true;
+        [JsonPropertyName("requires_broker_approval")] public bool? RequiresBrokerApproval { get; set; }
         [JsonPropertyName("expires_at")] public DateTime? ExpiresAt { get; set; }
         [JsonPropertyName("reason"), MaxLength(2000)] public string? Reason { get; set; }
     }

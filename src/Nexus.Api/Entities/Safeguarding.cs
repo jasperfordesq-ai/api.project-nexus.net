@@ -211,6 +211,7 @@ public class UserMonitoringRestriction : ITenantEntity
     public int TenantId { get; set; }
     public int UserId { get; set; }
     public bool UnderMonitoring { get; set; } = true;
+    public bool RequiresBrokerApproval { get; set; }
     public DateTime? MonitoringExpiresAt { get; set; }
 
     [MaxLength(2000)]

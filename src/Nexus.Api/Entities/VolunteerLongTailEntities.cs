@@ -109,6 +109,39 @@ public class VolunteerWellbeing : ITenantEntity
     public User? User { get; set; }
 }
 
+// ─── VolunteerWellbeingAlert ────────────────────────────────────────────────
+
+/// <summary>
+/// Coordinator-facing burnout-risk alert produced by the volunteering wellbeing
+/// assessment. This is deliberately separate from <see cref="VolunteerWellbeing"/>,
+/// which stores volunteer-submitted post-shift pulse responses.
+/// </summary>
+public class VolunteerWellbeingAlert : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int UserId { get; set; }
+
+    [Required, MaxLength(20)]
+    public string RiskLevel { get; set; } = "moderate";
+
+    public decimal RiskScore { get; set; }
+
+    /// <summary>JSON object containing the risk indicators found by the assessment.</summary>
+    public string Indicators { get; set; } = "{}";
+
+    public bool CoordinatorNotified { get; set; }
+
+    public string? CoordinatorNotes { get; set; }
+
+    [Required, MaxLength(20)]
+    public string Status { get; set; } = "active";
+
+    public DateTime? ResolvedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
 // ─── VolunteerCertificate ───────────────────────────────────────────────────
 
 public class VolunteerCertificate : ITenantEntity

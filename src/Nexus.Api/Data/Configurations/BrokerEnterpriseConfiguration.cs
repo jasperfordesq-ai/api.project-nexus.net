@@ -119,6 +119,7 @@ public class BrokerEnterpriseConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("user_monitoring_restrictions");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.RequiresBrokerApproval).HasDefaultValue(false);
             entity.Property(e => e.Reason).HasMaxLength(2000);
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);

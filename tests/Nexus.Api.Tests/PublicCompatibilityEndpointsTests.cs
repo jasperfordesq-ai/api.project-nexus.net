@@ -7,6 +7,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -29,6 +33,67 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        content.GetProperty("features").GetProperty("explore").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TenantBootstrap_ExploreFeatureHonorsTenantOverride()
+    {
+        TenantConfig? existing;
+        string? originalValue;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            existing = await db.TenantConfigs.IgnoreQueryFilters().FirstOrDefaultAsync(config =>
+                config.TenantId == TestData.Tenant1.Id && config.Key == "feature.explore");
+            originalValue = existing?.Value;
+
+            if (existing is null)
+            {
+                db.TenantConfigs.Add(new TenantConfig
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    Key = "feature.explore",
+                    Value = "false"
+                });
+            }
+            else
+            {
+                existing.Value = "false";
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            ClearAuthToken();
+            var response = await Client.GetAsync("/api/tenant/bootstrap?slug=test-tenant");
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+            content.GetProperty("features").GetProperty("explore").GetBoolean().Should().BeFalse();
+        }
+        finally
+        {
+            using var scope = Factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stored = await db.TenantConfigs.IgnoreQueryFilters().SingleAsync(config =>
+                config.TenantId == TestData.Tenant1.Id && config.Key == "feature.explore");
+            if (existing is null)
+            {
+                db.TenantConfigs.Remove(stored);
+            }
+            else
+            {
+                stored.Value = originalValue!;
+                stored.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await db.SaveChangesAsync();
+        }
     }
 
     [Fact]

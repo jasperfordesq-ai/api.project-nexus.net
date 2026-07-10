@@ -204,6 +204,7 @@ public static class ServiceExtensions
         services.AddScoped<MarketplaceService>();
         services.AddScoped<EmailTemplateService>();
         services.AddScoped<VolunteerLongTailService>();
+        services.AddScoped<VolunteerWellbeingAlertService>();
         services.AddScoped<VolunteerAdminService>();
 
         // Phase 68 — federation protocol services

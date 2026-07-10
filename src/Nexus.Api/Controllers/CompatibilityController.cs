@@ -1623,6 +1623,7 @@ public class CompatibilityController : ControllerBase
             ["direct_messaging"] = GetConfigBool(configEntries, "feature.direct_messaging", true),
             ["group_exchanges"] = GetConfigBool(configEntries, "feature.group_exchanges", true),
             ["search"] = GetConfigBool(configEntries, "feature.search", true),
+            ["explore"] = GetConfigBool(configEntries, "feature.explore", true),
             ["ai_chat"] = GetConfigBool(configEntries, "feature.ai_chat", true),
         };
 
