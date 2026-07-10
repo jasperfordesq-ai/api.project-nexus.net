@@ -462,13 +462,15 @@ anonymous tenant-scoped `GET /api/v2/resources`, anonymous
 `has_more`, `base_url`, search/category filters, `file_url`, `file_path`,
 `file_type`, `file_size`, `downloads`, uploader rows, category color rows,
 and social count defaults while preserving legacy `/api/resources` auth
-behavior. Uploads now persist resource-linked `FileUpload` metadata and stream
-the stored bytes back through the download route with focused runtime coverage.
+behavior. Uploads now use Laravel's allowlisted resource file extensions and
+content-type inspection, reject SVG with `errors[].code=FILE_TYPE_NOT_ALLOWED`
+before storage, persist resource-linked `FileUpload` metadata, and stream the
+stored bytes back through the download route with focused runtime coverage.
 Downloads now increment a tenant-scoped compatibility counter and subsequent
 list reads expose the updated `downloads` value. Exact Laravel
-`resources.file_*`/`downloads` column fidelity, update/delete authorization
-messages, category color persistence, resource likes/comments, and browser
-smoke coverage remain deeper resource gaps.
+`resources.file_*`/`downloads` column fidelity, localized validation text,
+update/delete authorization messages, category color persistence, resource
+likes/comments, and browser smoke coverage remain deeper resource gaps.
 
 ## Known High-Risk API Gaps
 

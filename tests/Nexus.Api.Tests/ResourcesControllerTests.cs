@@ -82,6 +82,36 @@ public class ResourcesControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ResourceUploadV2_RejectsSvgWithLaravelErrorEnvelope()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+
+        await AuthenticateAsMemberAsync();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent($"Laravel React rejected svg {marker}"), "title");
+        var fileContent = new ByteArrayContent("<svg><script>alert(1)</script></svg>"u8.ToArray());
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("image/svg+xml");
+        form.Add(fileContent, "file", "blocked.svg");
+
+        var response = await Client.PostAsync("/api/v2/resources", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        root.TryGetProperty("success", out _).Should().BeFalse();
+        var error = root.GetProperty("errors").EnumerateArray().Single();
+        error.GetProperty("code").GetString().Should().Be("FILE_TYPE_NOT_ALLOWED");
+        error.GetProperty("field").GetString().Should().Be("file");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.Resources.AnyAsync(r => r.TenantId == TestData.Tenant1.Id && r.Title == $"Laravel React rejected svg {marker}"))
+            .Should().BeFalse();
+        (await db.FileUploads.AnyAsync(f => f.TenantId == TestData.Tenant1.Id && f.OriginalFilename == "blocked.svg"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public async Task PublicResourcesV2_ReturnsLaravelReactAnonymousCursorContract()
     {
         var marker = Guid.NewGuid().ToString("N");

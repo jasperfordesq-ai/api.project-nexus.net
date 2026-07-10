@@ -19,6 +19,21 @@ namespace Nexus.Api.Controllers;
 public class ResourcesV2Controller : ControllerBase
 {
     private static readonly Regex SlugUnsafeCharacters = new("[^a-z0-9]+", RegexOptions.Compiled);
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedResourceMimesByExtension = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["pdf"] = new[] { "application/pdf" },
+        ["doc"] = new[] { "application/msword", "application/vnd.ms-office", "application/x-cfb" },
+        ["docx"] = new[] { "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip" },
+        ["xls"] = new[] { "application/vnd.ms-excel", "application/vnd.ms-office", "application/x-cfb" },
+        ["xlsx"] = new[] { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip" },
+        ["txt"] = new[] { "text/plain" },
+        ["csv"] = new[] { "text/csv", "text/plain", "application/csv", "application/vnd.ms-excel" },
+        ["jpg"] = new[] { "image/jpeg" },
+        ["png"] = new[] { "image/png" },
+        ["gif"] = new[] { "image/gif" },
+        ["webp"] = new[] { "image/webp" }
+    };
+
     private const long MaxUploadBytes = 10 * 1024 * 1024;
 
     private readonly NexusDbContext _db;
@@ -167,10 +182,17 @@ public class ResourcesV2Controller : ControllerBase
         if (file.Length > MaxUploadBytes)
             return BadRequest(new { success = false, error = "File exceeds 10 MB" });
 
-        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
-            ? "application/octet-stream"
-            : file.ContentType;
-        var storedFilename = $"{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}";
+        var extension = Path.GetExtension(file.FileName).TrimStart('.').ToLowerInvariant();
+        var detectedContentType = await DetectResourceMimeAsync(file, ct);
+        if (!AllowedResourceMimesByExtension.TryGetValue(extension, out var allowedMimes) ||
+            detectedContentType is null ||
+            !allowedMimes.Contains(detectedContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            return ResourceUploadError("FILE_TYPE_NOT_ALLOWED", "File type is not allowed", "file");
+        }
+
+        var contentType = detectedContentType;
+        var storedFilename = $"{Guid.NewGuid():N}.{extension}";
         var relativePath = $"{TenantId()}/resources/{storedFilename}";
         var fullPath = Path.Combine(UploadsRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -477,6 +499,52 @@ public class ResourcesV2Controller : ControllerBase
     private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
     private string UploadsRoot() => _configuration["FileUpload:UploadsRoot"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+
+    private static IActionResult ResourceUploadError(string code, string message, string field) =>
+        new BadRequestObjectResult(new
+        {
+            errors = new[]
+            {
+                new { code, message, field }
+            }
+        });
+
+    private static async Task<string?> DetectResourceMimeAsync(IFormFile file, CancellationToken ct)
+    {
+        var buffer = new byte[Math.Min(file.Length, 512)];
+        await using (var stream = file.OpenReadStream())
+        {
+            var offset = 0;
+            while (offset < buffer.Length)
+            {
+                var read = await stream.ReadAsync(buffer.AsMemory(offset, buffer.Length - offset), ct);
+                if (read == 0) break;
+                offset += read;
+            }
+        }
+
+        if (buffer.Length >= 5 && buffer.AsSpan(0, 5).SequenceEqual("%PDF-"u8))
+            return "application/pdf";
+        if (buffer.Length >= 8 && buffer.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a }))
+            return "image/png";
+        if (buffer.Length >= 3 && buffer[0] == 0xff && buffer[1] == 0xd8 && buffer[2] == 0xff)
+            return "image/jpeg";
+        if (buffer.Length >= 6 && (buffer.AsSpan(0, 6).SequenceEqual("GIF87a"u8) || buffer.AsSpan(0, 6).SequenceEqual("GIF89a"u8)))
+            return "image/gif";
+        if (buffer.Length >= 12 && buffer.AsSpan(0, 4).SequenceEqual("RIFF"u8) && buffer.AsSpan(8, 4).SequenceEqual("WEBP"u8))
+            return "image/webp";
+        if (buffer.Length >= 8 && buffer.AsSpan(0, 8).SequenceEqual(new byte[] { 0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1 }))
+            return "application/x-cfb";
+        if (buffer.Length >= 4 && buffer[0] == 0x50 && buffer[1] == 0x4b && (buffer[2] == 0x03 || buffer[2] == 0x05 || buffer[2] == 0x07))
+            return "application/zip";
+        if (LooksLikeText(buffer))
+            return "text/plain";
+
+        return null;
+    }
+
+    private static bool LooksLikeText(byte[] buffer) =>
+        buffer.Length > 0 && buffer.All(b => b is 0x09 or 0x0a or 0x0d || b >= 0x20);
 
     private async Task<int> NextSortOrderAsync(int? categoryId, CancellationToken ct)
     {
