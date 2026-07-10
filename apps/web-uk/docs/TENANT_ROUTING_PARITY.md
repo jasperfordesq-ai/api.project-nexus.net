@@ -150,6 +150,10 @@ Current gaps:
   and confirm-page change links, keeping welcome, avatar, profile, interests,
   skills, safeguarding, and confirm controls behind `urlFor()` for shared
   mounts and custom-domain child paths.
+  The latest public-info/legal/support/cookie source conversion covers About,
+  Guide, Features, email verification, Help, Trust and safety, legal
+  document/accessibility fallback links, the standalone privacy contact link,
+  and cookie-banner links/forms through `urlFor()`.
   The latest focused source
   conversion covers group detail, listing detail, member profile, and the
   shared report-link partial, including breadcrumbs, action controls, report
@@ -522,6 +526,19 @@ register, legal-cookie-policy, and report-a-problem links/forms through
 `urlFor()`. The source-level regression first failed on raw `/contact` and
 `/login` controls, then passed after conversion; a targeted source scan for
 public/auth/support raw `href`/`action` strings returns no matches.
+
+The latest public-info/legal/support/cookie template-helper source slice
+extends direct `urlFor()` conversion into `public-info/about.njk`,
+`public-info/guide.njk`, `public-info/features.njk`,
+`public-info/email-verify.njk`, `support/help.njk`,
+`support/trust-safety.njk`, `legal/accessibility.njk`,
+`legal/document.njk`, `privacy.njk`, and `partials/cookie-banner.njk`.
+About, Guide, Features, email verification, Help, Trust and safety, legal
+document/accessibility fallback links, the standalone privacy contact link, and
+cookie-banner `/cookies` links plus `/cookie-consent` form actions now route
+through `urlFor()`. The source-level regression first failed on raw
+`/dashboard`, `/register`, and related public links, then passed after the
+conversion.
 
 The twenty-fifth template-helper source slice extends direct `urlFor()`
 conversion into organisation directory and application pages.

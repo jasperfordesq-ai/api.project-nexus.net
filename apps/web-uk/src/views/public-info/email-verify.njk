@@ -13,7 +13,7 @@
           <div class="govuk-panel__body">Thank you. Your email address has been confirmed.</div>
         </div>
         <p class="govuk-body govuk-!-margin-top-6">
-          <a class="govuk-button" data-module="govuk-button" href="/login">Continue to sign in</a>
+          <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/login') }}">Continue to sign in</a>
         </p>
       {% else %}
         <h1 class="govuk-heading-xl">Verify your email address</h1>
@@ -35,7 +35,7 @@
         </div>
         <p class="govuk-body">You can request a new verification email from the sign-in page.</p>
         <p class="govuk-body">
-          <a class="govuk-link" href="/login">Back to sign in</a>
+          <a class="govuk-link" href="{{ urlFor('/login') }}">Back to sign in</a>
         </p>
       {% endif %}
     </div>

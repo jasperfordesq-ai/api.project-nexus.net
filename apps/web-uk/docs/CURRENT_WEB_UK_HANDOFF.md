@@ -172,6 +172,12 @@ breadcrumb, manage CTA, back link, recipient search form, transfer forms, and
 donation forms through `urlFor()`. The latest public/auth/support source slice
 now routes contact, cookie settings, login, two-factor login, forgot-password,
 reset-password, register, and report-a-problem links/forms through `urlFor()`.
+The latest public-info/legal/support/cookie source slice now also routes About,
+Guide, Features, email verification, Help, Trust and safety, legal
+document/accessibility fallback links, the standalone privacy contact link, and
+cookie-banner links/forms through `urlFor()`, so those public no-JS surfaces no
+longer depend on response rewriting for tenant mounts or custom-domain child
+paths.
 The latest member-onboarding redirect slice now routes onboarding
 auth-required, step, avatar, validation, safeguarding, complete, and dashboard
 handoff redirects through `res.locals.urlFor`, matching Laravel's named-route
@@ -1172,6 +1178,18 @@ Latest local verification after the public/auth/support source-helper slice:
 - `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
 - `npm --prefix apps/web-uk run lint` passed.
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites, `722/722` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+
+Latest local verification after the public-info/legal/support/cookie
+source-helper slice:
+
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "public info, legal, support" --runInBand` passed `1/1` selected test after the earlier red run caught raw `/dashboard`, `/register`, and related public links.
+- `Select-String` over `public-info/about.njk`, `public-info/email-verify.njk`, `public-info/features.njk`, `public-info/guide.njk`, `support/help.njk`, `support/trust-safety.njk`, `legal/accessibility.njk`, `legal/document.njk`, `partials/cookie-banner.njk`, and `privacy.njk` for raw local public/legal/support/cookie `href` and `action` targets returned no matches.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "login|register|password|cookie|contact|report|legal|guide|features|about|email|help|trust" --runInBand` passed `90/90` selected tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+- `npm --prefix apps/web-uk run lint` passed.
+- `npm --prefix apps/web-uk run route:matrix` passed with `608/608` Laravel accessible routes matched, `0` missing, `0` extra, and `3` ignored infrastructure routes.
+- `npm --prefix apps/web-uk test -- --runInBand` passed: 12 suites, `861/861` tests. The existing Node `DEP0044 util.isArray` deprecation warning was emitted after the suite completed.
+- A scoped live Laravel runtime smoke against temporary Web UK `http://127.0.0.1:6657`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `21/21` checks covering base auth/cookie/logout plus `/about`, `/guide`, `/features`, `/help`, `/trust-and-safety`, `/legal`, `/accessibility`, `/legal/terms`, `/legal/privacy`, `/cookies`, and `/verify-email` body markers.
+
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "organisation directory"` first failed on raw `/organisations` and `/volunteering` links/actions, then passed after the template conversion.
 - `Select-String` over `organisation-detail.njk`, `organisations.njk`, `organisations-apply.njk`, `organisations-browse.njk`, `organisations-jobs.njk`, `organisations-manage.njk`, and `organisations-register.njk` for raw local organisation/volunteering/job `href` and `action` targets returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "organisations"` passed `6/6` selected tests.
@@ -2374,8 +2392,8 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `998.8/1000`.
-Green confidence estimate: `992/1000`, because the consolidated code, static
+Current working estimate at this handoff: `998.9/1000`.
+Green confidence estimate: `992.4/1000`, because the consolidated code, static
 tests, route matrix, tenant-domain proof, broad route-level tenant gates, and
 full default Laravel runtime-smoke coverage via chunked/bucketed runs are
 strong, while visual/manual Blade parity spot-checks, live disabled-tenant

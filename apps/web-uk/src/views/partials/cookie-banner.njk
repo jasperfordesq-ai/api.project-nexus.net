@@ -20,7 +20,7 @@
                 {% else %}
                   You have rejected analytics cookies.
                 {% endif %}
-                <a class="govuk-link" href="/cookies">change your cookie settings</a>
+                <a class="govuk-link" href="{{ urlFor('/cookies') }}">change your cookie settings</a>
                 at any time.
               </p>
             </div>
@@ -31,7 +31,7 @@
         </div>
       </div>
     {% else %}
-      <form method="post" action="/cookie-consent">
+      <form method="post" action="{{ urlFor('/cookie-consent') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="return" value="{{ currentUrl }}">
         <div class="govuk-cookie-banner__message govuk-width-container">
@@ -47,7 +47,7 @@
           <div class="govuk-button-group">
             <button type="submit" name="cookies" value="accept" class="govuk-button" data-module="govuk-button">Accept analytics cookies</button>
             <button type="submit" name="cookies" value="reject" class="govuk-button" data-module="govuk-button">Reject analytics cookies</button>
-            <a class="govuk-link" href="/cookies">View cookies</a>
+            <a class="govuk-link" href="{{ urlFor('/cookies') }}">View cookies</a>
           </div>
         </div>
       </form>

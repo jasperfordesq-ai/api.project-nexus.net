@@ -26,11 +26,11 @@
 
       <div class="govuk-button-group govuk-!-margin-top-4">
         {% if isAuthenticated %}
-          <a class="govuk-button" href="/listings" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
-          <a class="govuk-button govuk-button--secondary" href="/wallet" role="button" draggable="false" data-module="govuk-button">Go to your wallet</a>
+          <a class="govuk-button" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
+          <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/wallet') }}" role="button" draggable="false" data-module="govuk-button">Go to your wallet</a>
         {% else %}
-          <a class="govuk-button" href="/register" role="button" draggable="false" data-module="govuk-button">Create an account</a>
-          <a class="govuk-button govuk-button--secondary" href="/listings" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
+          <a class="govuk-button" href="{{ urlFor('/register') }}" role="button" draggable="false" data-module="govuk-button">Create an account</a>
+          <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
         {% endif %}
       </div>
     </div>

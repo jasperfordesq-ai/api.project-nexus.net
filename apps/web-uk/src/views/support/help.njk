@@ -11,7 +11,7 @@
       <h1 class="govuk-heading-xl">Help centre</h1>
       <p class="govuk-body-l">Find answers to common questions about {{ communityName }}. If you cannot find what you need, contact us.</p>
 
-      <form method="get" action="/help" class="govuk-!-margin-bottom-6">
+      <form method="get" action="{{ urlFor('/help') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <label class="govuk-label" for="q">Search help topics</label>
           <div id="q-hint" class="govuk-hint">Type a word or phrase to filter the questions below.</div>
@@ -46,7 +46,7 @@
 
       <h2 class="govuk-heading-m">Still need help?</h2>
       <p class="govuk-body">If you cannot find the answer here, get in touch and we will help.</p>
-      <a class="govuk-button" data-module="govuk-button" href="/contact">Contact us</a>
+      <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/contact') }}">Contact us</a>
     </div>
   </div>
 {% endblock %}

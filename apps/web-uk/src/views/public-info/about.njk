@@ -95,11 +95,11 @@
       <p class="govuk-body">Whether you want to share your skills or find help with something, our community is here for you.</p>
       <div class="govuk-button-group">
         {% if isAuthenticated %}
-          <a class="govuk-button" data-module="govuk-button" href="/dashboard">Go to your dashboard</a>
+          <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/dashboard') }}">Go to your dashboard</a>
         {% else %}
-          <a class="govuk-button" data-module="govuk-button" href="/register">Join for free</a>
+          <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/register') }}">Join for free</a>
         {% endif %}
-        <a class="govuk-link" href="/contact">Contact us</a>
+        <a class="govuk-link" href="{{ urlFor('/contact') }}">Contact us</a>
       </div>
     </div>
   </div>

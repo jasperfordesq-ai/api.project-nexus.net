@@ -1376,6 +1376,34 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/report-a-problem/);
   });
 
+  it('keeps public info, legal, support, and cookie banner local links behind urlFor()', () => {
+    const templates = [
+      path.join('public-info', 'about.njk'),
+      path.join('public-info', 'email-verify.njk'),
+      path.join('public-info', 'features.njk'),
+      path.join('public-info', 'guide.njk'),
+      path.join('support', 'help.njk'),
+      path.join('support', 'trust-safety.njk'),
+      path.join('legal', 'accessibility.njk'),
+      path.join('legal', 'document.njk'),
+      path.join('partials', 'cookie-banner.njk'),
+      'privacy.njk'
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+
+    for (const template of templates) {
+      expect(template).not.toMatch(/href="\/(?:contact|cookies|dashboard|guide|legal|listings|login|register|wallet)/);
+      expect(template).not.toMatch(/action="\/(?:cookie-consent|help)/);
+    }
+
+    const source = templates.join('\n');
+    expect(source).toMatch(/urlFor\(["']\/contact/);
+    expect(source).toMatch(/urlFor\(["']\/cookies/);
+    expect(source).toMatch(/urlFor\(["']\/legal/);
+  });
+
   it('keeps public fallback home links behind urlFor()', () => {
     const templates = [
       path.join('public-info', 'newsletter-unsubscribe.njk'),

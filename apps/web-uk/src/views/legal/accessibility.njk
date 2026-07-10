@@ -7,7 +7,7 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="/legal">Back to legal</a>
+      <a class="govuk-back-link" href="{{ urlFor('/legal') }}">Back to legal</a>
 
       <span class="govuk-caption-l">{{ communityName }}</span>
       <h1 class="govuk-heading-xl">Accessibility statement</h1>
@@ -37,7 +37,7 @@
 
       <h2 class="govuk-heading-m">Reporting accessibility problems</h2>
       <p class="govuk-body">If you find an accessibility problem, or you need information on this service in a different format, please contact us. We aim to respond to accessibility feedback within 5 working days.</p>
-      <p class="govuk-body"><a class="govuk-link" href="/contact">Report an accessibility problem</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/contact') }}">Report an accessibility problem</a></p>
 
       <h2 class="govuk-heading-m">How we tested this service</h2>
       <p class="govuk-body">This service is tested with automated accessibility checks and with keyboard and screen-reader testing as part of our development process. Testing is ongoing as new pages are added.</p>
