@@ -38,6 +38,7 @@ const AUTHENTICATED_ROUTES = [
   { name: 'dashboard', path: '/dashboard' },
   { name: 'account hub', path: '/account' },
   { name: 'profile summary', path: '/profile' },
+  { name: 'profile settings', path: '/profile/settings' },
   { name: 'wallet', path: '/wallet' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
@@ -477,6 +478,60 @@ test.describe('representative authenticated-page accessibility gate', () => {
 
       const axeResults = await new AxeBuilder({ page }).analyze();
       await testInfo.attach('authenticated-arabic-profile', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow,
+          violations: formatViolations(axeResults.violations),
+          incomplete: formatViolations(axeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Arabic profile settings localize Laravel form sections with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(90_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      const path = `${authenticatedMountPath}/profile/settings?locale=ar`;
+      const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+      expect(response, `${path} did not return a document response`).not.toBeNull();
+      expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'profile_settings.title'));
+      await expect(page.getByRole('heading', { name: translate('ar', 'profile_settings.security_title'), exact: true })).toHaveCount(1);
+      await expect(page.getByText(translate('ar', 'profile_settings.notifications.digest_label'), { exact: true })).toHaveCount(1);
+      await expect(page.getByText(translate('ar', 'profile_settings.match.notify_hot'), { exact: true })).toHaveCount(1);
+      await expect(page.getByText(translate('ar', 'profile_settings.personalisation.auto_translate_label'), { exact: true })).toHaveCount(1);
+
+      const visibleText = await page.locator('main').innerText();
+      for (const englishLabel of [
+        'Profile photo',
+        'Save notification preferences',
+        'Tell me about high priority matches',
+        'Automatically translate community posts'
+      ]) {
+        expect(visibleText).not.toContain(englishLabel);
+      }
+
+      const overflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-profile-settings', {
         body: Buffer.from(JSON.stringify({
           url: page.url(),
           viewport: { width: 320, height: 640 },

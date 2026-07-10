@@ -1779,6 +1779,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-style profile settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
     api.getProfile.mockResolvedValue({
@@ -1892,6 +1893,9 @@ describe('shared accessible frontend shell', () => {
     const signed = await request(app)
       .get('/profile/settings?status=data-export-requested')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const arabic = await request(app)
+      .get('/acme/accessible/profile/settings?locale=ar')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const legacySettings = await request(app)
       .get('/settings')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
@@ -1935,7 +1939,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Your skills');
     expect(signed.text).toContain('Analytical engines');
     expect(signed.text).toContain('I can offer this');
-    expect(signed.text).toContain('Security');
+    expect(signed.text).toContain('Sign-in and security');
     expect(signed.text).toContain('Two-step verification');
     expect(signed.text).toContain('Passkeys');
     expect(signed.text).toContain('Work laptop');
@@ -1956,6 +1960,20 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Request your data');
     expect(signed.text).toContain('Delete your account');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(arabic.status).toBe(200);
+    expect(arabic.headers['content-language']).toBe('ar');
+    expect(arabic.text).toContain('<html lang="ar" dir="rtl"');
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.title'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.photo_title'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.skills.title'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.security_title'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.notifications.digest_label'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.match.notify_hot'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.personalisation.auto_translate_label'));
+    expect(arabic.text).not.toContain('Profile photo');
+    expect(arabic.text).not.toContain('Save notification preferences');
+    expect(arabic.text).not.toContain('Tell me about high priority matches');
+    expect(arabic.text).not.toContain('Automatically translate community posts');
     expect(legacySettings.status).toBe(404);
     expect(legacySettings.text).toContain('Page not found');
     expect(legacyNotifications.status).toBe(404);

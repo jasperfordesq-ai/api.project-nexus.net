@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `30/30` cases.
+- Automated browser accessibility: Chromium/axe passed `32/32` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,27 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Profile-Settings Contextual Localization Slice
+
+The real Laravel edit destination is `/profile/settings`; Laravel intentionally
+has no `/profile/edit` route, and Web UK preserves that route boundary. The
+existing settings page now uses exact Laravel catalog keys for the profile photo,
+personal/public/privacy fields, contact preference and hint, save action, skills
+description/hint/type legend/removal and endorsement plural, sign-in/security,
+email/password labels and hints, passkey/session states, language description,
+notification digest, match alerts, and personalisation/translation controls.
+The Web UK-only current-language sentence was removed because Blade does not
+render it. Existing safe/fail-closed write boundaries were not broadened.
+
+English and Arabic focused rendering passed, including absence of the displaced
+hard-coded strings. The complete Jest suite passed `45/45` and `1,394/1,394`;
+brand, localization-template, lint, and diff gates passed; and the expanded live
+Chromium/axe matrix passed `32/32`. Standard and signed Arabic profile-settings
+pages both passed structure, unique-ID, 320px reflow, RTL, contextual copy, and
+serious/critical axe checks. Exact atomic multi-write persistence, avatar upload,
+email-change API parity, disposable mutation proof, manual assistive-technology
+evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Own-Profile Structural Parity And Localization Slice
 
