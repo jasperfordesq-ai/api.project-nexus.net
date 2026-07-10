@@ -1334,6 +1334,14 @@ only; it does not newly certify feature gates, exact open/closed list parity,
 owner authorization, localization, runtime persistence, visual Blade parity, or
 ASP.NET backend compatibility.
 
+A follow-up legacy poll vote redirect cleanup covers the older
+`src/routes/polls.js` vote handler. Its success and non-401 API-error redirects
+now use a route-local `redirectTo(res, ...)` helper backed by
+`res.locals.urlFor`, and the source regression first failed on raw
+``res.redirect(`/polls/${id}`)`` calls before passing after conversion. Focused
+poll behavior tests still pass for the Laravel poll suite, including the
+shared-mount signed-out vote redirect.
+
 A follow-up poll source slice converts the rendered poll templates themselves.
 `src/views/polls/index.njk`, `create.njk`, `detail.njk`, `manage.njk`, and
 `rank.njk` now route poll browse filters, create/manage links, inline create

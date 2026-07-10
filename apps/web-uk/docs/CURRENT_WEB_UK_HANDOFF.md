@@ -306,6 +306,11 @@ The latest poll action redirect slice now routes auth-required, create, vote,
 rank, delete, like, and comment POST outcomes through `res.locals.urlFor`, with
 shared-mount coverage proving `/acme/accessible/polls/42/vote` stays under the
 active tenant mount when redirecting to auth-required login.
+The latest legacy poll vote redirect cleanup now also routes the older
+`src/routes/polls.js` vote success and non-401 API-error redirects through
+`res.locals.urlFor`, so that compatibility path no longer emits flat
+`/polls/{id}` locations under shared tenant mounts or custom-domain child
+paths.
 The latest poll source slice now routes poll browse filters, create/manage
 links, inline create form, detail/rank back links, vote/rank/delete/like/comment
 forms, discussion links, and CSV export links through `urlFor()`, with source
@@ -1171,6 +1176,9 @@ Latest local verification after the public/auth/support source-helper slice:
 - `Select-String -Path apps\web-uk\src\views\wallet\*.njk -Pattern 'href="/wallet','action="/wallet','href: "/wallet'` returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "wallet"` passed `9/9` selected wallet tests, including shared-mount donation validation redirect coverage for `/acme/accessible/wallet/donate`.
 - A scoped live Laravel runtime smoke against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088` passed `12/12` checks, including `/wallet=>Wallet` and `/wallet/manage=>Manage credits`.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/template-source.test.js -t "legacy poll vote redirects" --runInBand` first failed on raw ``res.redirect(`/polls/${id}`)``, then passed after `src/routes/polls.js` moved legacy vote success and non-401 API-error redirects through `redirectTo(res, ...)` and `res.locals.urlFor`.
+- `npm --prefix apps/web-uk test -- --runTestsByPath tests/shared-accessible-shell.test.js -t "poll" --runInBand` passed `13/13` selected poll tests.
+- `npm --prefix apps/web-uk run lint`, `npm --prefix apps/web-uk run route:matrix`, and `npm --prefix apps/web-uk test -- --runInBand` passed after the legacy poll redirect cleanup; the full Jest suite passed `862/862` tests across `12` suites with the existing Node `DEP0044 util.isArray` warning.
 - `npm --prefix apps/web-uk test -- tests/template-source.test.js --runInBand --runTestsByPath -t "public auth and support"` first failed on raw `/contact` and `/login` controls, then passed after the template conversion.
 - `Select-String` over `contact.njk`, `cookie-settings.njk`, `forgot-password.njk`, `login.njk`, `register.njk`, `report-problem.njk`, and `reset-password.njk` for raw local public/auth/support `href` and `action` targets returned no matches.
 - `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "login|register|password|cookie|contact|report"` passed `25/25` selected tests.

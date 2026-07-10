@@ -13,6 +13,11 @@ const router = express.Router();
 
 router.use(requireAuth);
 
+function redirectTo(res, pathname) {
+  const urlFor = res.locals && res.locals.urlFor ? res.locals.urlFor : (target) => target;
+  return res.redirect(urlFor(pathname));
+}
+
 // List polls
 router.get('/', asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
@@ -66,12 +71,12 @@ router.post('/:id/vote', asyncRoute(async (req, res) => {
       if (req.flash) {
         req.flash('error', error.message || 'Unable to record vote');
       }
-      return res.redirect(`/polls/${id}`);
+      return redirectTo(res, `/polls/${id}`);
     }
     throw error;
   }
 
-  res.redirect(`/polls/${id}`);
+  redirectTo(res, `/polls/${id}`);
 }));
 
 module.exports = router;
