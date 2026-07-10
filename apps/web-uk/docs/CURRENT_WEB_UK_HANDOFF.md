@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,399/1,399` tests passed.
+- Jest: `45/45` suites and `1,400/1,400` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `51/51` cases.
+- Automated browser accessibility: Chromium/axe passed `52/52` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,30 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Connections Structural And Localization Slice
+
+The signed `/connections` page now matches Laravel's three-section inbox rather
+than the former single-filter table: requests to respond to, accepted
+connections, and sent requests load together with the canonical counts, search,
+member cards, actions, status banners, empty states, and full-network link. The
+signed `/connections/network` page now resolves its document title, caption,
+description, summary, search, tabs, statuses, dates, actions, load-more labels,
+and empty states through the exact `govuk_alpha_connections` catalog. Both
+pages normalize snake/camel payload variants, strip unsafe bio markup, and use
+Laravel's localized unknown-member fallback for blank names.
+
+Focused connection/source coverage passed `16/16`; the initial full run exposed
+three stale direct-render assumptions, and the corrected failure-only rerun
+passed `3/3`. The complete Jest gate then passed `45/45` suites and
+`1,400/1,400` tests. A signed Arabic live traversal of both pages passed RTL,
+320px reflow, and serious/critical axe checks, and the expanded aggregate
+Chromium/axe matrix passed `52/52` in 8.6 minutes. The authoritative
+`govuk_alpha_connections` network namespace remains English-identical in
+Arabic, so Web UK preserves it rather than inventing divergent translations.
+Live accept/decline/remove mutations, exact cursor depth beyond Laravel's
+50-row inbox load, manual assistive-technology evidence, and ASP.NET switching
+remain open.
 
 ## 2026-07-10 Messages Inbox Structural And Localization Slice
 

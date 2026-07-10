@@ -1,180 +1,126 @@
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/table/macro.njk" import govukTable %}
-{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% block content %}
+  <span class="govuk-caption-xl" id="connections-top">{{ t("connections.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("connections.title") }}</h1>
+  <p class="govuk-body-l">{{ t("connections.description") }}</p>
 
-{% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full">
+  <p class="govuk-body">
+    <a class="govuk-link" href="{{ urlFor('/connections/network') }}">{{ t("govuk_alpha_connections.nav.network") }}</a>
+  </p>
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      <h1 class="govuk-heading-xl" id="connections-top">Connections</h1>
-
-      <nav class="govuk-tabs" data-module="govuk-tabs">
-        <ul class="govuk-tabs__list">
-          <li class="govuk-tabs__list-item {% if currentStatus == 'accepted' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=accepted') }}">
-              Connected
-            </a>
-          </li>
-          <li class="govuk-tabs__list-item {% if currentStatus == 'pending_received' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=pending_received') }}">
-              Pending requests
-            </a>
-          </li>
-          <li class="govuk-tabs__list-item {% if currentStatus == 'pending_sent' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=pending_sent') }}">
-              Sent requests
-            </a>
-          </li>
-        </ul>
-      </nav>
-
-      <p class="govuk-body govuk-!-margin-bottom-6">
-        <a href="{{ urlFor('/connections/network?tab=pending_received') }}" class="govuk-link">View pending requests</a>
-      </p>
-
-      {% if connections.length > 0 %}
-        <table class="govuk-table">
-          <thead class="govuk-table__head">
-            <tr class="govuk-table__row">
-              <th scope="col" class="govuk-table__header">Name</th>
-              <th scope="col" class="govuk-table__header">Location</th>
-              <th scope="col" class="govuk-table__header">Status</th>
-              <th scope="col" class="govuk-table__header">Connected since</th>
-              <th scope="col" class="govuk-table__header">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="govuk-table__body">
-            {% for connection in connections %}
-              <tr class="govuk-table__row">
-                <td class="govuk-table__cell">
-                  <div class="app-member-cell">
-                    {% set user = (connection.otherUser or connection.other_user) %}
-                    {% include "partials/avatar.njk" %}
-                    <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
-                      {{ connection.displayName }}
-                    </a>
-                  </div>
-                </td>
-                <td class="govuk-table__cell">
-                  {{ connection.partner.location or "Not provided" }}
-                </td>
-                <td class="govuk-table__cell">
-                  {% if connection.status == 'accepted' %}
-                    {{ govukTag({ text: "Connected", classes: "govuk-tag--green" }) }}
-                  {% elif connection.status == 'pending' %}
-                    {{ govukTag({ text: "Pending", classes: "govuk-tag--yellow" }) }}
-                  {% elif connection.status == 'declined' %}
-                    {{ govukTag({ text: "Declined", classes: "govuk-tag--red" }) }}
-                  {% else %}
-                    {{ govukTag({ text: connection.status }) }}
-                  {% endif %}
-                </td>
-                <td class="govuk-table__cell">
-                  {% if connection.status == 'accepted' %}
-                    {{ (connection.updatedAt or connection.updated_at) | date }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="govuk-table__cell">
-                  {% if connection.status == 'accepted' %}
-                    <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
-                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      {{ govukButton({
-                        text: "Remove",
-                        classes: "govuk-button--warning govuk-!-margin-bottom-0",
-                        attributes: {
-                          onclick: "return confirm('Are you sure you want to remove this connection?')"
-                        }
-                      }) }}
-                    </form>
-                  {% elif connection.status == 'pending' %}
-                    {% if connection.isRequester or connection.is_requester %}
-                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
-                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        {{ govukButton({
-                          text: t("polish_federation.transfer_cancel"),
-                          classes: "govuk-button--secondary govuk-!-margin-bottom-0"
-                        }) }}
-                      </form>
-                    {% else %}
-                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/accept') }}" method="post" style="display: inline;">
-                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        {{ govukButton({
-                          text: "Accept",
-                          classes: "govuk-!-margin-bottom-0 govuk-!-margin-right-2"
-                        }) }}
-                      </form>
-                      <form action="{{ urlFor('/connections/' + (connection.id | string) + '/decline') }}" method="post" style="display: inline;">
-                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        {{ govukButton({
-                          text: "Decline",
-                          classes: "govuk-button--secondary govuk-!-margin-bottom-0"
-                        }) }}
-                      </form>
-                    {% endif %}
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        {% if currentStatus == 'accepted' %}
-          {% set emptyState = {
-            icon: "🤝",
-            heading: "No connections yet",
-            message: "Connect with other community members to start collaborating.",
-            action: {
-              text: "Browse community members",
-              href: urlFor('/members')
-            }
-          } %}
-        {% elif currentStatus == 'pending_received' %}
-          {% set emptyState = {
-            icon: "⏳",
-            heading: "No pending requests",
-            message: "You don't have any pending connection requests at the moment."
-          } %}
-        {% elif currentStatus == 'pending_sent' %}
-          {% set emptyState = {
-            heading: "No sent requests",
-            message: "You don't have any sent connection requests waiting for a reply."
-          } %}
-        {% else %}
-          {% set emptyState = {
-            icon: "🤝",
-            heading: "No connections yet",
-            message: "Connect with other community members to start collaborating.",
-            action: {
-              text: "Browse community members",
-              href: urlFor('/members')
-            }
-          } %}
-        {% endif %}
-        {% include "partials/empty-state.njk" %}
-      {% endif %}
-
-      {% if nextHref %}
-        <p class="govuk-!-margin-top-4">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(nextHref) }}">Next page</a>
-        </p>
-      {% endif %}
-
+  <form method="get" action="{{ urlFor('/connections') }}" class="govuk-!-margin-bottom-5">
+    <div class="govuk-form-group govuk-!-margin-bottom-2">
+      <label class="govuk-label" for="conn-search">{{ t("polish_members.connections_search_label") }}</label>
+      <div id="conn-search-hint" class="govuk-hint">{{ t("polish_members.connections_search_hint") }}</div>
+      <input class="govuk-input govuk-!-width-two-thirds" id="conn-search" name="q" type="search" value="{{ connSearch }}" aria-describedby="conn-search-hint">
     </div>
-  </div>
+    <div class="govuk-button-group">
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("polish_members.connections_search_submit") }}</button>
+      {% if connSearch %}
+        <a class="govuk-link" href="{{ urlFor('/connections') }}">{{ t("polish_members.connections_search_clear") }}</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if status == 'connection-accepted' or status == 'connection-declined' or status == 'connection-removed' %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="conn-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="conn-status-title">{{ t("states.success_title") }}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">
+          {% if status == 'connection-accepted' %}{{ t("connections.states.accepted") }}{% elif status == 'connection-declined' %}{{ t("connections.states.declined") }}{% else %}{{ t("connections.states.removed") }}{% endif %}
+        </p>
+      </div>
+    </div>
+  {% elif status == 'connection-failed' %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">{{ t("connections.states.failed") }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="govuk-body">{{ t("connections.summary", { received: countLabels.received, sent: countLabels.sent, total: countLabels.accepted }) }}</p>
+
+  <section aria-labelledby="received-heading">
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="received-heading">{{ t("connections.received_title") }}</h2>
+    {% if receivedRequests.length %}
+      {% for connection in receivedRequests %}
+        <article class="nexus-alpha-card govuk-!-margin-bottom-4">
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ connection.name }}</h3>
+          {% if connection.location %}<p class="govuk-hint govuk-!-font-size-16 govuk-!-margin-bottom-2">{{ connection.location }}</p>{% endif %}
+          {% if connection.bio %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2"><span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.about", { name: connection.name }) }}: </span>{{ connection.bio }}</p>{% endif %}
+          <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("connections.wants_to_connect") }}</p>
+          <div class="govuk-button-group">
+            {% if connection.acceptAction %}
+              <form method="post" action="{{ urlFor(connection.acceptAction) }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button" data-module="govuk-button">{{ t("connections.accept_button") }}</button>
+              </form>
+              <form method="post" action="{{ urlFor(connection.declineAction) }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("connections.decline_button") }}</button>
+              </form>
+            {% endif %}
+            {% if connection.profileHref %}<a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("connections.view_profile") }}</a>{% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("connections.received_empty") }}</p></div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="accepted-heading">
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="accepted-heading">{{ t("connections.accepted_title") }}</h2>
+    {% if acceptedConnections.length %}
+      {% for connection in acceptedConnections %}
+        <article class="nexus-alpha-card govuk-!-margin-bottom-4">
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ connection.name }}</h3>
+          {% if connection.location %}<p class="govuk-hint govuk-!-font-size-16 govuk-!-margin-bottom-2">{{ connection.location }}</p>{% endif %}
+          {% if connection.bio %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2"><span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.about", { name: connection.name }) }}: </span>{{ connection.bio }}</p>{% endif %}
+          <div class="govuk-button-group">
+            {% if connection.profileHref %}<a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("connections.view_profile") }}</a>{% endif %}
+            {% if connection.removeAction %}
+              <form method="post" action="{{ urlFor(connection.removeAction) }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("connections.remove_button") }}</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("connections.accepted_empty") }}</p></div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="sent-heading">
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="sent-heading">{{ t("connections.sent_title") }}</h2>
+    {% if sentRequests.length %}
+      {% for connection in sentRequests %}
+        <article class="nexus-alpha-card govuk-!-margin-bottom-4">
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ connection.name }}</h3>
+          {% if connection.bio %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2"><span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.about", { name: connection.name }) }}: </span>{{ connection.bio }}</p>{% endif %}
+          <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("connections.awaiting_response") }}</p>
+          <div class="govuk-button-group">
+            {% if connection.profileHref %}<a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("connections.view_profile") }}</a>{% endif %}
+            {% if connection.removeAction %}
+              <form method="post" action="{{ urlFor(connection.removeAction) }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("connections.cancel_button") }}</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("connections.sent_empty") }}</p></div>
+    {% endif %}
+  </section>
 {% endblock %}

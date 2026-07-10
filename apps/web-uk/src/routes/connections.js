@@ -20,7 +20,6 @@ const router = express.Router();
 
 const NETWORK_TABS = new Set(['accepted', 'pending_received', 'pending_sent']);
 const NETWORK_STATUSES = new Set(['connection-accepted', 'connection-declined', 'connection-removed', 'connection-failed']);
-const CONNECTION_FILTERS = new Set(['accepted', 'pending_received', 'pending_sent']);
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -60,7 +59,7 @@ function allowed(value, choices, fallback) {
   return choices.has(text) ? text : fallback;
 }
 
-function memberName(member) {
+function memberName(member, t = (key) => key) {
   const profileType = trimmed(member.profile_type);
   const organisationName = trimmed(member.organization_name);
   if (profileType === 'organisation' && organisationName) return organisationName;
@@ -69,7 +68,11 @@ function memberName(member) {
   if (name) return name;
 
   const fullName = trimmed(`${trimmed(member.first_name)} ${trimmed(member.last_name)}`);
-  return fullName || 'Unknown member';
+  return fullName || t('govuk_alpha_connections.common.unknown_member');
+}
+
+function formatCount(value) {
+  return new Intl.NumberFormat(getRequestIntlLocale(), { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
 
 function formatMonthYear(value) {
@@ -79,7 +82,7 @@ function formatMonthYear(value) {
   return new Intl.DateTimeFormat(getRequestIntlLocale(), { month: 'long', year: 'numeric' }).format(date);
 }
 
-function normaliseConnection(connection) {
+function normaliseConnection(connection, t) {
   const row = asObject(connection);
   const partner = asObject(row.partner || row.user || row.other_user || row.otherUser);
   const partnerId = partner.id || row.user_id || row.userId || '';
@@ -89,7 +92,7 @@ function normaliseConnection(connection) {
   return {
     id: connectionId,
     partnerId,
-    name: memberName(partner),
+    name: memberName(partner, t),
     location: trimmed(partner.location),
     bio: trimmed(partner.bio, 160),
     createdMonth,
@@ -98,25 +101,6 @@ function normaliseConnection(connection) {
     removeAction: connectionId ? `/connections/${encodeURIComponent(connectionId)}/remove` : '',
     acceptAction: connectionId ? `/connections/${encodeURIComponent(connectionId)}/accept` : '',
     declineAction: connectionId ? `/connections/${encodeURIComponent(connectionId)}/decline` : ''
-  };
-}
-
-function normaliseIndexConnection(connection, filter) {
-  const row = asObject(connection);
-  const partner = asObject(row.partner || row.user || row.other_user || row.otherUser);
-  const connectionId = row.connection_id || row.id || '';
-  const isRequester = filter === 'pending_sent';
-
-  return {
-    ...row,
-    id: connectionId,
-    partner,
-    otherUser: partner,
-    other_user: partner,
-    displayName: memberName(partner),
-    status: filter === 'accepted' ? 'accepted' : 'pending',
-    isRequester,
-    is_requester: isRequester
   };
 }
 
@@ -135,7 +119,7 @@ function networkHref(tab, q = '', cursor = '') {
   return `/connections/network${queryString ? `?${queryString}` : ''}`;
 }
 
-async function loadNetworkSection(token, status, activeTab, cursor) {
+async function loadNetworkSection(token, status, activeTab, cursor, t) {
   const params = { status, per_page: 20 };
   if (cursor && status === activeTab) {
     params.cursor = cursor;
@@ -144,7 +128,7 @@ async function loadNetworkSection(token, status, activeTab, cursor) {
   const result = await getConnections(token, params);
   const meta = metaFrom(result);
   return {
-    items: asList(dataFrom(result)).map(normaliseConnection),
+    items: asList(dataFrom(result)).map((connection) => normaliseConnection(connection, t)),
     cursor: trimmed(meta.cursor),
     hasMore: meta.has_more === true || meta.has_more === 1 || meta.has_more === '1'
   };
@@ -171,22 +155,6 @@ function connectionActionUrl(status) {
   return `/connections?status=${encodeURIComponent(status)}#connections-top`;
 }
 
-function connectionsIndexHref(filter, cursor = '') {
-  const query = new URLSearchParams();
-  query.set('filter', filter);
-  if (cursor) query.set('cursor', cursor);
-  return `/connections?${query.toString()}`;
-}
-
-function actionSuccessMessage(status) {
-  const messages = {
-    'connection-accepted': 'Connection request accepted.',
-    'connection-declined': 'Connection request declined.',
-    'connection-removed': 'Connection removed.'
-  };
-  return messages[status] || null;
-}
-
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
   return res.redirect(urlFor(pathname));
@@ -202,6 +170,7 @@ router.get('/network', asyncRoute(async (req, res) => {
   const connSearch = trimmed(req.query.q, 120);
   const cursor = trimmed(req.query.cursor, 512);
   const status = allowed(req.query.status, NETWORK_STATUSES, '');
+  const t = res.locals.t;
 
   let counts = { received: 0, sent: 0, total_friends: 0 };
   const sections = {
@@ -209,14 +178,12 @@ router.get('/network', asyncRoute(async (req, res) => {
     pending_received: emptyNetworkSection(),
     pending_sent: emptyNetworkSection()
   };
-  let errorMessage = null;
-
   try {
     const [countsResult, accepted, received, sent] = await Promise.all([
       getConnectionPendingCountsV2(token),
-      loadNetworkSection(token, 'accepted', activeTab, cursor),
-      loadNetworkSection(token, 'pending_received', activeTab, cursor),
-      loadNetworkSection(token, 'pending_sent', activeTab, cursor)
+      loadNetworkSection(token, 'accepted', activeTab, cursor, t),
+      loadNetworkSection(token, 'pending_received', activeTab, cursor, t),
+      loadNetworkSection(token, 'pending_sent', activeTab, cursor, t)
     ]);
 
     counts = countsFrom(countsResult);
@@ -225,7 +192,7 @@ router.get('/network', asyncRoute(async (req, res) => {
     sections.pending_sent = sent;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) throw error;
-    errorMessage = 'Sorry, there is a problem loading your connections.';
+    // Laravel reports the failure and renders the canonical empty sections.
   }
 
   if (connSearch) {
@@ -237,7 +204,7 @@ router.get('/network', asyncRoute(async (req, res) => {
   }
 
   res.render('connections/network', {
-    title: 'Connections',
+    title: t('govuk_alpha_connections.network.title'),
     activeNav: 'connections',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     activeTab,
@@ -245,7 +212,11 @@ router.get('/network', asyncRoute(async (req, res) => {
     counts,
     connSearch,
     status,
-    errorMessage,
+    countLabels: {
+      accepted: formatCount(counts.total_friends),
+      received: formatCount(counts.received),
+      sent: formatCount(counts.sent)
+    },
     hasSearch: connSearch !== '',
     tabHrefs: {
       accepted: networkHref('accepted', connSearch),
@@ -262,45 +233,54 @@ router.get('/network', asyncRoute(async (req, res) => {
 
 router.use(requireAuth);
 
-// List connections (with optional status filter)
+// Laravel-style connections inbox: accepted, received, and sent together.
 router.get('/', asyncRoute(async (req, res) => {
   const requestedStatus = String(req.query.status || '').trim();
-  const statusFilter = requestedStatus === 'pending'
-    ? 'pending_received'
-    : (CONNECTION_FILTERS.has(requestedStatus) ? requestedStatus : '');
-  const requestedFilter = String(req.query.filter || statusFilter).trim();
-  const currentStatus = allowed(requestedFilter, CONNECTION_FILTERS, 'accepted');
-  const cursor = trimmed(req.query.cursor, 512);
-  const limit = 20;
-  let connectionErrorMessage = null;
-
-  const result = await getConnections(req.token, {
-    status: currentStatus,
-    per_page: limit,
-    ...(cursor ? { cursor } : {})
-  }).catch((error) => {
-    if (error instanceof ApiError && error.status === 401) {
-      throw error;
-    }
-    connectionErrorMessage = 'Sorry, there is a problem loading connections.';
-    return { data: [] };
-  });
-  const meta = metaFrom(result);
-  const connections = asList(dataFrom(result)).map((connection) => normaliseIndexConnection(connection, currentStatus));
-  const nextCursor = trimmed(meta.cursor, 512);
-  const hasMore = meta.has_more === true || meta.has_more === 1 || meta.has_more === '1';
   const actionStatus = NETWORK_STATUSES.has(requestedStatus) ? requestedStatus : '';
+  const connSearch = trimmed(req.query.q, 120);
+  const t = res.locals.t;
+  let counts = { received: 0, sent: 0, total_friends: 0 };
+  let acceptedConnections = [];
+  let receivedRequests = [];
+  let sentRequests = [];
+
+  try {
+    const [countsResult, accepted, received, sent] = await Promise.all([
+      getConnectionPendingCountsV2(req.token),
+      getConnections(req.token, { status: 'accepted', per_page: 50 }),
+      getConnections(req.token, { status: 'pending_received', per_page: 50 }),
+      getConnections(req.token, { status: 'pending_sent', per_page: 50 })
+    ]);
+    counts = countsFrom(countsResult);
+    acceptedConnections = asList(dataFrom(accepted)).map((row) => normaliseConnection(row, t));
+    receivedRequests = asList(dataFrom(received)).map((row) => normaliseConnection(row, t));
+    sentRequests = asList(dataFrom(sent)).map((row) => normaliseConnection(row, t));
+
+    if (connSearch) {
+      acceptedConnections = acceptedConnections.filter((row) => connectionMatchesSearch(row, connSearch));
+      receivedRequests = receivedRequests.filter((row) => connectionMatchesSearch(row, connSearch));
+      sentRequests = sentRequests.filter((row) => connectionMatchesSearch(row, connSearch));
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    // Laravel reports the failure and renders the canonical empty sections.
+  }
 
   res.render('connections/index', {
-    title: 'Connections',
-    connections,
-    currentStatus,
-    nextHref: hasMore && nextCursor ? connectionsIndexHref(currentStatus, nextCursor) : '',
+    title: res.locals.t('connections.title'),
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
+    acceptedConnections,
+    receivedRequests,
+    sentRequests,
+    counts,
+    countLabels: {
+      accepted: formatCount(counts.total_friends),
+      received: formatCount(counts.received),
+      sent: formatCount(counts.sent)
+    },
+    connSearch,
+    status: actionStatus,
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: actionSuccessMessage(actionStatus) || (req.flash ? req.flash('success')[0] : null),
-    errorMessage: connectionErrorMessage || (actionStatus === 'connection-failed'
-      ? 'Sorry, that action could not be completed. Please try again.'
-      : null) || (req.flash ? req.flash('error')[0] : null)
   });
 }, { redirectOn401: '/login?status=auth-required' }));
 

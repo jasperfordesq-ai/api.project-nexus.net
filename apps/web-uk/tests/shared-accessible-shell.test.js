@@ -8988,6 +8988,15 @@ describe('shared accessible frontend shell', () => {
               location: 'Town allotments',
               bio: '<p>Gardening mentor and compost lead.</p>'
             }
+          },
+          {
+            id: 34,
+            partner: {
+              id: 80,
+              first_name: '  ',
+              last_name: '',
+              location: 'Town hall'
+            }
           }
         ],
         meta: { has_more: true, cursor: 'accepted-next' }
@@ -9047,7 +9056,7 @@ describe('shared accessible frontend shell', () => {
       per_page: 20
     });
     expect(signed.text).toContain('Connection request accepted.');
-    expect(signed.text).toContain('Connections - Project NEXUS Accessible');
+    expect(signed.text).toContain('My network - Project NEXUS Accessible');
     expect(signed.text).toContain('Your connections at Project NEXUS Accessible');
     expect(signed.text).toContain('My network');
     expect(signed.text).toContain('Manage the people you are connected with, requests waiting for your reply, and requests you have sent.');
@@ -9061,6 +9070,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Pending requests (1)');
     expect(signed.text).toContain('Sent requests (1)');
     expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('Unknown member');
     expect(signed.text).toContain('Town allotments');
     expect(signed.text).toContain('Gardening mentor and compost lead.');
     expect(signed.text).toContain('Connected since February 2026');
@@ -9093,16 +9103,39 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Sorry, there is a problem loading your connections.');
+    expect(response.text).not.toContain('Sorry, there is a problem loading your connections.');
     expect(response.text).toContain('You have 0 connections, 0 requests waiting for your reply and 0 requests you have sent.');
     expect(response.text).toContain('No connections yet');
     expect(response.text).toContain('No pending requests');
     expect(response.text).toContain('No sent requests');
   });
 
-  it('renders the canonical Laravel connection cursor envelope on the tenant-aware connections index', async () => {
+  it('renders the connection network through the authoritative Arabic catalog and locale formatting', async () => {
     const api = require('../src/lib/api');
 
+    api.getConnectionPendingCountsV2.mockResolvedValueOnce({
+      data: { received: 12, sent: 34, total_friends: 1234 }
+    });
+    api.getConnections.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const response = await request(app)
+      .get('/connections/network?locale=ar&q=none')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain('My network - Project NEXUS Accessible');
+    expect(response.text).toContain('You have 1,234 connections, 12 requests waiting for your reply and 34 requests you have sent.');
+    expect(response.text).toContain('Clear search');
+  });
+
+  it('renders the canonical three-section Laravel connections inbox on the tenant-aware index', async () => {
+    const api = require('../src/lib/api');
+
+    api.getConnectionPendingCountsV2.mockResolvedValueOnce({
+      data: { received: 2, sent: 3, total_friends: 1 }
+    });
     api.getConnections.mockResolvedValueOnce({
       data: [
         {
@@ -9116,38 +9149,44 @@ describe('shared accessible frontend shell', () => {
           }
         }
       ],
-      meta: {
-        cursor: 'next-page',
-        per_page: 20,
-        has_more: true
-      }
-    });
+      meta: { has_more: false }
+    }).mockResolvedValueOnce({ data: [], meta: { has_more: false } })
+      .mockResolvedValueOnce({ data: [], meta: { has_more: false } });
 
     const response = await request(app)
-      .get('/acme/accessible/connections?filter=pending_sent&cursor=current-page')
+      .get('/acme/accessible/connections')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getConnections).toHaveBeenCalledWith('test-token', {
+    expect(api.getConnections).toHaveBeenNthCalledWith(1, 'test-token', {
+      status: 'accepted',
+      per_page: 50
+    });
+    expect(api.getConnections).toHaveBeenNthCalledWith(2, 'test-token', {
+      status: 'pending_received',
+      per_page: 50
+    });
+    expect(api.getConnections).toHaveBeenNthCalledWith(3, 'test-token', {
       status: 'pending_sent',
-      per_page: 20,
-      cursor: 'current-page'
+      per_page: 50
     });
     expect(response.text).toContain('Ada Lovelace');
     expect(response.text).toContain('Bandon');
-    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('2 to respond to · 3 sent · 1 connected');
+    expect(response.text).toContain('Requests to respond to');
+    expect(response.text).toContain('Your connections');
+    expect(response.text).toContain('Requests you have sent');
     expect(response.text).toContain('action="/acme/accessible/connections/44/remove"');
     expect(response.text).toContain('href="/acme/accessible/members/77"');
-    expect(response.text).toContain('href="/acme/accessible/connections?filter=pending_sent&amp;cursor=next-page"');
-    expect(response.text).toContain('Next page');
-    expect(response.text).not.toContain('No sent requests');
+    expect(response.text).toContain('href="/acme/accessible/connections/network"');
+    expect(response.text).not.toContain('govuk-tabs');
   });
 
   it('renders the signed Laravel connections index when the connections API is unavailable', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
 
-    api.getConnections.mockRejectedValueOnce(new ApiError('Not found', 404, {}));
+    api.getConnections.mockRejectedValue(new ApiError('Not found', 404, {}));
 
     const response = await request(app)
       .get('/connections')
@@ -9157,16 +9196,15 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getConnections).toHaveBeenCalledWith('test-token', {
-      status: 'accepted',
-      per_page: 20
-    });
+    expect(api.getConnections).toHaveBeenCalledTimes(3);
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Connections');
-    expect(response.text).toContain('href="/connections/network?tab=pending_received"');
+    expect(response.text).toContain('href="/connections/network"');
     expect(response.text).not.toContain('href="/connections/pending"');
-    expect(response.text).toContain('No connections yet');
-    expect(response.text).toContain('Sorry, there is a problem loading connections.');
+    expect(response.text).toContain('You have no connection requests waiting.');
+    expect(response.text).toContain('You are not connected with anyone yet.');
+    expect(response.text).toContain('You have no pending requests.');
+    expect(response.text).not.toContain('Sorry, there is a problem loading connections.');
     expect(response.text).not.toContain('Page not found');
     expect(legacyPending.status).toBe(404);
     expect(legacyPending.text).toContain('Page not found');

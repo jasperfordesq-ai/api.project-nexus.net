@@ -101,6 +101,7 @@ function renderNetwork(locale) {
     communityName: 'Test community',
     connSearch: '',
     counts: { received: 0, sent: 0, total_friends: 1 },
+    countLabels: { accepted: '1', received: '0', sent: '0' },
     hasSearch: false,
     loadMoreHrefs: { accepted: '/connections/network?cursor=next' },
     sections: {
@@ -173,7 +174,7 @@ describe('localized accessible chrome', () => {
     expect(collection).toContain('aria-label="Delete the collection Care &amp; &lt;support&gt;"');
     expect(collection).toContain(`<span class="govuk-visually-hidden">${t('states.error_title')}:</span>`);
     expect(network).toContain(`${t('govuk_alpha_connections.network.about', { name: 'Amina' })}: </span>`);
-    expect(network).toContain(t('notifications.load_more'));
+    expect(network).toContain(t('govuk_alpha_connections.network.load_more'));
     expect(course).toContain('aria-label="Course progress: 42% complete"');
     expect(search).not.toContain('<support>');
     expect(collection).not.toContain('<chat>');

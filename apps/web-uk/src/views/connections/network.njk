@@ -5,51 +5,45 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  {% if errorMessage %}
-    {% set notificationMessage = errorMessage %}
-    {% set notificationType = null %}
-    {% include "partials/notification-banner.njk" %}
-  {% endif %}
-
   {% if status == 'connection-accepted' or status == 'connection-declined' or status == 'connection-removed' %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="conn-net-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="conn-net-status-title">{{ t("states.success_title") }}</h2>
+        <h2 class="govuk-notification-banner__title" id="conn-net-status-title">{{ t("govuk_alpha_connections.common.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">
-          {% if status == 'connection-accepted' %}Connection request accepted.{% elif status == 'connection-declined' %}Connection request declined.{% else %}Connection removed.{% endif %}
+          {% if status == 'connection-accepted' %}{{ t("govuk_alpha_connections.network_states.accepted") }}{% elif status == 'connection-declined' %}{{ t("govuk_alpha_connections.network_states.declined") }}{% else %}{{ t("govuk_alpha_connections.network_states.removed") }}{% endif %}
         </p>
       </div>
     </div>
   {% elif status == 'connection-failed' %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_connections.common.error_title") }}</h2>
         <div class="govuk-error-summary__body">
-          <p class="govuk-body">Sorry, that action could not be completed. Please try again.</p>
+          <p class="govuk-body">{{ t("govuk_alpha_connections.network_states.failed") }}</p>
         </div>
       </div>
     </div>
   {% endif %}
 
-  <span class="govuk-caption-xl" id="connections-network-top">Your connections at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">My network</h1>
-  <p class="govuk-body-l">Manage the people you are connected with, requests waiting for your reply, and requests you have sent.</p>
+  <span class="govuk-caption-xl" id="connections-network-top">{{ t("govuk_alpha_connections.network.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_connections.network.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_connections.network.description") }}</p>
 
-  <p class="govuk-body">You have {{ counts.total_friends }} connections, {{ counts.received }} requests waiting for your reply and {{ counts.sent }} requests you have sent.</p>
+  <p class="govuk-body">{{ t("govuk_alpha_connections.network.summary", { total: countLabels.accepted, received: countLabels.received, sent: countLabels.sent }) }}</p>
 
   <form method="get" action="{{ urlFor('/connections/network') }}" class="govuk-!-margin-bottom-6">
     <input type="hidden" name="tab" value="{{ activeTab }}">
     <div class="govuk-form-group govuk-!-margin-bottom-2">
-      <label class="govuk-label" for="conn-net-search">Search your network</label>
-      <div id="conn-net-search-hint" class="govuk-hint">Filter the people shown below by name or location.</div>
+      <label class="govuk-label" for="conn-net-search">{{ t("govuk_alpha_connections.network.search_label") }}</label>
+      <div id="conn-net-search-hint" class="govuk-hint">{{ t("govuk_alpha_connections.network.search_hint") }}</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="conn-net-search" name="q" type="search" value="{{ connSearch }}" aria-describedby="conn-net-search-hint">
     </div>
     <div class="govuk-button-group">
-      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_connections.network.search_submit") }}</button>
       {% if hasSearch %}
-        <a class="govuk-link" href="{{ urlFor('/connections/network?tab=' + activeTab) }}">{{ t("polish_members.connections_search_clear") }}</a>
+        <a class="govuk-link" href="{{ urlFor('/connections/network?tab=' + activeTab) }}">{{ t("govuk_alpha_connections.network.search_clear") }}</a>
       {% endif %}
     </div>
   </form>
@@ -57,19 +51,19 @@
   <nav aria-label="{{ t('govuk_alpha_connections.network.title') }}" class="govuk-!-margin-bottom-6">
     <ul class="nexus-alpha-filter-nav">
       <li>
-        <a class="govuk-link{% if activeTab == 'accepted' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.accepted) }}"{% if activeTab == 'accepted' %} aria-current="true"{% endif %}>My connections ({{ counts.total_friends }})</a>
+        <a class="govuk-link{% if activeTab == 'accepted' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.accepted) }}"{% if activeTab == 'accepted' %} aria-current="true"{% endif %}>{{ t("govuk_alpha_connections.network.tab_accepted") }} ({{ countLabels.accepted }})</a>
       </li>
       <li>
-        <a class="govuk-link{% if activeTab == 'pending_received' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.pending_received) }}"{% if activeTab == 'pending_received' %} aria-current="true"{% endif %}>Pending requests ({{ counts.received }})</a>
+        <a class="govuk-link{% if activeTab == 'pending_received' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.pending_received) }}"{% if activeTab == 'pending_received' %} aria-current="true"{% endif %}>{{ t("govuk_alpha_connections.network.tab_pending_received") }} ({{ countLabels.received }})</a>
       </li>
       <li>
-        <a class="govuk-link{% if activeTab == 'pending_sent' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.pending_sent) }}"{% if activeTab == 'pending_sent' %} aria-current="true"{% endif %}>Sent requests ({{ counts.sent }})</a>
+        <a class="govuk-link{% if activeTab == 'pending_sent' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor(tabHrefs.pending_sent) }}"{% if activeTab == 'pending_sent' %} aria-current="true"{% endif %}>{{ t("govuk_alpha_connections.network.tab_pending_sent") }} ({{ countLabels.sent }})</a>
       </li>
     </ul>
   </nav>
 
   <section aria-labelledby="net-accepted-heading">
-    <h2 class="govuk-heading-l" id="net-accepted-heading">My connections</h2>
+    <h2 class="govuk-heading-l" id="net-accepted-heading">{{ t("govuk_alpha_connections.network.tab_accepted") }}</h2>
     {% if sections.accepted.items.length %}
       <div class="nexus-alpha-card-list">
         {% for connection in sections.accepted.items %}
@@ -82,17 +76,17 @@
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1"><span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.about", { name: connection.name }) }}: </span>{{ connection.bio }}</p>
             {% endif %}
             {% if connection.createdMonth %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-3">Connected since {{ connection.createdMonth }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-3">{{ t("govuk_alpha_connections.network.connected_since", { date: connection.createdMonth }) }}</p>
             {% endif %}
             <div class="govuk-button-group">
               {% if connection.messageHref %}
-                <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(connection.messageHref) }}">Message</a>
-                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">View profile</a>
+                <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(connection.messageHref) }}">{{ t("govuk_alpha_connections.network.message") }}</a>
+                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("govuk_alpha_connections.network.view_profile") }}</a>
               {% endif %}
               {% if connection.removeAction %}
                 <form method="post" action="{{ urlFor(connection.removeAction) }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">Disconnect</button>
+                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("govuk_alpha_connections.network.disconnect") }}</button>
                 </form>
               {% endif %}
             </div>
@@ -101,22 +95,22 @@
       </div>
       {% if loadMoreHrefs.accepted and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.accepted) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_accepted") }) }}</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.accepted) }}">{{ t("govuk_alpha_connections.network.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_accepted") }) }}</span></a>
         </p>
       {% endif %}
     {% else %}
       <div class="govuk-inset-text">
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">No connections yet</h3>
-        <p class="govuk-body">{% if hasSearch %}No connections match your search.{% else %}You have not connected with anyone yet. Find members to grow your network.{% endif %}</p>
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("govuk_alpha_connections.network_empty.accepted_title") }}</h3>
+        <p class="govuk-body">{% if hasSearch %}{{ t("govuk_alpha_connections.network_empty.accepted_search") }}{% else %}{{ t("govuk_alpha_connections.network_empty.accepted_body") }}{% endif %}</p>
         {% if not hasSearch %}
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("skills.search_button") }}</a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("govuk_alpha_connections.network_empty.find_members") }}</a>
         {% endif %}
       </div>
     {% endif %}
   </section>
 
   <section aria-labelledby="net-received-heading">
-    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="net-received-heading">Pending requests</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="net-received-heading">{{ t("govuk_alpha_connections.network.tab_pending_received") }}</h2>
     {% if sections.pending_received.items.length %}
       <div class="nexus-alpha-card-list">
         {% for connection in sections.pending_received.items %}
@@ -133,15 +127,15 @@
               {% if connection.acceptAction %}
                 <form method="post" action="{{ urlFor(connection.acceptAction) }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button" data-module="govuk-button">Accept</button>
+                  <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_connections.network.accept") }}</button>
                 </form>
                 <form method="post" action="{{ urlFor(connection.declineAction) }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Decline</button>
+                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_connections.network.decline") }}</button>
                 </form>
               {% endif %}
               {% if connection.profileHref %}
-                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">View profile</a>
+                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("govuk_alpha_connections.network.view_profile") }}</a>
               {% endif %}
             </div>
           </article>
@@ -149,19 +143,19 @@
       </div>
       {% if loadMoreHrefs.pending_received and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_received) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_pending_received") }) }}</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_received) }}">{{ t("govuk_alpha_connections.network.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_pending_received") }) }}</span></a>
         </p>
       {% endif %}
     {% else %}
       <div class="govuk-inset-text">
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">No pending requests</h3>
-        <p class="govuk-body">{% if hasSearch %}No pending requests match your search.{% else %}You have no connection requests waiting for your reply.{% endif %}</p>
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("govuk_alpha_connections.network_empty.received_title") }}</h3>
+        <p class="govuk-body">{% if hasSearch %}{{ t("govuk_alpha_connections.network_empty.received_search") }}{% else %}{{ t("govuk_alpha_connections.network_empty.received_body") }}{% endif %}</p>
       </div>
     {% endif %}
   </section>
 
   <section aria-labelledby="net-sent-heading">
-    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="net-sent-heading">Sent requests</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6" id="net-sent-heading">{{ t("govuk_alpha_connections.network.tab_pending_sent") }}</h2>
     {% if sections.pending_sent.items.length %}
       <div class="nexus-alpha-card-list">
         {% for connection in sections.pending_sent.items %}
@@ -173,15 +167,15 @@
             {% if connection.bio %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1"><span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.about", { name: connection.name }) }}: </span>{{ connection.bio }}</p>
             {% endif %}
-            <p class="govuk-body-s govuk-!-margin-bottom-3">Request pending</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("govuk_alpha_connections.network.request_pending") }}</p>
             <div class="govuk-button-group">
               {% if connection.profileHref %}
-                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">View profile</a>
+                <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("govuk_alpha_connections.network.view_profile") }}</a>
               {% endif %}
               {% if connection.removeAction %}
                 <form method="post" action="{{ urlFor(connection.removeAction) }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Cancel request</button>
+                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_connections.network.cancel_request") }}</button>
                 </form>
               {% endif %}
             </div>
@@ -190,21 +184,21 @@
       </div>
       {% if loadMoreHrefs.pending_sent and not hasSearch %}
         <p class="govuk-!-margin-top-2">
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_sent) }}">{{ t("notifications.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_pending_sent") }) }}</span></a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(loadMoreHrefs.pending_sent) }}">{{ t("govuk_alpha_connections.network.load_more") }} <span class="govuk-visually-hidden">{{ t("govuk_alpha_connections.network.load_more_sr", { section: t("govuk_alpha_connections.network.tab_pending_sent") }) }}</span></a>
         </p>
       {% endif %}
     {% else %}
       <div class="govuk-inset-text">
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">No sent requests</h3>
-        <p class="govuk-body">{% if hasSearch %}No sent requests match your search.{% else %}You have not sent any connection requests that are still waiting.{% endif %}</p>
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("govuk_alpha_connections.network_empty.sent_title") }}</h3>
+        <p class="govuk-body">{% if hasSearch %}{{ t("govuk_alpha_connections.network_empty.sent_search") }}{% else %}{{ t("govuk_alpha_connections.network_empty.sent_body") }}{% endif %}</p>
         {% if not hasSearch %}
-          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("skills.search_button") }}</a>
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor('/members') }}">{{ t("govuk_alpha_connections.network_empty.find_members") }}</a>
         {% endif %}
       </div>
     {% endif %}
   </section>
 
   <p class="govuk-body govuk-!-margin-top-6">
-    <a class="govuk-link" href="{{ urlFor('/connections') }}">Back to connections</a>
+    <a class="govuk-link" href="{{ urlFor('/connections') }}">{{ t("govuk_alpha_connections.network.back_to_connections") }}</a>
   </p>
 {% endblock %}
