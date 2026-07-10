@@ -387,6 +387,9 @@ back/conversation/new-conversation links, chat form actions, matches filters,
 board links, listing/group/event links, dismiss forms, empty-state CTAs, and
 back links, with source regression coverage, focused render tests, and scoped
 Laravel runtime smoke for signed `/chat`, `/matches`, and `/matches/board`.
+The old unmounted `src/views/chat/index.njk` template has also been removed,
+so source audits now see only the mounted tenant-aware `src/views/ai-chat/index.njk`
+view for Laravel's `/chat` rows.
 This does not newly certify full visual Blade parity, localization,
 recommendation persistence depth, or ASP.NET backend compatibility.
 Federation hub source templates now also use `urlFor()` for the hub service

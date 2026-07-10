@@ -548,10 +548,12 @@ describe('tenant-aware template helper conversion', () => {
       'utf8'
     );
     const legacyChatRoute = path.join(__dirname, '..', 'src', 'routes', 'chat.js');
+    const legacyChatTemplate = path.join(__dirname, '..', 'src', 'views', 'chat', 'index.njk');
 
     expect(server).toContain("require('./routes/ai-chat')");
     expect(server).not.toContain("require('./routes/chat')");
     expect(fs.existsSync(legacyChatRoute)).toBe(false);
+    expect(fs.existsSync(legacyChatTemplate)).toBe(false);
   });
 
   it('keeps matches route redirects behind the active tenant URL helper', () => {
