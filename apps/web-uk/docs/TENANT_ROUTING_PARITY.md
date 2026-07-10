@@ -78,19 +78,24 @@ Current implemented slice:
   `X-Tenant-Slug`, matching Laravel's path-resolved `TenantContext`.
 - Non-local Host values are resolved through Laravel
   `/api/v2/tenant/bootstrap`; when Laravel returns a tenant whose
-  `accessible_domain` or `domain` matches the request host, Web UK treats the
-  request as a slugless custom-domain route. `X-Forwarded-Host` is accepted
+  `accessible_domain` matches the request host, Web UK treats non-root
+  requests as slugless accessible custom-domain routes. Ordinary tenant
+  `domain` hosts keep Laravel's root/network and parent-domain child behavior,
+  but reserved slugless accessible pages such as `/login` remain 404 unless the
+  host is the tenant's `accessible_domain`. `X-Forwarded-Host` is accepted
   before the socket host for reverse-proxy custom-domain routing.
-- Dedicated custom-domain root `/` renders the resolved tenant home and keeps
+- Dedicated custom-domain root `/` renders the resolved tenant home for both
+  Laravel host-resolved `domain` and `accessible_domain` contexts and keeps
   generated local links flat, matching Laravel's custom-domain behavior without
   exposing either `/alpha` or `/{tenantSlug}/accessible`. For this mode, Web UK
   forwards the resolved Host and Origin to Laravel `/api/v2/platform/stats` and
   `/api/v2/tenant/bootstrap` so host-resolved tenant stats use the same lookup
   path as Laravel's accessible runtime.
-- On a dedicated custom/domain host, requests that arrive with the matching
-  tenant's legacy `/{tenantSlug}/alpha/...` prefix or Web UK's shared
+- On a dedicated accessible custom-domain host, requests that arrive with the
+  matching tenant's legacy `/{tenantSlug}/alpha/...` prefix or Web UK's shared
   `/{tenantSlug}/accessible/...` prefix now canonicalize to the slugless
-  custom-domain path. This mirrors Laravel's
+  custom-domain path. Ordinary `domain` hosts do not perform this
+  canonicalization for reserved accessible pages. This mirrors Laravel's
   `StripTenantSlugOnAccessibleDomain` response behavior while keeping Web UK's
   public shared-host slug clean.
 - Master and parent/cluster custom-domain roots render Laravel SEO h1/intro

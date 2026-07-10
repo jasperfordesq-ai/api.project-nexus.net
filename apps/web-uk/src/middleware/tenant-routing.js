@@ -310,12 +310,12 @@ async function resolveParentDomainChildTenant(req, res, pathname, queryIndex, or
 
 async function resolveCustomAccessibleDomain(req, pathname) {
   if (isUnprefixedPath(pathname)) {
-    return;
+    return false;
   }
 
   const host = requestHost(req);
   if (!shouldResolveCustomAccessibleDomain(host)) {
-    return;
+    return false;
   }
 
   const { ApiError, ApiOfflineError, getTenantBootstrap } = require('../lib/api');
@@ -324,7 +324,7 @@ async function resolveCustomAccessibleDomain(req, pathname) {
     const result = await getTenantBootstrap({ host });
     const tenant = result?.data || result?.tenant || result;
 
-    if (tenantDataMatchesAccessibleHost(tenant, host) || tenantDataMatchesDomainHost(tenant, host)) {
+    if (tenantDataMatchesAccessibleHost(tenant, host) || (pathname === '/' && tenantDataMatchesDomainHost(tenant, host))) {
       req.accessibleRouting = {
         mode: 'custom-domain',
         tenantSlug: tenant.slug,
@@ -333,9 +333,16 @@ async function resolveCustomAccessibleDomain(req, pathname) {
         routePath: pathname || '/'
       };
     }
+
+    if (pathname !== '/' && tenantDataMatchesDomainHost(tenant, host)) {
+      req.url = '/__accessible-domain-not-found__';
+      return false;
+    }
+
+    return false;
   } catch (error) {
     if (error instanceof ApiOfflineError || (error instanceof ApiError && error.status === 404)) {
-      return;
+      return false;
     }
 
     throw error;
@@ -353,7 +360,7 @@ async function redirectMatchedCustomDomainMount(req, res, tenantSlug, rest, quer
   try {
     const result = await getTenantBootstrap({ host });
     const tenant = result?.data || result?.tenant || result;
-    const matchedHost = tenantDataMatchesAccessibleHost(tenant, host) || tenantDataMatchesDomainHost(tenant, host);
+    const matchedHost = tenantDataMatchesAccessibleHost(tenant, host);
     const matchedSlug = String(tenant?.slug || '').toLowerCase() === String(tenantSlug || '').toLowerCase();
 
     if (!matchedHost || !matchedSlug) {
@@ -405,7 +412,11 @@ function tenantRouting(req, res, next) {
 
         return resolveCustomAccessibleDomain(req, pathname);
       })
-      .then(() => next())
+      .then((handled) => {
+        if (!handled) {
+          next();
+        }
+      })
       .catch(next);
     return;
   }

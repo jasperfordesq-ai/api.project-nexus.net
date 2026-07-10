@@ -1197,6 +1197,19 @@ canonicalization tenant-routing slice:
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "canonicalizes tenant-prefixed accessible paths"` first failed because `Host: acme-accessible.test` with `/acme/alpha/login?status=auth-required` redirected to `/acme/accessible/login?status=auth-required`; it passed after host-resolved matching tenant prefixes were canonicalized to slugless custom-domain paths.
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "tenant chooser|shared tenant accessible mount|custom accessible domains"` passed: 14 selected tests.
 
+Latest focused verification on 2026-07-10 for the Laravel
+`domain` versus `accessible_domain` routing split:
+
+- Laravel source check: `EnsureAccessibleCustomDomain` gates slugless accessible
+  host routes with `TenantContext::isAccessibleDomain()`, and local Laravel
+  returned `404` for `Host: project-nexus.ie` plus `/login` while
+  `/api/v2/tenant/bootstrap` still resolved the master tenant by `domain`.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "does not serve slugless accessible pages on ordinary tenant domains"` first failed because Web UK served `Host: project-nexus.ie` plus `/login` as `200`; it passed after non-root ordinary `domain` hosts were routed into the normal 404 pipeline unless the host matches `accessible_domain`.
+- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand` passed
+  all 45 route tests, preserving root network pages, true accessible-domain
+  slugless routing, accessible-domain canonicalisation, and parent-domain child
+  routes.
+
 Latest consolidation verification on 2026-07-08:
 
 - `npm --prefix apps/web-uk run lint` passed with no warnings.

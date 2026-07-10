@@ -383,6 +383,30 @@ describe('Public Routes', () => {
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 
+    it('does not serve slugless accessible pages on ordinary tenant domains', async () => {
+      const api = require('../src/lib/api');
+      api.getTenants.mockClear();
+      api.getTenantBootstrap.mockClear();
+      api.getPlatformStats.mockClear();
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          name: 'Master',
+          slug: '',
+          domain: 'project-nexus.ie'
+        }
+      });
+
+      const response = await request(app)
+        .get('/login')
+        .set('Host', 'project-nexus.ie');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('Page not found');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'project-nexus.ie' });
+      expect(api.getTenants).not.toHaveBeenCalled();
+    });
+
     it('resolves the tenant home from a forwarded custom-domain host', async () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();
