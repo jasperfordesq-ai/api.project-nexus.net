@@ -80,7 +80,8 @@ public class ResourcesV2Controller : ControllerBase
             query = query.Where(r => r.CategoryId == categoryId.Value);
 
         var items = await query
-            .OrderByDescending(r => r.Id)
+            .OrderBy(r => r.SortOrder)
+            .ThenByDescending(r => r.CreatedAt)
             .Take(perPage + 1)
             .ToListAsync(ct);
 

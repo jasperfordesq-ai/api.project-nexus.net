@@ -112,6 +112,63 @@ public class ResourcesControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PublicResourcesV2_OrdersByLaravelSortOrderBeforeCreatedAt()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.Resources.AddRange(
+                new Resource
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    Title = $"Laravel ordered first {marker}",
+                    Description = $"Sort order marker {marker}",
+                    Url = "ordered-first.txt",
+                    ResourceType = "text/plain",
+                    CreatedById = TestData.MemberUser.Id,
+                    SortOrder = 1,
+                    IsPublished = true,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-10)
+                },
+                new Resource
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    Title = $"Laravel ordered second {marker}",
+                    Description = $"Sort order marker {marker}",
+                    Url = "ordered-second.txt",
+                    ResourceType = "text/plain",
+                    CreatedById = TestData.MemberUser.Id,
+                    SortOrder = 2,
+                    IsPublished = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            await db.SaveChangesAsync();
+        }
+
+        ClearAuthToken();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v2/resources?search=Sort%20order%20marker%20{marker}");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var titles = document.RootElement
+            .GetProperty("data")
+            .EnumerateArray()
+            .Select(row => row.GetProperty("title").GetString())
+            .ToArray();
+
+        titles.Should().Equal(
+            $"Laravel ordered first {marker}",
+            $"Laravel ordered second {marker}");
+    }
+
+    [Fact]
     public async Task PublicResourcesV2_ReturnsLaravelReactAnonymousCursorContract()
     {
         var marker = Guid.NewGuid().ToString("N");
