@@ -630,7 +630,31 @@ public class MemberParityController : ControllerBase
 
     [HttpGet("member-premium/tiers")]
     [AllowAnonymous]
-    public IActionResult PremiumTiers() => Ok(new { data = new[] { new { id = "free", price = 0 }, new { id = "supporter", price = 5 } } });
+    public async Task<IActionResult> PremiumTiers()
+    {
+        var plans = await _db.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.TenantId == TenantId() && p.IsActive && p.IsPublic)
+            .OrderBy(p => p.Price)
+            .ThenBy(p => p.Name)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var tiers = plans.Select((plan, index) => new
+        {
+            id = plan.Id,
+            slug = Slugify(plan.Name),
+            name = plan.Name,
+            description = plan.Description,
+            monthly_price_cents = ToCents(plan.Price),
+            yearly_price_cents = ToCents(plan.Price * 12m),
+            features = NormalizePlanFeatures(plan.Features),
+            sort_order = index,
+            is_active = plan.IsActive
+        });
+
+        return Ok(new { success = true, data = new { tiers } });
+    }
 
     [HttpGet("member-premium/me")]
     public async Task<IActionResult> PremiumMe()
@@ -1806,6 +1830,8 @@ public class MemberParityController : ControllerBase
         JsonValueKind.Object => value.EnumerateObject().Any(),
         _ => false
     };
+
+    private static int ToCents(decimal amount) => (int)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
 
     private static string? TryGetRawProperty(JsonElement body, string name) =>
         body.ValueKind == JsonValueKind.Object && body.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null

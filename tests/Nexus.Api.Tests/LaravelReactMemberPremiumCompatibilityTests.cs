@@ -21,6 +21,74 @@ public sealed class LaravelReactMemberPremiumCompatibilityTests : IntegrationTes
     public LaravelReactMemberPremiumCompatibilityTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
+    public async Task MemberPremiumTiers_ReturnsLaravelReactPublicTierEnvelope()
+    {
+        var now = DateTime.UtcNow;
+        int publicPlanId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id
+                    && (p.Name == "Public Member Premium Tier" || p.Name == "Hidden Member Premium Tier"))
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+
+            var publicPlan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Public Member Premium Tier",
+                Description = "Visible member premium tier for Laravel React pricing",
+                Price = 7.25m,
+                Currency = "EUR",
+                Features = """["priority_support","premium_badge"]""",
+                IsActive = true,
+                IsPublic = true,
+                CreatedAt = now.AddDays(-4),
+                UpdatedAt = now.AddDays(-1)
+            };
+            var hiddenPlan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Hidden Member Premium Tier",
+                Description = "Internal tier that must not appear publicly",
+                Price = 99m,
+                Currency = "EUR",
+                Features = """["internal_only"]""",
+                IsActive = false,
+                IsPublic = false,
+                CreatedAt = now.AddDays(-4),
+                UpdatedAt = now.AddDays(-1)
+            };
+            db.SubscriptionPlans.AddRange(publicPlan, hiddenPlan);
+            await db.SaveChangesAsync();
+            publicPlanId = publicPlan.Id;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v2/member-premium/tiers");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tiers = json.GetProperty("data").GetProperty("tiers").EnumerateArray().ToList();
+        var tier = tiers.Single(t => t.GetProperty("id").GetInt32() == publicPlanId);
+        tier.GetProperty("slug").GetString().Should().Be("public-member-premium-tier");
+        tier.GetProperty("name").GetString().Should().Be("Public Member Premium Tier");
+        tier.GetProperty("description").GetString().Should().Be("Visible member premium tier for Laravel React pricing");
+        tier.GetProperty("monthly_price_cents").GetInt32().Should().Be(725);
+        tier.GetProperty("yearly_price_cents").GetInt32().Should().Be(8700);
+        tier.GetProperty("features").EnumerateArray().Select(v => v.GetString()).Should().Equal("priority_support", "premium_badge");
+        tier.GetProperty("sort_order").ValueKind.Should().Be(JsonValueKind.Number);
+        tier.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        tier.TryGetProperty("stripe_price_id_monthly", out _).Should().BeFalse();
+        tiers.Should().NotContain(t => t.GetProperty("name").GetString() == "Hidden Member Premium Tier");
+    }
+
+    [Fact]
     public async Task MemberPremiumMe_ReturnsLaravelReactSubscriptionEnvelope()
     {
         var now = DateTime.UtcNow;
