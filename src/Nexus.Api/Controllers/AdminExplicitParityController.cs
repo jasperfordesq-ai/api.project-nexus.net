@@ -479,6 +479,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await GetEvent(eventId),
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await GetGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await GetListing(listingId),
+            _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await GetMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await GetSupportReport(supportReportId),
             _ => await GetPersistedCompatibilityRead(path)
         };
@@ -3900,6 +3901,34 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> GetMemberPremiumAdminTier(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var plan = await _db.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (plan == null)
+        {
+            return NotFound(new
+            {
+                error = "TIER_NOT_FOUND",
+                message = "Member premium tier not found."
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                tier = MapMemberPremiumAdminTierDetail(plan)
+            }
+        });
+    }
+
     private async Task<IActionResult> PutMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -4282,6 +4311,25 @@ public class AdminExplicitParityController : ControllerBase
         sort_order = sortOrder,
         is_active = plan.IsActive,
         active_subscriber_count = activeSubscriberCount
+    };
+
+    private static object MapMemberPremiumAdminTierDetail(SubscriptionPlan plan) => new
+    {
+        id = plan.Id,
+        tenant_id = plan.TenantId,
+        slug = Slugify(plan.Name),
+        name = plan.Name,
+        description = plan.Description,
+        monthly_price_cents = ToCents(plan.Price),
+        yearly_price_cents = ToCents(plan.Price * 12m),
+        stripe_price_id_monthly = (string?)null,
+        stripe_price_id_yearly = (string?)null,
+        stripe_price_account_id = (string?)null,
+        features = NormalizePlanFeatures(plan.Features),
+        sort_order = 0,
+        is_active = plan.IsActive,
+        created_at = plan.CreatedAt,
+        updated_at = plan.UpdatedAt
     };
 
     private static string[] NormalizePlanFeatures(string? features)

@@ -1872,6 +1872,78 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTierDetail_ReturnsLaravelReactTierEnvelope()
+    {
+        var createdAt = new DateTime(2026, 7, 1, 10, 15, 0, DateTimeKind.Utc);
+        var updatedAt = new DateTime(2026, 7, 2, 11, 30, 0, DateTimeKind.Utc);
+        int planId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id && p.Name == "Admin Detail Premium Tier")
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+
+            var plan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Admin Detail Premium Tier",
+                Description = "Admin detail tier from Laravel React contract",
+                Price = 13.40m,
+                Currency = "EUR",
+                Features = """["detail_feature","priority_support"]""",
+                IsActive = true,
+                IsPublic = false,
+                CreatedAt = createdAt,
+                UpdatedAt = updatedAt
+            };
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+            planId = plan.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync($"/api/v2/admin/member-premium/tiers/{planId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tier = json.GetProperty("data").GetProperty("tier");
+        tier.GetProperty("id").GetInt32().Should().Be(planId);
+        tier.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        tier.GetProperty("slug").GetString().Should().Be("admin-detail-premium-tier");
+        tier.GetProperty("name").GetString().Should().Be("Admin Detail Premium Tier");
+        tier.GetProperty("description").GetString().Should().Be("Admin detail tier from Laravel React contract");
+        tier.GetProperty("monthly_price_cents").GetInt32().Should().Be(1340);
+        tier.GetProperty("yearly_price_cents").GetInt32().Should().Be(16080);
+        tier.GetProperty("stripe_price_id_monthly").ValueKind.Should().Be(JsonValueKind.Null);
+        tier.GetProperty("stripe_price_id_yearly").ValueKind.Should().Be(JsonValueKind.Null);
+        tier.GetProperty("stripe_price_account_id").ValueKind.Should().Be(JsonValueKind.Null);
+        tier.GetProperty("features").EnumerateArray().Select(v => v.GetString())
+            .Should().Equal("detail_feature", "priority_support");
+        tier.GetProperty("sort_order").ValueKind.Should().Be(JsonValueKind.Number);
+        tier.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        tier.GetProperty("created_at").GetDateTime().Should().Be(createdAt);
+        tier.GetProperty("updated_at").GetDateTime().Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public async Task MemberPremiumAdminTierDetail_ReturnsLaravelNotFoundEnvelope()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/member-premium/tiers/99999999");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("error").GetString().Should().Be("TIER_NOT_FOUND");
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();
