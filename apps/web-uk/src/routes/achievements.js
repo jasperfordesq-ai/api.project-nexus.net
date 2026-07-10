@@ -204,7 +204,7 @@ function normalizeChallenges(result) {
   }).filter((challenge) => challenge.title);
 }
 
-function normalizeShop(result) {
+function normalizeShop(result, t) {
   const payload = payloadFrom(result);
   const object = objectFrom(payload);
   const meta = objectFrom(result && result.meta);
@@ -213,7 +213,7 @@ function normalizeShop(result) {
 
   return {
     userXp,
-    userXpLabel: `${formatInteger(userXp)} XP`,
+    userXpLabel: t('govuk_alpha_gamification.shop.balance_value', { xp: formatInteger(userXp) }),
     items: items.map((item) => {
       const objectItem = objectFrom(item);
       const cost = intFrom(objectItem.cost_xp ?? objectItem.xp_cost);
@@ -228,17 +228,19 @@ function normalizeShop(result) {
         name: textFrom(objectItem.name),
         description: textFrom(objectItem.description),
         cost,
-        costLabel: `${formatInteger(cost)} XP`,
+        costLabel: t('govuk_alpha_gamification.shop.cost', { xp: formatInteger(cost) }),
         itemType,
         typeLabel: {
-          badge: 'Badge',
-          perk: 'Perk',
-          feature: 'Feature',
-          cosmetic: 'Cosmetic'
+          badge: t('govuk_alpha_gamification.shop.type_badge'),
+          perk: t('govuk_alpha_gamification.shop.type_perk'),
+          feature: t('govuk_alpha_gamification.shop.type_feature'),
+          cosmetic: t('govuk_alpha_gamification.shop.type_cosmetic')
         }[itemType],
         owned,
         canPurchase: canPurchase && !owned,
-        unavailableLabel: cost > userXp ? 'Not enough XP' : 'Out of stock'
+        unavailableLabel: cost > userXp
+          ? t('govuk_alpha_gamification.shop.cannot_afford')
+          : t('govuk_alpha_gamification.shop.out_of_stock')
       };
     }).filter((item) => item.name)
   };
@@ -271,13 +273,7 @@ function normalizeCollections(result) {
   }).filter((collection) => collection.name);
 }
 
-function activityCountLabel(count) {
-  if (count === 0) return 'no activities';
-  if (count === 1) return '1 activity';
-  return `${formatInteger(count)} activities`;
-}
-
-function normalizeEngagementHistory(result) {
+function normalizeEngagementHistory(result, tc) {
   return nestedData(result, 'history').map((row) => {
     const object = objectFrom(row);
     const activityCount = intFrom(object.activity_count);
@@ -285,7 +281,7 @@ function normalizeEngagementHistory(result) {
       month: textFrom(object.year_month ?? object.month),
       wasActive: boolFrom(object.was_active ?? object.active),
       activityCount,
-      activityCountLabel: activityCountLabel(activityCount)
+      activityCountLabel: tc('govuk_alpha_gamification.engagement.activities_count', activityCount)
     };
   }).filter((row) => row.month);
 }
@@ -335,18 +331,18 @@ async function safeGamificationCall(token, pathValue, fallback) {
   }
 }
 
-function statusMessages(status) {
+function statusMessages(status, t) {
   return {
     dailyRewardStatus: status,
     challengeStatus: status,
     dailySuccess: status === 'daily-reward-claimed'
-      ? 'Daily reward claimed! You earned'
+      ? t('polish_gamify.daily_reward_success', { xp: 0 })
       : '',
     dailyError: status === 'daily-reward-failed'
-      ? 'Unable to claim your reward. Please try again later.'
+      ? t('polish_gamify.daily_reward_failed')
       : '',
-    challengeSuccess: status === 'challenge-claimed' ? 'Challenge reward claimed!' : '',
-    challengeError: status === 'challenge-claim-failed' ? 'Unable to claim reward. Please try again.' : ''
+    challengeSuccess: status === 'challenge-claimed' ? t('polish_gamify.challenge_claim_success') : '',
+    challengeError: status === 'challenge-claim-failed' ? t('polish_gamify.challenge_claim_failed') : ''
   };
 }
 
@@ -389,10 +385,10 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const earnedBadges = normalizeBadges(badgesPayload);
   const dailyReward = normalizeDailyReward(dailyPayload);
-  const status = statusMessages(textFrom(req.query.status));
+  const status = statusMessages(textFrom(req.query.status), res.locals.t);
 
   return res.render('achievements/index', {
-    title: 'Achievements',
+    title: res.locals.t('achievements.title'),
     activeNav: 'achievements',
     achievements: {
       profile: normalizeProfile(profilePayload, earnedBadges.length),
@@ -402,7 +398,9 @@ router.get('/', asyncRoute(async (req, res) => {
       challenges: normalizeChallenges(challengesPayload),
       status: {
         ...status,
-        dailySuccessMessage: status.dailySuccess ? `${status.dailySuccess} ${dailyReward.rewardXp} XP.` : ''
+        dailySuccessMessage: status.dailySuccess
+          ? res.locals.t('polish_gamify.daily_reward_success', { xp: dailyReward.rewardXp })
+          : ''
       }
     }
   });
@@ -424,14 +422,16 @@ router.get('/shop', asyncRoute(async (req, res) => {
 
   const status = textFrom(req.query.status);
   return res.render('achievements/shop', {
-    title: 'XP shop',
+    title: res.locals.t('govuk_alpha_gamification.shop.title'),
     activeNav: 'achievements',
     shop: {
-      ...normalizeShop(shopPayload),
+      ...normalizeShop(shopPayload, res.locals.t),
       status,
-      successMessage: status === 'purchased' ? 'Purchase complete. The item is now yours.' : '',
+      successMessage: status === 'purchased'
+        ? res.locals.t('govuk_alpha_gamification.shop.states.purchased')
+        : '',
       errorMessage: status === 'purchase-failed'
-        ? 'We could not complete that purchase. You may not have enough XP, or the item may be out of stock.'
+        ? res.locals.t('govuk_alpha_gamification.shop.states.purchase-failed')
         : ''
     }
   });
@@ -452,7 +452,7 @@ router.get('/collections', asyncRoute(async (req, res) => {
   }
 
   return res.render('achievements/collections', {
-    title: 'Badge collections',
+    title: res.locals.t('govuk_alpha_gamification.collections.title'),
     activeNav: 'achievements',
     collections: normalizeCollections(collectionsPayload)
   });
@@ -473,9 +473,9 @@ router.get('/engagement', asyncRoute(async (req, res) => {
   }
 
   return res.render('achievements/engagement', {
-    title: 'Engagement history',
+    title: res.locals.t('govuk_alpha_gamification.engagement.title'),
     activeNav: 'achievements',
-    engagementHistory: normalizeEngagementHistory(historyPayload)
+    engagementHistory: normalizeEngagementHistory(historyPayload, res.locals.tc)
   });
 }));
 
@@ -494,7 +494,7 @@ router.get('/showcase', asyncRoute(async (req, res) => {
   }
 
   return res.render('achievements/showcase', {
-    title: 'Showcase badges',
+    title: res.locals.t('govuk_alpha_gamification.showcase.title'),
     activeNav: 'achievements',
     earnedBadges: normalizeShowcaseBadges(badgesPayload),
     status: textFrom(req.query.status)
@@ -518,7 +518,7 @@ router.get('/badges/:key', asyncRoute(async (req, res) => {
 
   const badge = normalizeBadgeDetail(badgePayload, key);
   return res.render('achievements/badge', {
-    title: badge.name || 'Badge',
+    title: badge.name || res.locals.t('govuk_alpha_gamification.badge.title'),
     activeNav: 'achievements',
     badge
   });

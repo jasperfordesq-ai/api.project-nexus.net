@@ -41,6 +41,11 @@ const AUTHENTICATED_ROUTES = [
   { name: 'profile settings', path: '/profile/settings' },
   { name: 'activity dashboard', path: '/activity' },
   { name: 'activity insights', path: '/activity/insights' },
+  { name: 'achievements', path: '/achievements' },
+  { name: 'XP shop', path: '/achievements/shop' },
+  { name: 'badge collections', path: '/achievements/collections' },
+  { name: 'badge showcase', path: '/achievements/showcase' },
+  { name: 'engagement history', path: '/achievements/engagement' },
   { name: 'wallet', path: '/wallet' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
@@ -589,6 +594,53 @@ test.describe('representative authenticated-page accessibility gate', () => {
         });
         expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
       }
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Arabic achievements pages preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(300_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      for (const route of [
+        { path: '/achievements?locale=ar', heading: translate('ar', 'achievements.title') },
+        { path: '/achievements/shop?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.shop.title') },
+        { path: '/achievements/collections?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.collections.title') },
+        { path: '/achievements/showcase?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.showcase.title') },
+        { path: '/achievements/engagement?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.engagement.title') }
+      ]) {
+        const path = `${authenticatedMountPath}${route.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(route.heading);
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
+
+      await testInfo.attach('authenticated-arabic-achievements-family', {
+        body: Buffer.from(JSON.stringify({
+          pages: 5,
+          viewport: { width: 320, height: 640 },
+          finalUrl: page.url()
+        }, null, 2)),
+        contentType: 'application/json'
+      });
     } finally {
       await context.close();
     }

@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `35/35` cases.
+- Automated browser accessibility: Chromium/axe passed `41/41` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/achievements cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,27 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Achievements-Family Contextual Localization Slice
+
+The achievements overview, XP shop, collections, showcase, engagement history,
+and badge-detail template now resolve document titles, navigation, captions,
+headings, stats, progress/reward copy, shop states, collection states, showcase
+validation, engagement table labels, badge metadata, and empty states through
+Laravel's `govuk_alpha` and `govuk_alpha_gamification` catalogs. Dynamic badge,
+collection, challenge, and shop-item content remains Laravel-supplied data.
+
+Focused achievements/gamification coverage passed `9/9`; the complete Jest gate
+passed `45/45` and `1,395/1,395`; lint, brand, template, and diff gates passed;
+and the expanded current-checkout Chromium/axe matrix passed `41/41`. Five live
+achievements pages plus a signed Arabic traversal of all five passed structure,
+unique IDs, RTL, 320px reflow, and serious/critical axe checks. Badge detail is
+mock-render certified only: the real account has no stable badge key, and an
+invented `community-builder` URL correctly returned 404, so it was removed from
+the live matrix rather than misrepresented as a product failure. Live mutation
+effects, a disposable earned-badge fixture, authoritative translation gaps,
+manual assistive-technology evidence, feature gates, and ASP.NET switching remain
+open.
 
 ## 2026-07-10 Activity And Insights Contextual Localization Slice
 

@@ -5,26 +5,26 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">{{ t("govuk_alpha_gamification.common.back_to_achievements") }}</a>
 
-  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">XP shop</h1>
-  <p class="govuk-body-l">Spend the experience points you have earned on cosmetic badges, profile perks and features.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.shop.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.shop.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.shop.description") }}</p>
 
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
-    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha_gamification.nav.heading') }}">
+    <h2 class="govuk-tabs__title">{{ t("govuk_alpha_gamification.nav.heading") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}" aria-current="page">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.shop") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">{{ t("govuk_alpha_gamification.nav.collections") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">{{ t("govuk_alpha_gamification.nav.showcase") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">{{ t("govuk_alpha_gamification.nav.engagement") }}</a>
       </li>
     </ul>
   </nav>
@@ -53,7 +53,7 @@
 
   <div class="govuk-panel govuk-panel--confirmation nexus-alpha-panel govuk-!-margin-bottom-6">
     <div class="govuk-panel__body">
-      Your XP balance
+      {{ t("govuk_alpha_gamification.shop.balance_label") }}
       <br><strong>{{ shop.userXpLabel }}</strong>
     </div>
   </div>
@@ -62,7 +62,7 @@
     <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
     <strong class="govuk-warning-text__text">
       <span class="govuk-visually-hidden">{{ t("states.error_title") }}</span>
-      Buying an item spends your XP. This cannot be undone.
+      {{ t("govuk_alpha_gamification.shop.warning") }}
     </strong>
   </div>
 
@@ -80,12 +80,12 @@
           <p class="govuk-body-s nexus-alpha-meta">{{ item.costLabel }}</p>
 
           {% if item.owned %}
-            <strong class="govuk-tag govuk-tag--green">Owned</strong>
+            <strong class="govuk-tag govuk-tag--green">{{ t("govuk_alpha_gamification.shop.owned") }}</strong>
           {% elif item.canPurchase %}
             <form method="post" action="{{ urlFor('/achievements/shop/purchase') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="item_id" value="{{ item.id }}">
-              <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Buy for {{ item.costLabel }}</button>
+              <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("govuk_alpha_gamification.shop.buy_button", { xp: item.cost }) }}</button>
             </form>
           {% else %}
             <strong class="govuk-tag govuk-tag--red">{{ item.unavailableLabel }}</strong>
@@ -95,7 +95,7 @@
     </ul>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no items in the shop yet. Check back soon.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.shop.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}

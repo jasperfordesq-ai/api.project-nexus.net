@@ -5,26 +5,26 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">{{ t("govuk_alpha_gamification.common.back_to_achievements") }}</a>
 
-  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Showcase badges</h1>
-  <p class="govuk-body-l">Choose up to 5 of your earned badges to feature on your profile.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.showcase.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.showcase.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.showcase.description") }}</p>
 
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
-    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha_gamification.nav.heading') }}">
+    <h2 class="govuk-tabs__title">{{ t("govuk_alpha_gamification.nav.heading") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">{{ t("govuk_alpha_gamification.nav.shop") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">{{ t("govuk_alpha_gamification.nav.collections") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}" aria-current="page">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.showcase") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">{{ t("govuk_alpha_gamification.nav.engagement") }}</a>
       </li>
     </ul>
   </nav>
@@ -35,7 +35,7 @@
         <h2 class="govuk-notification-banner__title" id="showcase-status">{{ t("states.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">Your showcase has been updated.</p>
+        <p class="govuk-notification-banner__heading">{{ t("govuk_alpha_gamification.showcase.states.showcase-updated") }}</p>
       </div>
     </div>
   {% elif status == 'showcase-failed' or status == 'showcase-too-many' or status == 'showcase-not-owned' %}
@@ -47,11 +47,11 @@
             <li>
               <a href="#showcase-badges">
                 {% if status == 'showcase-too-many' %}
-                  You can showcase a maximum of 5 badges. Please deselect some.
+                  {{ t("govuk_alpha_gamification.showcase.states.showcase-too-many") }}
                 {% elif status == 'showcase-not-owned' %}
-                  You can only showcase badges you have earned.
+                  {{ t("govuk_alpha_gamification.showcase.states.showcase-not-owned") }}
                 {% else %}
-                  We could not update your showcase. Please try again.
+                  {{ t("govuk_alpha_gamification.showcase.states.showcase-failed") }}
                 {% endif %}
               </a>
             </li>
@@ -64,8 +64,8 @@
   {% if earnedBadges.length %}
     <form method="post" action="{{ urlFor('/achievements/showcase') }}">
       <fieldset class="govuk-fieldset" id="showcase-badges" aria-describedby="showcase-hint">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Select up to 5 badges to showcase</legend>
-        <div id="showcase-hint" class="govuk-hint">Tick a badge to show it on your profile. You can change this at any time.</div>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("govuk_alpha_gamification.showcase.legend") }}</legend>
+        <div id="showcase-hint" class="govuk-hint">{{ t("govuk_alpha_gamification.showcase.hint") }}</div>
         <div class="govuk-checkboxes" data-module="govuk-checkboxes">
           {% for badge in earnedBadges %}
             <div class="govuk-checkboxes__item">
@@ -78,11 +78,11 @@
           {% endfor %}
         </div>
       </fieldset>
-      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button">Save showcase</button>
+      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button">{{ t("govuk_alpha_gamification.showcase.save_button") }}</button>
     </form>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">You have not earned any badges yet. Earn badges to showcase them here.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.showcase.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}

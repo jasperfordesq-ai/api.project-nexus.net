@@ -5,31 +5,31 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
-    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha_gamification.nav.heading') }}">
+    <h2 class="govuk-tabs__title">{{ t("govuk_alpha_gamification.nav.heading") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">{{ t("govuk_alpha_gamification.nav.shop") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">{{ t("govuk_alpha_gamification.nav.collections") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">{{ t("govuk_alpha_gamification.nav.showcase") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}">{{ t("govuk_alpha_gamification.nav.engagement") }}</a>
       </li>
     </ul>
   </nav>
 
-  <span class="govuk-caption-xl">{{ communityName }}</span>
+  <span class="govuk-caption-xl">{{ t("achievements.caption", { community: communityName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("achievements.title") }}</h1>
   <p class="govuk-body-l">{{ t("achievements.description") }}</p>
 
   <dl class="govuk-summary-list govuk-!-margin-bottom-4">
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Level</dt>
+      <dt class="govuk-summary-list__key">{{ t("achievements.level_label") }}</dt>
       <dd class="govuk-summary-list__value">{{ achievements.profile.levelLabel }}</dd>
     </div>
     <div class="govuk-summary-list__row">
@@ -37,7 +37,7 @@
       <dd class="govuk-summary-list__value">{{ achievements.profile.xpLabel }}</dd>
     </div>
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Badges earned</dt>
+      <dt class="govuk-summary-list__key">{{ t("achievements.badges_label") }}</dt>
       <dd class="govuk-summary-list__value">{{ achievements.profile.badgesCountLabel }}</dd>
     </div>
   </dl>
@@ -45,7 +45,7 @@
   {% if achievements.profile.atMaxLevel %}
     <p class="govuk-body">{{ t("achievements.max_level") }}</p>
   {% else %}
-    <p class="govuk-body govuk-!-margin-bottom-1">{{ achievements.profile.progressPercent }}% of the way to the next level</p>
+    <p class="govuk-body govuk-!-margin-bottom-1">{{ t("achievements.progress_to_next", { percent: achievements.profile.progressPercent }) }}</p>
     <span class="govuk-body-s govuk-!-margin-right-2">{{ achievements.profile.progressPercent }}%</span>
     <progress max="100" value="{{ achievements.profile.progressPercent }}" aria-label="{{ achievements.profile.progressPercent }}%">{{ achievements.profile.progressPercent }}%</progress>
   {% endif %}
@@ -79,8 +79,8 @@
 
   <dl class="govuk-summary-list govuk-!-margin-bottom-4">
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Current streak: {{ achievements.dailyReward.streak }} day(s)</dt>
-      <dd class="govuk-summary-list__value">Claim today to earn {{ achievements.dailyReward.nextXp }} XP</dd>
+      <dt class="govuk-summary-list__key">{{ t("polish_gamify.daily_reward_streak", { days: achievements.dailyReward.streak }) }}</dt>
+      <dd class="govuk-summary-list__value">{{ t("polish_gamify.daily_reward_next_xp", { xp: achievements.dailyReward.nextXp }) }}</dd>
     </div>
   </dl>
 
@@ -129,16 +129,16 @@
             {% if challenge.claimed %}
               <strong class="govuk-tag govuk-tag--green">{{ t("polish_gamify.challenge_claimed_tag") }}</strong>
             {% elif challenge.completed %}
-              <strong class="govuk-tag govuk-tag--blue">Completed</strong>
+              <strong class="govuk-tag govuk-tag--blue">{{ t("polish_gamify.challenge_completed_tag") }}</strong>
             {% endif %}
           </div>
           {% if challenge.description %}
             <p class="govuk-body-s govuk-!-margin-bottom-1">{{ challenge.description }}</p>
           {% endif %}
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-            {{ challenge.current }} of {{ challenge.target }}
-            &middot; Reward: {{ challenge.rewardXp }} XP
-            {% if challenge.daysRemaining > 0 %}&middot; {{ challenge.daysRemaining }} day(s) left{% endif %}
+            {{ t("polish_gamify.challenge_progress_label", { current: challenge.current, target: challenge.target }) }}
+            &middot; {{ t("polish_gamify.challenge_reward_xp", { xp: challenge.rewardXp }) }}
+            {% if challenge.daysRemaining > 0 %}&middot; {{ t("polish_gamify.challenge_days_left", { days: challenge.daysRemaining }) }}{% endif %}
           </p>
           <span class="govuk-body-s govuk-!-margin-right-2">{{ challenge.percent }}%</span>
           <progress max="100" value="{{ challenge.percent }}" aria-label="{{ challenge.percent }}%">{{ challenge.percent }}%</progress>
@@ -179,7 +179,7 @@
     <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("achievements.progress_title") }}</h2>
     {% for badge in achievements.badgeProgress %}
       <div class="govuk-!-margin-bottom-3">
-        <p class="govuk-body govuk-!-margin-bottom-1">{% if badge.icon %}{{ badge.icon }} {% endif %}{{ badge.name }} - {{ badge.remaining }} to go</p>
+        <p class="govuk-body govuk-!-margin-bottom-1">{% if badge.icon %}{{ badge.icon }} {% endif %}{{ badge.name }} - {{ t("achievements.progress_remaining", { remaining: badge.remaining }) }}</p>
         <span class="govuk-body-s govuk-!-margin-right-2">{{ badge.percent }}%</span>
         <progress max="100" value="{{ badge.percent }}" aria-label="{{ badge.percent }}%">{{ badge.percent }}%</progress>
       </div>

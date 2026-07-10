@@ -5,38 +5,38 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">Back to achievements</a>
+  <a class="govuk-back-link" href="{{ urlFor('/achievements') }}">{{ t("govuk_alpha_gamification.common.back_to_achievements") }}</a>
 
-  <span class="govuk-caption-xl">Achievements at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Engagement history</h1>
-  <p class="govuk-body-l">Your community activity over the last 12 months.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.engagement.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.engagement.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.engagement.description") }}</p>
 
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Achievements and rewards">
-    <h2 class="govuk-tabs__title">Achievements and rewards</h2>
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha_gamification.nav.heading') }}">
+    <h2 class="govuk-tabs__title">{{ t("govuk_alpha_gamification.nav.heading") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">XP shop</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/shop') }}">{{ t("govuk_alpha_gamification.nav.shop") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">Collections</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/collections') }}">{{ t("govuk_alpha_gamification.nav.collections") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">Showcase badges</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/showcase') }}">{{ t("govuk_alpha_gamification.nav.showcase") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}" aria-current="page">Engagement history</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/achievements/engagement') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.engagement") }}</a>
       </li>
     </ul>
   </nav>
 
   {% if engagementHistory.length %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Engagement history</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_gamification.engagement.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">{{ t("volunteering.month_label") }}</th>
-          <th scope="col" class="govuk-table__header">Active</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Activities</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.engagement.month_column") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.engagement.active_column") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_gamification.engagement.activity_column") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -44,7 +44,7 @@
           <tr class="govuk-table__row">
             <td class="govuk-table__cell">{{ row.month }}</td>
             <td class="govuk-table__cell">
-              <strong class="govuk-tag {% if row.wasActive %}govuk-tag--green{% else %}govuk-tag--grey{% endif %}">{% if row.wasActive %}Active{% else %}Inactive{% endif %}</strong>
+              <strong class="govuk-tag {% if row.wasActive %}govuk-tag--green{% else %}govuk-tag--grey{% endif %}">{% if row.wasActive %}{{ t("govuk_alpha_gamification.engagement.active_yes") }}{% else %}{{ t("govuk_alpha_gamification.engagement.active_no") }}{% endif %}</strong>
             </td>
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.activityCountLabel }}</td>
           </tr>
@@ -53,7 +53,7 @@
     </table>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There is no engagement history to show yet.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.engagement.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}
