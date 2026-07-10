@@ -542,6 +542,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('res.locals.urlFor');
   });
 
+  it('does not keep an unmounted legacy chat router beside the Laravel-compatible chat route', () => {
+    const server = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'server.js'),
+      'utf8'
+    );
+    const legacyChatRoute = path.join(__dirname, '..', 'src', 'routes', 'chat.js');
+
+    expect(server).toContain("require('./routes/ai-chat')");
+    expect(server).not.toContain("require('./routes/chat')");
+    expect(fs.existsSync(legacyChatRoute)).toBe(false);
+  });
+
   it('keeps matches route redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'matches.js'),

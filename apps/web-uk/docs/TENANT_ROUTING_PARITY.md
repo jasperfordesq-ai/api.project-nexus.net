@@ -964,6 +964,13 @@ Laravel `/chat` runtime smoke also passed. This does not newly certify every
 redirect family, AI assistant persistence, visual Blade parity, localization,
 or ASP.NET backend compatibility.
 
+A follow-up cleanup deletes the unmounted legacy `src/routes/chat.js` router.
+`src/server.js` mounts `src/routes/ai-chat.js` for `/chat`, and the generated
+route matrix maps both Laravel AI chat rows to that tenant-aware file. Removing
+the stale router prevents source audits from chasing unreachable raw `/chat`
+redirects that are not part of the active Laravel-compatible accessible
+frontend.
+
 The fifty-first source slice extends route-level redirect cleanup into matches.
 `src/routes/matches.js` now sends match dismiss and board dismiss redirects
 through `redirectTo(res, ...)`, which delegates to `res.locals.urlFor` when
