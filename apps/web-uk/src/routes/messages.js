@@ -304,6 +304,33 @@ function directConversationFrom(result, userId, currentUserId) {
   };
 }
 
+function normalizeInboxConversation(conversation, t) {
+  const source = conversation && typeof conversation === 'object' ? conversation : {};
+  const otherUser = source.other_user && typeof source.other_user === 'object'
+    ? source.other_user
+    : (source.otherUser && typeof source.otherUser === 'object' ? source.otherUser : {});
+  const combinedName = `${trimmed(otherUser.first_name)} ${trimmed(otherUser.last_name)}`.trim();
+  const displayName = trimmed(otherUser.name || otherUser.full_name || otherUser.fullName)
+    || combinedName
+    || trimmed(source.other_user_name || source.otherUserName)
+    || t('members.unknown_member');
+  const rawLastMessage = source.last_message ?? source.lastMessage ?? {};
+  const lastMessage = rawLastMessage && typeof rawLastMessage === 'object' ? rawLastMessage : {};
+  const lastMessageText = typeof rawLastMessage === 'string'
+    ? trimmed(rawLastMessage)
+    : trimmed(lastMessage.body || lastMessage.content);
+
+  return {
+    ...source,
+    id: positiveInteger(source.id) || source.id,
+    otherUser,
+    displayName,
+    unreadCount: Number(source.unread_count ?? source.unreadCount ?? 0) || 0,
+    lastMessageText: lastMessageText || t('govuk_alpha_messages.groups.no_messages_yet'),
+    lastMessageAt: lastMessage.created_at || lastMessage.createdAt || source.last_message_at || source.lastMessageAt || null
+  };
+}
+
 function messageTranslationFromFlash(req) {
   if (!req.flash) return null;
   const raw = req.flash('messagesTranslation')[0];
@@ -764,20 +791,20 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     }),
     getUnreadCount(req.token).catch(() => ({ data: { count: 0 } }))
   ]);
-  const conversations = listFrom(dataFrom(conversationsData));
+  const conversations = listFrom(dataFrom(conversationsData))
+    .map((conversation) => normalizeInboxConversation(conversation, res.locals.t));
   const normalizedFilter = filter.toLowerCase();
   const visibleConversations = normalizedFilter
     ? conversations.filter((conversation) => {
-      const other = conversation && (conversation.other_user || conversation.otherUser) || {};
-      const name = trimmed(other.name || `${other.first_name || ''} ${other.last_name || ''}`);
-      return name.toLowerCase().includes(normalizedFilter);
+      return conversation.displayName.toLowerCase().includes(normalizedFilter);
     })
     : conversations;
   const meta = conversationsData?.meta || {};
   const unread = dataFrom(unreadData) || {};
 
   res.render('messages/index', {
-    title: 'Messages',
+    title: res.locals.t('messages.title'),
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
     conversations: visibleConversations,
     unreadCount: unread.unread_count ?? unread.unreadCount ?? unread.count ?? 0,
     showArchived,

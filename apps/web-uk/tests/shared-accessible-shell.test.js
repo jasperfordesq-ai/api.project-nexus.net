@@ -5847,30 +5847,62 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Messages');
-    expect(response.text).toContain('No conversations yet');
+    expect(response.text).toContain('Read and send direct messages with members of this community.');
+    expect(response.text).toContain('href="/messages/groups">Groups</a>');
+    expect(response.text).toContain('No results found');
+    expect(response.text).toContain('There are no conversations to show.');
+    expect(response.text).toContain('href="/members">Message a member</a>');
+    expect(response.text).not.toContain('No conversations yet');
     expect(response.text).toContain('href="/members"');
     expect(response.text).not.toContain('href="/messages/new"');
     expect(response.text).not.toContain('action="/messages/new"');
   });
 
+  it('renders the messages inbox through the active Arabic Laravel catalog', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getConversations.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/messages?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain(translate('ar', 'messages.title'));
+    expect(response.text).toContain(translate('ar', 'messages.description'));
+    expect(response.text).toContain(translate('ar', 'messages.empty'));
+    expect(response.text).toContain(translate('ar', 'govuk_alpha_messages.groups.tab_groups'));
+  });
+
   it('renders nested Laravel conversation summaries, unread counts, archive state, and cursor links', async () => {
     const api = require('../src/lib/api');
     api.getConversations.mockResolvedValueOnce({
-      data: [{
-        id: 77,
-        unread_count: 2,
-        other_user: {
+      data: [
+        {
           id: 77,
-          name: 'Avery Stone',
-          avatar_url: '/uploads/avery.jpg'
+          unread_count: 2,
+          other_user: {
+            id: 77,
+            name: 'Avery Stone',
+            avatar_url: '/uploads/avery.jpg'
+          },
+          last_message: {
+            id: 91,
+            body: 'Can we confirm Saturday?',
+            sender_id: 77,
+            created_at: '2026-07-09T10:00:00Z'
+          }
         },
-        last_message: {
-          id: 91,
-          body: 'Can we confirm Saturday?',
-          sender_id: 77,
-          created_at: '2026-07-09T10:00:00Z'
+        {
+          id: 78,
+          unread_count: 0,
+          other_user: { id: 78, name: '   ' },
+          last_message: null
         }
-      }],
+      ],
       meta: { cursor: 'next-page', has_more: true, per_page: 20 }
     });
     api.getUnreadCount.mockResolvedValueOnce({ data: { count: 3 } });
@@ -5893,6 +5925,29 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2 unread messages');
     expect(response.text).toContain('action="/messages/77/restore"');
     expect(response.text).toContain('href="/messages?archived=1&amp;filter=Avery&amp;cursor=next-page"');
+  });
+
+  it('gives whitespace-only conversation names a localized accessible fallback', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({
+      data: [{
+        id: 78,
+        unread_count: 0,
+        other_user: { id: 78, name: '   ' },
+        last_message: null
+      }],
+      meta: { cursor: null, has_more: false, per_page: 20 }
+    });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
+
+    const response = await request(app)
+      .get('/messages')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community member');
+    expect(response.text).toContain('No messages yet');
+    expect(response.text).toContain('href="/messages/78"');
   });
 
   it('renders the Laravel wallet manage hub for signed-in members', async () => {

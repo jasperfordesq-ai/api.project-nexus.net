@@ -1467,7 +1467,6 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).not.toContain('href="{{ olderHref }}"');
     expect(source).toMatch(/urlFor\(["']\/messages/);
     expect(source).toMatch(/urlFor\(["']\/members/);
-    expect(source).toMatch(/urlFor\(["']\/connections/);
     expect(source).toMatch(/urlFor\(["']\/listings/);
   });
 

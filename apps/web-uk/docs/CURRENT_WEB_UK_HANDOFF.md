@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,397/1,397` tests passed.
+- Jest: `45/45` suites and `1,399/1,399` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `50/50` cases.
+- Automated browser accessibility: Chromium/axe passed `51/51` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,27 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Messages Inbox Structural And Localization Slice
+
+The signed direct-messages inbox now uses Laravel's document title, caption,
+description, unread-count choice string, direct/groups subnavigation, filter
+clear action, and empty-state copy. Conversation rows are normalized before
+filtering and rendering so snake/camel payload variants share one contract and
+whitespace-only member names become Laravel's localized `Community member`
+fallback instead of an empty link. Missing previews use the catalog-backed
+`No messages yet` value. The former invented emoji empty card and secondary
+connections CTA were removed because Blade exposes the member-directory action
+only.
+
+Focused route/render coverage passed `4/4`, including Arabic output and the
+blank-name regression. Standard and signed Arabic live inboxes passed `2/2`
+targeted cases. The complete Jest gate passed `45/45` suites and
+`1,399/1,399` tests; the expanded current-checkout Chromium/axe matrix passed
+`51/51` in 10.5 minutes. Laravel's start-new search block, full feature and
+restriction states, current-user sender attribution, exact relative dates,
+direct/group conversation localization, live mutations, manual
+assistive-technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Notifications Inbox Semantics And Localization Slice
 

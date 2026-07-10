@@ -26,12 +26,21 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      <span class="govuk-caption-l">{{ t("nav.messages") }}</span>
       <h1 class="govuk-heading-xl">
         {{ t("messages.title") }}
         {% if unreadCount > 0 %}
-          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ unreadCount }} unread</span>
+          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ tc("polish_members.messages_unread_summary", unreadCount, { count: unreadCount }) }}</span>
         {% endif %}
       </h1>
+      <p class="govuk-body-l">{{ t("messages.description") }}</p>
+
+      <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('messages.tabs_title') }}">
+        <ul class="govuk-list" style="display:flex;gap:1rem;list-style:none;padding:0;margin:0 0 1rem">
+          <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/messages') }}" aria-current="page">{{ t("govuk_alpha_messages.groups.tab_direct") }}</a></li>
+          <li><a class="govuk-link" href="{{ urlFor('/messages/groups') }}">{{ t("govuk_alpha_messages.groups.tab_groups") }}</a></li>
+        </ul>
+      </nav>
 
       <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('messages.tabs_title') }}">
         <ul class="govuk-list" style="display:flex;gap:1rem;list-style:none;padding:0">
@@ -51,16 +60,18 @@
             hint: { text: t("polish_members.messages_filter_hint") }
           }) }}
           {{ govukButton({ text: t("polish_members.messages_filter_submit"), classes: "govuk-button--secondary" }) }}
+          {% if filter %}
+            <a class="govuk-link" href="{{ urlFor('/messages' + ('?archived=1' if showArchived else '')) }}">{{ t("polish_members.messages_filter_clear") }}</a>
+          {% endif %}
         </form>
       {% endif %}
 
       {% if conversations and conversations.length > 0 %}
         <ul class="govuk-list app-conversation-list">
           {% for conversation in conversations %}
-            {% set otherUser = conversation.other_user or conversation.otherUser or {} %}
-            {% set otherUserName = otherUser.name or ((otherUser.first_name or "") + " " + (otherUser.last_name or "")) or conversation.other_user_name or conversation.otherUserName or t("members.unknown_member") %}
-            {% set lastMessage = conversation.last_message or conversation.lastMessage or {} %}
-            {% set conversationUnread = conversation.unreadCount or conversation.unread_count or 0 %}
+            {% set otherUser = conversation.otherUser %}
+            {% set otherUserName = conversation.displayName %}
+            {% set conversationUnread = conversation.unreadCount %}
             <li class="app-conversation-item{% if conversationUnread > 0 %} app-conversation-item--unread{% endif %}">
               <a href="{{ urlFor('/messages/' + (conversation.id | string)) }}" class="govuk-link app-conversation-link">
                 <div class="app-conversation-header">
@@ -76,17 +87,11 @@
                     </strong>
                   </div>
                   <span class="govuk-body-s govuk-!-margin-bottom-0">
-                    {{ (lastMessage.created_at or lastMessage.createdAt or conversation.last_message_at or conversation.lastMessageAt) | formatDate if lastMessage.created_at or lastMessage.createdAt or conversation.last_message_at or conversation.lastMessageAt else "" }}
+                    {{ conversation.lastMessageAt | formatDate if conversation.lastMessageAt else "" }}
                   </span>
                 </div>
                 <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
-                  {% if lastMessage.body or lastMessage.content %}
-                    {{ lastMessage.body or lastMessage.content }}
-                  {% elif lastMessage is string %}
-                    {{ lastMessage }}
-                  {% else %}
-                    {{ t("govuk_alpha_messages.groups.no_messages_yet") }}
-                  {% endif %}
+                  {{ conversation.lastMessageText }}
                 </p>
                 {% if conversationUnread > 0 %}
                   <span class="govuk-tag govuk-tag--blue app-conversation-badge">
@@ -113,20 +118,11 @@
           }) }}
         {% endif %}
       {% else %}
-        {% set emptyState = {
-          icon: "💬",
-          heading: "No conversations yet",
-          message: "Start a conversation with one of your connections to begin messaging.",
-          action: {
-            text: "Browse community members",
-            href: urlFor("/members")
-          },
-          secondaryAction: {
-            text: "View your connections",
-            href: urlFor("/connections")
-          }
-        } %}
-        {% include "partials/empty-state.njk" %}
+        <div class="govuk-inset-text">
+          <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
+          <p class="govuk-body">{{ t("messages.empty") }}</p>
+          <a class="govuk-link" href="{{ urlFor('/members') }}">{{ t("messages.start_new") }}</a>
+        </div>
       {% endif %}
 
     </div>
