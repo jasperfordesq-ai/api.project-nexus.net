@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,388/1,388` tests passed.
+- Jest: `45/45` suites and `1,390/1,390` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `26/26` cases.
+- Automated browser accessibility: Chromium/axe passed `27/27` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -72,10 +72,11 @@ scores must not be reused as current results.
   focus, checks localized Arabic error announcements, and runs axe under forced
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
-  resolve to white on black without overflow. This is still not a completed
-  screen-reader or assistive-technology record, and the Arabic dashboard still
-  exposes English contextual strings such as `Welcome back`, `Messages`, and
-  `Hours given`.
+  resolve to white on black without overflow. The new authenticated Arabic
+  dashboard case proves its Laravel-owned headings, welcome, CTA, statistics,
+  progress, quick links, feed/listing labels, image alternatives, and numeric
+  formatting no longer fall back to the previous hard-coded English strings.
+  This is still not a completed screen-reader or assistive-technology record.
 
 The current-source Laravel runtime smoke is now certified in deterministic
 serial shards. The base bucket passed `93/93`; all `276` default module pages
@@ -136,6 +137,31 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Dashboard Localization And Tenant-Gate Slice
+
+The signed member dashboard now renders its page title, caption, welcome,
+onboarding success copy, create-listing CTA, time-bank labels, level/XP/progress
+copy, badges/events headings, endorsement plurals, quick links, feed type/author
+and image labels, listing type/image labels, and numeric values through the
+authoritative Laravel catalogs and request locale. Arabic output therefore uses
+the imported Laravel text, RTL document semantics, and locale-aware numbers
+instead of mixing in local English strings. The route also accepts the same
+profile-stat field variants used by Laravel (`total_hours_*` and
+`given_count`/`received_count`) instead of silently reporting zero.
+
+Laravel's dashboard tenant gates are now enforced before supplementary API
+calls and before links render. Disabled listings suppress the listing request,
+CTA, and quick link; disabled events suppress the event request and link;
+messages, connections, and volunteering links follow their module/feature
+flags; and exchange-attention is fetched/rendered only when listings and the
+exchange workflow are enabled. Focused Jest proved the English baseline, the
+fully rendered Arabic contract, and the disabled-feature behavior (`3/3`). The
+complete suite passed `45/45` and `1,390/1,390`; lint, brand, CSS, route, locale,
+template, and diff gates passed; Chromium/axe passed `27/27`, including a real
+Laravel-authenticated Arabic dashboard at 320 CSS pixels with no serious or
+critical violations or horizontal overflow; and the live Blade marker check
+remained `19/19`. No mutation or shared fixture was changed.
 
 ## 2026-07-10 Listings Mutation Contract Slice
 

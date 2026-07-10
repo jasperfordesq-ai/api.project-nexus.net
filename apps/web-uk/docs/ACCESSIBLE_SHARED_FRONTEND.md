@@ -34,8 +34,8 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,388/1,388` tests),
-ESLint, the brand-policy gate, CSS compilation, the `26/26` Chromium/axe gate,
+The current checkout has passed `45/45` Jest suites (`1,390/1,390` tests),
+ESLint, the brand-policy gate, CSS compilation, the `27/27` Chromium/axe gate,
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
 missing, `0` extra parity routes, and `3` ignored infrastructure routes.
@@ -56,8 +56,11 @@ through the cookie/skip-link sequence, proves main and error-summary focus,
 checks error-link field focus and Arabic error announcements, and runs axe in
 forced-colour mode. Live current-source inspection confirmed the summary is the
 active alert and the forced-colour select/footer pairs are white on black. The
-Arabic dashboard still exposes English contextual copy; actual screen-reader,
-assistive-technology, Firefox, and WebKit certification remain open.
+authenticated Arabic dashboard case now proves Laravel-catalog headings,
+welcome/CTA/stat/progress/quick-link/feed/listing copy, localized numbers, RTL
+reflow, and axe at 320 CSS pixels without the former hard-coded English labels.
+Actual screen-reader, assistive-technology, Firefox, and WebKit certification
+remain open.
 
 The current-source Laravel smoke is certified in deterministic serial shards.
 The base bucket passed `93/93`; six shards then covered all `276` default module

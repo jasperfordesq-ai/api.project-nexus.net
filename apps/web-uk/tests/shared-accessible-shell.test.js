@@ -876,6 +876,121 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('localizes the authenticated dashboard from the Laravel Arabic catalog', async () => {
+    const api = require('../src/lib/api');
+    const { translate, translateChoice } = require('../src/lib/localization');
+    api.getProfile.mockResolvedValue({
+      id: 101,
+      first_name: 'Ada',
+      total_hours_given: 12.25,
+      total_hours_received: 4,
+      stats: { listings_count: 3 }
+    });
+    api.getBalance.mockResolvedValue({ balance: 8.5 });
+    api.getOnboardingStatus.mockResolvedValue({ data: { onboarding_completed: true } });
+    api.getGamificationProfile.mockResolvedValue({
+      data: {
+        level: 4,
+        xp: 1250,
+        level_progress: { progress_percentage: 65 },
+        badges_count: 2
+      }
+    });
+    api.getMyBadges.mockResolvedValue({ data: [], meta: { total: 0 } });
+    api.getFeedPosts.mockResolvedValue({
+      data: [{
+        id: 77,
+        type: 'post',
+        title: 'Community garden update',
+        author: { name: 'Mo' },
+        image_url: '/uploads/feed/garden.webp'
+      }]
+    });
+    api.getListings.mockResolvedValue({
+      data: [{
+        id: 501,
+        title: 'Borrow a repair kit',
+        type: 'offer',
+        image_url: '/uploads/listings/tools.webp'
+      }]
+    });
+    api.getMyEvents.mockResolvedValue({
+      data: [{ id: 44, title: 'Garden morning', starts_at: '2026-08-01T10:00:00Z', my_rsvp: 'Going' }]
+    });
+    api.getExchangeAttentionCount.mockResolvedValue({ data: { count: 2, items: [] } });
+    api.getMemberEndorsements.mockResolvedValue({
+      data: { endorsements: [{ skill_name: 'Gardening', count: 3 }] }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/dashboard?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    const decimal = new Intl.NumberFormat('ar', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    }).format(8.5);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain(translate('ar', 'dashboard.title'));
+    expect(response.text).toContain(translate('ar', 'dashboard.welcome', { name: 'Ada' }));
+    expect(response.text).toContain(translate('ar', 'dashboard.new_listing'));
+    expect(response.text).toContain(translate('ar', 'profile.hours_given_label'));
+    expect(response.text).toContain(translate('ar', 'dashboard.hours_value', { value: decimal }));
+    expect(response.text).toContain(translate('ar', 'dashboard.progress_to_next', {
+      percent: new Intl.NumberFormat('ar').format(65)
+    }));
+    expect(response.text).toContain(translateChoice('ar', 'dashboard.pending_reviews_body', 2));
+    expect(response.text).toContain(translateChoice('ar', 'dashboard.endorsement_count', 3));
+    expect(response.text).toContain(translate('ar', 'feed.item_types.post'));
+    expect(response.text).toContain(translate('ar', 'feed.posted_by', { name: 'Mo' }));
+    expect(response.text).toContain(translate('ar', 'feed.image_alt', { title: 'Community garden update' }));
+    expect(response.text).toContain(translate('ar', 'listings.offer'));
+    expect(response.text).toContain(translate('ar', 'listings.image_alt', { title: 'Borrow a repair kit' }));
+    expect(response.text).not.toContain('Welcome back');
+    expect(response.text).not.toContain('Create a listing');
+    expect(response.text).not.toContain('Hours given');
+    expect(response.text).not.toContain('Posted by');
+    expect(response.text).not.toContain('Recent listings');
+  });
+
+  it('honours Laravel dashboard tenant gates before calling or linking disabled features', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue(tenantBootstrap('acme', {
+      modules: {
+        dashboard: true,
+        feed: true,
+        wallet: true,
+        listings: false,
+        messages: false
+      },
+      features: {
+        connections: false,
+        events: false,
+        volunteering: false,
+        exchange_workflow: false
+      }
+    }));
+    api.getProfile.mockResolvedValue({ id: 101, first_name: 'Ada', stats: {} });
+
+    const response = await request(app)
+      .get('/acme/accessible/dashboard')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getListings).not.toHaveBeenCalled();
+    expect(api.getMyEvents).not.toHaveBeenCalled();
+    expect(api.getExchangeAttentionCount).not.toHaveBeenCalled();
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { per_page: 5 });
+    expect(response.text).not.toContain('href="/acme/accessible/listings/new"');
+    expect(response.text).not.toContain('href="/acme/accessible/listings"');
+    expect(response.text).not.toContain('href="/acme/accessible/messages"');
+    expect(response.text).not.toContain('href="/acme/accessible/members"');
+    expect(response.text).not.toContain('href="/acme/accessible/events"');
+    expect(response.text).not.toContain('href="/acme/accessible/volunteering"');
+  });
+
   it('does not invent dashboard level, XP or badges when the Laravel gamification profile is unavailable', async () => {
     const api = require('../src/lib/api');
 

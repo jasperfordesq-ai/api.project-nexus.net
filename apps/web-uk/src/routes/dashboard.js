@@ -18,6 +18,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { flagEnabled } = require('../lib/accessible-shell');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
@@ -50,18 +51,23 @@ function integerFrom(value, fallback = 0) {
 }
 
 function formatOneDecimal(value) {
-  return numberFrom(value).toFixed(1);
+  return new Intl.NumberFormat(getRequestIntlLocale(), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(numberFrom(value));
 }
 
 function formatInteger(value) {
   return new Intl.NumberFormat(getRequestIntlLocale()).format(integerFrom(value));
 }
 
-function displayName(profile) {
+function displayName(profile, t = (key) => key) {
   const first = String(profile && (profile.first_name || profile.firstName || '')).trim();
   const last = String(profile && (profile.last_name || profile.lastName || '')).trim();
   const combined = [first, last].filter(Boolean).join(' ').trim();
-  return combined || String(profile && (profile.display_name || profile.displayName || profile.name || 'User')).trim();
+  return combined
+    || String(profile && (profile.display_name || profile.displayName || profile.name || '')).trim()
+    || t('members.unknown_member');
 }
 
 function profileId(profile) {
@@ -69,14 +75,36 @@ function profileId(profile) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function firstName(profile) {
-  return String(profile && (profile.first_name || profile.firstName || '')).trim() || displayName(profile);
+function firstName(profile, t) {
+  return String(profile && (profile.first_name || profile.firstName || '')).trim() || displayName(profile, t);
 }
 
 function profileStats(profile) {
   const stats = (profile && (profile.stats || profile.profile_stats || profile.profileStats)) || {};
-  const hoursGiven = numberFrom(stats.hours_given ?? stats.hoursGiven ?? profile.hours_given ?? profile.hoursGiven);
-  const hoursReceived = numberFrom(stats.hours_received ?? stats.hoursReceived ?? profile.hours_received ?? profile.hoursReceived);
+  const hoursGiven = numberFrom(
+    profile.total_hours_given
+      ?? profile.totalHoursGiven
+      ?? stats.total_hours_given
+      ?? stats.totalHoursGiven
+      ?? stats.given_count
+      ?? stats.givenCount
+      ?? stats.hours_given
+      ?? stats.hoursGiven
+      ?? profile.hours_given
+      ?? profile.hoursGiven
+  );
+  const hoursReceived = numberFrom(
+    profile.total_hours_received
+      ?? profile.totalHoursReceived
+      ?? stats.total_hours_received
+      ?? stats.totalHoursReceived
+      ?? stats.received_count
+      ?? stats.receivedCount
+      ?? stats.hours_received
+      ?? stats.hoursReceived
+      ?? profile.hours_received
+      ?? profile.hoursReceived
+  );
   const listingsCount = integerFrom(stats.listings_count ?? stats.listingsCount ?? profile.listings_count ?? profile.listingsCount);
 
   return {
@@ -103,7 +131,7 @@ function onboardingCompleted(result) {
   return true;
 }
 
-function normalizedGamification(result, badges) {
+function normalizedGamification(result, badges, t = (key) => key) {
   const data = dataFrom(result);
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const profile = data.profile || data.gamification || data;
@@ -126,76 +154,78 @@ function normalizedGamification(result, badges) {
 
   return {
     level,
+    levelLabel: formatInteger(level),
     levelName: String(profile.level_name || profile.levelName || '').trim(),
     xp,
     xpLabel: formatInteger(xp),
     progressPct,
-    progressLabel: `${progressPct}% of the way to the next level`,
+    progressLabel: t('dashboard.progress_to_next', { percent: formatInteger(progressPct) }),
     badgesCount,
     badgesCountLabel: formatInteger(badgesCount)
   };
 }
 
-function feedItemType(item) {
-  const type = String(item && item.type ? item.type : 'post');
-  return type.charAt(0).toUpperCase() + type.slice(1);
+function feedItemType(item, t = (key) => key) {
+  const type = String(item && item.type ? item.type : 'post').toLowerCase();
+  const key = `feed.item_types.${type}`;
+  const translated = t(key);
+  return translated === key ? t('feed.item_types.activity') : translated;
 }
 
 function stripTags(value) {
   return String(value || '').replace(/<[^>]*>/g, '').trim();
 }
 
-function normalizeFeedItem(item) {
+function normalizeFeedItem(item, t = (key) => key) {
+  const typeLabel = feedItemType(item, t);
   return {
     id: item && item.id,
-    typeLabel: feedItemType(item),
-    title: String(item && (item.title || item.heading || feedItemType(item))).trim(),
+    typeLabel,
+    title: String(item && (item.title || item.heading || typeLabel)).trim(),
     content: stripTags(item && (item.content || item.body)),
-    authorName: String(item && ((item.author && item.author.name) || item.author_name || item.authorName || 'Unknown author')).trim(),
+    authorName: String(item && ((item.author && item.author.name) || item.author_name || item.authorName || t('feed.unknown_author'))).trim(),
     imageUrl: item && (item.image_url || item.imageUrl || (item.media && item.media[0] && (item.media[0].thumbnail_url || item.media[0].file_url)))
   };
 }
 
-function normalizeListing(listing) {
+function normalizeListing(listing, t = (key) => key) {
   const type = String(listing && listing.type ? listing.type : 'offer').toLowerCase() === 'request' ? 'request' : 'offer';
   return {
     id: listing && listing.id,
-    title: String(listing && (listing.title || listing.name || 'Untitled')).trim(),
+    title: String(listing && (listing.title || listing.name || t('feed.item_types.listing'))).trim(),
     type,
     description: stripTags(listing && listing.description),
     imageUrl: listing && (listing.image_url || listing.imageUrl)
   };
 }
 
-function normalizeEvent(event) {
+function normalizeEvent(event, t = (key) => key) {
   return {
     id: event && event.id,
-    title: String(event && (event.title || event.name || 'Event')).trim(),
+    title: String(event && (event.title || event.name || t('feed.item_types.event'))).trim(),
     start: event && (event.start_time || event.startTime || event.starts_at || event.startsAt || event.start_date || event.startDate),
     location: String(event && (event.location || event.venue || '')).trim()
   };
 }
 
-function normalizeExchangeAttention(result) {
+function normalizeExchangeAttention(result, tc = (key) => key) {
   const data = dataFrom(result) || {};
   const count = integerFrom(data.count ?? data.total);
   const items = collectionFrom(data.items ? { data: data.items } : data)
     .slice(0, 5)
     .map((item) => ({
       id: item && item.id,
-      title: String(item && (item.listing_title || item.listingTitle || item.title || item.description || 'Exchange')).trim()
+      title: String(item && (item.listing_title || item.listingTitle || item.title || item.description || '')).trim()
     }));
 
   return {
     count,
     items,
-    body: count === 1
-      ? 'You have 1 exchange that needs your attention.'
-      : `You have ${formatInteger(count)} exchanges that need your attention.`
+    body: tc('dashboard.pending_reviews_body', count)
   };
 }
 
-function normalizeEndorsements(result) {
+function normalizeEndorsements(result, tc = (key) => key) {
   const data = dataFrom(result) || {};
   const endorsements = Array.isArray(data.endorsements)
     ? data.endorsements
@@ -208,7 +238,7 @@ function normalizeEndorsements(result) {
       return {
         skillName,
         count,
-        countLabel: count === 1 ? '1 endorsement' : `${formatInteger(count)} endorsements`
+        countLabel: tc('dashboard.endorsement_count', count)
       };
     })
     .filter((endorsement) => endorsement.skillName && endorsement.count > 0)
@@ -223,6 +253,19 @@ function isGoingEvent(event) {
 }
 
 router.get('/', asyncRoute(async (req, res) => {
+  const tenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : (res.locals.tenant || {});
+  const t = typeof req.t === 'function' ? req.t : res.locals.t;
+  const tc = typeof req.tc === 'function' ? req.tc : res.locals.tc;
+  const dashboardFeatures = {
+    listings: flagEnabled(tenant, 'listings', 'modules', true),
+    messages: flagEnabled(tenant, 'messages', 'modules', true),
+    connections: flagEnabled(tenant, 'connections', 'features', true),
+    events: flagEnabled(tenant, 'events', 'features', true),
+    volunteering: flagEnabled(tenant, 'volunteering', 'features', true),
+    exchangeWorkflow: flagEnabled(tenant, 'exchange_workflow', 'features', true)
+  };
   const [
     profile,
     balanceData,
@@ -238,12 +281,16 @@ router.get('/', asyncRoute(async (req, res) => {
     getOnboardingStatus(req.token).catch(() => ({ data: { onboarding_completed: true } })),
     getGamificationProfile(req.token).catch(() => ({ data: null })),
     getMyBadges(req.token).catch(() => ({ data: [], meta: { total: 0, available_types: [] } })),
-    getListings(req.token, { limit: 5 }).catch(() => ({ data: [] })),
+    dashboardFeatures.listings
+      ? getListings(req.token, { limit: 5 }).catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] }),
     getFeedPosts(req.token, { per_page: 5 }).catch((error) => {
       if (error instanceof ApiError && error.status === 401) throw error;
       return { data: [] };
     }),
-    getMyEvents(req.token).catch(() => ({ data: [] }))
+    dashboardFeatures.events
+      ? getMyEvents(req.token).catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] })
   ]);
 
   const safeProfile = dataFrom(profile) || {};
@@ -253,30 +300,34 @@ router.get('/', asyncRoute(async (req, res) => {
   const balance = walletBalance(balanceData);
   const currentProfileId = profileId(safeProfile);
   const [exchangeAttentionData, endorsementsData] = await Promise.all([
-    getExchangeAttentionCount(req.token).catch(() => ({ data: { count: 0, items: [] } })),
+    dashboardFeatures.listings && dashboardFeatures.exchangeWorkflow
+      ? getExchangeAttentionCount(req.token).catch(() => ({ data: { count: 0, items: [] } }))
+      : Promise.resolve({ data: { count: 0, items: [] } }),
     currentProfileId
       ? getMemberEndorsements(req.token, currentProfileId).catch(() => ({ data: { endorsements: [] } }))
       : Promise.resolve({ data: { endorsements: [] } })
   ]);
 
   res.render('dashboard/index', {
-    title: 'Dashboard',
+    title: t('dashboard.title'),
+    titleKey: 'dashboard.title',
     activeNav: 'dashboard',
     profile: safeProfile,
-    displayName: displayName(safeProfile),
-    firstName: firstName(safeProfile),
+    displayName: displayName(safeProfile, t),
+    firstName: firstName(safeProfile, t),
     profileStats: profileStats(safeProfile),
     balance,
-    balanceLabel: `${formatOneDecimal(balance)} hours`,
+    balanceLabel: t('dashboard.hours_value', { value: formatOneDecimal(balance) }),
     onboardingCompleted: onboardingCompleted(onboardingData),
-    exchangeAttention: normalizeExchangeAttention(exchangeAttentionData),
-    endorsements: normalizeEndorsements(endorsementsData),
-    gamification: normalizedGamification(gamificationData, badges),
+    exchangeAttention: normalizeExchangeAttention(exchangeAttentionData, tc),
+    endorsements: normalizeEndorsements(endorsementsData, tc),
+    gamification: normalizedGamification(gamificationData, badges, t),
     badges,
-    listings: collectionFrom(listingsData).slice(0, 5).map(normalizeListing),
-    feedItems: collectionFrom(feedData).slice(0, 5).map(normalizeFeedItem),
-    upcomingEvents: collectionFrom(eventsData).filter(Boolean).filter(isGoingEvent).slice(0, 3).map(normalizeEvent),
+    listings: collectionFrom(listingsData).slice(0, 5).map((listing) => normalizeListing(listing, t)),
+    feedItems: collectionFrom(feedData).slice(0, 5).map((item) => normalizeFeedItem(item, t)),
+    upcomingEvents: collectionFrom(eventsData).filter(Boolean).filter(isGoingEvent).slice(0, 3).map((event) => normalizeEvent(event, t)),
     communityName: res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible',
+    dashboardFeatures,
     status: String(req.query.status || ''),
     successMessage: req.flash ? req.flash('success')[0] : null
   });
