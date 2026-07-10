@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,395/1,395` tests passed.
+- Jest: `45/45` suites and `1,397/1,397` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `49/49` cases.
+- Automated browser accessibility: Chromium/axe passed `50/50` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,26 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Notifications Inbox Semantics And Localization Slice
+
+The signed notifications inbox now matches Laravel's read-state contract instead
+of treating every item without `read_at` as unread. Grouped rows use `all_read`;
+single rows use `is_read` with `read_at` as the legacy fallback. Laravel-style
+localized category tags and colours are derived from notification type, and the
+page now includes the catalog-backed caption, description, document title,
+success messages, and empty state. The invented English-only unread-empty card
+has been removed in favour of Laravel's authoritative empty copy.
+
+Focused notification/source coverage passed `11/11`, including explicit read
+group/single fixtures and Arabic rendering. Standard and signed Arabic live
+pages passed structure, RTL, 320px reflow, and serious/critical axe checks. The
+complete Jest gate passed `45/45` suites and `1,397/1,397` tests; the expanded
+current-checkout Chromium/axe matrix passed `50/50` in 7.4 minutes. Stored
+notification messages can still reference non-`govuk_alpha` service namespaces
+that are outside the current 24-namespace generated catalog; relative-time
+parity, module gates, live mutation effects, manual assistive-technology
+evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Leaderboard And NEXUS-Score Contextual Localization Slice
 

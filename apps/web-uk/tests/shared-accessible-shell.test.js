@@ -13293,6 +13293,64 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/notifications?cursor=next-page"');
   });
 
+  it('uses Laravel read flags and localized category labels for notification rows', async () => {
+    const api = require('../src/lib/api');
+    api.getGroupedNotifications.mockResolvedValueOnce({
+      data: [
+        {
+          id: 21,
+          type: 'message_received',
+          message: 'A grouped message update',
+          is_grouped: true,
+          group_key: 'message:21',
+          group_count: 2,
+          all_read: true,
+          read_at: null
+        },
+        {
+          id: 22,
+          type: 'transfer_received',
+          message: 'A credit update',
+          is_grouped: false,
+          is_read: true,
+          read_at: null
+        }
+      ],
+      meta: { cursor: null, has_more: false, per_page: 30 }
+    });
+    api.getNotificationUnreadCount.mockResolvedValue({ data: { total: 0 } });
+
+    const response = await request(app)
+      .get('/notifications')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('govuk-tag--blue">Message</strong>');
+    expect(response.text).toContain('govuk-tag--green">Credits</strong>');
+    expect(response.text).not.toContain('name="group_key" value="message:21"');
+    expect(response.text).not.toContain('action="/notifications/22/read"');
+    expect(response.text).not.toContain('app-notification-badge">New</span>');
+  });
+
+  it('renders the notifications shell through the active Arabic Laravel catalog', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getGroupedNotifications.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
+    api.getNotificationUnreadCount.mockResolvedValue({ data: { total: 0 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/notifications?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain(translate('ar', 'notifications.title'));
+    expect(response.text).toContain(translate('ar', 'notifications.description'));
+    expect(response.text).toContain(translate('ar', 'notifications.empty'));
+    expect(response.text).not.toContain('All caught up!');
+  });
+
   it('uses the exact ungrouped Laravel endpoint for the unread-only no-JS inbox', async () => {
     const api = require('../src/lib/api');
     api.getNotifications.mockResolvedValueOnce({

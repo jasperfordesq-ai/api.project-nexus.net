@@ -21,6 +21,22 @@ const { validateReturnUrl } = require('../lib/urlValidator');
 
 const router = express.Router();
 const NOTIFICATIONS_PATH = '/notifications';
+const CATEGORY_COLOURS = Object.freeze({
+  messages: 'blue',
+  connections: 'purple',
+  reviews: 'yellow',
+  transactions: 'green',
+  social: 'pink',
+  events: 'turquoise',
+  groups: 'orange',
+  listings: 'blue',
+  jobs: 'green',
+  safeguarding: 'red',
+  security: 'red',
+  ideation: 'purple',
+  system: 'grey',
+  other: 'grey'
+});
 
 function dataFrom(result) {
   return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
@@ -31,6 +47,53 @@ function dataFrom(result) {
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
   return res.redirect(urlFor(pathname));
+}
+
+function boolFrom(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+  return false;
+}
+
+function categoryFromType(value) {
+  const type = typeof value === 'string' ? value.toLowerCase() : '';
+  if (type.includes('message')) return 'messages';
+  if (type.includes('connection') || type.includes('friend')) return 'connections';
+  if (type.includes('review')) return 'reviews';
+  if (type.includes('transaction') || type.includes('payment') || type.includes('credit') || type.includes('transfer')) return 'transactions';
+  if (type.includes('event')) return 'events';
+  if (type.includes('group')) return 'groups';
+  if (type.includes('listing') || type.includes('match')) return 'listings';
+  if (type.includes('job')) return 'jobs';
+  if (type.includes('safeguard') || type.includes('broker')) return 'safeguarding';
+  if (type.includes('security') || type.includes('password') || type.includes('2fa') || type.includes('passkey')) return 'security';
+  if (type.includes('like') || type.includes('comment') || type.includes('reaction') || type.includes('mention') || type.includes('post')) return 'social';
+  if (type.includes('idea')) return 'ideation';
+  if (type === 'system' || type.includes('announce') || type.includes('welcome') || type.includes('badge') || type.includes('achievement') || type.includes('level')) return 'system';
+  return 'other';
+}
+
+function normalizeNotifications(rows, t) {
+  return rows.map((notification) => {
+    const grouped = boolFrom(notification.is_grouped) && Number(notification.group_count || 0) > 1;
+    const read = grouped
+      ? boolFrom(notification.all_read)
+      : (Object.prototype.hasOwnProperty.call(notification, 'is_read')
+        ? boolFrom(notification.is_read)
+        : Boolean(notification.read_at));
+    const category = categoryFromType(notification.type);
+
+    return {
+      ...notification,
+      isGrouped: grouped,
+      unread: !read,
+      categoryLabel: t(`notifications.types.${category}`),
+      categoryColour: CATEGORY_COLOURS[category] || CATEGORY_COLOURS.other,
+      displayText: notification.message || notification.body || notification.title || '',
+      displayWhen: notification.latest_at || notification.created_at || null
+    };
+  });
 }
 
 router.use(requireAuth);
@@ -54,13 +117,15 @@ router.get('/', asyncRoute(async (req, res) => {
     getNotificationUnreadCount(req.token)
   ]);
 
-  const notifications = Array.isArray(dataFrom(result)) ? dataFrom(result) : [];
+  const notificationRows = Array.isArray(dataFrom(result)) ? dataFrom(result) : [];
+  const notifications = normalizeNotifications(notificationRows, res.locals.t);
   const counts = dataFrom(countResult) || {};
   const unreadCount = Number(counts.total ?? counts.count ?? 0) || 0;
   const meta = result?.meta || {};
 
   res.render('notifications/index', {
-    title: 'Notifications',
+    title: res.locals.t('notifications.title'),
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
     notifications,
     unreadCount,
     meta,
@@ -117,7 +182,7 @@ router.post('/read-all', asyncRoute(async (req, res) => {
     if (req.flash) {
       const payload = dataFrom(result) || {};
       const count = payload.marked_read || payload.markedCount || payload.marked_count || 0;
-      req.flash('success', `Marked ${count} notification${count !== 1 ? 's' : ''} as read`);
+      req.flash('success', res.locals.t('notifications.states.marked-read', { count }));
     }
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) throw error;
@@ -147,7 +212,7 @@ router.post('/:id/delete', asyncRoute(async (req, res) => {
     await deleteNotification(req.token, id);
 
     if (req.flash) {
-      req.flash('success', 'Notification deleted');
+      req.flash('success', res.locals.t('notifications.states.notification-deleted'));
     }
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) throw error;

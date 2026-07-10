@@ -35,12 +35,14 @@
         </div>
       {% endif %}
 
+      <span class="govuk-caption-xl">{{ t("notifications.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">
         {{ t("notifications.title") }}
         {% if unreadCount > 0 %}
           <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ t("notifications.unread_count", { count: unreadCount }) }}</span>
         {% endif %}
       </h1>
+      <p class="govuk-body-l">{{ t("notifications.description") }}</p>
 
       <div class="govuk-!-margin-bottom-6">
         <div class="app-notification-filters">
@@ -79,10 +81,10 @@
         <ul class="govuk-list app-notification-list">
           {% for notification in notifications %}
             {% set notificationLink = notification.link if notification.link else null %}
-            {% set isGrouped = notification.is_grouped and (notification.group_count or 0) > 1 %}
-            {% set notificationUnread = not notification.read_at %}
-            {% set notificationText = notification.message or notification.body or notification.title or '' %}
-            {% set notificationWhen = notification.latest_at or notification.created_at %}
+            {% set isGrouped = notification.isGrouped %}
+            {% set notificationUnread = notification.unread %}
+            {% set notificationText = notification.displayText %}
+            {% set notificationWhen = notification.displayWhen %}
 
             <li class="app-notification-item{% if notificationUnread %} app-notification-item--unread{% endif %}">
               <div class="app-notification-content">
@@ -104,6 +106,7 @@
 
                 <div class="app-notification-body">
                   <p class="govuk-body govuk-!-margin-bottom-1">
+                    <strong class="govuk-tag govuk-tag--{{ notification.categoryColour }}">{{ notification.categoryLabel }}</strong>
                     {% if notificationLink %}
                       <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(notificationLink) }}"><strong class="govuk-!-font-weight-bold">{{ notificationText }}</strong></a>
                     {% else %}
@@ -162,24 +165,7 @@
         {% endif %}
 
       {% else %}
-        {% if showUnreadOnly %}
-          {% set emptyState = {
-            icon: "✓",
-            heading: "All caught up!",
-            message: "You have no unread notifications.",
-            action: {
-              text: "View all notifications",
-              href: urlFor('/notifications')
-            }
-          } %}
-        {% else %}
-          {% set emptyState = {
-            icon: "🔔",
-            heading: t("notifications.title"),
-            message: t("notifications.empty")
-          } %}
-        {% endif %}
-        {% include "partials/empty-state.njk" %}
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("notifications.empty") }}</p></div>
       {% endif %}
 
     </div>
