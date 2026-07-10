@@ -604,8 +604,8 @@ home shell and footer meta:
 
 Latest repeatable Blade visual spot-check command on 2026-07-10:
 
-- `npm run visual:blade` was added as a scoped visual checkpoint. It compares
-  Laravel `http://127.0.0.1:8088/hour-timebank/alpha` with Web UK
+- `npm run visual:blade` is a scoped visual checkpoint. It compares Laravel
+  `http://127.0.0.1:8088/hour-timebank/alpha` with Web UK
   `/hour-timebank/accessible` for the tenant home markers `Hour Timebank`,
   `Accessible`, `Connecting Communities`, and `What you can do`.
 - The same command checks Web UK custom-domain roots with real Host headers for
@@ -613,15 +613,29 @@ Latest repeatable Blade visual spot-check command on 2026-07-10:
   are loaded from Laravel `/api/v2/tenant/bootstrap` using matching Host/Origin
   headers, then verified against Web UK root HTML while asserting no `/alpha`
   or `/accessible` public-slug leakage.
+- A follow-up 2026-07-10 expansion adds public/auth/support/legal Blade-vs-Web
+  checks for `/login`, `/register`, `/login/forgot-password`,
+  `/password/reset?token=reset-token`, `/contact`, `/cookies`, `/about`,
+  `/guide`, `/features`, `/faq`, `/help`, `/trust-and-safety`,
+  `/accessibility`, `/legal`, `/legal/privacy`, and `/report-a-problem`. Each
+  page is compared as Laravel `/{tenantSlug}/alpha/...` versus Web UK
+  `/{tenantSlug}/accessible/...` and asserts no `/{tenantSlug}/alpha` leakage
+  in Web UK HTML.
 - Focused Jest first failed while the script still treated Laravel host-root
   HTML as the source, then passed after host-root expectations were moved to
   Laravel bootstrap. A live run against temporary Web UK
   `http://127.0.0.1:6661`, started with `TENANT_ID=2`,
   `ACCESSIBLE_BACKEND_TARGET=laravel`, and
   `LARAVEL_BASE_URL=http://127.0.0.1:8088`, passed all 3 checks.
-- This is a repeatable tenant/home visual guard only. It does not certify every
-  page, tab, form, workflow, feature gate, localization variant, disabled-tenant
-  fixture, or ASP.NET backend switching.
+- The expanded public/auth/support test first failed on the missing default
+  check list, then the live command caught marker strings that were not actually
+  present in Laravel Blade. After the markers were grounded in rendered Laravel
+  text, a live run against temporary Web UK `http://127.0.0.1:6662` passed
+  all 19 checks.
+- This is a repeatable tenant/home plus public/auth/support/legal visual guard.
+  It does not certify signed module pages, every tab, POST side effects, upload
+  flows, localization variants, disabled-tenant fixtures, or ASP.NET backend
+  switching.
 
 Latest focused verification on 2026-07-09 for the events index/form
 template-helper slice:

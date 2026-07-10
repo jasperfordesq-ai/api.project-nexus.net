@@ -25,7 +25,7 @@ describe('Laravel Blade visual spotcheck helper', () => {
     expect(normalizeVisibleText(html)).toBe('Accessible home Exchange & connect');
   });
 
-  it('defaults to a Blade tenant-home comparison plus bootstrap-sourced domain front-page checks', () => {
+  it('defaults to Blade tenant-home, host-root, and public/auth/support page checks', () => {
     const options = resolveOptions({
       laravelBaseUrl: 'http://laravel.test',
       webBaseUrl: 'http://web.test'
@@ -34,7 +34,23 @@ describe('Laravel Blade visual spotcheck helper', () => {
     expect(options.checks.map((check) => check.name)).toEqual([
       'tenant-home-hour-timebank',
       'master-domain-root',
-      'cluster-domain-root'
+      'cluster-domain-root',
+      'public-login',
+      'public-register',
+      'public-forgot-password',
+      'public-reset-password',
+      'public-contact',
+      'public-cookie-settings',
+      'public-about',
+      'public-guide',
+      'public-features',
+      'public-faq',
+      'public-help',
+      'public-trust-safety',
+      'public-accessibility',
+      'public-legal-hub',
+      'public-privacy-policy',
+      'public-report-problem'
     ]);
     expect(DEFAULT_VISUAL_SPOTCHECKS[0]).toEqual(expect.objectContaining({
       laravel: { path: '/hour-timebank/alpha' },
@@ -52,6 +68,18 @@ describe('Laravel Blade visual spotcheck helper', () => {
       web: { host: 'timebank.global', path: '/' },
       bootstrapMarkerPaths: ['seo.h1_headline'],
       webForbiddenHtml: ['/alpha', '/accessible']
+    }));
+    expect(DEFAULT_VISUAL_SPOTCHECKS[3]).toEqual(expect.objectContaining({
+      laravel: { path: '/hour-timebank/alpha/login' },
+      web: { path: '/hour-timebank/accessible/login' },
+      markers: ['Sign in', 'Email address', 'Password'],
+      webForbiddenHtml: ['/hour-timebank/alpha']
+    }));
+    expect(DEFAULT_VISUAL_SPOTCHECKS[18]).toEqual(expect.objectContaining({
+      laravel: { path: '/hour-timebank/alpha/report-a-problem' },
+      web: { path: '/hour-timebank/accessible/report-a-problem' },
+      markers: ['Contact Us'],
+      webForbiddenHtml: ['/hour-timebank/alpha']
     }));
   });
 

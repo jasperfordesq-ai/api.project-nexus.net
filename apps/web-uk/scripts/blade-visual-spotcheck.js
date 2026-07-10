@@ -10,6 +10,18 @@ const https = require('https');
 const DEFAULT_LARAVEL_BASE_URL = 'http://127.0.0.1:8088';
 const DEFAULT_WEB_BASE_URL = 'http://127.0.0.1:5180';
 const DEFAULT_TIMEOUT_MS = 60000;
+const DEFAULT_TENANT_SLUG = 'hour-timebank';
+
+function sharedTenantCheck(name, path, markers) {
+  const normalizedPath = String(path || '/');
+  return {
+    name,
+    laravel: { path: `/${DEFAULT_TENANT_SLUG}/alpha${normalizedPath}` },
+    web: { path: `/${DEFAULT_TENANT_SLUG}/accessible${normalizedPath}` },
+    markers,
+    webForbiddenHtml: [`/${DEFAULT_TENANT_SLUG}/alpha`]
+  };
+}
 
 const DEFAULT_VISUAL_SPOTCHECKS = [
   {
@@ -37,7 +49,85 @@ const DEFAULT_VISUAL_SPOTCHECKS = [
     web: { host: 'timebank.global', path: '/' },
     bootstrapMarkerPaths: ['seo.h1_headline'],
     webForbiddenHtml: ['/alpha', '/accessible']
-  }
+  },
+  sharedTenantCheck('public-login', '/login', [
+    'Sign in',
+    'Email address',
+    'Password'
+  ]),
+  sharedTenantCheck('public-register', '/register', [
+    'Register',
+    'Email address',
+    'Password'
+  ]),
+  sharedTenantCheck('public-forgot-password', '/login/forgot-password', [
+    'Reset your password',
+    'Email address'
+  ]),
+  sharedTenantCheck('public-reset-password', '/password/reset?token=reset-token', [
+    'Choose a new password',
+    'New password',
+    'Confirm new password'
+  ]),
+  sharedTenantCheck('public-contact', '/contact', [
+    'Contact Us',
+    'Name',
+    'Email',
+    'Message'
+  ]),
+  sharedTenantCheck('public-cookie-settings', '/cookies', [
+    'Cookies',
+    'Analytics cookies',
+    'Save cookie settings'
+  ]),
+  sharedTenantCheck('public-about', '/about', [
+    'About Hour Timebank',
+    'How it works',
+    'Our values'
+  ]),
+  sharedTenantCheck('public-guide', '/guide', [
+    'How timebanking works',
+    'One hour always equals one time credit',
+    'The three steps'
+  ]),
+  sharedTenantCheck('public-features', '/features', [
+    'Features',
+    'What you can do in this community',
+    'Earn and spend time credits'
+  ]),
+  sharedTenantCheck('public-faq', '/faq', [
+    'Frequently asked questions',
+    'What is a time credit?',
+    'One hour always equals one time credit'
+  ]),
+  sharedTenantCheck('public-help', '/help', [
+    'Help centre',
+    'Search help topics',
+    'Account & Privacy'
+  ]),
+  sharedTenantCheck('public-trust-safety', '/trust-and-safety', [
+    'Trust and safety',
+    'Report a safeguarding concern',
+    'How exchanges work'
+  ]),
+  sharedTenantCheck('public-accessibility', '/accessibility', [
+    'Accessibility statement',
+    'Our commitment',
+    'WCAG 2.2 Level AA'
+  ]),
+  sharedTenantCheck('public-legal-hub', '/legal', [
+    'Legal',
+    'Terms',
+    'Privacy'
+  ]),
+  sharedTenantCheck('public-privacy-policy', '/legal/privacy', [
+    'Privacy policy',
+    'Personal data',
+    'Your rights'
+  ]),
+  sharedTenantCheck('public-report-problem', '/report-a-problem', [
+    'Contact Us'
+  ])
 ];
 
 function stripTrailingSlash(value) {

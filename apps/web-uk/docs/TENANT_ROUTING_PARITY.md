@@ -389,6 +389,20 @@ passed all three checks with no `/alpha` or `/accessible` leakage on host-root
 responses. This is visual/domain guard evidence only; it is not full
 route-family visual parity or ASP.NET backend certification.
 
+The same guard now also covers shared-mount public/auth/support/legal pages:
+`/login`, `/register`, `/login/forgot-password`,
+`/password/reset?token=reset-token`, `/contact`, `/cookies`, `/about`,
+`/guide`, `/features`, `/faq`, `/help`, `/trust-and-safety`,
+`/accessibility`, `/legal`, `/legal/privacy`, and `/report-a-problem`. Each
+check compares Laravel `/{tenantSlug}/alpha/...` with Web UK
+`/{tenantSlug}/accessible/...` using Laravel-rendered page markers and asserts
+that Web UK HTML does not contain `/{tenantSlug}/alpha`. A live run on
+2026-07-10 against temporary Web UK `http://127.0.0.1:6662`, Laravel
+`http://127.0.0.1:8088`, and `TENANT_ID=2` passed all 19 default
+`visual:blade` checks. This is shared-mount visual/slug evidence for those
+public pages only; signed module pages and POST side effects still need their
+own visual/workflow proof.
+
 The account template-helper source slice extends the direct `urlFor()`
 conversion from event detail into the account hub. `src/views/account.njk` now
 passes `accountLinks` card targets and the `/logout` form action through
