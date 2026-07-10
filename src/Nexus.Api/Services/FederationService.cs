@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -105,42 +106,241 @@ public class FederationService
     /// </summary>
     public async Task<(FederationPartner? Partner, string? Error)> ApprovePartnershipAsync(int partnerId, int adminId)
     {
-        var tenantId = _tenantContext.TenantId;
-        // Only the partner tenant (the one who received the request) may approve it
-        var partner = await _db.Set<FederationPartner>()
-            .Include(fp => fp.PartnerTenant)
-            .FirstOrDefaultAsync(fp => fp.Id == partnerId && (tenantId == null || fp.PartnerTenantId == tenantId));
+        if (!_tenantContext.IsResolved)
+            return (null, "Tenant context not resolved");
+
+        var result = await ApprovePartnershipForTenantAsync(
+            partnerId,
+            _tenantContext.GetTenantIdOrThrow(),
+            adminId);
+
+        return (result.Partner, result.Error);
+    }
+
+    /// <summary>
+    /// Approve an incoming request on behalf of the explicit receiving tenant.
+    /// The pending-state transition and its audit row are committed atomically.
+    /// </summary>
+    public Task<FederationPartnershipDecisionResult> ApprovePartnershipForTenantAsync(
+        int partnerId,
+        int receivingTenantId,
+        int adminId,
+        CancellationToken cancellationToken = default)
+        => DecidePartnershipAsync(
+            partnerId,
+            receivingTenantId,
+            adminId,
+            approve: true,
+            reason: null,
+            cancellationToken);
+
+    /// <summary>
+    /// Reject an incoming request on behalf of the explicit receiving tenant.
+    /// </summary>
+    public Task<FederationPartnershipDecisionResult> RejectPartnershipForTenantAsync(
+        int partnerId,
+        int receivingTenantId,
+        int adminId,
+        string? reason,
+        CancellationToken cancellationToken = default)
+        => DecidePartnershipAsync(
+            partnerId,
+            receivingTenantId,
+            adminId,
+            approve: false,
+            NormalizeRejectionReason(reason),
+            cancellationToken);
+
+    private async Task<FederationPartnershipDecisionResult> DecidePartnershipAsync(
+        int partnerId,
+        int receivingTenantId,
+        int adminId,
+        bool approve,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        var partner = await _db.FederationPartners
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(fp => fp.Id == partnerId, cancellationToken);
 
         if (partner == null)
-            return (null, "Partnership not found");
+            return FederationPartnershipDecisionResult.NotFoundResult();
+
+        var actionVerb = approve ? "approved" : "rejected";
+        var actionInfinitive = approve ? "approve" : "reject";
+        if (partner.PartnerTenantId != receivingTenantId)
+        {
+            return FederationPartnershipDecisionResult.ConflictResult(
+                $"Only the receiving tenant can {actionInfinitive} a partnership request");
+        }
 
         if (partner.Status != PartnerStatus.Pending)
-            return (null, $"Partnership cannot be approved from status '{partner.Status}'");
+            return FederationPartnershipDecisionResult.ConflictResult("Partnership is not pending approval");
 
-        partner.Status = PartnerStatus.Active;
-        partner.ApprovedById = adminId;
-        partner.ApprovedAt = DateTime.UtcNow;
-        partner.UpdatedAt = DateTime.UtcNow;
+        var changedAt = DateTime.UtcNow;
+        var targetStatus = approve ? PartnerStatus.Active : PartnerStatus.Rejected;
 
-        // Create audit log
-        _db.Set<FederationAuditLog>().Add(new FederationAuditLog
+        try
         {
-            TenantId = partner.TenantId,
-            PartnerTenantId = partner.PartnerTenantId,
-            Action = "partner.approved",
-            EntityType = "FederationPartner",
-            EntityId = partner.Id,
-            Details = JsonSerializer.Serialize(new { approved_by = adminId }),
-            CreatedAt = DateTime.UtcNow
-        });
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-        await _db.SaveChangesAsync();
+            var affected = approve
+                ? await _db.FederationPartners
+                    .IgnoreQueryFilters()
+                    .Where(fp => fp.Id == partnerId
+                        && fp.PartnerTenantId == receivingTenantId
+                        && fp.Status == PartnerStatus.Pending)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(fp => fp.Status, PartnerStatus.Active)
+                        .SetProperty(fp => fp.ApprovedById, adminId)
+                        .SetProperty(fp => fp.ApprovedAt, changedAt)
+                        .SetProperty(fp => fp.UpdatedAt, changedAt), cancellationToken)
+                : await _db.FederationPartners
+                    .IgnoreQueryFilters()
+                    .Where(fp => fp.Id == partnerId
+                        && fp.PartnerTenantId == receivingTenantId
+                        && fp.Status == PartnerStatus.Pending)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(fp => fp.Status, PartnerStatus.Rejected)
+                        .SetProperty(fp => fp.UpdatedAt, changedAt), cancellationToken);
+
+            if (affected != 1)
+                return FederationPartnershipDecisionResult.ConflictResult("Partnership is no longer pending approval");
+
+            _db.FederationAuditLogs.Add(new FederationAuditLog
+            {
+                // Canonical audit direction is the receiver acting on the requester.
+                TenantId = receivingTenantId,
+                PartnerTenantId = partner.TenantId,
+                Action = approve ? "partnership_approved" : "partnership_rejected",
+                EntityType = "FederationPartner",
+                EntityId = partner.Id,
+                Details = approve
+                    ? JsonSerializer.Serialize(new { approved_by = adminId })
+                    : JsonSerializer.Serialize(new { rejected_by = adminId, reason }),
+                CreatedAt = changedAt
+            });
+
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to {Action} federation partnership {PartnerId} for receiving tenant {TenantId}",
+                actionVerb,
+                partnerId,
+                receivingTenantId);
+            return FederationPartnershipDecisionResult.ConflictResult($"Failed to {actionInfinitive} partnership");
+        }
+
+        partner.Status = targetStatus;
+        partner.UpdatedAt = changedAt;
+        if (approve)
+        {
+            partner.ApprovedById = adminId;
+            partner.ApprovedAt = changedAt;
+        }
+
+        await NotifyInitiatingTenantAdminsBestEffortAsync(
+            partner,
+            receivingTenantId,
+            approve,
+            reason,
+            CancellationToken.None);
 
         _logger.LogInformation(
-            "Federation partnership approved: Partner {PartnerId} (Tenant {TenantId} <-> Tenant {PartnerTenantId}) by admin {AdminId}",
-            partnerId, partner.TenantId, partner.PartnerTenantId, adminId);
+            "Federation partnership {Action}: Partner {PartnerId}, receiver {ReceivingTenantId}, requester {RequestingTenantId}, admin {AdminId}",
+            actionVerb,
+            partnerId,
+            receivingTenantId,
+            partner.TenantId,
+            adminId);
 
-        return (partner, null);
+        return FederationPartnershipDecisionResult.SuccessResult(partner);
+    }
+
+    private async Task NotifyInitiatingTenantAdminsBestEffortAsync(
+        FederationPartner partner,
+        int receivingTenantId,
+        bool approved,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var candidates = await _db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(user => user.TenantId == partner.TenantId && user.IsActive)
+                .ToListAsync(cancellationToken);
+            var adminIds = candidates
+                .Where(NexusUserAccessEvaluator.HasAdminAccess)
+                .Select(user => user.Id)
+                .ToList();
+
+            if (adminIds.Count == 0)
+                return;
+
+            var receivingTenantName = await _db.Tenants
+                .AsNoTracking()
+                .Where(tenant => tenant.Id == receivingTenantId)
+                .Select(tenant => tenant.Name)
+                .FirstOrDefaultAsync(cancellationToken) ?? "A partner community";
+            var notificationType = approved
+                ? "federation_partnership_approved"
+                : "federation_partnership_rejected";
+            var notificationTitle = approved
+                ? "Federation partnership approved"
+                : "Federation partnership rejected";
+            var notificationBody = approved
+                ? $"{receivingTenantName} has approved your federation partnership request."
+                : $"{receivingTenantName} has rejected your federation partnership request.";
+            var notificationData = JsonSerializer.Serialize(new
+            {
+                partnership_id = partner.Id,
+                acting_tenant_id = receivingTenantId,
+                reason
+            });
+            var createdAt = DateTime.UtcNow;
+
+            _db.Notifications.AddRange(adminIds.Select(userId => new Notification
+            {
+                TenantId = partner.TenantId,
+                UserId = userId,
+                Type = notificationType,
+                Title = notificationTitle,
+                Body = notificationBody,
+                Data = notificationData,
+                IsRead = false,
+                CreatedAt = createdAt
+            }));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // The state transition and audit are already committed. Notification
+            // delivery must not turn that durable success into a false failure.
+            _logger.LogWarning(
+                ex,
+                "Federation partnership {PartnerId} committed but initiating-tenant admin notification failed",
+                partner.Id);
+        }
+    }
+
+    private static string? NormalizeRejectionReason(string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            return null;
+
+        var trimmed = reason.Trim();
+        return trimmed.Length <= 1000 ? trimmed : trimmed[..1000];
     }
 
     /// <summary>
@@ -198,16 +398,38 @@ public class FederationService
     /// <summary>
     /// List all federation partnerships for a tenant.
     /// </summary>
-    public async Task<List<FederationPartner>> GetPartnersAsync(int tenantId)
+    public async Task<List<FederationPartner>> GetPartnersAsync(
+        int tenantId,
+        CancellationToken cancellationToken = default)
     {
         return await _db.Set<FederationPartner>()
-            .Where(fp => fp.TenantId == tenantId || fp.PartnerTenantId == tenantId)
+            .Where(fp => fp.TenantId == tenantId)
             .Include(fp => fp.PartnerTenant)
             .Include(fp => fp.RequestedBy)
             .Include(fp => fp.ApprovedBy)
             .OrderByDescending(fp => fp.CreatedAt)
             .AsNoTracking()
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// List incoming and outgoing partnerships for the Laravel-compatible admin view.
+    /// This is deliberately separate from the legacy outgoing-only list contract.
+    /// </summary>
+    public async Task<List<FederationPartner>> GetAllPartnershipsForTenantAsync(
+        int tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.Set<FederationPartner>()
+            .IgnoreQueryFilters()
+            .Where(fp => fp.TenantId == tenantId || fp.PartnerTenantId == tenantId)
+            .Include(fp => fp.Tenant)
+            .Include(fp => fp.PartnerTenant)
+            .Include(fp => fp.RequestedBy)
+            .Include(fp => fp.ApprovedBy)
+            .OrderByDescending(fp => fp.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>
@@ -615,4 +837,23 @@ public class FederationStats
     public int CompletedExchanges { get; set; }
     public int ActiveExchanges { get; set; }
     public decimal TotalHoursExchanged { get; set; }
+}
+
+/// <summary>
+/// Outcome of a canonical incoming partnership approval or rejection.
+/// </summary>
+public sealed record FederationPartnershipDecisionResult(
+    bool Succeeded,
+    bool NotFound,
+    FederationPartner? Partner,
+    string? Error)
+{
+    public static FederationPartnershipDecisionResult SuccessResult(FederationPartner partner)
+        => new(true, false, partner, null);
+
+    public static FederationPartnershipDecisionResult NotFoundResult()
+        => new(false, true, null, "Partnership not found");
+
+    public static FederationPartnershipDecisionResult ConflictResult(string error)
+        => new(false, false, null, error);
 }

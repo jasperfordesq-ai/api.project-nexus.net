@@ -76,6 +76,8 @@ public enum PartnerStatus
     Pending,
     /// <summary>Partnership is active and data is being shared.</summary>
     Active,
+    /// <summary>Partnership request was rejected by the receiving tenant.</summary>
+    Rejected,
     /// <summary>Partnership has been temporarily suspended.</summary>
     Suspended,
     /// <summary>Partnership has been permanently revoked.</summary>

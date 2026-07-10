@@ -26,8 +26,9 @@ public sealed class AdminNewsletterPreviewControllerUnitTests
     public void PreviewNewsletter_ExposesLaravelAdminNewsletterPreviewRoute()
     {
         typeof(AdminCompatibility2Controller)
-            .GetCustomAttribute<RouteAttribute>()?.Template
-            .Should().Be("api/admin");
+            .GetCustomAttributes<RouteAttribute>()
+            .Select(attribute => attribute.Template)
+            .Should().BeEquivalentTo("api/admin", "api/v2/admin");
 
         typeof(AdminCompatibility2Controller)
             .GetMethod(nameof(AdminCompatibility2Controller.PreviewNewsletter))

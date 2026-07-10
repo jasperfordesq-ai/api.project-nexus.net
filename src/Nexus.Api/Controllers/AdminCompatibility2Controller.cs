@@ -32,6 +32,7 @@ public class AdminCompatibility2Controller : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly NewsletterService _newsletter;
     private readonly LocationService _location;
+    private readonly FederationService? _federation;
     private readonly ILogger<AdminCompatibility2Controller> _logger;
 
     public AdminCompatibility2Controller(
@@ -39,12 +40,14 @@ public class AdminCompatibility2Controller : ControllerBase
         TenantContext tenantContext,
         NewsletterService newsletter,
         LocationService location,
-        ILogger<AdminCompatibility2Controller> logger)
+        ILogger<AdminCompatibility2Controller> logger,
+        FederationService? federation = null)
     {
         _db = db;
         _tenantContext = tenantContext;
         _newsletter = newsletter;
         _location = location;
+        _federation = federation;
         _logger = logger;
     }
 
@@ -1036,18 +1039,120 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/federation/partnerships - List partnerships.</summary>
     [HttpGet("federation/partnerships")]
-    public IActionResult ListPartnerships([FromQuery] string? status = null)
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
+    public async Task<IActionResult> ListPartnerships(
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_federation == null)
+            return FederationError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Federation service is unavailable");
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        IEnumerable<FederationPartner> partners = await _federation.GetAllPartnershipsForTenantAsync(
+            tenantId,
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!Enum.TryParse<PartnerStatus>(status, ignoreCase: true, out var parsedStatus))
+                partners = Array.Empty<FederationPartner>();
+            else
+                partners = partners.Where(partner => partner.Status == parsedStatus);
+        }
+
+        var data = partners.Select(partner =>
+        {
+            var isInitiator = partner.TenantId == tenantId;
+            var otherTenant = isInitiator ? partner.PartnerTenant : partner.Tenant;
+            return new
+            {
+                id = partner.Id,
+                tenant_id = partner.TenantId,
+                partner_tenant_id = partner.PartnerTenantId,
+                partner_name = otherTenant?.Name ?? string.Empty,
+                partner_slug = otherTenant?.Slug ?? string.Empty,
+                status = partner.Status.ToString().ToLowerInvariant(),
+                shared_listings = partner.SharedListings,
+                shared_events = partner.SharedEvents,
+                shared_members = partner.SharedMembers,
+                requested_by = partner.RequestedById,
+                approved_by = partner.ApprovedById,
+                approved_at = partner.ApprovedAt,
+                requested_at = partner.CreatedAt,
+                created_at = partner.CreatedAt,
+                updated_at = partner.UpdatedAt,
+                is_initiator = isInitiator,
+                direction = isInitiator ? "outgoing" : "incoming"
+            };
+        }).ToList();
+
+        return Ok(new
+        {
+            data,
+            meta = FederationMeta()
+        });
+    }
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/approve - Approve partnership.</summary>
     [HttpPost("federation/partnerships/{id:int}/approve")]
-    public IActionResult ApprovePartnership(int id)
-        => Ok(new { message = "Partnership approved", partnership_id = id });
+    public async Task<IActionResult> ApprovePartnership(int id, CancellationToken cancellationToken = default)
+    {
+        if (_federation == null)
+            return FederationError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Federation service is unavailable");
+
+        var adminId = User.GetUserId();
+        if (!adminId.HasValue)
+            return FederationError(StatusCodes.Status401Unauthorized, "UNAUTHENTICATED", "Invalid token");
+
+        var result = await _federation.ApprovePartnershipForTenantAsync(
+            id,
+            _tenantContext.GetTenantIdOrThrow(),
+            adminId.Value,
+            cancellationToken);
+
+        if (result.NotFound)
+            return FederationError(StatusCodes.Status404NotFound, "APPROVE_FAILED", result.Error ?? "Partnership not found");
+        if (!result.Succeeded)
+            return FederationError(StatusCodes.Status409Conflict, "APPROVE_FAILED", result.Error ?? "Failed to approve partnership");
+
+        return Ok(new
+        {
+            data = new { message = "Partnership approved" },
+            meta = FederationMeta()
+        });
+    }
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/reject - Reject partnership.</summary>
     [HttpPost("federation/partnerships/{id:int}/reject")]
-    public IActionResult RejectPartnership(int id)
-        => Ok(new { message = "Partnership rejected", partnership_id = id });
+    public async Task<IActionResult> RejectPartnership(
+        int id,
+        [FromBody] RejectFederationPartnershipRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        if (_federation == null)
+            return FederationError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Federation service is unavailable");
+
+        var adminId = User.GetUserId();
+        if (!adminId.HasValue)
+            return FederationError(StatusCodes.Status401Unauthorized, "UNAUTHENTICATED", "Invalid token");
+
+        var result = await _federation.RejectPartnershipForTenantAsync(
+            id,
+            _tenantContext.GetTenantIdOrThrow(),
+            adminId.Value,
+            request?.Reason,
+            cancellationToken);
+
+        if (result.NotFound)
+            return FederationError(StatusCodes.Status404NotFound, "REJECT_FAILED", result.Error ?? "Partnership not found");
+        if (!result.Succeeded)
+            return FederationError(StatusCodes.Status409Conflict, "REJECT_FAILED", result.Error ?? "Failed to reject partnership");
+
+        return Ok(new
+        {
+            data = new { message = "Partnership rejected" },
+            meta = FederationMeta()
+        });
+    }
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/terminate - Terminate partnership.</summary>
     [HttpPost("federation/partnerships/{id:int}/terminate")]
@@ -1139,6 +1244,17 @@ public class AdminCompatibility2Controller : ControllerBase
     // Helpers & DTOs
     // =====================================================================
 
+    private object FederationMeta() => new
+    {
+        base_url = $"{Request.Scheme}://{Request.Host}"
+    };
+
+    private ObjectResult FederationError(int statusCode, string code, string message)
+        => StatusCode(statusCode, new
+        {
+            errors = new[] { new { code, message } }
+        });
+
     private static object MapNewsletter(Newsletter n) => new
     {
         n.Id,
@@ -1214,6 +1330,11 @@ public class AdminCompatibility2Controller : ControllerBase
     {
         [JsonPropertyName("group_ids")] public List<int>? GroupIds { get; set; }
         [JsonPropertyName("limit")] public int? Limit { get; set; }
+    }
+
+    public class RejectFederationPartnershipRequest
+    {
+        [JsonPropertyName("reason")] public string? Reason { get; set; }
     }
 
     private static bool TryParseOpportunityStatus(string? value, out OpportunityStatus status)
