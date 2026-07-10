@@ -1707,6 +1707,44 @@ async function runLaravelRuntimeSmoke(options = {}) {
   };
 }
 
+function listenForRuntimeSmoke(app, host = '127.0.0.1') {
+  if (!app || typeof app.listen !== 'function') {
+    throw new Error('A web app with a listen() method is required.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const server = app.listen(0, host, () => {
+      server.off('error', reject);
+      const address = server.address();
+      resolve({
+        server,
+        webBaseUrl: `http://${host}:${address.port}`
+      });
+    });
+
+    server.once('error', reject);
+  });
+}
+
+function closeRuntimeSmokeServer(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+async function runLaravelRuntimeSmokeAgainstApp(app, options = {}) {
+  const { server, webBaseUrl } = await listenForRuntimeSmoke(app);
+
+  try {
+    return await runLaravelRuntimeSmoke({
+      ...options,
+      webBaseUrl
+    });
+  } finally {
+    await closeRuntimeSmokeServer(server);
+  }
+}
+
 async function main() {
   const result = await runLaravelRuntimeSmoke();
   console.log(JSON.stringify(result, null, 2));
@@ -1727,5 +1765,6 @@ module.exports = {
   extractCsrfToken,
   resolveOptions,
   runLaravelRuntimeSmoke,
+  runLaravelRuntimeSmokeAgainstApp,
   splitSetCookieHeader
 };

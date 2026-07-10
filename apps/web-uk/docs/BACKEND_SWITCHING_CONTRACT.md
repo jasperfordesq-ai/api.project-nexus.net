@@ -96,11 +96,20 @@ The Laravel-backed runtime proof command is:
 
 ```bash
 npm run smoke:laravel
+npm run smoke:laravel:local
 ```
 
-It runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
+`smoke:laravel` runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
 (`http://127.0.0.1:5180` by default) and `LARAVEL_BASE_URL`
-(`http://127.0.0.1:8088` by default). The harness checks Laravel API
+(`http://127.0.0.1:8088` by default). `smoke:laravel:local` starts the Web UK
+app on an ephemeral local port inside the smoke process, sets smoke-safe
+defaults for `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`, points the
+same harness at that local server, then closes it. Prefer the local command
+when no already-running tenant-correct Web UK process is available or when
+PowerShell background process management produces false `fetch failed` smoke
+results.
+
+The harness checks Laravel API
 reachability, web-uk health, unsigned `/account` redirect behavior, `/login`
 CSRF rendering, login POST redirect to `/dashboard`, and signed `/account`
 rendering. It also checks the default public Laravel-backed module pages
@@ -128,7 +137,12 @@ the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
 `WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=60000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
 `TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
-valid E2E credentials. Later 2026-07-07 smoke runs expanded the default signed
+valid E2E credentials. On 2026-07-10, the new `npm run smoke:laravel:local`
+wrapper passed the core Laravel-backed flow with 10/10 checks and module chunk
+`SMOKE_MODULE_PAGE_CHUNK=2/8` with 106/106 checks against Laravel
+`http://127.0.0.1:8088`, proving the in-process ephemeral Web UK runner can
+replace fragile ad hoc temporary process launchers for chunked certification.
+Later 2026-07-07 smoke runs expanded the default signed
 page list from the broader base module pages to deep profile, settings,
 achievement, leaderboard, federation, course, marketplace, and volunteering
 subpages. The latest run against

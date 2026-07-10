@@ -16,7 +16,8 @@
     "lint": "eslint src/",
     "route:matrix": "node scripts/generate-accessible-route-matrix.js",
     "visual:blade": "node scripts/blade-visual-spotcheck.js",
-    "smoke:laravel": "node scripts/laravel-runtime-smoke.js"
+    "smoke:laravel": "node scripts/laravel-runtime-smoke.js",
+    "smoke:laravel:local": "node scripts/laravel-runtime-smoke-local-server.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",

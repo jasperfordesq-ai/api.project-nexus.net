@@ -32,11 +32,19 @@ By default, `apps/web-uk` resolves API calls to the local Laravel staging base
 URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
 work and must not be treated as certified compatibility.
 
-Runtime smoke evidence now has a dedicated command:
+Runtime smoke evidence has two dedicated commands:
 
 ```bash
 npm run smoke:laravel
+npm run smoke:laravel:local
 ```
+
+Use `smoke:laravel` when a known-good Web UK process is already running at
+`WEB_UK_BASE_URL`. Prefer `smoke:laravel:local` for agent certification loops:
+it starts the Web UK app on an ephemeral local port with smoke-safe secrets,
+defaults to `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`, runs the
+same Laravel runtime harness, then closes the server. This avoids false
+`fetch failed` results from ad hoc background process launch wrappers.
 
 Latest broad live evidence: chunked Laravel runtime smoke has been recertified
 against Laravel `http://127.0.0.1:8088` and tenant-correct temporary Web UK
@@ -48,6 +56,10 @@ checks, 3 cookie-consent POST workflows, logout, and the 6 auth/health checks.
 The 2026-07-10 clubs correction moved the local `hour-timebank` no-active-club
 fixture from a 2xx module/body-text page to signed gated `/clubs` `404`,
 matching Laravel's active-club gate.
+On 2026-07-10, `smoke:laravel:local` passed the core Laravel-backed flow with
+10/10 checks and passed module chunk `SMOKE_MODULE_PAGE_CHUNK=2/8` with 106/106
+checks. Some expected Laravel `403` routes still log application errors while
+the harness records the intended green gated-status checks.
 
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed

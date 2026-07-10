@@ -5,7 +5,11 @@
 
 const http = require('http');
 
-const { resolveOptions, runLaravelRuntimeSmoke } = require('../scripts/laravel-runtime-smoke');
+const {
+  resolveOptions,
+  runLaravelRuntimeSmoke,
+  runLaravelRuntimeSmokeAgainstApp
+} = require('../scripts/laravel-runtime-smoke');
 
 jest.setTimeout(30000);
 
@@ -923,6 +927,35 @@ describe('Laravel runtime smoke harness', () => {
 
   it('uses a 60 second default request timeout for slower Laravel-backed pages', () => {
     expect(resolveOptions({}, {}).timeoutMs).toBe(60000);
+  });
+
+  it('can smoke a supplied local web app server and close it afterwards', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel);
+
+    const laravelBaseUrl = await listen(laravel);
+
+    const result = await runLaravelRuntimeSmokeAgainstApp(web, {
+      laravelBaseUrl,
+      modulePagePaths: [],
+      unsignedAuthRequiredPagePaths: [],
+      unsignedLoginRedirectPagePaths: [],
+      gatedPagePaths: [],
+      redirectPagePaths: [],
+      contentTypePagePaths: [],
+      bodyTextPagePaths: [],
+      tenantDomainPagePaths: []
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.webBaseUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect(requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ surface: 'web', method: 'GET', url: '/health' })
+    ]));
+
+    await expect(fetch(`${result.webBaseUrl}/health`)).rejects.toThrow();
   });
 
   it('allows CLI environment overrides for targeted smoke page groups', () => {

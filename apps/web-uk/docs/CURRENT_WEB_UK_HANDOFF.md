@@ -2378,6 +2378,19 @@ the local Web UK process. For the scoped tenant/home visual checkpoint, start a
 tenant-correct Web UK process the same way and run `npm run visual:blade` with
 `WEB_UK_BASE_URL` pointing at that process.
 
+2026-07-10 smoke-runner update: prefer `npm run smoke:laravel:local` when a
+tenant-correct Web UK process is not already running. It starts the real Web UK
+app on an ephemeral local port inside the Node smoke process with smoke-safe
+secrets, `ACCESSIBLE_BACKEND_TARGET=laravel`, and `TENANT_ID=2`, then runs the
+same Laravel runtime harness and closes the server. This avoids false
+`fetch failed` results from ad hoc PowerShell background process launchers.
+Verified during this handoff: focused Jest coverage for the local app runner
+passed, the core local Laravel smoke passed 10/10 checks, and
+`SMOKE_MODULE_PAGE_CHUNK=2/8 SMOKE_BODY_TEXT_PAGE_PATHS=none npm run
+smoke:laravel:local` passed 106/106 checks against Laravel
+`http://127.0.0.1:8088`. Expected Laravel `403` gated routes may still emit
+application error logs while the JSON smoke result remains green.
+
 ## Documents To Trust
 
 Read these in order:
