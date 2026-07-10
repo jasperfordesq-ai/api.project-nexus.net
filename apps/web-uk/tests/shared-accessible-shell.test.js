@@ -20623,6 +20623,34 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/seller/coupons/5');
   });
 
+  it('keeps marketplace seller validation redirects inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { feed: true, listings: true, wallet: true },
+        features: { connections: true, events: true, volunteering: true, marketplace: true }
+      }
+    });
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', signedAuthCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/marketplace/coupons/new')
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], title: '' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/marketplace/coupons/new?status=coupon-title-required');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
+  });
+
   it('redirects signed-out Laravel marketplace POST aliases to login status without calling Laravel APIs', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);

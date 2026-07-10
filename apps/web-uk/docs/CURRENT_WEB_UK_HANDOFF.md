@@ -1221,6 +1221,11 @@ seller profile links, and seller onboarding controls through `urlFor()`.
 `slots.njk`, `slot-form.njk`, and `_slot-form.njk` now route coupon links and
 forms, order tab links, order ship/confirm/pay/cancel/rate forms, pickup-slot
 scan/edit/delete forms, and shared slot form actions through `urlFor()`.
+`src/routes/marketplace-actions.js` now routes auth-required, validation,
+success, and API-failure exits through a `res.locals.urlFor` helper so listing,
+offer, report, order, onboarding, pickup-slot, and coupon POST outcomes stay
+inside shared tenant mounts and custom-domain child paths without relying only
+on the response rewriter.
 `src/views/jobs/*.njk` now route jobs tabs, browse filters, saved and
 application links, owner-management controls, alerts, responses, detail save/
 apply/renew forms, employer-brand links, talent search/profile links, CSV/CV

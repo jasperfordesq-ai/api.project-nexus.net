@@ -151,7 +151,10 @@ calls. Marketplace coupon,
 order, and pickup-slot management source templates
 now also use `urlFor()` for their local links/forms, so the marketplace
 template family has source-level helper coverage for local marketplace
-`href`/`action` targets. Connections index and network source templates now
+`href`/`action` targets. Marketplace action route redirects now also use
+`res.locals.urlFor` for auth, validation, success, and API-failure outcomes
+across listing, buyer, offer, order, onboarding, pickup-slot, and coupon POST
+flows. Connections index and network source templates now
 also use `urlFor()` for local tabs, member links, pagination, search, load-more,
 and action targets. Notifications index source templates now also use
 `urlFor()` for breadcrumbs, filters, read/delete actions, redirect hidden

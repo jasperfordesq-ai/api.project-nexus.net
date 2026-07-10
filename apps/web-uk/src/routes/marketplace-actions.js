@@ -76,13 +76,24 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function localUrl(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function'
+    ? res.locals.urlFor
+    : (value) => value;
+  return urlFor(pathname);
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(localUrl(res, pathname));
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -110,7 +121,7 @@ async function callApi(token, method, path, data = undefined) {
 async function runAction(req, res, method, path, data, successRedirect, failureRedirect) {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   try {
@@ -118,10 +129,10 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
     const redirect = typeof successRedirect === 'function'
       ? successRedirect(result)
       : successRedirect;
-    return res.redirect(redirect);
+    return redirectTo(res, redirect);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(failureRedirect);
+    return redirectTo(res, failureRedirect);
   }
 }
 
@@ -249,22 +260,22 @@ function couponPayload(body) {
 
 router.post('/create', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
   const payload = listingPayload(req.body);
   const image = uploadedFile(req, 'image');
   if (payload.title === '' || payload.description === '') {
     await removeUploadedFile(image);
-    return res.redirect('/marketplace/create?status=listing-validation');
+    return redirectTo(res, '/marketplace/create?status=listing-validation');
   }
 
   try {
     const result = await callApi(token, 'POST', '/listings', payload);
     const id = resultId(result);
     await uploadListingImage(token, id, image);
-    return res.redirect(listingRedirect(id || 'mine', 'listing-created'));
+    return redirectTo(res, listingRedirect(id || 'mine', 'listing-created'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect('/marketplace/create?status=listing-create-failed');
+    return redirectTo(res, '/marketplace/create?status=listing-create-failed');
   } finally {
     await removeUploadedFile(image);
   }
@@ -272,22 +283,22 @@ router.post('/create', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return res.redirect(loginRedirect());
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const payload = listingPayload(req.body);
   const image = uploadedFile(req, 'image');
   if (payload.title === '' || payload.description === '') {
     await removeUploadedFile(image);
-    return res.redirect(`/marketplace/${id}/edit?status=listing-validation`);
+    return redirectTo(res, `/marketplace/${id}/edit?status=listing-validation`);
   }
 
   try {
     await callApi(token, 'PUT', `/listings/${id}`, payload);
     await uploadListingImage(token, id, image);
-    return res.redirect(listingRedirect(id, 'listing-saved'));
+    return redirectTo(res, listingRedirect(id, 'listing-saved'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return res.redirect(`/marketplace/${id}/edit?status=listing-save-failed`);
+    return redirectTo(res, `/marketplace/${id}/edit?status=listing-save-failed`);
   } finally {
     await removeUploadedFile(image);
   }
@@ -385,11 +396,11 @@ router.post('/:id(\\d+)/buy', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const amount = decimalNumber(req.body.amount);
   if (amount <= 0) {
-    return res.redirect(`/marketplace/${id}/offer?status=offer-amount-invalid`);
+    return redirectTo(res, `/marketplace/${id}/offer?status=offer-amount-invalid`);
   }
 
   const payload = { amount };
@@ -410,12 +421,12 @@ router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const reason = allowed(req.body.reason, REPORT_REASONS, '');
   const description = trimmed(req.body.description, 5000);
   if (reason === '' || description === '') {
-    return res.redirect(`/marketplace/${id}/report?status=report-validation`);
+    return redirectTo(res, `/marketplace/${id}/report?status=report-validation`);
   }
 
   return runAction(
@@ -536,11 +547,11 @@ router.post('/orders/:id(\\d+)/pay', asyncRoute(async (req, res) => {
 }));
 
 router.post('/orders/:id(\\d+)/rate', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const rating = positiveInteger(req.body.rating);
   if (rating === null || rating < 1 || rating > 5) {
-    return res.redirect(ordersRedirect(req, 'rate-invalid'));
+    return redirectTo(res, ordersRedirect(req, 'rate-invalid'));
   }
 
   return runAction(
@@ -559,15 +570,15 @@ router.post('/orders/:id(\\d+)/rate', asyncRoute(async (req, res) => {
 }));
 
 router.post('/onboarding', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const sellerType = allowed(req.body.seller_type, SELLER_TYPES, 'business');
   const businessName = trimmed(req.body.business_name, 200);
   const displayName = trimmed(req.body.display_name, 100);
   if (sellerType === 'business' && businessName === '') {
-    return res.redirect('/marketplace/onboarding?status=business-name-required');
+    return redirectTo(res, '/marketplace/onboarding?status=business-name-required');
   }
   if (displayName === '') {
-    return res.redirect('/marketplace/onboarding?status=display-name-required');
+    return redirectTo(res, '/marketplace/onboarding?status=display-name-required');
   }
 
   const payload = {
@@ -604,10 +615,10 @@ router.post('/slots', asyncRoute(async (req, res) => runAction(
 )));
 
 router.post('/slots/scan', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const qrCode = trimmed(req.body.qr_code, 64);
   if (qrCode === '') {
-    return res.redirect('/marketplace/slots?status=pickup-scan-failed');
+    return redirectTo(res, '/marketplace/slots?status=pickup-scan-failed');
   }
 
   return runAction(
@@ -648,10 +659,10 @@ router.post('/slots/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 }));
 
 router.post('/coupons/new', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const payload = couponPayload(req.body);
   if (payload.title === '') {
-    return res.redirect('/marketplace/coupons/new?status=coupon-title-required');
+    return redirectTo(res, '/marketplace/coupons/new?status=coupon-title-required');
   }
 
   return runAction(
@@ -666,11 +677,11 @@ router.post('/coupons/new', asyncRoute(async (req, res) => {
 }));
 
 router.post('/coupons/:id(\\d+)/update', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const payload = couponPayload(req.body);
   if (payload.title === '') {
-    return res.redirect(`/marketplace/coupons/${id}/edit?status=coupon-title-required`);
+    return redirectTo(res, `/marketplace/coupons/${id}/edit?status=coupon-title-required`);
   }
 
   return runAction(

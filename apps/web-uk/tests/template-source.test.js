@@ -853,6 +853,18 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/marketplace/);
   });
 
+  it('keeps marketplace action redirects behind the active tenant URL helper', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'marketplace-actions.js'),
+      'utf8'
+    );
+
+    expect(route).not.toMatch(/res\.redirect\((?:['"`]\/marketplace|`\/marketplace)/);
+    expect(route).not.toContain('res.redirect(loginRedirect())');
+    expect(route).toContain('redirectTo(res,');
+    expect(route).toContain('res.locals.urlFor');
+  });
+
   it('keeps federation member navigation and actions behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'federation', 'member.njk'),

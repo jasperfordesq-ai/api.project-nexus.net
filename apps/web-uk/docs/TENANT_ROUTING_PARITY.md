@@ -439,6 +439,13 @@ forms, pickup-slot scan/edit/delete forms, and shared slot form actions through
 that previously had literal marketplace-local links/forms, and a source scan
 for raw marketplace `href`/`action` strings returns no matches.
 
+The latest marketplace route-redirect slice extends that helper coverage into
+`src/routes/marketplace-actions.js`. Auth-required, validation, success, and
+API-failure redirects for listing create/update/delete/renew/save/unsave,
+buy/offer/report, offer/order actions, seller onboarding, pickup slots, pickup
+scan, and seller coupons now resolve through `res.locals.urlFor`, with source
+regression and shared-mount validation coverage.
+
 The twentieth template-helper source slice extends direct `urlFor()` conversion
 into the notifications inbox. `src/views/notifications/index.njk` now routes
 the Home breadcrumb, all/unread filter links, read-all action, per-notification
