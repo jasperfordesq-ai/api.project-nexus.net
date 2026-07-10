@@ -79,8 +79,12 @@ links, RSVP/admin forms, attendee links, and report return path plus the
 account hub's card links and CSRF logout form, the activity dashboard/insights
 navigation links, and the achievements/gamification tabs, back links, forms,
 and badge links, plus the leaderboard/NEXUS score tabs, back links, forms,
-load-more links, tier link, and profile links with `urlFor()`; most other
-templates still need the same source-level conversion. A follow-up
+load-more links, tier link, and profile links with `urlFor()`. A follow-up
+leaderboard/NEXUS score route-redirect slice now sends unsigned and Laravel-401
+auth handoffs through `res.locals.urlFor`, so those GET pages stay inside shared
+tenant mounts and custom-domain child paths instead of relying on flat
+`/login` redirects. Most other templates still need the same source-level
+conversion. A follow-up
 activity route-redirect slice now sends unsigned activity dashboard and
 insights auth handoffs through `res.locals.urlFor`, with shared-mount coverage
 proving `/acme/accessible/activity` and `/acme/accessible/activity/insights`

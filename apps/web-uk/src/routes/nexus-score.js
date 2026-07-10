@@ -38,6 +38,14 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, pathname) {
+  return typeof res.locals?.urlFor === 'function' ? res.locals.urlFor(pathname) : pathname;
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(urlFor(res, pathname));
+}
+
 function objectFrom(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
@@ -165,7 +173,7 @@ function normalizeTierScore(result) {
 
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -174,7 +182,7 @@ function redirectAuthIfNeeded(error, res) {
 router.get('/tiers', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let scorePayload;
@@ -196,7 +204,7 @@ router.get('/tiers', asyncRoute(async (req, res) => {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let scorePayload;

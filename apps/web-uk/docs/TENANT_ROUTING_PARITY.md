@@ -128,7 +128,10 @@ Current gaps:
   reward/challenge/purchase/showcase forms, badge collection links, and badge
   detail links. The newest focused source conversion covers the leaderboard
   and NEXUS score templates, including tabs, back links, filter forms,
-  load-more links, tier links, and member profile links. The latest focused
+  load-more links, tier links, and member profile links. The latest
+  leaderboard/NEXUS score route-redirect cleanup sends unsigned and Laravel-401
+  auth handoffs through `res.locals.urlFor`, keeping those GET exits inside
+  shared tenant mounts and custom-domain child paths. The latest focused
   source conversion covers the profile and settings templates, including
   profile summary links, settings card links, profile/security/privacy forms,
   two-step verification actions, blocked member unblock forms, delete-account
@@ -388,6 +391,9 @@ ladder templates now pass tabs, back links, filter form actions, load-more
 links, tier links, and data-driven member profile links through `urlFor()`. A
 source-level regression plus focused leaderboard/NEXUS score render tests prove
 the flat `/leaderboard` and `/nexus-score` family output remains unchanged.
+The follow-up route-redirect slice moves the same family's unsigned and
+Laravel-401 auth handoffs through `res.locals.urlFor`, with source regression
+coverage guarding against raw `res.redirect(loginRedirect())` calls returning.
 
 The fifteenth template-helper source slice extends the same direct `urlFor()`
 conversion into the profile and settings pages. The profile summary, profile

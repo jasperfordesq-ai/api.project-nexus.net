@@ -49,6 +49,14 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function urlFor(res, pathname) {
+  return typeof res.locals?.urlFor === 'function' ? res.locals.urlFor(pathname) : pathname;
+}
+
+function redirectTo(res, pathname) {
+  return res.redirect(urlFor(res, pathname));
+}
+
 function objectFrom(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
@@ -404,7 +412,7 @@ function normalizeSpotlightMembers(result) {
 
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   return false;
@@ -413,7 +421,7 @@ function redirectAuthIfNeeded(error, res) {
 router.get('/competitive', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const selectedType = selectedOption(COMPETITIVE_TYPES, textFrom(req.query.type), 'xp');
@@ -459,7 +467,7 @@ router.get('/competitive', asyncRoute(async (req, res) => {
 router.get('/journey', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let journeyPayload;
@@ -481,7 +489,7 @@ router.get('/journey', asyncRoute(async (req, res) => {
 router.get('/spotlight', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let spotlightPayload;
@@ -503,7 +511,7 @@ router.get('/spotlight', asyncRoute(async (req, res) => {
 router.get('/seasons', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   let currentPayload;
@@ -533,7 +541,7 @@ router.get('/seasons', asyncRoute(async (req, res) => {
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
-    return res.redirect(loginRedirect());
+    return redirectTo(res, loginRedirect());
   }
 
   const selectedType = selectedOption(LEADERBOARD_TYPES, textFrom(req.query.type), 'credits_earned');

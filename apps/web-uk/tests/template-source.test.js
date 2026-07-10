@@ -236,6 +236,23 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toContain("urlFor('/nexus-score");
   });
 
+  it('keeps leaderboard and NEXUS score route redirects behind the active tenant URL helper', () => {
+    const routeSources = [
+      'leaderboard.js',
+      'nexus-score.js'
+    ].map((file) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', file),
+      'utf8'
+    ));
+
+    for (const route of routeSources) {
+      expect(route).not.toContain('res.redirect(loginRedirect())');
+      expect(route).toContain('function redirectTo(res, pathname)');
+      expect(route).toContain('res.locals.urlFor');
+      expect(route).toContain('redirectTo(res, loginRedirect())');
+    }
+  });
+
   it('keeps profile and settings links and forms behind urlFor()', () => {
     const profileTemplates = [
       'index.njk',
