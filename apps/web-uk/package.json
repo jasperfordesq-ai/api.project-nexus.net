@@ -17,7 +17,8 @@
     "route:matrix": "node scripts/generate-accessible-route-matrix.js",
     "visual:blade": "node scripts/blade-visual-spotcheck.js",
     "smoke:laravel": "node scripts/laravel-runtime-smoke.js",
-    "smoke:laravel:local": "node scripts/laravel-runtime-smoke-local-server.js"
+    "smoke:laravel:local": "node scripts/laravel-runtime-smoke-local-server.js",
+    "test:accessibility": "npm run build:css && node scripts/accessibility-local-server.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
@@ -34,7 +35,9 @@
     "nunjucks": "^3.2.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.61.1",
     "concurrently": "^8.2.2",
     "eslint": "^9.39.4",
     "jest": "^30.2.0",

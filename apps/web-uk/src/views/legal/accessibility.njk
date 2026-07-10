@@ -26,21 +26,22 @@
         </div>
       </dl>
 
-      <h2 class="govuk-heading-m">How this service supports you</h2>
+      <h2 class="govuk-heading-m">Accessibility design goals</h2>
+      <p class="govuk-body">We design the service towards the outcomes below. They are goals for the whole service, not a claim that every page and journey has already been manually verified.</p>
       {% for feature in features %}
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ feature.title }}</h3>
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Goal: {{ feature.title }}</h3>
         <p class="govuk-body">{{ feature.description }}</p>
       {% endfor %}
 
       <h2 class="govuk-heading-m">Known limitations</h2>
-      <p class="govuk-body">We are continually improving this service. Some content provided by community members, or features that are still in beta, may not yet fully meet WCAG 2.2 AA. If you find a problem, please tell us using the details below.</p>
+      <p class="govuk-body">We are continually improving this service. Automated testing currently covers a representative set of public pages rather than every page and signed-in journey. Some content provided by community members, or features that are still in beta, may not yet fully meet WCAG 2.2 AA. If you find a problem, please tell us using the details below.</p>
 
       <h2 class="govuk-heading-m">Reporting accessibility problems</h2>
       <p class="govuk-body">If you find an accessibility problem, or you need information on this service in a different format, please contact us. We aim to respond to accessibility feedback within 5 working days.</p>
       <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/contact') }}">Report an accessibility problem</a></p>
 
       <h2 class="govuk-heading-m">How we tested this service</h2>
-      <p class="govuk-body">This service is tested with automated accessibility checks and with keyboard and screen-reader testing as part of our development process. Testing is ongoing as new pages are added.</p>
+      <p class="govuk-body">A representative set of public pages is checked automatically for document structure and serious or critical accessibility issues. Automated checks find only some problems and do not prove full WCAG conformance. Manual keyboard, zoom, contrast and screen-reader testing is still required, and coverage will be expanded as new journeys are added.</p>
     </div>
   </div>
 {% endblock %}

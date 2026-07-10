@@ -809,6 +809,21 @@ shared-layout boundary:
   master/cluster-domain, public/auth/support/legal comparisons against Laravel
   `http://127.0.0.1:8088`.
 
+Latest browser accessibility-gate verification on 2026-07-10:
+
+- `npm run test:accessibility` builds CSS, requires the current checkout, and
+  binds an OS-assigned loopback port; it never trusts the process on 5180.
+- Playwright Chromium plus `@axe-core/playwright` passed 9/9 shared-mount pages
+  at `http://127.0.0.1:56223`: tenant home, About, Guide, FAQ, sign in,
+  registration, contact, legal hub, and accessibility statement.
+- Every page returned below 400, rendered one main landmark, one
+  `main-content` ID, one h1, no duplicate IDs, and no serious or critical axe
+  violations. JSON/HTML reports, axe attachments, traces, and failure
+  screenshots live under ignored `artifacts/accessibility/` output.
+- This is an automated foundation, not full WCAG 2.2 AA certification.
+  Authenticated/error/upload/destructive/RTL states and recorded manual
+  keyboard, zoom/reflow, contrast, and screen-reader checks remain required.
+
 Historical focused verification on 2026-07-09 for the earlier tenant
 parent-domain reserved-path slice:
 

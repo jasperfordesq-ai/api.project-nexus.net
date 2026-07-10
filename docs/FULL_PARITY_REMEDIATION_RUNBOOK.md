@@ -81,6 +81,7 @@ route coverage is not a completion score.
 | Web UK Jest | 870/871 passed; one tenant-routing source-parity failure |
 | Web UK lint and brand guard | Passed |
 | Current-source Blade marker spot-check | 19/19 passed; this is not screenshot or WCAG certification |
+| Current-source browser accessibility gate | 9/9 representative public pages passed Chromium structure and serious/critical axe checks; manual certification remains |
 | Current-source Laravel core smoke | 10/10 passed |
 | Current-source module smoke sample | Chunk 1/8 passed 106/106; exhaustive eight-chunk recertification was not rerun during the audit |
 
@@ -147,10 +148,13 @@ smoked against ASP.NET later.
    error states, and POST/upload/delete side effects.
 5. Implement real localization, formatting, and RTL behavior for every offered
    locale. A language selector without translated output is not complete.
-6. Add automated accessibility checks using an appropriate browser/WCAG tool
-   and perform a recorded manual pass for keyboard use, focus order and
-   visibility, screen-reader announcements, zoom/reflow, contrast, error
-   summaries, and RTL behavior.
+6. **Automated foundation completed 2026-07-10:** Playwright Chromium plus
+   `@axe-core/playwright` now starts a fresh current-checkout Web UK listener
+   and gates nine representative public pages on document structure, unique
+   IDs, and serious/critical axe violations. Continue expanding authenticated,
+   error, upload, destructive, and RTL states, and perform a recorded manual
+   pass for keyboard use, focus order and visibility, screen-reader
+   announcements, zoom/reflow, contrast, error summaries, and RTL behavior.
 7. Rebuild/restart a current-source Web UK process. Do not use a stale port 5180
    process as certification evidence.
 8. Rerun the complete Laravel smoke scope, chunked if necessary, including

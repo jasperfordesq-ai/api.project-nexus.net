@@ -1,0 +1,79 @@
+// Copyright (c) 2024-2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+const AxeBuilder = require('@axe-core/playwright').default;
+const { test, expect } = require('@playwright/test');
+
+const tenantSlug = process.env.ACCESSIBILITY_TENANT_SLUG || 'alpha';
+const mountPath = `/${encodeURIComponent(tenantSlug)}/accessible`;
+
+const PUBLIC_ROUTES = [
+  { name: 'tenant home', path: mountPath },
+  { name: 'about', path: `${mountPath}/about` },
+  { name: 'guide', path: `${mountPath}/guide` },
+  { name: 'frequently asked questions', path: `${mountPath}/faq` },
+  { name: 'sign in', path: `${mountPath}/login` },
+  { name: 'register', path: `${mountPath}/register` },
+  { name: 'contact', path: `${mountPath}/contact` },
+  { name: 'legal hub', path: `${mountPath}/legal` },
+  { name: 'accessibility statement', path: `${mountPath}/accessibility` }
+];
+
+function seriousOrCritical(violations) {
+  return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical');
+}
+
+function formatViolations(violations) {
+  return violations.map((violation) => ({
+    id: violation.id,
+    impact: violation.impact,
+    help: violation.help,
+    helpUrl: violation.helpUrl,
+    targets: violation.nodes.map((node) => node.target)
+  }));
+}
+
+test.describe('representative public-page accessibility gate', () => {
+  for (const route of PUBLIC_ROUTES) {
+    test(`${route.name} has a valid document structure and no high-impact axe violations`, async ({ page }, testInfo) => {
+      const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+
+      expect(response, `${route.path} did not return a document response`).not.toBeNull();
+      expect(response.status(), `${route.path} returned HTTP ${response.status()}`).toBeLessThan(400);
+
+      await expect(page.locator('main'), 'each page must have one main landmark').toHaveCount(1);
+      await expect(page.locator('#main-content'), 'each page must have one main-content target').toHaveCount(1);
+      await expect(page.locator('h1'), 'each representative public page must have one h1').toHaveCount(1);
+
+      const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
+        const counts = new Map();
+        for (const element of elements) {
+          counts.set(element.id, (counts.get(element.id) || 0) + 1);
+        }
+        return [...counts.entries()]
+          .filter(([, count]) => count > 1)
+          .map(([id, count]) => ({ id, count }));
+      });
+      expect(duplicateIds, `duplicate element IDs on ${route.path}`).toEqual([]);
+
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('axe-results', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          violations: formatViolations(axeResults.violations),
+          passes: axeResults.passes.map(({ id, impact }) => ({ id, impact })),
+          incomplete: formatViolations(axeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+
+      const blockingViolations = seriousOrCritical(axeResults.violations);
+      expect(
+        formatViolations(blockingViolations),
+        `serious or critical axe violations on ${route.path}`
+      ).toEqual([]);
+    });
+  }
+});
