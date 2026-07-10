@@ -54,7 +54,13 @@ function createLaravelServer(requests) {
   });
 }
 
-function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {}, gatedRequiresFreshLogin = false, tenantDomainFixtures = new Map() } = {}) {
+function createWebServer(requests, {
+  loginRedirect = '/dashboard',
+  delayedPaths = {},
+  gatedRequiresFreshLogin = false,
+  gatedConsumesFreshLogin = false,
+  tenantDomainFixtures = new Map()
+} = {}) {
   let loginCount = 0;
 
   return http.createServer(async (req, res) => {
@@ -834,6 +840,9 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
       const expectedToken = gatedRequiresFreshLogin ? `token=signed-token-${loginCount}` : 'token=signed-token';
       if ((req.headers.cookie || '').includes(expectedToken)) {
+        if (gatedConsumesFreshLogin) {
+          loginCount += 1;
+        }
         const status = signedGatedPages.get(req.url);
         res.writeHead(status, { 'content-type': 'text/html' });
         res.end(status === 404 ? '<h1>Page not found</h1>' : '<h1>Forbidden</h1>');
@@ -2508,10 +2517,13 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');
   });
 
-  it('refreshes the signed session before gated checks after long module-page batches', async () => {
+  it('refreshes a stale signed session between gated checks after long module-page batches', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);
-    const web = createWebServer(requests, { gatedRequiresFreshLogin: true });
+    const web = createWebServer(requests, {
+      gatedRequiresFreshLogin: true,
+      gatedConsumesFreshLogin: true
+    });
     servers.push(laravel, web);
 
     const laravelBaseUrl = await listen(laravel);
@@ -2521,13 +2533,17 @@ describe('Laravel runtime smoke harness', () => {
       webBaseUrl,
       modulePagePaths: ['/explore'],
       unsignedAuthRequiredPagePaths: [],
-      gatedPagePaths: [{ path: '/jobs/bias-audit', status: 403 }],
+      gatedPagePaths: [
+        { path: '/jobs/bias-audit', status: 403 },
+        { path: '/jobs/talent-search/77', status: 403 }
+      ],
       redirectPagePaths: []
     });
 
     const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
     expect(checkByName['gated-page-jobs-bias-audit-returns-403'].ok).toBe(true);
-    expect(requests.filter((request) => request.method === 'POST' && request.url === '/login')).toHaveLength(3);
+    expect(checkByName['gated-page-jobs-talent-search-77-returns-403'].ok).toBe(true);
+    expect(requests.filter((request) => request.method === 'POST' && request.url === '/login')).toHaveLength(4);
   });
 
   it('allows slower signed module pages in the default smoke timeout budget', async () => {

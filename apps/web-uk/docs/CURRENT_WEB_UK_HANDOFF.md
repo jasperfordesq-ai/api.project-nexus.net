@@ -2385,10 +2385,14 @@ secrets, `ACCESSIBLE_BACKEND_TARGET=laravel`, and `TENANT_ID=2`, then runs the
 same Laravel runtime harness and closes the server. This avoids false
 `fetch failed` results from ad hoc PowerShell background process launchers.
 Verified during this handoff: focused Jest coverage for the local app runner
-passed, the core local Laravel smoke passed 10/10 checks, and
-`SMOKE_MODULE_PAGE_CHUNK=2/8 SMOKE_BODY_TEXT_PAGE_PATHS=none npm run
-smoke:laravel:local` passed 106/106 checks against Laravel
-`http://127.0.0.1:8088`. Expected Laravel `403` gated routes may still emit
+passed, the core local Laravel smoke passed 10/10 checks, and the module-page
+bucket is green by chunks. Chunk 1/8 passed 106/106 against a tenant-correct
+temporary Web UK process; chunks 2/8 through 8/8 passed 106/106 with
+`SMOKE_BODY_TEXT_PAGE_PATHS=none npm run smoke:laravel:local` against Laravel
+`http://127.0.0.1:8088`. The harness now refreshes and retries a signed gated
+check once after an unexpected login redirect, which fixed a long-batch
+`/jobs/talent-search/77` false negative without forcing a full login before
+every gated route. Expected Laravel `403` gated routes may still emit
 application error logs while the JSON smoke result remains green.
 
 ## Documents To Trust

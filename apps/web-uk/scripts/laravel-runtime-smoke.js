@@ -1643,12 +1643,21 @@ async function runLaravelRuntimeSmoke(options = {}) {
     const path = gatedPage.path;
     const expectedStatus = gatedPage.status;
     try {
-      const response = await smokeRequest({
+      let response = await smokeRequest({
         fetchImpl: config.fetchImpl,
         timeoutMs: config.timeoutMs,
         cookieJar,
         url: joinUrl(config.webBaseUrl, path)
       });
+      if (isRedirectTo(response, '/login')) {
+        await refreshSignedSession(config, cookieJar);
+        response = await smokeRequest({
+          fetchImpl: config.fetchImpl,
+          timeoutMs: config.timeoutMs,
+          cookieJar,
+          url: joinUrl(config.webBaseUrl, path)
+        });
+      }
       addCheck(
         checks,
         gatedPageCheckName(path, expectedStatus),
