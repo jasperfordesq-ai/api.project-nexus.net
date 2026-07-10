@@ -38,16 +38,16 @@ Runtime smoke evidence now has a dedicated command:
 npm run smoke:laravel
 ```
 
-Latest live evidence from 2026-07-08: chunked Laravel runtime smoke passed
-against Laravel `http://127.0.0.1:8088` and a temporary Web UK process at
-`WEB_UK_BASE_URL=http://127.0.0.1:6310`, started with
-`ACCESSIBLE_BACKEND_TARGET=laravel`, `TENANT_ID=2`, and
-`SMOKE_TIMEOUT_MS=240000`. The base smoke covered auth, cookie POSTs,
-login/logout, gated statuses, redirects, and content types; module chunks
-`1/8` through `8/8` covered 279 module-page checks; body-text chunks `1/8`
-through `8/8` covered 283 body-text checks. The recertification also fixed
-signed `/feed/item/listing/{id}` token refresh after long live runs and updated
-the root marker to the tenant chooser copy `Choose a community`.
+Latest broad live evidence: chunked Laravel runtime smoke has been recertified
+against Laravel `http://127.0.0.1:8088` and tenant-correct temporary Web UK
+processes started with `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`.
+The current default scope is `633` checks: `280` module-page checks, `282`
+body-text contract checks, 23 gated-status checks, 14 unsigned auth-required
+redirect checks, 3 unsigned login redirects, 19 signed redirects, 2 content-type
+checks, 3 cookie-consent POST workflows, logout, and the 6 auth/health checks.
+The 2026-07-10 clubs correction moved the local `hour-timebank` no-active-club
+fixture from a 2xx module/body-text page to signed gated `/clubs` `404`,
+matching Laravel's active-club gate.
 
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
@@ -57,7 +57,7 @@ pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 Laravel, plus the signed public auth aliases `/login`,
 `/login/forgot-password`, `/password/reset?token=reset-token`, `/register`, and
 the signed module pages `/explore`, `/saved`, `/notifications`,
-`/members`, `/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`,
+`/members`, `/members/discover`, `/resources`, `/skills`, `/goals`,
 `/wallet`, `/messages`, `/connections`, `/connections/network`, `/matches`,
 `/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
 `/nexus-score`, `/profile/settings`,
@@ -74,7 +74,8 @@ parameterised pages (`/federation/listings/1/1`, `/federation/partners/1`,
 `/podcasts/1/episodes/1`, `/resources/1/download`, `/users/1/collections`,
 `/marketplace/slots/1/edit`, `/me/collections/1`,
 `/search/saved/1/delete`, and `/volunteering/certificates/ABC123/download`)
-redirect to `/login?status=auth-required`. The harness
+redirect to `/login?status=auth-required`, and signed gated `/clubs` returns
+`404` for the local no-active-club fixture. The harness
 defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
@@ -598,13 +599,13 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; the current default smoke scope has `281` module-page checks and `283`
-body-text contract checks.
-The default scope now contains `634` checks:
-`281`
+0; after the 2026-07-10 clubs no-active-club correction, the current default
+smoke scope has `280` module-page checks and `282` body-text contract checks.
+The default scope now contains `633` checks:
+`280`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
+content-type contract checks, 282 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
@@ -651,10 +652,11 @@ The `/explore` page is a protected Laravel-backed candidate. It redirects
 unsigned visitors to `/login?status=auth-required`, calls Laravel
 `/api/v2/explore`, renders the Blade Explore card list, and shows live listing
 and event sections when the aggregate response includes them. Tenant feature
-gating, exact recent-listing source parity, clubs detection, localization, and
-deeper runtime behavior are not certified; the signed `/explore` page is
-covered by the default Laravel runtime smoke and default `Explore` body-marker
-contract check.
+gating, exact recent-listing source parity, live disabled-tenant broker
+workflow proof, localization, and deeper runtime behavior are not certified.
+The signed `/explore` page is covered by the default Laravel runtime smoke and
+default `Explore` body-marker contract check, and its Clubs card now uses
+Laravel-backed active-club evidence rather than a static flag.
 
 The public `/kb` and `/kb/{id}` pages are Laravel-backed knowledge-base
 candidates. They read Laravel `/api/v2/kb`, `/api/v2/kb/search`, and

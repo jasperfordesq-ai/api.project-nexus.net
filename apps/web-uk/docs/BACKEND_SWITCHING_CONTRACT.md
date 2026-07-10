@@ -679,8 +679,9 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; the current default smoke scope has `281` module-page checks and `283`
-body-text contract checks. Review action redirects for auth-required, create,
+0; after the 2026-07-10 clubs no-active-club correction, the current default
+smoke scope has `280` module-page checks and `282` body-text contract checks.
+Review action redirects for auth-required, create,
 comment, reaction, Laravel-401 outcomes, and delete-review review-index status
 results now use `res.locals.urlFor`; any future ASP.NET backend mode must
 preserve those tenant-aware redirect targets rather than returning flat
@@ -689,24 +690,27 @@ payloads.
 `/dashboard` now carries stable body-text checks for
 `Welcome back`, `Your time bank`, `Quick links`, `Recent feed`, and `Recent
 listings`.
-The default scope now contains `634` checks:
-`281`
+The default scope now contains `633` checks:
+`280`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
+content-type contract checks, 282 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
 On 2026-07-09, the same full default scope was recertified against a dedicated
 local Web UK process at `WEB_UK_BASE_URL=http://127.0.0.1:6510`, started with
 `TENANT_ID=2`, `ACCESSIBLE_BACKEND_TARGET=laravel`, and
-`LARAVEL_BASE_URL=http://127.0.0.1:8088`. Because the local all-in-one command
+`LARAVEL_BASE_URL=http://127.0.0.1:8088`. A 2026-07-10 follow-up corrected the
+current default scope so the local `hour-timebank` no-active-club fixture checks
+signed `/clubs` as gated `404` rather than as a 2xx module/body-text page.
+Because the local all-in-one command
 can mix slow Laravel page sweeps with stateful gated checks, the certification
-was split by bucket: `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8` covered all
-`281` module-page checks, `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`
-covered all `283` body-text checks, and explicit core groups covered the 14
+is split by bucket: `SMOKE_MODULE_PAGE_CHUNK=1/8` through `8/8` covers all
+`280` module-page checks, `SMOKE_BODY_TEXT_PAGE_CHUNK=1/8` through `8/8`
+covers all `282` body-text checks, and explicit core groups cover the 14
 unsigned auth-required redirects, 3 unsigned login redirects, 2 content-type
-checks, 22 signed gated-status checks, 19 signed redirects, 3 cookie-consent
-POST workflows, logout, and the base Laravel/API/auth checks. All bucketed
+checks, 23 signed gated-status checks, 19 signed redirects, 3 cookie-consent
+POST workflows, logout, and the base Laravel/API/auth checks. The bucketed
 runs exited `0` with no failed checks. This is Laravel-runtime evidence only;
 it does not certify ASP.NET backend switching.
 While recertifying the chunked scope on 2026-07-08, the Laravel E2E fixture
@@ -761,7 +765,8 @@ web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:6251`, started with
 web-uk health, unsigned auth redirects, login CSRF, login POST to `/dashboard`,
 signed `/account`, logout POST clearing the session, no-JS cookie POST
 workflows, content-type contracts, 22 signed gated `403` checks, and 21 signed
-redirect checks. A full default 634-check run exceeded the 15-minute command
+redirect checks. That historical scope is superseded by the current 633-check
+scope after `/clubs` moved to signed gated `404`. The historical full default run exceeded the 15-minute command
 wrapper after progressing through module pages and into body-text checks; use
 `SMOKE_MODULE_PAGE_CHUNK=N/M`, `SMOKE_BODY_TEXT_PAGE_CHUNK=N/M`, or targeted
 smoke scopes for full local recertification.
