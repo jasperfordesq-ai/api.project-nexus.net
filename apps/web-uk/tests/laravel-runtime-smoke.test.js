@@ -231,7 +231,6 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/goals', 'Goals'],
       ['/group-exchanges', 'Start a group exchange'],
       ['/group-exchanges/new', 'How are the hours shared out?'],
-      ['/clubs', 'Clubs'],
       ['/saved', 'Saved items'],
       ['/members', 'Community members'],
       ['/members/discover', 'Recommended members'],
@@ -504,7 +503,6 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/resources',
       '/skills',
       '/goals',
-      '/clubs',
       '/wallet',
       '/messages',
       '/connections',
@@ -804,35 +802,37 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
-    const signedGatedPages = new Set([
-      '/coupons',
-      '/jobs/bias-audit',
-      '/jobs/talent-search',
-      '/events/6/edit',
-      '/events/14/edit',
-      '/groups/484/announcements/1/edit',
-      '/jobs/90764/edit',
-      '/jobs/90764/analytics',
-      '/jobs/90764/pipeline',
-      '/jobs/90764/applications',
-      '/courses/instructor/1/analytics',
-      '/courses/instructor/1/grading',
-      '/listings/42/analytics',
-      '/listings/90967/analytics',
-      '/jobs/talent-search/77',
-      '/group-exchanges/1',
-      '/messages/groups/33',
-      '/resources/10/delete',
-      '/coupons/1',
-      '/coupons/2',
-      '/marketplace/coupons',
-      '/marketplace/coupons/5/edit'
+    const signedGatedPages = new Map([
+      ['/coupons', 403],
+      ['/jobs/bias-audit', 403],
+      ['/jobs/talent-search', 403],
+      ['/events/6/edit', 403],
+      ['/events/14/edit', 403],
+      ['/groups/484/announcements/1/edit', 403],
+      ['/jobs/90764/edit', 403],
+      ['/jobs/90764/analytics', 403],
+      ['/jobs/90764/pipeline', 403],
+      ['/jobs/90764/applications', 403],
+      ['/courses/instructor/1/analytics', 403],
+      ['/courses/instructor/1/grading', 403],
+      ['/listings/42/analytics', 403],
+      ['/listings/90967/analytics', 403],
+      ['/jobs/talent-search/77', 403],
+      ['/group-exchanges/1', 403],
+      ['/messages/groups/33', 403],
+      ['/resources/10/delete', 403],
+      ['/clubs', 404],
+      ['/coupons/1', 403],
+      ['/coupons/2', 403],
+      ['/marketplace/coupons', 403],
+      ['/marketplace/coupons/5/edit', 403]
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
       const expectedToken = gatedRequiresFreshLogin ? `token=signed-token-${loginCount}` : 'token=signed-token';
       if ((req.headers.cookie || '').includes(expectedToken)) {
-        res.writeHead(403, { 'content-type': 'text/html' });
-        res.end('<h1>Forbidden</h1>');
+        const status = signedGatedPages.get(req.url);
+        res.writeHead(status, { 'content-type': 'text/html' });
+        res.end(status === 404 ? '<h1>Page not found</h1>' : '<h1>Forbidden</h1>');
         return;
       }
 
@@ -1055,6 +1055,18 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/events/6/recurring-edit', location: '/events/6/edit' },
       { path: '/groups/484/edit', location: '/groups/484' }
+    ]));
+  });
+
+  it('treats the no-active-club fixture as a gated 404 instead of a 2xx module page', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).not.toContain('/clubs');
+    expect(options.bodyTextPagePaths).not.toEqual(expect.arrayContaining([
+      { path: '/clubs', text: 'Clubs' }
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/clubs', status: 404 }
     ]));
   });
 
@@ -1361,7 +1373,6 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/goals', text: 'Goals' },
       { path: '/group-exchanges', text: 'Start a group exchange' },
       { path: '/group-exchanges/new', text: 'How are the hours shared out?' },
-      { path: '/clubs', text: 'Clubs' },
       { path: '/saved', text: 'Saved items' },
       { path: '/members', text: 'Community members' },
       { path: '/members/discover', text: 'Recommended members' },
@@ -1829,7 +1840,6 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-resources-renders': true,
       'module-page-skills-renders': true,
       'module-page-goals-renders': true,
-      'module-page-clubs-renders': true,
       'module-page-wallet-renders': true,
       'module-page-messages-renders': true,
       'module-page-connections-renders': true,
@@ -2001,6 +2011,7 @@ describe('Laravel runtime smoke harness', () => {
       'gated-page-group-exchanges-1-returns-403': true,
       'gated-page-messages-groups-33-returns-403': true,
       'gated-page-resources-10-delete-returns-403': true,
+      'gated-page-clubs-returns-404': true,
       'gated-page-coupons-1-returns-403': true,
       'gated-page-coupons-2-returns-403': true,
       'module-page-legal-renders': true,
@@ -2065,6 +2076,7 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-group-exchanges-1-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-messages-groups-33-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-resources-10-delete-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-clubs-returns-404'].status).toBe(404);
     expect(checkByName['gated-page-coupons-1-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-coupons-2-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
@@ -2200,7 +2212,6 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-goals-contains-goals': true,
       'body-text-page-group-exchanges-contains-start-a-group-exchange': true,
       'body-text-page-group-exchanges-new-contains-how-are-the-hours-shared-out': true,
-      'body-text-page-clubs-contains-clubs': true,
       'body-text-page-saved-contains-saved-items': true,
       'body-text-page-members-contains-community-members': true,
       'body-text-page-members-discover-contains-recommended-members': true,

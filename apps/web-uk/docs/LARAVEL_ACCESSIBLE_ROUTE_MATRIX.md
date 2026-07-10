@@ -61,8 +61,13 @@ Module chunks `1/8` through `8/8` covered all `281` module checks, body chunks
 `1/8` through `8/8` covered all `283` body-text checks, and split core buckets
 covered unsigned redirects, content types, all `22` gated statuses, all `19`
 signed redirects, cookie POSTs, logout, and base auth/health with no failed
-checks. This is runtime evidence only; it does not prove visual/manual Blade
-parity or ASP.NET backend switching.
+checks. On 2026-07-10, the smoke defaults were corrected so the local
+`hour-timebank` no-active-club fixture checks `/clubs` as a signed gated `404`
+instead of a 2xx module/body-text page. The current default scope is therefore
+`633` checks: `280` module checks, `282` body-text checks, and `23`
+gated-status checks, with the other buckets unchanged. This is runtime
+evidence only; it does not prove visual/manual Blade parity or ASP.NET backend
+switching.
 
 The Explore route has additional source-level parity coverage beyond static
 method/path matching: its shared card list now consumes tenant bootstrap
@@ -1183,19 +1188,19 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; the current default smoke scope has `281` module-page checks and `283`
-body-text contract checks.
+0; after the 2026-07-10 clubs no-active-club correction, the current default
+smoke scope has `280` module-page checks and `282` body-text contract checks.
 A follow-up focused saved source-helper smoke on 2026-07-09 against temporary
 in-process Web UK `http://127.0.0.1:50823`, Laravel
 `http://127.0.0.1:8088`, and `TENANT_ID=2` passed `16/16` checks: the base
 API/health, cookie, login, account, and logout checks plus signed `/saved`,
 `/me/collections`, and `/users/14/appreciations` module rendering and body
 markers `Saved items`, `My collections`, and `Appreciation`.
-The default scope now contains `634` checks:
-`281`
+The default scope now contains `633` checks:
+`280`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
+content-type contract checks, 282 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
 Parameterised matched GET route shapes without default runtime smoke coverage

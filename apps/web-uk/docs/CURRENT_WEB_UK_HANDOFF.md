@@ -546,7 +546,7 @@ slice:
 - `npm --prefix apps/web-uk test -- --runTestsByPath tests/laravel-prep-pages.test.js --runInBand` first failed because the loader still registered a matched `/matched` GET row as a preparation page, then passed after filtering to `status: "missing"`.
 - `node -e "const r=require('./apps/web-uk/src/routes/laravel-prep-pages'); console.log(r.prepPages.length)"` reported `0` current runtime preparation pages.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes after the loader cleanup.
-- A scoped live `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, with module/page sweeps disabled, passed 10/10 checks for Laravel API reachability, Web UK health, cookie-consent POST workflows, login CSRF, login POST, signed `/account`, and logout. This is core runtime proof only, not the required full 634-check smoke.
+- A scoped live `npm --prefix apps/web-uk run smoke:laravel` against Web UK `http://127.0.0.1:5180` and Laravel `http://127.0.0.1:8088`, with module/page sweeps disabled, passed 10/10 checks for Laravel API reachability, Web UK health, cookie-consent POST workflows, login CSRF, login POST, signed `/account`, and logout. This is core runtime proof only, not the required full default smoke.
 
 Latest full default Laravel runtime-smoke recertification on 2026-07-09:
 
@@ -573,6 +573,11 @@ Latest full default Laravel runtime-smoke recertification on 2026-07-09:
   session sequence and the focused/split gated smoke returned the Laravel-truth
   `403`. Use the chunked/bucketed shape above for current full-scope local
   certification rather than treating an unchunked wrapper run as authoritative.
+- 2026-07-10 smoke-scope correction: `/clubs` now follows the documented local
+  `hour-timebank` no-active-club fixture and is checked as a signed gated `404`
+  rather than as a 2xx module/body-text page. The current default scope is
+  `633` checks: `280` module-page checks, `282` body-text contract checks, and
+  `23` gated-status checks, with the other buckets unchanged.
 
 Latest focused visual/manual Blade spot-check on 2026-07-09 for the tenant
 home shell and footer meta:
@@ -2266,15 +2271,16 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; the current default smoke scope has `281` module-page checks and `283`
-body-text contract checks. `/dashboard` now carries stable body-text checks for
+0; after the 2026-07-10 clubs no-active-club correction, the current default
+smoke scope has `280` module-page checks and `282` body-text contract checks.
+`/dashboard` now carries stable body-text checks for
 `Welcome back`, `Your time bank`, `Quick links`, `Recent feed`, and `Recent
 listings`.
-The default scope now contains `634` checks:
-`281`
+The default scope now contains `633` checks:
+`280`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 22 gated-status checks, and 19 signed redirect checks, plus 2
-content-type contract checks, 283 body-text contract checks, 3 cookie-consent
+redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
+content-type contract checks, 282 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
