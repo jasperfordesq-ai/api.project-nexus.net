@@ -10,6 +10,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Token refresh locks keyed by refresh token to prevent concurrent refresh attempts
 // without leaking one user's result to another
 const refreshLocks = new Map();
+const AUTH_REQUIRED_LOGIN_PATH = '/login?status=auth-required';
 
 // Helper to set auth cookies
 function setAuthCookies(res, accessToken, refreshTokenValue, tenantSlug = '') {
@@ -80,12 +81,12 @@ async function requireAuth(req, res, next) {
       refreshLocks.delete(tokenKey);
       // Refresh failed - clear cookies and redirect to login
       clearAuthCookies(res);
-      return redirectTo(res, '/login');
+      return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
     }
   }
 
   if (!token) {
-    return redirectTo(res, '/login');
+    return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
   }
 
   req.token = token;
@@ -129,13 +130,13 @@ function withTokenRefresh(handler) {
           } catch {
             // Refresh failed - clear cookies and redirect
             clearAuthCookies(res);
-            return redirectTo(res, '/login');
+            return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
           }
         }
 
         // No refresh token - redirect to login
         clearAuthCookies(res);
-        return redirectTo(res, '/login');
+        return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
       }
 
       // Not a 401 error - pass to error handler

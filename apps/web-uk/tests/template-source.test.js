@@ -43,6 +43,32 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps core event forms on the Laravel datetime and cancellation contracts', () => {
+    const createTemplate = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'events', 'new.njk'),
+      'utf8'
+    );
+    const editTemplate = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'events', 'edit.njk'),
+      'utf8'
+    );
+    const detailTemplate = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'events', 'detail.njk'),
+      'utf8'
+    );
+    const formSource = `${createTemplate}\n${editTemplate}`;
+
+    expect(formSource).toContain('name: "start_time"');
+    expect(formSource).toContain('name: "end_time"');
+    expect(formSource).not.toMatch(/name(?:=|:)\s*"(?:starts_at|ends_at)_(?:date|time)"/);
+    expect(formSource).toMatch(/id: "description"[\s\S]*?"required": "required"/);
+    expect(detailTemplate).toContain('event.start_time');
+    expect(detailTemplate).toContain('event.end_time');
+    expect(detailTemplate).toContain('name="reason"');
+    expect(detailTemplate).toContain("t(\"events.cancel_reason_label\")");
+    expect(detailTemplate).toContain("urlFor('/events/' + (event.id | string) + '/cancel')");
+  });
+
   it('keeps event depth controls behind urlFor()', () => {
     const templates = [
       path.join('events', 'browse.njk'),
@@ -797,6 +823,30 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/groups/);
   });
 
+  it('keeps group deletion visible without JavaScript and group results cursor-backed', () => {
+    const index = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'groups', 'index.njk'),
+      'utf8'
+    );
+    const edit = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'groups', 'edit.njk'),
+      'utf8'
+    );
+    const detail = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'groups', 'detail.njk'),
+      'utf8'
+    );
+
+    expect(edit).toContain('id="confirm-delete" name="confirm" type="checkbox" value="yes" required');
+    expect(edit).toContain('t("groups.delete.warning")');
+    expect(edit).toContain("urlFor('/groups/' + (group.id | string) + '/delete')");
+    expect(edit).not.toContain('onsubmit="return confirm');
+    expect(detail).not.toContain('onsubmit="return confirm');
+    expect(detail).not.toContain("'/delete')");
+    expect(index).toContain('pagination.hasMore and pagination.cursor');
+    expect(index).toContain('(pagination.cursor | urlencode)');
+  });
+
   it('keeps resource browse, library, upload, delete, and discussion controls behind urlFor()', () => {
     const templates = [
       path.join('resources', 'index.njk'),
@@ -1225,7 +1275,8 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).not.toContain('value="{{ notificationLink }}"');
     expect(template).not.toContain('href: "/notifications"');
     expect(template).toMatch(/urlFor\(["']\/notifications/);
-    expect(template).toContain('value="{{ urlFor(notificationLink) }}"');
+    expect(template).toContain('href="{{ urlFor(notificationLink) }}"');
+    expect(template).not.toContain('name="redirect"');
   });
 
   it('keeps notification route redirects behind the active tenant URL helper', () => {

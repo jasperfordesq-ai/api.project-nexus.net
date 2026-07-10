@@ -26,7 +26,7 @@
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Create a group</h1>
+      <h1 class="govuk-heading-xl">{{ t("groups.create.title") }}</h1>
 
       <form method="post" action="{{ urlFor('/groups/new') }}" novalidate data-validate-form>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -47,11 +47,11 @@
 
         {{ govukTextarea({
           label: {
-            text: "Description",
+            text: t("groups.create.description_label"),
             classes: "govuk-label--m"
           },
           hint: {
-            text: "Describe what the group is about (optional)"
+            text: t("groups.create.description_hint")
           },
           id: "description",
           name: "description",
@@ -59,26 +59,39 @@
           value: values.description if values else ""
         }) }}
 
+        {{ govukInput({
+          label: {
+            text: t("polish_groups.location_label"),
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: t("polish_groups.location_hint")
+          },
+          id: "location",
+          name: "location",
+          value: values.location if values else "",
+          attributes: { maxlength: "255" }
+        }) }}
+
         {{ govukRadios({
-          name: "is_private",
+          name: "visibility",
           fieldset: {
             legend: {
-              text: "Group visibility",
+              text: t("groups.create.visibility_legend"),
               classes: "govuk-fieldset__legend--m"
             }
           },
+          hint: { text: t("groups.create.visibility_hint") },
           items: [
             {
-              value: "false",
-              text: t("groups.visibility_public"),
-              hint: { text: "Anyone can find and join this group" },
-              checked: not values or values.is_private != 'true'
+              value: "public",
+              text: t("groups.create.visibility_public_label"),
+              checked: not values or values.visibility != 'private'
             },
             {
-              value: "true",
-              text: "Private",
-              hint: { text: "Only admins can add members" },
-              checked: values.is_private == 'true' if values else false
+              value: "private",
+              text: t("groups.create.visibility_private_label"),
+              checked: values.visibility == 'private' if values else false
             }
           ]
         }) }}

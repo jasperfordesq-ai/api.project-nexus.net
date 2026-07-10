@@ -5,6 +5,12 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
+  {% if errorMessage %}
+    {% set notificationMessage = errorMessage %}
+    {% set notificationType = null %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
   {% if status == 'connection-accepted' or status == 'connection-declined' or status == 'connection-removed' %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="conn-net-status-title">
       <div class="govuk-notification-banner__header">

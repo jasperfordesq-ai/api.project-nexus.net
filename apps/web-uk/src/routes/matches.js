@@ -9,15 +9,8 @@ const { callMatchesApi, dismissMatch, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
-const MATCH_REASONS = new Set(['not_relevant', 'too_far', 'already_done', 'not_interested', 'other']);
+const MATCH_REASONS = new Set(['not_relevant', 'too_far', 'already_done', 'not_my_skills', 'not_interested', 'other']);
 const BOARD_SOURCES = new Set(['all', 'listing', 'group', 'volunteering', 'event']);
-const SOURCE_MODULES = {
-  all: ['listings', 'groups', 'volunteering', 'events'],
-  listing: ['listings'],
-  group: ['groups'],
-  volunteering: ['volunteering'],
-  event: ['events']
-};
 const SOURCE_LABELS = {
   all: 'All matches',
   listing: 'Listings',
@@ -60,13 +53,16 @@ function dataFrom(result) {
   return result && Object.prototype.hasOwnProperty.call(result, 'data') ? result.data : result;
 }
 
-function matchesFrom(result) {
+function payloadFrom(result) {
   const data = dataFrom(result);
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.matches)) return data.matches;
-  if (data && data.data && Array.isArray(data.data.matches)) return data.data.matches;
-  if (data && Array.isArray(data.data)) return data.data;
-  return [];
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.matches)) {
+    throw new ApiError('Laravel did not return the matches response envelope', 502, result);
+  }
+
+  return {
+    matches: data.matches,
+    meta: data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta) ? data.meta : {}
+  };
 }
 
 function percentFrom(value) {
@@ -102,6 +98,16 @@ function normalizeMatch(match = {}) {
   const organizationId = Number(match.organization_id || match.organizationId || 0) || 0;
   const pct = percentFrom(match.pct ?? match.match_score ?? match.matchScore ?? match.score);
 
+  const href = module === 'listing' && listingId
+    ? `/listings/${listingId}`
+    : module === 'group' && groupId
+      ? `/groups/${groupId}`
+      : module === 'event' && eventId
+        ? `/events/${eventId}`
+        : module === 'volunteering' && organizationId
+          ? `/organisations/${organizationId}`
+          : '';
+
   return {
     id: match.id || listingId || groupId || eventId || organizationId,
     module,
@@ -110,6 +116,7 @@ function normalizeMatch(match = {}) {
     groupId,
     eventId,
     organizationId,
+    href,
     title: trimmed(match.title, 'View match'),
     description: trimmed(match.description),
     type: match.type === 'request' ? 'request' : 'offer',
@@ -143,11 +150,14 @@ function statsFor(matches) {
   };
 }
 
-function matchesApiPath(limit, source = 'all') {
+function matchesApiPath(limit) {
   const params = new URLSearchParams();
   params.set('limit', String(limit));
-  params.set('modules', (SOURCE_MODULES[source] || SOURCE_MODULES.all).join(','));
   return `/all?${params.toString()}`;
+}
+
+function visibleMatches(matches, source) {
+  return source === 'all' ? matches : matches.filter((match) => match.module === source);
 }
 
 function matchesStatusMessage(status) {
@@ -164,8 +174,18 @@ function boardStatusMessage(status) {
 
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const activeSource = sourceFromQuery(req.query);
-  const result = await callMatchesApi(req.token, 'GET', matchesApiPath(30, activeSource));
-  const matches = matchesFrom(result).map(normalizeMatch);
+  let matches = [];
+  let matchMeta = {};
+  let errorMessage = null;
+
+  try {
+    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(30)));
+    matches = visibleMatches(payload.matches.map(normalizeMatch), activeSource);
+    matchMeta = payload.meta;
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    errorMessage = 'Sorry, there is a problem loading your matches. Please try again.';
+  }
   const stats = statsFor(matches);
 
   res.render('matches/index', {
@@ -173,43 +193,57 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     activeSource,
     sourceLabels: SOURCE_LABELS,
     matches,
+    matchMeta,
+    errorMessage,
     stats,
     statusMessage: matchesStatusMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-}));
+}, { redirectOn401: '/login?status=auth-required' }));
 
 router.get('/board', requireAuth, asyncRoute(async (req, res) => {
   const activeSource = sourceFromQuery(req.query);
-  const result = await callMatchesApi(req.token, 'GET', matchesApiPath(50, 'all'));
-  const matches = matchesFrom(result).map(normalizeMatch);
+  let matches = [];
+  let matchMeta = {};
+  let errorMessage = null;
+
+  try {
+    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(50)));
+    matches = payload.matches.map(normalizeMatch);
+    matchMeta = payload.meta;
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    errorMessage = 'Sorry, there is a problem loading your matches. Please try again.';
+  }
   const stats = statsFor(matches);
-  const visibleMatches = activeSource === 'all'
-    ? matches
-    : matches.filter((match) => match.module === activeSource);
+  const filteredMatches = visibleMatches(matches, activeSource);
 
   res.render('matches/board', {
     title: 'Your matches',
     activeSource,
     sourceLabels: SOURCE_LABELS,
-    matches: visibleMatches,
+    matches: filteredMatches,
+    matchMeta,
+    errorMessage,
     stats,
     statusMessage: boardStatusMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-}));
+}, { redirectOn401: '/login?status=auth-required' }));
 
 router.post('/:id(\\d+)/dismiss', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
+  let status = 'match-dismissed';
 
   try {
     await dismissMatch(req.token, id, reasonFrom(req.body));
   } catch (error) {
     if (isAuthError(error)) throw error;
+    status = 'match-dismiss-failed';
   }
 
-  return redirectTo(res, '/matches?status=match-dismissed');
-}));
+  return redirectTo(res, `/matches?status=${status}`);
+}, { redirectOn401: '/login?status=auth-required' }));
 
 router.post('/board/:listingId(\\d+)/dismiss', requireAuth, asyncRoute(async (req, res) => {
   const listingId = Number(req.params.listingId);
@@ -223,6 +257,6 @@ router.post('/board/:listingId(\\d+)/dismiss', requireAuth, asyncRoute(async (re
   }
 
   return redirectTo(res, `/matches/board?source=${sourceFrom(req.body)}&status=${status}#matches-top`);
-}));
+}, { redirectOn401: '/login?status=auth-required' }));
 
 module.exports = router;

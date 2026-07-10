@@ -20,11 +20,29 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Community members</h1>
+      <span class="govuk-caption-l">{{ t("members.caption", { community: communityName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("members.title") }}</h1>
+      <p class="govuk-body-l">{{ t("members.description") }}</p>
 
-      <p class="govuk-body">Browse members of your community and send connection requests.</p>
+      {% if requiresAuth %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="members-auth-required-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="members-auth-required-title">{{ t("states.error_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ t("states.auth_required") }}</p>
+            <p class="govuk-body">{{ t("members.auth_required_detail", { community: communityName }) }}</p>
+            <div class="govuk-button-group">
+              {{ govukButton({ text: t("nav.login"), href: urlFor('/login') }) }}
+              {{ govukButton({ text: t("nav.register"), href: urlFor('/register'), classes: "govuk-button--secondary" }) }}
+            </div>
+          </div>
+        </div>
+      {% else %}
 
       <form action="{{ urlFor('/members') }}" method="get" class="govuk-!-margin-bottom-6">
+        {% if sort != 'name' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+        {% if order != 'ASC' %}<input type="hidden" name="order" value="{{ order }}">{% endif %}
         <div class="app-search-form">
           {{ govukInput({
             id: "search",
@@ -64,7 +82,7 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">Name</th>
-              <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
+              <th scope="col" class="govuk-table__header">Location</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Actions</th>
             </tr>
@@ -77,12 +95,12 @@
                   <div class="app-member-cell">
                     {% include "partials/avatar.njk" %}
                     <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
-                      {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+                      {% if user.name %}{{ user.name }}{% else %}{{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}{% endif %}
                     </a>
                   </div>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ user.email }}
+                  {{ user.location or "Not provided" }}
                 </td>
                 <td class="govuk-table__cell">
                   {% if conn %}
@@ -132,9 +150,11 @@
           baseUrl: urlFor("/members"),
           page: pagination.page,
           totalPages: pagination.totalPages or pagination.total_pages,
-          queryParams: { search: searchQuery }
+          queryParams: { search: searchQuery, sort: sort if sort != 'name' else '', order: order if order != 'ASC' else '' }
         } %}
         {% include "partials/pagination.njk" %}
+      {% endif %}
+
       {% endif %}
 
     </div>

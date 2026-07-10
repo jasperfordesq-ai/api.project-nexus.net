@@ -44,6 +44,14 @@ jest.mock('../src/lib/api', () => ({
     }
   }),
   getPlatformStats: jest.fn().mockResolvedValue({ data: {} }),
+  getRegistrationInfo: jest.fn().mockResolvedValue({
+    data: {
+      registration_mode: 'open',
+      requires_invite_code: false,
+      is_closed: false,
+      can_register: true
+    }
+  }),
   getProfile: jest.fn(),
   getNotificationUnreadCount: jest.fn(),
   getUnreadCount: jest.fn(),

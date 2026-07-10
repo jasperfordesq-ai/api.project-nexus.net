@@ -24,50 +24,67 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      {% if status == "marked-read" or status == "notification-deleted" or status == "notification-marked-read" or status == "all-notifications-deleted" or status == "group-marked-read" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="notification-status-title" data-module="govuk-notification-banner">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="notification-status-title">{{ t("states.success_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ t("notifications.states." + status) }}</p>
+          </div>
+        </div>
+      {% endif %}
+
       <h1 class="govuk-heading-xl">
-        Notifications
+        {{ t("notifications.title") }}
         {% if unreadCount > 0 %}
-          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ unreadCount }} unread</span>
+          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ t("notifications.unread_count", { count: unreadCount }) }}</span>
         {% endif %}
       </h1>
 
       <div class="govuk-!-margin-bottom-6">
         <div class="app-notification-filters">
-          <a href="{{ urlFor('/notifications') }}" class="govuk-link{% if not showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">All</a>
+          <a href="{{ urlFor('/notifications') }}" class="govuk-link govuk-link--no-visited-state{% if not showUnreadOnly %} govuk-!-font-weight-bold{% endif %}"{% if not showUnreadOnly %} aria-current="page"{% endif %}>{{ t("notifications.all_filter") }}</a>
           <span class="govuk-!-margin-left-2 govuk-!-margin-right-2">|</span>
-          <a href="{{ urlFor('/notifications?unread_only=true') }}" class="govuk-link{% if showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">Unread only</a>
+          <a href="{{ urlFor('/notifications?filter=unread') }}" class="govuk-link govuk-link--no-visited-state{% if showUnreadOnly %} govuk-!-font-weight-bold{% endif %}"{% if showUnreadOnly %} aria-current="page"{% endif %}>{{ t("notifications.unread_filter") }}{% if unreadCount > 0 %} ({{ unreadCount }}){% endif %}</a>
         </div>
 
         {% if unreadCount > 0 %}
           <form method="post" action="{{ urlFor('/notifications/read-all') }}" class="govuk-!-margin-top-3" style="display: inline">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">
-              Mark all as read
+              {{ t("notifications.mark_all_read") }}
             </button>
           </form>
+        {% endif %}
+
+        {% if notifications and notifications.length > 0 %}
+          <details class="govuk-details govuk-!-margin-top-3" data-module="govuk-details">
+            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("notifications.delete_all") }}</span></summary>
+            <div class="govuk-details__text">
+              <div class="govuk-warning-text">
+                <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                <strong class="govuk-warning-text__text"><span class="govuk-warning-text__assistive">{{ t("states.warning_prefix") }}</span> {{ t("notifications.delete_all_warning") }}</strong>
+              </div>
+              <form method="post" action="{{ urlFor('/notifications/delete-all') }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("polish_discovery.notifications_delete_confirm_button") }}</button>
+              </form>
+            </div>
+          </details>
         {% endif %}
       </div>
 
       {% if notifications and notifications.length > 0 %}
         <ul class="govuk-list app-notification-list">
           {% for notification in notifications %}
-            {% set notificationData = notification.data | parseJson if notification.data else {} %}
-            {% set notificationLink = null %}
+            {% set notificationLink = notification.link if notification.link else null %}
+            {% set isGrouped = notification.is_grouped and (notification.group_count or 0) > 1 %}
+            {% set notificationUnread = not notification.read_at %}
+            {% set notificationText = notification.message or notification.body or notification.title or '' %}
+            {% set notificationWhen = notification.latest_at or notification.created_at %}
 
-            {# Determine link based on notification type #}
-            {% if notification.type == 'connection_request' %}
-              {% set notificationLink = '/connections/network?tab=pending_received' %}
-            {% elif notification.type == 'connection_accepted' %}
-              {% set notificationLink = '/members/' + (notificationData.userId or notificationData.user_id or '') if notificationData.userId or notificationData.user_id else '/connections' %}
-            {% elif notification.type == 'connection_declined' %}
-              {% set notificationLink = '/connections' %}
-            {% elif notification.type == 'message_received' %}
-              {% set notificationLink = '/messages/' + (notificationData.conversationId or notificationData.conversation_id or '') if notificationData.conversationId or notificationData.conversation_id else '/messages' %}
-            {% elif notification.type == 'transfer_received' %}
-              {% set notificationLink = '/wallet#transactions' %}
-            {% endif %}
-
-            <li class="app-notification-item{% if not (notification.isRead or notification.is_read) %} app-notification-item--unread{% endif %}">
+            <li class="app-notification-item{% if notificationUnread %} app-notification-item--unread{% endif %}">
               <div class="app-notification-content">
                 <div class="app-notification-icon app-notification-icon--{{ notification.type }}">
                   {% if notification.type == 'connection_request' %}
@@ -87,52 +104,61 @@
 
                 <div class="app-notification-body">
                   <p class="govuk-body govuk-!-margin-bottom-1">
-                    <strong class="govuk-!-font-weight-bold">{{ notification.title or notification.message or 'Notification' }}</strong>
-                    {% if not (notification.isRead or notification.is_read) %}
+                    {% if notificationLink %}
+                      <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(notificationLink) }}"><strong class="govuk-!-font-weight-bold">{{ notificationText }}</strong></a>
+                    {% else %}
+                      <strong class="govuk-!-font-weight-bold">{{ notificationText }}</strong>
+                    {% endif %}
+                    {% if isGrouped %}<span class="govuk-tag govuk-tag--purple">{{ t("notifications.group_tag", { count: notification.group_count or 1 }) }}</span>{% endif %}
+                    {% if notificationUnread %}
                       <span class="govuk-tag govuk-tag--blue app-notification-badge">{{ t("notifications.new_tag") }}</span>
                     {% endif %}
                   </p>
-                  <p class="govuk-body-s govuk-!-margin-bottom-1">{{ notification.body or notification.content or '' }}</p>
+                  {% if isGrouped and notification.actors and notification.actors.length > 0 %}
+                    {% set actorNames = notification.actors | join(", ", "name") %}
+                    <p class="govuk-body-s govuk-!-margin-bottom-1">
+                      {% if (notification.remaining_count or 0) > 0 %}
+                        {{ t("notifications.actors_and_more", { names: actorNames, count: notification.remaining_count }) }}
+                      {% else %}
+                        {{ t("notifications.actors_label", { names: actorNames }) }}
+                      {% endif %}
+                    </p>
+                  {% endif %}
                   <p class="govuk-body-s govuk-!-margin-bottom-0 app-notification-time">
-                    {{ (notification.createdAt or notification.created_at) | formatDate if (notification.createdAt or notification.created_at) else '' }}
+                    {{ notificationWhen | formatDate if notificationWhen else '' }}
                   </p>
                 </div>
 
                 <div class="app-notification-actions">
-                  {% if notificationLink %}
-                    <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/read') }}" style="display: inline">
+                  {% if isGrouped and notificationUnread and notification.group_key %}
+                    <form method="post" action="{{ urlFor('/notifications/group/read') }}" style="display: inline">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <input type="hidden" name="redirect" value="{{ urlFor(notificationLink) }}">
-                      <button type="submit" class="govuk-link app-link-button">
-                        {% if not (notification.isRead or notification.is_read) %}View{% else %}Go to{% endif %}
-                      </button>
+                      <input type="hidden" name="group_key" value="{{ notification.group_key }}">
+                      <button type="submit" class="govuk-link app-link-button">{{ t("notifications.mark_group_read") }}</button>
                     </form>
-                  {% elif not (notification.isRead or notification.is_read) %}
+                  {% elif not isGrouped and notificationUnread %}
                     <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/read') }}" style="display: inline">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <button type="submit" class="govuk-link app-link-button">Mark read</button>
+                      <button type="submit" class="govuk-link app-link-button">{{ t("notifications.mark_read") }}</button>
                     </form>
                   {% endif %}
 
-                  <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/delete') }}" style="display: inline" class="govuk-!-margin-left-2">
-                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                    <button type="submit" class="govuk-link app-link-button app-link-button--warning">{{ t("jobs_t3.delete_button") }}</button>
-                  </form>
+                  {% if not isGrouped %}
+                    <form method="post" action="{{ urlFor('/notifications/' + (notification.id | string) + '/delete') }}" style="display: inline" class="govuk-!-margin-left-2">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button type="submit" class="govuk-link app-link-button app-link-button--warning">{{ t("notifications.delete") }}</button>
+                    </form>
+                  {% endif %}
                 </div>
               </div>
             </li>
           {% endfor %}
         </ul>
 
-        {# Pagination #}
-        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
-          {% set paginationConfig = {
-            baseUrl: urlFor('/notifications'),
-            page: pagination.page,
-            totalPages: pagination.totalPages or pagination.total_pages,
-            queryParams: { unread_only: 'true' if showUnreadOnly else '' }
-          } %}
-          {% include "partials/pagination.njk" %}
+        {% if meta.has_more and meta.cursor %}
+          <p class="govuk-body govuk-!-margin-top-4">
+            <a class="govuk-link" rel="next" href="{{ urlFor('/notifications?' + ('filter=unread&' if showUnreadOnly else '') + 'cursor=' + (meta.cursor | urlencode)) }}">{{ t("notifications.load_more") }}</a>
+          </p>
         {% endif %}
 
       {% else %}
@@ -149,8 +175,8 @@
         {% else %}
           {% set emptyState = {
             icon: "🔔",
-            heading: "No notifications",
-            message: "You'll see notifications here when something happens."
+            heading: t("notifications.title"),
+            message: t("notifications.empty")
           } %}
         {% endif %}
         {% include "partials/empty-state.njk" %}

@@ -1,6 +1,6 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-07-10
 
 `apps/web-uk` is the ASP.NET repo's future shared accessible frontend candidate.
 It is not production-ready, does not certify production readiness, and must not
@@ -32,6 +32,56 @@ By default, `apps/web-uk` resolves API calls to the local Laravel staging base
 URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
 work and must not be treated as certified compatibility.
 
+## Current Evidence Boundary (2026-07-10)
+
+The current checkout has passed `45/45` Jest suites (`1,386/1,386` tests),
+ESLint, the brand-policy gate, CSS compilation, the `22/22` Chromium/axe gate,
+and the live `19/19` Blade marker comparison. The generated route matrix reports
+`608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
+missing, `0` extra parity routes, and `3` ignored infrastructure routes.
+
+Localization is structurally complete across `11` locales, `24` namespaces,
+and `7,337` keys per locale. It is not linguistically complete: the non-English
+catalogs each retain roughly `3,903-3,951` English-identical values and `16`
+namespaces are wholly English in the authoritative read-only Laravel source.
+The conservative audit reports `290` templates and `0` remaining safe exact
+matches; that result does not cover contextual copy, pluralisation, dynamic
+labels, validation language, or manual RTL review.
+
+Manual browser inspection at 320 CSS pixels confirmed Arabic `lang`/`dir`, one
+main/H1, unique IDs, a valid focusable skip-link target, no horizontal overflow,
+and usable forced-colour rendering on the public login and signed dashboard.
+It also exposed English contextual dashboard copy in Arabic. Native Tab
+traversal could not be advanced through that browser-control session, so this
+is not a completed keyboard, screen-reader, zoom, or assistive-technology
+certification record.
+
+The current-source Laravel smoke is certified in deterministic serial shards.
+The base bucket passed `93/93`; six shards then covered all `276` default module
+pages and all `270` default body markers. Shards 1, 2, 4, and 6 passed
+`101/101`. Shards 3 and 5 each initially passed `100/101` because one request
+exceeded 60 seconds (`/ideation/2/ideas/1` and `/jobs/employers/14`); each
+isolated retry passed `11/11`. Thus all `639` distinct current default checks
+passed with no repeatable route failure. The two latency aborts are retained as
+an operational warning, and read/auth/gate/body coverage does not certify
+uploads, downloads, deletes, or other side effects; those require disposable
+fixtures.
+
+The run also found and corrected federation precondition handling. Laravel's
+fixture returns `403`/`FEDERATION_NOT_ENABLED` on nine federation-backed pages
+for a signed member who has not opted in; Web UK now redirects those requests
+to the tenant-safe `/federation/opt-in` page instead of rendering `503`. The
+focused current-source federation slice passed `13/13`.
+
+Laravel remains the authoritative backend and visual/workflow source and must
+remain read-only from this repo. ASP.NET switching is future work and is not
+certified. The principal source/API boundaries are public Blade feed permalinks
+backed by protected v2 payload endpoints; incomplete resource detail/count and
+cursor contracts; missing bearer GDPR-history, password-gated email-change, and
+atomic member multi-write contracts; exchange `prep_time`, idempotency, and
+rating/attention drift; review mutation/listing-review gaps; and missing matches
+event coverage plus event/volunteering dismiss support.
+
 Runtime smoke evidence has two dedicated commands:
 
 ```bash
@@ -46,10 +96,15 @@ defaults to `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`, runs the
 same Laravel runtime harness, then closes the server. This avoids false
 `fetch failed` results from ad hoc background process launch wrappers.
 
-Latest broad live evidence: chunked Laravel runtime smoke has been recertified
+## Historical Laravel Smoke Log (Superseded As Current Evidence)
+
+The following records explain what earlier slices proved. They do not supersede
+the current evidence boundary above.
+
+Historical broad live evidence: chunked Laravel runtime smoke was recertified
 against Laravel `http://127.0.0.1:8088` and tenant-correct temporary Web UK
 processes started with `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`.
-The current default scope is `633` checks: `280` module-page checks, `282`
+That historical default scope was `633` checks: `280` module-page checks, `282`
 body-text contract checks, 23 gated-status checks, 14 unsigned auth-required
 redirect checks, 3 unsigned login redirects, 19 signed redirects, 2 content-type
 checks, 3 cookie-consent POST workflows, logout, and the 6 auth/health checks.
@@ -513,6 +568,18 @@ expected body markers against `WEB_UK_BASE_URL=http://127.0.0.1:6230`. The
 targeted run passed with `14/14` checks and `0` failures. The body-text-only
 default smoke scope passed against the same port with `227/227` total checks,
 including 221 body-text contract checks, and `0` failures.
+
+The later 2026-07-10 Listings mutation slice replaces the legacy
+`/api/listings` write helpers with Laravel `POST /api/v2/listings`,
+`PUT /api/v2/listings/{id}`, and `DELETE /api/v2/listings/{id}`. The accessible
+create/edit form sends the seven Laravel core fields, leaves create status to
+Laravel, uses tenant bootstrap `listing_config` plus tenant-scoped categories,
+and saves enabled skill tags and an optional cover through the separate tags
+and multipart image endpoints. V2 envelope unwrapping, owner-only edit access,
+nested 422 field mapping, onboarding/auth handoffs, and tenant-prefixed result
+redirects have focused mock-backed coverage. No live create/update/delete or
+image/tag mutation was performed for that slice, so persistence and side
+effects are not certified by the earlier read-only smoke evidence.
 The signed poll pages `/polls`, `/polls/parity/create`,
 `/polls/parity/manage`, `/polls/20`, `/polls/20/rank`, `/polls/8`, and
 `/polls/4` returned expected body markers against
@@ -617,10 +684,10 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/dashboard`, `/exchanges`, `/me/collections`, `/premium/return`, `/profile`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
-Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; after the 2026-07-10 clubs no-active-club correction, the current default
-smoke scope has `280` module-page checks and `282` body-text contract checks.
-The default scope now contains `633` checks:
+Laravel-backed body-text markers. In that historical snapshot the core
+module-page/body-text marker gap was 0; after the 2026-07-10 clubs
+no-active-club correction, the default smoke scope had `280` module-page checks
+and `282` body-text contract checks. That snapshot contained `633` checks:
 `280`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
 redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
@@ -712,10 +779,14 @@ against Laravel `/api/v2/wallet/donate` with the same donation status keys.
 `/wallet/manage` now renders a Blade-style manage-credits hub backed by Laravel
 `/api/v2/wallet/balance`, `/api/v2/wallet/community-fund`, and
 `/api/v2/wallet/user-search`, including summary stats, recipient search,
-transfer forms, donation target controls, and status states. `/wallet/recipients`
-returns Laravel wallet user-search suggestions for progressive enhancement, and
-`/wallet/export.csv` streams the Laravel `/api/v2/wallet/statement` CSV
-download. Tenant module gates, exact live recipient privacy behavior,
+transfer forms, donation target controls, and status states. Transfer forms now
+carry a per-render UUID and POST the exact Laravel v2 `recipient`, `amount`,
+`description`, and `idempotency_key` contract without a profile/balance
+preflight; nested Laravel errors and the onboarding-required gate map to
+tenant-aware accessible outcomes. `/wallet/recipients` returns Laravel wallet
+user-search suggestions for progressive enhancement, and `/wallet/export.csv`
+streams the Laravel `/api/v2/wallet/statement` CSV download. Tenant module
+gates, exact live recipient privacy behavior, live transfer/replay persistence,
 localization, and deeper wallet workflows are not certified; the signed
 `/wallet`, `/saved`, and `/notifications` pages are covered by the default
 Laravel runtime smoke.

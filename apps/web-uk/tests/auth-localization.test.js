@@ -86,7 +86,6 @@ describe('Laravel-first auth localization', () => {
     ]],
     ['register.njk', [
       'states.error_title',
-      'auth.register_title',
       'auth.register_description',
       'auth.first_name_label',
       'auth.last_name_label',
@@ -125,11 +124,15 @@ describe('Laravel-first auth localization', () => {
       expect(source).toContain(`t("${translationKey}"`);
     }
     expect(source).not.toContain('titleText: "There is a problem"');
+    if (templateName === 'register.njk') {
+      expect(source).toContain('{% block pageTitle %}{{ title }} - {{ serviceName }}{% endblock %}');
+      expect(source).toContain('<h1 class="govuk-heading-xl">{{ title }}</h1>');
+    }
   });
 
   it.each(['login.njk', 'register.njk'])('%s supplies the current community to Laravel interpolation', (templateName) => {
     expect(templateSource(templateName)).toMatch(
-      /t\("auth\.(?:login|register)_description", \{ community: tenantName or serviceName \}\)/
+      /t\("auth\.(?:login|register)_description", \{ community: tenantName or (?:tenantSlug or )?serviceName \}\)/
     );
   });
 
@@ -147,6 +150,7 @@ describe('Laravel-first auth localization', () => {
       resetToken: 'reset-token',
       serviceName: 'Project NEXUS',
       t,
+      title: t(headingKey),
       tenantName: 'Pobal Tástála',
       urlFor: (pathname) => pathname,
       values: {}

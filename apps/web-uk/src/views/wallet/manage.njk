@@ -93,16 +93,16 @@
         </p>
         <form method="post" action="{{ urlFor('/wallet/transfer') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <input type="hidden" name="receiver_id" value="{{ recipient.id }}">
           <input type="hidden" name="recipient_id" value="{{ recipient.id }}">
+          <input type="hidden" name="idempotency_key" value="{{ recipient.idempotencyKey }}">
           <div class="govuk-form-group govuk-!-margin-bottom-3">
             <label class="govuk-label" for="amount-{{ recipient.id }}">Amount</label>
             <div id="amount-hint-{{ recipient.id }}" class="govuk-hint">Enter the time credits to send.</div>
             <input class="govuk-input govuk-input--width-5" id="amount-{{ recipient.id }}" name="amount" type="number" min="0.25" max="1000" step="0.25" inputmode="decimal" aria-describedby="amount-hint-{{ recipient.id }}" required>
           </div>
           <div class="govuk-form-group govuk-!-margin-bottom-3">
-            <label class="govuk-label" for="description-{{ recipient.id }}">Note</label>
-            <input class="govuk-input" id="description-{{ recipient.id }}" name="description" type="text" maxlength="255">
+            <label class="govuk-label" for="note-{{ recipient.id }}">Note</label>
+            <input class="govuk-input" id="note-{{ recipient.id }}" name="note" type="text" maxlength="255">
           </div>
           <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Send credits to {{ recipient.name }}</button>
         </form>

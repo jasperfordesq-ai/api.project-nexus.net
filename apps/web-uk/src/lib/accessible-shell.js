@@ -31,6 +31,25 @@ const localeOptions = [
   ['ar', 'العربية']
 ];
 
+// This legal/identity disclosure is specific to the Express shell. Laravel's
+// source catalogs do not contain it, while this app's non-government branding
+// rules require it to be visible in the header. Keep the local copy explicit
+// and complete for every offered locale rather than polluting generated
+// Laravel catalog parity with a Web UK-only key.
+const notAffiliatedByLocale = Object.freeze({
+  en: 'Not affiliated with GOV.UK',
+  ga: 'Níl sé cleamhnaithe le GOV.UK',
+  de: 'Nicht mit GOV.UK verbunden',
+  fr: 'Non affilié à GOV.UK',
+  it: 'Non affiliato a GOV.UK',
+  pt: 'Não afiliado ao GOV.UK',
+  es: 'No afiliado a GOV.UK',
+  nl: 'Niet verbonden aan GOV.UK',
+  pl: 'Brak powiązania z GOV.UK',
+  ja: 'GOV.UKとは提携していません',
+  ar: 'غير تابع لـ GOV.UK'
+});
+
 const navItems = [
   { key: 'home', label: 'Home', href: '/', anonymousOnly: true },
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', authenticatedOnly: true, moduleKey: 'dashboard' },
@@ -448,6 +467,7 @@ function buildShellLocals(req, isAuthenticated) {
     cookieSettingsUrl: urlFor('/cookies'),
     mainSiteUrl: process.env.MAIN_FRONTEND_URL || 'https://app.project-nexus.ie',
     sourceCodeUrl,
+    shellNotAffiliated: notAffiliatedByLocale[currentLocale] || notAffiliatedByLocale.en,
     sharedAccessibleStatus: 'candidate_not_certified'
   };
 }

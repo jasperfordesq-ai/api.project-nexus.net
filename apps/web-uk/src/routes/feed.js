@@ -11,9 +11,9 @@ const {
   getFeedHashtags,
   getFeedHashtagPosts,
   getComments,
-  getMyGroups
+  ApiError
 } = require('../lib/api');
-const { requireAuth, withTokenRefresh } = require('../middleware/auth');
+const { withTokenRefresh } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -88,13 +88,14 @@ function feedMedia(row) {
     return {
       fileUrl,
       thumbnailUrl,
-      altText: trimmed(item && (item.alt_text || item.altText), 500) || 'Image attached to this feed item'
+      altText: trimmed(item && (item.alt_text || item.altText), 500)
     };
   }).filter((item) => item.fileUrl);
 }
 
 function normalizeFeedPost(row) {
   const id = positiveInteger(row && row.id, 0, 0, Number.MAX_SAFE_INTEGER);
+  const type = trimmed(row && row.type, 40) || 'post';
   const likeCount = positiveInteger(row && (
     row.likes_count !== undefined ? row.likes_count : row.like_count !== undefined ? row.like_count : row.likeCount
   ), 0, 0, Number.MAX_SAFE_INTEGER);
@@ -111,9 +112,18 @@ function normalizeFeedPost(row) {
     || 'A community member';
   const authorId = positiveInteger(author.id || row && (row.author_id || row.user_id), 0, 0, Number.MAX_SAFE_INTEGER);
   const contentParagraphs = plainParagraphs(row && row.content);
+  const rawMedia = Array.isArray(row && row.media)
+    ? row.media
+    : (row && row.image_url ? [{ file_url: row.image_url }] : []);
+  const deepLink = feedItemDeepLink(type, id);
 
   return {
     id,
+    type,
+    typeLabel: feedItemTypeLabel(type),
+    title: trimmed(row && row.title, 200),
+    detailHref: type === 'post' ? `/feed/posts/${id}` : `/feed/item/${encodeURIComponent(type)}/${id}`,
+    deepLink,
     user: {
       id: authorId,
       first_name: firstName || authorName,
@@ -126,6 +136,7 @@ function normalizeFeedPost(row) {
     content: contentParagraphs.join('\n\n'),
     contentParagraphs,
     media: feedMedia(row),
+    mediaExtra: Math.max(0, rawMedia.length - 4),
     group: row && row.group,
     isPinned: !!(row && (row.is_pinned || row.isPinned)),
     likeCount,
@@ -155,9 +166,25 @@ function feedItemTypeLabel(type) {
 }
 
 function feedItemDeepLink(type, id) {
-  if (type === 'listing') return { href: `/listings/${id}`, label: 'View listing' };
-  if (type === 'post') return { href: `/feed/posts/${id}`, label: 'Open full post' };
-  return null;
+  const links = {
+    listing: { href: `/listings/${id}`, labelKey: 'feed.view_typed.listing' },
+    event: { href: `/events/${id}`, labelKey: 'feed.view_typed.event' },
+    volunteer: { href: `/volunteering/opportunities/${id}`, labelKey: 'feed.view_typed.volunteer' },
+    goal: { href: `/goals/${id}`, labelKey: 'feed.view_typed.goal' },
+    job: { href: `/jobs/${id}`, labelKey: 'feed.view_typed.job' },
+    challenge: { href: `/ideation/${id}`, labelKey: 'feed.view_typed.challenge' },
+    course: { href: `/courses/${id}`, labelKey: 'feed.view_typed.course' },
+    post: { href: `/feed/posts/${id}`, labelKey: 'actions.view_details' }
+  };
+  return links[type] || null;
+}
+
+function feedPermalinkDeepLink(type, id) {
+  const links = {
+    listing: { href: `/listings/${id}`, labelKey: 'govuk_alpha_feed.item.view_listing' },
+    post: { href: `/feed/posts/${id}`, labelKey: 'govuk_alpha_feed.item.open_full' }
+  };
+  return links[type] || null;
 }
 
 function isFeedItemCommentable(type) {
@@ -175,7 +202,7 @@ function normalizeFeedItem(row, fallbackType, fallbackId) {
     type,
     typeLabel: feedItemTypeLabel(type),
     title: trimmed(row && row.title, 200),
-    deepLink: feedItemDeepLink(type, id),
+    deepLink: feedPermalinkDeepLink(type, id),
     isCommentable: isFeedItemCommentable(type)
   };
 }
@@ -189,6 +216,31 @@ function collectionMeta(result) {
 function feedCollectionRows(result) {
   const data = dataFrom(result);
   return Array.isArray(data) ? data : [];
+}
+
+function allowed(value, values, fallback) {
+  const candidate = trimmed(value, 40).toLowerCase();
+  return values.includes(candidate) ? candidate : fallback;
+}
+
+function feedCommentRows(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  return data && Array.isArray(data.comments) ? data.comments : [];
+}
+
+function feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype) {
+  const cursor = trimmed(meta && meta.cursor, 500);
+  if (!meta || meta.has_more !== true || cursor === '') return '';
+
+  const query = new URLSearchParams({
+    type: selectedType,
+    cursor,
+    per_page: String(perPage)
+  });
+  if (selectedMode === 'recent') query.set('mode', 'recent');
+  if (selectedSubtype) query.set('subtype', selectedSubtype);
+  return `/feed?${query.toString()}`;
 }
 
 function feedStatusMessage(status) {
@@ -217,6 +269,58 @@ function feedPostStatusMessage(status) {
     'save-removed': { type: 'success', text: 'This post has been removed from your saved items.' }
   };
   return messages[status] || null;
+}
+
+function feedIndexStatusMessage(status, t) {
+  const keys = {
+    'post-created': 'states.post-created',
+    'post-empty': 'states.post_empty',
+    'post-failed': 'states.post_failed',
+    'post-updated': 'states.post-updated',
+    'post-update-failed': 'states.post-update-failed',
+    'post-deleted': 'states.post-deleted',
+    'post-delete-failed': 'states.post-delete-failed',
+    'like-added': 'states.like-added',
+    'like-removed': 'states.like-removed',
+    'like-failed': 'states.like-failed',
+    'comment-created': 'states.comment-created',
+    'comment-empty': 'states.comment-empty',
+    'comment-too-long': 'states.comment-too-long',
+    'comment-failed': 'states.comment-failed',
+    'comment-updated': 'states.comment-updated',
+    'comment-update-failed': 'states.comment-update-failed',
+    'comment-deleted': 'states.comment-deleted',
+    'comment-delete-failed': 'states.comment-delete-failed',
+    'content-hidden': 'states.content-hidden',
+    'author-muted': 'states.author-muted',
+    'content-reported': 'states.content-reported',
+    'moderation-failed': 'states.moderation-failed',
+    'poll-voted': 'states.poll-voted',
+    'poll-vote-failed': 'states.poll-vote-failed',
+    'reaction-added': 'feed_t1.status_reaction_added',
+    'reaction-removed': 'feed_t1.status_reaction_removed',
+    'reaction-failed': 'feed_t1.status_reaction_failed',
+    'share-added': 'feed_t1.status_share_added',
+    'share-removed': 'feed_t1.status_share_removed',
+    'share-failed': 'feed_t1.status_share_failed',
+    'share-own': 'feed_t1.status_share_own',
+    'save-added': 'feed_t1.status_save_added',
+    'save-removed': 'feed_t1.status_save_removed',
+    'save-failed': 'feed_t1.status_save_failed',
+    'not-interested': 'govuk_alpha_feed.states.not_interested',
+    'not-interested-failed': 'govuk_alpha_feed.states.not_interested_failed',
+    'auth-required': 'govuk_alpha_feed.states.auth_required'
+  };
+  const errorStatuses = new Set([
+    'post-empty', 'post-failed', 'post-update-failed', 'post-delete-failed',
+    'like-failed', 'comment-empty', 'comment-too-long', 'comment-failed',
+    'comment-update-failed', 'comment-delete-failed', 'moderation-failed',
+    'poll-vote-failed', 'reaction-failed', 'share-failed', 'share-own',
+    'save-failed', 'not-interested-failed', 'auth-required'
+  ]);
+  const key = keys[status];
+  if (!key || typeof t !== 'function') return null;
+  return { type: errorStatuses.has(status) ? 'error' : 'success', text: t(key) };
 }
 
 router.get('/hashtags', asyncRoute(async (req, res) => {
@@ -250,10 +354,25 @@ router.get('/hashtags', asyncRoute(async (req, res) => {
 router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
   const id = positiveInteger(req.params.id, 0, 1, Number.MAX_SAFE_INTEGER);
   const token = tokenFrom(req);
-  const result = await getFeedPostV2(token, id);
-  const item = normalizeFeedPost(dataFrom(result));
+  let itemUnavailable = false;
+  let item;
+  try {
+    const result = await getFeedPostV2(token, id);
+    item = normalizeFeedPost(dataFrom(result));
+  } catch (error) {
+    if (!token && error instanceof ApiError && error.status === 401) {
+      // Laravel's Blade permalink is public, but the current v2 permalink API
+      // is protected. Preserve the public document/auth prompt and disclose
+      // that its item is unavailable instead of turning the page into a login
+      // redirect or fabricating content.
+      itemUnavailable = true;
+      item = normalizeFeedPost({ id, type: 'post' });
+    } else {
+      throw error;
+    }
+  }
   const comments = token
-    ? feedCollectionRows(await getComments(token, { target_type: 'post', target_id: id }).catch(() => ({ data: [] })))
+    ? feedCommentRows(await getComments(token, { target_type: 'post', target_id: id }).catch(() => ({ data: { comments: [] } })))
     : [];
 
   res.render('feed/post', {
@@ -262,6 +381,7 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
     alphaActiveNav: 'feed',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     item,
+    itemUnavailable,
     comments,
     requiresAuth: !token,
     statusMessage: feedPostStatusMessage(trimmed(req.query.status)),
@@ -273,10 +393,21 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (r
   const type = trimmed(req.params.type, 40);
   const id = positiveInteger(req.params.id, 0, 1, Number.MAX_SAFE_INTEGER);
   const token = tokenFrom(req);
-  const result = await getFeedItemV2(token, type, id);
-  const item = normalizeFeedItem(dataFrom(result), type, id);
+  let itemUnavailable = false;
+  let item;
+  try {
+    const result = await getFeedItemV2(token, type, id);
+    item = normalizeFeedItem(dataFrom(result), type, id);
+  } catch (error) {
+    if (!token && error instanceof ApiError && error.status === 401) {
+      itemUnavailable = true;
+      item = normalizeFeedItem({ id, type }, type, id);
+    } else {
+      throw error;
+    }
+  }
   const comments = token && item.isCommentable
-    ? feedCollectionRows(await getComments(token, { target_type: item.type, target_id: item.id }).catch(() => ({ data: [] })))
+    ? feedCommentRows(await getComments(token, { target_type: item.type, target_id: item.id }).catch(() => ({ data: { comments: [] } })))
     : [];
 
   res.render('feed/item', {
@@ -285,6 +416,7 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (r
     alphaActiveNav: 'feed',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     item,
+    itemUnavailable,
     comments,
     requiresAuth: !token,
     statusMessage: feedStatusMessage(trimmed(req.query.status)),
@@ -335,34 +467,57 @@ router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => 
   });
 }));
 
-// List feed posts
-router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = 20;
-  const groupId = req.query.group_id || null;
+// Laravel deliberately renders the feed shell to signed-out visitors and only
+// calls the protected feed API for authenticated users.
+router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
+  const token = tokenFrom(req);
+  const typeOptions = [
+    'all', 'following', 'saved', 'posts', 'listings', 'events', 'goals',
+    'polls', 'jobs', 'challenges', 'volunteering', 'blogs', 'discussions'
+  ];
+  const selectedType = allowed(req.query.type, typeOptions, 'all');
+  const selectedMode = allowed(req.query.mode, ['ranking', 'recent'], 'ranking');
+  const selectedSubtype = selectedType === 'listings'
+    ? allowed(req.query.subtype, ['offer', 'request'], '')
+    : '';
+  const perPage = positiveInteger(req.query.per_page, 10, 1, 50);
+  const cursor = trimmed(req.query.cursor, 500);
+  const feedParams = {
+    per_page: perPage,
+    type: selectedType,
+    mode: selectedMode === 'recent' ? 'recent' : 'ranked'
+  };
+  if (selectedSubtype) feedParams.subtype = selectedSubtype;
+  if (cursor) feedParams.cursor = cursor;
   let feedErrorMessage = null;
 
-  const [feedResult, myGroupsResult] = await Promise.all([
-    getFeedPosts(req.token, { page, limit, group_id: groupId }).catch(() => {
+  const feedResult = token
+    ? await getFeedPosts(token, feedParams).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) throw error;
       feedErrorMessage = 'Sorry, there is a problem loading the feed.';
-      return { data: [], pagination: { page, total_pages: 1 } };
-    }),
-    getMyGroups(req.token).catch(() => ({ data: [] }))
-  ]);
+      return { data: [], meta: { per_page: perPage, has_more: false } };
+    })
+    : { data: [], meta: { per_page: perPage, has_more: false } };
 
   const posts = feedCollectionRows(feedResult).map(normalizeFeedPost).filter((post) => post.id > 0);
-  const myGroups = myGroupsResult.data || [];
+  const meta = collectionMeta(feedResult);
 
   res.render('feed/index', {
     title: 'Feed',
     posts,
-    myGroups,
-    groupId,
-    pagination: feedResult.pagination || { page, total_pages: 1 },
+    typeOptions,
+    selectedType,
+    selectedMode,
+    selectedSubtype,
+    perPage,
+    requiresAuth: !token,
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    nextHref: feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
+    statusMessage: feedIndexStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: feedErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
-}));
+})));
 
 module.exports = router;

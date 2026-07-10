@@ -56,6 +56,7 @@
           }
         }) }}
 
+        {% set descriptionError = errors | selectattr("href", "equalto", "#description") | first if errors else undefined %}
         {{ govukTextarea({
           id: "description",
           name: "description",
@@ -67,7 +68,13 @@
           hint: {
             text: "Tell people what the event is about, what to expect, and any important details"
           },
-          rows: 6
+          rows: 6,
+          errorMessage: { text: descriptionError.text } if descriptionError else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": "event description",
+            "required": "required"
+          }
         }) }}
 
         {% set selectedCategoryId = values.category_id if values else "" %}
@@ -156,56 +163,40 @@
           </div>
         </div>
 
-        {# Start date/time #}
-        {% set startDateError = errors | selectattr('href', 'equalto', '#starts_at_date') | first if errors else undefined %}
-        <div class="govuk-form-group {% if startDateError %}govuk-form-group--error{% endif %}">
-          <fieldset class="govuk-fieldset" role="group">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-              Start date and time
-            </legend>
-            <div id="starts-at-hint" class="govuk-hint">
-              When does the event start?
-            </div>
-            {% if startDateError %}
-              <p class="govuk-error-message">
-                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span>
-                {{ startDateError.text }}
-              </p>
-            {% endif %}
-            <div class="app-date-time-input">
-              <div class="app-date-time-input__date">
-                <label class="govuk-label" for="starts_at_date">Date</label>
-                <input class="govuk-input govuk-input--width-10" id="starts_at_date" name="starts_at_date" type="date" value="{{ values.starts_at_date if values else '' }}" data-validate="required" data-label="start date">
-              </div>
-              <div class="app-date-time-input__time">
-                <label class="govuk-label" for="starts_at_time">Time</label>
-                <input class="govuk-input govuk-input--width-5" id="starts_at_time" name="starts_at_time" type="time" value="{{ values.starts_at_time if values else '' }}" data-validate="required" data-label="start time">
-              </div>
-            </div>
-          </fieldset>
-        </div>
+        {% set startTimeError = errors | selectattr('href', 'equalto', '#start_time') | first if errors else undefined %}
+        {{ govukInput({
+          id: "start_time",
+          name: "start_time",
+          type: "datetime-local",
+          value: values.start_time if values else "",
+          label: {
+            text: t("events.start_time_label"),
+            classes: "govuk-label--m"
+          },
+          hint: { text: t("events.datetime_hint") },
+          classes: "govuk-!-width-one-half",
+          errorMessage: { text: startTimeError.text } if startTimeError else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": "start time",
+            "required": "required"
+          }
+        }) }}
 
-        {# End date/time #}
-        <div class="govuk-form-group">
-          <fieldset class="govuk-fieldset" role="group">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-              End date and time
-            </legend>
-            <div id="ends-at-hint" class="govuk-hint">
-              Optional - when does the event end?
-            </div>
-            <div class="app-date-time-input">
-              <div class="app-date-time-input__date">
-                <label class="govuk-label" for="ends_at_date">Date</label>
-                <input class="govuk-input govuk-input--width-10" id="ends_at_date" name="ends_at_date" type="date" value="{{ values.ends_at_date if values else '' }}">
-              </div>
-              <div class="app-date-time-input__time">
-                <label class="govuk-label" for="ends_at_time">Time</label>
-                <input class="govuk-input govuk-input--width-5" id="ends_at_time" name="ends_at_time" type="time" value="{{ values.ends_at_time if values else '' }}">
-              </div>
-            </div>
-          </fieldset>
-        </div>
+        {% set endTimeError = errors | selectattr('href', 'equalto', '#end_time') | first if errors else undefined %}
+        {{ govukInput({
+          id: "end_time",
+          name: "end_time",
+          type: "datetime-local",
+          value: values.end_time if values else "",
+          label: {
+            text: t("events.end_time_label"),
+            classes: "govuk-label--m"
+          },
+          hint: { text: t("events.end_time_hint") },
+          classes: "govuk-!-width-one-half",
+          errorMessage: { text: endTimeError.text } if endTimeError else undefined
+        }) }}
 
         {{ govukInput({
           id: "max_attendees",

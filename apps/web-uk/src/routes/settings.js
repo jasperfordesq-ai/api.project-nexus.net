@@ -177,6 +177,26 @@ function apiErrorCode(error) {
   return String(data.code || data.error || '').toUpperCase();
 }
 
+function apiErrorField(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  if (typeof data.field === 'string') return data.field;
+  if (Array.isArray(data.errors) && data.errors[0] && typeof data.errors[0].field === 'string') {
+    return data.errors[0].field;
+  }
+  return '';
+}
+
+function insuranceEnabledForRequest(req) {
+  const compliance = req?.accessibleRouting?.tenant?.compliance;
+  if (!compliance || typeof compliance !== 'object') return true;
+  return !Object.prototype.hasOwnProperty.call(compliance, 'insurance_enabled')
+    || Boolean(compliance.insurance_enabled);
+}
+
+function renderNotFound(res) {
+  return res.status(404).render('errors/404', { title: 'Page not found' });
+}
+
 function dataFrom(result) {
   return result && result.data && typeof result.data === 'object' ? result.data : {};
 }
@@ -325,8 +345,8 @@ function themeFromSettingsData(data) {
 
 function normalizeAvailabilitySlot(slot) {
   if (!slot || typeof slot !== 'object') return null;
-  const start = trimmed(slot.start || slot.start_time);
-  const end = trimmed(slot.end || slot.end_time);
+  const start = trimmed(slot.start || slot.start_time).slice(0, 5);
+  const end = trimmed(slot.end || slot.end_time).slice(0, 5);
   return start || end ? { start, end } : null;
 }
 
@@ -335,11 +355,14 @@ function availabilityByDayFromData(data) {
     ? data.schedule
     : Array.isArray(data.availability)
       ? data.availability
-      : [];
+      : Array.isArray(data.weekly)
+        ? data.weekly
+        : [];
   const byDay = {};
 
   for (const slot of raw) {
     if (!slot || typeof slot !== 'object') continue;
+    if (slot.is_recurring === false || slot.is_recurring === 0) continue;
     const day = Number(slot.day_of_week ?? slot.day);
     if (!Number.isInteger(day) || day < 0 || day > 6) continue;
 
@@ -574,7 +597,7 @@ router.post('/data-rights', asyncRoute(async (req, res) => {
     return redirectTo(res, settingsStatusRedirect('/settings/data-rights', 'gdpr-invalid', '#request'));
   }
 
-  const notes = trimmed(req.body.notes);
+  const notes = trimmed(req.body.notes, 2000);
   let status = 'gdpr-requested';
   let fragment = '#your-requests';
   try {
@@ -618,6 +641,7 @@ router.get('/data-rights', (req, res) => {
 router.get('/insurance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
+  if (!insuranceEnabledForRequest(req)) return renderNotFound(res);
 
   let certificates = [];
   try {
@@ -742,14 +766,22 @@ router.post('/linked-accounts/revoke', asyncRoute(async (req, res) => {
 
 router.post('/insurance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return redirectTo(res, loginRedirect());
+  const file = uploadedFile(req, 'certificate_file');
+  if (!token) {
+    await removeUploadedFile(file);
+    return redirectTo(res, loginRedirect());
+  }
+  if (!insuranceEnabledForRequest(req)) {
+    await removeUploadedFile(file);
+    return renderNotFound(res);
+  }
 
   const insuranceType = allowedValue(req.body.insurance_type, SETTINGS_INSURANCE_TYPES, null);
   if (insuranceType === null) {
+    await removeUploadedFile(file);
     return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
   }
 
-  const file = uploadedFile(req, 'certificate_file');
   if (!file) {
     return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
   }
@@ -773,7 +805,14 @@ router.post('/insurance', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    return redirectTo(res, settingsStatusRedirect('/settings/insurance', 'insurance-failed', '#upload'));
+    const field = apiErrorField(error);
+    const message = String(error?.message || '').toLowerCase();
+    const status = field === 'certificate_file' && /type|pdf|jpe?g|png|mime/.test(message)
+      ? 'insurance-file-type'
+      : field === 'certificate_file' && /size|large|limit|10\s*mb/.test(message)
+        ? 'insurance-file-large'
+        : 'insurance-failed';
+    return redirectTo(res, settingsStatusRedirect('/settings/insurance', status, '#upload'));
   } finally {
     await removeUploadedFile(file);
   }

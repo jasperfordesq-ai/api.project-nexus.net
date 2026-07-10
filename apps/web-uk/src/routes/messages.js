@@ -8,11 +8,8 @@ const fs = require('fs/promises');
 const { requireAuth } = require('../middleware/auth');
 const {
   getConversations,
-  getConversation,
   getUnreadCount,
-  replyToConversation,
   searchUsers,
-  markConversationRead,
   callMessageApi,
   uploadVoiceMessage,
   uploadMessageAttachments,
@@ -20,7 +17,7 @@ const {
   callListingApi,
   ApiError
 } = require('../lib/api');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { flagEnabled } = require('../lib/accessible-shell');
 const { audit } = require('../lib/auditLogger');
 const { getRequestProfile } = require('../lib/request-profile');
@@ -102,12 +99,9 @@ function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
 
-function redirectOnAuthError(error, res) {
-  if (isAuthError(error)) {
-    redirectTo(res, loginRedirect());
-    return true;
-  }
-  return false;
+function redirectOnAuthError(error, req, res) {
+  if (!isAuthError(error)) return false;
+  return handleApiError(error, req, res, { redirectOn401: loginRedirect() });
 }
 
 async function callMessage(token, method, path, data = undefined) {
@@ -275,12 +269,26 @@ function directConversationFrom(result, userId, currentUserId) {
   const meta = (result && result.meta) || (data && data.meta) || {};
   const rawConversation = meta.conversation || (data && data.conversation) || {};
   const otherUser = conversationOtherUser(rawConversation, userId);
-  const messages = listFrom(data).map(message => ({
-    ...message,
-    body: trimmed(message.body || message.content, 10000),
-    displaySenderName: senderName(message, currentUserId),
-    isOwn: positiveInteger(message.sender_id) !== null && positiveInteger(message.sender_id) === currentUserId
-  }));
+  const editCutoff = Date.now() - (24 * 60 * 60 * 1000);
+  const messages = listFrom(data).map(message => {
+    const messageId = positiveInteger(message && message.id);
+    const senderId = positiveInteger(message && message.sender_id);
+    const isOwn = senderId !== null && senderId === currentUserId;
+    const isDeleted = checked(message && (message.is_deleted ?? message.isDeleted));
+    const createdTime = Date.parse(message && (message.created_at || message.createdAt));
+    const canManage = isOwn && !isDeleted && messageId !== null;
+
+    return {
+      ...message,
+      id: messageId || message.id,
+      body: String(message.body || message.content || '').slice(0, 10000),
+      displaySenderName: senderName(message, currentUserId),
+      isOwn,
+      isDeleted,
+      canManage,
+      canEdit: canManage && Number.isFinite(createdTime) && createdTime > editCutoff
+    };
+  }).reverse();
 
   return {
     conversation: {
@@ -294,6 +302,81 @@ function directConversationFrom(result, userId, currentUserId) {
       cursor: trimmed(meta.cursor)
     }
   };
+}
+
+function messageTranslationFromFlash(req) {
+  if (!req.flash) return null;
+  const raw = req.flash('messagesTranslation')[0];
+  if (!raw) return null;
+  if (raw && typeof raw === 'object') return raw;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function renderDirectConversation(req, res, userId) {
+  const listingId = positiveInteger(req.query.listing);
+  const [messagesResult, profileResult, restrictionResult, listingResult] = await Promise.all([
+    callMessage(req.token, 'GET', directConversationApiPath(userId, req.query)),
+    getRequestProfile(req, req.token).catch(() => null),
+    callMessage(req.token, 'GET', '/restriction-status').catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: {} };
+    }),
+    listingId === null ? Promise.resolve(null) : callListingApi(req.token, 'GET', `/${listingId}`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return null;
+    })
+  ]);
+
+  const profile = dataFrom(profileResult);
+  const currentUserId = positiveInteger(profile && profile.id);
+  const normalized = directConversationFrom(messagesResult, userId, currentUserId);
+  const restriction = dataFrom(restrictionResult) || {};
+  const listing = listingResult ? dataFrom(listingResult) : null;
+  const query = trimmed(req.query.q);
+  const olderParams = new URLSearchParams();
+  if (listingId !== null) olderParams.set('listing', String(listingId));
+  if (query !== '') olderParams.set('q', query);
+  if (normalized.meta.cursor) olderParams.set('cursor', normalized.meta.cursor);
+  const olderHref = normalized.meta.hasMore && normalized.meta.cursor
+    ? `/messages/${userId}?${olderParams.toString()}`
+    : '';
+  const directMessagingEnabled = tenantFeatureEnabled(
+    req,
+    'direct_messaging',
+    restriction.direct_messaging_enabled !== false && restriction.messaging_enabled !== false
+  );
+  const restricted = Boolean(
+    restriction.restricted
+    || restriction.is_restricted
+    || restriction.broker_messaging_only
+    || restriction.messaging_disabled
+  );
+
+  return res.render('messages/direct-conversation', {
+    title: `Conversation with ${normalized.conversation.otherUser.name}`,
+    conversation: normalized.conversation,
+    messages: normalized.messages,
+    meta: normalized.meta,
+    olderHref,
+    listing,
+    listingId,
+    query,
+    statusMessage: directStatusMessage(req.query.status),
+    errorMessage: directErrorMessage(req.query.status),
+    currentUser: profile,
+    currentUserId,
+    directMessagingEnabled,
+    restricted,
+    canSend: directMessagingEnabled && !restricted,
+    translationEnabled: tenantFeatureEnabled(req, 'message_translation', true),
+    translation: messageTranslationFromFlash(req),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
 }
 
 function editFailureStatus(error) {
@@ -327,7 +410,7 @@ router.post('/:id(\\d+)/archive', asyncRoute(async (req, res) => {
   try {
     await callMessage(token, 'DELETE', `/conversations/${id}`, { scope: 'self' });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = 'conversation-archive-failed';
   }
 
@@ -343,7 +426,7 @@ router.post('/:id(\\d+)/restore', asyncRoute(async (req, res) => {
   try {
     await callMessage(token, 'POST', `/conversations/${id}/restore`);
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = 'conversation-restore-failed';
   }
 
@@ -365,7 +448,7 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/edit', asyncRoute(async (req, res
   try {
     await callMessage(token, 'PUT', `/${messageId}`, { body });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = editFailureStatus(error);
   }
 
@@ -383,7 +466,7 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/delete', asyncRoute(async (req, r
   try {
     await callMessage(token, 'DELETE', `/${messageId}`, { scope });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = 'message-delete-failed';
   }
 
@@ -400,14 +483,28 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/translate', asyncRoute(async (req
     return redirectTo(res, messageRedirect(userId, 'translate-unavailable', `#m-${messageId}`));
   }
 
-  const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
+  const requestedLanguage = trimmed(req.body.target_language || req.body.target_locale || req.locale || 'en', 10);
+  const targetLanguage = /^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/.test(requestedLanguage)
+    ? requestedLanguage
+    : 'en';
   let status = 'translate-done';
   try {
-    await callMessage(token, 'POST', `/${messageId}/translate`, {
+    const result = await callMessage(token, 'POST', `/${messageId}/translate`, {
       target_language: targetLanguage
     });
+    const translated = dataFrom(result) || {};
+    const translatedText = trimmed(translated.translated_text || translated.translatedText);
+    if (!translatedText) {
+      status = 'translate-failed';
+    } else if (req.flash) {
+      req.flash('messagesTranslation', JSON.stringify({
+        id: messageId,
+        text: translatedText,
+        target: targetLanguage
+      }));
+    }
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = translateFailureStatus(error);
   }
 
@@ -436,7 +533,7 @@ router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
       }
     });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     return redirectTo(res, messageRedirect(userId, 'voice-failed'));
   } finally {
     await removeUploadedFile(file);
@@ -462,7 +559,7 @@ router.post('/groups', asyncRoute(async (req, res) => {
       return redirectTo(res, groupRedirect(conversationId, 'group-created'));
     }
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
   }
 
   return redirectTo(res, statusRedirect('/messages/groups/new', 'group-create-failed'));
@@ -481,7 +578,7 @@ router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
   try {
     await callConversation(token, 'POST', `/${conversationId}/messages`, { body });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = error instanceof ApiError && error.status === 403 ? 'group-message-forbidden' : 'group-message-failed';
   }
 
@@ -500,7 +597,7 @@ router.post('/groups/:conversationId(\\d+)/members', asyncRoute(async (req, res)
   try {
     await callConversation(token, 'POST', `/${conversationId}/participants`, { user_id: userId });
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = groupMemberFailureStatus(error);
   }
 
@@ -518,7 +615,7 @@ router.post('/groups/:conversationId(\\d+)/members/:targetUserId(\\d+)/remove', 
   try {
     await callConversation(token, 'DELETE', `/${conversationId}/participants/${targetUserId}`);
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = selfLeave ? 'group-leave-failed' : groupMemberFailureStatus(error);
   }
 
@@ -542,7 +639,7 @@ router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute
     const data = dataFrom(result);
     status = data && data.action === 'removed' ? 'reaction-removed' : 'reaction-added';
   } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
+    if (redirectOnAuthError(error, req, res)) return undefined;
     status = error instanceof ApiError && error.status === 403 ? 'reaction-forbidden' : 'reaction-failed';
   }
 
@@ -656,85 +753,51 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
 
 // List conversations
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
+  const showArchived = checked(req.query.archived);
+  const cursor = trimmed(req.query.cursor);
+  const filter = trimmed(req.query.filter);
   const [conversationsData, unreadData] = await Promise.all([
-    getConversations(req.token),
-    getUnreadCount(req.token).catch(() => ({ count: 0 }))
+    getConversations(req.token, {
+      per_page: 20,
+      archived: showArchived,
+      ...(cursor ? { cursor } : {})
+    }),
+    getUnreadCount(req.token).catch(() => ({ data: { count: 0 } }))
   ]);
+  const conversations = listFrom(dataFrom(conversationsData));
+  const normalizedFilter = filter.toLowerCase();
+  const visibleConversations = normalizedFilter
+    ? conversations.filter((conversation) => {
+      const other = conversation && (conversation.other_user || conversation.otherUser) || {};
+      const name = trimmed(other.name || `${other.first_name || ''} ${other.last_name || ''}`);
+      return name.toLowerCase().includes(normalizedFilter);
+    })
+    : conversations;
+  const meta = conversationsData?.meta || {};
+  const unread = dataFrom(unreadData) || {};
 
   res.render('messages/index', {
     title: 'Messages',
-    conversations: conversationsData.items || conversationsData.data || (Array.isArray(conversationsData) ? conversationsData : []),
-    unreadCount: unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0,
+    conversations: visibleConversations,
+    unreadCount: unread.unread_count ?? unread.unreadCount ?? unread.count ?? 0,
+    showArchived,
+    filter,
+    meta: {
+      hasMore: Boolean(meta.has_more),
+      cursor: trimmed(meta.cursor || meta.next_cursor)
+    },
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
 
 router.get('/new/:userId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
-  const userId = Number(req.params.userId);
-  const listingId = positiveInteger(req.query.listing);
-  const [messagesResult, profileResult, restrictionResult, listingResult] = await Promise.all([
-    callMessage(req.token, 'GET', directConversationApiPath(userId, req.query)),
-    getRequestProfile(req, req.token).catch(() => null),
-    callMessage(req.token, 'GET', '/restriction-status').catch(() => ({ data: {} })),
-    listingId === null ? Promise.resolve(null) : callListingApi(req.token, 'GET', `/${listingId}`).catch(() => null)
-  ]);
-
-  await callMessage(req.token, 'PUT', `/${userId}/read`).catch(() => {});
-
-  const profile = dataFrom(profileResult);
-  const currentUserId = positiveInteger(profile && profile.id);
-  const normalized = directConversationFrom(messagesResult, userId, currentUserId);
-  const restriction = dataFrom(restrictionResult) || {};
-  const listing = listingResult ? dataFrom(listingResult) : null;
-  const query = trimmed(req.query.q);
-  const olderParams = new URLSearchParams();
-  if (listingId !== null) olderParams.set('listing', String(listingId));
-  if (query !== '') olderParams.set('q', query);
-  if (normalized.meta.cursor) olderParams.set('cursor', normalized.meta.cursor);
-  const olderHref = normalized.meta.hasMore && normalized.meta.cursor
-    ? `/messages/new/${userId}?${olderParams.toString()}`
-    : '';
-
-  res.render('messages/direct-conversation', {
-    title: `Conversation with ${normalized.conversation.otherUser.name}`,
-    conversation: normalized.conversation,
-    messages: normalized.messages,
-    meta: normalized.meta,
-    olderHref,
-    listing,
-    listingId,
-    query,
-    statusMessage: directStatusMessage(req.query.status),
-    errorMessage: directErrorMessage(req.query.status),
-    currentUserId,
-    directMessagingEnabled: restriction.direct_messaging_enabled !== false && restriction.messaging_disabled !== true,
-    restricted: Boolean(restriction.restricted || restriction.is_restricted || restriction.broker_messaging_only),
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
+  return renderDirectConversation(req, res, Number(req.params.userId));
 }, { notFoundTitle: 'Conversation not found' }));
 
 // View conversation
 router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
-  const [conversation, profile] = await Promise.all([
-    getConversation(req.token, req.params.id),
-    getRequestProfile(req, req.token).catch(() => null)
-  ]);
-
-  // Auto-mark conversation as read when viewed
-  // Fire and forget - don't wait for response or fail the page if this fails
-  markConversationRead(req.token, req.params.id).catch(() => {
-    // Silently ignore errors - marking as read is not critical
-  });
-
-  res.render('messages/conversation', {
-    title: 'Conversation',
-    conversation,
-    messages: conversation.messages || [],
-    currentUser: profile,
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    error: req.flash ? req.flash('error')[0] : null
-  });
+  return renderDirectConversation(req, res, Number(req.params.id));
 }, { notFoundTitle: 'Conversation not found' }));
 
 // Send message
@@ -743,12 +806,11 @@ router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (re
   const conversationId = req.params.id;
   const recipientId = Number(conversationId);
   const attachments = uploadedFiles(req, 'attachments');
+  const contextType = trimmed(req.body.context_type, 50) === 'listing' ? 'listing' : '';
+  const contextId = contextType ? positiveInteger(req.body.context_id) : null;
 
   if (!content && attachments.length === 0) {
-    if (req.flash) {
-      req.flash('error', 'Enter a message or add an attachment');
-    }
-    return redirectTo(res, `/messages/${conversationId}`);
+    return redirectTo(res, messageRedirect(recipientId, 'message-empty'));
   }
 
   try {
@@ -762,24 +824,32 @@ router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (re
       await uploadMessageAttachments(tokenFrom(req), {
         recipient_id: recipientId,
         body: content,
+        context_type: contextType || undefined,
+        context_id: contextId || undefined,
         files
       });
     } else {
-      await replyToConversation(req.token, conversationId, content);
+      await callMessage(req.token, 'POST', '', {
+        recipient_id: recipientId,
+        body: content,
+        ...(contextType && contextId ? { context_type: contextType, context_id: contextId } : {})
+      });
     }
 
-    if (req.flash) {
-      req.flash('success', 'Message sent');
-    }
-    return redirectTo(res, `/messages/${conversationId}`);
+    return redirectTo(res, messageRedirect(recipientId, 'message-sent'));
   } catch (error) {
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to send message');
-      }
-      return redirectTo(res, `/messages/${conversationId}`);
+    if (redirectOnAuthError(error, req, res)) return undefined;
+    if (apiErrorCode(error) === 'ONBOARDING_REQUIRED') {
+      return redirectTo(res, '/onboarding');
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    if (error instanceof ApiError && error.status !== 401) {
+      const code = apiErrorCode(error);
+      const status = code.includes('FEATURE_DISABLED') || code.includes('MESSAGING_DISABLED')
+        ? 'message-disabled'
+        : (code.includes('ATTACHMENT') ? 'attachment-failed' : 'message-failed');
+      return redirectTo(res, messageRedirect(recipientId, status));
+    }
+    throw error;
   } finally {
     await removeUploadedFiles(attachments);
   }

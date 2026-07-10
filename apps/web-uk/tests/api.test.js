@@ -59,6 +59,121 @@ describe('API Request Functions', () => {
     api = require('../src/lib/api');
   });
 
+  describe('request-scoped tenant authority', () => {
+    const jsonResponse = (body = { data: [] }) => ({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => body
+    });
+
+    it('normalizes routed slugs without accepting path or header syntax', () => {
+      const { normalizeTenantSlug } = require('../src/lib/request-tenant-context');
+
+      expect(normalizeTenantSlug(' Acme-Timebank ')).toBe('acme-timebank');
+      expect(normalizeTenantSlug('legacy_slug')).toBe('legacy_slug');
+      expect(normalizeTenantSlug('acme/timebank')).toBeNull();
+      expect(normalizeTenantSlug('acme\r\nX-Tenant-ID: 1')).toBeNull();
+    });
+
+    it('uses the routed tenant slug for anonymous API and download requests', async () => {
+      const previousTenantId = process.env.TENANT_ID;
+      const previousAccessibleSlug = process.env.ACCESSIBLE_TENANT_SLUG;
+      process.env.TENANT_ID = '1';
+      delete process.env.ACCESSIBLE_TENANT_SLUG;
+      jest.resetModules();
+      api = require('../src/lib/api');
+      const { runWithRequestTenant } = require('../src/lib/request-tenant-context');
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse({ data: [], meta: { cursor: null, has_more: false } }))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name) => name.toLowerCase() === 'content-type' ? 'text/csv' : null
+          },
+          arrayBuffer: async () => Buffer.from('wallet export')
+        });
+
+      try {
+        await runWithRequestTenant('acme', async () => {
+          await api.getEvents('', { per_page: 20, tenant_slug: 'untrusted-query' });
+          await api.callWalletDownload('', '/export.csv');
+        });
+
+        for (const [, options] of mockFetch.mock.calls) {
+          expect(options.headers).toEqual(expect.objectContaining({ 'X-Tenant-Slug': 'acme' }));
+          expect(options.headers).not.toHaveProperty('X-Tenant-ID');
+        }
+        expect(mockFetch.mock.calls[0][0]).not.toContain('tenant_slug');
+      } finally {
+        if (previousTenantId === undefined) delete process.env.TENANT_ID;
+        else process.env.TENANT_ID = previousTenantId;
+        if (previousAccessibleSlug === undefined) delete process.env.ACCESSIBLE_TENANT_SLUG;
+        else process.env.ACCESSIBLE_TENANT_SLUG = previousAccessibleSlug;
+      }
+    });
+
+    it('prefers the configured flat-local tenant slug over the legacy tenant id fallback', async () => {
+      const previousTenantId = process.env.TENANT_ID;
+      const previousAccessibleSlug = process.env.ACCESSIBLE_TENANT_SLUG;
+      process.env.TENANT_ID = '1';
+      process.env.ACCESSIBLE_TENANT_SLUG = 'hour-timebank';
+      jest.resetModules();
+      api = require('../src/lib/api');
+      mockFetch.mockResolvedValueOnce(jsonResponse({ data: [], meta: { cursor: null, has_more: false } }));
+
+      try {
+        await api.getListings('', { per_page: 20 });
+        expect(mockFetch.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+          'X-Tenant-Slug': 'hour-timebank'
+        }));
+        expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+      } finally {
+        if (previousTenantId === undefined) delete process.env.TENANT_ID;
+        else process.env.TENANT_ID = previousTenantId;
+        if (previousAccessibleSlug === undefined) delete process.env.ACCESSIBLE_TENANT_SLUG;
+        else process.env.ACCESSIBLE_TENANT_SLUG = previousAccessibleSlug;
+      }
+    });
+
+    it('keeps concurrent anonymous tenant contexts isolated', async () => {
+      const previousTenantId = process.env.TENANT_ID;
+      const previousAccessibleSlug = process.env.ACCESSIBLE_TENANT_SLUG;
+      delete process.env.TENANT_ID;
+      delete process.env.ACCESSIBLE_TENANT_SLUG;
+      jest.resetModules();
+      api = require('../src/lib/api');
+      const { runWithRequestTenant } = require('../src/lib/request-tenant-context');
+      mockFetch.mockImplementation(async () => {
+        await new Promise((resolve) => global.setImmediate(resolve));
+        return jsonResponse({ data: [], meta: { cursor: null, has_more: false } });
+      });
+
+      try {
+        await Promise.all([
+          runWithRequestTenant('tenant-one', async () => {
+            await new Promise((resolve) => global.setImmediate(resolve));
+            return api.getEvents('', { per_page: 20 });
+          }),
+          runWithRequestTenant('tenant-two', async () => {
+            await Promise.resolve();
+            return api.getListings('', { per_page: 20 });
+          })
+        ]);
+
+        const eventCall = mockFetch.mock.calls.find(([url]) => url.includes('/api/v2/events'));
+        const listingCall = mockFetch.mock.calls.find(([url]) => url.includes('/api/v2/listings'));
+        expect(eventCall[1].headers['X-Tenant-Slug']).toBe('tenant-one');
+        expect(listingCall[1].headers['X-Tenant-Slug']).toBe('tenant-two');
+      } finally {
+        if (previousTenantId === undefined) delete process.env.TENANT_ID;
+        else process.env.TENANT_ID = previousTenantId;
+        if (previousAccessibleSlug === undefined) delete process.env.ACCESSIBLE_TENANT_SLUG;
+        else process.env.ACCESSIBLE_TENANT_SLUG = previousAccessibleSlug;
+      }
+    });
+  });
+
   describe('login', () => {
     it('should send correct request', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -163,6 +278,108 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('registration', () => {
+    const successfulJson = (body) => ({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.resolve(body)
+    });
+
+    it('uses Laravel v2 registration with explicit tenant authority', async () => {
+      mockFetch.mockResolvedValueOnce(successfulJson({
+        data: { requires_verification: true }
+      }));
+      const payload = {
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        email: 'ada@example.test',
+        phone: '+353871234567',
+        location: 'Dublin, Ireland',
+        password: 'LongPassword123!',
+        password_confirmation: 'LongPassword123!',
+        terms_accepted: true
+      };
+
+      await api.register(payload, 'acme');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/auth/register',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'X-Tenant-Slug': 'acme'
+          }),
+          body: JSON.stringify(payload)
+        })
+      );
+    });
+
+    it('reads registration policy and validates invites through tenant-scoped v2 endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce(successfulJson({ data: { registration_mode: 'invite_only' } }))
+        .mockResolvedValueOnce(successfulJson({ data: { valid: true, reason: null } }));
+
+      await api.getRegistrationInfo('acme');
+      await api.validateRegistrationInvite('acme', 'ABCD1234');
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/auth/registration-info',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/auth/validate-invite',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' }),
+          body: JSON.stringify({ code: 'ABCD1234' })
+        })
+      );
+    });
+  });
+
+  describe('validateToken', () => {
+    it('should use Laravel\'s canonical token validation endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { valid: true, user: { id: 42 } } })
+      });
+
+      await api.validateToken('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/auth/validate-token',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should change passwords through Laravel v2 users/me', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { password_updated: true } })
+      });
+
+      await api.changePassword('test-token', 'old-password', 'new-password');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me/password',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ current_password: 'old-password', new_password: 'new-password' })
+        })
+      );
+    });
+  });
+
   describe('refreshToken', () => {
     it('should use Laravel\'s refresh-token endpoint and payload', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -178,6 +395,83 @@ describe('API Request Functions', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ refresh_token: 'expired-access-refresh-token' })
+        })
+      );
+    });
+  });
+
+  describe('tenant-scoped public authentication contracts', () => {
+    const successfulJson = (body) => ({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => body
+    });
+
+    it('completes Laravel TOTP login with the challenge token in the body', async () => {
+      const responseBody = {
+        success: true,
+        access_token: 'verified-access-token',
+        refresh_token: 'verified-refresh-token',
+        token_type: 'Bearer'
+      };
+      mockFetch.mockResolvedValueOnce(successfulJson(responseBody));
+
+      const result = await api.verify2fa('pending-two-factor-token', '123456', 'acme');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/totp/verify',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'X-Tenant-Slug': 'acme'
+          }),
+          body: JSON.stringify({
+            two_factor_token: 'pending-two-factor-token',
+            code: '123456'
+          })
+        })
+      );
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+      expect(result).toEqual(responseBody);
+    });
+
+    it('sends tenant authority as a header for recovery and email verification', async () => {
+      mockFetch
+        .mockResolvedValueOnce(successfulJson({ data: { message: 'reset sent' } }))
+        .mockResolvedValueOnce(successfulJson({ data: { message: 'verification sent' } }))
+        .mockResolvedValueOnce(successfulJson({ data: { verified: true } }));
+
+      await api.forgotPassword('member@example.test', 'acme');
+      await api.resendVerification('member@example.test', 'acme');
+      await api.verifyEmail('email-verification-token', 'acme');
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/auth/forgot-password',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' }),
+          body: JSON.stringify({ email: 'member@example.test' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/auth/resend-verification-by-email',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' }),
+          body: JSON.stringify({ email: 'member@example.test' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/auth/verify-email',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' }),
+          body: JSON.stringify({ token: 'email-verification-token' })
         })
       );
     });
@@ -243,8 +537,11 @@ describe('API Request Functions', () => {
       expect(result.data.slug).toBe('acme');
     });
 
-    it('should not override host-scoped bootstrap resolution with the default tenant id', async () => {
+    it('should not override host-scoped bootstrap resolution with configured tenant fallbacks', async () => {
+      const previousTenantId = process.env.TENANT_ID;
+      const previousAccessibleSlug = process.env.ACCESSIBLE_TENANT_SLUG;
       process.env.TENANT_ID = '2';
+      process.env.ACCESSIBLE_TENANT_SLUG = 'hour-timebank';
       jest.resetModules();
       api = require('../src/lib/api');
 
@@ -254,13 +551,21 @@ describe('API Request Functions', () => {
         json: () => Promise.resolve({ data: { id: 4, slug: 'timebank-global', domain: 'timebank.global' } })
       });
 
-      await api.getTenantBootstrap({ host: 'timebank.global' });
+      try {
+        await api.getTenantBootstrap({ host: 'timebank.global' });
 
-      expect(mockFetch.mock.calls[0][1].headers).toEqual(expect.objectContaining({
-        Host: 'timebank.global',
-        Origin: 'https://timebank.global'
-      }));
-      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+        expect(mockFetch.mock.calls[0][1].headers).toEqual(expect.objectContaining({
+          Host: 'timebank.global',
+          Origin: 'https://timebank.global'
+        }));
+        expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-Slug');
+        expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+      } finally {
+        if (previousTenantId === undefined) delete process.env.TENANT_ID;
+        else process.env.TENANT_ID = previousTenantId;
+        if (previousAccessibleSlug === undefined) delete process.env.ACCESSIBLE_TENANT_SLUG;
+        else process.env.ACCESSIBLE_TENANT_SLUG = previousAccessibleSlug;
+      }
     });
 
     it('should ask Laravel to resolve tenant bootstrap data from an explicit slug', async () => {
@@ -274,7 +579,9 @@ describe('API Request Functions', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/v2/tenant/bootstrap?slug=acme',
-        expect.any(Object)
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'acme' })
+        })
       );
     });
   });
@@ -382,21 +689,17 @@ describe('API Request Functions', () => {
       );
     });
 
-    it('should include query params', async () => {
+    it('should use Laravel cursor and supported listing query params', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         headers: { get: () => 'application/json' },
         json: () => Promise.resolve({ data: [] })
       });
 
-      await api.getListings('test-token', { status: 'active', page: 2 });
+      await api.getListings('test-token', { q: 'garden', type: 'offer', cursor: 'next-page', per_page: 20 });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('status=active'),
-        expect.anything()
-      );
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('page=2'),
+        'http://localhost:5000/api/v2/listings?type=offer&q=garden&cursor=next-page&per_page=20',
         expect.anything()
       );
     });
@@ -412,17 +715,21 @@ describe('API Request Functions', () => {
         search: 'garden',
         type: 'offer',
         category_id: 3,
-        hours: 'quick',
-        service: 'remote',
-        posted: '7',
-        sort: 'newest',
-        near: '10',
+        skills: 'pruning',
+        featured_first: true,
+        min_hours: '1',
+        max_hours: '3',
+        service_type: 'remote_only',
+        posted_within: '7',
+        near_lat: '54.6',
+        near_lng: '-5.9',
+        radius_km: '10',
         cursor: 'abc',
         per_page: 20
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/v2/listings?type=offer&search=garden&category_id=3&hours=quick&service=remote&posted=7&sort=newest&near=10&cursor=abc&per_page=20',
+        'http://localhost:5000/api/v2/listings?type=offer&q=garden&category_id=3&skills=pruning&featured_first=true&min_hours=1&max_hours=3&service_type=remote_only&posted_within=7&near_lat=54.6&near_lng=-5.9&radius_km=10&cursor=abc&per_page=20',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
@@ -482,6 +789,127 @@ describe('API Request Functions', () => {
       expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
       expect(result.data.title).toBe('E2E Fixture Listing - Gardening Help');
     });
+
+    it('should omit Authorization for Laravel public listing collection and detail reads', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [], meta: { cursor: null, has_more: false } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42, title: 'Public listing' } })
+        });
+
+      await api.getListings('', { per_page: 20 });
+      await api.getListing('', 42);
+
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      expect(mockFetch.mock.calls[1][1].headers).not.toHaveProperty('Authorization');
+    });
+
+    it('should use the exact Laravel v2 listing mutation methods, paths, and JSON payload', async () => {
+      const payload = {
+        title: 'Garden tool sharing',
+        description: 'Share useful garden tools with neighbours nearby.',
+        type: 'offer',
+        category_id: 3,
+        hours_estimate: 2.5,
+        service_type: 'physical_only',
+        location: 'Town shed'
+      };
+      for (const response of [
+        { data: { id: 42 } },
+        { data: { id: 42 } },
+        ''
+      ]) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => (typeof response === 'string' ? 'text/plain' : 'application/json') },
+          json: () => Promise.resolve(response),
+          text: () => Promise.resolve(response)
+        });
+      }
+
+      await api.createListing('test-token', payload);
+      await api.updateListing('test-token', 42, payload);
+      await api.deleteListing('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/listings',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/listings/42',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(3,
+        'http://localhost:5000/api/v2/listings/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should load listing categories and persist tags and image through their separate v2 boundaries', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [{ id: 3, name: 'Gardening' }] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { listing_id: 42, tags: ['gardening'] } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { image_url: '/uploads/listings/cover.webp' } })
+        });
+
+      await api.getListingCategories('test-token');
+      await api.setListingSkillTags('test-token', 42, ['gardening']);
+      await api.uploadListingImage('test-token', 42, {
+        file: {
+          buffer: Buffer.from('fake listing image', 'utf8'),
+          filename: 'cover.webp',
+          contentType: 'image/webp'
+        }
+      });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/categories?type=listing',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/listings/42/tags',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ tags: ['gardening'] })
+        })
+      );
+      const uploadOptions = mockFetch.mock.calls[2][1];
+      expect(mockFetch.mock.calls[2][0]).toBe('http://localhost:5000/api/v2/listings/42/image');
+      expect(uploadOptions.method).toBe('POST');
+      expect(uploadOptions.headers.Authorization).toBe('Bearer test-token');
+      expect(uploadOptions.headers).not.toHaveProperty('Content-Type');
+      expect(uploadOptions.body).toBeInstanceOf(globalThis.FormData);
+      expect(uploadOptions.body.get('image')).toBeTruthy();
+    });
   });
 
   describe('getFeedPosts', () => {
@@ -498,15 +926,19 @@ describe('API Request Functions', () => {
       });
 
       const result = await api.getFeedPosts('test-token', {
-        limit: 5,
+        per_page: 5,
         type: 'listings',
-        mode: 'recent',
+        mode: 'ranked',
         subtype: 'offer',
-        cursor: 'abc'
+        cursor: 'abc',
+        group_id: 7,
+        user_id: 77,
+        personalised: true,
+        tz: 'Europe/Dublin'
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/v2/feed?limit=5&type=listings&mode=recent&subtype=offer&cursor=abc',
+        'http://localhost:5000/api/v2/feed?per_page=5&type=listings&mode=ranked&subtype=offer&cursor=abc&group_id=7&user_id=77&personalised=true&tz=Europe%2FDublin',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
@@ -516,9 +948,99 @@ describe('API Request Functions', () => {
       );
       expect(result.data[0].title).toBe('Community update');
     });
+
+    it('does not expose the removed nonexistent legacy feed helpers', () => {
+      expect(api).not.toHaveProperty('getFeedPost');
+      expect(api).not.toHaveProperty('createFeedPost');
+      expect(api).not.toHaveProperty('updateFeedPost');
+      expect(api).not.toHaveProperty('deleteFeedPost');
+      expect(api).not.toHaveProperty('likeFeedPost');
+      expect(api).not.toHaveProperty('unlikeFeedPost');
+      expect(api).not.toHaveProperty('getFeedComments');
+      expect(api).not.toHaveProperty('addFeedComment');
+      expect(api).not.toHaveProperty('deleteFeedComment');
+    });
+
+    it('uses the valid v2 post and polymorphic item permalink endpoints with optional auth', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42, type: 'post' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 77, type: 'listing' } })
+        });
+
+      await api.getFeedPostV2('', 42);
+      await api.getFeedItemV2('test-token', 'listing', 77);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/feed/posts/42',
+        expect.objectContaining({
+          headers: expect.not.objectContaining({ Authorization: expect.anything() })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/feed/items/listing/77',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
   });
 
   describe('getMembers', () => {
+    it('should call the canonical Laravel v2 users endpoint with its exact directory query', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: [{ id: 77, name: 'Ada' }],
+          meta: { total_items: 41, per_page: 20, offset: 20, has_more: true }
+        })
+      });
+
+      const result = await api.getUsers('test-token', {
+        q: 'repair',
+        sort: 'joined',
+        order: 'DESC',
+        limit: 20,
+        offset: 20
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users?q=repair&sort=joined&order=DESC&limit=20&offset=20',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(result).toEqual(expect.objectContaining({
+        data: [{ id: 77, name: 'Ada' }],
+        meta: expect.objectContaining({ total_items: 41, offset: 20, has_more: true })
+      }));
+    });
+
+    it('should call the canonical Laravel v2 user detail endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 77, name: 'Ada' } })
+      });
+
+      const result = await api.getUser('test-token', 77);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/77',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(result.data.name).toBe('Ada');
+    });
+
     it('should call the Laravel v2 users endpoint with directory filters and auth', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -638,6 +1160,10 @@ describe('API Request Functions', () => {
   });
 
   describe('reviews', () => {
+    it('does not expose the unsupported Laravel review update contract', () => {
+      expect(api.updateReview).toBeUndefined();
+    });
+
     it('should call the Laravel v2 user reviews endpoint with auth', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -733,6 +1259,74 @@ describe('API Request Functions', () => {
   });
 
   describe('events', () => {
+    it('should call the Laravel v2 event collection with cursor filters', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: [], meta: { cursor: null, has_more: false } })
+      });
+
+      await api.getEvents('test-token', {
+        per_page: 12,
+        cursor: 'next-page',
+        group_id: 9,
+        category_id: 4,
+        when: 'past',
+        q: 'repair'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events?per_page=12&cursor=next-page&group_id=9&category_id=4&when=past&q=repair',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should omit Authorization for Laravel public event collection, detail, and attendee reads', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [], meta: { cursor: null, has_more: false } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 6, title: 'Public event' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [], meta: { cursor: null, has_more: false } })
+        });
+
+      await api.getEvents('', { per_page: 20 });
+      await api.getEvent('', 6);
+      await api.getEventRsvps('', 6);
+
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      expect(mockFetch.mock.calls[1][1].headers).not.toHaveProperty('Authorization');
+      expect(mockFetch.mock.calls[2][1].headers).not.toHaveProperty('Authorization');
+    });
+
+    it('should load dashboard events from the real Laravel v2 upcoming collection', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: [], meta: { cursor: null, has_more: false } })
+      });
+
+      await api.getMyEvents('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events?per_page=3&when=upcoming',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
     it('should call the Laravel v2 event detail endpoint with auth', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -783,9 +1377,79 @@ describe('API Request Functions', () => {
       );
       expect(result.data[0].status).toBe('going');
     });
+
+    it('should submit Laravel v2 RSVP statuses and request the complete attendee roster', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: { status: 'interested', rsvp_counts: { going: 1, interested: 2 } } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: [], meta: { per_page: 20, has_more: false } })
+        });
+
+      await api.rsvpToEvent('test-token', 6, 'interested');
+      await api.getEventRsvps('test-token', 6);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/events/6/rsvp',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ status: 'interested' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/events/6/attendees?status=all&per_page=20',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
   });
 
   describe('exchanges', () => {
+    it('should call the authoritative Laravel exchange config and listing check endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({
+            data: { exchange_workflow_enabled: true, direct_messaging_enabled: true }
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({
+            data: { id: 42, status: 'pending_provider', role: 'requester' }
+          })
+        });
+
+      await api.getExchangeConfig('test-token');
+      await api.checkExchangeForListing('test-token', 90992);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/exchanges/config',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/exchanges/check?listing_id=90992',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
     it('should call the Laravel v2 exchanges list endpoint with filters and auth', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -1796,6 +2460,74 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should use the exact Laravel v2 event mutation contracts', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { cancelled: true, event_id: 42, reason: 'Weather' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({})
+        });
+
+      const payload = {
+        title: 'Community gathering',
+        description: 'An event for the whole community.',
+        start_time: '2026-08-01T10:00',
+        end_time: '2026-08-01T12:00'
+      };
+
+      await api.createEvent('test-token', payload);
+      await api.updateEvent('test-token', 42, payload);
+      await api.cancelEvent('test-token', 42, { reason: 'Weather' });
+      await api.deleteEvent('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/events',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/events/42',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(3,
+        'http://localhost:5000/api/v2/events/42/cancel',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ reason: 'Weather' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(4,
+        'http://localhost:5000/api/v2/events/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
     it('should fetch Laravel event categories through the shared category endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -2016,6 +2748,109 @@ describe('API Request Functions', () => {
   });
 
   describe('callGroupApi', () => {
+    it('should use Laravel v2 group collection contracts without falling back to the unfiltered legacy route', async () => {
+      const collection = {
+        data: [{ id: 42, name: 'Repair circle' }],
+        meta: { cursor: 'next-groups', per_page: 20, has_more: true }
+      };
+      const memberships = {
+        data: [{ id: 42, name: 'Repair circle' }],
+        meta: { cursor: null, per_page: 100, has_more: false }
+      };
+      const members = {
+        data: [{ id: 101, name: 'Ada Member', role: 'owner' }],
+        meta: { cursor: null, per_page: 50, has_more: false }
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => collection
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => memberships
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => members
+        });
+
+      const groupsResult = await api.getGroups('test-token', {
+        per_page: 20,
+        cursor: 'previous-cursor',
+        q: 'repair',
+        visibility: 'private'
+      });
+      const membershipsResult = await api.getMyGroups('test-token');
+      const membersResult = await api.getGroupMembers('test-token', 42, {
+        per_page: 50,
+        cursor: 'member-cursor',
+        role: 'admin'
+      });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/groups?per_page=20&cursor=previous-cursor&q=repair&visibility=private',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/groups?member=me&per_page=100',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/groups/42/members?per_page=50&cursor=member-cursor&role=admin',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(groupsResult).toEqual(collection);
+      expect(membershipsResult).toEqual(memberships);
+      expect(membersResult).toEqual(members);
+      expect(mockFetch.mock.calls.map(([url]) => url).some((url) => /\/api\/groups(?:\?|$)/.test(url))).toBe(false);
+    });
+
+    it('should update and remove group members only through Laravel v2 membership endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { user_id: 101, role: 'admin' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => '' },
+          text: async () => ''
+        });
+
+      await api.updateGroupMemberRole('test-token', 42, 101, 'admin');
+      await api.removeGroupMember('test-token', 42, 101);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/groups/42/members/101',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ role: 'admin' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/groups/42/members/101',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(api.addGroupMember).toBeUndefined();
+      expect(api.transferGroupOwnership).toBeUndefined();
+    });
+
     it('should fetch group details through the Laravel v2 group endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -2032,6 +2867,62 @@ describe('API Request Functions', () => {
             Authorization: 'Bearer test-token'
           })
         })
+      );
+    });
+
+    it('should create, update, and delete groups through exact Laravel v2 mutation endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42, visibility: 'private' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42, visibility: 'public' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 204,
+          headers: { get: () => null },
+          text: async () => ''
+        });
+
+      await api.createGroup('test-token', {
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        location: 'Dublin',
+        visibility: 'private'
+      });
+      await api.updateGroup('test-token', 42, { visibility: 'public' });
+      await api.deleteGroup('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/groups',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Repair circle',
+            description: 'Share repair skills.',
+            location: 'Dublin',
+            visibility: 'private'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/groups/42',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ visibility: 'public' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/groups/42',
+        expect.objectContaining({ method: 'DELETE' })
       );
     });
 
@@ -2513,6 +3404,8 @@ describe('API Request Functions', () => {
       await api.uploadMessageAttachments('test-token', {
         recipient_id: 77,
         body: 'Here is the handbook.',
+        context_type: 'listing',
+        context_id: 42,
         files: [
           {
             buffer: Buffer.from('%PDF message attachment', 'utf8'),
@@ -2533,6 +3426,55 @@ describe('API Request Functions', () => {
         })
       );
       expect(options.body).toBeInstanceOf(FormData);
+      expect(options.body.get('recipient_id')).toBe('77');
+      expect(options.body.get('body')).toBe('Here is the handbook.');
+      expect(options.body.get('context_type')).toBe('listing');
+      expect(options.body.get('context_id')).toBe('42');
+    });
+
+    it('should send and mark direct conversations through Laravel v2 message endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 12 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 13 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { marked_read: 1 } })
+        });
+
+      await api.sendMessage('test-token', 77, 'Hello there');
+      await api.replyToConversation('test-token', 77, 'A reply');
+      await api.markConversationRead('test-token', 77);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/messages',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ recipient_id: 77, body: 'Hello there' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/messages',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ recipient_id: 77, body: 'A reply' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/messages/77/read',
+        expect.objectContaining({ method: 'PUT' })
+      );
     });
   });
 
@@ -2990,7 +3932,7 @@ describe('API Request Functions', () => {
     });
   });
 
-  describe('Laravel saved search helpers', () => {
+  describe('Laravel search helpers', () => {
     it('should search through the Laravel v2 endpoint with advanced filters', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -3011,6 +3953,25 @@ describe('API Request Functions', () => {
         'http://localhost:5000/api/v2/search?q=gardening&type=listings&per_page=30&category_id=3&sort=newest&skills=repair%2Cteaching',
         expect.objectContaining({
           method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch suggestions through the Laravel v2 search endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { listings: [], users: [], events: [], groups: [] } })
+      });
+
+      await api.searchSuggestions('test-token', 'garden', 8);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search/suggestions?q=garden&limit=8',
+        expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
           })
@@ -3116,6 +4077,72 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel gamification helpers', () => {
+    it('should fetch own and member gamification profiles through the exact Laravel v2 contract', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { user: { id: 101 }, xp: 1250, level: 4, badges_count: 2 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { user: { id: 77 }, xp: 120, level: 2, badges_count: 1 } })
+        });
+
+      const ownProfile = await api.getGamificationProfile('test-token');
+      const memberProfile = await api.getGamificationProfileByUserId('test-token', 77);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/gamification/profile',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/gamification/profile?user_id=77',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(ownProfile.data.xp).toBe(1250);
+      expect(memberProfile.data.user.id).toBe(77);
+    });
+
+    it('should fetch own and member badges through the exact Laravel v2 data/meta contract', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            data: [{ badge_key: 'helper', name: 'Community helper' }],
+            meta: { total: 1, available_types: ['community'] }
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            data: [{ badge_key: 'mentor', name: 'Mentor' }],
+            meta: { total: 1, available_types: ['community'] }
+          })
+        });
+
+      const ownBadges = await api.getMyBadges('test-token');
+      const memberBadges = await api.getAllBadges('test-token', { user_id: 77 });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/gamification/badges',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/gamification/badges?user_id=77',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(ownBadges.meta.available_types).toEqual(['community']);
+      expect(memberBadges.data[0].badge_key).toBe('mentor');
+    });
+
     it('should claim the daily reward through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -3207,7 +4234,7 @@ describe('API Request Functions', () => {
         json: async () => ({ data: [], meta: { has_more: false } })
       });
 
-      await api.getConnectionsV2('test-token', {
+      const result = await api.getConnections('test-token', {
         status: 'pending_received',
         per_page: 20,
         cursor: 'next-page'
@@ -3221,6 +4248,7 @@ describe('API Request Functions', () => {
           })
         })
       );
+      expect(result).toEqual({ data: [], meta: { has_more: false } });
     });
 
     it('should fetch pending connection counts through the Laravel v2 endpoint', async () => {
@@ -3428,7 +4456,7 @@ describe('API Request Functions', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         headers: { get: () => 'application/json' },
-        json: async () => ({ data: { transaction_id: 99 } })
+        json: async () => ({ data: { id: 99, type: 'debit', status: 'completed' } })
       });
 
       await api.transferWalletCredits('test-token', {
@@ -3791,6 +4819,27 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel feed action helpers', () => {
+    it('should read the nested Laravel v2 comments envelope through the generic comments endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { comments: [{ id: 12 }], count: 1 } })
+      });
+
+      const result = await api.getComments('test-token', {
+        target_type: 'post',
+        target_id: 42
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/comments?target_type=post&target_id=42',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(result.data.comments).toEqual([{ id: 12 }]);
+    });
+
     it('should create, update, and delete feed posts through Laravel v2 endpoints', async () => {
       mockFetch
         .mockResolvedValueOnce({
@@ -3865,6 +4914,9 @@ describe('API Request Functions', () => {
         })
       );
       expect(options.body).toBeInstanceOf(FormData);
+      expect(options.body.getAll('media[]')).toHaveLength(1);
+      expect(options.body.get('alt_texts[]')).toBe('Volunteers planting herbs');
+      expect(options.body.get('image')).toBeNull();
     });
 
     it('should call Laravel v2 feed moderation helpers', async () => {
@@ -4028,7 +5080,7 @@ describe('API Request Functions', () => {
         });
 
       await api.getBalance('test-token');
-      await api.getTransactions('test-token', { limit: 5, type: 'earned', page: 2 });
+      await api.getTransactions('test-token', { per_page: 20, type: 'received', cursor: 'next-page' });
       await api.getTransaction('test-token', 42);
 
       expect(mockFetch).toHaveBeenNthCalledWith(
@@ -4042,7 +5094,7 @@ describe('API Request Functions', () => {
       );
       expect(mockFetch).toHaveBeenNthCalledWith(
         2,
-        'http://localhost:5000/api/v2/wallet/transactions?type=earned&page=2&limit=5',
+        'http://localhost:5000/api/v2/wallet/transactions?type=received&cursor=next-page&per_page=20',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
@@ -4070,7 +5122,7 @@ describe('API Request Functions', () => {
         .mockResolvedValueOnce({
           ok: true,
           headers: { get: () => 'application/json' },
-          json: async () => ({ count: 3 })
+          json: async () => ({ data: { count: 3 } })
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -4078,13 +5130,13 @@ describe('API Request Functions', () => {
           json: async () => ({ data: { id: 42 } })
         });
 
-      await api.getConversations('test-token');
+      await api.getConversations('test-token', { per_page: 20, cursor: 'abc', archived: true });
       await api.getUnreadCount('test-token');
       await api.getConversation('test-token', 42);
 
       expect(mockFetch).toHaveBeenNthCalledWith(
         1,
-        'http://localhost:5000/api/v2/messages',
+        'http://localhost:5000/api/v2/messages?per_page=20&cursor=abc&archived=true',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
@@ -4480,6 +5532,70 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel notification helpers', () => {
+    it('should read the normal inbox through Laravel\'s grouped cursor contract', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [], meta: { cursor: null, has_more: false } })
+      });
+
+      await api.getGroupedNotifications('test-token', {
+        per_page: 30,
+        cursor: 'next-page',
+        type: 'messages',
+        unread_only: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/notifications/grouped?per_page=30&cursor=next-page',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+    });
+
+    it('should read unread notification pages, counts, and detail through Laravel v2 contracts', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [], meta: { cursor: null, has_more: false } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { total: 3, categories: { messages: 2 } } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 17 } })
+        });
+
+      await api.getNotifications('test-token', {
+        per_page: 30,
+        cursor: 'next-page',
+        type: 'message_received',
+        unread_only: true
+      });
+      await api.getNotificationUnreadCount('test-token');
+      await api.getNotification('test-token', 17);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/notifications?per_page=30&cursor=next-page&type=message_received&unread_only=true',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/notifications/counts',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/notifications/17',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+    });
+
     it('should mark one notification read through Laravel\'s v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -4579,6 +5695,10 @@ describe('API Request Functions', () => {
           })
         })
       );
+    });
+
+    it('does not expose the legacy receiver_id wallet transfer helper', () => {
+      expect(api.transferCredits).toBeUndefined();
     });
   });
 

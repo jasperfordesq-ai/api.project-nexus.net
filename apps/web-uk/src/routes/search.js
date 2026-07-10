@@ -5,7 +5,6 @@
 
 const express = require('express');
 const {
-  search,
   searchV2,
   getSavedSearches,
   saveSavedSearch,
@@ -248,6 +247,17 @@ function groupedSearchResults(rows) {
   return grouped;
 }
 
+function simpleSearchPagination(result, query, type) {
+  const pagination = objectFrom(result?.meta?.pagination);
+  const cursor = textFrom(pagination.cursor).slice(0, 2000);
+  if (pagination.has_more !== true || cursor === '') {
+    return null;
+  }
+
+  const params = new URLSearchParams({ q: query, type, cursor });
+  return { nextHref: `/search?${params.toString()}` };
+}
+
 function resultCounts(grouped, total) {
   return {
     all: total,
@@ -436,10 +446,8 @@ router.post('/saved/:id(\\d+)/run', asyncRoute(async (req, res) => {
 
 // Search results page
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const query = req.query.q ? req.query.q.trim() : '';
-  const type = req.query.type || 'all';
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = 20;
+  const query = String(req.query.q || '').trim();
+  const type = allowed(req.query.type, SEARCH_TYPES, 'all');
 
   // If no query, show empty search page
   if (!query || query.length < 2) {
@@ -454,14 +462,22 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   }
 
   try {
-    const results = await search(req.token, query, type, page, limit);
+    const params = { q: query, type, per_page: 30 };
+    const cursor = String(req.query.cursor || '').trim().slice(0, 2000);
+    if (cursor !== '') params.cursor = cursor;
+
+    const result = await searchV2(req.token, params);
+    const results = groupedSearchResults(result?.data);
+    const returnedTotal = Object.values(results).reduce((sum, rows) => sum + rows.length, 0);
+    const totalResults = intFrom(result?.meta?.search?.total) || returnedTotal;
 
     res.render('search/index', {
       title: `Search results for "${query}"`,
       query,
       type,
       results,
-      pagination: results.pagination || null,
+      totalResults,
+      pagination: simpleSearchPagination(result, query, type),
       successMessage: req.flash ? req.flash('success')[0] : null,
       errorMessage: req.flash ? req.flash('error')[0] : null
     });

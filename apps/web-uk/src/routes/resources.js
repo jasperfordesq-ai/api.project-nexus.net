@@ -20,7 +20,7 @@ const {
   toggleReaction,
   ApiError
 } = require('../lib/api');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
@@ -43,6 +43,8 @@ const RESOURCE_REACTION_LABELS = {
   sad: 'Sad',
   celebrate: 'Celebrate'
 };
+const RESOURCE_PAGE_SIZE = 50;
+const MAX_RESOURCE_PAGES = 100;
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -75,12 +77,9 @@ function isForbidden(error) {
   return error instanceof ApiError && error.status === 403;
 }
 
-function redirectAuthIfNeeded(error, res) {
-  if (isAuthError(error)) {
-    redirectTo(res, '/login?status=auth-required');
-    return true;
-  }
-  return false;
+function redirectAuthIfNeeded(error, req, res) {
+  if (!isAuthError(error)) return false;
+  return handleApiError(error, req, res, { redirectOn401: '/login?status=auth-required' });
 }
 
 function applyDownloadHeaders(res, headers = {}) {
@@ -143,6 +142,61 @@ function metaFrom(result) {
   if (result.meta && typeof result.meta === 'object') return result.meta;
   if (result.pagination && typeof result.pagination === 'object') return result.pagination;
   return {};
+}
+
+function nextCursorFrom(result) {
+  const meta = metaFrom(result);
+  return trimmed(meta.cursor || meta.next_cursor || meta.nextCursor);
+}
+
+function hasMoreFrom(result) {
+  const meta = metaFrom(result);
+  return Boolean(meta.has_more || meta.hasMore || nextCursorFrom(result));
+}
+
+async function walkResourcePages(token, { targetId = null } = {}) {
+  const resources = [];
+  const seenCursors = new Set();
+  let cursor = '';
+
+  for (let page = 0; page < MAX_RESOURCE_PAGES; page += 1) {
+    const params = { per_page: RESOURCE_PAGE_SIZE };
+    if (cursor) params.cursor = cursor;
+
+    const result = await getResources(token, params);
+    const items = resourceItemsFrom(result);
+    resources.push(...items);
+
+    if (targetId !== null) {
+      const resource = items.find((item) => positiveInteger(item && item.id) === targetId);
+      if (resource) return { resource, resources };
+    }
+
+    const hasMore = hasMoreFrom(result);
+    const nextCursor = nextCursorFrom(result);
+    if (!hasMore) {
+      return { resource: null, resources };
+    }
+
+    if (!nextCursor || seenCursors.has(nextCursor)) {
+      throw new ApiError('Resource pagination did not advance', 503);
+    }
+
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+
+  throw new ApiError('Resource catalogue exceeded the safe pagination limit', 503);
+}
+
+async function findResourceById(token, id) {
+  const result = await walkResourcePages(token, { targetId: id });
+  return result.resource;
+}
+
+async function getAllResources(token) {
+  const result = await walkResourcePages(token);
+  return result.resources;
 }
 
 function resourceHref(resource) {
@@ -281,7 +335,8 @@ function reactionSummaryFrom(result) {
 
 function canManageResource(resource, currentUserId) {
   const item = objectFrom(resource);
-  const ownerId = positiveInteger(item.user_id || item.owner_id || item.uploader_id);
+  const uploader = objectFrom(item.uploader);
+  const ownerId = positiveInteger(item.user_id || item.owner_id || item.uploader_id || uploader.id);
   return Boolean(item.can_manage || item.can_delete || item.is_owner || item.is_admin || (currentUserId && ownerId === currentUserId));
 }
 
@@ -412,7 +467,7 @@ router.get('/library', asyncRoute(async (req, res) => {
   if (cursor) params.cursor = cursor;
 
   const [profileResult, resourcesResult, categoriesResult, treeResult] = await Promise.all([
-    getRequestProfile(req, token).catch(() => null),
+    getRequestProfile(req, token),
     getResources(token, params),
     getResourceCategories(token),
     getResourceCategoryTree(token)
@@ -474,7 +529,7 @@ router.get('/upload', asyncRoute(async (req, res) => {
     const categoriesResult = await getResourceCategories(token);
     flatCategories = listFrom(categoriesResult).map(normalizeCategory).filter((category) => category.id && category.name);
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
   }
 
   return res.render('resources/upload', {
@@ -494,18 +549,17 @@ router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   }
 
   const resourceId = Number(req.params.id);
-  const [profileResult, resourcesResult] = await Promise.all([
-    getRequestProfile(req, token).catch(() => null),
-    getResources(token, { per_page: 50 })
+  const [profileResult, resource] = await Promise.all([
+    getRequestProfile(req, token),
+    findResourceById(token, resourceId)
   ]);
   const profile = objectFrom(dataFrom(profileResult));
   const currentUserId = positiveInteger(profile.id || profile.user_id);
-  const resource = resourceItemsFrom(resourcesResult).find((item) => positiveInteger(item && item.id) === resourceId);
 
   if (!resource) {
     throw new ApiError('Resource not found', 404);
   }
-  if (!canManageResource(resource, currentUserId)) {
+  if (!isResourceAdmin(profile) && !canManageResource(resource, currentUserId)) {
     throw new ApiError('Resource forbidden', 403);
   }
 
@@ -529,7 +583,7 @@ router.get('/:id(\\d+)/download', asyncRoute(async (req, res) => {
   try {
     download = await downloadResource(token, resourceId);
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (error instanceof ApiError && error.status === 403) {
       return res.status(403).render('errors/403', { title: 'Forbidden' });
     }
@@ -555,17 +609,19 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   }
 
   const resourceId = Number(req.params.id);
-  const [profileResult, resourcesResult, commentsResult, reactionsResult] = await Promise.all([
-    getRequestProfile(req, token).catch(() => null),
-    getResources(token, { per_page: 50 }),
-    getComments(token, { target_type: 'resource', target_id: resourceId }),
-    getReactionSummary(token, 'resource', resourceId)
+  const [profileResult, resource] = await Promise.all([
+    getRequestProfile(req, token),
+    findResourceById(token, resourceId)
   ]);
 
-  const resource = resourceItemsFrom(resourcesResult).find((item) => positiveInteger(item && item.id) === resourceId);
   if (!resource) {
     throw new ApiError('Resource not found', 404);
   }
+
+  const [commentsResult, reactionsResult] = await Promise.all([
+    getComments(token, { target_type: 'resource', target_id: resourceId }),
+    getReactionSummary(token, 'resource', resourceId)
+  ]);
 
   const commentsData = objectFrom(dataFrom(commentsResult));
   const comments = (Array.isArray(commentsData.comments) ? commentsData.comments : resourceItemsFrom(commentsResult)).map(normalizeComment);
@@ -633,8 +689,8 @@ async function buildReorderItems(token, body) {
     return [];
   }
 
-  const result = await getResources(token, { per_page: 50 });
-  const rows = resourceItemsFrom(result)
+  const resources = await getAllResources(token);
+  const rows = resources
     .map((resource, index) => ({
       id: positiveInteger(resource.id),
       sort_order: Number.isInteger(Number(resource.sort_order)) ? Number(resource.sort_order) : index
@@ -677,10 +733,19 @@ router.post('/upload', asyncRoute(async (req, res) => {
 
   try {
     const buffer = await fs.readFile(file.filepath);
+    const submittedCategoryId = positiveInteger(req.body.category_id);
+    let categoryId = '';
+    if (submittedCategoryId !== null) {
+      const categoriesResult = await getResourceCategories(token);
+      const categoryBelongsToTenant = listFrom(categoriesResult)
+        .some((category) => positiveInteger(category && category.id) === submittedCategoryId);
+      if (categoryBelongsToTenant) categoryId = String(submittedCategoryId);
+    }
+
     await uploadResource(token, {
       title,
       description: trimmed(req.body.description, 5000),
-      category_id: trimmed(req.body.category_id),
+      category_id: categoryId,
       file: {
         buffer,
         filename: trimmed(file.originalFilename) || 'resource',
@@ -689,7 +754,7 @@ router.post('/upload', asyncRoute(async (req, res) => {
       }
     });
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (isForbidden(error)) throw error;
     return redirectTo(res, '/resources/upload?status=resource-upload-failed');
   } finally {
@@ -716,7 +781,7 @@ router.post('/reorder', asyncRoute(async (req, res) => {
 
     await reorderResources(token, { items });
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (isNotFound(error) || isForbidden(error)) throw error;
     return redirectTo(res, libraryRedirect(req, 'resource-reorder-failed'));
   }
@@ -734,7 +799,7 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   try {
     await deleteResource(token, id);
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (isNotFound(error) || isForbidden(error)) throw error;
     return redirectTo(res, '/resources/library?status=resource-delete-failed');
   }
@@ -762,7 +827,7 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
       const action = result && result.data && result.data.action;
       status = action === 'removed' ? 'reaction-removed' : 'reaction-added';
     } catch (error) {
-      if (redirectAuthIfNeeded(error, res)) return undefined;
+      if (redirectAuthIfNeeded(error, req, res)) return undefined;
       if (isNotFound(error)) throw error;
       status = 'reaction-failed';
     }
@@ -793,7 +858,7 @@ router.post('/:id(\\d+)/comments/add', asyncRoute(async (req, res) => {
       parent_id: parentId
     });
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (isNotFound(error)) throw error;
     status = 'comment-failed';
   }
@@ -813,7 +878,7 @@ router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req
   try {
     await deleteComment(token, commentId);
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (redirectAuthIfNeeded(error, req, res)) return undefined;
     status = 'comment-delete-failed';
   }
 

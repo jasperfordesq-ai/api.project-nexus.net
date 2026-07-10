@@ -65,7 +65,7 @@ jest.mock('../src/lib/api', () => ({
   invalidateUserCache: jest.fn(),
   verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
-  getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
+  getFeedPosts: jest.fn().mockResolvedValue({ data: [], meta: { per_page: 20, has_more: false } }),
   getFeedHashtags: jest.fn().mockResolvedValue({ data: [] }),
   getFeedHashtagPosts: jest.fn().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } }),
   getFeedPostV2: jest.fn(),
@@ -74,6 +74,9 @@ jest.mock('../src/lib/api', () => ({
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   getGroup: jest.fn().mockResolvedValue({ data: { id: 42, name: 'Group' } }),
   getGroupMembers: jest.fn().mockResolvedValue({ data: [] }),
+  createGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  updateGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  deleteGroup: jest.fn().mockResolvedValue({}),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
@@ -86,14 +89,20 @@ jest.mock('../src/lib/api', () => ({
   getUser: jest.fn(),
   getUserV2: jest.fn(),
   getMemberVerificationBadges: jest.fn(),
-  getGamificationProfileByUserId: jest.fn().mockResolvedValue({ profile: null }),
+  getGamificationProfileByUserId: jest.fn().mockResolvedValue({ data: null }),
+  getAllBadges: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } }),
   getUserReviews: jest.fn().mockResolvedValue({ data: [], summary: null }),
   searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
   getMembersV2: jest.fn(),
   getMembersNearby: jest.fn(),
   getListings: jest.fn(),
   getListing: jest.fn(),
-  getListingReviews: jest.fn().mockResolvedValue({ data: [], summary: null }),
+  createListing: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  updateListing: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  deleteListing: jest.fn().mockResolvedValue({}),
+  getListingCategories: jest.fn().mockResolvedValue({ data: [] }),
+  setListingSkillTags: jest.fn().mockResolvedValue({ data: { listing_id: 42, tags: [] } }),
+  uploadListingImage: jest.fn().mockResolvedValue({ data: { image_url: '/uploads/listings/cover.webp' } }),
   getConnections: jest.fn().mockResolvedValue({ data: [] }),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
@@ -176,7 +185,8 @@ jest.mock('../src/lib/api', () => ({
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
   deleteSavedItem: jest.fn().mockResolvedValue({}),
   dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
-  getExchangeConfig: jest.fn().mockResolvedValue({ data: { workflow_enabled: true } }),
+  getExchangeConfig: jest.fn().mockResolvedValue({ data: { exchange_workflow_enabled: true, direct_messaging_enabled: true } }),
+  checkExchangeForListing: jest.fn().mockResolvedValue({ data: null }),
   getExchanges: jest.fn().mockResolvedValue({ data: [] }),
   getExchangeAttentionCount: jest.fn().mockResolvedValue({ data: { count: 0, items: [] } }),
   getExchange: jest.fn().mockResolvedValue({ data: { id: 88 } }),
@@ -227,10 +237,11 @@ jest.mock('../src/lib/api', () => ({
   endorseMemberSkill: jest.fn().mockResolvedValue({ data: { endorsement_id: 33 } }),
   removeMemberEndorsement: jest.fn().mockResolvedValue({ data: { message: 'removed' } }),
   getMemberEndorsements: jest.fn().mockResolvedValue({ data: { endorsements: [] } }),
-  transferWalletCredits: jest.fn().mockResolvedValue({ data: { transaction_id: 99 } }),
+  transferWalletCredits: jest.fn().mockResolvedValue({ data: { id: 99, type: 'debit', status: 'completed' } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
-  getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
-  getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
+  getNotifications: jest.fn().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false, per_page: 30 } }),
+  getGroupedNotifications: jest.fn().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false, per_page: 30 } }),
+  getNotificationUnreadCount: jest.fn().mockResolvedValue({ data: { total: 0, categories: {} } }),
   markNotificationRead: jest.fn().mockResolvedValue({}),
   markAllNotificationsRead: jest.fn().mockResolvedValue({ data: { marked_read: 2 } }),
   markNotificationGroupRead: jest.fn().mockResolvedValue({ data: { marked_read: 2 } }),
@@ -238,8 +249,8 @@ jest.mock('../src/lib/api', () => ({
   deleteNotification: jest.fn().mockResolvedValue({}),
   getTransactions: jest.fn(),
   getMyEvents: jest.fn().mockResolvedValue({ data: [] }),
-  getGamificationProfile: jest.fn().mockResolvedValue({ profile: { level: 1, total_xp: 0, totalXp: 0 } }),
-  getMyBadges: jest.fn().mockResolvedValue({ data: [] }),
+  getGamificationProfile: jest.fn().mockResolvedValue({ data: null }),
+  getMyBadges: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } }),
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
   uploadVoiceMessage: jest.fn().mockResolvedValue({ data: { id: 12, is_voice: true } }),
   uploadMessageAttachments: jest.fn().mockResolvedValue({ data: { id: 12 } }),
@@ -259,10 +270,13 @@ jest.mock('../src/lib/api', () => ({
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getEvents: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } }),
-  getEvent: jest.fn().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } }),
+  getEvent: jest.fn().mockResolvedValue({ data: { id: 42, title: 'Community garden day', start_time: '2026-08-01T10:00:00' } }),
   getEventRsvps: jest.fn().mockResolvedValue({ data: [] }),
-  createEvent: jest.fn().mockResolvedValue({ id: 42 }),
-  updateEvent: jest.fn().mockResolvedValue({ id: 42 }),
+  createEvent: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  updateEvent: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  cancelEvent: jest.fn().mockResolvedValue({ data: { cancelled: true, event_id: 42, reason: '' } }),
+  deleteEvent: jest.fn().mockResolvedValue({}),
+  rsvpToEvent: jest.fn().mockResolvedValue({ data: { status: 'going', rsvp_counts: { going: 1, interested: 0 } } }),
   callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   requestAccountDeletion: jest.fn().mockResolvedValue({
     data: { request_id: 123, logout_required: true }
@@ -287,6 +301,20 @@ process.env.NODE_ENV = 'test';
 describe('shared accessible frontend shell', () => {
   let app;
 
+  function tenantBootstrap(slug = 'acme', overrides = {}) {
+    return {
+      data: {
+        id: 2,
+        name: `${slug} Timebank`,
+        slug,
+        tagline: 'Neighbours helping neighbours',
+        modules: { feed: true, listings: true, wallet: true },
+        features: { connections: true, events: true, volunteering: true },
+        ...overrides
+      }
+    };
+  }
+
   function signedCookieHeader() {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
@@ -303,12 +331,38 @@ describe('shared accessible frontend shell', () => {
     ].join('; ');
   }
 
+  function signedTenantAuthCookieHeader(tenantSlug = 'acme') {
+    const cookieSignature = require('cookie-signature');
+    const signedTenantSlug = `s:${cookieSignature.sign(tenantSlug, process.env.COOKIE_SECRET)}`;
+    return `${signedAuthCookieHeader()}; tenant_slug=${encodeURIComponent(signedTenantSlug)}`;
+  }
+
+  function expectAuthCookiesCleared(response) {
+    const setCookies = response.headers['set-cookie'] || [];
+    for (const cookieName of ['token', 'refresh_token', 'tenant_slug']) {
+      const cleared = setCookies.find((cookie) => cookie.startsWith(`${cookieName}=`));
+      expect(cleared).toBeDefined();
+      expect(cleared).toContain('Path=/');
+      expect(cleared).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+    }
+  }
+
+  async function csrfTokenFor(agent, pathName = '/contact', cookie = signedCookieHeader()) {
+    const response = await agent
+      .get(pathName)
+      .set('Cookie', cookie);
+    const match = response.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(match).not.toBeNull();
+    return match[1];
+  }
+
   beforeAll(() => {
     app = require('../src/server');
   });
 
   beforeEach(() => {
     const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockReset().mockResolvedValue(tenantBootstrap());
     api.refreshToken.mockReset().mockResolvedValue({
       access_token: 'test-token',
       refresh_token: 'test-refresh-token'
@@ -320,12 +374,14 @@ describe('shared accessible frontend shell', () => {
     api.getBalance.mockReset().mockResolvedValue({ balance: 8 });
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
-    api.getFeedPosts.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } });
+    api.getFeedPosts.mockReset().mockResolvedValue({ data: [], meta: { per_page: 20, has_more: false } });
     api.getFeedHashtags.mockReset().mockResolvedValue({ data: [] });
     api.getFeedHashtagPosts.mockReset().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } });
     api.getFeedPostV2.mockReset();
     api.getFeedItemV2.mockReset();
-    api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
+    api.getGroups.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
+    api.getMyGroups.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
+    api.getGroupMembers.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
     api.getGroup.mockReset().mockResolvedValue({
       data: {
         id: 42,
@@ -333,6 +389,9 @@ describe('shared accessible frontend shell', () => {
         viewer_membership: { role: 'member', status: 'active' }
       }
     });
+    api.createGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.updateGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.deleteGroup.mockReset().mockResolvedValue({});
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
     api.getConversations.mockReset().mockResolvedValue({ data: [] });
@@ -347,14 +406,20 @@ describe('shared accessible frontend shell', () => {
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.getUserV2.mockReset();
     api.getMemberVerificationBadges.mockReset();
-    api.getGamificationProfileByUserId.mockReset().mockResolvedValue({ profile: null });
+    api.getGamificationProfileByUserId.mockReset().mockResolvedValue({ data: null });
+    api.getAllBadges.mockReset().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } });
     api.getUserReviews.mockReset().mockResolvedValue({ data: [], summary: null });
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
     api.getListings.mockReset().mockResolvedValue({ data: [] });
     api.getListing.mockReset().mockResolvedValue({ id: 42, title: 'Listing' });
-    api.getListingReviews.mockReset().mockResolvedValue({ data: [], summary: null });
+    api.createListing.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.updateListing.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.deleteListing.mockReset().mockResolvedValue({});
+    api.getListingCategories.mockReset().mockResolvedValue({ data: [] });
+    api.setListingSkillTags.mockReset().mockResolvedValue({ data: { listing_id: 42, tags: [] } });
+    api.uploadListingImage.mockReset().mockResolvedValue({ data: { image_url: '/uploads/listings/cover.webp' } });
     api.getConnections.mockReset().mockResolvedValue({ data: [] });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
@@ -378,7 +443,8 @@ describe('shared accessible frontend shell', () => {
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
     api.deleteSavedItem.mockReset().mockResolvedValue({});
     api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
-    api.getExchangeConfig.mockReset().mockResolvedValue({ data: { workflow_enabled: true } });
+    api.getExchangeConfig.mockReset().mockResolvedValue({ data: { exchange_workflow_enabled: true, direct_messaging_enabled: true } });
+    api.checkExchangeForListing.mockReset().mockResolvedValue({ data: null });
     api.getExchanges.mockReset().mockResolvedValue({ data: [] });
     api.getExchangeAttentionCount.mockReset().mockResolvedValue({ data: { count: 0, items: [] } });
     api.getExchange.mockReset().mockResolvedValue({ data: { id: 88 } });
@@ -451,10 +517,18 @@ describe('shared accessible frontend shell', () => {
     api.endorseMemberSkill.mockReset().mockResolvedValue({ data: { endorsement_id: 33 } });
     api.removeMemberEndorsement.mockReset().mockResolvedValue({ data: { message: 'removed' } });
     api.getMemberEndorsements.mockReset().mockResolvedValue({ data: { endorsements: [] } });
-    api.transferWalletCredits.mockReset().mockResolvedValue({ data: { transaction_id: 99 } });
+    api.transferWalletCredits.mockReset().mockResolvedValue({ data: { id: 99, type: 'debit', status: 'completed' } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
+    api.getVolunteerOrganisations.mockReset().mockResolvedValue({ data: [] });
+    api.getVolunteeringOpportunities.mockReset().mockResolvedValue({ data: [] });
+    api.getVolunteerOrganisation.mockReset().mockResolvedValue({ data: {} });
+    api.getMyVolunteerOrganisations.mockReset().mockResolvedValue({ data: [] });
+    api.getVolunteerOpportunity.mockReset().mockResolvedValue({ data: {} });
+    api.getOrganisationOpportunities.mockReset().mockResolvedValue({ data: [] });
+    api.getOrganisationReviews.mockReset().mockResolvedValue({ data: { reviews: [] } });
+    api.getOrganisationJobs.mockReset().mockResolvedValue({ data: [] });
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.getVolunteeringCategories.mockReset().mockResolvedValue({ data: [] });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -483,10 +557,13 @@ describe('shared accessible frontend shell', () => {
     api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
     api.getEvents.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } });
-    api.getEvent.mockReset().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } });
+    api.getEvent.mockReset().mockResolvedValue({ data: { id: 42, title: 'Community garden day', start_time: '2026-08-01T10:00:00' } });
     api.getEventRsvps.mockReset().mockResolvedValue({ data: [] });
-    api.createEvent.mockReset().mockResolvedValue({ id: 42 });
-    api.updateEvent.mockReset().mockResolvedValue({ id: 42 });
+    api.createEvent.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.updateEvent.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.cancelEvent.mockReset().mockResolvedValue({ data: { cancelled: true, event_id: 42, reason: '' } });
+    api.deleteEvent.mockReset().mockResolvedValue({});
+    api.rsvpToEvent.mockReset().mockResolvedValue({ data: { status: 'going', rsvp_counts: { going: 1, interested: 0 } } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.requestAccountDeletion.mockReset().mockResolvedValue({
       data: { request_id: 123, logout_required: true }
@@ -497,11 +574,13 @@ describe('shared accessible frontend shell', () => {
     api.callListingApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.createExchangeRequest.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
-    api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
+    api.getNotifications.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false, per_page: 30 } });
+    api.getGroupedNotifications.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false, per_page: 30 } });
+    api.getNotificationUnreadCount.mockReset().mockResolvedValue({ data: { total: 0, categories: {} } });
     api.getUnreadCount.mockReset().mockResolvedValue({ unreadCount: 0 });
     api.getMyEvents.mockReset().mockResolvedValue({ data: [] });
-    api.getGamificationProfile.mockReset().mockResolvedValue({ profile: { level: 1, total_xp: 0, totalXp: 0 } });
-    api.getMyBadges.mockReset().mockResolvedValue({ data: [] });
+    api.getGamificationProfile.mockReset().mockResolvedValue({ data: null });
+    api.getMyBadges.mockReset().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
     api.markNotificationGroupRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -534,6 +613,97 @@ describe('shared accessible frontend shell', () => {
     api.voteFeedPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
   });
 
+  it('keeps anonymous shared-mount events and listings inside the routed tenant', async () => {
+    const api = require('../src/lib/api');
+    const { getRequestTenantSlug } = require('../src/lib/request-tenant-context');
+    const calls = [];
+
+    api.getTenantBootstrap.mockImplementation(async ({ slug }) => tenantBootstrap(slug));
+    api.getEvents.mockImplementationOnce(async (token, params) => {
+      calls.push({ surface: 'events', tenantSlug: getRequestTenantSlug(), token, params });
+      return { data: [], meta: { cursor: null, has_more: false } };
+    });
+    api.getListings.mockImplementationOnce(async (token, params) => {
+      calls.push({ surface: 'listings', tenantSlug: getRequestTenantSlug(), token, params });
+      return { data: [], meta: { cursor: null, has_more: false } };
+    });
+
+    const [eventsResponse, listingsResponse] = await Promise.all([
+      request(app).get('/acme/accessible/events?tenant_slug=untrusted-query'),
+      request(app).get('/acme/accessible/listings?tenant_slug=untrusted-query')
+    ]);
+
+    expect(eventsResponse.status).toBe(200);
+    expect(listingsResponse.status).toBe(200);
+    expect(calls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ surface: 'events', tenantSlug: 'acme', token: '' }),
+      expect.objectContaining({ surface: 'listings', tenantSlug: 'acme', token: '' })
+    ]));
+    expect(calls.every(({ params }) => params.tenant_slug === undefined)).toBe(true);
+  });
+
+  it('keeps anonymous parent and custom-domain public calls inside their routed tenants', async () => {
+    const api = require('../src/lib/api');
+    const { getRequestTenantSlug } = require('../src/lib/request-tenant-context');
+    const calls = [];
+
+    api.getTenantBootstrap.mockImplementation(async (options = {}) => {
+      if (options.slug === 'dunmanway') {
+        return tenantBootstrap('dunmanway', { id: 3, parent_domain: 'parent-domain.test' });
+      }
+      if (options.host === 'acme-accessible.test') {
+        return tenantBootstrap('acme', { accessible_domain: 'acme-accessible.test' });
+      }
+      return tenantBootstrap(options.slug || 'acme');
+    });
+    api.getEvents.mockImplementationOnce(async (token) => {
+      calls.push({ surface: 'events', tenantSlug: getRequestTenantSlug(), token });
+      return { data: [], meta: { cursor: null, has_more: false } };
+    });
+    api.getListings.mockImplementationOnce(async (token) => {
+      calls.push({ surface: 'listings', tenantSlug: getRequestTenantSlug(), token });
+      return { data: [], meta: { cursor: null, has_more: false } };
+    });
+
+    const [customResponse, parentResponse] = await Promise.all([
+      request(app).get('/events').set('Host', 'acme-accessible.test'),
+      request(app).get('/dunmanway/listings').set('Host', 'parent-domain.test')
+    ]);
+
+    expect(customResponse.status).toBe(200);
+    expect(parentResponse.status).toBe(200);
+    expect(calls).toEqual(expect.arrayContaining([
+      { surface: 'events', tenantSlug: 'acme', token: '' },
+      { surface: 'listings', tenantSlug: 'dunmanway', token: '' }
+    ]));
+  });
+
+  it('does not leak routed tenant authority between concurrent mounted requests', async () => {
+    const api = require('../src/lib/api');
+    const { getRequestTenantSlug } = require('../src/lib/request-tenant-context');
+    const calls = [];
+
+    api.getTenantBootstrap.mockImplementation(async ({ slug }) => tenantBootstrap(slug));
+    api.getEvents.mockImplementation(async () => {
+      const beforeYield = getRequestTenantSlug();
+      await new Promise((resolve) => global.setImmediate(resolve));
+      calls.push({ beforeYield, afterYield: getRequestTenantSlug() });
+      return { data: [], meta: { cursor: null, has_more: false } };
+    });
+
+    const [tenantOneResponse, tenantTwoResponse] = await Promise.all([
+      request(app).get('/tenant-one/accessible/events'),
+      request(app).get('/tenant-two/accessible/events')
+    ]);
+
+    expect(tenantOneResponse.status).toBe(200);
+    expect(tenantTwoResponse.status).toBe(200);
+    expect(calls).toEqual(expect.arrayContaining([
+      { beforeYield: 'tenant-one', afterYield: 'tenant-one' },
+      { beforeYield: 'tenant-two', afterYield: 'tenant-two' }
+    ]));
+  });
+
   it('renders the Laravel-style accessible shell on the home page', async () => {
     const response = await request(app).get('/');
     const components = await request(app).get('/components');
@@ -541,6 +711,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('class="nexus-alpha-header"');
     expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Not affiliated with GOV.UK');
     expect(response.text).toContain('Choose a community');
     expect(response.text).toContain('href="/acme/accessible"');
     expect(response.text).toContain('class="govuk-service-navigation"');
@@ -594,19 +765,22 @@ describe('shared accessible frontend shell', () => {
     api.getBalance.mockResolvedValue({ balance: 8.5 });
     api.getOnboardingStatus.mockResolvedValue({ data: { onboarding_completed: false } });
     api.getGamificationProfile.mockResolvedValue({
-      profile: {
+      data: {
+        user: { id: 101, name: 'Ada', avatar_url: null },
         level: 4,
-        level_name: 'Neighbour',
         xp: 1250,
         level_progress: { progress_percentage: 65 },
-        badges_count: 2
+        badges_count: 2,
+        showcased_badges: [],
+        is_own_profile: true
       }
     });
     api.getMyBadges.mockResolvedValue({
       data: [
         { name: 'Community helper', icon: 'star' },
         { name: 'First exchange', icon: 'spark' }
-      ]
+      ],
+      meta: { total: 2, available_types: ['community'] }
     });
     api.getFeedPosts.mockResolvedValue({
       data: [
@@ -649,7 +823,7 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/dashboard');
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
 
     const response = await request(app)
       .get('/dashboard?status=onboarding-complete')
@@ -661,7 +835,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getBalance).toHaveBeenCalledWith('test-token');
     expect(api.getGamificationProfile).toHaveBeenCalledWith('test-token');
     expect(api.getMyBadges).toHaveBeenCalledWith('test-token');
-    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { limit: 5 });
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { per_page: 5 });
     expect(api.getListings).toHaveBeenCalledWith('test-token', { limit: 5 });
     expect(api.getMyEvents).toHaveBeenCalledWith('test-token');
     expect(api.getExchangeAttentionCount).toHaveBeenCalledWith('test-token');
@@ -679,7 +853,6 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('12.3');
     expect(response.text).toContain('Your progress');
     expect(response.text).toContain('Level 4');
-    expect(response.text).toContain('Neighbour');
     expect(response.text).toContain('1,250 XP');
     expect(response.text).toContain('65% of the way to the next level');
     expect(response.text).toContain('Badges (2)');
@@ -701,6 +874,28 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Borrow a repair kit');
     expect(response.text).toContain('href="/listings/new"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('does not invent dashboard level, XP or badges when the Laravel gamification profile is unavailable', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGamificationProfile.mockRejectedValueOnce(new Error('gamification unavailable'));
+    api.getMyBadges.mockResolvedValueOnce({
+      data: [{ badge_key: 'helper', name: 'Community helper', icon: 'star' }],
+      meta: { total: 1, available_types: ['community'] }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/dashboard')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Dashboard');
+    expect(response.text).not.toContain('Your progress');
+    expect(response.text).not.toContain('Level 1');
+    expect(response.text).not.toContain('0 XP');
+    expect(response.text).not.toContain('Badges (0)');
+    expect(response.text).not.toContain('Community helper');
   });
 
   it('renders the Laravel-backed Explore hub with live discovery sections', async () => {
@@ -1288,11 +1483,11 @@ describe('shared accessible frontend shell', () => {
     expect(success.text).toContain('Email address verified');
     expect(success.text).toContain('Thank you. Your email address has been confirmed.');
     expect(success.text).toContain('Continue to sign in');
-    expect(api.verifyEmail).toHaveBeenNthCalledWith(1, 'valid-token');
+    expect(api.verifyEmail).toHaveBeenNthCalledWith(1, 'valid-token', '');
 
     expect(invalid.status).toBe(200);
     expect(invalid.text).toContain('This verification link is invalid or has expired.');
-    expect(api.verifyEmail).toHaveBeenNthCalledWith(2, 'expired-token');
+    expect(api.verifyEmail).toHaveBeenNthCalledWith(2, 'expired-token', '');
     expect(invalid.text).not.toContain('shared accessible frontend preparation page');
   });
 
@@ -1430,7 +1625,7 @@ describe('shared accessible frontend shell', () => {
       return { data: { id: 42 } };
     });
     api.callProfileApi.mockImplementation(async (token, method, pathValue) => {
-      if (method === 'GET' && pathValue === '/sessions') {
+      if (method === 'GET' && pathValue === '/users/me/sessions') {
         return {
           data: [
             {
@@ -1441,7 +1636,7 @@ describe('shared accessible frontend shell', () => {
           ]
         };
       }
-      if (method === 'GET' && pathValue === '/safeguarding/preferences') {
+      if (method === 'GET' && pathValue === '/safeguarding/my-preferences') {
         return {
           data: [
             {
@@ -4188,6 +4383,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('redirects signed members to the Laravel Federation opt-in flow when the API reports they have not opted in', async () => {
+    const api = require('../src/lib/api');
+    const error = new api.ApiError('You must opt in to federation first.', 403, {
+      errors: [{ code: 'FEDERATION_NOT_ENABLED', message: 'You must opt in to federation first.' }]
+    });
+    api.callFederationApi.mockRejectedValue(error);
+
+    for (const pathValue of ['/federation/connections', '/federation/messages', '/federation/members/351']) {
+      const response = await request(app)
+        .get(pathValue)
+        .set('Cookie', signedCookieHeader());
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/federation/opt-in');
+    }
+
+    const mounted = await request(app)
+      .get('/acme/accessible/federation/connections')
+      .set('Cookie', signedCookieHeader());
+
+    expect(mounted.status).toBe(302);
+    expect(mounted.headers.location).toBe('/acme/accessible/federation/opt-in');
+  });
+
   it('renders the Laravel-backed Federation messages page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
@@ -4979,6 +5198,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="password_confirmation"');
   });
 
+  it('renders Laravel\'s reset-password form when the token query is absent', async () => {
+    const response = await request(app).get('/password/reset');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Choose a new password');
+    expect(response.text).toContain('name="token" value=""');
+    expect(response.headers.location).toBeUndefined();
+  });
+
   it('submits the Laravel reset-password alias with confirmation', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
@@ -5072,7 +5300,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=verification-resent');
-    expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org');
+    expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org', '');
   });
 
   it('keeps Laravel public auth pages renderable for signed-in visitors', async () => {
@@ -5178,7 +5406,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(staticPageRoutes.pages['/account']).toBeUndefined();
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('does not expose legacy GET logout because Laravel logout is POST-only', async () => {
@@ -5190,6 +5418,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Blade-style account hub when signed in', async () => {
     const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
     const response = await request(app)
@@ -5198,6 +5427,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('My account');
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('Manage your wallet, messages, connections and personal settings in one place.');
     expect(response.text).toContain('class="nexus-alpha-card-list');
     expect(response.text).toContain('href="/wallet"');
@@ -5212,6 +5442,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/logout"');
     expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('clears every auth cookie when the account hub detects an expired Laravel token', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('expired-token', process.env.COOKIE_SECRET)}`;
+    api.getExchangeConfig.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401));
+
+    const response = await request(app)
+      .get('/account')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    const clearedCookies = (response.headers['set-cookie'] || []).join(';');
+    for (const cookieName of ['token=', 'refresh_token=', 'tenant_slug=']) {
+      expect(clearedCookies).toContain(cookieName);
+    }
+    expect(clearedCookies).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
   });
 
   it('renders the Laravel-style wallet donate panel when signed in', async () => {
@@ -5245,10 +5494,39 @@ describe('shared accessible frontend shell', () => {
     expect(legacyTransfer.text).toContain('Page not found');
   });
 
+  it('uses Laravel wallet transaction types and cursor metadata without a profile-side direction guess', async () => {
+    const api = require('../src/lib/api');
+    api.getBalance.mockResolvedValueOnce({ data: { balance: 8 } });
+    api.getTransactions.mockResolvedValueOnce({
+      data: [
+        { id: 91, type: 'debit', amount: 2, description: 'Repair tools', created_at: '2026-07-09T10:00:00Z' },
+        { id: 92, type: 'credit', amount: 3, description: 'Garden help', created_at: '2026-07-08T10:00:00Z' }
+      ],
+      meta: { cursor: 'next-page', has_more: true, per_page: 20 }
+    });
+
+    const response = await request(app)
+      .get('/wallet?filter=spent&cursor=current-page')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getTransactions).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      type: 'sent',
+      cursor: 'current-page'
+    });
+    expect(response.text).toContain('Repair tools');
+    expect(response.text).toContain('Garden help');
+    expect(response.text).toContain('class="app-text--negative">-2');
+    expect(response.text).toContain('class="app-text--positive">+3');
+    expect(response.text).toContain('href="/wallet?filter=spent&amp;cursor=next-page#transactions"');
+    expect(response.text).toContain('aria-current="page">Spent');
+  });
+
   it('renders the messages hub without the legacy bare compose route', async () => {
     const api = require('../src/lib/api');
-    api.getConversations.mockResolvedValueOnce({ data: [] });
-    api.getUnreadCount.mockResolvedValueOnce({ unread_count: 0 });
+    api.getConversations.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
 
     const response = await request(app)
       .get('/messages')
@@ -5260,6 +5538,48 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/members"');
     expect(response.text).not.toContain('href="/messages/new"');
     expect(response.text).not.toContain('action="/messages/new"');
+  });
+
+  it('renders nested Laravel conversation summaries, unread counts, archive state, and cursor links', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({
+      data: [{
+        id: 77,
+        unread_count: 2,
+        other_user: {
+          id: 77,
+          name: 'Avery Stone',
+          avatar_url: '/uploads/avery.jpg'
+        },
+        last_message: {
+          id: 91,
+          body: 'Can we confirm Saturday?',
+          sender_id: 77,
+          created_at: '2026-07-09T10:00:00Z'
+        }
+      }],
+      meta: { cursor: 'next-page', has_more: true, per_page: 20 }
+    });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 3 } });
+
+    const response = await request(app)
+      .get('/messages?archived=1&filter=Avery&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getConversations).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      archived: true,
+      cursor: 'abc'
+    });
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('/uploads/avery.jpg');
+    expect(response.text).toContain('Can we confirm Saturday?');
+    expect(response.text).not.toContain('[object Object]');
+    expect(response.text).toContain('3 unread');
+    expect(response.text).toContain('2 unread messages');
+    expect(response.text).toContain('action="/messages/77/restore"');
+    expect(response.text).toContain('href="/messages?archived=1&amp;filter=Avery&amp;cursor=next-page"');
   });
 
   it('renders the Laravel wallet manage hub for signed-in members', async () => {
@@ -5322,13 +5642,195 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('Member since January 2025');
     expect(response.text).toContain('method="post" action="/wallet/transfer"');
-    expect(response.text).toContain('name="receiver_id" value="77"');
+    expect(response.text).not.toContain('name="receiver_id"');
+    expect(response.text).toContain('name="recipient_id" value="77"');
+    expect(response.text).toMatch(/name="idempotency_key" value="[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"/i);
+    expect(response.text).toContain('id="note-77" name="note"');
     expect(response.text).toContain('Donate credits');
     expect(response.text).toContain('Community fund balance');
     expect(response.text).toContain('5.00 credits');
     expect(response.text).toContain('name="target" type="radio" value="user" checked');
     expect(response.text).toContain('name="recipient_id" value="77"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  describe('wallet transfer contract', () => {
+    it('submits the exact Laravel v2 transfer payload without profile or balance preflights', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      const cookie = signedCookieHeader();
+      const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+
+      api.getBalance.mockClear();
+      api.getProfile.mockClear();
+
+      const response = await agent
+        .post('/wallet/transfer')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          recipient_id: '77',
+          amount: '2.50',
+          note: ' Thank you for the repair ',
+          idempotency_key: '8199b480-d8ab-4f85-b7ff-1d9413699588'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/wallet?status=transfer-sent#transactions');
+      expect(api.transferWalletCredits).toHaveBeenCalledWith('test-token', {
+        recipient: 77,
+        amount: 2.5,
+        description: 'Thank you for the repair',
+        idempotency_key: '8199b480-d8ab-4f85-b7ff-1d9413699588'
+      });
+      expect(api.getBalance).not.toHaveBeenCalled();
+      // The shared shell resolves the signed-in profile for request context, but
+      // the transfer handler itself must not perform the former profile/balance
+      // preflight before Laravel's atomic mutation.
+      expect(api.getProfile).toHaveBeenCalledTimes(1);
+      const walletRouteSource = fs.readFileSync(path.join(__dirname, '../src/routes/wallet.js'), 'utf8');
+      const transferHandler = walletRouteSource.slice(walletRouteSource.indexOf("router.post('/transfer'"));
+      expect(transferHandler).not.toContain('getRequestProfile(');
+      expect(transferHandler).not.toContain('getBalance(');
+    });
+
+    it.each([
+      [{ recipient_id: '', amount: '2' }, 'invalid'],
+      [{ recipient_id: '77', amount: '0' }, 'invalid'],
+      [{ recipient_id: '77', amount: '1000.01' }, 'too-large'],
+      [{ recipient_id: '77', amount: '1.234' }, 'decimals']
+    ])('rejects invalid transfer input without calling Laravel: %j', async (body, errorKey) => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      const cookie = signedCookieHeader();
+      const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+
+      const response = await agent
+        .post('/wallet/transfer')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({ _csrf: csrfToken, idempotency_key: 'validation-key', ...body });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(`/wallet?status=transfer-failed&error=${errorKey}#transfer`);
+      expect(api.transferWalletCredits).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [400, 'INSUFFICIENT_FUNDS', 'Insufficient balance', 'insufficient'],
+      [404, 'NOT_FOUND', 'Recipient not found', 'not-found'],
+      [400, 'VALIDATION_ERROR', 'Cannot transfer to yourself', 'self'],
+      [422, 'TRANSFER_FAILED', 'Recipient account is not active', 'inactive'],
+      [409, 'DUPLICATE_TRANSACTION', 'Duplicate transfer ignored', 'failed']
+    ])('maps Laravel transfer error %s/%s to a wallet status', async (status, code, message, errorKey) => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      const cookie = signedCookieHeader();
+      const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+      api.transferWalletCredits.mockRejectedValueOnce(new api.ApiError(message, status, {
+        errors: [{ code, message }]
+      }));
+
+      const response = await agent
+        .post('/wallet/transfer')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          recipient_id: '77',
+          amount: '2',
+          idempotency_key: 'error-key'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(`/wallet?status=transfer-failed&error=${errorKey}#transfer`);
+    });
+
+    it('sends incomplete members to tenant-aware onboarding on the Laravel gate response', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      const cookie = signedCookieHeader();
+      const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact', cookie);
+      api.transferWalletCredits.mockRejectedValueOnce(new api.ApiError(
+        'Please complete onboarding to access this resource',
+        403,
+        {
+          success: false,
+          errors: [{
+            code: 'ONBOARDING_REQUIRED',
+            message: 'Please complete onboarding to access this resource'
+          }]
+        }
+      ));
+
+      const response = await agent
+        .post('/acme/accessible/wallet/transfer')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          recipient_id: '77',
+          amount: '2',
+          idempotency_key: 'onboarding-key'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/onboarding');
+    });
+
+    it('sends an expired Laravel wallet session to the tenant-aware auth-required login', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      const cookie = signedTenantAuthCookieHeader();
+      const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact', cookie);
+      api.transferWalletCredits.mockRejectedValueOnce(new api.ApiError('Authentication required', 401, {
+        errors: [{ code: 'AUTH_REQUIRED', message: 'Authentication required' }]
+      }));
+
+      const response = await agent
+        .post('/acme/accessible/wallet/transfer')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          recipient_id: '77',
+          amount: '2',
+          idempotency_key: 'expired-session-key'
+        });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+      expectAuthCookiesCleared(response);
+    });
+
+    it('renders Laravel-style transfer success and failure states on the wallet page', async () => {
+      const cookie = signedCookieHeader();
+      const success = await request(app)
+        .get('/wallet?status=transfer-sent')
+        .set('Cookie', cookie);
+      const failure = await request(app)
+        .get('/wallet?status=transfer-failed&error=insufficient')
+        .set('Cookie', cookie);
+
+      expect(success.status).toBe(200);
+      expect(success.text).toContain('govuk-panel govuk-panel--confirmation');
+      expect(success.text).toContain('Your time credits were sent successfully.');
+      expect(failure.status).toBe(200);
+      expect(failure.text).toContain('govuk-error-summary');
+      expect(failure.text).toContain('You do not have enough credits for this transfer.');
+      expect(failure.text).toContain('href="/wallet/manage#transfer"');
+    });
+  });
+
+  it('returns Laravel\'s JSON 401 envelope for unsigned wallet recipient suggestions', async () => {
+    const api = require('../src/lib/api');
+    const response = await request(app).get('/wallet/recipients?q=alex');
+
+    expect(response.status).toBe(401);
+    expect(response.type).toBe('application/json');
+    expect(response.body).toEqual({ results: [] });
+    expect(api.callWalletApi).not.toHaveBeenCalled();
   });
 
   it('returns Laravel wallet recipient suggestions for signed-in members', async () => {
@@ -5649,6 +6151,7 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Ask about weekend availability.');
     expect(detail.text).toContain('Safeguarding handbook');
     expect(detail.text).toContain('Resource');
+    expect(detail.text).toContain('href="/resources?item=7"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/items/99/remove"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/update"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/delete"');
@@ -5657,6 +6160,42 @@ describe('shared accessible frontend shell', () => {
 
     expect(api.getSavedCollections).toHaveBeenCalledWith('test-token');
     expect(api.getSavedCollectionItems).toHaveBeenCalledWith('test-token', 12, { page: 1, per_page: 20 });
+  });
+
+  it('renders public non-owner collections read-only with canonical item links', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 202, name: 'Viewing member' } });
+    api.getSavedCollectionItems.mockResolvedValue({
+      data: {
+        collection: {
+          id: 12,
+          user_id: 101,
+          name: 'Shared reading',
+          items_count: 4,
+          is_public: true
+        },
+        items: [
+          { id: 91, item_type: 'post', item_id: 11, preview: { title: 'Feed update' } },
+          { id: 92, item_type: 'article', item_id: 12, preview: { title: 'Community article' } },
+          { id: 93, item_type: 'resource', item_id: 13, preview: { title: 'Safety guide' } },
+          { id: 94, item_type: 'marketplace_listing', item_id: 14, preview: { title: 'Shared ladder' } }
+        ]
+      },
+      meta: { current_page: 1, last_page: 1, total: 4, per_page: 20 }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/me/collections/12')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/acme/accessible/feed?post=11"');
+    expect(response.text).toContain('href="/acme/accessible/blog/12"');
+    expect(response.text).toContain('href="/acme/accessible/resources?item=13"');
+    expect(response.text).toContain('href="/acme/accessible/marketplace/14"');
+    expect(response.text).not.toContain('action="/acme/accessible/me/collections/12/update"');
+    expect(response.text).not.toContain('action="/acme/accessible/me/collections/12/delete"');
+    expect(response.text).not.toContain('/items/91/remove');
   });
 
   it('redirects signed-out saved social public pages before calling Laravel', async () => {
@@ -5999,7 +6538,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
-    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=30&modules=listings');
+    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=30');
     expect(response.text).toContain('Your matches');
     expect(response.text).toContain('This match has been hidden.');
     expect(response.text).toContain('Open the matches board');
@@ -6053,7 +6592,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
-    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=50&modules=listings%2Cgroups%2Cvolunteering%2Cevents');
+    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=50');
     expect(response.text).toContain('Your matches');
     expect(response.text).toContain('Match hidden. We will show you fewer like it.');
     expect(response.text).toContain('Total matches');
@@ -6068,6 +6607,94 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/matches/board/77/dismiss"');
     expect(response.text).toContain('name="source" value="listing"');
     expect(response.text).not.toContain('Garden helpers');
+  });
+
+  it('filters the canonical all-matches envelope locally so Laravel event recommendations remain available', async () => {
+    const api = require('../src/lib/api');
+    api.callMatchesApi.mockResolvedValueOnce({
+      data: {
+        matches: [
+          { module: 'listing', listing_id: 77, title: 'Repair a bicycle', match_score: 87 },
+          { module: 'event', event_id: 66, title: 'Community picnic', match_score: 72 }
+        ],
+        meta: { needs_location: true, degraded_reason: 'no_coordinates', paused: true }
+      }
+    });
+
+    const response = await request(app)
+      .get('/matches?source=event')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=30');
+    expect(response.text).toContain('Community picnic');
+    expect(response.text).toContain('href="/events/66"');
+    expect(response.text).not.toContain('Repair a bicycle');
+    expect(response.text).toContain('Add your location to see nearby matches.');
+    expect(response.text).toContain('Matching is paused in your preferences');
+  });
+
+  it('links every supported recommendation module to its real Web UK target', async () => {
+    const api = require('../src/lib/api');
+    api.callMatchesApi.mockResolvedValueOnce({
+      data: {
+        matches: [
+          { module: 'group', group_id: 33, title: 'Garden helpers', match_score: 61 },
+          { module: 'volunteering', organization_id: 44, title: 'Community kitchen', match_score: 70 },
+          { module: 'event', event_id: 66, title: 'Community picnic', match_score: 72 }
+        ],
+        meta: {}
+      }
+    });
+
+    const response = await request(app)
+      .get('/matches/board')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/groups/33"');
+    expect(response.text).toContain('href="/organisations/44"');
+    expect(response.text).toContain('href="/events/66"');
+  });
+
+  it('shows a load failure instead of presenting a failed recommendation request as an empty result', async () => {
+    const api = require('../src/lib/api');
+    api.callMatchesApi.mockRejectedValueOnce(new Error('backend unavailable'));
+
+    const response = await request(app)
+      .get('/matches')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Sorry, there is a problem loading your matches. Please try again.');
+    expect(response.text).toContain('data-module="govuk-error-summary" tabindex="-1"');
+    expect(response.text).not.toContain('We have no matches for you yet.');
+  });
+
+  it('keeps both matches error summaries programmatically focusable', () => {
+    for (const template of ['index.njk', 'board.njk']) {
+      const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'matches', template), 'utf8');
+      const summaries = source.match(/<div class="govuk-error-summary"[^>]*>/g) || [];
+      expect(summaries.length).toBeGreaterThan(0);
+      expect(summaries.every((summary) => summary.includes('tabindex="-1"'))).toBe(true);
+    }
+  });
+
+  it('does not report a failed match dismissal as successful', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const csrfToken = await csrfTokenFor(agent);
+    api.dismissMatch.mockRejectedValueOnce(new api.ApiError('dismiss failed', 422));
+
+    const response = await agent
+      .post('/matches/77/dismiss')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfToken, reason: 'not_my_skills' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/matches?status=match-dismiss-failed');
+    expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'not_my_skills');
   });
 
   it('renders the Laravel-backed exchanges list page with tabs and exchange cards', async () => {
@@ -6109,6 +6736,38 @@ describe('shared accessible frontend shell', () => {
       status: 'needs_confirmation',
       cursor: 'abc'
     });
+  });
+
+  it('uses the Laravel exchange config and active-exchange check on listing details', async () => {
+    const api = require('../src/lib/api');
+    api.getListing.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Repair a bicycle',
+        type: 'offer',
+        status: 'active',
+        user_id: 202,
+        user: { id: 202, name: 'Sam Taylor' }
+      }
+    });
+    api.getProfile.mockResolvedValueOnce({ id: 101 });
+    api.getExchangeConfig.mockResolvedValueOnce({
+      data: { exchange_workflow_enabled: true, direct_messaging_enabled: true }
+    });
+    api.checkExchangeForListing.mockResolvedValueOnce({
+      data: { id: 88, status: 'pending_provider', role: 'requester', proposed_hours: 2.5 }
+    });
+
+    const response = await request(app)
+      .get('/listings/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
+    expect(api.checkExchangeForListing).toHaveBeenCalledWith('test-token', '42');
+    expect(response.text).toContain('You already have an active exchange for this listing.');
+    expect(response.text).toContain('href="/exchanges/88"');
+    expect(response.text).not.toContain('href="/listings/42/exchange-request"');
   });
 
   it('renders the Laravel-backed exchange detail page with role actions, timeline, and rating form', async () => {
@@ -7602,6 +8261,70 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
+  it('renders simple search from the flat Laravel v2 envelope inside the active tenant mount', async () => {
+    const api = require('../src/lib/api');
+    api.searchV2.mockResolvedValueOnce({
+      data: [
+        {
+          type: 'listing',
+          id: 42,
+          title: 'Garden help',
+          description: 'Help with raised beds and compost.',
+          listing_type: 'offer',
+          status: 'active'
+        },
+        {
+          type: 'user',
+          id: 77,
+          name: 'Avery Garden Services',
+          bio: 'Gardening mentor'
+        },
+        {
+          type: 'event',
+          id: 88,
+          title: 'Seed swap',
+          location: 'Community hall',
+          start_time: '2026-07-20T10:00:00Z'
+        },
+        {
+          type: 'group',
+          id: 99,
+          name: 'Garden circle',
+          visibility: 'public',
+          members_count: 6
+        }
+      ],
+      meta: {
+        search: { query: 'garden', total: 9, type: 'all' },
+        pagination: { cursor: 'opaque-next', per_page: 30, has_more: true }
+      }
+    });
+
+    const unsigned = await request(app)
+      .get('/acme/accessible/search?q=garden');
+    const response = await request(app)
+      .get('/acme/accessible/search?q=garden&type=all&cursor=opaque-current')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(response.status).toBe(200);
+    expect(api.searchV2).toHaveBeenCalledWith('test-token', {
+      q: 'garden',
+      type: 'all',
+      per_page: 30,
+      cursor: 'opaque-current'
+    });
+    expect(response.text).toContain('<strong>9</strong> results found');
+    expect(response.text).toContain('Garden help');
+    expect(response.text).toContain('Offer');
+    expect(response.text).toContain('Avery Garden Services');
+    expect(response.text).toContain('datetime="2026-07-20T10:00:00Z"');
+    expect(response.text).toContain('6 members');
+    expect(response.text).toContain('href="/acme/accessible/listings/42"');
+    expect(response.text).toContain('href="/acme/accessible/search?q=garden&amp;type=all&amp;cursor=opaque-next"');
+  });
+
   it('renders the Laravel-style advanced search page', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -7884,7 +8607,7 @@ describe('shared accessible frontend shell', () => {
     api.getConnectionPendingCountsV2.mockResolvedValueOnce({
       data: { received: 1, sent: 1, total_friends: 2 }
     });
-    api.getConnectionsV2
+    api.getConnections
       .mockResolvedValueOnce({
         data: [
           {
@@ -7942,16 +8665,16 @@ describe('shared accessible frontend shell', () => {
 
     expect(signed.status).toBe(200);
     expect(api.getConnectionPendingCountsV2).toHaveBeenCalledWith('test-token');
-    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(1, 'test-token', {
+    expect(api.getConnections).toHaveBeenNthCalledWith(1, 'test-token', {
       status: 'accepted',
       per_page: 20
     });
-    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(2, 'test-token', {
+    expect(api.getConnections).toHaveBeenNthCalledWith(2, 'test-token', {
       status: 'pending_received',
       per_page: 20,
       cursor: 'received-cursor'
     });
-    expect(api.getConnectionsV2).toHaveBeenNthCalledWith(3, 'test-token', {
+    expect(api.getConnections).toHaveBeenNthCalledWith(3, 'test-token', {
       status: 'pending_sent',
       per_page: 20
     });
@@ -8002,10 +8725,54 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
+    expect(response.text).toContain('Sorry, there is a problem loading your connections.');
     expect(response.text).toContain('You have 0 connections, 0 requests waiting for your reply and 0 requests you have sent.');
     expect(response.text).toContain('No connections yet');
     expect(response.text).toContain('No pending requests');
     expect(response.text).toContain('No sent requests');
+  });
+
+  it('renders the canonical Laravel connection cursor envelope on the tenant-aware connections index', async () => {
+    const api = require('../src/lib/api');
+
+    api.getConnections.mockResolvedValueOnce({
+      data: [
+        {
+          id: 44,
+          connection_id: 44,
+          created_at: '2026-07-01T10:00:00Z',
+          partner: {
+            id: 77,
+            name: 'Ada Lovelace',
+            location: 'Bandon'
+          }
+        }
+      ],
+      meta: {
+        cursor: 'next-page',
+        per_page: 20,
+        has_more: true
+      }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/connections?filter=pending_sent&cursor=current-page')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getConnections).toHaveBeenCalledWith('test-token', {
+      status: 'pending_sent',
+      per_page: 20,
+      cursor: 'current-page'
+    });
+    expect(response.text).toContain('Ada Lovelace');
+    expect(response.text).toContain('Bandon');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('action="/acme/accessible/connections/44/remove"');
+    expect(response.text).toContain('href="/acme/accessible/members/77"');
+    expect(response.text).toContain('href="/acme/accessible/connections?filter=pending_sent&amp;cursor=next-page"');
+    expect(response.text).toContain('Next page');
+    expect(response.text).not.toContain('No sent requests');
   });
 
   it('renders the signed Laravel connections index when the connections API is unavailable', async () => {
@@ -8022,7 +8789,10 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getConnections).toHaveBeenCalledWith('test-token', undefined);
+    expect(api.getConnections).toHaveBeenCalledWith('test-token', {
+      status: 'accepted',
+      per_page: 20
+    });
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Connections');
     expect(response.text).toContain('href="/connections/network?tab=pending_received"');
@@ -8323,6 +9093,200 @@ describe('shared accessible frontend shell', () => {
     expect(api.claimDailyReward).not.toHaveBeenCalled();
   });
 
+  it('renders Laravel v2 member data/meta and per-member connection states under a tenant mount', async () => {
+    const api = require('../src/lib/api');
+
+    api.getUsers.mockResolvedValueOnce({
+      data: [
+        { id: 77, name: 'Ada', first_name: 'Ada', location: 'Bandon' },
+        { id: 88, name: 'Grace', first_name: 'Grace', location: 'Cork' }
+      ],
+      meta: {
+        total_items: 41,
+        per_page: 20,
+        offset: 20,
+        has_more: true
+      }
+    });
+    api.getMemberConnectionStatus.mockImplementationOnce(async (_token, id) => ({
+      data: id === 77
+        ? { status: 'connected', connection_id: 31 }
+        : { status: 'none' }
+    }));
+    api.getMemberConnectionStatus.mockImplementationOnce(async (_token, id) => ({
+      data: id === 88
+        ? { status: 'pending_received', connection_id: 32 }
+        : { status: 'none' }
+    }));
+
+    const response = await request(app)
+      .get('/acme/accessible/members?search=repair&page=2&sort=joined&order=DESC')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getUsers).toHaveBeenCalledWith('test-token', {
+      q: 'repair',
+      sort: 'joined',
+      order: 'DESC',
+      limit: 20,
+      offset: 20
+    });
+    expect(api.getMemberConnectionStatus).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getMemberConnectionStatus).toHaveBeenCalledWith('test-token', 88);
+    expect(response.text).toContain('Ada');
+    expect(response.text).toContain('Grace');
+    expect(response.text).toContain('Connected');
+    expect(response.text).toContain('Respond');
+    expect(response.text).toContain('href="/acme/accessible/connections/network?tab=pending_received"');
+    expect(response.text).toContain('href="/acme/accessible/members?page=3&search=repair&sort=joined&order=DESC"');
+    expect(response.text).not.toContain('No members found');
+  });
+
+  it('unwraps the Laravel v2 member profile while preserving connection, gamification and review composition', async () => {
+    const api = require('../src/lib/api');
+
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        name: 'Ada Lovelace',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        email: 'ada@example.test',
+        created_at: '2026-01-03T12:00:00Z',
+        xp: 90,
+        level: 4,
+        badges: []
+      }
+    });
+    api.getMemberConnectionStatus.mockResolvedValueOnce({
+      data: { status: 'pending_received', connection_id: 31 }
+    });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({
+      data: {
+        user: { id: 77, name: 'Ada Lovelace', avatar_url: null },
+        xp: 120,
+        level: 5,
+        level_progress: {
+          current_xp: 120,
+          xp_for_current_level: 100,
+          xp_for_next_level: 250,
+          progress_percentage: 13
+        },
+        badges_count: 1,
+        showcased_badges: [],
+        is_own_profile: false
+      }
+    });
+    api.getAllBadges.mockResolvedValueOnce({
+      data: [
+        {
+          badge_key: 'community_helper',
+          name: 'Community helper',
+          description: 'Helped a neighbour.',
+          icon: 'star',
+          earned_at: '2026-05-01T10:00:00Z'
+        }
+      ],
+      meta: { total: 1, available_types: ['community'] }
+    });
+    api.getUserReviews.mockResolvedValueOnce({
+      data: [
+        {
+          id: 9,
+          rating: 5,
+          comment: 'A thoughtful neighbour.',
+          reviewer: { first_name: 'Grace', last_name: 'Hopper' },
+          created_at: '2026-06-01T10:00:00Z'
+        }
+      ],
+      meta: { cursor: null, per_page: 20, has_more: false }
+    });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getUser).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getMemberConnectionStatus).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getGamificationProfileByUserId).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getAllBadges).toHaveBeenCalledWith('test-token', { user_id: 77 });
+    expect(response.text).toContain('Ada Lovelace');
+    expect(response.text).toContain('Level 5');
+    expect(response.text).toContain('120 XP');
+    expect(response.text).toContain('Badges');
+    expect(response.text).toContain('Community helper');
+    expect(response.text).toContain('Wants to connect with you');
+    expect(response.text).toContain('action="/acme/accessible/connections/31/accept"');
+    expect(response.text).toContain('action="/acme/accessible/connections/31/decline"');
+    expect(response.text).toContain('A thoughtful neighbour.');
+    expect(response.text).toContain('Grace Hopper');
+  });
+
+  it('falls back to real Laravel user gamification fields rather than invented member-profile values', async () => {
+    const api = require('../src/lib/api');
+
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        name: 'Ada Lovelace',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        xp: 45,
+        level: 3,
+        badges: [
+          { badge_key: 'real_badge', name: 'Real badge', icon: 'star' }
+        ]
+      }
+    });
+    api.getGamificationProfileByUserId.mockRejectedValueOnce(new Error('profile unavailable'));
+    api.getAllBadges.mockRejectedValueOnce(new Error('badges unavailable'));
+
+    const response = await request(app)
+      .get('/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Level 3');
+    expect(response.text).toContain('45 XP');
+    expect(response.text).toContain('Real badge');
+    expect(response.text).not.toContain('Level 1 - 0 XP');
+  });
+
+  it('handles Laravel v2 member profile authentication and null-data not-found envelopes tenant-safely', async () => {
+    const api = require('../src/lib/api');
+    const { ApiError } = api;
+
+    api.getUser.mockRejectedValueOnce(new ApiError('Unauthenticated', 401, {}));
+    const expired = await request(app)
+      .get('/acme/accessible/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    api.getUser.mockResolvedValueOnce({ data: null });
+    const missing = await request(app)
+      .get('/acme/accessible/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(expired.status).toBe(302);
+    expect(expired.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(missing.status).toBe(404);
+    expect(missing.text).toContain('Page not found');
+  });
+
+  it('renders Laravel\'s public members shell without exposing or loading directory data', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/members');
+
+    expect(response.status).toBe(200);
+    expect(api.getUsers).not.toHaveBeenCalled();
+    expect(response.text).toContain('Sign in to search members of');
+    expect(response.text).toContain('href="/login"');
+    expect(response.text).toContain('href="/register"');
+    expect(response.text).not.toContain('id="search"');
+  });
+
   it('renders the signed Laravel members index when the members API is unavailable', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
@@ -8334,9 +9298,15 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getUsers).toHaveBeenCalledWith('test-token');
+    expect(api.getUsers).toHaveBeenCalledWith('test-token', {
+      q: '',
+      sort: 'name',
+      order: 'ASC',
+      limit: 20,
+      offset: 0
+    });
     expect(response.text).toContain('<h1');
-    expect(response.text).toContain('Community members');
+    expect(response.text).toContain('>Members</h1>');
     expect(response.text).toContain('No members found');
     expect(response.text).toContain('Sorry, there is a problem loading members.');
     expect(response.text).not.toContain('Page not found');
@@ -8385,7 +9355,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(indexResponse.status).toBe(200);
-    expect(indexResponse.text).toContain('Community members');
+    expect(indexResponse.text).toContain('>Members</h1>');
     expect(indexResponse.text).toContain('action="/members/77/connection"');
     expect(indexResponse.text).toContain('name="action" value="connect"');
     expect(indexResponse.text).not.toContain('action="/members/77/connect"');
@@ -8823,6 +9793,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/members/77?status=review-submitted');
+    expect(api.getUser).toHaveBeenCalledWith('test-token', 77);
     expect(api.createReview).toHaveBeenCalledWith('test-token', {
       receiver_id: 77,
       rating: 5,
@@ -8925,6 +9896,9 @@ describe('shared accessible frontend shell', () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
+    api.getResourceCategories.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', color: 'green' }]
+    });
 
     const first = await agent
       .get('/contact')
@@ -8955,6 +9929,40 @@ describe('shared accessible frontend shell', () => {
         contentType: 'text/plain',
         buffer: Buffer.from('plain text guide', 'utf8')
       })
+    }));
+    expect(api.getResourceCategories).toHaveBeenCalledWith('test-token');
+  });
+
+  it('drops a forged cross-tenant category id before uploading a resource', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getResourceCategories.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', color: 'green' }]
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const csrfCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
+
+    const response = await agent
+      .post('/resources/upload')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`, ...csrfCookies].join('; '))
+      .field('_csrf', csrfMatch[1])
+      .field('title', 'Community handbook')
+      .field('category_id', '999')
+      .attach('file', Buffer.from('plain text guide', 'utf8'), {
+        filename: 'community-handbook.txt',
+        contentType: 'text/plain'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/library?status=resource-uploaded');
+    expect(api.uploadResource).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      category_id: ''
     }));
   });
 
@@ -9069,6 +10077,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1.5 KB');
     expect(response.text).toContain('Downloads');
     expect(response.text).toContain('href="/resources/42/download"');
+    expect(response.text).toContain('href="/resources/42/delete"');
     expect(response.text).toContain('href="/resources/42/comments"');
     expect(response.text).toContain('Load more resources');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
@@ -9289,6 +10298,108 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('finds an owned resource beyond the first Laravel cursor page', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'member' } });
+    api.getResources
+      .mockResolvedValueOnce({
+        data: Array.from({ length: 50 }, (_, index) => ({
+          id: 1000 - index,
+          title: `Earlier resource ${index + 1}`,
+          uploader: { id: 202 }
+        })),
+        meta: { has_more: true, cursor: 'next-resource-page' }
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 42, title: 'Later owned resource', uploader: { id: 101 } }],
+        meta: { has_more: false, cursor: null }
+      });
+
+    const response = await request(app)
+      .get('/resources/42/delete')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Later owned resource');
+    expect(api.getResources).toHaveBeenNthCalledWith(1, 'test-token', { per_page: 50 });
+    expect(api.getResources).toHaveBeenNthCalledWith(2, 'test-token', {
+      per_page: 50,
+      cursor: 'next-resource-page'
+    });
+  });
+
+  it('fails closed when a direct member review targets a missing or cross-tenant member', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.getUser.mockResolvedValueOnce({ data: null });
+
+    const csrf = await csrfTokenFor(agent);
+    const response = await agent
+      .post('/members/77/review')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, rating: '5', comment: 'Should not persist' });
+
+    expect(response.status).toBe(404);
+    expect(api.createReview).not.toHaveBeenCalled();
+  });
+
+  it('renders member review validation feedback after the no-JS redirect', async () => {
+    const response = await request(app)
+      .get('/members/77?status=review-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Check your review and try again. A rating between 1 and 5 is required.');
+    expect(response.text).toContain('govuk-notification-banner');
+  });
+
+  it('hides and rejects member review writes when the tenant reviews feature is disabled', async () => {
+    const api = require('../src/lib/api');
+    const disabledReviews = tenantBootstrap('acme', {
+      modules: { feed: true, listings: true, wallet: true },
+      features: { connections: true, reviews: false }
+    });
+
+    api.getTenantBootstrap.mockResolvedValueOnce(disabledReviews);
+    const profile = await request(app)
+      .get('/acme/accessible/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(profile.status).toBe(200);
+    expect(profile.text).not.toContain('action="/acme/accessible/members/77/review"');
+
+    const agent = request.agent(app);
+    const csrf = await csrfTokenFor(agent, '/acme/accessible/contact');
+    api.getTenantBootstrap.mockResolvedValueOnce(disabledReviews);
+    api.getUser.mockClear();
+    const rejected = await agent
+      .post('/acme/accessible/members/77/review')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, rating: '5' });
+
+    expect(rejected.status).toBe(403);
+    expect(api.getUser).not.toHaveBeenCalled();
+    expect(api.createReview).not.toHaveBeenCalled();
+  });
+
+  it('allows a Laravel tenant admin to open another member resource delete confirmation', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'tenant_admin' } });
+    api.getResources.mockResolvedValue({
+      data: [{ id: 42, title: 'Moderated resource', uploader: { id: 202 } }],
+      meta: { has_more: false }
+    });
+
+    const response = await request(app)
+      .get('/resources/42/delete')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Moderated resource');
+  });
+
   it('streams the Laravel-backed resource download for signed-in members', async () => {
     const api = require('../src/lib/api');
     const body = Buffer.from('community handbook pdf', 'utf8');
@@ -9321,6 +10432,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers['content-length']).toBe(String(body.length));
     expect(response.headers['cache-control']).toBe('no-cache, must-revalidate');
     expect(response.body.equals(body)).toBe(true);
+  });
+
+  it('clears stale auth cookies when a Laravel resource download returns 401', async () => {
+    const api = require('../src/lib/api');
+    api.downloadResource.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {}));
+
+    const response = await request(app)
+      .get('/resources/42/download')
+      .set('Cookie', signedAuthCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    const clearedCookies = (response.headers['set-cookie'] || []).join('\n');
+    expect(clearedCookies).toMatch(/(?:^|\n)token=.*Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
+    expect(clearedCookies).toMatch(/(?:^|\n)refresh_token=.*Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
+    expect(clearedCookies).toMatch(/(?:^|\n)tenant_slug=.*Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
   });
 
   it('submits the Laravel resource delete route through the resources API helper', async () => {
@@ -9401,6 +10528,55 @@ describe('shared accessible frontend shell', () => {
         { id: 10, sort_order: 1 }
       ]
     });
+  });
+
+  it('reorders across every Laravel resource cursor page', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      id: 1000 - index,
+      sort_order: index
+    }));
+    api.getResources
+      .mockResolvedValueOnce({
+        data: firstPage,
+        meta: { has_more: true, cursor: 'next-resource-page' }
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 42, sort_order: 50 }, { id: 41, sort_order: 51 }],
+        meta: { has_more: false, cursor: null }
+      });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/reorder')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        resource_id: '42',
+        direction: 'down',
+        reorder: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(api.getResources).toHaveBeenNthCalledWith(1, 'test-token', { per_page: 50 });
+    expect(api.getResources).toHaveBeenNthCalledWith(2, 'test-token', {
+      per_page: 50,
+      cursor: 'next-resource-page'
+    });
+    const payload = api.reorderResources.mock.calls[0][1];
+    expect(payload.items).toHaveLength(52);
+    expect(payload.items.slice(-2)).toEqual([
+      { id: 41, sort_order: 50 },
+      { id: 42, sort_order: 51 }
+    ]);
   });
 
   it('submits the Laravel resource comment route through the comments API helper', async () => {
@@ -9973,6 +11149,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders Laravel\'s public feed shell without calling the protected API', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/feed');
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).not.toHaveBeenCalled();
+    expect(response.text).toContain('Sign in or register to read and post community feed updates');
+    expect(response.text).toContain('href="/login"');
+    expect(response.text).toContain('href="/register"');
+    expect(response.text).not.toContain('action="/feed/posts"');
+  });
+
   it('renders the signed Laravel feed index when the feed API is unavailable', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
@@ -9980,18 +11169,19 @@ describe('shared accessible frontend shell', () => {
     api.getFeedPosts.mockRejectedValueOnce(new ApiError('Not found', 404, {}));
 
     const response = await request(app)
-      .get('/feed')
+      .get('/feed?status=post-created')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', {
-      page: 1,
-      limit: 20,
-      group_id: null
+      per_page: 10,
+      type: 'all',
+      mode: 'ranked'
     });
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Feed');
-    expect(response.text).toContain('The feed is empty.');
+    expect(response.text).toContain('There are no feed items to show yet.');
+    expect(response.text).toContain('Your post has been added.');
     expect(response.text).toContain('Sorry, there is a problem loading the feed.');
     expect(response.text).not.toContain('Page not found');
   });
@@ -10164,6 +11354,63 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('keeps public feed permalink documents available when Laravel protects the v2 payload APIs', async () => {
+    const api = require('../src/lib/api');
+    const { ApiError } = api;
+    api.getFeedPostV2.mockRejectedValueOnce(new ApiError('Unauthenticated', 401, {}));
+    api.getFeedItemV2.mockRejectedValueOnce(new ApiError('Unauthenticated', 401, {}));
+
+    const post = await request(app).get('/feed/posts/796');
+    const item = await request(app).get('/feed/item/listing/42');
+
+    for (const response of [post, item]) {
+      expect(response.status).toBe(200);
+      expect(response.headers.location).toBeUndefined();
+      expect(response.text).toContain('Sign in to take part in the feed.');
+      expect(response.text).toContain('This post is no longer available.');
+    }
+  });
+
+  it('unwraps the Laravel v2 comments envelope on an authenticated feed permalink', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPostV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        type: 'post',
+        content: 'Repair cafe is open.',
+        author: { id: 77, name: 'Ada Lovelace' },
+        likes_count: 2,
+        comments_count: 1
+      }
+    });
+    api.getComments.mockResolvedValueOnce({
+      data: {
+        comments: [
+          {
+            id: 12,
+            content: 'I can bring a repair stand.',
+            author: { id: 88, name: 'Grace Hopper' }
+          }
+        ],
+        count: 1
+      }
+    });
+
+    const response = await request(app)
+      .get('/feed/posts/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPostV2).toHaveBeenCalledWith('test-token', 42);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', {
+      target_type: 'post',
+      target_id: 42
+    });
+    expect(response.text).toContain('Posted by Grace Hopper');
+    expect(response.text).toContain('I can bring a repair stand.');
+    expect(response.text).not.toContain('No comments yet.');
+  });
+
   it('refreshes an expired signed token before rendering a Laravel feed item permalink', async () => {
     const api = require('../src/lib/api');
 
@@ -10334,6 +11581,58 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/feed/42');
   });
 
+  it('renders typed Laravel feed rows and opaque cursor pagination inside the tenant mount', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          type: 'listing',
+          title: 'Cargo bike available',
+          content: 'A cargo bike is available for local errands.',
+          created_at: '2026-07-06T09:30:00Z',
+          author: { id: 77, name: 'Ada Lovelace' },
+          likes_count: 2,
+          comments_count: 1,
+          is_liked: false,
+          media: [
+            {
+              file_url: '/uploads/feed/cargo-bike.jpg',
+              thumbnail_url: '/uploads/feed/cargo-bike-thumb.jpg',
+              alt_text: 'A cargo bicycle parked outside a library'
+            }
+          ]
+        }
+      ],
+      meta: {
+        cursor: 'next/cursor',
+        per_page: 10,
+        has_more: true
+      }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/feed?cursor=current%2Fcursor&per_page=10&type=listings&mode=recent&subtype=offer')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', {
+      per_page: 10,
+      type: 'listings',
+      mode: 'recent',
+      subtype: 'offer',
+      cursor: 'current/cursor'
+    });
+    expect(response.text).toContain('id="feed-item-listing-42"');
+    expect(response.text).toContain('Cargo bike available');
+    expect(response.text).toContain('href="/acme/accessible/listings/42"');
+    expect(response.text).toContain('src="/uploads/feed/cargo-bike-thumb.jpg"');
+    expect(response.text).toContain('alt="A cargo bicycle parked outside a library"');
+    expect(response.text).toContain('action="/acme/accessible/feed/items/listing/42/like"');
+    expect(response.text).toContain('href="/acme/accessible/feed/item/listing/42"');
+    expect(response.text).toContain('href="/acme/accessible/feed?type=listings&amp;cursor=next%2Fcursor&amp;per_page=10&amp;mode=recent&amp;subtype=offer"');
+  });
+
   it('renders the feed hub when Laravel returns author-shaped posts', async () => {
     const api = require('../src/lib/api');
     api.getFeedPosts.mockResolvedValueOnce({
@@ -10366,31 +11665,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/feed/items/post/42/like"');
   });
 
-  it('renders the feed sidebar without the legacy my groups route', async () => {
+  it('renders Laravel feed type, order, and listing-subtype filters without the legacy groups filter', async () => {
     const api = require('../src/lib/api');
     api.getFeedPosts.mockResolvedValueOnce({
       data: [],
       pagination: { page: 1, total_pages: 1 }
     });
-    api.getMyGroups.mockResolvedValueOnce({
-      data: [
-        { id: 1, name: 'Repair cafe' },
-        { id: 2, name: 'Garden team' },
-        { id: 3, name: 'Library friends' },
-        { id: 4, name: 'Food share' },
-        { id: 5, name: 'Bike hub' },
-        { id: 6, name: 'Warm space' }
-      ]
-    });
-
     const response = await request(app)
-      .get('/feed')
+      .get('/feed?type=listings&mode=recent&subtype=request')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('View all 6 groups');
-    expect(response.text).toContain('href="/groups"');
-    expect(response.text).not.toContain('href="/groups/my"');
+    expect(api.getMyGroups).not.toHaveBeenCalled();
+    expect(response.text).toContain('name="type"');
+    expect(response.text).toContain('name="mode"');
+    expect(response.text).toContain('name="subtype"');
+    expect(response.text).not.toContain('name="group_id"');
   });
 
   it('submits Laravel feed typed like and comment aliases through v2 social helpers', async () => {
@@ -11166,6 +12456,24 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/reviews?status=review-duplicate');
   });
 
+  it('clears every auth cookie when Laravel rejects a review mutation token', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookies = signedTenantAuthCookieHeader();
+    api.createReview.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401));
+
+    const csrf = await csrfTokenFor(agent, '/contact', cookies);
+    const response = await agent
+      .post('/reviews')
+      .set('Cookie', cookies)
+      .type('form')
+      .send({ _csrf: csrf, receiver_id: '77', rating: '5' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expectAuthCookiesCleared(response);
+  });
+
   it('submits the Laravel review comment route through the comments API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -11333,7 +12641,8 @@ describe('shared accessible frontend shell', () => {
             id: 91,
             rating: 5,
             comment: 'Reliable and kind',
-            reviewer: { name: 'Casey Quinn' },
+            is_anonymous: true,
+            reviewer: { name: 'Private Reviewer' },
             created_at: '2026-07-01T10:00:00Z'
           }],
           meta: { has_more: false }
@@ -11381,13 +12690,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('View all reviews');
     expect(response.text).toContain('4.8 / 5');
     expect(response.text).toContain('12');
-    expect(response.text).toContain('By Casey Quinn');
+    expect(response.text).toContain('By Anonymous');
+    expect(response.text).not.toContain('Private Reviewer');
     expect(response.text).toContain('For Morgan Lee');
     expect(response.text).toContain('Taylor Green');
     expect(response.text).toContain('Garden swap');
     expect(response.text).toContain('action="/reviews"');
     expect(response.text).toContain('name="receiver_id" value="77"');
     expect(response.text).toContain('name="transaction_id" value="88"');
+    expect(response.text).toContain('action="/reviews/92/delete"');
+    expect(response.text).toContain('Are you sure you want to delete this review? This cannot be undone.');
   });
 
   it('renders Laravel review delete status banners on the reviews index', async () => {
@@ -11442,6 +12754,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('For Morgan Lee');
     expect(response.text).toContain('Careful and friendly');
     expect(response.text).toContain('/reviews/93/comments');
+    expect(response.text).toContain('action="/reviews/93/delete"');
     expect(response.text).toContain('Load more reviews');
     expect(response.text).toContain('/reviews/list?tab=given&amp;cursor=next-page');
   });
@@ -11456,7 +12769,8 @@ describe('shared accessible frontend shell', () => {
         id: 91,
         rating: 5,
         comment: 'Thoughtful exchange',
-        reviewer: { name: 'Casey Quinn' },
+        is_anonymous: true,
+        reviewer: { name: 'Private Reviewer' },
         created_at: '2026-07-04T10:00:00Z'
       }
     });
@@ -11465,9 +12779,23 @@ describe('shared accessible frontend shell', () => {
         comments: [{
           id: 12,
           content: 'Thanks for adding context',
-          user: { name: 'Avery Stone' },
+          author: { name: 'Avery Stone' },
           user_id: 101,
-          created_at: '2026-07-05T10:00:00Z'
+          created_at: '2026-07-05T10:00:00Z',
+          updated_at: '2026-07-05T11:00:00Z',
+          is_own: true,
+          edited: true,
+          reactions: { like: 2 },
+          user_reactions: ['like'],
+          replies: [{
+            id: 13,
+            content: 'A nested reply',
+            author: { name: 'Jamie Fox' },
+            created_at: '2026-07-05T12:00:00Z',
+            reactions: {},
+            user_reactions: [],
+            replies: []
+          }]
         }],
         count: 1
       }
@@ -11487,11 +12815,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Comments on this review');
     expect(response.text).toContain('Your comment has been posted.');
     expect(response.text).toContain('Thoughtful exchange');
-    expect(response.text).toContain('Casey Quinn');
+    expect(response.text).toContain('Anonymous');
+    expect(response.text).not.toContain('Private Reviewer');
     expect(response.text).toContain('Thanks for adding context');
     expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('A nested reply');
+    expect(response.text).toContain('Jamie Fox');
     expect(response.text).toContain('action="/reviews/91/comments"');
     expect(response.text).toContain('action="/reviews/91/react#review-reactions"');
+    expect(response.text).toContain('action="/blog/comments/12/update"');
+    expect(response.text).toContain('action="/blog/comments/12/delete"');
+    expect(response.text).toContain('action="/blog/comments/12/react"');
+    expect(response.text).toContain('name="review_id" value="91"');
+    expect(response.text).toContain('aria-pressed="true"');
     expect(response.text).toContain('Like');
     expect(response.text).toContain('Love');
   });
@@ -11599,6 +12935,85 @@ describe('shared accessible frontend shell', () => {
     expect(api.reactToAppreciation).toHaveBeenCalledWith('test-token', 55, 'heart');
   });
 
+  it('renders the Laravel grouped notification inbox with actors, exact links, counts, and cursor navigation', async () => {
+    const api = require('../src/lib/api');
+    api.getGroupedNotifications.mockResolvedValueOnce({
+      data: [{
+        id: 7,
+        type: 'post_like',
+        message: 'Avery and two others liked your post',
+        link: '/feed/posts/7',
+        is_grouped: true,
+        group_key: 'post_like:/feed/posts/7',
+        group_count: 3,
+        read_at: null,
+        actors: [
+          { id: 41, name: 'Avery', avatar_url: '/storage/avery.jpg' },
+          { id: 42, name: 'Morgan', avatar_url: null }
+        ],
+        remaining_count: 1,
+        latest_at: '2026-07-09T10:00:00Z',
+        created_at: '2026-07-08T10:00:00Z'
+      }],
+      meta: { cursor: 'next-page', has_more: true, per_page: 30 }
+    });
+    api.getNotificationUnreadCount.mockResolvedValue({ data: { total: 4, social: 4 } });
+
+    const response = await request(app)
+      .get('/notifications?cursor=current-page')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getGroupedNotifications).toHaveBeenCalledWith('test-token', {
+      per_page: 30,
+      cursor: 'current-page'
+    });
+    expect(api.getNotifications).not.toHaveBeenCalled();
+    expect(api.getNotificationUnreadCount).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('4 unread');
+    expect(response.text).toContain('Avery and two others liked your post');
+    expect(response.text).toContain('From Avery, Morgan and 1 others');
+    expect(response.text).toContain('href="/feed/posts/7"');
+    expect(response.text).toContain('3 grouped');
+    expect(response.text).toContain('name="group_key" value="post_like:/feed/posts/7"');
+    expect(response.text).not.toContain('action="/notifications/7/delete"');
+    expect(response.text).toContain('href="/notifications?cursor=next-page"');
+  });
+
+  it('uses the exact ungrouped Laravel endpoint for the unread-only no-JS inbox', async () => {
+    const api = require('../src/lib/api');
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{
+        id: 8,
+        type: 'transfer_received',
+        message: 'Time credits received',
+        body: 'Time credits received',
+        link: '/wallet#transactions',
+        is_read: false,
+        read_at: null,
+        created_at: '2026-07-09T11:00:00Z'
+      }],
+      meta: { cursor: 'unread-next', has_more: true, per_page: 30 }
+    });
+    api.getNotificationUnreadCount.mockResolvedValue({ data: { total: 1, transactions: 1 } });
+
+    const response = await request(app)
+      .get('/notifications?filter=unread&cursor=unread-current')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getNotifications).toHaveBeenCalledWith('test-token', {
+      per_page: 30,
+      cursor: 'unread-current',
+      unread_only: true
+    });
+    expect(api.getGroupedNotifications).not.toHaveBeenCalled();
+    expect(response.text).toContain('href="/wallet#transactions"');
+    expect(response.text).toContain('action="/notifications/8/read"');
+    expect(response.text).toContain('action="/notifications/8/delete"');
+    expect(response.text).toContain('href="/notifications?filter=unread&amp;cursor=unread-next"');
+  });
+
   it('submits the Laravel grouped notification read route through the v2 API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -11637,7 +13052,7 @@ describe('shared accessible frontend shell', () => {
     api.getNotifications.mockResolvedValueOnce({
       data: [{ id: 7, type: 'system', title: 'System notice', is_read: false }],
       unreadCount: 1,
-      pagination: { page: 1, totalPages: 1 }
+      meta: { cursor: null, has_more: false }
     });
 
     const first = await agent
@@ -11664,7 +13079,7 @@ describe('shared accessible frontend shell', () => {
     api.getNotifications.mockResolvedValueOnce({
       data: [{ id: 8, type: 'system', title: 'System notice', is_read: false }],
       unreadCount: 1,
-      pagination: { page: 1, totalPages: 1 }
+      meta: { cursor: null, has_more: false }
     });
 
     const first = await agent
@@ -11712,21 +13127,21 @@ describe('shared accessible frontend shell', () => {
     expect(api.deleteAllNotifications).toHaveBeenCalledWith('test-token');
   });
 
-  it('links wallet transfer notifications to the canonical wallet history section', async () => {
+  it('does not invent a navigation link when Laravel omits one from a notification', async () => {
     const api = require('../src/lib/api');
-    const { getNotificationLink } = require('../src/routes/notifications');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
-    api.getNotifications.mockResolvedValueOnce({
+    api.getGroupedNotifications.mockResolvedValueOnce({
       data: [{
         id: 9,
         type: 'transfer_received',
-        title: 'Time credits received',
+        message: 'Time credits received',
         data: JSON.stringify({ transactionId: 44 }),
+        link: null,
+        is_grouped: false,
         is_read: false
       }],
-      unreadCount: 1,
-      pagination: { page: 1, totalPages: 1 }
+      meta: { cursor: null, has_more: false, per_page: 30 }
     });
 
     const response = await request(app)
@@ -11734,9 +13149,9 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
-    expect(getNotificationLink({ type: 'transfer_received', data: JSON.stringify({ transactionId: 44 }) })).toBe('/wallet#transactions');
-    expect(response.text).toContain('value="/wallet#transactions"');
-    expect(response.text).not.toContain('/wallet/transactions/44');
+    expect(response.text).toContain('Time credits received');
+    expect(response.text).not.toContain('/wallet#transactions');
+    expect(response.text).not.toContain('name="redirect"');
   });
 
   it('renders the Laravel-backed clubs directory for signed-in members', async () => {
@@ -11855,6 +13270,29 @@ describe('shared accessible frontend shell', () => {
     expect(api.getClubs).toHaveBeenNthCalledWith(2, { per_page: 1 });
   });
 
+  it('redirects every signed-out Laravel organisation page before API access', async () => {
+    const api = require('../src/lib/api');
+    const paths = [
+      '/organisations',
+      '/organisations/browse',
+      '/organisations/register',
+      '/organisations/manage',
+      '/organisations/42',
+      '/organisations/42/jobs',
+      '/organisations/opportunities/77/apply'
+    ];
+
+    for (const path of paths) {
+      const response = await request(app).get(path);
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/login?status=auth-required');
+    }
+
+    expect(api.getVolunteerOrganisations).not.toHaveBeenCalled();
+    expect(api.getVolunteerOrganisation).not.toHaveBeenCalled();
+    expect(api.getVolunteerOpportunity).not.toHaveBeenCalled();
+  });
+
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
     const api = require('../src/lib/api');
@@ -11869,7 +13307,9 @@ describe('shared accessible frontend shell', () => {
       meta: { per_page: 30, has_more: false }
     });
 
-    const response = await request(app).get('/organisations?q=club');
+    const response = await request(app)
+      .get('/organisations?q=club')
+      .set('Cookie', signedCookieHeader());
 
     expect(staticPageRoutes.pages['/organisations']).toBeUndefined();
     expect(api.getVolunteerOrganisations).toHaveBeenCalledWith({ search: 'club', per_page: 30 });
@@ -11900,7 +13340,9 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisations.mockRejectedValueOnce(new api.ApiOfflineError());
 
-    const response = await request(app).get('/organisations');
+    const response = await request(app)
+      .get('/organisations')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Organisations');
@@ -11997,7 +13439,9 @@ describe('shared accessible frontend shell', () => {
       meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
     });
 
-    const response = await request(app).get('/organisations/browse?q=club&cursor=abc');
+    const response = await request(app)
+      .get('/organisations/browse?q=club&cursor=abc')
+      .set('Cookie', signedCookieHeader());
 
     expect(api.getVolunteerOrganisations).toHaveBeenCalledWith({ search: 'club', per_page: 20, cursor: 'abc' });
     expect(response.status).toBe(200);
@@ -12021,7 +13465,9 @@ describe('shared accessible frontend shell', () => {
   });
 
   it('renders the Blade-style organisation register form as a non-persistent preparation page', async () => {
-    const response = await request(app).get('/organisations/register?status=org-email-invalid');
+    const response = await request(app)
+      .get('/organisations/register?status=org-email-invalid')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/organisations/browse"');
@@ -12047,7 +13493,7 @@ describe('shared accessible frontend shell', () => {
 
   it('redirects signed-out organisation registration POSTs to the Laravel auth-required status', async () => {
     const agent = request.agent(app);
-    const first = await agent.get('/organisations/register');
+    const first = await agent.get('/contact');
     const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
 
     const response = await agent
@@ -12155,23 +13601,14 @@ describe('shared accessible frontend shell', () => {
     expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
   });
 
-  it('renders the Blade-style manage organisations page as a local preparation page', async () => {
+  it('redirects signed-out visitors from the manage-organisations page before API access', async () => {
     const api = require('../src/lib/api');
 
     const response = await request(app).get('/organisations/manage');
 
     expect(api.getMyVolunteerOrganisations).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('href="/organisations/browse"');
-    expect(response.text).toContain('Back to organisations');
-    expect(response.text).toContain('Organisations in Project NEXUS Accessible');
-    expect(response.text).toContain('Manage my organisations');
-    expect(response.text).toContain('Organisations you own or help administer.');
-    expect(response.text).toContain('You do not manage any organisations');
-    expect(response.text).toContain('When you own or administer an organisation, it will appear here.');
-    expect(response.text).toContain('href="/organisations/register"');
-    expect(response.text).toContain('Register an organisation');
-    expect(response.text).toContain('Sign in to load your Laravel-backed organisations.');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('renders manageable and pending organisation rows from the Laravel my-organisations contract', async () => {
@@ -12368,28 +13805,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('View role');
   });
 
-  it('renders the organisation jobs page as a local preparation page when unsigned', async () => {
+  it('redirects unsigned visitors from organisation jobs before data lookup', async () => {
     const api = require('../src/lib/api');
     api.getOrganisationJobs.mockClear();
-    api.getVolunteerOrganisation.mockResolvedValueOnce({
-      data: {
-        id: 42,
-        name: 'Community Club',
-        public_contract: {
-          id: 42,
-          name: 'Community Club'
-        }
-      }
-    });
-
     const response = await request(app).get('/organisations/42/jobs');
 
-    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
+    expect(api.getVolunteerOrganisation).not.toHaveBeenCalled();
     expect(api.getOrganisationJobs).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('Job openings at Community Club');
-    expect(response.text).toContain('This organisation has no open job openings at the moment.');
-    expect(response.text).toContain('Sign in to load Laravel-backed job openings.');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('renders the Laravel-backed jobs browse page with Blade filters and pagination', async () => {
@@ -12464,7 +13888,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJobs).not.toHaveBeenCalled();
   });
 
@@ -12534,7 +13958,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/501');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJob).not.toHaveBeenCalled();
   });
 
@@ -12590,7 +14014,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/saved');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -12650,7 +14074,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/applications');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -12704,7 +14128,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/mine');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -12743,7 +14167,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/create');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('renders the Laravel-backed edit job form with existing opportunity values', async () => {
@@ -12815,7 +14239,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/501/edit');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJob).not.toHaveBeenCalled();
     expect(api.getProfile).not.toHaveBeenCalled();
   });
@@ -12914,7 +14338,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/501/applications');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJob).not.toHaveBeenCalled();
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
@@ -13122,7 +14546,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/501/analytics');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJob).not.toHaveBeenCalled();
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
@@ -13254,7 +14678,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/talent-search?keywords=mentor');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13293,7 +14717,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/employer-onboarding');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13480,7 +14904,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/501/applications/export.csv');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13555,7 +14979,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/applications/91/history');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13606,7 +15030,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/applications/91/cv');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobDownload).not.toHaveBeenCalled();
   });
 
@@ -13688,7 +15112,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/alerts');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13767,7 +15191,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/jobs/responses');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login');
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -13880,26 +15304,13 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Cancel');
   });
 
-  it('renders the organisation opportunity apply page as a local preparation page when unsigned', async () => {
+  it('redirects unsigned visitors from organisation opportunity applications before data lookup', async () => {
     const api = require('../src/lib/api');
-    api.getVolunteerOpportunity.mockResolvedValueOnce({
-      data: {
-        id: 77,
-        title: 'Community Kitchen Helper',
-        organization_id: 42,
-        org_name: 'Community Club',
-        has_applied: false
-      }
-    });
-
     const response = await request(app).get('/organisations/opportunities/77/apply');
 
-    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('77', '');
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('Apply for this opportunity');
-    expect(response.text).toContain('Community Kitchen Helper');
-    expect(response.text).toContain('Sign in to send a Laravel-backed volunteer application.');
-    expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+    expect(api.getVolunteerOpportunity).not.toHaveBeenCalled();
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('redirects signed-out visitors away from Laravel ideation GET pages before calling Laravel', async () => {
@@ -15257,7 +16668,7 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: unsignedCsrf[1], title: 'AGM', content: 'Bring reports' });
     expect(unsignedResponse.status).toBe(302);
-    expect(unsignedResponse.headers.location).toBe('/login');
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callGroupApi).not.toHaveBeenCalled();
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
   });
@@ -15329,7 +16740,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Invite people to Garden Helpers');
@@ -15383,7 +16794,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Notifications for Garden Helpers');
@@ -15426,7 +16837,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Images for Garden Helpers');
@@ -15489,7 +16900,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Announcements for Garden Helpers');
@@ -15552,7 +16963,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to announcements');
     expect(signed.text).toContain('Garden Helpers');
@@ -15665,7 +17076,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Garden Helpers');
@@ -15705,7 +17116,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to discussions');
     expect(signed.text).toContain('Garden Helpers');
@@ -15766,7 +17177,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to discussions');
     expect(signed.text).toContain('Garden Helpers');
@@ -15803,21 +17214,19 @@ describe('shared accessible frontend shell', () => {
         }
       }
     });
-    api.callGroupApi.mockReset()
-      .mockResolvedValueOnce({
-        data: {
-          items: [
-            { id: 10, name: 'Pat Owner', role: 'owner' },
-            { id: 55, name: 'Avery Admin', role: 'admin' },
-            { user_id: 66, name: 'Morgan Member', role: 'member' }
-          ]
-        }
-      })
-      .mockResolvedValueOnce({
-        data: [
-          { id: 77, name: 'Riley Requester' }
-        ]
-      });
+    api.getGroupMembers.mockReset().mockResolvedValueOnce({
+      data: [
+        { id: 10, name: 'Pat Owner', role: 'owner' },
+        { id: 55, name: 'Avery Admin', role: 'admin' },
+        { user_id: 66, name: 'Morgan Member', role: 'member' }
+      ],
+      meta: { cursor: null, per_page: 100, has_more: false }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: [
+        { id: 77, name: 'Riley Requester' }
+      ]
+    });
 
     const unsigned = await request(app).get('/groups/42/manage');
     const signed = await request(app)
@@ -15825,7 +17234,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Manage group');
     expect(signed.text).toContain('Neighbourhood Repairs');
@@ -15843,7 +17252,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
-    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/members?limit=100');
+    expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/requests');
   });
 
@@ -15858,9 +17267,12 @@ describe('shared accessible frontend shell', () => {
           member_count: 3
         }
       ],
-      pagination: { page: 1, totalPages: 1 }
+      meta: { cursor: 'next-groups', per_page: 20, has_more: true }
     });
-    api.getMyGroups.mockResolvedValueOnce({ data: [{ id: 42 }] });
+    api.getMyGroups.mockResolvedValueOnce({
+      data: [{ id: 42 }],
+      meta: { cursor: null, per_page: 100, has_more: false }
+    });
     api.getGroup.mockResolvedValueOnce({
       data: {
         id: 42,
@@ -15885,7 +17297,7 @@ describe('shared accessible frontend shell', () => {
     api.getEvents.mockResolvedValueOnce({ data: [] });
 
     const index = await request(app)
-      .get('/groups')
+      .get('/groups?search=repair&cursor=current-groups')
       .set('Cookie', signedCookieHeader());
     const detail = await request(app)
       .get('/groups/42')
@@ -15893,11 +17305,20 @@ describe('shared accessible frontend shell', () => {
 
     expect(index.status).toBe(200);
     expect(index.text).toContain('href="/groups/42"');
+    expect(index.text).toContain('Joined');
+    expect(index.text).toContain('href="/groups?search=repair&amp;cursor=next-groups"');
     expect(index.text).not.toContain('href="/groups/my"');
+    expect(api.getGroups).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      cursor: 'current-groups',
+      q: 'repair'
+    });
+    expect(api.getMyGroups).toHaveBeenCalledWith('test-token');
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('href="/groups/42/manage"');
     expect(detail.text).not.toContain('href="/groups/42/members"');
+    expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
   });
 
   it('uses Laravel viewer membership when rendering group actions', async () => {
@@ -15926,6 +17347,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Munster');
     expect(response.text).toContain('Leave group');
     expect(response.text).not.toContain('Join this group');
+  });
+
+  it('does not hide expired Laravel authentication behind an empty group membership list', async () => {
+    const api = require('../src/lib/api');
+    api.getGroups.mockResolvedValueOnce({
+      data: [{ id: 42, name: 'Repair circle' }],
+      meta: { cursor: null, per_page: 20, has_more: false }
+    });
+    api.getMyGroups.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {
+      errors: [{ code: 'UNAUTHENTICATED', message: 'Unauthenticated' }]
+    }));
+
+    const response = await request(app)
+      .get('/groups')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(response.text).not.toContain('Repair circle');
   });
 
   it('renders the Laravel group files page for signed-in group members', async () => {
@@ -15960,7 +17400,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Back to group');
     expect(signed.text).toContain('Files for Garden Helpers');
@@ -16011,7 +17451,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
-    expect(unsigned.headers.location).toBe('/login');
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.headers['content-type']).toBe('application/pdf');
     expect(signed.headers['content-disposition']).toBe('attachment; filename="garden-plan.pdf"');
@@ -16503,7 +17943,7 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: unsignedCsrf[1], cover_letter: 'Hello' });
     expect(unsignedResponse.status).toBe(302);
-    expect(unsignedResponse.headers.location).toBe('/login');
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
 
     const mountedUnsigned = request.agent(app);
@@ -16514,7 +17954,7 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: mountedUnsignedCsrf[1], cover_letter: 'Hello' });
     expect(mountedUnsignedResponse.status).toBe(302);
-    expect(mountedUnsignedResponse.headers.location).toBe('/acme/accessible/login');
+    expect(mountedUnsignedResponse.headers.location).toBe('/acme/accessible/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
@@ -17036,7 +18476,7 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
-    api.createEvent.mockResolvedValueOnce({ id: 42 });
+    api.createEvent.mockResolvedValueOnce({ data: { id: 42 } });
 
     const page = await agent
       .get('/events/new')
@@ -17047,6 +18487,10 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('action="/events/new"');
     expect(page.text).toContain('enctype="multipart/form-data"');
     expect(page.text).toContain('name="image"');
+    expect(page.text).toContain('id="start_time" name="start_time"');
+    expect(page.text).toContain('id="end_time" name="end_time"');
+    expect(page.text).not.toContain('name="starts_at_date"');
+    expect(page.text).not.toContain('name="starts_at_time"');
     expect(csrfMatch).not.toBeNull();
 
     const response = await agent
@@ -17055,8 +18499,7 @@ describe('shared accessible frontend shell', () => {
       .field('_csrf', csrfMatch[1])
       .field('title', ' Community garden day ')
       .field('description', ' Planting and tea ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .attach('image', Buffer.from('fake event image', 'utf8'), {
         filename: 'garden.webp',
         contentType: 'image/webp'
@@ -17067,7 +18510,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
       title: 'Community garden day',
       description: 'Planting and tea',
-      starts_at: '2026-08-01T10:00:00'
+      start_time: '2026-08-01T10:00'
     }));
     expect(api.uploadEventImage).toHaveBeenCalledWith('test-token', 42, {
       file: expect.objectContaining({
@@ -17076,6 +18519,197 @@ describe('shared accessible frontend shell', () => {
         buffer: Buffer.from('fake event image', 'utf8')
       })
     });
+  });
+
+  it('requires the Laravel event description and preserves exact datetime fields', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/events/new', cookie);
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfToken,
+        title: 'Community garden day',
+        description: '   ',
+        start_time: '2026-08-01T10:00',
+        end_time: '2026-08-01T12:00'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Enter an event description');
+    expect(response.text).toContain('href="#description"');
+    expect(response.text).toContain('name="start_time"');
+    expect(response.text).toContain('value="2026-08-01T10:00"');
+    expect(response.text).toContain('name="end_time"');
+    expect(response.text).toContain('value="2026-08-01T12:00"');
+    expect(api.createEvent).not.toHaveBeenCalled();
+  });
+
+  it('renders Laravel 422 event validation errors against the exact field and replays values', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/events/new', cookie);
+    api.createEvent.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{
+        code: 'VALIDATION_ERROR',
+        message: 'The end time must be after the start time.',
+        field: 'end_time'
+      }]
+    }));
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfToken,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        start_time: '2026-08-01T12:00',
+        end_time: '2026-08-01T10:00'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('The end time must be after the start time.');
+    expect(response.text).toContain('href="#end_time"');
+    expect(response.text).toContain('value="2026-08-01T12:00"');
+    expect(response.text).toContain('value="2026-08-01T10:00"');
+    expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      description: 'Planting and tea',
+      start_time: '2026-08-01T12:00',
+      end_time: '2026-08-01T10:00'
+    }));
+  });
+
+  it('renders Laravel 400 update validation errors from the validation error bag', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+    api.updateEvent.mockRejectedValueOnce(new api.ApiError('Validation failed', 400, {
+      errors: { start_time: ['Choose a future start time.'] }
+    }));
+
+    const response = await agent
+      .post('/events/42/edit')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfToken,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        start_time: '2026-08-01T10:00'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Choose a future start time.');
+    expect(response.text).toContain('href="#start_time"');
+    expect(response.text).toContain('value="2026-08-01T10:00"');
+    expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
+      start_time: '2026-08-01T10:00'
+    }));
+  });
+
+  it('renders and submits the Laravel event cancellation reason', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        start_time: '2026-08-01T10:00:00',
+        can_edit: true
+      }
+    });
+
+    const page = await agent
+      .get('/events/42')
+      .set('Cookie', cookie);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('action="/events/42/cancel"');
+    expect(page.text).toContain('id="cancel-reason" name="reason"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/42/cancel')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], reason: ' Severe weather ' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.cancelEvent).toHaveBeenCalledWith('test-token', '42', {
+      reason: 'Severe weather'
+    });
+  });
+
+  it.each([
+    [409, 'ALREADY_CANCELLED', 302, '/events/42'],
+    [403, 'FORBIDDEN', 403, null],
+    [404, 'NOT_FOUND', 404, null]
+  ])('preserves Laravel event cancellation status %s/%s', async (status, code, expectedStatus, location) => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+    api.cancelEvent.mockRejectedValueOnce(new api.ApiError('Cancellation failed', status, {
+      errors: [{ code, message: 'Cancellation failed' }]
+    }));
+
+    const response = await agent
+      .post('/events/42/cancel')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrfToken, reason: 'Weather' });
+
+    expect(response.status).toBe(expectedStatus);
+    if (location) {
+      expect(response.headers.location).toBe(location);
+    }
+  });
+
+  it('keeps Laravel onboarding and authentication redirects tenant-aware for event cancellation', async () => {
+    const api = require('../src/lib/api');
+    const cookie = signedCookieHeader();
+
+    const onboardingAgent = request.agent(app);
+    const onboardingCsrf = await csrfTokenFor(onboardingAgent, '/acme/accessible/contact', cookie);
+    api.cancelEvent.mockRejectedValueOnce(new api.ApiError(
+      'Please complete onboarding to access this resource',
+      403,
+      { errors: [{ code: 'ONBOARDING_REQUIRED', message: 'Please complete onboarding to access this resource' }] }
+    ));
+    const onboarding = await onboardingAgent
+      .post('/acme/accessible/events/42/cancel')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: onboardingCsrf, reason: '' });
+
+    expect(onboarding.status).toBe(302);
+    expect(onboarding.headers.location).toBe('/acme/accessible/onboarding');
+
+    const authAgent = request.agent(app);
+    const authCsrf = await csrfTokenFor(authAgent, '/acme/accessible/contact', cookie);
+    api.cancelEvent.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {
+      errors: [{ code: 'UNAUTHENTICATED', message: 'Unauthenticated' }]
+    }));
+    const authentication = await authAgent
+      .post('/acme/accessible/events/42/cancel')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: authCsrf, reason: '' });
+
+    expect(authentication.status).toBe(302);
+    expect(authentication.headers.location).toBe('/acme/accessible/login?status=auth-required');
   });
 
   it('renders the signed Laravel event create page when setup APIs are unavailable', async () => {
@@ -17097,6 +18731,79 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Page not found');
   });
 
+  it('does not swallow a Laravel feed 401 as an empty feed', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockRejectedValueOnce(new api.ApiError('Expired token', 401, {}));
+
+    const response = await request(app)
+      .get('/acme/accessible/feed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expect(response.headers['set-cookie'].join('; ')).toContain('token=');
+    expect(response.headers['set-cookie'].join('; ')).toContain('Expires=Thu, 01 Jan 1970');
+  });
+
+  it('renders Laravel v2 group memberships in both event group selectors', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.getMyGroups.mockReset().mockResolvedValue({
+      data: [{ id: 7, name: 'Repair members' }],
+      meta: { cursor: null, per_page: 100, has_more: false }
+    });
+    api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
+
+    const create = await agent
+      .get('/events/new?group_id=7')
+      .set('Cookie', signedCookieHeader());
+
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        user_id: 101,
+        title: 'Community repair day',
+        description: 'Bring something to mend.',
+        group_id: 7,
+        start_time: '2026-08-01T10:00:00Z'
+      }
+    });
+    const edit = await agent
+      .get('/events/42/edit')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = edit.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(create.status).toBe(200);
+    expect(create.text).toContain('id="group_id" name="group_id"');
+    expect(create.text).toContain('Repair members');
+    expect(create.text).toMatch(/value="7"[^>]*selected/);
+    expect(edit.status).toBe(200);
+    expect(edit.text).toContain('id="group_id" name="group_id"');
+    expect(edit.text).toContain('Repair members');
+    expect(edit.text).toMatch(/value="7"[^>]*selected/);
+    expect(csrfMatch).not.toBeNull();
+    expect(api.getMyGroups).toHaveBeenCalledTimes(2);
+    expect(api.getMyGroups).toHaveBeenNthCalledWith(1, 'test-token');
+    expect(api.getMyGroups).toHaveBeenNthCalledWith(2, 'test-token');
+
+    const updated = await agent
+      .post('/events/42/edit')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: 'Community repair day',
+        description: 'Bring something to mend.',
+        start_time: '2026-08-01T10:00',
+        group_id: '7'
+      });
+
+    expect(updated.status).toBe(302);
+    expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
+      group_id: 7
+    }));
+  });
+
   it('preserves Laravel non-owner denial for event edit when group setup is unavailable', async () => {
     const api = require('../src/lib/api');
 
@@ -17105,7 +18812,7 @@ describe('shared accessible frontend shell', () => {
         id: 6,
         user_id: 110,
         title: 'Community Meetup 3',
-        starts_at: '2026-08-01T14:00:00'
+        start_time: '2026-08-01T14:00:00'
       }
     });
     api.getProfile.mockResolvedValueOnce({ id: 101 });
@@ -17128,13 +18835,14 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
         location: 'Village hall',
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00Z',
+        end_time: '2026-08-01T12:00:00Z'
       }
     });
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
@@ -17148,6 +18856,10 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('action="/events/42/edit"');
     expect(page.text).toContain('enctype="multipart/form-data"');
     expect(page.text).toContain('name="image"');
+    expect(page.text).toContain('name="start_time"');
+    expect(page.text).toContain('value="2026-08-01T10:00"');
+    expect(page.text).toContain('name="end_time"');
+    expect(page.text).toContain('value="2026-08-01T12:00"');
     expect(csrfMatch).not.toBeNull();
 
     const response = await agent
@@ -17156,8 +18868,7 @@ describe('shared accessible frontend shell', () => {
       .field('_csrf', csrfMatch[1])
       .field('title', ' Community garden day ')
       .field('description', ' Planting and tea ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .attach('image', Buffer.from('updated event image', 'utf8'), {
         filename: 'updated-garden.webp',
         contentType: 'image/webp'
@@ -17168,7 +18879,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
       title: 'Community garden day',
       description: 'Planting and tea',
-      starts_at: '2026-08-01T10:00:00'
+      start_time: '2026-08-01T10:00'
     }));
     expect(api.uploadEventImage).toHaveBeenCalledWith('test-token', '42', {
       file: expect.objectContaining({
@@ -17190,7 +18901,7 @@ describe('shared accessible frontend shell', () => {
       ]
     });
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
-    api.createEvent.mockResolvedValueOnce({ id: 42 });
+    api.createEvent.mockResolvedValueOnce({ data: { id: 42 } });
 
     const page = await agent
       .get('/events/new')
@@ -17212,8 +18923,7 @@ describe('shared accessible frontend shell', () => {
       .field('title', ' Seed swap ')
       .field('description', ' Bring spare seeds ')
       .field('location', ' Community garden ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .field('category_id', '7');
 
     expect(response.status).toBe(302);
@@ -17228,13 +18938,13 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
         location: 'Village hall',
         category_id: 7,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00'
       }
     });
     api.getEventCategories.mockResolvedValueOnce({
@@ -17264,8 +18974,7 @@ describe('shared accessible frontend shell', () => {
       .field('title', ' Community garden day ')
       .field('description', ' Planting and tea ')
       .field('location', ' Village hall ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .field('category_id', '9');
 
     expect(response.status).toBe(302);
@@ -17312,10 +19021,8 @@ describe('shared accessible frontend shell', () => {
       .field('title', ' Weekly seed swap ')
       .field('description', ' Bring spare seeds ')
       .field('location', ' Community garden ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
-      .field('ends_at_date', '2026-08-01')
-      .field('ends_at_time', '11:30')
+      .field('start_time', '2026-08-01T10:00')
+      .field('end_time', '2026-08-01T11:30')
       .field('category_id', '7')
       .field('is_recurring', '1')
       .field('recurrence_frequency', 'weekly')
@@ -17328,8 +19035,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'POST', '/recurring', expect.objectContaining({
       title: 'Weekly seed swap',
       description: 'Bring spare seeds',
-      start_time: '2026-08-01T10:00:00',
-      end_time: '2026-08-01T11:30:00',
+      start_time: '2026-08-01T10:00',
+      end_time: '2026-08-01T11:30',
       location: 'Community garden',
       category_id: 7,
       recurrence_frequency: 'weekly',
@@ -17346,7 +19053,7 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
-    api.createEvent.mockResolvedValueOnce({ id: 42 });
+    api.createEvent.mockResolvedValueOnce({ data: { id: 42 } });
 
     const page = await agent
       .get('/events/new')
@@ -17367,8 +19074,7 @@ describe('shared accessible frontend shell', () => {
       .field('title', ' Online garden planning ')
       .field('description', ' Planning on a call ')
       .field('location', ' Zoom ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .field('is_online', '1')
       .field('online_link', ' https://meet.example/garden ')
       .field('allow_remote_attendance', '1')
@@ -17389,7 +19095,7 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
@@ -17399,7 +19105,7 @@ describe('shared accessible frontend shell', () => {
         allow_remote_attendance: true,
         video_url: 'https://video.example/garden',
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00'
       }
     });
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
@@ -17423,8 +19129,7 @@ describe('shared accessible frontend shell', () => {
       .field('title', ' Community garden day ')
       .field('description', ' Planting and tea ')
       .field('location', ' Village hall ')
-      .field('starts_at_date', '2026-08-01')
-      .field('starts_at_time', '10:00')
+      .field('start_time', '2026-08-01T10:00')
       .field('is_online', '1')
       .field('online_link', ' https://meet.example/updated ')
       .field('allow_remote_attendance', '1')
@@ -17447,14 +19152,14 @@ describe('shared accessible frontend shell', () => {
     const agent = request.agent(app);
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
         location: 'Village hall',
         cover_image: '/uploads/events/garden.webp',
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00'
       }
     });
     api.getMyGroups.mockResolvedValueOnce({ data: [] });
@@ -17483,7 +19188,7 @@ describe('shared accessible frontend shell', () => {
           cover_image: '/uploads/events/garden.webp',
           attendee_count: 3,
           max_attendees: 20,
-          starts_at: '2026-08-01T10:00:00'
+          start_time: '2026-08-01T10:00:00'
         }
       ],
       pagination: { page: 1, totalPages: 1 }
@@ -17507,7 +19212,7 @@ describe('shared accessible frontend shell', () => {
           id: 42,
           title: 'Community garden day',
           location: 'Village hall',
-          starts_at: '2026-08-01T10:00:00'
+          start_time: '2026-08-01T10:00:00'
         }
       ],
       pagination: { page: 1, totalPages: 1 }
@@ -17522,11 +19227,105 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/events/my"');
   });
 
+  it('uses Laravel event filters and cursor pagination end to end', async () => {
+    const api = require('../src/lib/api');
+    api.getEvents.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        title: 'Past repair café',
+        location: 'Village hall',
+        start_time: '2026-01-01T10:00:00'
+      }],
+      meta: { cursor: 'next-page', has_more: true, per_page: 20 }
+    });
+
+    const response = await request(app)
+      .get('/events?q=repair&when=past&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getEvents).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      cursor: 'abc',
+      q: 'repair',
+      group_id: null,
+      when: 'past'
+    });
+    expect(response.text).toContain('name="q"');
+    expect(response.text).toContain('value="past" selected');
+    expect(response.text).toContain('href="/events?when=past&amp;q=repair&amp;cursor=next-page"');
+  });
+
+  it('allows anonymous Laravel event browse and detail while keeping RSVP and management authenticated', async () => {
+    const api = require('../src/lib/api');
+    api.getEvents.mockResolvedValueOnce({
+      data: [{ id: 42, title: 'Public repair cafe', start_time: '2026-08-01T10:00:00Z' }],
+      meta: { cursor: null, has_more: false, per_page: 20 }
+    });
+
+    const index = await request(app).get('/events');
+
+    expect(index.status).toBe(200);
+    expect(api.getEvents).toHaveBeenCalledWith('', {
+      per_page: 20,
+      cursor: undefined,
+      q: '',
+      group_id: null,
+      when: 'upcoming'
+    });
+    expect(index.text).toContain('Public repair cafe');
+    expect(index.text).not.toContain('href="/events/new"');
+
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Public repair cafe',
+        description: 'Bring a broken household item.',
+        start_time: '2026-08-01T10:00:00Z',
+        can_edit: false
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const detail = await request(app).get('/events/42');
+
+    expect(detail.status).toBe(200);
+    expect(api.getEvent).toHaveBeenCalledWith('', '42');
+    expect(api.getEventRsvps).toHaveBeenCalledWith('', '42');
+    expect(detail.text).toContain('Bring a broken household item.');
+    expect(detail.text).toContain('Sign in to RSVP to events');
+    expect(detail.text).not.toContain('action="/events/42/rsvp"');
+    expect(detail.text).not.toContain('action="/events/42/delete"');
+  });
+
+  it('renders event deletion inside a no-JavaScript disclosure warning', async () => {
+    const api = require('../src/lib/api');
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Managed repair cafe',
+        description: 'Bring a broken household item.',
+        start_time: '2026-08-01T10:00:00Z',
+        can_edit: true
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const detail = await request(app)
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('Are you sure you want to delete this event? This cannot be undone.');
+    expect(detail.text).toContain('action="/events/42/delete"');
+    expect(detail.text).not.toContain('onsubmit="return confirm');
+  });
+
   it('renders the Laravel event cover image on the event detail page', async () => {
     const api = require('../src/lib/api');
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
@@ -17534,7 +19333,7 @@ describe('shared accessible frontend shell', () => {
         cover_image: '/uploads/events/garden.webp',
         attendee_count: 3,
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00'
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -17552,16 +19351,16 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
 
     api.getEvent.mockResolvedValueOnce({
-      event: {
+      data: {
         id: 42,
         title: 'Community garden day',
         description: 'Planting and tea',
         location: 'Village hall',
         attendee_count: 3,
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
-      },
-      my_rsvp: { status: 'going' }
+        start_time: '2026-08-01T10:00:00',
+        my_rsvp: 'going'
+      }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
 
@@ -17573,6 +19372,56 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/events/42/rsvp"');
     expect(response.text).not.toContain('action="/events/42/rsvp/remove"');
     expect(response.text).not.toContain('Remove RSVP');
+    expect(response.text).toContain('name="status" type="radio" value="going" checked');
+    expect(response.text).toContain('name="status" type="radio" value="interested"');
+    expect(response.text).not.toContain('value="maybe"');
+  });
+
+  it('submits the canonical Laravel interested RSVP and surfaces waitlist success', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.rsvpToEvent.mockResolvedValueOnce({
+      data: { status: 'interested', rsvp_counts: { going: 20, interested: 1 } }
+    });
+
+    const form = await agent
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    const interested = await agent
+      .post('/events/42/rsvp')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], status: 'interested' });
+
+    expect(interested.status).toBe(302);
+    expect(interested.headers.location).toBe('/events/42');
+    expect(api.rsvpToEvent).toHaveBeenCalledWith('test-token', '42', 'interested');
+
+    const interestedPage = await agent
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+    expect(interestedPage.status).toBe(200);
+    expect(interestedPage.text).toContain('marked yourself as interested');
+
+    api.rsvpToEvent.mockResolvedValueOnce({
+      data: { status: 'waitlisted', waitlist_position: 3, rsvp_counts: { going: 20, interested: 1 } }
+    });
+    const waitlisted = await agent
+      .post('/events/42/rsvp')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], status: 'going' });
+    expect(waitlisted.status).toBe(302);
+    expect(api.rsvpToEvent).toHaveBeenLastCalledWith('test-token', '42', 'going');
+
+    const waitlistPage = await agent
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+    expect(waitlistPage.status).toBe(200);
+    expect(waitlistPage.text).toContain('The event is full. You have joined the waitlist at position 3.');
   });
 
   it('renders Laravel v2 event detail payloads on the event detail page', async () => {
@@ -17586,7 +19435,7 @@ describe('shared accessible frontend shell', () => {
         location: 'Village hall',
         attendee_count: 3,
         max_attendees: 20,
-        starts_at: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00'
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -17612,7 +19461,10 @@ describe('shared accessible frontend shell', () => {
         created_at: '2026-06-01T09:00:00'
       }
     });
-    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getGroupMembers.mockResolvedValueOnce({
+      data: [{ id: 101, name: 'Ada Member', role: 'owner' }],
+      meta: { cursor: null, per_page: 100, has_more: false }
+    });
     api.getEvents.mockResolvedValueOnce({ data: [] });
 
     const response = await request(app)
@@ -17622,6 +19474,188 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Dunmanway');
     expect(response.text).toContain('Hub for Dunmanway neighbours');
+    expect(response.text).toContain('Ada Member');
+    expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '484', { per_page: 100 });
+  });
+
+  it('creates and updates private groups with the Laravel visibility contract and v2 envelope', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.createGroup.mockResolvedValueOnce({
+      data: { id: 88, name: 'Repair circle', visibility: 'private' }
+    });
+
+    const form = await agent
+      .get('/groups/new')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(form.status).toBe(200);
+    expect(csrfMatch).not.toBeNull();
+    expect(form.text).toContain('name="visibility"');
+    expect(form.text).toContain('value="private"');
+    expect(form.text).toContain('id="location" name="location"');
+
+    const created = await agent
+      .post('/groups/new')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Repair circle ',
+        description: ' Share repair skills. ',
+        location: ' Dublin ',
+        visibility: 'private'
+      });
+
+    expect(created.status).toBe(302);
+    expect(created.headers.location).toBe('/groups/88');
+    expect(api.createGroup).toHaveBeenCalledWith('test-token', {
+      name: 'Repair circle',
+      description: 'Share repair skills.',
+      location: 'Dublin',
+      visibility: 'private'
+    });
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 88,
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        location: 'Dublin',
+        visibility: 'private',
+        viewer_membership: { role: 'owner', status: 'active' }
+      }
+    });
+    const edit = await agent
+      .get('/groups/88/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(edit.status).toBe(200);
+    expect(edit.text).toContain('name="visibility"');
+    expect(edit.text).toMatch(/name="visibility"[^>]*value="private"[^>]*checked/);
+    expect(edit.text).toContain('value="Dublin"');
+
+    const updated = await agent
+      .post('/groups/88/edit')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Repair circle',
+        description: 'Updated description',
+        location: 'Cork',
+        visibility: 'public'
+      });
+
+    expect(updated.status).toBe(302);
+    expect(updated.headers.location).toBe('/groups/88?status=group-updated');
+    expect(api.updateGroup).toHaveBeenCalledWith('test-token', 88, {
+      name: 'Repair circle',
+      description: 'Updated description',
+      location: 'Cork',
+      visibility: 'public'
+    });
+
+    api.createGroup.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{ code: 'VALIDATION_ERROR', field: 'visibility', message: 'Select a valid visibility.' }]
+    }));
+    const invalid = await agent
+      .post('/groups/new')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        location: 'Dublin',
+        visibility: 'private'
+      });
+
+    expect(invalid.status).toBe(200);
+    expect(invalid.text).toContain('Select a valid visibility.');
+    expect(invalid.text).toContain('href="#visibility"');
+  });
+
+  it('requires the visible no-JavaScript owner confirmation before deleting a group', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 88,
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        visibility: 'private',
+        viewer_membership: { role: 'owner', status: 'active' }
+      }
+    });
+
+    const edit = await agent
+      .get('/groups/88/edit')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = edit.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(edit.status).toBe(200);
+    expect(csrfMatch).not.toBeNull();
+    expect(edit.text).toContain('Deleting this group is permanent.');
+    expect(edit.text).toMatch(/id="confirm-delete" name="confirm" type="checkbox" value="yes" required/);
+    expect(edit.text).toContain('action="/groups/88/delete"');
+    expect(edit.text).not.toContain('onsubmit="return confirm');
+
+    const unconfirmed = await agent
+      .post('/groups/88/delete')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(unconfirmed.status).toBe(400);
+    expect(unconfirmed.text).toContain('Confirm that you understand the group will be permanently deleted.');
+    expect(unconfirmed.text).toContain('href="#confirm-delete"');
+    expect(api.deleteGroup).not.toHaveBeenCalled();
+
+    const confirmed = await agent
+      .post('/groups/88/delete')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], confirm: 'yes' });
+
+    expect(confirmed.status).toBe(302);
+    expect(confirmed.headers.location).toBe('/groups?status=group-deleted');
+    expect(api.deleteGroup).toHaveBeenCalledWith('test-token', 88);
+  });
+
+  it.each([404, 429, 500])('preserves Laravel group update and delete HTTP status %s', async (status) => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const csrfToken = await csrfTokenFor(agent, '/contact', signedCookieHeader());
+    const consoleError = status >= 500 ? jest.spyOn(console, 'error').mockImplementation(() => {}) : null;
+
+    try {
+      api.updateGroup.mockRejectedValueOnce(new api.ApiError('Group mutation failed', status, {}));
+      const updated = await agent
+        .post('/groups/88/edit')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          name: 'Repair circle',
+          description: 'Share repair skills.',
+          location: 'Dublin',
+          visibility: 'private'
+        });
+
+      api.deleteGroup.mockRejectedValueOnce(new api.ApiError('Group mutation failed', status, {}));
+      const deleted = await agent
+        .post('/groups/88/delete')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({ _csrf: csrfToken, confirm: 'yes' });
+
+      expect(updated.status).toBe(status);
+      expect(deleted.status).toBe(status);
+    } finally {
+      if (consoleError) consoleError.mockRestore();
+    }
   });
 
   it('renders the signed listing index when Laravel omits flat owner IDs', async () => {
@@ -17646,13 +19680,61 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.getListings).toHaveBeenCalledWith('test-token', {
-      search: undefined,
-      status: undefined,
-      page: 1,
-      limit: 20
+      per_page: 20
     });
     expect(response.text).toContain('Borrow a ladder');
     expect(response.text).not.toContain('href="/listings/42/edit"');
+  });
+
+  it('allows anonymous Laravel listing browse and detail with exact cursor filters', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockClear();
+    api.getListings.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        title: 'Public ladder offer',
+        status: 'active',
+        type: 'offer',
+        created_at: '2026-07-05T14:15:00Z'
+      }],
+      meta: { cursor: 'next-page', has_more: true, per_page: 20, total_items: 21 }
+    });
+
+    const index = await request(app).get('/listings?search=ladder&type=offer&cursor=current-page');
+
+    expect(index.status).toBe(200);
+    expect(api.getListings).toHaveBeenCalledWith('', {
+      per_page: 20,
+      q: 'ladder',
+      type: 'offer',
+      cursor: 'current-page'
+    });
+    expect(index.text).toContain('Public ladder offer');
+    expect(index.text).toContain('href="/listings?search=ladder&amp;type=offer&amp;cursor=next-page"');
+    expect(index.text).not.toContain('href="/listings/new"');
+    expect(api.getProfile).not.toHaveBeenCalled();
+
+    api.getListing.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Public ladder offer',
+        description: 'A safe ladder available to neighbours.',
+        status: 'active',
+        type: 'offer',
+        user_id: 77,
+        author_rating: 4.5,
+        author_reviews_count: 6
+      }
+    });
+
+    const detail = await request(app).get('/listings/42');
+
+    expect(detail.status).toBe(200);
+    expect(api.getListing).toHaveBeenCalledWith('', '42');
+    expect(detail.text).toContain('A safe ladder available to neighbours.');
+    expect(detail.text).toContain('4.5 (6 reviews)');
+    expect(detail.text).toContain('Sign in or register to request an exchange');
+    expect(detail.text).not.toContain('action="/listings/42/delete"');
   });
 
   it('renders owner listing delete controls without the legacy GET delete page', async () => {
@@ -17677,7 +19759,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(index.status).toBe(200);
     expect(index.text).toContain('href="/listings/42/edit"');
-    expect(index.text).toContain('method="post" action="/listings/42/delete"');
+    expect(index.text).not.toContain('method="post" action="/listings/42/delete"');
     expect(index.text).not.toContain('href="/listings/42/delete"');
 
     api.getListing.mockResolvedValueOnce({
@@ -17695,8 +19777,347 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('href="/listings/42/edit"');
+    expect(detail.text).toContain('This permanently removes your listing. You cannot undo this.');
     expect(detail.text).toContain('method="post" action="/listings/42/delete"');
     expect(detail.text).not.toContain('href="/listings/42/delete"');
+  });
+
+  describe('listing mutation contract', () => {
+    it('applies tenant listing_config requirements and available listing categories', async () => {
+      const api = require('../src/lib/api');
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 12,
+          slug: 'listing-config-test',
+          name: 'Configured Timebank',
+          modules: { listings: true },
+          features: {},
+          listing_config: {
+            'listing.allow_offers': false,
+            'listing.allow_requests': true,
+            'listing.require_category': false,
+            'listing.require_location': true,
+            'listing.require_hours_estimate': true,
+            'listing.enable_skill_tags': false,
+            'listing.enable_service_type': false,
+            'listing.require_image': true,
+            'listing.min_title_length': 12,
+            'listing.min_description_length': 50,
+            'listing.max_image_size_mb': 2
+          }
+        }
+      });
+      api.getListingCategories.mockResolvedValueOnce({ data: [{ id: 8, name: 'Practical help' }] });
+
+      const form = await request(app)
+        .get('/listing-config-test/accessible/listings/new')
+        .set('Cookie', signedCookieHeader());
+
+      expect(form.status).toBe(200);
+      expect(form.text).toContain('Configured Timebank');
+      expect(form.text).not.toContain('name="type" type="radio" value="offer"');
+      expect(form.text).toContain('name="type" type="radio" value="request"');
+      expect(form.text).toContain('Practical help');
+      expect(form.text).toContain('Category (optional)');
+      expect(form.text).toContain('Estimated hours');
+      expect(form.text).not.toContain('Estimated hours (optional)');
+      expect(form.text).toContain('Location');
+      expect(form.text).not.toContain('Location (optional)');
+      expect(form.text).toContain('At least 12 characters.');
+      expect(form.text).toContain('At least 50 characters.');
+      expect(form.text).toContain('up to 2 MB');
+      expect(form.text).not.toContain('id="skill_tags"');
+      expect(form.text).toContain('type="hidden" name="service_type" value="physical_only"');
+    });
+
+    it('renders tenant-configured fields and creates through the exact core, tag, and image boundaries', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      api.createListing.mockResolvedValueOnce({ data: { id: 77, status: 'active' } });
+
+      const form = await agent
+        .get('/listings/new')
+        .set('Cookie', signedCookieHeader());
+      const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+
+      expect(form.status).toBe(200);
+      expect(csrfMatch).not.toBeNull();
+      expect(form.text).toContain('name="category_id"');
+      expect(form.text).toContain('Gardening');
+      expect(form.text).toContain('name="hours_estimate"');
+      expect(form.text).toContain('name="service_type"');
+      expect(form.text).toContain('name="location"');
+      expect(form.text).toContain('name="image"');
+      expect(form.text).toContain('name="skill_tags"');
+      expect(form.text).not.toContain('name="status"');
+
+      const created = await agent
+        .post('/listings/new')
+        .set('Cookie', signedCookieHeader())
+        .field('_csrf', csrfMatch[1])
+        .field('title', ' Garden tool sharing ')
+        .field('description', ' Share useful garden tools with neighbours nearby. ')
+        .field('type', 'offer')
+        .field('category_id', '3')
+        .field('hours_estimate', '2.5')
+        .field('service_type', 'physical_only')
+        .field('location', ' Town shed ')
+        .field('skill_tags', 'Gardening, bike repair, gardening')
+        .attach('image', Buffer.from('fake listing image', 'utf8'), {
+          filename: 'cover.webp',
+          contentType: 'image/webp'
+        });
+
+      expect(created.status).toBe(302);
+      expect(created.headers.location).toBe('/listings/77?status=listing-created');
+      expect(api.createListing).toHaveBeenCalledWith('test-token', {
+        title: 'Garden tool sharing',
+        description: 'Share useful garden tools with neighbours nearby.',
+        type: 'offer',
+        category_id: 3,
+        hours_estimate: 2.5,
+        service_type: 'physical_only',
+        location: 'Town shed'
+      });
+      expect(api.createListing.mock.calls[0][1]).not.toHaveProperty('status');
+      expect(api.setListingSkillTags).toHaveBeenCalledWith('test-token', 77, ['Gardening', 'bike repair']);
+      expect(api.uploadListingImage).toHaveBeenCalledWith('test-token', 77, {
+        file: expect.objectContaining({
+          buffer: expect.any(Buffer),
+          filename: 'cover.webp',
+          contentType: 'image/webp'
+        })
+      });
+    });
+
+    it('keeps a saved listing and reports separate tag or image failures honestly', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      api.createListing.mockResolvedValueOnce({ data: { id: 78, status: 'active' } });
+      api.setListingSkillTags.mockRejectedValueOnce(new api.ApiError('Skill tags unavailable', 503, {}));
+      api.uploadListingImage.mockRejectedValueOnce(new api.ApiError('Image upload unavailable', 503, {}));
+
+      const form = await agent
+        .get('/listings/new')
+        .set('Cookie', signedCookieHeader());
+      const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+      const created = await agent
+        .post('/listings/new')
+        .set('Cookie', signedCookieHeader())
+        .field('_csrf', csrfMatch[1])
+        .field('title', 'Garden tool sharing')
+        .field('description', 'Share useful garden tools with neighbours nearby.')
+        .field('type', 'offer')
+        .field('category_id', '3')
+        .field('hours_estimate', '2.5')
+        .field('service_type', 'physical_only')
+        .field('location', 'Town shed')
+        .field('skill_tags', 'gardening')
+        .attach('image', Buffer.from('fake listing image', 'utf8'), {
+          filename: 'cover.webp',
+          contentType: 'image/webp'
+        });
+
+      expect(created.status).toBe(302);
+      expect(created.headers.location).toBe('/listings/78?status=listing-created');
+      expect(api.createListing).toHaveBeenCalledTimes(1);
+
+      api.getListing.mockResolvedValueOnce({
+        data: { id: 78, title: 'Garden tool sharing', type: 'offer', status: 'active', user_id: 101 }
+      });
+      const detail = await agent
+        .get('/listings/78?status=listing-created')
+        .set('Cookie', signedCookieHeader());
+
+      expect(detail.status).toBe(200);
+      expect(detail.text).toContain('Listing created successfully');
+      expect(detail.text).toContain('The listing was created, but Skill tags unavailable; Image upload unavailable.');
+    });
+
+    it('unwraps v2 detail/edit envelopes, enforces ownership, and updates the seven-field payload', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      api.getListing.mockResolvedValueOnce({
+        data: {
+          id: 42,
+          title: 'Garden tool sharing',
+          description: 'Share useful garden tools with neighbours nearby.',
+          type: 'offer',
+          category_id: 3,
+          hours_estimate: 2.5,
+          service_type: 'hybrid',
+          location: 'Town shed',
+          skill_tags: ['gardening'],
+          image_url: '/uploads/listings/cover.webp',
+          user: { id: 101, name: 'Signed in member' }
+        }
+      });
+
+      const edit = await agent
+        .get('/listings/42/edit')
+        .set('Cookie', signedCookieHeader());
+      const csrfMatch = edit.text.match(/name="_csrf" value="([^"]+)"/);
+
+      expect(edit.status).toBe(200);
+      expect(csrfMatch).not.toBeNull();
+      expect(edit.text).toContain('value="Garden tool sharing"');
+      expect(edit.text).toContain('value="3" selected');
+      expect(edit.text).toContain('value="hybrid" checked');
+      expect(edit.text).not.toContain('name="status"');
+      expect(edit.text).not.toContain('value="inactive"');
+
+      const updated = await agent
+        .post('/listings/42/edit')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          title: 'Garden equipment sharing',
+          description: 'Updated details for sharing garden equipment nearby.',
+          type: 'request',
+          category_id: '3',
+          hours_estimate: '3',
+          service_type: 'remote_only',
+          location: 'Community hall',
+          skill_tags: 'gardening, tools',
+          has_existing_image: '1',
+          status: 'inactive'
+        });
+
+      expect(updated.status).toBe(302);
+      expect(updated.headers.location).toBe('/listings/42?status=listing-updated');
+      expect(api.updateListing).toHaveBeenCalledWith('test-token', '42', {
+        title: 'Garden equipment sharing',
+        description: 'Updated details for sharing garden equipment nearby.',
+        type: 'request',
+        category_id: 3,
+        hours_estimate: 3,
+        service_type: 'remote_only',
+        location: 'Community hall'
+      });
+      expect(api.updateListing.mock.calls[0][2]).not.toHaveProperty('status');
+      expect(api.setListingSkillTags).toHaveBeenCalledWith('test-token', '42', ['gardening', 'tools']);
+
+      api.getListing.mockResolvedValueOnce({ data: { id: 42, title: 'Not mine', user_id: 202 } });
+      const forbidden = await request(app)
+        .get('/listings/42/edit')
+        .set('Cookie', signedCookieHeader());
+      expect(forbidden.status).toBe(403);
+      expect(forbidden.text).toContain('Forbidden');
+    });
+
+    it('maps Laravel v2 errors arrays to summary links and field errors', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      const form = await agent
+        .get('/listings/new')
+        .set('Cookie', signedCookieHeader());
+      const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+      api.createListing.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+        errors: [
+          { code: 'VALIDATION_ERROR', field: 'title', message: 'The title has already been used.' },
+          { code: 'VALIDATION_ERROR', field: 'description', message: 'Add more useful detail.' }
+        ]
+      }));
+
+      const response = await agent
+        .post('/listings/new')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          title: 'Garden tools',
+          description: 'A detailed description long enough for local validation.',
+          type: 'offer',
+          category_id: '3',
+          hours_estimate: '2',
+          service_type: 'physical_only',
+          location: ''
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('href="#title"');
+      expect(response.text).toContain('The title has already been used.');
+      expect(response.text).toContain('href="#description"');
+      expect(response.text).toContain('Add more useful detail.');
+      expect(api.setListingSkillTags).not.toHaveBeenCalled();
+      expect(api.uploadListingImage).not.toHaveBeenCalled();
+    });
+
+    it('uses tenant-aware onboarding, auth, and delete redirects without issuing live destructive calls', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      const createForm = await agent
+        .get('/acme/accessible/listings/new')
+        .set('Cookie', signedCookieHeader());
+      const createCsrf = createForm.text.match(/name="_csrf" value="([^"]+)"/);
+      api.createListing.mockRejectedValueOnce(new api.ApiError(
+        'Please complete onboarding to access this resource',
+        403,
+        { errors: [{ code: 'ONBOARDING_REQUIRED', message: 'Please complete onboarding to access this resource' }] }
+      ));
+
+      const onboarding = await agent
+        .post('/acme/accessible/listings/new')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: createCsrf[1],
+          title: 'Garden tools',
+          description: 'A detailed description long enough for local validation.',
+          type: 'offer',
+          category_id: '3',
+          hours_estimate: '2',
+          service_type: 'physical_only',
+          location: ''
+        });
+
+      expect(onboarding.status).toBe(302);
+      expect(onboarding.headers.location).toBe('/acme/accessible/onboarding');
+
+      api.createListing.mockRejectedValueOnce(new api.ApiError(
+        'Authentication required',
+        401,
+        { errors: [{ code: 'AUTH_REQUIRED', message: 'Authentication required' }] }
+      ));
+      const expiredSession = await agent
+        .post('/acme/accessible/listings/new')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: createCsrf[1],
+          title: 'Garden tools',
+          description: 'A detailed description long enough for local validation.',
+          type: 'offer',
+          category_id: '3',
+          hours_estimate: '2',
+          service_type: 'physical_only',
+          location: ''
+        });
+
+      expect(expiredSession.status).toBe(302);
+      expect(expiredSession.headers.location).toBe('/acme/accessible/login?status=auth-required');
+
+      api.getListing.mockResolvedValueOnce({ data: { id: 42, title: 'My listing', user_id: 101 } });
+      const detail = await agent
+        .get('/acme/accessible/listings/42')
+        .set('Cookie', signedCookieHeader());
+      const deleteCsrf = detail.text.match(/name="_csrf" value="([^"]+)"/);
+      const deleted = await agent
+        .post('/acme/accessible/listings/42/delete')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({ _csrf: deleteCsrf[1] });
+
+      expect(deleted.status).toBe(302);
+      expect(deleted.headers.location).toBe('/acme/accessible/listings?status=listing-deleted');
+      expect(api.deleteListing).toHaveBeenCalledWith('test-token', '42');
+    });
   });
 
   it('does not render the legacy listing-specific review route on listing detail pages', async () => {
@@ -18292,6 +20713,9 @@ describe('shared accessible frontend shell', () => {
       scope: 'self'
     });
 
+    api.callMessageApi.mockResolvedValueOnce({
+      data: { translated_text: 'Dia dhuit' }
+    });
     const translateResponse = await post('/messages/77/m/12/translate', {
       target_language: 'ga'
     });
@@ -18351,6 +20775,36 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('clears stale auth cookies when Laravel rejects a tenant-mounted message action', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedTenantAuthCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact', cookie);
+    api.callMessageApi.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {
+      errors: [{ code: 'UNAUTHENTICATED', message: 'Unauthenticated' }]
+    }));
+
+    const response = await agent
+      .post('/acme/accessible/messages/77/archive')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrfToken });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
+    expectAuthCookiesCleared(response);
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'DELETE', '/conversations/77', {
+      scope: 'self'
+    });
+  });
+
+  it('passes every manual message 401 redirect through request-aware auth cleanup', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'messages.js'), 'utf8');
+    expect(source).not.toContain('redirectOnAuthError(error, res)');
+    expect(source.match(/if \(redirectOnAuthError\(error, req, res\)\)/g)).toHaveLength(12);
+    expect(source).toContain('handleApiError(error, req, res, { redirectOn401: loginRedirect() })');
   });
 
   it('returns Laravel unavailable redirects when tenant message translation is disabled', async () => {
@@ -18531,16 +20985,45 @@ describe('shared accessible frontend shell', () => {
   it('renders and submits Laravel-style message attachments with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
-    api.getConversation.mockResolvedValueOnce({
-      id: 77,
-      other_user_name: 'Avery Stone',
-      messages: [{ id: 12, sender_id: 77, body: 'Can you send the guide?' }]
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/77?per_page=50&direction=older') {
+        return {
+          data: [
+            {
+              id: 12,
+              sender_id: 77,
+              body: 'Can you send the guide?',
+              attachments: [{ file_url: '/uploads/guide.pdf', file_name: 'guide.pdf' }]
+            },
+            {
+              id: 13,
+              sender_id: 101,
+              body: 'I will send it now.',
+              created_at: new Date().toISOString()
+            }
+          ],
+          meta: {
+            conversation: {
+              id: 77,
+              other_user: { id: 77, name: 'Avery Stone' }
+            },
+            has_more: false,
+            cursor: null
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { direct_messaging_enabled: true, restricted: false } };
+      }
+      throw new Error(`Unexpected message API call: ${method} ${pathName}`);
     });
+    api.callListingApi.mockResolvedValueOnce({ data: { id: 42, title: 'Repair guide' } });
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
 
     const page = await agent
-      .get('/messages/77')
+      .get('/messages/77?listing=42')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
 
@@ -18548,6 +21031,16 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('enctype="multipart/form-data"');
     expect(page.text).toContain('name="attachments[]"');
     expect(page.text).toContain('Can you send the guide?');
+    expect(page.text).toContain('I will send it now.');
+    expect(page.text).toContain('guide.pdf');
+    expect(page.text).toContain('About listing:');
+    expect(page.text).toContain('Repair guide');
+    expect(page.text).toContain('action="/messages/77/m/13/edit"');
+    expect(page.text).toContain('action="/messages/77/m/13/delete"');
+    expect(page.text).toContain('name="scope" type="radio" value="self"');
+    expect(page.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(page.text).toContain('name="context_type" value="listing"');
+    expect(page.text).toContain('name="context_id" value="42"');
     expect(csrfMatch).not.toBeNull();
 
     const response = await agent
@@ -18555,22 +21048,57 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
       .field('_csrf', csrfMatch[1])
       .field('content', ' Here is the handbook. ')
+      .field('context_type', 'listing')
+      .field('context_id', '42')
       .attach('attachments', Buffer.from('%PDF message attachment', 'utf8'), {
         filename: 'handbook.pdf',
         contentType: 'application/pdf'
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/messages/77');
+    expect(response.headers.location).toBe('/messages/77?status=message-sent');
     expect(api.uploadMessageAttachments).toHaveBeenCalledWith('test-token', expect.objectContaining({
       recipient_id: 77,
       body: 'Here is the handbook.',
+      context_type: 'listing',
+      context_id: 42,
       files: [expect.objectContaining({
         filename: 'handbook.pdf',
         contentType: 'application/pdf',
         buffer: Buffer.from('%PDF message attachment', 'utf8')
       })]
     }));
+    expect(api.replyToConversation).not.toHaveBeenCalled();
+  });
+
+  it('submits text-only direct messages to the canonical Laravel v2 endpoint with context', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/messages/77')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('content', ' A text-only reply. ')
+      .field('context_type', 'listing')
+      .field('context_id', '42');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/messages/77?status=message-sent');
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'POST', '', {
+      recipient_id: 77,
+      body: 'A text-only reply.',
+      context_type: 'listing',
+      context_id: 42
+    });
     expect(api.replyToConversation).not.toHaveBeenCalled();
   });
 
@@ -18617,9 +21145,6 @@ describe('shared accessible frontend shell', () => {
           }
         });
       }
-      if (method === 'PUT' && path === '/77/read') {
-        return Promise.resolve({ data: { marked_read: 2 } });
-      }
       return Promise.reject(new Error(`Unexpected message API call: ${method} ${path}`));
     });
 
@@ -18630,19 +21155,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/77?per_page=50&direction=older&cursor=older-page');
     expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/restriction-status');
-    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'PUT', '/77/read');
     expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
     expect(response.text).toContain('Conversation with Morgan Lee');
     expect(response.text).toContain('Your message has been sent.');
-    expect(response.text).toContain('About:');
+    expect(response.text).toContain('About listing:');
     expect(response.text).toContain('Bike repair kit');
     expect(response.text).toContain('I can bring the spare tools.');
     expect(response.text).toContain('Thanks, that would help.');
     expect(response.text).toContain('guide.pdf');
     expect(response.text).toContain('Search messages');
     expect(response.text).toContain('value="tools"');
-    expect(response.text).toContain('href="/messages/new/77?listing=42&amp;q=tools&amp;cursor=next-page"');
+    expect(response.text).toContain('href="/messages/77?listing=42&amp;q=tools&amp;cursor=next-page"');
     expect(response.text).toContain('action="/messages/77"');
+    expect(response.text).toContain('name="scope" type="radio" value="self"');
+    expect(response.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(response.text).not.toContain('type="hidden" name="scope" value="everyone"');
     expect(response.text).toContain('name="context_type" value="listing"');
     expect(response.text).toContain('name="context_id" value="42"');
     expect(response.text).toContain('name="attachments[]"');
@@ -18650,6 +21177,124 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/messages/77/archive"');
     expect(response.text).toContain('Back to messages');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('keeps both direct conversation URLs on the Laravel view contract and blocks restricted composers', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/77?per_page=50&direction=older') {
+        return {
+          data: [
+            {
+              id: 3,
+              sender_id: 101,
+              body: 'Newest reply',
+              created_at: new Date().toISOString()
+            },
+            {
+              id: 2,
+              sender_id: 77,
+              body: '',
+              is_voice: true,
+              audio_url: '/uploads/voice-note.webm',
+              transcript: 'Recorded transcript',
+              created_at: '2026-07-01T10:00:00Z'
+            },
+            {
+              id: 1,
+              sender_id: 101,
+              body: 'Deleted secret text',
+              is_deleted: true,
+              created_at: '2026-06-01T10:00:00Z'
+            }
+          ],
+          meta: {
+            conversation: { id: 77, other_user: { id: 77, name: 'Morgan Lee' } },
+            cursor: 'older-page',
+            has_more: true
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { messaging_disabled: true, restriction_reason: 'Coordinator review' } };
+      }
+      throw new Error(`Unexpected message API call: ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/77?per_page=50&direction=older');
+    expect(response.text).toContain('Conversation with Morgan Lee');
+    expect(response.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(response.text).toContain('href="/messages/77?cursor=older-page"');
+    expect(response.text).toContain('This message was deleted.');
+    expect(response.text).not.toContain('Deleted secret text');
+    expect(response.text).toContain('src="/uploads/voice-note.webm"');
+    expect(response.text).toContain('Recorded transcript');
+    expect(response.text).toContain('action="/messages/77/m/3/edit"');
+    expect(response.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(response.text).not.toContain('<form method="post" action="/messages/77" enctype="multipart/form-data"');
+    expect(response.text.indexOf('This message was deleted.')).toBeLessThan(response.text.indexOf('Recorded transcript'));
+    expect(response.text.indexOf('Recorded transcript')).toBeLessThan(response.text.indexOf('Newest reply'));
+  });
+
+  it('persists a Laravel message translation across the no-JavaScript redirect', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Signed in member' } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName, payload) => {
+      if (method === 'POST' && pathName === '/12/translate') {
+        expect(payload).toEqual({ target_language: 'ga' });
+        return { data: { translated_text: 'Dia dhuit, a chara' } };
+      }
+      if (method === 'GET' && pathName === '/77?per_page=50&direction=older') {
+        return {
+          data: [{
+            id: 12,
+            sender_id: 77,
+            body: 'Hello, friend',
+            created_at: '2026-07-01T10:00:00Z'
+          }],
+          meta: {
+            conversation: { id: 77, other_user: { id: 77, name: 'Morgan Lee' } },
+            cursor: null,
+            has_more: false
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { messaging_disabled: false } };
+      }
+      throw new Error(`Unexpected message API call: ${method} ${pathName}`);
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    const translated = await agent
+      .post('/messages/77/m/12/translate')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], target_language: 'ga' });
+
+    expect(translated.status).toBe(302);
+    expect(translated.headers.location).toBe('/messages/77?status=translate-done#m-12');
+
+    const page = await agent
+      .get('/messages/77?status=translate-done')
+      .set('Cookie', signedCookieHeader());
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('The message has been translated.');
+    expect(page.text).toContain('Translation');
+    expect(page.text).toContain('Dia dhuit, a chara');
   });
 
   it('submits the Laravel voice message route with multipart audio data', async () => {
@@ -19257,8 +21902,7 @@ describe('shared accessible frontend shell', () => {
       organization_name: 'Analytical Engine Club',
       tagline: 'Community computing',
       bio: 'Helps neighbours with maths',
-      location: 'London',
-      newsletter_opt_in: true
+      location: 'London'
     });
     expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(2, 'test-token', 'PUT', '/preferences', {
       privacy: {
@@ -19267,13 +21911,17 @@ describe('shared accessible frontend shell', () => {
         privacy_contact: false
       }
     });
+    expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(3, 'test-token', 'PUT', '/consent', {
+      slug: 'marketing_email',
+      given: true
+    });
 
     const emailResponse = await post('/profile/email', {
       email: ' new@example.org ',
       current_password: 'current-password'
     });
     expect(emailResponse.headers.location).toBe('/profile/settings?status=email-reauthentication-unavailable');
-    expect(api.callUserSettingsApi).toHaveBeenCalledTimes(2);
+    expect(api.callUserSettingsApi).toHaveBeenCalledTimes(3);
 
     const passwordResponse = await post('/profile/password', {
       current_password: 'current-password',

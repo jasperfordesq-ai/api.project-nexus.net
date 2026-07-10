@@ -4,20 +4,20 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { randomUUID } = require('crypto');
 const { requireAuth } = require('../middleware/auth');
 const {
   getBalance,
   getTransactions,
-  transferCredits,
+  transferWalletCredits,
   donateCredits,
   callWalletApi,
   callWalletDownload,
   ApiError
 } = require('../lib/api');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
-const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -115,6 +115,66 @@ function walletManageStatus(status, transferError = '', donateError = '') {
   return null;
 }
 
+function transferRecipients(recipients) {
+  return recipients.map((recipient) => ({
+    ...recipient,
+    idempotencyKey: randomUUID()
+  }));
+}
+
+function firstApiError(error) {
+  if (!(error instanceof ApiError) || !error.data || typeof error.data !== 'object') {
+    return { code: '', message: error instanceof Error ? error.message : '' };
+  }
+
+  const errors = Array.isArray(error.data.errors) ? error.data.errors : [];
+  const first = errors.find((item) => item && typeof item === 'object') || {};
+  return {
+    code: String(first.code || error.data.code || error.data.error || '').trim().toUpperCase(),
+    message: String(first.message || error.message || '').trim()
+  };
+}
+
+function transferFailureKey(error) {
+  const { code, message } = firstApiError(error);
+
+  if (code === 'INSUFFICIENT_FUNDS' || /insufficient/i.test(message)) return 'insufficient';
+  if (code === 'NOT_FOUND' || error?.status === 404) return 'not-found';
+  if (code === 'VALIDATION_ERROR' && /yourself/i.test(message)) return 'self';
+  if (code === 'TRANSFER_FAILED' && /not active|inactive/i.test(message)) return 'inactive';
+  if (code === 'VALIDATION_ERROR') return 'invalid';
+  return 'failed';
+}
+
+function transferPayload(body = {}) {
+  const recipient = Number(body.recipient_id);
+  const amountText = String(body.amount ?? '').trim();
+  const amount = Number(amountText);
+
+  if (!Number.isInteger(recipient) || recipient <= 0 || !amountText || !Number.isFinite(amount) || amount <= 0) {
+    return { error: 'invalid' };
+  }
+  if (amount > 1000) {
+    return { error: 'too-large' };
+  }
+  if (!/^\d+(?:\.\d{1,2})?$/.test(amountText)) {
+    return { error: 'decimals' };
+  }
+
+  return {
+    payload: {
+      recipient,
+      amount,
+      description: String(body.note || body.description || '').trim().slice(0, 255),
+      idempotency_key: String(body.idempotency_key || '').trim()
+    }
+  };
+}
+
+function transferFailurePath(error) {
+  return `/wallet?status=transfer-failed&error=${encodeURIComponent(error)}#transfer`;
+}
+
 function walletSearchPath(query) {
   const params = new URLSearchParams();
   params.set('q', query);
@@ -137,23 +197,36 @@ function redirectTo(res, pathname) {
 
 // Wallet overview
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const [balanceData, transactionsData, currentUser] = await Promise.all([
+  const txFilter = ['earned', 'spent'].includes(String(req.query.filter || ''))
+    ? String(req.query.filter)
+    : 'all';
+  const txType = txFilter === 'earned' ? 'received' : (txFilter === 'spent' ? 'sent' : undefined);
+  const txCursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
+  const [balanceData, transactionsData] = await Promise.all([
     getBalance(req.token),
-    getTransactions(req.token, { limit: 5 }),
-    getRequestProfile(req, req.token)
+    getTransactions(req.token, {
+      per_page: 20,
+      ...(txType ? { type: txType } : {}),
+      ...(txCursor ? { cursor: txCursor } : {})
+    })
   ]);
 
-  const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
-  // Compute relative_type (sent/received) from sender_id relative to the current user
-  transactions.forEach(tx => {
-    tx.relative_type = String(tx.sender_id || tx.senderId) === String(currentUser.id) ? 'sent' : 'received';
-  });
+  const wallet = dataFrom(balanceData);
+  const transactions = itemsFrom(transactionsData).map((transaction) => ({
+    ...transaction,
+    // Laravel formats wallet rows from the caller's perspective as credit/debit.
+    relative_type: transaction.type === 'credit' ? 'received' : 'sent'
+  }));
+  const txMeta = transactionsData?.meta || dataFrom(transactionsData)?.meta || {};
 
   res.render('wallet/index', {
     title: 'Wallet',
-    balance: balanceData.balance || balanceData,
+    balance: wallet && typeof wallet === 'object' ? numberValue(wallet.balance) : numberValue(wallet),
     transactions,
+    txFilter,
+    txNextCursor: txMeta.has_more && txMeta.cursor ? String(txMeta.cursor) : '',
     status: typeof req.query.status === 'string' ? req.query.status : '',
+    transferError: typeof req.query.error === 'string' ? req.query.error : '',
     donateError: typeof req.query.donate_error === 'string' ? req.query.donate_error : '',
     successMessage: req.flash ? req.flash('success')[0] : null
   });
@@ -171,8 +244,21 @@ router.get('/export.csv', requireAuth, asyncRoute(async (req, res) => {
   return res.send(result.body);
 }));
 
-router.get('/recipients', requireAuth, asyncRoute(async (req, res) => {
-  const recipients = await walletRecipientsFor(req.token, req.query.q);
+router.get('/recipients', asyncRoute(async (req, res) => {
+  const token = req.signedCookies && req.signedCookies.token ? req.signedCookies.token : '';
+  if (!token) {
+    return res.status(401).json({ results: [] });
+  }
+
+  let recipients;
+  try {
+    recipients = await walletRecipientsFor(token, req.query.q);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return res.status(401).json({ results: [] });
+    }
+    throw error;
+  }
   return res.json({
     results: recipients.map((recipient) => ({
       id: recipient.id,
@@ -196,7 +282,7 @@ router.get('/manage', requireAuth, asyncRoute(async (req, res) => {
     title: 'Manage credits',
     wallet: normalizeWallet(walletRaw),
     fund: normalizeFund(fundRaw),
-    recipients,
+    recipients: transferRecipients(recipients),
     recipientQuery,
     donateTarget,
     status: walletManageStatus(req.query.status, req.query.error, req.query.donate_error),
@@ -207,53 +293,26 @@ router.get('/manage', requireAuth, asyncRoute(async (req, res) => {
 
 // Process transfer
 router.post('/transfer', requireAuth, audit.walletTransfer(), asyncRoute(async (req, res) => {
-  const receiverId = req.body.recipient_id || req.body.receiver_id;
-  const { amount } = req.body;
-  const description = req.body.note || req.body.description;
-
-  // Basic validation
-  const errors = [];
-
-  if (!receiverId) {
-    errors.push('invalid');
-  }
-
-  const amountNum = parseFloat(amount);
-  if (!amount || isNaN(amountNum) || amountNum <= 0) {
-    errors.push('invalid');
-  }
-
-  // Fetch profile and balance for self-transfer and insufficient balance checks
-  const [currentProfile, balanceData] = await Promise.all([
-    getRequestProfile(req, req.token),
-    getBalance(req.token)
-  ]);
-  const balance = balanceData.balance !== undefined ? balanceData.balance : balanceData;
-
-  if (receiverId && String(receiverId) === String(currentProfile.id)) {
-    errors.push('self');
-  }
-
-  if (!isNaN(amountNum) && amountNum > 0 && amountNum > balance) {
-    errors.push('insufficient');
-  }
-
-  if (errors.length > 0) {
-    return redirectTo(res, `/wallet?status=transfer-failed&error=${encodeURIComponent(errors[0])}#transfer`);
+  const normalized = transferPayload(req.body);
+  if (normalized.error) {
+    return redirectTo(res, transferFailurePath(normalized.error));
   }
 
   try {
-    await transferCredits(req.token, parseInt(receiverId, 10), amountNum, description);
-
-    if (req.flash) {
-      req.flash('success', 'Transfer completed successfully');
-    }
+    await transferWalletCredits(req.token, normalized.payload);
     return redirectTo(res, '/wallet?status=transfer-sent#transactions');
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
-      return redirectTo(res, '/wallet?status=transfer-failed&error=failed#transfer');
+    if (!(error instanceof ApiError)) throw error;
+
+    const { code } = firstApiError(error);
+    if (error.status === 401) {
+      handleApiError(error, req, res, { redirectOn401: '/login?status=auth-required' });
+      return undefined;
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    if (error.status === 403 && code === 'ONBOARDING_REQUIRED') {
+      return redirectTo(res, '/onboarding');
+    }
+    return redirectTo(res, transferFailurePath(transferFailureKey(error)));
   }
 }));
 

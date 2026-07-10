@@ -168,7 +168,7 @@ describe('Public Routes', () => {
       const response = await request(app).get('/acme/accessible/dashboard');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/acme/accessible/login');
+      expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
     });
 
     it('keeps rendered forms and links inside the active shared accessible mount', async () => {
@@ -731,35 +731,35 @@ describe('Protected Routes', () => {
       const response = await request(app).get('/dashboard');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
-    it('GET /listings should redirect to login', async () => {
+    it('GET /listings should render the public Laravel-backed directory', async () => {
       const response = await request(app).get('/listings');
 
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Listings');
     });
 
     it('GET /wallet should redirect to login', async () => {
       const response = await request(app).get('/wallet');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
     it('GET /messages should redirect to login', async () => {
       const response = await request(app).get('/messages');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
     it('GET /profile should redirect to login', async () => {
       const response = await request(app).get('/profile');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login');
+      expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
     it('GET /settings should return not found', async () => {

@@ -4,6 +4,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/tabs/macro.njk" import govukTabs %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
@@ -90,8 +91,6 @@
           </ul>
         </nav>
 
-        {% set totalResults = (results.listings.length if results.listings else 0) + (results.users.length if results.users else 0) + (results.groups.length if results.groups else 0) + (results.events.length if results.events else 0) %}
-
         <p class="govuk-body govuk-!-margin-bottom-4">
           <strong>{{ totalResults }}</strong> result{% if totalResults != 1 %}s{% endif %} found for "<strong>{{ query }}</strong>"
         </p>
@@ -108,7 +107,7 @@
                   <a href="{{ urlFor('/listings/' + (listing.id | string)) }}" class="govuk-link">{{ listing.title }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if listing.type == 'offer' %}
+                  {% if listing.listing_type == 'offer' %}
                     {{ govukTag({ text: "Offer", classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Request", classes: "govuk-tag--blue" }) }}
@@ -145,7 +144,7 @@
                   <div>
                     <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
                       <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
-                        {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+                        {{ user.name or ((user.first_name or '') + ' ' + (user.last_name or '')) }}
                       </a>
                     </h3>
                     {% if user.bio %}
@@ -175,12 +174,12 @@
                   <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">{{ group.name }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if group.isPublic or group.is_public %}
+                  {% if group.visibility == 'public' or group.is_public %}
                     {{ govukTag({ text: t("groups.visibility_public"), classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
-                  {% set groupMemberCount = group.memberCount or group.member_count or 0 %}
+                  {% set groupMemberCount = group.members_count or 0 %}
                   <span class="govuk-!-margin-left-2">{{ groupMemberCount }} member{% if groupMemberCount != 1 %}s{% endif %}</span>
                 </p>
                 {% if group.description %}
@@ -210,8 +209,8 @@
                   <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">{{ event.title }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if event.startsAt or event.starts_at %}
-                    <time datetime="{{ event.startsAt or event.starts_at }}">{{ (event.startsAt or event.starts_at) | date }}</time>
+                  {% if event.start_time %}
+                    <time datetime="{{ event.start_time }}">{{ event.start_time | date }}</time>
                   {% endif %}
                   {% if event.location %}
                     <span class="govuk-!-margin-left-2">{{ event.location }}</span>
@@ -264,14 +263,13 @@
         {% endif %}
 
         {# Pagination #}
-        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
-          {% set paginationConfig = {
-            baseUrl: urlFor("/search"),
-            page: pagination.page,
-            totalPages: pagination.totalPages or pagination.total_pages,
-            queryParams: { q: query, type: type }
-          } %}
-          {% include "partials/pagination.njk" %}
+        {% if pagination and pagination.nextHref %}
+          {{ govukPagination({
+            next: {
+              labelText: "Next",
+              href: urlFor(pagination.nextHref)
+            }
+          }) }}
         {% endif %}
 
       {% elif not query %}

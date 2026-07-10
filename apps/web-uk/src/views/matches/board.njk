@@ -21,6 +21,20 @@
   <h1 class="govuk-heading-xl">{{ t("matches.title") }}</h1>
   <p class="govuk-body-l">Members and opportunities that complement your listings, ranked by how well they fit your profile.</p>
 
+  {% if matchMeta.degraded_reason == 'no_coordinates' or matchMeta.needs_location %}
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text">
+        <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
+        Add your location to see nearby matches. <a class="govuk-link" href="{{ urlFor('/settings?tab=profile') }}">Update your profile</a>.
+      </strong>
+    </div>
+  {% endif %}
+
+  {% if matchMeta.paused %}
+    <div class="govuk-inset-text">Matching is paused in your preferences, so your suggestions may not update.</div>
+  {% endif %}
+
   <dl class="govuk-summary-list govuk-!-margin-bottom-6">
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">{{ t("polish_listings.matches_total_label") }}</dt>
@@ -50,18 +64,21 @@
     </ul>
   </nav>
 
-  {% if matches.length %}
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <div class="govuk-error-summary__body"><p class="govuk-body">{{ errorMessage }}</p></div>
+      </div>
+    </div>
+  {% elif matches.length %}
     <div class="nexus-alpha-card-list govuk-!-margin-top-4">
       {% for match in matches %}
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
-              {% if match.module == 'listing' and match.listingId %}
-                <a class="govuk-link" href="{{ urlFor('/listings/' + (match.listingId | string)) }}">{{ match.title }}</a>
-              {% elif match.module == 'group' and match.groupId %}
-                <a class="govuk-link" href="{{ urlFor('/groups/' + (match.groupId | string)) }}">{{ match.title }}</a>
-              {% elif match.module == 'event' and match.eventId %}
-                <a class="govuk-link" href="{{ urlFor('/events/' + (match.eventId | string)) }}">{{ match.title }}</a>
+              {% if match.href %}
+                <a class="govuk-link" href="{{ urlFor(match.href) }}">{{ match.title }}</a>
               {% else %}
                 {{ match.title }}
               {% endif %}

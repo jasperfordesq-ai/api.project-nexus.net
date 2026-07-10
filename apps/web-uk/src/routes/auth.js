@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { login, register, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
+const { login, register, getRegistrationInfo, getTenantBootstrap, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
 const { setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { createTranslator } = require('../lib/localization');
@@ -37,13 +37,72 @@ const TWO_FACTOR_ERROR_STATUS_KEYS = Object.freeze({
   'two-factor-failed': 'auth.two_factor_failed'
 });
 
+const TWO_FACTOR_EXPIRED_CODES = new Set([
+  'AUTH_2FA_EXPIRED',
+  'AUTH_2FA_MAX_ATTEMPTS',
+  'AUTH_2FA_TOKEN_EXPIRED'
+]);
+
 const REGISTER_ERROR_STATUS_KEYS = Object.freeze({
   'register-failed': 'auth.register_failed',
   'register-duplicate': 'auth.register_duplicate',
   'register-password-pwned': 'auth.register_password_pwned',
   'register-password-mismatch': 'auth.register_password_mismatch',
+  'register-terms-required': 'auth.register_terms_required',
+  'register-invite-required': 'auth.register_invite_required',
+  'register-invite-invalid': 'auth.register_invite_invalid',
+  'register-location-unverified': 'auth.register_location_unverified',
+  'register-email-disposable': 'auth.register_email_disposable',
+  'register-email-domain-invalid': 'auth.register_email_domain_invalid',
+  'register-daily-limit': 'auth.register_daily_limit',
+  'register-tenant-paused': 'auth.register_tenant_paused',
+  'register-closed': 'auth.register_closed',
   'register-validation': 'auth.register_validation'
 });
+
+const REGISTRATION_ERROR_STATUS_BY_CODE = Object.freeze({
+  VALIDATION_DUPLICATE: 'register-duplicate',
+  PASSWORD_PWNED: 'register-password-pwned',
+  PASSWORD_MISMATCH: 'register-password-mismatch',
+  TERMS_REQUIRED: 'register-terms-required',
+  INVITE_REQUIRED: 'register-invite-required',
+  INVITE_INVALID: 'register-invite-invalid',
+  LOCATION_NOT_VERIFIED: 'register-location-unverified',
+  EMAIL_DISPOSABLE: 'register-email-disposable',
+  EMAIL_DOMAIN_INVALID: 'register-email-domain-invalid',
+  REGISTRATION_DAILY_LIMIT: 'register-daily-limit',
+  REGISTRATION_TENANT_PAUSED: 'register-tenant-paused',
+  REGISTRATION_CLOSED: 'register-closed',
+  VALIDATION_ERROR: 'register-validation'
+});
+
+const REGISTRATION_ERROR_FIELD_BY_STATUS = Object.freeze({
+  'register-duplicate': 'email',
+  'register-email-disposable': 'email',
+  'register-email-domain-invalid': 'email',
+  'register-password-pwned': 'password',
+  'register-password-mismatch': 'password',
+  'register-terms-required': 'terms_accepted',
+  'register-invite-required': 'invite_code',
+  'register-invite-invalid': 'invite_code',
+  'register-location-unverified': 'location',
+  'register-closed': 'main-content'
+});
+
+const REGISTRATION_INPUT_FIELDS = new Set([
+  'first_name',
+  'last_name',
+  'email',
+  'phone',
+  'location',
+  'profile_type',
+  'organization_name',
+  'invite_code',
+  'password',
+  'password_confirmation',
+  'terms_accepted',
+  'tenant_slug'
+]);
 
 const RESET_ERROR_STATUS_KEYS = Object.freeze({
   'reset-token-missing': 'auth.reset_link_invalid_title',
@@ -85,12 +144,23 @@ function errorCode(error) {
 }
 
 function registrationErrorKey(error) {
+  return REGISTER_ERROR_STATUS_KEYS[registrationErrorStatus(error)] || 'auth.register_failed';
+}
+
+function registrationErrorStatus(error) {
   const code = errorCode(error);
-  if (code === 'VALIDATION_DUPLICATE' || error?.status === 409) return 'auth.register_duplicate';
-  if (code === 'PASSWORD_PWNED') return 'auth.register_password_pwned';
-  if (code === 'PASSWORD_MISMATCH') return 'auth.register_password_mismatch';
-  if (code === 'VALIDATION_ERROR') return 'auth.register_validation';
-  return 'auth.register_failed';
+  if (REGISTRATION_ERROR_STATUS_BY_CODE[code]) {
+    return REGISTRATION_ERROR_STATUS_BY_CODE[code];
+  }
+  if (error?.status === 409) return 'register-duplicate';
+  return 'register-failed';
+}
+
+function registrationErrorField(error, status) {
+  const firstError = Array.isArray(error?.data?.errors) ? error.data.errors[0] : null;
+  const apiField = String(firstError?.field || '').trim();
+  if (REGISTRATION_INPUT_FIELDS.has(apiField)) return apiField;
+  return REGISTRATION_ERROR_FIELD_BY_STATUS[status];
 }
 
 function resetErrorKey(error) {
@@ -117,6 +187,16 @@ function tenantSlugForRequest(req) {
   }
 
   return String(req.body?.tenant_slug || '').trim();
+}
+
+function clearPendingTwoFactor(req) {
+  if (!req.session) return;
+  delete req.session.pending2faToken;
+  delete req.session.pending2faTenantSlug;
+}
+
+function pendingTwoFactorTenantSlug(req) {
+  return String(req.session?.pending2faTenantSlug || tenantSlugForRequest(req)).trim();
 }
 
 router.get('/login', (req, res) => {
@@ -153,17 +233,20 @@ router.post('/login', asyncRoute(async (req, res) => {
   // challenges.cloudflare.com. Express-rate-limit (10/15min on auth routes)
   // is the active defence here. Registration + contact keep Turnstile.
 
+  clearPendingTwoFactor(req);
+
   try {
     const result = await login(email.toLowerCase(), password, tenantSlug);
 
     // Handle 2FA requirement — store pending token in session for verification
     if (result.requires_2fa) {
-      const pendingToken = result.two_factor_token || result.temp_token || result.access_token;
+      const pendingToken = result.two_factor_token;
       if (!pendingToken || !req.session) {
         return redirectTo(res, '/login?status=two-factor-required');
       }
 
       req.session.pending2faToken = pendingToken;
+      req.session.pending2faTenantSlug = tenantSlug;
       return redirectTo(res, '/login/two-factor');
     }
 
@@ -209,8 +292,10 @@ router.post('/login', asyncRoute(async (req, res) => {
 async function handleTwoFactorPost(req, res) {
   const { code } = req.body;
   const pendingToken = req.session?.pending2faToken;
+  const pendingTenantSlug = pendingTwoFactorTenantSlug(req);
 
   if (!pendingToken) {
+    clearPendingTwoFactor(req);
     return redirectTo(res, '/login?status=two-factor-expired');
   }
 
@@ -224,13 +309,16 @@ async function handleTwoFactorPost(req, res) {
   }
 
   try {
-    const result = await verify2fa(pendingToken, code.trim());
+    const result = await verify2fa(pendingToken, code.trim(), pendingTenantSlug);
 
-    // Clear pending token from session
-    delete req.session.pending2faToken;
+    if (result?.success !== true || !result?.access_token || !result?.refresh_token) {
+      throw new ApiError('Laravel did not return the two-factor login token envelope', 502, {
+        errors: [{ code: 'AUTH_2FA_RESPONSE_INVALID' }]
+      });
+    }
 
-    const accessToken = result.access_token || pendingToken;
-    setAuthCookies(res, accessToken, result.refresh_token);
+    clearPendingTwoFactor(req);
+    setAuthCookies(res, result.access_token, result.refresh_token);
 
     return redirectTo(res, '/dashboard');
   } catch (error) {
@@ -238,10 +326,20 @@ async function handleTwoFactorPost(req, res) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
+    const codeValue = errorCode(error);
+    if (TWO_FACTOR_EXPIRED_CODES.has(codeValue)) {
+      clearPendingTwoFactor(req);
+      return redirectTo(res, '/login?status=two-factor-expired');
+    }
+
+    const errorKey = codeValue === 'AUTH_2FA_RESPONSE_INVALID'
+      ? 'auth.two_factor_failed'
+      : 'auth.two_factor_invalid';
+
     res.render('login', {
       title: translate(req, 'auth.two_factor_title'),
       show2fa: true,
-      error: translate(req, 'auth.two_factor_invalid'),
+      error: translate(req, errorKey),
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -250,6 +348,7 @@ async function handleTwoFactorPost(req, res) {
 
 router.get('/login/two-factor', (req, res) => {
   if (!req.session?.pending2faToken) {
+    clearPendingTwoFactor(req);
     return redirectTo(res, '/login?status=two-factor-expired');
   }
 
@@ -266,7 +365,10 @@ router.post('/login/two-factor', asyncRoute(handleTwoFactorPost));
 
 router.post('/login/resend-verification', asyncRoute(async (req, res) => {
   try {
-    await resendVerification((req.body.email || '').trim().toLowerCase());
+    await resendVerification(
+      (req.body.email || '').trim().toLowerCase(),
+      tenantSlugForRequest(req)
+    );
   } catch (error) {
     if (error instanceof ApiOfflineError) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
@@ -276,182 +378,302 @@ router.post('/login/resend-verification', asyncRoute(async (req, res) => {
   return redirectTo(res, '/login?status=verification-resent');
 }));
 
-// Cloudflare Turnstile siteverify. Returns true when the env secret is
-// unset (dev mode) so local dev keeps working without Cloudflare.
-async function verifyTurnstile(token, remoteIp) {
-  const secret = process.env.TURNSTILE_SECRET_KEY || '';
-  if (!secret || secret === '1x0000000000000000000000000000000AA') {
-    return true;
-  }
-  if (!token) return false;
+function dataFrom(result) {
+  return result?.data || result || {};
+}
 
-  const form = new URLSearchParams({ secret, response: token });
-  if (remoteIp) form.set('remoteip', remoteIp);
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
 
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
-    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: form.toString(),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!resp.ok) return false;
-    const body = await resp.json();
-    return !!body.success;
-  } catch (err) {
-    console.info('[security] turnstile.network_error', { error: err.message });
-    return false;
+function checkboxValue(value) {
+  return value === true || value === 1 || value === '1' || value === 'true' || value === 'on' || value === 'yes';
+}
+
+function safeRegistrationValues(body = {}, tenantSlug = '') {
+  return {
+    first_name: String(body.first_name || '').trim(),
+    last_name: String(body.last_name || '').trim(),
+    email: String(body.email || '').trim(),
+    phone: String(body.phone || '').trim(),
+    location: String(body.location || '').trim(),
+    latitude: String(body.latitude || '').trim(),
+    longitude: String(body.longitude || '').trim(),
+    profile_type: String(body.profile_type || 'individual').trim(),
+    organization_name: String(body.organization_name || '').trim(),
+    invite_code: String(body.invite_code || '').trim().toUpperCase(),
+    terms_accepted: checkboxValue(body.terms_accepted),
+    newsletter_opt_in: checkboxValue(body.newsletter_opt_in),
+    tenant_slug: String(tenantSlug || body.tenant_slug || '').trim()
+  };
+}
+
+function rememberRegistrationAttempt(req, values, fieldErrors = {}) {
+  if (typeof req.flash !== 'function') return;
+  req.flash('registrationValues', values);
+  if (Object.keys(fieldErrors).length > 0) {
+    req.flash('registrationFieldErrors', fieldErrors);
   }
 }
 
+function registrationPolicy(result) {
+  const policy = asObject(dataFrom(result));
+  if (!policy.registration_mode) {
+    throw new Error('Registration policy response was invalid');
+  }
+  return policy;
+}
+
+function isRegistrationClosed(policy) {
+  return policy.is_closed === true
+    || policy.registration_mode === 'closed'
+    || policy.can_register === false;
+}
+
+async function policyForTenant(tenantSlug) {
+  return registrationPolicy(await getRegistrationInfo(tenantSlug));
+}
+
+async function validateFlatRegistrationTenant(tenantSlug) {
+  const tenant = asObject(dataFrom(await getTenantBootstrap({ slug: tenantSlug })));
+  if (String(tenant.slug || '').trim().toLowerCase() !== String(tenantSlug).trim().toLowerCase()) {
+    throw new ApiError('Community not found', 404, {
+      errors: [{ code: 'TENANT_NOT_FOUND', message: 'Community not found' }]
+    });
+  }
+  return tenant;
+}
+
+function renderRegistrationUnavailable(res) {
+  return res.status(503).render('errors/503', { title: 'Service unavailable' });
+}
+
+function registrationErrorViewState(req, status, rememberedFieldErrors) {
+  const fieldErrors = asObject(rememberedFieldErrors);
+  const rememberedErrors = Object.entries(fieldErrors).map(([field, text]) => ({
+    text,
+    href: `#${field}`
+  }));
+  if (rememberedErrors.length > 0) {
+    return { errors: rememberedErrors, fieldErrors };
+  }
+
+  const message = statusMessage(req, status, REGISTER_ERROR_STATUS_KEYS);
+  if (!message) return { errors: [], fieldErrors: {} };
+
+  const field = REGISTRATION_ERROR_FIELD_BY_STATUS[status];
+  return {
+    errors: [{ text: message, href: field ? `#${field}` : '#first_name' }],
+    fieldErrors: field && field !== 'main-content' ? { [field]: message } : {}
+  };
+}
+
+function validateRegistrationInput(req, tenantSlug, requiresInviteCode) {
+  const body = req.body || {};
+  const fieldErrors = {};
+  const generic = translate(req, 'auth.register_validation');
+  const add = (field, message = generic) => {
+    if (!fieldErrors[field]) fieldErrors[field] = message;
+  };
+  const firstName = String(body.first_name || '').trim();
+  const lastName = String(body.last_name || '').trim();
+  const email = String(body.email || '').trim();
+  const phone = String(body.phone || '').trim();
+  const location = String(body.location || '').trim();
+  const password = String(body.password || '');
+  const passwordConfirmation = String(body.password_confirmation ?? body.confirm_password ?? '');
+  const profileType = String(body.profile_type || 'individual').trim();
+  const organizationName = String(body.organization_name || '').trim();
+  const inviteCode = String(body.invite_code || '').trim();
+
+  if (!tenantSlug) add('tenant_slug');
+  if (!firstName || firstName.length > 100) add('first_name');
+  if (!lastName || lastName.length > 100) add('last_name');
+  if (!email || email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    add('email', translate(req, 'auth.forgot_invalid'));
+  }
+  if (!phone || phone.length > 30 || !/^\+?\d{7,15}$/.test(phone.replace(/[\s\-().]/g, ''))) {
+    add('phone');
+  }
+  if (!location || location.length > 255) add('location');
+  if (!password || password.length < 12) add('password');
+  if (password !== passwordConfirmation) {
+    add('password_confirmation', translate(req, 'auth.register_password_mismatch'));
+  }
+  if (!['individual', 'organisation'].includes(profileType)) add('profile_type');
+  if (profileType === 'organisation' && (!organizationName || organizationName.length > 255)) {
+    add('organization_name');
+  }
+  if (!checkboxValue(body.terms_accepted)) {
+    add('terms_accepted', translate(req, 'auth.register_terms_required'));
+  }
+  if (requiresInviteCode && !inviteCode) {
+    add('invite_code', translate(req, 'auth.register_invite_required'));
+  }
+
+  const rawLatitude = String(body.latitude ?? '').trim();
+  const rawLongitude = String(body.longitude ?? '').trim();
+  const latitude = rawLatitude === '' ? undefined : Number(rawLatitude);
+  const longitude = rawLongitude === '' ? undefined : Number(rawLongitude);
+  const invalidLatitude = latitude !== undefined && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90);
+  const invalidLongitude = longitude !== undefined && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180);
+  const nullIsland = latitude === 0 && longitude === 0;
+  if (invalidLatitude || invalidLongitude || nullIsland) {
+    add('location', translate(req, 'auth.register_location_unverified'));
+  }
+
+  let status = 'register-validation';
+  if (fieldErrors.terms_accepted) {
+    status = 'register-terms-required';
+  } else if (fieldErrors.location === translate(req, 'auth.register_location_unverified')) {
+    status = 'register-location-unverified';
+  } else if (Object.keys(fieldErrors).length === 1 && fieldErrors.invite_code) {
+    status = 'register-invite-required';
+  } else if (Object.keys(fieldErrors).length === 1 && fieldErrors.password_confirmation) {
+    status = 'register-password-mismatch';
+  }
+
+  return { fieldErrors, status, latitude, longitude, passwordConfirmation };
+}
+
 // Registration
-router.get('/register', (req, res) => {
-  const statusError = statusMessage(req, req.query.status, REGISTER_ERROR_STATUS_KEYS);
-  res.render('register', {
-    title: translate(req, 'auth.register_title'),
-    errors: statusError ? [{ text: statusError }] : [],
-    csrfToken: req.csrfToken ? req.csrfToken() : '',
-    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
+router.get('/register', asyncRoute(async (req, res) => {
+  const rememberedValues = asObject(firstFlashValue(req, 'registrationValues'));
+  const rememberedFieldErrors = asObject(firstFlashValue(req, 'registrationFieldErrors'));
+  const tenantSlug = String(req.accessibleRouting?.tenantSlug || rememberedValues.tenant_slug || '').trim();
+  const status = String(req.query.status || '');
+  let policy = {};
+
+  if (tenantSlug) {
+    try {
+      policy = await policyForTenant(tenantSlug);
+    } catch {
+      return renderRegistrationUnavailable(res);
+    }
+  }
+
+  const registrationClosed = status === 'register-closed' || isRegistrationClosed(policy);
+  const requiresInviteCode = policy.requires_invite_code === true
+    || policy.registration_mode === 'invite_only'
+    || ['register-invite-required', 'register-invite-invalid'].includes(status);
+  const errorState = registrationErrorViewState(req, status, rememberedFieldErrors);
+
+  return res.render('register', {
+    title: translate(req, registrationClosed ? 'auth.registration_closed_title' : 'auth.register_title'),
+    ...errorState,
+    values: { ...rememberedValues, tenant_slug: tenantSlug },
+    tenantSlug,
+    registrationClosed,
+    requiresInviteCode,
+    formStartedAt: Date.now(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-});
+}));
 
 router.post('/register', asyncRoute(async (req, res) => {
   const tenantSlug = tenantSlugForRequest(req);
-
-  // Bot honeypot — `website` is a hidden field in register.njk that real
-  // users never see or fill. Bots auto-fill every input and give themselves
-  // away. Render the same "check your email" success page so the bot
-  // can't distinguish rejection from real registration.
-  const honeypotValue = req.body && (req.body.website || req.body.honeypot);
-  if (honeypotValue && String(honeypotValue).trim() !== '') {
-    console.info('[security] registration.honeypot_triggered', {
-      ip: req.ip,
-      ua: (req.headers['user-agent'] || '').slice(0, 200),
-      value: String(honeypotValue).slice(0, 100),
-    });
-    return res.render('register-success', {
-      title: 'Check your email',
-      email: (req.body.email || '').trim(),
-    });
-  }
-
-  // Cloudflare Turnstile. Rejecting here saves a backend round-trip when
-  // the user's challenge has expired or wasn't completed. The .NET API
-  // will also verify independently as a defence-in-depth backstop.
-  const turnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
-  if (!(await verifyTurnstile(turnstileToken, req.ip))) {
-    return res.render('register', {
-      title: translate(req, 'auth.register_title'),
-      errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
-      fieldErrors: {},
-      values: { ...(req.body || {}), tenant_slug: tenantSlug },
-      csrfToken: req.csrfToken ? req.csrfToken() : '',
-      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
-    });
-  }
-
-  const { email, password, confirm_password, first_name, last_name } = req.body;
-
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!first_name || !first_name.trim()) {
-    errors.push({ text: 'Enter your first name', href: '#first_name' });
-    fieldErrors.first_name = 'Enter your first name';
-  }
-
-  if (!last_name || !last_name.trim()) {
-    errors.push({ text: 'Enter your last name', href: '#last_name' });
-    fieldErrors.last_name = 'Enter your last name';
-  }
-
-  if (!email || !email.trim()) {
-    const message = translate(req, 'auth.forgot_invalid');
-    errors.push({ text: message, href: '#email' });
-    fieldErrors.email = message;
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    const message = translate(req, 'auth.forgot_invalid');
-    errors.push({ text: message, href: '#email' });
-    fieldErrors.email = message;
-  }
+  const values = safeRegistrationValues(req.body, tenantSlug);
 
   if (!tenantSlug) {
-    errors.push({ text: 'Enter your community code', href: '#tenant_slug' });
-    fieldErrors.tenant_slug = 'Enter your community code';
+    const fieldErrors = { tenant_slug: translate(req, 'auth.register_validation') };
+    rememberRegistrationAttempt(req, values, fieldErrors);
+    return redirectTo(res, '/register?status=register-validation');
   }
 
-  if (!password) {
-    errors.push({ text: 'Enter a password', href: '#password' });
-    fieldErrors.password = 'Enter a password';
-  } else if (password.length < 8) {
-    errors.push({ text: 'Password must be at least 8 characters', href: '#password' });
-    fieldErrors.password = 'Password must be at least 8 characters';
+  if (!req.accessibleRouting?.tenantSlug) {
+    try {
+      await validateFlatRegistrationTenant(tenantSlug);
+    } catch (error) {
+      if (error instanceof ApiOfflineError) {
+        rememberRegistrationAttempt(req, values);
+        return renderRegistrationUnavailable(res);
+      }
+      const fieldErrors = { tenant_slug: translate(req, 'auth.register_validation') };
+      rememberRegistrationAttempt(req, values, fieldErrors);
+      return redirectTo(res, '/register?status=register-validation');
+    }
   }
 
-  if (password !== confirm_password) {
-    const message = translate(req, 'auth.register_password_mismatch');
-    errors.push({ text: message, href: '#confirm_password' });
-    fieldErrors.confirm_password = message;
+  let policy;
+  try {
+    policy = await policyForTenant(tenantSlug);
+  } catch {
+    rememberRegistrationAttempt(req, values);
+    return renderRegistrationUnavailable(res);
   }
 
-  if (errors.length > 0) {
-    return res.render('register', {
-      title: translate(req, 'auth.register_title'),
-      errors,
-      fieldErrors,
-      values: { email, first_name, last_name, tenant_slug: tenantSlug },
-      csrfToken: req.csrfToken ? req.csrfToken() : '',
-      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
+  if (isRegistrationClosed(policy)) {
+    rememberRegistrationAttempt(req, values);
+    return redirectTo(res, '/register?status=register-closed');
+  }
+
+  // Bot honeypot — `website` is a hidden field in register.njk that real
+  // users never see or fill. Match Laravel's silent-success honeypot and five-second form-time gates.
+  // Registration policy is checked first, exactly like RegistrationService.
+  const honeypotValue = String(req.body?.website || req.body?.honeypot || '').trim();
+  const formStartedAt = Number(req.body?.form_started_at);
+  const submittedTooQuickly = Number.isFinite(formStartedAt)
+    && formStartedAt > 0
+    && Date.now() - formStartedAt < 5000;
+  if (honeypotValue || submittedTooQuickly) {
+    console.info('[security] registration.bot_gate_triggered', {
+      ip: req.ip,
+      ua: String(req.headers['user-agent'] || '').slice(0, 200),
+      gate: honeypotValue ? 'honeypot' : 'minimum_time'
     });
+    return redirectTo(res, '/login?status=register-created');
   }
+
+  const requiresInviteCode = policy.requires_invite_code === true || policy.registration_mode === 'invite_only';
+  const validation = validateRegistrationInput(req, tenantSlug, requiresInviteCode);
+  if (Object.keys(validation.fieldErrors).length > 0) {
+    rememberRegistrationAttempt(req, values, validation.fieldErrors);
+    return redirectTo(res, `/register?status=${validation.status}`);
+  }
+
+  const body = req.body || {};
+  const profileType = String(body.profile_type || 'individual').trim();
+
+  const payload = {
+    first_name: values.first_name,
+    last_name: values.last_name,
+    email: values.email.toLowerCase(),
+    phone: values.phone,
+    location: values.location,
+    password: String(body.password || ''),
+    password_confirmation: validation.passwordConfirmation,
+    profile_type: profileType,
+    terms_accepted: true,
+    newsletter_opt_in: checkboxValue(body.newsletter_opt_in),
+    form_started_at: Number.isFinite(formStartedAt) && formStartedAt > 0 ? formStartedAt : undefined,
+    tenant_slug: tenantSlug,
+    website: ''
+  };
+  if (profileType === 'organisation') payload.organization_name = values.organization_name;
+  if (requiresInviteCode) payload.invite_code = values.invite_code;
+  if (validation.latitude !== undefined) payload.latitude = validation.latitude;
+  if (validation.longitude !== undefined) payload.longitude = validation.longitude;
 
   try {
-    await register({
-      email: email.trim().toLowerCase(),
-      password,
-      first_name: first_name.trim(),
-      last_name: last_name.trim(),
-      tenant_slug: tenantSlug
-    });
-
-    // Auto-login after registration
-    const result = await login(email.trim().toLowerCase(), password, tenantSlug);
-
-    if (result.access_token) {
-      setAuthCookies(res, result.access_token, result.refresh_token);
-
-      if (req.flash) {
-        req.flash('success', 'Account created successfully. Welcome!');
-      }
-      return redirectTo(res, '/dashboard');
-    }
-
-    // If auto-login fails, redirect to login page
-    setAuthStatus(req, 'register-created');
-    return redirectTo(res, '/login');
+    await register(payload, tenantSlug);
+    return redirectTo(res, '/login?status=register-created');
   } catch (error) {
-    // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {
-      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+      return renderRegistrationUnavailable(res);
     }
 
-    let errorMessage = translate(req, 'auth.register_failed');
-
-    if (error instanceof ApiError) {
-      errorMessage = translate(req, registrationErrorKey(error));
+    if (error instanceof ApiError && errorCode(error) === 'RATE_LIMIT_EXCEEDED') {
+      return res.status(429).render('errors/429', {
+        title: 'Too many requests',
+        retryAfter: 5
+      });
     }
 
-    res.render('register', {
-      title: translate(req, 'auth.register_title'),
-      errors: [{ text: errorMessage }],
-      fieldErrors: error.data?.errors || {},
-      values: { email, first_name, last_name, tenant_slug: tenantSlug },
-      csrfToken: req.csrfToken ? req.csrfToken() : '',
-      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
-    });
+    const status = error instanceof ApiError ? registrationErrorStatus(error) : 'register-failed';
+    const message = translate(req, registrationErrorKey(error));
+    const field = registrationErrorField(error, status);
+    rememberRegistrationAttempt(req, values, field && field !== 'main-content' ? { [field]: message } : {});
+    return redirectTo(res, `/register?status=${status}`);
   }
 }));
 
@@ -555,11 +777,7 @@ router.post('/login/forgot-password', asyncRoute(handleForgotPasswordPost));
 
 // Reset password (with token from email)
 function renderResetPassword(req, res) {
-  const { token } = req.query;
-
-  if (!token) {
-    return redirectTo(res, '/login/forgot-password');
-  }
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
 
   const statusError = statusMessage(req, req.query.status, RESET_ERROR_STATUS_KEYS);
   res.render('reset-password', {

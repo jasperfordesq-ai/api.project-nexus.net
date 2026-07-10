@@ -14,7 +14,8 @@ const {
   getMyBadges,
   getOnboardingStatus,
   getExchangeAttentionCount,
-  getMemberEndorsements
+  getMemberEndorsements,
+  ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
@@ -103,14 +104,23 @@ function onboardingCompleted(result) {
 }
 
 function normalizedGamification(result, badges) {
-  const data = dataFrom(result) || {};
+  const data = dataFrom(result);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const profile = data.profile || data.gamification || data;
+  const hasLevelProgress = Object.prototype.hasOwnProperty.call(profile, 'level_progress')
+    || Object.prototype.hasOwnProperty.call(profile, 'levelProgress');
+  const hasProfile = Object.prototype.hasOwnProperty.call(profile, 'xp')
+    && Object.prototype.hasOwnProperty.call(profile, 'level')
+    && hasLevelProgress
+    && (Object.prototype.hasOwnProperty.call(profile, 'badges_count')
+      || Object.prototype.hasOwnProperty.call(profile, 'badgesCount'));
+  if (!hasProfile) return null;
   const levelProgress = profile.level_progress || profile.levelProgress || {};
   const progressPct = Math.max(0, Math.min(100, integerFrom(
     levelProgress.progress_percentage ?? levelProgress.progressPercentage ?? profile.progress_percentage ?? profile.progressPercentage
   )));
 
-  const level = integerFrom(profile.level, 1);
+  const level = integerFrom(profile.level);
   const xp = integerFrom(profile.xp ?? profile.total_xp ?? profile.totalXp);
   const badgesCount = integerFrom(profile.badges_count ?? profile.badgesCount ?? badges.length, badges.length);
 
@@ -226,15 +236,20 @@ router.get('/', asyncRoute(async (req, res) => {
     getRequestProfile(req, req.token),
     getBalance(req.token).catch(() => ({ balance: 0 })),
     getOnboardingStatus(req.token).catch(() => ({ data: { onboarding_completed: true } })),
-    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, total_xp: 0 } })),
-    getMyBadges(req.token).catch(() => ({ data: [] })),
+    getGamificationProfile(req.token).catch(() => ({ data: null })),
+    getMyBadges(req.token).catch(() => ({ data: [], meta: { total: 0, available_types: [] } })),
     getListings(req.token, { limit: 5 }).catch(() => ({ data: [] })),
-    getFeedPosts(req.token, { limit: 5 }).catch(() => ({ data: [] })),
+    getFeedPosts(req.token, { per_page: 5 }).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) throw error;
+      return { data: [] };
+    }),
     getMyEvents(req.token).catch(() => ({ data: [] }))
   ]);
 
   const safeProfile = dataFrom(profile) || {};
-  const badges = collectionFrom(badgesData).slice(0, 8);
+  const gamificationBadges = collectionFrom(badgesData);
+  const profileBadges = Array.isArray(safeProfile.badges) ? safeProfile.badges : [];
+  const badges = (gamificationBadges.length > 0 ? gamificationBadges : profileBadges).slice(0, 8);
   const balance = walletBalance(balanceData);
   const currentProfileId = profileId(safeProfile);
   const [exchangeAttentionData, endorsementsData] = await Promise.all([

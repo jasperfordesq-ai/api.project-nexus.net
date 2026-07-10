@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-10T11:59:42.994Z",
+    "generatedAt": "2026-07-10T17:20:46.603Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 608,
@@ -9166,7 +9166,7 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService; service:listingService::getById",
       "webUkPath": "/messages/{param}",
-      "webUkView": "messages/conversation",
+      "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
@@ -9250,7 +9250,7 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService; service:listingService::getById",
       "webUkPath": "/messages/new/{param}",
-      "webUkView": "messages/direct-conversation",
+      "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {

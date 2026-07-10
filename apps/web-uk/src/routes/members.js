@@ -11,7 +11,6 @@ const {
   getMemberVerificationBadges,
   getMembersV2,
   getMembersNearby,
-  getConnections,
   getMemberConnectionStatus,
   sendMemberConnectionRequest,
   acceptMemberConnection,
@@ -24,13 +23,15 @@ const {
   transferWalletCredits,
   createReview,
   getGamificationProfileByUserId,
+  getAllBadges,
   getUserReviews,
   ApiError
 } = require('../lib/api');
-const { requireAuth } = require('../middleware/auth');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { requireAuth, withTokenRefresh } = require('../middleware/auth');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
+const { flagEnabled } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
@@ -39,6 +40,7 @@ const MEMBERS_PATH = '/members';
 const BLOCKED_MEMBERS_PATH = '/profile/blocked?status=member-unblocked';
 const MEMBER_CONNECTION_ACTIONS = new Set(['connect', 'accept', 'decline', 'cancel', 'remove']);
 const MEMBER_ENDORSEMENT_ACTIONS = new Set(['endorse', 'remove']);
+const MEMBER_DIRECTORY_SORTS = new Set(['name', 'joined', 'rating', 'hours_given']);
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -53,6 +55,26 @@ function redirectTo(res, pathname) {
   return res.redirect(urlFor(pathname));
 }
 
+function reviewsEnabledFor(req, res) {
+  const tenant = req.accessibleRouting?.tenant || res.locals.tenant || {};
+  return flagEnabled(tenant, 'reviews', 'features', true);
+}
+
+function reviewStatusMessage(req) {
+  const statuses = {
+    'review-submitted': { type: 'success', key: 'polish_members.write_review_success' },
+    'review-invalid': { type: 'error', key: 'reviews_page.submit_invalid' },
+    'review-duplicate': { type: 'error', key: 'reviews_page.submit_duplicate' },
+    'review-failed': { type: 'error', key: 'reviews_page.submit_failed' }
+  };
+  const status = statuses[String(req.query.status || '')];
+  if (!status) return null;
+  return {
+    type: status.type,
+    text: typeof req.t === 'function' ? req.t(status.key) : status.key
+  };
+}
+
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
@@ -62,7 +84,7 @@ function isNotFound(error) {
 }
 
 function dataFrom(result) {
-  return result && typeof result === 'object' && result.data && typeof result.data === 'object'
+  return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
     ? result.data
     : result;
 }
@@ -91,6 +113,100 @@ function rowsFrom(result) {
 
 function metaFrom(result) {
   return result && result.meta && typeof result.meta === 'object' ? result.meta : {};
+}
+
+function memberConnectionFrom(result) {
+  const current = dataFrom(result);
+  if (!current || typeof current !== 'object') return null;
+
+  const state = String(current.status || 'none');
+  const connectionId = connectionIdFrom(current);
+  if (state === 'connected' || state === 'accepted') {
+    return {
+      id: connectionId,
+      status: 'accepted',
+      isRequester: false,
+      is_requester: false
+    };
+  }
+  if (state === 'pending_sent' || state === 'pending_received' || state === 'pending') {
+    const isRequester = state === 'pending_sent';
+    return {
+      id: connectionId,
+      status: 'pending',
+      isRequester,
+      is_requester: isRequester
+    };
+  }
+  return null;
+}
+
+async function connectionMapForMembers(token, users) {
+  let failed = false;
+  const pairs = await Promise.all(users.map(async (user) => {
+    const memberId = positiveInteger(user.id);
+    if (memberId === null) return null;
+
+    try {
+      const connection = memberConnectionFrom(await getMemberConnectionStatus(token, memberId));
+      return connection ? [memberId, connection] : null;
+    } catch (error) {
+      if (isAuthError(error)) throw error;
+      failed = true;
+      return null;
+    }
+  }));
+
+  return {
+    connectionMap: Object.fromEntries(pairs.filter(Boolean)),
+    failed
+  };
+}
+
+function gamificationFrom(result, user = {}) {
+  const data = dataFrom(result);
+  let profile = null;
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    profile = Object.prototype.hasOwnProperty.call(data, 'profile') ? data.profile : data;
+  } else if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'profile')) {
+    profile = result.profile;
+  }
+
+  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+    const hasProfileFields = Object.prototype.hasOwnProperty.call(profile, 'level')
+      && Object.prototype.hasOwnProperty.call(profile, 'xp');
+    if (hasProfileFields) return profile;
+  }
+
+  const hasUserGamification = ['level', 'xp'].some((key) => Object.prototype.hasOwnProperty.call(user, key));
+  return hasUserGamification
+    ? {
+        level: user.level,
+        xp: user.xp,
+        badges_count: Array.isArray(user.badges) ? user.badges.length : 0
+      }
+    : null;
+}
+
+function gamificationBadgesFrom(result, user = {}) {
+  const apiBadges = rowsFrom(result);
+  const source = apiBadges.length > 0
+    ? apiBadges
+    : (Array.isArray(user.badges) ? user.badges : []);
+
+  return source.map((badge) => ({
+    key: String(badge.badge_key || badge.key || '').trim(),
+    name: String(badge.name || '').trim(),
+    description: String(badge.description || badge.msg || '').trim(),
+    icon: String(badge.icon || '').trim(),
+    earnedAt: badge.earned_at || badge.awarded_at || null
+  })).filter((badge) => badge.key && badge.name).slice(0, 12);
+}
+
+function reviewSummaryFrom(result) {
+  if (result && typeof result === 'object' && result.summary) return result.summary;
+  const data = dataFrom(result);
+  return data && typeof data === 'object' && !Array.isArray(data) ? (data.summary || null) : null;
 }
 
 function memberName(member) {
@@ -363,6 +479,13 @@ router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
     return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
+  if (!reviewsEnabledFor(req, res)) {
+    return res.status(403).render('errors/403', {
+      title: 'Forbidden',
+      message: 'This feature is not enabled for this community.'
+    });
+  }
+
   const rating = Number(req.body.rating);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return redirectTo(res, memberUrl(id, 'review-invalid'));
@@ -370,13 +493,20 @@ router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
 
   let status = 'review-submitted';
   try {
+    const member = dataFrom(await getUser(token, id));
+    if (!member || typeof member !== 'object') {
+      throw new ApiError('Member not found', 404);
+    }
     await createReview(token, {
       receiver_id: id,
       rating,
       comment: String(req.body.comment || '').trim() || null
     });
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isAuthError(error)) {
+      handleApiError(error, req, res, { redirectOn401: LOGIN_AUTH_REQUIRED_PATH });
+      return undefined;
+    }
     if (isNotFound(error)) throw error;
     if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
       status = 'review-invalid';
@@ -556,126 +686,119 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
 }));
 
 // Members directory - list all users in tenant
-router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
+router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
+  const token = tokenFrom(req);
+  const requestedPage = boundedInteger(req.query.page, 1, 1, 100000);
   const limit = 20;
-  const searchQuery = req.query.search ? req.query.search.trim() : '';
+  const requestedOffset = req.query.offset === undefined
+    ? (requestedPage - 1) * limit
+    : boundedInteger(req.query.offset, 0, 0, 1000000);
+  const searchQuery = String(req.query.q || req.query.search || '').trim().slice(0, 120);
+  const requestedSort = String(req.query.sort || 'name').trim();
+  const sort = MEMBER_DIRECTORY_SORTS.has(requestedSort) ? requestedSort : 'name';
+  const requestedOrder = String(req.query.order || 'ASC').trim().toUpperCase();
+  const order = requestedOrder === 'DESC' ? 'DESC' : 'ASC';
   let memberErrorMessage = null;
 
-  const [usersResult, connectionsResult] = await Promise.all([
-    getUsers(req.token).catch((error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        throw error;
-      }
+  let usersResult = {
+    data: [],
+    meta: { total_items: 0, per_page: limit, offset: requestedOffset, has_more: false }
+  };
+  if (token) {
+    try {
+      usersResult = await getUsers(token, {
+        q: searchQuery,
+        sort,
+        order,
+        limit,
+        offset: requestedOffset
+      });
+    } catch (error) {
+      if (isAuthError(error)) throw error;
       memberErrorMessage = 'Sorry, there is a problem loading members.';
-      return { data: [] };
-    }),
-    getConnections(req.token).catch(() => ({ data: [] }))
-  ]);
-
-  let allUsers = usersResult.items || usersResult.data || usersResult.users || usersResult || [];
-  // Ensure allUsers is always an array
-  if (!Array.isArray(allUsers)) {
-    allUsers = [];
-  }
-  const connections = connectionsResult.items || connectionsResult.data || connectionsResult.connections || [];
-  // Ensure connections is always an array
-  const connectionsList = Array.isArray(connections) ? connections : [];
-
-  // Build a map of connection status by user ID
-  const connectionMap = {};
-  connectionsList.forEach(conn => {
-    const otherUser = conn.otherUser || conn.other_user;
-    if (otherUser) {
-      connectionMap[otherUser.id] = {
-        id: conn.id,
-        status: conn.status,
-        isRequester: conn.isRequester || conn.is_requester
-      };
     }
-  });
-
-  // Apply search filter
-  if (searchQuery) {
-    const searchLower = searchQuery.toLowerCase();
-    allUsers = allUsers.filter(user => {
-      const firstName = (user.first_name || user.firstName || '').toLowerCase();
-      const lastName = (user.last_name || user.lastName || '').toLowerCase();
-      const email = (user.email || '').toLowerCase();
-      const fullName = `${firstName} ${lastName}`;
-      return firstName.includes(searchLower) ||
-             lastName.includes(searchLower) ||
-             fullName.includes(searchLower) ||
-             email.includes(searchLower);
-    });
   }
 
-  // Client-side pagination
-  const total = allUsers.length;
-  const totalPages = Math.ceil(total / limit);
-  const offset = (page - 1) * limit;
-  const users = allUsers.slice(offset, offset + limit);
+  const users = rowsFrom(usersResult);
+  const directoryMeta = metaFrom(usersResult);
+  const total = boundedInteger(directoryMeta.total_items, users.length, 0, Number.MAX_SAFE_INTEGER);
+  const perPage = boundedInteger(directoryMeta.per_page, limit, 1, 100);
+  const offset = boundedInteger(directoryMeta.offset, requestedOffset, 0, Number.MAX_SAFE_INTEGER);
+  const page = Math.floor(offset / perPage) + 1;
+  const totalPages = Math.ceil(total / perPage);
+  const { connectionMap, failed: connectionStatusFailed } = token
+    ? await connectionMapForMembers(token, users)
+    : { connectionMap: {}, failed: false };
+  if (connectionStatusFailed && !memberErrorMessage) {
+    memberErrorMessage = 'Some connection statuses could not be loaded. You can still view member profiles.';
+  }
 
   res.render('members/index', {
     title: 'Community members',
+    requiresAuth: !token,
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     users,
     connectionMap,
     searchQuery,
+    sort,
+    order,
     pagination: {
       page,
-      limit,
+      limit: perPage,
       total,
-      totalPages: totalPages
+      totalPages,
+      offset,
+      hasMore: !!directoryMeta.has_more
     },
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: memberErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
-}));
+}, { redirectOn401: LOGIN_AUTH_REQUIRED_PATH })));
 
 // View single user profile
-router.get('/:id', requireAuth, asyncRoute(async (req, res) => {
+router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
+  let connectionErrorMessage = null;
 
-  const [user, connectionsResult, gamificationResult, reviewsResult, currentProfile] = await Promise.all([
+  const [userResult, connectionResult, gamificationResult, gamificationBadgesResult, reviewsResult, currentProfileResult] = await Promise.all([
     getUser(req.token, id),
-    getConnections(req.token).catch(() => ({ data: [] })),
-    getGamificationProfileByUserId(req.token, id).catch(() => ({ profile: null })),
+    getMemberConnectionStatus(req.token, id).catch((error) => {
+      if (isAuthError(error)) throw error;
+      connectionErrorMessage = 'Connection status could not be loaded. You can still view this profile.';
+      return { data: { status: 'none' } };
+    }),
+    getGamificationProfileByUserId(req.token, Number(id)).catch(() => ({ data: null })),
+    getAllBadges(req.token, { user_id: Number(id) }).catch(() => ({ data: [], meta: { total: 0, available_types: [] } })),
     getUserReviews(req.token, id).catch(() => ({ data: [], summary: null })),
     getRequestProfile(req, req.token).catch(() => null)
   ]);
+  const user = dataFrom(userResult);
 
-  if (!user) {
+  if (!user || typeof user !== 'object') {
     return res.status(404).render('errors/404', { title: 'User not found' });
   }
 
-  const connections = connectionsResult.items || connectionsResult.data || connectionsResult.connections || [];
-  const connectionsArr = Array.isArray(connections) ? connections : [];
-
-  // Find connection with this user
-  const connection = connectionsArr.find(conn => {
-    const otherUser = conn.otherUser || conn.other_user;
-    return otherUser && otherUser.id === parseInt(id);
-  });
-
-  const isOwnProfile = currentProfile && (currentProfile.id == id || currentProfile.id === parseInt(id, 10));
-
-  // Normalize is_requester to handle both snake_case and camelCase API responses
-  if (connection) {
-    connection.is_requester = connection.is_requester ?? connection.isRequester ?? false;
-  }
+  const connection = memberConnectionFrom(connectionResult);
+  const currentProfile = dataFrom(currentProfileResult);
+  const isOwnProfile = !!currentProfile && Number(currentProfile.id) === Number(id);
+  const reviewStatus = reviewStatusMessage(req);
+  const flashedSuccess = req.flash ? req.flash('success')[0] : null;
+  const flashedError = req.flash ? req.flash('error')[0] : null;
 
   res.render('members/profile', {
-    title: `${user.first_name || user.firstName} ${user.last_name || user.lastName}`,
+    title: memberName(user),
     user,
     connection,
     isOwnProfile,
-    gamification: gamificationResult.profile || null,
-    reviews: reviewsResult.data || [],
-    reviewSummary: reviewsResult.summary || null,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    gamification: gamificationFrom(gamificationResult, user),
+    gamificationBadges: gamificationBadgesFrom(gamificationBadgesResult, user),
+    reviews: rowsFrom(reviewsResult),
+    reviewSummary: reviewSummaryFrom(reviewsResult),
+    reviewsEnabled: reviewsEnabledFor(req, res),
+    successMessage: reviewStatus?.type === 'success' ? reviewStatus.text : flashedSuccess,
+    errorMessage: connectionErrorMessage || (reviewStatus?.type === 'error' ? reviewStatus.text : flashedError)
   });
-}, { notFoundTitle: 'User not found' }));
+}, { redirectOn401: LOGIN_AUTH_REQUIRED_PATH, notFoundTitle: 'User not found' }));
 
 module.exports = router;

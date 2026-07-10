@@ -3,6 +3,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
@@ -101,15 +102,15 @@
         {% include "partials/empty-state.njk" %}
       {% endif %}
 
-      {# Pagination #}
-      {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
-        {% set paginationConfig = {
-          baseUrl: urlFor("/groups"),
-          page: pagination.page,
-          totalPages: pagination.totalPages or pagination.total_pages,
-          queryParams: { search: searchQuery }
-        } %}
-        {% include "partials/pagination.njk" %}
+      {# Laravel returns cursor pagination rather than page totals. #}
+      {% if pagination.hasMore and pagination.cursor %}
+        {{ govukPagination({
+          next: {
+            labelText: "More groups",
+            href: urlFor("/groups?" + ("search=" + (searchQuery | urlencode) + "&" if searchQuery else "") + "cursor=" + (pagination.cursor | urlencode))
+          },
+          landmarkLabel: "Group results"
+        }) }}
       {% endif %}
 
     </div>

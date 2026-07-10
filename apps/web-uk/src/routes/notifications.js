@@ -7,6 +7,8 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
   getNotifications,
+  getGroupedNotifications,
+  getNotificationUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
   markNotificationGroupRead,
@@ -20,6 +22,12 @@ const { validateReturnUrl } = require('../lib/urlValidator');
 const router = express.Router();
 const NOTIFICATIONS_PATH = '/notifications';
 
+function dataFrom(result) {
+  return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
+    ? result.data
+    : result;
+}
+
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
   return res.redirect(urlFor(pathname));
@@ -29,24 +37,35 @@ router.use(requireAuth);
 
 // List notifications
 router.get('/', asyncRoute(async (req, res) => {
-  const { page = 1, unread_only } = req.query;
+  const showUnreadOnly = req.query.filter === 'unread' || req.query.unread_only === 'true';
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
+  const notificationRequest = showUnreadOnly
+    ? getNotifications(req.token, {
+        per_page: 30,
+        ...(cursor ? { cursor } : {}),
+        unread_only: true
+      })
+    : getGroupedNotifications(req.token, {
+        per_page: 30,
+        ...(cursor ? { cursor } : {})
+      });
+  const [result, countResult] = await Promise.all([
+    notificationRequest,
+    getNotificationUnreadCount(req.token)
+  ]);
 
-  const result = await getNotifications(req.token, {
-    page: parseInt(page, 10),
-    limit: 20,
-    unread_only: unread_only === 'true'
-  });
-
-  const notifications = result.items || result.data || [];
-  const unreadCount = result.unreadCount || result.unread_count || 0;
-  const pagination = result.pagination || { page: 1, totalPages: 1 };
+  const notifications = Array.isArray(dataFrom(result)) ? dataFrom(result) : [];
+  const counts = dataFrom(countResult) || {};
+  const unreadCount = Number(counts.total ?? counts.count ?? 0) || 0;
+  const meta = result?.meta || {};
 
   res.render('notifications/index', {
     title: 'Notifications',
     notifications,
     unreadCount,
-    pagination,
-    showUnreadOnly: unread_only === 'true',
+    meta,
+    showUnreadOnly,
+    status: typeof req.query.status === 'string' ? req.query.status : '',
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -96,7 +115,8 @@ router.post('/read-all', asyncRoute(async (req, res) => {
     const result = await markAllNotificationsRead(req.token);
 
     if (req.flash) {
-      const count = result.markedCount || result.marked_count || 0;
+      const payload = dataFrom(result) || {};
+      const count = payload.marked_read || payload.markedCount || payload.marked_count || 0;
       req.flash('success', `Marked ${count} notification${count !== 1 ? 's' : ''} as read`);
     }
   } catch (error) {
@@ -137,26 +157,4 @@ router.post('/:id/delete', asyncRoute(async (req, res) => {
   redirectTo(res, NOTIFICATIONS_PATH);
 }));
 
-// Helper to get notification link based on type
-function getNotificationLink(notification) {
-  let data = {};
-  try { data = notification.data ? JSON.parse(notification.data) : {}; } catch { /* malformed JSON */ }
-
-  switch (notification.type) {
-    case 'connection_request':
-      return '/connections/network?tab=pending_received';
-    case 'connection_accepted':
-      return (data.userId || data.user_id) ? `/members/${data.userId || data.user_id}` : '/connections';
-    case 'connection_declined':
-      return '/connections';
-    case 'message_received':
-      return (data.conversationId || data.conversation_id) ? `/messages/${data.conversationId || data.conversation_id}` : '/messages';
-    case 'transfer_received':
-      return '/wallet#transactions';
-    default:
-      return null;
-  }
-}
-
 module.exports = router;
-module.exports.getNotificationLink = getNotificationLink;

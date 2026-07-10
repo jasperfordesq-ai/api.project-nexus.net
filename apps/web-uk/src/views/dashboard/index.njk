@@ -70,28 +70,30 @@
         </div>
       </dl>
 
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("dashboard.progress_title") }}</h2>
-      <p class="govuk-body govuk-!-margin-bottom-1">
-        <strong>Level {{ gamification.level }}</strong>
-        {% if gamification.levelName %}
-          <span class="nexus-alpha-meta">({{ gamification.levelName }})</span>
-        {% endif %}
-        <span class="nexus-alpha-meta">{{ gamification.xpLabel }} XP</span>
-      </p>
-      <progress id="xp-progress" max="100" value="{{ gamification.progressPct }}" aria-label="{{ gamification.progressLabel }}">{{ gamification.progressPct }}%</progress>
-      <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-top-1">{{ gamification.progressLabel }}</p>
+      {% if gamification %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("dashboard.progress_title") }}</h2>
+        <p class="govuk-body govuk-!-margin-bottom-1">
+          <strong>Level {{ gamification.level }}</strong>
+          {% if gamification.levelName %}
+            <span class="nexus-alpha-meta">({{ gamification.levelName }})</span>
+          {% endif %}
+          <span class="nexus-alpha-meta">{{ gamification.xpLabel }} XP</span>
+        </p>
+        <progress id="xp-progress" max="100" value="{{ gamification.progressPct }}" aria-label="{{ gamification.progressLabel }}">{{ gamification.progressPct }}%</progress>
+        <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-top-1">{{ gamification.progressLabel }}</p>
 
-      <h3 class="govuk-heading-m">Badges ({{ gamification.badgesCountLabel }})</h3>
-      {% if badges and badges.length %}
-        <ul class="govuk-list nexus-alpha-actions">
-          {% for badge in badges %}
-            <li>
-              <strong class="govuk-tag govuk-tag--blue">{{ badge.name or badge.title }}</strong>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="govuk-body">{{ t("dashboard.badges_empty") }}</p>
+        <h3 class="govuk-heading-m">Badges ({{ gamification.badgesCountLabel }})</h3>
+        {% if badges and badges.length %}
+          <ul class="govuk-list nexus-alpha-actions">
+            {% for badge in badges %}
+              <li>
+                <strong class="govuk-tag govuk-tag--blue">{{ badge.name or badge.title }}</strong>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body">{{ t("dashboard.badges_empty") }}</p>
+        {% endif %}
       {% endif %}
 
       {% if upcomingEvents and upcomingEvents.length %}

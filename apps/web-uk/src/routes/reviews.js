@@ -15,7 +15,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { getRequestProfile } = require('../lib/request-profile');
 
@@ -79,9 +79,9 @@ function commentsRedirect(id, status, fragment = '') {
   return `${REVIEWS_PATH}/${id}/comments?status=${encodeURIComponent(status)}${fragment}`;
 }
 
-function redirectAuthIfNeeded(error, res) {
+function redirectAuthIfNeeded(error, req, res) {
   if (error instanceof ApiError && error.status === 401) {
-    redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
+    handleApiError(error, req, res, { redirectOn401: LOGIN_AUTH_REQUIRED_PATH });
     return true;
   }
   return false;
@@ -162,7 +162,10 @@ function ratingLabel(value) {
 
 function normalizeReview(review = {}, direction = 'received') {
   const rating = Number(review.rating || review.score || 0);
-  const otherName = direction === 'given' ? receiverName(review) : reviewerName(review);
+  const anonymous = direction !== 'given' && Boolean(review.is_anonymous ?? review.isAnonymous);
+  const otherName = anonymous
+    ? 'Anonymous'
+    : (direction === 'given' ? receiverName(review) : reviewerName(review));
   return {
     id: review.id,
     rating,
@@ -170,7 +173,8 @@ function normalizeReview(review = {}, direction = 'received') {
     comment: trimmed(review.comment || review.body || review.content),
     otherLabel: direction === 'given' ? 'For' : 'By',
     otherName,
-    createdAt: review.created_at || review.createdAt || review.date || ''
+    createdAt: review.created_at || review.createdAt || review.date || '',
+    canDelete: direction === 'given'
   };
 }
 
@@ -184,11 +188,29 @@ function normalizePendingReview(item = {}) {
 }
 
 function normalizeComment(comment = {}) {
+  const author = comment.author || comment.user || {};
+  const reactions = comment.reactions && typeof comment.reactions === 'object' && !Array.isArray(comment.reactions)
+    ? comment.reactions
+    : {};
+  const userReactions = Array.isArray(comment.user_reactions)
+    ? comment.user_reactions
+    : (Array.isArray(comment.userReactions) ? comment.userReactions : []);
+  const replies = Array.isArray(comment.replies)
+    ? comment.replies
+    : (Array.isArray(comment.children) ? comment.children : []);
+
   return {
     id: comment.id,
     body: trimmed(comment.content || comment.body || comment.comment),
-    authorName: personName(comment.user) || personName(comment.author) || trimmed(comment.user_name || comment.userName) || 'Community member',
-    createdAt: comment.created_at || comment.createdAt || ''
+    authorName: personName(author) || trimmed(comment.author_name || comment.authorName || comment.user_name || comment.userName) || 'Community member',
+    createdAt: comment.created_at || comment.createdAt || '',
+    updatedAt: comment.updated_at || comment.updatedAt || '',
+    isOwner: Boolean(comment.is_owner ?? comment.is_own ?? comment.isOwner ?? comment.isOwn),
+    isEdited: Boolean(comment.is_edited ?? comment.edited ?? comment.isEdited),
+    reactions,
+    userReactions,
+    reactionTotal: Object.values(reactions).reduce((total, count) => total + (Number(count) || 0), 0),
+    replies: replies.map(normalizeComment)
   };
 }
 
@@ -223,8 +245,13 @@ function commentStatusMessage(status) {
   const messages = {
     'comment-added': { type: 'success', text: 'Your comment has been posted.' },
     'reply-added': { type: 'success', text: 'Your reply has been posted.' },
+    'comment-updated': { type: 'success', text: 'Your comment has been updated.' },
+    'comment-deleted': { type: 'success', text: 'Your comment has been deleted.' },
     'comment-invalid': { type: 'error', text: 'Enter a comment before posting.' },
+    'comment-empty': { type: 'error', text: 'Enter some text before saving.' },
     'comment-failed': { type: 'error', text: 'Sorry, your comment could not be posted. Try again.' },
+    'comment-update-failed': { type: 'error', text: 'Sorry, your comment could not be updated. Try again.' },
+    'comment-delete-failed': { type: 'error', text: 'Sorry, your comment could not be deleted. Try again.' },
     'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
     'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
     'reaction-failed': { type: 'error', text: 'Sorry, your reaction could not be saved. Try again.' }
@@ -251,7 +278,7 @@ router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
   try {
     await createReview(token, payload);
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return;
+    if (redirectAuthIfNeeded(error, req, res)) return;
     if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
       status = 'review-invalid';
     } else if (error instanceof ApiError && error.status === 409) {
@@ -287,7 +314,7 @@ router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
       parent_id: parentId
     });
   } catch (error) {
-    if (redirectAuthIfNeeded(error, res)) return;
+    if (redirectAuthIfNeeded(error, req, res)) return;
     if (shouldRenderNotFound(error)) throw error;
     status = 'comment-failed';
   }
@@ -315,7 +342,7 @@ router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
       const action = result && result.data && result.data.action;
       status = action === 'removed' ? 'reaction-removed' : 'reaction-added';
     } catch (error) {
-      if (redirectAuthIfNeeded(error, res)) return;
+      if (redirectAuthIfNeeded(error, req, res)) return;
       if (shouldRenderNotFound(error)) throw error;
     }
   }

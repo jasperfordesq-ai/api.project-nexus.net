@@ -3,8 +3,8 @@
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
@@ -24,13 +24,15 @@
 
       <div class="app-page-header">
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Events</h1>
-        <div class="app-page-header__actions">
-          {{ govukButton({
-            text: t("actions.create_event"),
-            href: urlFor("/events/new"),
-            classes: "govuk-!-margin-bottom-0"
-          }) }}
-        </div>
+        {% if isAuthenticated %}
+          <div class="app-page-header__actions">
+            {{ govukButton({
+              text: t("actions.create_event"),
+              href: urlFor("/events/new"),
+              classes: "govuk-!-margin-bottom-0"
+            }) }}
+          </div>
+        {% endif %}
       </div>
 
       <p class="govuk-body-l">Discover and join community events.</p>
@@ -40,7 +42,7 @@
         <div class="app-search-bar">
           {{ govukInput({
             id: "search",
-            name: "search",
+            name: "q",
             value: searchQuery,
             label: {
               text: t("events.search_label"),
@@ -56,16 +58,18 @@
             classes: "app-search-bar__button govuk-!-margin-bottom-0"
           }) }}
         </div>
-        <div class="govuk-!-margin-top-3">
-          {{ govukCheckboxes({
-            name: "upcoming_only",
-            classes: "govuk-checkboxes--small",
+        {% if groupId %}
+          <input type="hidden" name="group_id" value="{{ groupId }}">
+        {% endif %}
+        <div class="govuk-!-margin-top-3 govuk-!-width-one-half">
+          {{ govukSelect({
+            id: "when",
+            name: "when",
+            label: { text: t("events.when_label") },
             items: [
-              {
-                value: "true",
-                text: "Show upcoming events only",
-                checked: upcomingOnly
-              }
+              { value: "upcoming", text: t("events.when.upcoming"), selected: when == "upcoming" },
+              { value: "past", text: t("events.when.past"), selected: when == "past" },
+              { value: "all", text: t("events.when.all"), selected: when == "all" }
             ]
           }) }}
         </div>
@@ -98,9 +102,9 @@
               </div>
 
               <div class="app-card__body">
-                {% if event.startsAt or event.starts_at %}
+                {% if event.start_time or event.startTime %}
                   <p class="govuk-body-s govuk-!-margin-bottom-1">
-                    <strong>When:</strong> {{ (event.startsAt or event.starts_at) | formatEventDate }}
+                    <strong>When:</strong> {{ (event.start_time or event.startTime) | formatEventDate }}
                   </p>
                 {% endif %}
 
@@ -136,26 +140,14 @@
           {% endfor %}
         </div>
 
-        {# Pagination #}
-        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
-        {% if totalPages > 1 %}
-          {% set paginationItems = [] %}
-          {% for i in range(1, totalPages + 1) %}
-              {% set paginationItems = (paginationItems.push({
-                number: i,
-                href: urlFor("/events?page=" + i + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")),
-                current: i == pagination.page
-              }), paginationItems) %}
-          {% endfor %}
-
+        {# Laravel returns cursor pagination rather than page totals. #}
+        {% if pagination.hasMore and pagination.cursor %}
           {{ govukPagination({
-            previous: {
-              href: urlFor("/events?page=" + (pagination.page - 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""))
-            } if pagination.page > 1 else undefined,
             next: {
-              href: urlFor("/events?page=" + (pagination.page + 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""))
-            } if pagination.page < totalPages else undefined,
-            items: paginationItems
+              labelText: t("events.more_results_label"),
+              href: urlFor("/events?when=" + when + ("&q=" + (searchQuery | urlencode) if searchQuery else "") + ("&group_id=" + groupId if groupId else "") + "&cursor=" + (pagination.cursor | urlencode))
+            },
+            landmarkLabel: t("events.pagination_label")
           }) }}
         {% endif %}
       {% else %}
@@ -175,8 +167,8 @@
             heading: "No events yet",
             message: "Be the first to organise an event for the community.",
             action: {
-              text: t("actions.create_event"),
-              href: urlFor("/events/new"),
+              text: t("actions.create_event") if isAuthenticated else t("nav.login"),
+              href: urlFor("/events/new") if isAuthenticated else urlFor("/login"),
               isButton: true
             }
           } %}

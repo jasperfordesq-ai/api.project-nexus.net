@@ -3,13 +3,15 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {% block beforeContent %}
   {{ super() }}
   {{ govukBreadcrumbs({
     items: [
       { text: t("nav.home"), href: urlFor("/") },
-      { text: "Messages" }
+      { text: t("messages.title") }
     ]
   }) }}
 {% endblock %}
@@ -25,43 +27,91 @@
       {% endif %}
 
       <h1 class="govuk-heading-xl">
-        Messages
+        {{ t("messages.title") }}
         {% if unreadCount > 0 %}
           <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ unreadCount }} unread</span>
         {% endif %}
       </h1>
 
+      <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('messages.tabs_title') }}">
+        <ul class="govuk-list" style="display:flex;gap:1rem;list-style:none;padding:0">
+          <li><a class="govuk-link" href="{{ urlFor('/messages') }}"{% if not showArchived %} aria-current="page"{% endif %}>{{ t("messages.inbox") }}</a></li>
+          <li><a class="govuk-link" href="{{ urlFor('/messages?archived=1') }}"{% if showArchived %} aria-current="page"{% endif %}>{{ t("messages.archived") }}</a></li>
+        </ul>
+      </nav>
+
+      {% if conversations and conversations.length %}
+        <form method="get" action="{{ urlFor('/messages') }}" class="govuk-!-margin-bottom-5">
+          {% if showArchived %}<input type="hidden" name="archived" value="1">{% endif %}
+          {{ govukInput({
+            id: "filter",
+            name: "filter",
+            value: filter,
+            label: { text: t("polish_members.messages_filter_label") },
+            hint: { text: t("polish_members.messages_filter_hint") }
+          }) }}
+          {{ govukButton({ text: t("polish_members.messages_filter_submit"), classes: "govuk-button--secondary" }) }}
+        </form>
+      {% endif %}
+
       {% if conversations and conversations.length > 0 %}
         <ul class="govuk-list app-conversation-list">
           {% for conversation in conversations %}
-            <li class="app-conversation-item{% if (conversation.unreadCount or conversation.unread_count) > 0 %} app-conversation-item--unread{% endif %}">
+            {% set otherUser = conversation.other_user or conversation.otherUser or {} %}
+            {% set otherUserName = otherUser.name or ((otherUser.first_name or "") + " " + (otherUser.last_name or "")) or conversation.other_user_name or conversation.otherUserName or t("members.unknown_member") %}
+            {% set lastMessage = conversation.last_message or conversation.lastMessage or {} %}
+            {% set conversationUnread = conversation.unreadCount or conversation.unread_count or 0 %}
+            <li class="app-conversation-item{% if conversationUnread > 0 %} app-conversation-item--unread{% endif %}">
               <a href="{{ urlFor('/messages/' + (conversation.id | string)) }}" class="govuk-link app-conversation-link">
                 <div class="app-conversation-header">
                   <div class="app-member-cell">
-                    {% set otherUserName = conversation.other_user_name or conversation.otherUserName or "Unknown user" %}
-                    {% set nameParts = otherUserName.split(' ') %}
-                    {% set user = { firstName: nameParts[0] or '', lastName: nameParts[1] or '' } %}
-                    {% include "partials/avatar.njk" %}
+                    {% if otherUser.avatar_url %}
+                      <img class="app-avatar" src="{{ otherUser.avatar_url }}" alt="" width="48" height="48" loading="lazy" decoding="async">
+                    {% else %}
+                      {% set user = otherUser %}
+                      {% include "partials/avatar.njk" %}
+                    {% endif %}
                     <strong class="govuk-!-font-weight-bold">
                       {{ otherUserName }}
                     </strong>
                   </div>
                   <span class="govuk-body-s govuk-!-margin-bottom-0">
-                    {{ (conversation.last_message_at or conversation.lastMessageAt) | formatDate if conversation.last_message_at or conversation.lastMessageAt else "" }}
+                    {{ (lastMessage.created_at or lastMessage.createdAt or conversation.last_message_at or conversation.lastMessageAt) | formatDate if lastMessage.created_at or lastMessage.createdAt or conversation.last_message_at or conversation.lastMessageAt else "" }}
                   </span>
                 </div>
                 <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
-                  {{ conversation.last_message or conversation.lastMessage or "No messages yet" }}
+                  {% if lastMessage.body or lastMessage.content %}
+                    {{ lastMessage.body or lastMessage.content }}
+                  {% elif lastMessage is string %}
+                    {{ lastMessage }}
+                  {% else %}
+                    {{ t("govuk_alpha_messages.groups.no_messages_yet") }}
+                  {% endif %}
                 </p>
-                {% if (conversation.unreadCount or conversation.unread_count) > 0 %}
+                {% if conversationUnread > 0 %}
                   <span class="govuk-tag govuk-tag--blue app-conversation-badge">
-                    {{ conversation.unreadCount or conversation.unread_count }} new
+                    {{ tc("messages.unread_count", conversationUnread, { count: conversationUnread }) }}
                   </span>
                 {% endif %}
               </a>
+              {% if showArchived %}
+                <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/restore') }}" class="govuk-!-margin-top-2">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  {{ govukButton({ text: t("actions.restore_conversation"), classes: "govuk-button--secondary" }) }}
+                </form>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
+        {% if meta.hasMore and meta.cursor %}
+          {{ govukPagination({
+            next: {
+              labelText: t("messages.more_results_label"),
+              href: urlFor("/messages?" + ("archived=1&" if showArchived else "") + ("filter=" + (filter | urlencode) + "&" if filter else "") + "cursor=" + (meta.cursor | urlencode))
+            },
+            landmarkLabel: t("messages.pagination_label")
+          }) }}
+        {% endif %}
       {% else %}
         {% set emptyState = {
           icon: "💬",

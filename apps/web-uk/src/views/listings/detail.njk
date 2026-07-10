@@ -100,59 +100,65 @@
             href: urlFor("/listings/" + (listing.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}
-          <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("jobs_t3.delete_button") }}</button>
-          </form>
         </div>
+        <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--m govuk-!-margin-top-4">
+        <h2 class="govuk-heading-s">{{ t("listings.edit.delete_heading") }}</h2>
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text"><span class="govuk-warning-text__assistive">{{ t("states.warning_prefix") }}</span> {{ t("listings.edit.delete_warning") }}</strong>
+        </div>
+        <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("listings.edit.delete_button") }}</button>
+        </form>
       {% else %}
-        <p class="govuk-body">
-          {% set reportType = "listing" %}
-          {% set reportId = listing.id %}
-          {% set returnTo = urlFor("/listings/" + (listing.id | string)) %}
-          {% include "partials/report-link.njk" %}
-        </p>
+        {% if isAuthenticated %}
+          <p class="govuk-body">
+            {% set reportType = "listing" %}
+            {% set reportId = listing.id %}
+            {% set returnTo = urlFor("/listings/" + (listing.id | string)) %}
+            {% include "partials/report-link.njk" %}
+          </p>
+        {% endif %}
       {% endif %}
 
-      {# Reviews Section #}
-      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+      <section class="govuk-!-margin-top-7 govuk-!-margin-bottom-7" aria-labelledby="listing-exchange-title">
+        <h2 class="govuk-heading-l" id="listing-exchange-title">{{ t("listings.exchange_title") }}</h2>
 
-      <h2 class="govuk-heading-l">Reviews</h2>
-
-      {% if reviews and reviews.length > 0 %}
-        <ul class="govuk-list app-reviews-list">
-          {% for review in reviews %}
-            <li class="app-review govuk-!-margin-bottom-6">
-              <div class="app-review__header">
-                <span class="app-star-display" aria-label="{{ review.rating }} out of 5 stars">
-                  {% for i in [1, 2, 3, 4, 5] %}
-                    <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  {% endfor %}
-                </span>
-                <strong class="govuk-!-margin-left-2">
-                  {% if review.reviewer %}
-                    {{ review.reviewer.first_name or review.reviewer.firstName }} {{ review.reviewer.last_name or review.reviewer.lastName }}
-                  {% else %}
-                    Anonymous
-                  {% endif %}
-                </strong>
-                <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
-                  {{ (review.createdAt or review.created_at) | formatDate }}
-                </span>
+        {% if not isAuthenticated %}
+          <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="listing-auth-required-title">
+            <div class="govuk-notification-banner__header">
+              <h3 class="govuk-notification-banner__title" id="listing-auth-required-title">{{ t("states.auth_required") }}</h3>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-body">{{ t("listings.auth_required_detail") }}</p>
+              <div class="govuk-button-group">
+                <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">{{ t("nav.login") }}</a>
+                <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/register') }}" role="button" draggable="false" data-module="govuk-button">{{ t("nav.register") }}</a>
               </div>
-              {% if review.comment %}
-                <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-                  {{ review.comment }}
-                </p>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="govuk-body">No reviews yet. Be the first to leave a review!</p>
-      {% endif %}
+            </div>
+          </div>
+        {% elif listing.can_edit %}
+          <div class="govuk-inset-text">{{ t("listings.own_listing_detail") }}</div>
+        {% elif exchangeWorkflowEnabled and exchangeContextReady %}
+          {% if activeExchange %}
+            <div class="govuk-inset-text">
+              <p class="govuk-body">{{ t("listings.active_exchange_detail") }}</p>
+              <a class="govuk-button" href="{{ urlFor('/exchanges/' + (activeExchange.id | string)) }}" role="button" draggable="false" data-module="govuk-button">{{ t("actions.view_exchange") }}</a>
+            </div>
+          {% else %}
+            <p class="govuk-body">{{ t("listings.exchange_detail") }}</p>
+            <a class="govuk-button" href="{{ urlFor('/listings/' + (listing.id | string) + '/exchange-request') }}" role="button" draggable="false" data-module="govuk-button">{{ t("actions.request_exchange") }}</a>
+          {% endif %}
+        {% elif not exchangeWorkflowEnabled and exchangeContextReady and directMessagingEnabled and ownerId %}
+          <p class="govuk-body">{{ t("listings.direct_message_detail") }}</p>
+          <a class="govuk-button" href="{{ urlFor('/messages/' + (ownerId | string) + '?listing=' + (listing.id | string)) }}" role="button" draggable="false" data-module="govuk-button">{{ t("actions.send_message") }}</a>
+        {% elif not exchangeContextReady %}
+          <div class="govuk-inset-text">Exchange options could not be checked. Try again before sending a request.</div>
+        {% else %}
+          <div class="govuk-inset-text">{{ t("listings.messaging_unavailable") }}</div>
+        {% endif %}
+      </section>
 
       <p class="govuk-body govuk-!-margin-top-6">
         <a href="{{ urlFor('/listings') }}" class="govuk-link">Back to listings</a>

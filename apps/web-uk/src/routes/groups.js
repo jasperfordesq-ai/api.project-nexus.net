@@ -130,6 +130,18 @@ const GROUP_MANAGE_ERROR_MESSAGES = {
   'member-failed': 'The member could not be updated. Please try again.',
   'request-failed': 'The join request could not be updated. Please try again.'
 };
+const GROUP_PAGE_SUCCESS_MESSAGES = {
+  'group-created': 'Your group has been created.',
+  'group-updated': 'The group settings have been saved.',
+  'group-deleted': 'The group has been deleted.',
+  'group-joined': 'You have joined the group.',
+  'group-left': 'You have left the group.'
+};
+const GROUP_PAGE_ERROR_MESSAGES = {
+  'group-failed': 'We could not update your membership. Please try again.',
+  'group-update-failed': 'The group settings could not be saved. Please try again.',
+  'group-delete-failed': 'The group could not be deleted. Please try again.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -225,6 +237,28 @@ function loginRedirect() {
 
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
+}
+
+function apiErrorEntries(error) {
+  return error instanceof ApiError && Array.isArray(error.data?.errors)
+    ? error.data.errors.filter((entry) => entry && typeof entry === 'object')
+    : [];
+}
+
+function apiErrorCode(error) {
+  const first = apiErrorEntries(error)[0] || {};
+  return trimmed(first.code || error?.data?.code || error?.data?.error).toUpperCase();
+}
+
+function groupFormErrors(error, fallback) {
+  const entries = apiErrorEntries(error);
+  if (entries.length === 0) {
+    return [{ text: error instanceof Error && error.message ? error.message : fallback }];
+  }
+  return entries.map((entry) => ({
+    text: trimmed(entry.message) || fallback,
+    ...(trimmed(entry.field) ? { href: `#${trimmed(entry.field)}` } : {})
+  }));
 }
 
 function applyDownloadHeaders(res, headers = {}) {
@@ -463,6 +497,10 @@ function renderNotFound(res, title = 'Page not found') {
   return res.status(404).render('errors/404', { title });
 }
 
+function renderTooManyRequests(res) {
+  return res.status(429).render('errors/429', { title: 'Too many requests' });
+}
+
 function groupFileUploadErrorStatus(error) {
   if (!(error instanceof ApiError)) return 'file-upload-failed';
   if (error.status === 403) return 'file-forbidden';
@@ -502,6 +540,14 @@ function groupFileValidationStatus(file) {
   const mimeType = trimmed(file.mimetype).toLowerCase();
   if (mimeType !== '' && !GROUP_FILE_ALLOWED_MIME_TYPES.has(mimeType)) return 'file-type-invalid';
   return null;
+}
+
+function groupPageStatus(status) {
+  const value = trimmed(status);
+  return {
+    successMessage: GROUP_PAGE_SUCCESS_MESSAGES[value] || null,
+    errorMessage: GROUP_PAGE_ERROR_MESSAGES[value] || null
+  };
 }
 
 function inviteGeneratedLink(result) {
@@ -766,30 +812,43 @@ async function removeUploadedFile(file) {
 
 // List all groups
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
-  const searchQuery = req.query.search ? req.query.search.trim() : '';
+  const searchQuery = trimmed(req.query.q || req.query.search);
+  const cursor = trimmed(req.query.cursor) || undefined;
 
   const [groupsResult, myGroupsResult] = await Promise.all([
-    getGroups(req.token, { page, limit, search: searchQuery }),
-    getMyGroups(req.token).catch(() => ({ data: [] }))
+    getGroups(req.token, {
+      per_page: limit,
+      cursor,
+      q: searchQuery || undefined
+    }),
+    getMyGroups(req.token)
   ]);
 
-  const groups = groupsResult.data || [];
-  const myGroups = myGroupsResult.data || [];
+  const groups = collectionFrom(groupsResult)
+    .map((group) => normalizeGroup(group, positiveInteger(group?.id)));
+  const myGroups = collectionFrom(myGroupsResult);
   const myGroupIds = {};
   myGroups.forEach(g => { myGroupIds[g.id] = true; });
+  groups.forEach((group) => {
+    if (groupMembership(group)) myGroupIds[group.id] = true;
+  });
+  const meta = groupsResult?.meta || {};
+  const statusMessages = groupPageStatus(req.query.status);
 
   res.render('groups/index', {
     title: 'Groups',
     groups,
     myGroupIds,
     searchQuery,
-    pagination: groupsResult.pagination || { page, totalPages: 1 },
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    pagination: {
+      hasMore: Boolean(meta.has_more),
+      cursor: trimmed(meta.cursor || meta.next_cursor)
+    },
+    successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
+    errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)
   });
-}));
+}, { redirectOn401: loginRedirect() }));
 
 // Create group form
 router.get('/new', requireAuth, (req, res) => {
@@ -801,7 +860,10 @@ router.get('/new', requireAuth, (req, res) => {
 
 // Create group
 router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res) => {
-  const { name, description, is_private } = req.body;
+  const { name, description, location } = req.body;
+  const visibility = ['public', 'private'].includes(req.body.visibility)
+    ? req.body.visibility
+    : (req.body.is_private === 'true' ? 'private' : 'public');
 
   const errors = [];
 
@@ -811,11 +873,15 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
     errors.push({ text: 'Group name must be 255 characters or fewer', href: '#name' });
   }
 
+  if (String(location || '').length > 255) {
+    errors.push({ text: 'Location must be 255 characters or fewer', href: '#location' });
+  }
+
   if (errors.length > 0) {
     return res.render('groups/new', {
       title: 'Create a group',
       errors,
-      values: { name, description, is_private },
+      values: { name, description, location, visibility },
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
@@ -824,26 +890,36 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
     const result = await createGroup(req.token, {
       name: name.trim(),
       description: description ? description.trim() : null,
-      is_private: is_private === 'true'
+      location: location ? location.trim() : null,
+      visibility
     });
 
     if (req.flash) {
       req.flash('success', 'Group created successfully');
     }
 
-    const groupId = result.group?.id || result.id;
+    const createdGroup = dataFrom(result)?.group || dataFrom(result);
+    const groupId = positiveInteger(createdGroup && createdGroup.id);
+    if (groupId === null) {
+      throw new ApiError('Laravel did not return the created group', 502);
+    }
     res.redirect(urlFor(res, `/groups/${groupId}`));
   } catch (error) {
-    // Handle non-401 API errors by re-rendering form
+    if (error instanceof ApiError && error.status === 403 && apiErrorCode(error) === 'ONBOARDING_REQUIRED') {
+      return res.redirect(urlFor(res, '/onboarding'));
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      return renderForbidden(res);
+    }
     if (error instanceof ApiError && error.status !== 401) {
       return res.render('groups/new', {
         title: 'Create a group',
-        errors: [{ text: error.message || 'Unable to create group' }],
-        values: { name, description, is_private },
+        errors: groupFormErrors(error, 'Unable to create group'),
+        values: { name, description, location, visibility },
         csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    throw error;
   }
 }));
 
@@ -853,14 +929,18 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
 
   const [groupResult, membersResult, eventsResult] = await Promise.all([
     getGroup(req.token, id),
-    getGroupMembers(req.token, id).catch(() => ({ data: [] })),
-    getEvents(req.token, { group_id: id, upcoming_only: true, limit: 5 }).catch(() => ({ data: [] }))
+    getGroupMembers(req.token, id, { per_page: 100 }),
+    getEvents(req.token, { group_id: id, when: 'upcoming', per_page: 5 }).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
   ]);
 
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
-  const members = membersResult.data || membersResult.items || [];
-  const events = eventsResult.data || eventsResult.items || [];
+  const members = collectionFrom(membersResult);
+  const events = collectionFrom(eventsResult);
   const myMembership = group.myMembership || group.my_membership;
+  const statusMessages = groupPageStatus(req.query.status);
 
   res.render('groups/detail', {
     title: group.name,
@@ -868,18 +948,18 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     members,
     events,
     myMembership,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
+    errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)
   });
 }, { notFoundTitle: 'Group not found' }));
 
 // Edit group form
 router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
-  const { id } = req.params;
+  const id = Number(req.params.id);
 
   const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
-  const myMembership = groupResult.myMembership || groupResult.my_membership;
+  const myMembership = group.myMembership || group.my_membership;
 
   // Check permission
   if (!myMembership || !['admin', 'owner'].includes(myMembership.role)) {
@@ -893,6 +973,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
     title: `Edit ${group.name}`,
     group,
     myMembership,
+    deleteConfirmationRequired: false,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Group not found' }));
@@ -1152,10 +1233,7 @@ router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
   const isPrivate = checked(group.is_private ?? group.isPrivate) || visibility !== 'public';
 
   const [membersResult, requestsResult] = await Promise.all([
-    callGroup(req.token, 'GET', `/${id}/members?limit=100`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return { data: { items: [] } };
-    }),
+    getGroupMembers(req.token, id, { per_page: 100 }),
     callGroup(req.token, 'GET', `/${id}/requests`).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: [] };
@@ -1182,8 +1260,11 @@ router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
 
 // Update group
 router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(async (req, res) => {
-  const { id } = req.params;
-  const { name, description, is_private } = req.body;
+  const id = Number(req.params.id);
+  const { name, description, location } = req.body;
+  const visibility = ['public', 'private'].includes(req.body.visibility)
+    ? req.body.visibility
+    : (req.body.is_private === 'true' ? 'private' : 'public');
 
   const errors = [];
 
@@ -1193,10 +1274,14 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
     errors.push({ text: 'Group name must be 255 characters or fewer', href: '#name' });
   }
 
+  if (String(location || '').length > 255) {
+    errors.push({ text: 'Location must be 255 characters or fewer', href: '#location' });
+  }
+
   if (errors.length > 0) {
     return res.render('groups/edit', {
       title: 'Edit group',
-      group: { id, name, description, is_private: is_private === 'true' },
+      group: { id, name, description, location, visibility },
       errors,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
@@ -1206,47 +1291,73 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
     await updateGroup(req.token, id, {
       name: name.trim(),
       description: description ? description.trim() : null,
-      is_private: is_private === 'true'
+      location: location ? location.trim() : null,
+      visibility
     });
 
-    if (req.flash) {
-      req.flash('success', 'Group updated successfully');
-    }
-
-    res.redirect(urlFor(res, `/groups/${id}`));
+    return res.redirect(groupRedirect(res, id, 'group-updated'));
   } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to update group');
-      }
-      return res.redirect(urlFor(res, `/groups/${id}/edit`));
+    if (error instanceof ApiError && error.status === 403) {
+      return renderForbidden(res);
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    if (error instanceof ApiError && error.status === 404) {
+      return renderNotFound(res, 'Group not found');
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return renderTooManyRequests(res);
+    }
+    if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      return res.render('groups/edit', {
+        title: 'Edit group',
+        group: { id, name, description, location, visibility },
+        errors: groupFormErrors(error, 'Unable to update group'),
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
+      });
+    }
+    throw error;
   }
 }));
 
 // Delete group
 router.post('/:id(\\d+)/delete', requireAuth, audit.groupDelete(), asyncRoute(async (req, res) => {
-  const { id } = req.params;
+  const id = Number(req.params.id);
+
+  if (trimmed(req.body.confirm).toLowerCase() !== 'yes') {
+    const groupResult = await getGroup(req.token, id);
+    const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), id);
+    const myMembership = group.myMembership || group.my_membership;
+    if (trimmed(myMembership?.role).toLowerCase() !== 'owner') {
+      return renderForbidden(res);
+    }
+
+    return res.status(400).render('groups/edit', {
+      title: `Edit ${group.name}`,
+      group,
+      myMembership,
+      errors: [{ text: 'Confirm that you understand the group will be permanently deleted.', href: '#confirm-delete' }],
+      deleteConfirmationRequired: true,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  }
 
   try {
     await deleteGroup(req.token, id);
 
-    if (req.flash) {
-      req.flash('success', 'Group deleted successfully');
-    }
-
-    res.redirect(urlFor(res, '/groups'));
+    return res.redirect(statusRedirect(res, '/groups', 'group-deleted'));
   } catch (error) {
-    // Handle non-401 API errors with flash message
-    if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to delete group');
-      }
-      return res.redirect(urlFor(res, `/groups/${id}`));
+    if (error instanceof ApiError && error.status === 403) {
+      return renderForbidden(res);
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    if (error instanceof ApiError && error.status === 404) {
+      return renderNotFound(res, 'Group not found');
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return renderTooManyRequests(res);
+    }
+    if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      return res.redirect(groupRedirect(res, id, 'group-delete-failed'));
+    }
+    throw error;
   }
 }));
 

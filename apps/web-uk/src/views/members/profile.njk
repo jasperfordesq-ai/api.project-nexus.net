@@ -35,14 +35,14 @@
         {% include "partials/avatar.njk" %}
         <div>
           <h1 class="govuk-heading-xl govuk-!-margin-bottom-1">
-            {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+            {% if user.name %}{{ user.name }}{% else %}{{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}{% endif %}
           </h1>
           {% if gamification %}
             <div class="app-member-level">
-              <span class="app-level-badge app-level-badge--small" role="img" aria-label="Level {{ gamification.level or 1 }}">
-                <span class="app-level-badge__number" aria-hidden="true">{{ gamification.level or 1 }}</span>
+              <span class="app-level-badge app-level-badge--small" role="img" aria-label="Level {{ gamification.level }}">
+                <span class="app-level-badge__number" aria-hidden="true">{{ gamification.level }}</span>
               </span>
-              <span class="govuk-body-s govuk-!-margin-left-2">Level {{ gamification.level or 1 }} - {{ gamification.totalXp or 0 }} XP</span>
+              <span class="govuk-body-s govuk-!-margin-left-2">Level {{ gamification.level }} - {{ gamification.xp or gamification.total_xp or gamification.totalXp or 0 }} XP</span>
             </div>
           {% endif %}
           {# Rating summary if available #}
@@ -89,6 +89,18 @@
           }
         ]
       }) }}
+
+      {% if gamificationBadges and gamificationBadges.length %}
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">Badges</h2>
+        <ul class="govuk-list nexus-alpha-actions">
+          {% for badge in gamificationBadges %}
+            <li>
+              {% if badge.icon %}<span aria-hidden="true">{{ badge.icon }}</span>{% endif %}
+              <strong class="govuk-tag govuk-tag--blue">{{ badge.name }}</strong>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
 
       <h2 class="govuk-heading-m govuk-!-margin-top-6">Actions</h2>
 
@@ -166,10 +178,12 @@
                   {% endfor %}
                 </span>
                 <strong class="govuk-!-margin-left-2">
-                  {% if review.reviewer %}
-                    {{ review.reviewer.first_name or review.reviewer.firstName }} {{ review.reviewer.last_name or review.reviewer.lastName }}
+                  {% if review.is_anonymous or review.isAnonymous %}
+                    {{ t("reviews_page.anonymous") }}
+                  {% elif review.reviewer %}
+                    {{ review.reviewer.name or ((review.reviewer.first_name or review.reviewer.firstName) + " " + (review.reviewer.last_name or review.reviewer.lastName)) }}
                   {% else %}
-                    Anonymous
+                    {{ t("reviews_page.anonymous") }}
                   {% endif %}
                 </strong>
                 <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
@@ -189,7 +203,7 @@
       {% endif %}
 
       {# Leave a Review Form #}
-      {% if not isOwnProfile %}
+      {% if reviewsEnabled and not isOwnProfile %}
       <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
       <form method="post" action="{{ urlFor('/members/' + (user.id | string) + '/review') }}" class="govuk-!-margin-bottom-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">

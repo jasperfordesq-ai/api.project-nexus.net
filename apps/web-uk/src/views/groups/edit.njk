@@ -47,11 +47,11 @@
 
         {{ govukTextarea({
           label: {
-            text: "Description",
+            text: t("groups.create.description_label"),
             classes: "govuk-label--m"
           },
           hint: {
-            text: "Describe what the group is about (optional)"
+            text: t("groups.create.description_hint")
           },
           id: "description",
           name: "description",
@@ -59,37 +59,84 @@
           value: group.description if group.description else ""
         }) }}
 
+        {{ govukInput({
+          label: {
+            text: t("polish_groups.location_label"),
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: t("polish_groups.location_hint")
+          },
+          id: "location",
+          name: "location",
+          value: group.location if group.location else "",
+          attributes: { maxlength: "255" }
+        }) }}
+
         {{ govukRadios({
-          name: "is_private",
+          name: "visibility",
           fieldset: {
             legend: {
-              text: "Group visibility",
+              text: t("groups.create.visibility_legend"),
               classes: "govuk-fieldset__legend--m"
             }
           },
+          hint: { text: t("groups.create.visibility_hint") },
           items: [
             {
-              value: "false",
-              text: t("groups.visibility_public"),
-              hint: { text: "Anyone can find and join this group" },
-              checked: not (group.isPrivate or group.is_private)
+              value: "public",
+              text: t("groups.create.visibility_public_label"),
+              checked: group.visibility != 'private'
             },
             {
-              value: "true",
-              text: "Private",
-              hint: { text: "Only admins can add members" },
-              checked: group.isPrivate or group.is_private
+              value: "private",
+              text: t("groups.create.visibility_private_label"),
+              checked: group.visibility == 'private'
             }
           ]
         }) }}
 
         <div class="govuk-button-group">
           {{ govukButton({
-            text: "Save changes"
+            text: t("groups.edit.submit")
           }) }}
           <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
         </div>
       </form>
+
+      {% if myMembership and myMembership.role == 'owner' %}
+        <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
+
+        <h2 class="govuk-heading-l">{{ t("groups.delete.title") }}</h2>
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
+            {{ t("groups.delete.warning") }}
+          </strong>
+        </div>
+        <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/delete') }}" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group{% if deleteConfirmationRequired %} govuk-form-group--error{% endif %}">
+            {% if deleteConfirmationRequired %}
+              <p id="confirm-delete-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span>
+                Confirm that you understand the group will be permanently deleted.
+              </p>
+            {% endif %}
+            <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="confirm-delete" name="confirm" type="checkbox" value="yes" required{% if deleteConfirmationRequired %} aria-describedby="confirm-delete-error"{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="confirm-delete">{{ t("groups.delete.confirm_label") }}</label>
+              </div>
+            </div>
+          </div>
+          {{ govukButton({
+            text: t("groups.delete.submit"),
+            classes: "govuk-button--warning"
+          }) }}
+        </form>
+      {% endif %}
 
     </div>
   </div>

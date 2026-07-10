@@ -15,7 +15,7 @@ const {
   ApiError,
   ApiOfflineError
 } = require('../lib/api');
-const { asyncRoute } = require('../lib/routeHelpers');
+const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
@@ -62,10 +62,21 @@ function toNumber(value, fallback = null) {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function clampHours(value, fallback) {
-  const number = toNumber(value, fallback);
-  if (number === null) return fallback;
-  return Math.max(0.25, Math.min(24, number));
+function confirmationHours(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0.25 && number <= 24 ? number : null;
+}
+
+function normalizeRating(rating = {}) {
+  const rater = rating.rater && typeof rating.rater === 'object' ? rating.rater : {};
+  const fullName = [rating.rater_first_name, rating.rater_last_name]
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ');
+  return {
+    ...rating,
+    raterName: firstPresent(fullName, rater.name, rating.rater_username, 'Unknown member')
+  };
 }
 
 function labelFromKey(value, fallback = '') {
@@ -140,8 +151,8 @@ function normalizeExchange(exchange = {}, currentUserId = null) {
     hasProviderConfirmed,
     canAccept: isProvider && status === 'pending_provider',
     canDecline: isProvider && status === 'pending_provider',
-    canStart: (isProvider || isRequester) && status === 'accepted',
-    canComplete: (isProvider || isRequester) && status === 'in_progress',
+    canStart: isProvider && status === 'accepted',
+    canComplete: isProvider && status === 'in_progress',
     canConfirm: (isRequester || isProvider) && ['in_progress', 'pending_confirmation'].includes(status) && !viewerConfirmed,
     canCancel: (isRequester || isProvider) && ['pending_provider', 'pending_broker', 'accepted'].includes(status),
     actionNeeded,
@@ -188,6 +199,8 @@ function statusMessage(status) {
       return 'Review could not be submitted. Try again.';
     case 'rating-invalid':
       return 'Select a rating from 1 to 5.';
+    case 'exchange-hours-invalid':
+      return 'Enter final hours between 0.25 and 24.';
     default:
       return '';
   }
@@ -203,7 +216,8 @@ router.get('/', asyncRoute(async (req, res) => {
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
   const status = statusForTab(tab);
 
-  let workflowEnabled = true;
+  let workflowEnabled = false;
+  let workflowAvailable = false;
   let exchanges = [];
   let meta = {};
   let errorMessage = null;
@@ -213,14 +227,16 @@ router.get('/', asyncRoute(async (req, res) => {
   currentUserId = toNumber(firstPresent(currentUser?.id, currentUser?.data?.id), null);
 
   try {
-    const [configPayload, exchangesPayload] = await Promise.all([
-      getExchangeConfig(req.token).catch(() => ({ data: { exchange_workflow_enabled: true } })),
-      getExchanges(req.token, { status, per_page: 20, cursor })
-    ]);
-    workflowEnabled = unwrapObject(configPayload).exchange_workflow_enabled !== false;
-    exchanges = unwrapList(exchangesPayload).map(exchange => normalizeExchange(exchange, currentUserId));
-    meta = unwrapMeta(exchangesPayload);
+    const configPayload = await getExchangeConfig(req.token);
+    workflowAvailable = true;
+    workflowEnabled = unwrapObject(configPayload).exchange_workflow_enabled === true;
+    if (workflowEnabled) {
+      const exchangesPayload = await getExchanges(req.token, { status, per_page: 20, cursor });
+      exchanges = unwrapList(exchangesPayload).map(exchange => normalizeExchange(exchange, currentUserId));
+      meta = unwrapMeta(exchangesPayload);
+    }
   } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
       errorMessage = 'Exchange items could not be loaded. Try again.';
     } else {
@@ -231,6 +247,7 @@ router.get('/', asyncRoute(async (req, res) => {
   res.render('exchanges/index', {
     title: 'Exchanges',
     workflowEnabled,
+    workflowAvailable,
     activeTab: tab,
     exchanges,
     items: exchanges,
@@ -256,7 +273,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
   res.render('exchanges/detail', {
     title: exchange.listingTitle,
     exchange,
-    ratings: ratings.ratings,
+    ratings: ratings.ratings.map(normalizeRating),
     canReview: exchange.status === 'completed' && !ratings.hasRated,
     status: req.query.status || '',
     successMessage: flashValue(req, 'success'),
@@ -268,13 +285,17 @@ router.get('/:id', asyncRoute(async (req, res) => {
 router.post('/:id', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const action = String(req.body.action || '').trim();
+  const hours = action === 'confirm' ? confirmationHours(req.body.hours) : null;
+  if (action === 'confirm' && hours === null) {
+    return redirectTo(res, `/exchanges/${id}?status=exchange-hours-invalid#hours`);
+  }
   const actionPayload = (() => {
     switch (action) {
       case 'decline':
       case 'cancel':
         return { reason: String(req.body.reason || '').trim() };
       case 'confirm':
-        return { hours: clampHours(req.body.hours, 0) };
+        return { hours };
       default:
         return {};
     }
@@ -289,6 +310,7 @@ router.post('/:id', asyncRoute(async (req, res) => {
     return redirectTo(res, `/exchanges/${id}?status=exchange-updated`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      if (handleApiError(error, req, res, { redirectOn401: '/login' })) return undefined;
       return redirectTo(res, `/exchanges/${id}?status=exchange-action-failed`);
     }
     throw error;
@@ -310,6 +332,7 @@ router.post('/:id/rate', asyncRoute(async (req, res) => {
     return redirectTo(res, `/exchanges/${id}?status=rating-submitted`);
   } catch (error) {
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      if (handleApiError(error, req, res, { redirectOn401: '/login' })) return undefined;
       return redirectTo(res, `/exchanges/${id}?status=rating-failed#rating`);
     }
     throw error;

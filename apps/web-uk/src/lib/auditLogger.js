@@ -321,7 +321,7 @@ const audit = {
   walletTransfer: () => auditMiddleware(AUDIT_ACTIONS.WALLET_TRANSFER, (req) => ({
     type: 'wallet_transfer',
     details: {
-      recipientId: req.body.receiver_id,
+      recipientId: req.body.recipient_id,
       amount: req.body.amount
     }
   })),

@@ -4,6 +4,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
 
 {% block beforeContent %}
   {{ super() }}
@@ -57,15 +58,17 @@
 
       {# Event details #}
       {% set organizer = event.createdBy or event.created_by or event.organizer %}
+      {% set eventStartTime = event.start_time or event.startTime %}
+      {% set eventEndTime = event.end_time or event.endTime %}
       {{ govukSummaryList({
         rows: [
           {
             key: { text: t("events.create_time_title") },
             value: {
-              html: ((event.startsAt or event.starts_at) | formatEventDate) +
-                    ("<br>to " + ((event.endsAt or event.ends_at) | formatEventDate) if event.endsAt or event.ends_at else "")
+              html: (eventStartTime | formatEventDate) +
+                    ("<br>to " + (eventEndTime | formatEventDate) if eventEndTime else "")
             }
-          } if event.startsAt or event.starts_at,
+          } if eventStartTime,
           {
             key: { text: "Location" },
             value: { text: event.location or "Not specified" }
@@ -100,76 +103,55 @@
         </div>
       {% endif %}
 
-      <p class="govuk-body govuk-!-margin-top-4">
-        {% set reportType = "event" %}
-        {% set reportId = event.id %}
-        {% set returnTo = urlFor("/events/" + (event.id | string)) %}
-        {% include "partials/report-link.njk" %}
-      </p>
+      {% if isAuthenticated %}
+        <p class="govuk-body govuk-!-margin-top-4">
+          {% set reportType = "event" %}
+          {% set reportId = event.id %}
+          {% set returnTo = urlFor("/events/" + (event.id | string)) %}
+          {% include "partials/report-link.njk" %}
+        </p>
+      {% endif %}
 
       {# RSVP section #}
-      {% if not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
+      {% if isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-        <h2 class="govuk-heading-m">{{ t("events.rsvp_title") }}</h2>
-
-        {% if myRsvp %}
-          <p class="govuk-body">
-            You're currently marked as:
-            {% if myRsvp.status == 'going' %}
-              {{ govukTag({ text: "Going", classes: "govuk-tag--green" }) }}
-            {% elif myRsvp.status == 'maybe' %}
-              {{ govukTag({ text: "Maybe", classes: "govuk-tag--yellow" }) }}
-            {% else %}
-              {{ govukTag({ text: t("events.rsvp_status.not_going"), classes: "govuk-tag--grey" }) }}
-            {% endif %}
-          </p>
-        {% endif %}
-
-        {% set eventMaxAttendees = event.maxAttendees or event.max_attendees %}
-        {% set eventAttendeeCount = event.attendeeCount or event.attendee_count or 0 %}
-        {% set isFull = eventMaxAttendees and eventAttendeeCount >= eventMaxAttendees %}
-
-        <div class="app-rsvp-buttons">
-          {% if not isFull or (myRsvp and myRsvp.status == 'going') %}
-            <form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <input type="hidden" name="status" value="going">
-              {{ govukButton({
-                text: "Going",
-                classes: "govuk-button--secondary" if myRsvp and myRsvp.status == 'going' else "",
-                disabled: myRsvp and myRsvp.status == 'going'
-              }) }}
-            </form>
-          {% endif %}
-
-          <form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post" style="display: inline;">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <input type="hidden" name="status" value="maybe">
-            {{ govukButton({
-              text: "Maybe",
-              classes: "govuk-button--secondary",
-              disabled: myRsvp and myRsvp.status == 'maybe'
-            }) }}
-          </form>
-
-          <form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post" style="display: inline;">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <input type="hidden" name="status" value="not_going">
-            {{ govukButton({
-              text: t("events.rsvp_status.not_going"),
-              classes: "govuk-button--secondary",
-              disabled: myRsvp and myRsvp.status == 'not_going'
-            }) }}
-          </form>
-
+        <form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          {{ govukRadios({
+            name: "status",
+            fieldset: {
+              legend: {
+                text: t("events.rsvp_title"),
+                classes: "govuk-fieldset__legend--m",
+                isPageHeading: false
+              }
+            },
+            hint: { text: t("events.rsvp_hint") },
+            items: [
+              {
+                value: "going",
+                text: t("events.rsvp_status.going"),
+                checked: not myRsvp or myRsvp.status == "going"
+              },
+              {
+                value: "interested",
+                text: t("events.rsvp_status.interested"),
+                checked: myRsvp and myRsvp.status == "interested"
+              },
+              {
+                value: "not_going",
+                text: t("events.rsvp_status.not_going"),
+                checked: myRsvp and myRsvp.status == "not_going"
+              }
+            ]
+          }) }}
+          {{ govukButton({ text: t("actions.rsvp") }) }}
+        </form>
+      {% elif not isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
+        <div class="govuk-inset-text">
+          <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("nav.login") }}</a>. {{ t("events.auth_required_detail", { community: tenantName or serviceName }) }}
         </div>
-
-        {% if isFull and (not myRsvp or myRsvp.status != 'going') %}
-          <p class="govuk-body govuk-!-margin-top-3">
-            <strong>This event is full.</strong> You can still mark yourself as "Maybe" or "Not going".
-          </p>
-        {% endif %}
       {% endif %}
 
       {# Admin actions #}
@@ -186,22 +168,37 @@
           }) }}
 
           {% if not (event.isCancelled or event.is_cancelled) %}
-            <form action="{{ urlFor('/events/' + (event.id | string) + '/cancel') }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this event?');">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: "Cancel event",
-                classes: "govuk-button--warning"
-              }) }}
-            </form>
+            <details class="govuk-details govuk-!-margin-bottom-2" data-module="govuk-details">
+              <summary class="govuk-details__summary">
+                <span class="govuk-details__summary-text">{{ t("events.cancel_event") }}</span>
+              </summary>
+              <div class="govuk-details__text">
+                <p class="govuk-body">{{ t("events.cancel_confirm") }}</p>
+                <form action="{{ urlFor('/events/' + (event.id | string) + '/cancel') }}" method="post">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <div class="govuk-form-group">
+                    <label class="govuk-label" for="cancel-reason">{{ t("events.cancel_reason_label") }}</label>
+                    <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3"></textarea>
+                  </div>
+                  {{ govukButton({
+                    text: t("events.cancel_event_button"),
+                    classes: "govuk-button--warning govuk-!-margin-bottom-0"
+                  }) }}
+                </form>
+              </div>
+            </details>
           {% endif %}
 
-          <form action="{{ urlFor('/events/' + (event.id | string) + '/delete') }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this event? This cannot be undone.');">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            {{ govukButton({
-              text: "Delete event",
-              classes: "govuk-button--warning"
-            }) }}
-          </form>
+          <details class="govuk-details govuk-!-margin-bottom-4" data-module="govuk-details">
+            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("events.delete_event") }}</span></summary>
+            <div class="govuk-details__text">
+              <p class="govuk-body">{{ t("events.delete_confirm") }}</p>
+              <form action="{{ urlFor('/events/' + (event.id | string) + '/delete') }}" method="post">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                {{ govukButton({ text: t("events.delete_event_button"), classes: "govuk-button--warning govuk-!-margin-bottom-0" }) }}
+              </form>
+            </div>
+          </details>
         </div>
       {% endif %}
 
@@ -213,16 +210,14 @@
         <h2 class="govuk-heading-m">Attendees</h2>
 
         {% if rsvpsByStatus.going.length > 0 %}
-          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
-            Going ({{ rsvpsByStatus.going.length }})
-          </h3>
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ t("events.attendees_label") }} ({{ rsvpsByStatus.going.length }})</h3>
           <ul class="app-attendee-list govuk-!-margin-bottom-4">
             {% for rsvp in rsvpsByStatus.going | take(8) %}
               <li class="app-attendee-list__item">
                 {% set user = rsvp.user or rsvp %}
                 {% include "partials/avatar.njk" %}
                 <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link govuk-body-s">
-                  {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+                  {{ user.name or ((user.first_name or user.firstName or "") + " " + (user.last_name or user.lastName or "")) }}
                 </a>
               </li>
             {% endfor %}
@@ -232,27 +227,25 @@
           {% endif %}
         {% endif %}
 
-        {% if rsvpsByStatus.maybe.length > 0 %}
-          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
-            Maybe ({{ rsvpsByStatus.maybe.length }})
-          </h3>
+        {% if rsvpsByStatus.interested.length > 0 %}
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ t("events.interested_label") }} ({{ rsvpsByStatus.interested.length }})</h3>
           <ul class="app-attendee-list govuk-!-margin-bottom-4">
-            {% for rsvp in rsvpsByStatus.maybe | take(5) %}
+            {% for rsvp in rsvpsByStatus.interested | take(5) %}
               <li class="app-attendee-list__item">
                 {% set user = rsvp.user or rsvp %}
                 {% include "partials/avatar.njk" %}
                 <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link govuk-body-s">
-                  {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+                  {{ user.name or ((user.first_name or user.firstName or "") + " " + (user.last_name or user.lastName or "")) }}
                 </a>
               </li>
             {% endfor %}
           </ul>
-          {% if rsvpsByStatus.maybe.length > 5 %}
-            <p class="govuk-body-s">and {{ rsvpsByStatus.maybe.length - 5 }} more...</p>
+          {% if rsvpsByStatus.interested.length > 5 %}
+            <p class="govuk-body-s">and {{ rsvpsByStatus.interested.length - 5 }} more...</p>
           {% endif %}
         {% endif %}
 
-        {% if rsvpsByStatus.going.length == 0 and rsvpsByStatus.maybe.length == 0 %}
+        {% if rsvpsByStatus.going.length == 0 and rsvpsByStatus.interested.length == 0 %}
           <p class="govuk-body-s">No RSVPs yet. Be the first to respond!</p>
         {% endif %}
       </div>

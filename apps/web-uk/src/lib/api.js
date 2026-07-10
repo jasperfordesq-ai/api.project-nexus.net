@@ -4,9 +4,11 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const TENANT_ID = process.env.TENANT_ID || '';
+const ACCESSIBLE_TENANT_SLUG = process.env.ACCESSIBLE_TENANT_SLUG || '';
 const { cache } = require('./cache');
 const { getApiBaseUrl } = require('./backend-contract');
 const { getRequestLocale } = require('./request-locale-context');
+const { getRequestTenantSlug, normalizeTenantSlug } = require('./request-tenant-context');
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -39,13 +41,41 @@ class ApiOfflineError extends Error {
   }
 }
 
-function hasHostTenantContext(headers) {
-  return !!(headers.Host || headers.host || headers.Origin || headers.origin);
-}
-
 function hasHeader(headers, expectedName) {
   const normalizedExpected = expectedName.toLowerCase();
   return Object.keys(headers).some((name) => name.toLowerCase() === normalizedExpected);
+}
+
+function headerValue(headers, expectedName) {
+  const normalizedExpected = expectedName.toLowerCase();
+  const key = Object.keys(headers).find((name) => name.toLowerCase() === normalizedExpected);
+  return key ? String(headers[key] || '').trim() : '';
+}
+
+function hasHostTenantContext(headers) {
+  return Boolean(headerValue(headers, 'Host') || headerValue(headers, 'Origin'));
+}
+
+function hasExplicitTenantContext(headers) {
+  return Boolean(headerValue(headers, 'X-Tenant-Slug') || headerValue(headers, 'X-Tenant-ID'));
+}
+
+function hasBearerAuth(headers) {
+  return /^Bearer\s+\S+/i.test(headerValue(headers, 'Authorization'));
+}
+
+function addRequestTenantHeader(headers) {
+  if (hasBearerAuth(headers) || hasExplicitTenantContext(headers) || hasHostTenantContext(headers)) {
+    return headers;
+  }
+
+  const tenantSlug = getRequestTenantSlug() || normalizeTenantSlug(ACCESSIBLE_TENANT_SLUG);
+  if (tenantSlug) {
+    headers['X-Tenant-Slug'] = tenantSlug;
+  } else if (TENANT_ID) {
+    headers['X-Tenant-ID'] = TENANT_ID;
+  }
+  return headers;
 }
 
 function addRequestLocaleHeader(headers) {
@@ -60,17 +90,10 @@ async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const isFormData = typeof globalThis.FormData !== 'undefined' && options.body instanceof globalThis.FormData;
 
-  const headers = addRequestLocaleHeader({
+  const headers = addRequestTenantHeader(addRequestLocaleHeader({
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
-  });
-
-  // Include X-Tenant-ID only when there is no bearer auth, tenant slug, or
-  // host/Origin tenant context. Host-scoped custom-domain calls must let
-  // Laravel resolve the tenant from the browser domain.
-  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug'] && !hasHostTenantContext(headers)) {
-    headers['X-Tenant-ID'] = TENANT_ID;
-  }
+  }));
 
   const config = {
     ...options,
@@ -113,13 +136,9 @@ async function request(endpoint, options = {}) {
 async function downloadRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const headers = addRequestLocaleHeader({
+  const headers = addRequestTenantHeader(addRequestLocaleHeader({
     ...options.headers
-  });
-
-  if (TENANT_ID && !headers.Authorization && !headers['X-Tenant-Slug'] && !hasHostTenantContext(headers)) {
-    headers['X-Tenant-ID'] = TENANT_ID;
-  }
+  }));
 
   const config = {
     ...options,
@@ -171,7 +190,7 @@ async function downloadRequest(endpoint, options = {}) {
 
 // Auth
 async function login(email, password, tenantSlug) {
-  const headers = tenantSlug ? { 'X-Tenant-Slug': tenantSlug } : {};
+  const headers = tenantSlugHeaders(tenantSlug);
   return request('/api/auth/login', {
     method: 'POST',
     headers,
@@ -184,15 +203,35 @@ async function login(email, password, tenantSlug) {
 }
 
 async function validateToken(token) {
-  return request('/api/auth/validate', {
+  return request('/api/auth/validate-token', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function register(data) {
-  return request('/api/auth/register', {
+function tenantSlugHeaders(tenantSlug) {
+  const slug = String(tenantSlug || '').trim();
+  return slug ? { 'X-Tenant-Slug': slug } : {};
+}
+
+async function register(data, tenantSlug) {
+  return request('/api/v2/auth/register', {
     method: 'POST',
+    headers: tenantSlugHeaders(tenantSlug),
     body: JSON.stringify(data)
+  });
+}
+
+async function getRegistrationInfo(tenantSlug) {
+  return request('/api/v2/auth/registration-info', {
+    headers: tenantSlugHeaders(tenantSlug)
+  });
+}
+
+async function validateRegistrationInvite(tenantSlug, code) {
+  return request('/api/v2/auth/validate-invite', {
+    method: 'POST',
+    headers: tenantSlugHeaders(tenantSlug),
+    body: JSON.stringify({ code })
   });
 }
 
@@ -255,7 +294,7 @@ async function getTenantBootstrap(options = {}) {
 
   const queryString = query.toString();
   const endpoint = `/api/v2/tenant/bootstrap${queryString ? `?${queryString}` : ''}`;
-  const headers = options.slug ? {} : tenantHostHeaders(options.host);
+  const headers = options.slug ? tenantSlugHeaders(options.slug) : tenantHostHeaders(options.host);
 
   return request(endpoint, { headers });
 }
@@ -273,21 +312,22 @@ async function getPlatformStats(options = {}) {
   return request('/api/v2/platform/stats', { headers });
 }
 
-async function verify2fa(token, code) {
-  return request('/api/auth/2fa/verify', {
+async function verify2fa(twoFactorToken, code, tenantSlug) {
+  return request('/api/totp/verify', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ code })
+    headers: tenantSlugHeaders(tenantSlug),
+    body: JSON.stringify({
+      two_factor_token: twoFactorToken,
+      code
+    })
   });
 }
 
 async function forgotPassword(email, tenantSlug) {
   return request('/api/auth/forgot-password', {
     method: 'POST',
-    body: JSON.stringify({
-      email,
-      tenant_slug: tenantSlug
-    })
+    headers: tenantSlugHeaders(tenantSlug),
+    body: JSON.stringify({ email })
   });
 }
 
@@ -302,45 +342,31 @@ async function resetPassword(token, password, passwordConfirmation = password) {
   });
 }
 
-async function resendVerification(email) {
+async function resendVerification(email, tenantSlug) {
   return request('/api/auth/resend-verification-by-email', {
     method: 'POST',
+    headers: tenantSlugHeaders(tenantSlug),
     body: JSON.stringify({ email })
   });
 }
 
-async function verifyEmail(token) {
+async function verifyEmail(token, tenantSlug) {
   return request('/api/auth/verify-email', {
     method: 'POST',
+    headers: tenantSlugHeaders(tenantSlug),
     body: JSON.stringify({ token })
   });
 }
 
-// TODO: The backend has no /api/auth/change-password endpoint.
-// A dedicated change-password endpoint needs to be added to AuthController or UsersController
-// (e.g. POST /api/users/me/password accepting { current_password, new_password }).
-// Until then this function will always return a 404 error — callers should surface
-// a meaningful error message rather than crashing.
 async function changePassword(token, currentPassword, newPassword) {
-  try {
-    return await request('/api/users/me/password', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        current_password: currentPassword,
-        new_password: newPassword
-      })
-    });
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      throw new ApiError(
-        'Password change is not available at this time. Please use the "Forgot password" link on the login page to reset your password.',
-        404,
-        error.data
-      );
-    }
-    throw error;
-  }
+  return request('/api/v2/users/me/password', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword
+    })
+  });
 }
 
 // Users / Profile
@@ -438,8 +464,16 @@ async function completeOnboarding(token, data) {
   });
 }
 
-async function getUsers(token) {
-  return request('/api/users', {
+async function getUsers(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.q || params.search) query.set('q', params.q || params.search);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.order) query.set('order', params.order);
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return request(`/api/v2/users${suffix}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -455,15 +489,13 @@ async function searchUsers(token, query, params = {}) {
 }
 
 async function getUser(token, id) {
-  return request(`/api/users/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/users/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getUserV2(token, id) {
-  return request(`/api/v2/users/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  return getUser(token, id);
 }
 
 async function getMemberVerificationBadges(token, id) {
@@ -476,16 +508,18 @@ async function getMemberVerificationBadges(token, id) {
 async function getListings(token, params = {}) {
   const query = new URLSearchParams();
   if (params.type) query.set('type', params.type);
-  if (params.status) query.set('status', params.status);
   if (params.user_id) query.set('user_id', params.user_id);
-  if (params.page) query.set('page', params.page);
-  if (params.search || params.q) query.set('search', params.search || params.q);
+  if (params.search || params.q) query.set('q', params.q || params.search);
   if (params.category_id) query.set('category_id', params.category_id);
-  if (params.hours) query.set('hours', params.hours);
-  if (params.service) query.set('service', params.service);
-  if (params.posted) query.set('posted', params.posted);
-  if (params.sort) query.set('sort', params.sort);
-  if (params.near) query.set('near', params.near);
+  if (params.skills) query.set('skills', params.skills);
+  if (params.featured_first) query.set('featured_first', 'true');
+  if (params.min_hours) query.set('min_hours', params.min_hours);
+  if (params.max_hours) query.set('max_hours', params.max_hours);
+  if (params.service_type) query.set('service_type', params.service_type);
+  if (params.posted_within) query.set('posted_within', params.posted_within);
+  if (params.near_lat) query.set('near_lat', params.near_lat);
+  if (params.near_lng) query.set('near_lng', params.near_lng);
+  if (params.radius_km) query.set('radius_km', params.radius_km);
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.limit || params.per_page) query.set('per_page', params.per_page || params.limit);
 
@@ -493,13 +527,13 @@ async function getListings(token, params = {}) {
   const endpoint = `/api/v2/listings${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
 async function getListing(token, id) {
   return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
@@ -509,7 +543,7 @@ async function getPublicListing(id, tenantSlug) {
 }
 
 async function createListing(token, data) {
-  return request('/api/listings', {
+  return request('/api/v2/listings', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -517,7 +551,7 @@ async function createListing(token, data) {
 }
 
 async function updateListing(token, id, data) {
-  return request(`/api/listings/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -525,9 +559,40 @@ async function updateListing(token, id, data) {
 }
 
 async function deleteListing(token, id) {
-  return request(`/api/listings/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getListingCategories(token) {
+  return request('/api/v2/categories?type=listing', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function setListingSkillTags(token, id, tags) {
+  return request(`/api/v2/listings/${encodeURIComponent(id)}/tags`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ tags })
+  });
+}
+
+async function uploadListingImage(token, id, data) {
+  const form = new globalThis.FormData();
+  const file = data && (data.file || data.image);
+  if (file && file.buffer) {
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'listing-image');
+  }
+
+  return request(`/api/v2/listings/${encodeURIComponent(id)}/image`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
   });
 }
 
@@ -1107,8 +1172,8 @@ async function getBalance(token) {
 async function getTransactions(token, params = {}) {
   const query = new URLSearchParams();
   if (params.type) query.set('type', params.type);
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
 
   const queryString = query.toString();
   const endpoint = `/api/v2/wallet/transactions${queryString ? `?${queryString}` : ''}`;
@@ -1121,18 +1186,6 @@ async function getTransactions(token, params = {}) {
 async function getTransaction(token, id) {
   return request(`/api/v2/wallet/transactions/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function transferCredits(token, receiverId, amount, description) {
-  return request('/api/wallet/transfer', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      receiver_id: receiverId,
-      amount,
-      description
-    })
   });
 }
 
@@ -1772,6 +1825,14 @@ async function uploadMessageAttachments(token, data) {
     form.append('body', String(data.body));
   }
 
+  if (data.context_type) {
+    form.append('context_type', String(data.context_type));
+  }
+
+  if (data.context_id !== undefined && data.context_id !== null && data.context_id !== '') {
+    form.append('context_id', String(data.context_id));
+  }
+
   const files = Array.isArray(data.files) ? data.files : [data.file].filter(Boolean);
   files.forEach((file) => {
     if (!file || !file.buffer) return;
@@ -1857,14 +1918,26 @@ async function callFederationApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/federation${normalizedPath}`, options);
 }
 
-async function getConversations(token) {
-  return request('/api/v2/messages', {
+async function getConversations(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.archived !== undefined) query.set('archived', params.archived ? 'true' : 'false');
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return request(`/api/v2/messages${suffix}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getConversation(token, id) {
-  return request(`/api/v2/messages/${encodeURIComponent(id)}`, {
+async function getConversation(token, id, params = {}) {
+  const query = new URLSearchParams();
+  if (params.cursor) {
+    query.set('per_page', String(params.per_page || 50));
+    query.set('direction', String(params.direction || 'older'));
+    query.set('cursor', String(params.cursor));
+  }
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return request(`/api/v2/messages/${encodeURIComponent(id)}${suffix}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -1886,18 +1959,18 @@ async function getUnreadCount(token) {
 }
 
 async function sendMessage(token, recipientId, content) {
-  return request('/api/messages', {
+  return request('/api/v2/messages', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ recipient_id: recipientId, content })
+    body: JSON.stringify({ recipient_id: recipientId, body: content })
   });
 }
 
 async function replyToConversation(token, conversationId, content) {
-  return request(`/api/messages/${encodeURIComponent(conversationId)}`, {
+  return request('/api/v2/messages', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ recipient_id: conversationId, body: content })
   });
 }
 
@@ -1905,7 +1978,7 @@ async function replyToConversation(token, conversationId, content) {
 const startConversation = sendMessage;
 
 async function markConversationRead(token, conversationId) {
-  const result = await request(`/api/messages/${encodeURIComponent(conversationId)}/read`, {
+  const result = await request(`/api/v2/messages/${encodeURIComponent(conversationId)}/read`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -1917,29 +1990,27 @@ async function markConversationRead(token, conversationId) {
 }
 
 // Connections
-async function getConnections(token, status = null) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`/api/connections${query}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getPendingConnections(token) {
-  return request('/api/connections/pending', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getConnectionsV2(token, params = {}) {
+async function getConnections(token, params = {}) {
+  const filters = typeof params === 'string' ? { status: params } : (params || {});
   const query = new URLSearchParams();
-  if (params.status) query.set('status', params.status);
-  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
-  if (params.cursor) query.set('cursor', params.cursor);
+  if (filters.status) query.set('status', filters.status);
+  if (filters.per_page || filters.limit) query.set('per_page', filters.per_page || filters.limit);
+  if (filters.cursor) query.set('cursor', filters.cursor);
   const suffix = query.toString() ? `?${query.toString()}` : '';
 
   return request(`/api/v2/connections${suffix}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+}
+
+async function getPendingConnections(token) {
+  return request('/api/v2/connections/pending', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getConnectionsV2(token, params = {}) {
+  return getConnections(token, params);
 }
 
 async function getConnectionPendingCountsV2(token) {
@@ -2056,12 +2127,26 @@ async function removeConnection(token, connectionId) {
 // Notifications
 async function getNotifications(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.type) query.set('type', params.type);
   if (params.unread_only) query.set('unread_only', 'true');
 
   const queryString = query.toString();
-  const endpoint = `/api/notifications${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/notifications${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getGroupedNotifications(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/notifications/grouped${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -2069,7 +2154,7 @@ async function getNotifications(token, params = {}) {
 }
 
 async function getNotification(token, id) {
-  return request(`/api/notifications/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/notifications/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -2082,7 +2167,7 @@ async function getNotificationUnreadCount(token) {
     return cached;
   }
 
-  const result = await request('/api/notifications/unread-count', {
+  const result = await request('/api/v2/notifications/counts', {
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -2150,21 +2235,30 @@ async function deleteNotification(token, id) {
 // Groups
 async function getGroups(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
-  if (params.search) query.set('search', params.search);
+  const perPage = params.per_page || params.limit;
+  const search = params.q || params.search;
+  if (params.member) query.set('member', params.member);
+  if (perPage) query.set('per_page', perPage);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (search) query.set('q', search);
+  if (params.type) query.set('type', params.type);
+  if (params.type_id) query.set('type_id', params.type_id);
+  if (params.visibility) query.set('visibility', params.visibility);
+  if (params.user_id) query.set('user_id', params.user_id);
 
   const queryString = query.toString();
-  const endpoint = `/api/groups${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/groups${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getMyGroups(token) {
-  return request('/api/groups/my', {
-    headers: { Authorization: `Bearer ${token}` }
+async function getMyGroups(token, params = {}) {
+  return getGroups(token, {
+    ...params,
+    member: 'me',
+    per_page: params.per_page || params.limit || 100
   });
 }
 
@@ -2175,7 +2269,7 @@ async function getGroup(token, id) {
 }
 
 async function createGroup(token, data) {
-  return request('/api/groups', {
+  return request('/api/v2/groups', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -2183,7 +2277,7 @@ async function createGroup(token, data) {
 }
 
 async function updateGroup(token, id, data) {
-  return request(`/api/groups/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/groups/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -2191,15 +2285,24 @@ async function updateGroup(token, id, data) {
 }
 
 async function deleteGroup(token, id) {
-  return request(`/api/groups/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/groups/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getGroupMembers(token, groupId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/members`, {
-    headers: { Authorization: `Bearer ${token}` }
+async function getGroupMembers(token, groupId, params = {}) {
+  const query = new URLSearchParams();
+  const perPage = params.per_page || params.limit;
+  if (perPage) query.set('per_page', perPage);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.role) query.set('role', params.role);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/groups/${encodeURIComponent(groupId)}/members${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
@@ -2217,68 +2320,61 @@ async function leaveGroup(token, groupId) {
   });
 }
 
-async function addGroupMember(token, groupId, userId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/members`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ user_id: userId })
-  });
-}
-
 async function removeGroupMember(token, groupId, memberId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`, {
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function updateGroupMemberRole(token, groupId, memberId, role) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}/role`, {
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ role })
   });
 }
 
-async function transferGroupOwnership(token, groupId, newOwnerId) {
-  return request(`/api/groups/${encodeURIComponent(groupId)}/transfer-ownership`, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ new_owner_id: newOwnerId })
-  });
-}
-
 // Events
 async function getEvents(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
+  const perPage = params.per_page || params.limit;
+  if (perPage) query.set('per_page', perPage);
+  if (params.cursor) query.set('cursor', params.cursor);
   if (params.group_id) query.set('group_id', params.group_id);
-  if (params.upcoming_only) query.set('upcoming_only', 'true');
-  if (params.search) query.set('search', params.search);
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.category_id) query.set('category_id', params.category_id);
+  if (params.category) query.set('category', params.category);
+  if (params.when) {
+    query.set('when', params.when);
+  } else if (params.upcoming_only === false) {
+    query.set('when', 'all');
+  } else if (params.upcoming_only === true) {
+    query.set('when', 'upcoming');
+  }
+  const search = params.q || params.search;
+  if (search) query.set('q', search);
 
   const queryString = query.toString();
-  const endpoint = `/api/events${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/events${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
 async function getMyEvents(token) {
-  return request('/api/events/my', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  return getEvents(token, { when: 'upcoming', per_page: 3 });
 }
 
 async function getEvent(token, id) {
   return request(`/api/v2/events/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
 async function createEvent(token, data) {
-  return request('/api/events', {
+  return request('/api/v2/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -2286,38 +2382,39 @@ async function createEvent(token, data) {
 }
 
 async function updateEvent(token, id, data) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
 }
 
-async function cancelEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}/cancel`, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` }
+async function cancelEvent(token, id, data = {}) {
+  return request(`/api/v2/events/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
 }
 
 async function deleteEvent(token, id) {
-  return request(`/api/events/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
-async function getEventRsvps(token, eventId, status = null) {
+async function getEventRsvps(token, eventId, status = 'all') {
   const query = new URLSearchParams();
   if (status) query.set('status', status);
   query.set('per_page', 20);
   return request(`/api/v2/events/${encodeURIComponent(eventId)}/attendees?${query.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
 async function rsvpToEvent(token, eventId, status) {
-  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ status })
@@ -2325,7 +2422,7 @@ async function rsvpToEvent(token, eventId, status) {
 }
 
 async function removeEventRsvp(token, eventId) {
-  return request(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
+  return request(`/api/v2/events/${encodeURIComponent(eventId)}/rsvp`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -2334,24 +2431,20 @@ async function removeEventRsvp(token, eventId) {
 // Feed
 async function getFeedPosts(token, params = {}) {
   const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
+  if (params.per_page) query.set('per_page', params.per_page);
   if (params.type) query.set('type', params.type);
   if (params.mode) query.set('mode', params.mode);
   if (params.subtype) query.set('subtype', params.subtype);
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.group_id) query.set('group_id', params.group_id);
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.personalised !== undefined) query.set('personalised', params.personalised ? 'true' : 'false');
+  if (params.tz) query.set('tz', params.tz);
 
   const queryString = query.toString();
   const endpoint = `/api/v2/feed${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function getFeedPost(token, id) {
-  return request(`/api/feed/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -2394,26 +2487,19 @@ async function getFeedHashtagPosts(token = '', tag, params = {}) {
   return request(`/api/v2/feed/hashtags/${encodeURIComponent(tag)}${queryString ? `?${queryString}` : ''}`, { headers });
 }
 
-async function createFeedPost(token, data) {
-  return request('/api/feed', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
 async function createFeedPostV2(token, data) {
   const file = data.file || data.image;
   if (file && file.buffer) {
     const form = new globalThis.FormData();
     for (const [key, value] of Object.entries(data)) {
-      if (['file', 'image'].includes(key) || value === undefined || value === null) continue;
+      if (['file', 'image', 'image_alt'].includes(key) || value === undefined || value === null) continue;
       form.append(key, String(value));
     }
     const blob = new globalThis.Blob([file.buffer], {
       type: file.contentType || 'application/octet-stream'
     });
-    form.append('image', blob, file.filename || 'feed-image');
+    form.append('media[]', blob, file.filename || 'feed-image');
+    form.append('alt_texts[]', String(data.image_alt || ''));
 
     return request('/api/v2/feed/posts', {
       method: 'POST',
@@ -2429,14 +2515,6 @@ async function createFeedPostV2(token, data) {
   });
 }
 
-async function updateFeedPost(token, id, data) {
-  return request(`/api/feed/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
 async function updateFeedPostV2(token, id, data) {
   return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
     method: 'PUT',
@@ -2445,29 +2523,8 @@ async function updateFeedPostV2(token, id, data) {
   });
 }
 
-async function deleteFeedPost(token, id) {
-  return request(`/api/feed/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
 async function deleteFeedPostV2(token, id) {
   return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function likeFeedPost(token, postId) {
-  return request(`/api/feed/${encodeURIComponent(postId)}/like`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function unlikeFeedPost(token, postId) {
-  return request(`/api/feed/${encodeURIComponent(postId)}/like`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -2528,34 +2585,6 @@ async function voteFeedPoll(token, id, data) {
   });
 }
 
-async function getFeedComments(token, postId, params = {}) {
-  const query = new URLSearchParams();
-  if (params.page) query.set('page', params.page);
-  if (params.limit) query.set('limit', params.limit);
-
-  const queryString = query.toString();
-  const endpoint = `/api/feed/${encodeURIComponent(postId)}/comments${queryString ? `?${queryString}` : ''}`;
-
-  return request(endpoint, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function addFeedComment(token, postId, content) {
-  return request(`/api/feed/${encodeURIComponent(postId)}/comments`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content })
-  });
-}
-
-async function deleteFeedComment(token, postId, commentId) {
-  return request(`/api/feed/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
 // Reports
 async function submitReport(token, data) {
   return request('/api/reports', {
@@ -2588,28 +2617,33 @@ async function getMyReports(token, params = {}) {
 }
 
 // Gamification
-async function getGamificationProfile(token) {
-  return request('/api/gamification/profile', {
+async function getGamificationProfile(token, userId = null) {
+  const query = userId !== null && userId !== undefined
+    ? `?user_id=${encodeURIComponent(userId)}`
+    : '';
+  return request(`/api/v2/gamification/profile${query}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getGamificationProfileByUserId(token, userId) {
-  return request(`/api/gamification/profile/${encodeURIComponent(userId)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  return getGamificationProfile(token, userId);
 }
 
-async function getAllBadges(token) {
-  return request('/api/gamification/badges', {
+async function getAllBadges(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.user_id !== undefined && params.user_id !== null) query.set('user_id', params.user_id);
+  if (params.type) query.set('type', params.type);
+  if (params.showcased !== undefined) query.set('showcased', params.showcased ? 'true' : 'false');
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+
+  return request(`/api/v2/gamification/badges${suffix}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getMyBadges(token) {
-  return request('/api/gamification/badges/my', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  return getAllBadges(token);
 }
 
 async function getLeaderboard(token, params = {}) {
@@ -2687,24 +2721,12 @@ async function updateGamificationShowcase(token, badgeKeys) {
 }
 
 // Search
-async function search(token, query, type = 'all', page = 1, limit = 20) {
-  const params = new URLSearchParams();
-  params.set('q', query);
-  if (type && type !== 'all') params.set('type', type);
-  if (page) params.set('page', page);
-  if (limit) params.set('limit', limit);
-
-  return request(`/api/search?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
 async function searchSuggestions(token, query, limit = 5) {
   const params = new URLSearchParams();
   params.set('q', query);
   if (limit) params.set('limit', limit);
 
-  return request(`/api/search/suggestions?${params.toString()}`, {
+  return request(`/api/v2/search/suggestions?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -2817,36 +2839,9 @@ async function createUserReview(token, userId, data) {
   });
 }
 
-async function getListingReviews(token, listingId, page = 1, limit = 20) {
-  const params = new URLSearchParams();
-  if (page) params.set('page', page);
-  if (limit) params.set('limit', limit);
-
-  const queryString = params.toString();
-  return request(`/api/listings/${encodeURIComponent(listingId)}/reviews${queryString ? `?${queryString}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function createListingReview(token, listingId, data) {
-  return request(`/api/listings/${encodeURIComponent(listingId)}/reviews`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
-}
-
 async function getReview(token, reviewId) {
   return request(`/api/v2/reviews/${encodeURIComponent(reviewId)}`, {
     headers: { Authorization: `Bearer ${token}` }
-  });
-}
-
-async function updateReview(token, reviewId, data) {
-  return request(`/api/v2/reviews/${encodeURIComponent(reviewId)}`, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
   });
 }
 
@@ -3126,6 +3121,8 @@ module.exports = {
   // Auth
   login,
   register,
+  getRegistrationInfo,
+  validateRegistrationInvite,
   refreshToken,
   logout,
   submitContact,
@@ -3162,6 +3159,9 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  getListingCategories,
+  setListingSkillTags,
+  uploadListingImage,
   callListingApi,
   // Laravel volunteering
   getVolunteerOrganisations,
@@ -3214,7 +3214,6 @@ module.exports = {
   getBalance,
   getTransactions,
   getTransaction,
-  transferCredits,
   transferWalletCredits,
   donateCredits,
   callWalletApi,
@@ -3327,6 +3326,7 @@ module.exports = {
   removeConnection,
   // Notifications
   getNotifications,
+  getGroupedNotifications,
   getNotification,
   getNotificationUnreadCount,
   markNotificationRead,
@@ -3344,10 +3344,8 @@ module.exports = {
   getGroupMembers,
   joinGroup,
   leaveGroup,
-  addGroupMember,
   removeGroupMember,
   updateGroupMemberRole,
-  transferGroupOwnership,
   // Events
   getEvents,
   getMyEvents,
@@ -3361,19 +3359,13 @@ module.exports = {
   removeEventRsvp,
   // Feed
   getFeedPosts,
-  getFeedPost,
   getFeedPostV2,
   getFeedItemV2,
   getFeedHashtags,
   getFeedHashtagPosts,
-  createFeedPost,
   createFeedPostV2,
-  updateFeedPost,
   updateFeedPostV2,
-  deleteFeedPost,
   deleteFeedPostV2,
-  likeFeedPost,
-  unlikeFeedPost,
   toggleFeedLike,
   markFeedItemNotInterested,
   hideFeedItem,
@@ -3381,9 +3373,6 @@ module.exports = {
   muteFeedUser,
   shareFeedItem,
   voteFeedPoll,
-  getFeedComments,
-  addFeedComment,
-  deleteFeedComment,
   // Reports
   submitReport,
   submitSupportReport,
@@ -3401,7 +3390,6 @@ module.exports = {
   purchaseGamificationShopItem,
   updateGamificationShowcase,
   // Search
-  search,
   searchSuggestions,
   searchV2,
   getSavedSearches,
@@ -3414,10 +3402,7 @@ module.exports = {
   // Reviews
   getUserReviews,
   createUserReview,
-  getListingReviews,
-  createListingReview,
   getReview,
-  updateReview,
   deleteReview,
   callReviewApi,
   createReview,

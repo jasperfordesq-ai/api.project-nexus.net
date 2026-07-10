@@ -16,6 +16,7 @@ const {
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -127,9 +128,10 @@ function itemHref(type, id) {
     event: `/events/${id}`,
     job: `/jobs/${id}`,
     group: `/groups/${id}`,
-    resource: `/resources/${id}`,
+    article: `/blog/${id}`,
+    resource: `/resources?item=${id}`,
     marketplace_listing: `/marketplace/${id}`,
-    post: '/feed'
+    post: `/feed?post=${id}`
   };
   return paths[type] || '';
 }
@@ -253,7 +255,14 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const page = Math.max(1, Number(req.query.page || 1));
   const status = trimmed(req.query.status);
-  const payload = detailPayload(await getSavedCollectionItems(token, id, { page, per_page: 20 }), id);
+  const [collectionResult, profileResult] = await Promise.all([
+    getSavedCollectionItems(token, id, { page, per_page: 20 }),
+    getRequestProfile(req, token)
+  ]);
+  const payload = detailPayload(collectionResult, id);
+  const profile = dataFrom(profileResult);
+  const currentUserId = positiveInteger(profile && (profile.id ?? profile.user_id));
+  const isOwner = currentUserId !== null && payload.collection.userId === currentUserId;
 
   return res.render('saved-collections/detail', {
     title: payload.collection.name || 'Collection',
@@ -263,7 +272,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     meta: payload.meta,
     currentPage: page,
     lastPage: payload.meta.last_page || 1,
-    isOwner: true,
+    isOwner,
     status,
     successMessage: statusMessage(status),
     errorMessage: errorMessage(status)

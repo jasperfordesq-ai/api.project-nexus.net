@@ -694,6 +694,14 @@ function renderFederationError(error, res) {
     return true;
   }
 
+  const errorCodes = error instanceof ApiError && Array.isArray(error.data && error.data.errors)
+    ? error.data.errors.map((item) => trimmed(item && item.code)).filter(Boolean)
+    : [];
+  if (error instanceof ApiError && error.status === 403 && errorCodes.includes('FEDERATION_NOT_ENABLED')) {
+    redirectTo(res, '/federation/opt-in');
+    return true;
+  }
+
   if (error instanceof ApiOfflineError || error instanceof ApiError) {
     res.status(503).render('errors/503', { title: 'Federation' });
     return true;

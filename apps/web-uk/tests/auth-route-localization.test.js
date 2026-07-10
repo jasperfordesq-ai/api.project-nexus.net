@@ -17,6 +17,8 @@ jest.mock('../src/lib/api', () => ({
   },
   ApiOfflineError: class ApiOfflineError extends Error {},
   forgotPassword: jest.fn(),
+  getRegistrationInfo: jest.fn(),
+  getTenantBootstrap: jest.fn(),
   invalidateUserCache: jest.fn(),
   login: jest.fn(),
   logout: jest.fn(),
@@ -69,7 +71,15 @@ function createApp(locale, options = {}) {
 describe('request-scoped auth route localization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.TURNSTILE_SECRET_KEY;
+    api.getRegistrationInfo.mockResolvedValue({
+      data: {
+        registration_mode: 'open',
+        requires_invite_code: false,
+        is_closed: false,
+        can_register: true
+      }
+    });
+    api.getTenantBootstrap.mockResolvedValue({ data: { id: 2, slug: 'acme', name: 'Acme' } });
   });
 
   it('localizes login statuses and API failures in Irish', async () => {
@@ -115,38 +125,55 @@ describe('request-scoped auth route localization', () => {
   it('localizes exact registration validation and duplicate-account messages in Arabic', async () => {
     const t = createTranslator('ar');
     const { app } = createApp('ar');
+    const agent = request.agent(app);
+    const formStartedAt = Date.now() - 6000;
 
-    const validation = await request(app)
+    const validationRedirect = await agent
       .post('/register')
       .type('form')
       .send({
         email: 'not-an-email',
         password: 'Password123!',
-        confirm_password: 'Different123!',
+        password_confirmation: 'Different123!',
         first_name: 'Ada',
         last_name: 'Lovelace',
-        tenant_slug: 'acme'
+        phone: '+353871234567',
+        location: 'Dublin, Ireland',
+        terms_accepted: '1',
+        tenant_slug: 'acme',
+        form_started_at: formStartedAt
       });
+    expect(validationRedirect.status).toBe(302);
+    const validation = await agent.get(validationRedirect.headers.location);
 
     expect(validation.body.locals.fieldErrors.email).toBe(t('auth.forgot_invalid'));
-    expect(validation.body.locals.fieldErrors.confirm_password).toBe(t('auth.register_password_mismatch'));
+    expect(validation.body.locals.fieldErrors.password_confirmation).toBe(t('auth.register_password_mismatch'));
 
     api.register.mockRejectedValueOnce(new api.ApiError('Duplicate', 409, {
       errors: [{ code: 'VALIDATION_DUPLICATE' }]
     }));
-    const duplicate = await request(app)
+    const duplicateRedirect = await agent
       .post('/register')
       .type('form')
       .send({
         email: 'member@example.test',
         password: 'Password123!',
-        confirm_password: 'Password123!',
+        password_confirmation: 'Password123!',
         first_name: 'Ada',
         last_name: 'Lovelace',
-        tenant_slug: 'acme'
+        phone: '+353871234567',
+        location: 'Dublin, Ireland',
+        terms_accepted: '1',
+        tenant_slug: 'acme',
+        form_started_at: formStartedAt
       });
+    expect(duplicateRedirect.headers.location).toBe('/register?status=register-duplicate');
+    const duplicate = await agent.get(duplicateRedirect.headers.location);
 
-    expect(duplicate.body.locals.errors).toEqual([{ text: t('auth.register_duplicate') }]);
+    expect(duplicate.body.locals.errors).toEqual([{
+      text: t('auth.register_duplicate'),
+      href: '#email'
+    }]);
   });
 
   it('stores an untranslated registration status and renders its Arabic success copy on sign in', async () => {
@@ -161,17 +188,22 @@ describe('request-scoped auth route localization', () => {
       .send({
         email: 'member@example.test',
         password: 'Password123!',
-        confirm_password: 'Password123!',
+        password_confirmation: 'Password123!',
         first_name: 'Ada',
         last_name: 'Lovelace',
-        tenant_slug: 'acme'
+        phone: '+353871234567',
+        location: 'Dublin, Ireland',
+        terms_accepted: '1',
+        tenant_slug: 'acme',
+        form_started_at: Date.now() - 6000
       });
 
     expect(registration.status).toBe(302);
-    expect(registration.headers.location).toBe('/login');
-    expect(flashWrites).toEqual([{ name: 'authStatus', value: 'register-created' }]);
+    expect(registration.headers.location).toBe('/login?status=register-created');
+    expect(flashWrites).toEqual([]);
+    expect(api.login).not.toHaveBeenCalled();
 
-    const login = await request(app).get('/login');
+    const login = await request(app).get(registration.headers.location);
     expect(login.body.locals.successMessage).toBe(t('auth.register_created'));
   });
 

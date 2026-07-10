@@ -218,7 +218,7 @@
         <h3 class="govuk-heading-m">{{ t("profile_settings.two_factor_heading") }}</h3>
         <p class="govuk-body">{{ t("profile_settings.two_factor_intro") }}</p>
         <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/two-factor') }}">{{ t("profile_settings.two_factor_link") }}</a></p>
-        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked-members') }}">{{ t("profile_settings.blocked_link") }}</a></p>
+        <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked') }}">{{ t("profile_settings.blocked_link") }}</a></p>
 
         <h3 class="govuk-heading-m">Email address</h3>
         <form method="post" action="{{ urlFor('/profile/email') }}" novalidate>
@@ -415,24 +415,31 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section id="safeguarding" aria-labelledby="safeguarding-heading">
-        <h2 class="govuk-heading-l" id="safeguarding-heading">Safeguarding</h2>
+        <h2 class="govuk-heading-l" id="safeguarding-heading">{{ t("profile_settings.safeguarding.title") }}</h2>
+        <p class="govuk-body">{{ t("profile_settings.safeguarding.description") }}</p>
         {% if safeguarding.length %}
           <ul class="govuk-list">
             {% for option in safeguarding %}
               <li class="nexus-alpha-card govuk-!-margin-bottom-3">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ option.label }}</h3>
                 <p class="govuk-body">{{ option.description }}</p>
-                <strong class="govuk-tag">{{ option.activation_label }}</strong>
+                {% if option.activations.length %}
+                  <ul class="govuk-list govuk-list--bullet govuk-body-s">
+                    {% for activation in option.activations %}
+                      <li>{{ t("profile_settings.safeguarding.activations." ~ activation) }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
                 <form method="post" action="{{ urlFor('/profile/safeguarding/revoke') }}" class="govuk-!-margin-top-3">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="option_id" value="{{ option.option_id }}">
-                  <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Remove safeguarding preference</button>
+                  <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("profile_settings.safeguarding.revoke_button") }}<span class="govuk-visually-hidden"> {{ option.label }}</span></button>
                 </form>
               </li>
             {% endfor %}
           </ul>
         {% else %}
-          <p class="govuk-body">You have not added any safeguarding preferences yet.</p>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("profile_settings.safeguarding.none") }}</p></div>
         {% endif %}
       </section>
 

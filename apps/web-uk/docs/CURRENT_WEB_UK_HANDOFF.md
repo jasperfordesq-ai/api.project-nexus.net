@@ -2,12 +2,11 @@
 
 Last reviewed: 2026-07-10
 
-> **Current audit notice (2026-07-10):** Read
-> `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before relying on completion
-> claims or scores below. The audit found reserved-path tenant-routing drift,
-> which is fixed in current source; the audited root-relative template controls
-> are also fixed in current source. Recent Laravel Blade drift and incomplete
-> accessibility/localization certification remain.
+> **Current audit notice (2026-07-10):** The verified checkpoint below
+> supersedes older counts and completion estimates in this chronological handoff.
+> Read `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before issuing a score.
+> Route equality is current, but it is not workflow, localization, runtime, or
+> shared-backend certification.
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
@@ -43,6 +42,166 @@ toward Laravel's accessible contracts.
 | Previous parity worktree | `C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity` |
 
 The Laravel repo is read-only reference material from this workspace.
+
+## Current Verified Checkpoint (2026-07-10)
+
+This is the current evidence boundary. Older dated slices below remain useful
+implementation history, but their suite sizes, route counts, smoke totals, and
+scores must not be reused as current results.
+
+- Jest: `45/45` suites and `1,386/1,386` tests passed.
+- Static/build gates: ESLint, brand policy, and CSS compilation passed.
+- Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
+  matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
+  routes. This proves declarations only.
+- Localization structure: all `11` locales, `24` namespaces, and `7,337` keys
+  per locale are present with zero structural drift. It is not translation
+  completion: each non-English catalog still has roughly `3,903-3,951` values
+  identical to English and `16` namespaces are wholly English in the
+  authoritative read-only Laravel source.
+- Conservative template audit: `290` templates and `0` safe exact-value
+  substitutions remaining. This is deliberately narrower than contextual
+  translation review.
+- Automated browser accessibility: Chromium/axe passed `22/22` cases.
+- Live Blade marker comparison: `19/19` checks passed.
+- Current manual browser inspection proved `lang="ar"`, `dir="rtl"`, one
+  `main`/H1, unique IDs, and no horizontal overflow at 320 CSS pixels on the
+  Arabic login and signed dashboard. The skip link targets the focusable
+  `#main-content`, and forced-colour emulation kept the page visible and free
+  of horizontal overflow. This is useful browser evidence, not a completed
+  keyboard or assistive-technology record: native Tab traversal could not be
+  advanced through the browser-control session, and the Arabic dashboard still
+  exposed English contextual strings such as `Welcome back`, `Messages`, and
+  `Hours given`.
+
+The current-source Laravel runtime smoke is now certified in deterministic
+serial shards. The base bucket passed `93/93`; all `276` default module pages
+and all `270` default body markers were then covered across six shards. Shards
+1, 2, 4, and 6 passed `101/101`. Shards 3 and 5 each initially passed
+`100/101` because one request exceeded the harness's 60-second limit
+(`/ideation/2/ideas/1` and `/jobs/employers/14` respectively); each isolated
+retry passed `11/11`. In aggregate, all `639` distinct default checks passed
+with no repeatable route failure. This is current read/auth/gate/body evidence,
+not mutation, upload, download, or destructive-side-effect certification, and
+the two latency aborts mean it is not represented as one uninterrupted clean
+broad run.
+
+That smoke exposed a current fixture contract on federation-protected pages:
+Laravel returns `403` with `FEDERATION_NOT_ENABLED` until the member opts in.
+Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
+route, matching Blade, rather than rendering `503`. The focused current-source
+federation runtime slice passed `13/13`; the default inventory now treats the
+nine affected federation-backed pages as expected signed opt-in redirects.
+
+Laravel remains the authoritative backend and accessible visual/workflow source
+and is read-only from this workspace. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains
+future work and is not certified. Known contract boundaries still holding the
+completion gate open are:
+
+- public Blade feed permalinks depend on v2 payload endpoints that require a
+  bearer token, so Web UK can render an honest public unavailable/auth shell but
+  cannot obtain anonymous permalink content;
+- resource APIs do not expose all Blade detail/count semantics and retain
+  cursor/category/sort limitations;
+- member APIs lack bearer-authenticated GDPR request history, a password-gated
+  email-change equivalent, and an atomic multi-write profile contract;
+- exchange APIs ignore `prep_time`, lack a safe idempotency/uniqueness boundary,
+  and drift from Blade rating/attention semantics;
+- review comment mutations inherit the blog gate, and no equivalent review-edit
+  or listing-review API completes the Blade workflow;
+- matches APIs do not cover event recommendations or dismissing event and
+  volunteering recommendations; and
+- live destructive/upload proof requires isolated disposable fixtures. It must
+  not be manufactured against shared local data.
+
+## 2026-07-10 Listings Mutation Contract Slice
+
+The no-JavaScript Listings owner flow now uses Laravel's exact v2 core
+boundaries: `POST /api/v2/listings`, `PUT /api/v2/listings/{id}`, and
+`DELETE /api/v2/listings/{id}`. Create and update send only the canonical core
+fields (`title`, `description`, `type`, `category_id`, `hours_estimate`,
+`service_type`, and `location`); create status is owned by Laravel moderation
+and is no longer accepted from the browser. The stale `inactive` option was
+removed in favour of Laravel's `paused` terminology where the local status
+filter is shown.
+
+The create/edit form now consumes tenant bootstrap `listing_config` when a
+routed tenant supplies it, loads tenant-scoped listing categories from
+`GET /api/v2/categories?type=listing`, enforces the effective title,
+description, category, location, hours, image, type, and service-delivery
+rules, and renders the corresponding category, hours, service type, location,
+image, and skill-tag controls. Core persistence is completed first. Enabled
+skill tags then use `PUT /api/v2/listings/{id}/tags`, and an uploaded cover uses
+multipart `POST /api/v2/listings/{id}/image`; either secondary failure is
+reported without falsely discarding the already-created or updated listing.
+
+Laravel v2 `data` envelopes are unwrapped for list ownership, detail, edit,
+and created IDs. Owner checks now recognise the Laravel user/provider shapes,
+non-owners receive a 403 page, nested Laravel `errors[]` 422 responses map to
+the GOV.UK summary and field controls, `ONBOARDING_REQUIRED` redirects to the
+active tenant's onboarding route, and create/update/delete results remain
+inside the active shared mount. Tests are mock-backed: no live create, update,
+image/tag write, or destructive delete was run, so live persistence and side
+effects remain uncertified.
+
+Verification for this slice: the full API-client file passed `174/174`; the
+focused mutation route/render group passed `6/6`; the broader listing-filtered
+shared route suite passed `22/22`; the full template-source file passed
+`109/109`; full `npm run lint` passed; the route matrix remained `608/608`
+matched with zero missing/extra routes; and the scoped `git diff --check`
+passed with only Git's LF-to-CRLF working-copy notices. The shared route suite
+still emits Node's pre-existing `DEP0044 util.isArray` deprecation warning.
+
+## 2026-07-10 Events Mutation Contract Slice
+
+The core no-JavaScript Events create, update, cancel, and delete actions now
+use Laravel's exact v2 mutation methods and paths: `POST /api/v2/events`,
+`PUT /api/v2/events/{id}`, `POST /api/v2/events/{id}/cancel`, and
+`DELETE /api/v2/events/{id}`. Create/update forms send and render
+`start_time`/`end_time`, require the Laravel-required description, unwrap the
+v2 `data` event/ID envelope, and retain submitted values against Laravel 400,
+409, and 422 responses. The cancellation disclosure now mirrors Blade's
+reason field and sends `{ reason }` to the POST endpoint. Laravel 401, generic
+403, onboarding-required 403, 404, 409, and 422 outcomes have focused route
+coverage, including tenant-prefixed onboarding/login redirects.
+
+Focused mock-backed API/route/template tests prove those contracts without
+performing a live create, update, cancel, or delete. No destructive Laravel
+runtime mutation was run, so persistence, notifications, XP, cancellation
+notifications, attendee effects, and production behavior remain uncertified.
+
+Verification for this slice: event-filtered API tests passed `7/7`,
+event-filtered shared route/render tests passed `31/31`, event-filtered template
+source tests passed `5/5`, full `npm run lint` passed, and scoped
+`git diff --check -- apps/web-uk` passed (with only Git's existing LF-to-CRLF
+working-copy warnings). The shared route suite still emits the pre-existing
+Node `DEP0044 util.isArray` deprecation warning.
+
+## 2026-07-10 Groups Read And Delete Contract Slice
+
+The Groups list, current-user memberships, and member list now use Laravel's
+tenant- and visibility-aware v2 reads: `GET /api/v2/groups`,
+`GET /api/v2/groups?member=me`, and
+`GET /api/v2/groups/{id}/members`. Web UK sends Laravel's `q`, `per_page`, and
+cursor filters, consumes `{data, meta}` envelopes, renders cursor navigation,
+and no longer calls the legacy unfiltered `/api/groups` collection. Group
+index/detail/manage and event create/edit selectors now receive the real v2
+membership/member rows; a 401 from those reads is propagated to the auth
+handoff instead of being converted into a misleading empty collection.
+
+The owner delete action now mirrors Laravel Blade on the edit page: a visible
+GOV.UK warning, an explicit required `confirm=yes` checkbox, and a separate
+CSRF-protected form that works without JavaScript. The server independently
+rejects an omitted confirmation with a field-linked 400 error. Update and
+delete retain Laravel 404, 429, and 5xx HTTP outcomes, while successful
+redirects use `group-updated` and `group-deleted` status tokens. Event edit now
+also renders and submits its previously-loaded group selector.
+
+Verification is mock-backed and non-destructive: the focused v2 group API
+request, envelope, detail, and mutation set passed `3/3`; the focused
+group/event membership route-render
+set passed `11/11`; the full template-source suite passed `110/110`; and
+scoped ESLint passed. No live Laravel group update or delete was performed.
 
 ## 2026-07-10 Localization And RTL Progress
 
@@ -2818,6 +2977,140 @@ side effects.
   intentional external boundaries, not completed workflows. Completion still
   needs Laravel bearer APIs for hosted checkout and password-gated email change,
   plus isolated fixtures for mutation/upload/destructive side-effect proof.
+
+### 2026-07-10 Wallet Transfer V2 Contract Correction
+
+The Web UK wallet transfer form and POST handler now use Laravel's canonical
+`POST /api/v2/wallet/transfer` contract. Each rendered recipient form carries a
+UUID `idempotency_key`; the handler submits numeric `recipient` and `amount`, a
+trimmed 255-character `description`, and that same idempotency key through the
+existing bearer-authenticated v2 API helper. The obsolete
+`POST /api/wallet/transfer`/`receiver_id` helper was removed.
+
+The POST handler no longer reads the profile or wallet balance before the
+mutation. Laravel's locked wallet transaction remains authoritative for
+self-transfer, recipient, tenant, and balance checks. Web UK performs only
+shape/range/precision validation, understands Laravel's nested v2 error codes,
+maps insufficient/not-found/self/inactive/duplicate outcomes to the accessible
+wallet status UI, sends `ONBOARDING_REQUIRED` responses to the tenant-aware
+onboarding route, and preserves active shared-mount prefixes on every redirect.
+The wallet page now renders the Blade transfer confirmation/error states and
+links failures back to the manage-credit transfer form.
+
+Focused verification passed without a live credit mutation:
+
+- the shared-shell wallet transfer selection passed `13/13`, covering the
+  rendered UUID, exact v2 payload, absence of handler profile/balance
+  preflights, four local validation failures, five Laravel error envelopes,
+  mounted onboarding/auth redirects, and rendered success/error states;
+- the API-client wallet selection passed `2/2`, covering the exact v2 request
+  and removal of the legacy helper.
+
+This correction is locally complete against the Laravel source contract. A
+real transfer/replay smoke remains intentionally deferred until a disposable
+wallet fixture and balance/ledger rollback plan are available.
+
+### 2026-07-10 Registration V2 And Tenant-Policy Correction
+
+Web UK registration now uses Laravel's public `POST /api/v2/auth/register`
+contract with an explicit `X-Tenant-Slug` header. The mounted tenant remains
+authoritative over a crafted posted slug. Before rendering or submitting a
+tenant-scoped form, Web UK reads `GET /api/v2/auth/registration-info`; policy
+lookup fails closed, closed tenants render the Blade notification without a
+form, and invite-only tenants receive the conditional invite field.
+Flat community-code submissions first resolve the explicit slug through the
+fail-closed tenant bootstrap, so an unknown slug cannot fall through to the
+master tenant.
+
+The no-JS form now matches the current Blade/backend payload: profile type and
+conditional organisation name, invite code, names, international phone,
+location plus optional coordinates, email, 12-character password and
+`password_confirmation`, mandatory terms, optional newsletter consent, the
+single clipped honeypot, and `form_started_at`. Cloudflare Turnstile was removed
+from this flow because Laravel removed it. Safe failed input survives the
+redirect through flash state, while passwords never do.
+
+The POST handler performs the Laravel-compatible shape/range checks, maps every
+current registration service error code to the exact accessible status, keeps
+the first safe backend validation `field` as an inline target, keeps API
+controller rate limiting as a truthful 429, and redirects a successful 201
+to tenant-aware `/login?status=register-created`. It never attempts automatic
+login or sets authentication cookies because Laravel creates a pending account
+that requires the email-verification next step.
+
+Focused mock verification passed `4/4` suites and `210/210` tests across the
+API client, registration contract, auth localization, and mounted-tenant
+authority. A selected real-template render pass also passed `4/4`, including
+the public registration page. No live registration POST was run because it
+would create a pending user and can send external email. Runtime certification
+still needs an isolated disposable tenant/user plus cleanup and email-delivery
+evidence; the server-to-server path must also confirm Laravel sees per-client
+IP identity rather than one shared Web UK proxy address for its registration
+rate limiter.
+
+### 2026-07-10 TOTP Login And Public Auth Tenant Contract Correction
+
+Two-factor login completion now uses Laravel's public `POST /api/totp/verify`
+contract with `{ two_factor_token, code }` and an explicit
+`X-Tenant-Slug`. The pending challenge token and the authoritative tenant slug
+are stored together in the Web UK session. A successful response is accepted
+only when Laravel returns its top-level `success`, `access_token`, and
+`refresh_token` envelope; Web UK never promotes the short-lived challenge token
+to an access token. Success and terminal expiry clear both pending values,
+while an invalid code leaves the challenge available for a retry.
+
+Forgot-password, resend-verification-by-email, and email verification now send
+the routed or explicitly selected tenant as `X-Tenant-Slug`. The obsolete
+forgot-password JSON `tenant_slug` field is no longer treated as tenant
+authority. Mounted tenant routing remains authoritative over crafted form
+values, and the email-verification link forwards its route context to Laravel's
+strictly tenant-scoped token lookup.
+
+Focused mock verification covers the exact fetch endpoint, method, body,
+header, top-level token envelope, mounted-tenant authority, retryable and
+expired 2FA errors, session cleanup, malformed-envelope rejection, and email
+verification/resend route handoffs. No live TOTP challenge was consumed and no
+password-reset or verification email was sent; those side effects still need
+disposable Laravel fixtures and mailbox evidence.
+
+### Members and connections v2 contract correction (2026-07-10)
+
+The Web UK member directory and profile now use Laravel's canonical
+`GET /api/v2/users` and `GET /api/v2/users/{id}` contracts. The directory sends
+Laravel's `q`, `sort`, `order`, `limit`, and `offset` query fields, unwraps the
+top-level `{data, meta}` envelope, derives pagination from `meta.total_items`,
+`meta.per_page`, and `meta.offset`, and loads each rendered member's exact
+connection state through `/api/v2/connections/status/{userId}`. Profile reads
+also unwrap `{data: profile}` while retaining the existing connection,
+gamification, reviews, and current-viewer composition. Laravel `401` and `404`
+outcomes retain tenant-aware login and not-found handling.
+
+The canonical `getConnections()` helper now calls `GET /api/v2/connections`
+with Laravel's `status`, `per_page`, and opaque `cursor` query contract. Both
+connections views consume the returned `{data, meta}` envelope, understand the
+Laravel `partner`/`user` projection, distinguish accepted, received-pending,
+and sent-pending states, preserve tenant-aware profile/action/next-page links,
+and show a visible warning instead of silently converting an upstream failure
+into a healthy-looking empty network. Focused API and route/render tests cover
+the exact fetch URLs, real envelopes, cursor/meta pagination, connection-state
+controls, tenant mounts, expired authentication, and null-data 404 handling.
+This was a Web UK-only correction; the Laravel source was read but not changed.
+No live Laravel mutation or browser certification is claimed by this slice.
+
+### Gamification profile and badges v2 correction (2026-07-10)
+
+Web UK gamification reads now follow `GamificationV2Controller` and the
+canonical React profile/achievements consumers exactly: own-profile requests
+use `GET /api/v2/gamification/profile` and `/badges`, while member-profile
+requests add `?user_id={id}` to both endpoints. Consumers unwrap Laravel's
+`{data: profile}` and `{data: badges, meta: {total, available_types}}`
+envelopes. The dashboard conditionally renders progress only when a real
+profile was returned instead of manufacturing Level 1, 0 XP, and zero badges.
+Member profiles use the v2 XP/level fields and earned badges, with only actual
+`/api/v2/users/{id}` XP/level/badge fields as a fallback when the optional
+gamification calls fail. Focused fetch, dashboard, and member-profile tests,
+template-source tests, lint, and diff checks cover this Web UK-only correction;
+Laravel was read-only and no live side effect was performed.
 
 ## Refresh Protocol
 

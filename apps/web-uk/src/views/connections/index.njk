@@ -20,23 +20,23 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Connections</h1>
+      <h1 class="govuk-heading-xl" id="connections-top">Connections</h1>
 
       <nav class="govuk-tabs" data-module="govuk-tabs">
         <ul class="govuk-tabs__list">
-          <li class="govuk-tabs__list-item {% if currentStatus == 'all' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections') }}">
-              All
-            </a>
-          </li>
           <li class="govuk-tabs__list-item {% if currentStatus == 'accepted' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?status=accepted') }}">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=accepted') }}">
               Connected
             </a>
           </li>
-          <li class="govuk-tabs__list-item {% if currentStatus == 'pending' %}govuk-tabs__list-item--selected{% endif %}">
-            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?status=pending') }}">
-              Pending
+          <li class="govuk-tabs__list-item {% if currentStatus == 'pending_received' %}govuk-tabs__list-item--selected{% endif %}">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=pending_received') }}">
+              Pending requests
+            </a>
+          </li>
+          <li class="govuk-tabs__list-item {% if currentStatus == 'pending_sent' %}govuk-tabs__list-item--selected{% endif %}">
+            <a class="govuk-tabs__tab" href="{{ urlFor('/connections?filter=pending_sent') }}">
+              Sent requests
             </a>
           </li>
         </ul>
@@ -51,7 +51,7 @@
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">Name</th>
-              <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
+              <th scope="col" class="govuk-table__header">Location</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Connected since</th>
               <th scope="col" class="govuk-table__header">Actions</th>
@@ -65,12 +65,12 @@
                     {% set user = (connection.otherUser or connection.other_user) %}
                     {% include "partials/avatar.njk" %}
                     <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
-                      {{ (connection.otherUser or connection.other_user).first_name or (connection.otherUser or connection.other_user).firstName }} {{ (connection.otherUser or connection.other_user).last_name or (connection.otherUser or connection.other_user).lastName }}
+                      {{ connection.displayName }}
                     </a>
                   </div>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ (connection.otherUser or connection.other_user).email }}
+                  {{ connection.partner.location or "Not provided" }}
                 </td>
                 <td class="govuk-table__cell">
                   {% if connection.status == 'accepted' %}
@@ -144,11 +144,16 @@
               href: urlFor('/members')
             }
           } %}
-        {% elif currentStatus == 'pending' %}
+        {% elif currentStatus == 'pending_received' %}
           {% set emptyState = {
             icon: "⏳",
             heading: "No pending requests",
             message: "You don't have any pending connection requests at the moment."
+          } %}
+        {% elif currentStatus == 'pending_sent' %}
+          {% set emptyState = {
+            heading: "No sent requests",
+            message: "You don't have any sent connection requests waiting for a reply."
           } %}
         {% else %}
           {% set emptyState = {
@@ -164,15 +169,10 @@
         {% include "partials/empty-state.njk" %}
       {% endif %}
 
-      {# Pagination #}
-      {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
-        {% set paginationConfig = {
-          baseUrl: urlFor('/connections'),
-          page: pagination.page,
-          totalPages: pagination.totalPages or pagination.total_pages,
-          queryParams: { status: currentStatus if currentStatus != 'all' else '' }
-        } %}
-        {% include "partials/pagination.njk" %}
+      {% if nextHref %}
+        <p class="govuk-!-margin-top-4">
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" role="button" draggable="false" href="{{ urlFor(nextHref) }}">Next page</a>
+        </p>
       {% endif %}
 
     </div>

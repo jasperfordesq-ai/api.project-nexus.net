@@ -57,9 +57,44 @@ Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
 from skeleton or styling work.
 
+## Current Refresh And Verification Gate
+
+Run the complete current-checkout gate before reporting status, scoring the
+work, or publishing a coherent slice. Start at the repository root:
+
+```powershell
+cd C:\platforms\htdocs\asp.net-backend
+
+npm --prefix apps/web-uk run brand:check
+npm --prefix apps/web-uk run lint
+npm --prefix apps/web-uk test -- --runInBand
+npm --prefix apps/web-uk run build:css
+npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run locales:audit
+npm --prefix apps/web-uk run locales:audit-templates -- --summary
+npm --prefix apps/web-uk run test:accessibility
+npm --prefix apps/web-uk run visual:blade
+npm --prefix apps/web-uk run smoke:laravel:local
+
+git diff --check -- apps/web-uk
+```
+
+`test:accessibility` and `smoke:laravel:local` start the current Web UK checkout
+on ephemeral local ports. They still require the local Laravel source-of-truth
+backend at `LARAVEL_BASE_URL` (default `http://127.0.0.1:8088`).
+`visual:blade` compares Laravel with `WEB_UK_BASE_URL` (default port `5180`), so
+restart that development container/process from current source before treating
+its marker result as evidence. Record exact outcomes; a focused test, stale
+listener, generated route count, or historical green run is not a substitute
+for this gate.
+
 ## Project Purpose
 
-This is the UK frontend for **Project NEXUS Community** - a community service that consumes an ASP.NET Core backend API.
+This is the Laravel-primary accessible frontend candidate for **Project NEXUS
+Community**. It currently consumes the Laravel backend and treats Laravel's
+accessible routes, Blade views, controllers, and API contracts as the source of
+truth. ASP.NET remains a future, not-yet-certified compatible backend target;
+it must match Laravel rather than define this frontend's behavior.
 
 ## License and Attribution (MANDATORY)
 
@@ -186,6 +221,23 @@ We use the GOV.UK Design System (govuk-frontend) for its accessibility and usabi
 4. **MANDATORY disclaimer** - Header MUST include: "Not affiliated with GOV.UK"
 5. **Custom header/footer only** - See `src/views/layouts/base.njk` and `src/views/partials/footer.njk`
 
+### Localized Non-Affiliation Disclosure (MANDATORY)
+
+The non-affiliation disclosure is part of the service identity and must remain
+visible in the custom header for every offered locale. Its implementation is
+deliberately local to Web UK because Laravel's generated locale catalogs do not
+contain this project-specific legal/identity copy:
+
+- `src/lib/accessible-shell.js` owns `notAffiliatedByLocale` for all 11 offered
+  locales and exposes the request-localized value as `shellNotAffiliated`;
+- `src/views/layouts/base.njk` renders `shellNotAffiliated` inside the custom
+  header;
+- English is the safe fallback for an unknown locale;
+- do not move this string into the generated Laravel catalog JSON, hard-code an
+  English-only template value, or remove it while refactoring the shell;
+- keep `tests/accessible-shell.test.js`, the shared-shell render tests, and
+  `npm run brand:check` green when changing branding or localization behavior.
+
 ### What We CAN Use
 
 - GOV.UK Design System typography, colours, spacing
@@ -213,7 +265,7 @@ We use the GOV.UK Design System (govuk-frontend) for its accessibility and usabi
 
 ## Laravel Blade Visual Parity Rules
 
-The ASP.NET accessible frontend must not invent a separate visual language.
+The Web UK accessible frontend must not invent a separate visual language.
 Follow the Laravel Blade accessible frontend for:
 
 - custom `nexus-alpha-header`;
@@ -232,10 +284,11 @@ Follow the Laravel Blade accessible frontend for:
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
 - My account as a Blade-style protected hub. `/account` redirects unsigned
-  users to `/login`, then renders local wallet, messages, connections,
-  notifications, profile, and settings cards when signed in. Laravel tenant
-  feature gating, full account-link coverage, and backend data certification
-  still need module-by-module proof.
+  users to `/login?status=auth-required`, then builds the full Blade-aligned
+  link inventory from `src/lib/account-links.js`, applying Laravel tenant
+  module/feature gates and the exact direct-messaging configuration. Live
+  per-tenant gate coverage and ASP.NET backend compatibility remain separate
+  certification work.
 - Cookie banner and settings as a Blade-style no-JS candidate. The shell renders
   the GOV.UK cookie banner before the skip link until the Laravel-compatible
   `nexus_accessible_cookie_consent` cookie is present, while legacy
@@ -298,62 +351,107 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
   `LARAVEL_BASE_URL`.
 - See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
 
-### Key Endpoints Used
+### Current Laravel Contracts Used
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/login` | POST | Login (returns access_token + refresh_token) |
-| `/api/auth/register` | POST | Register new user |
-| `/api/auth/refresh` | POST | Exchange refresh token for new access token |
-| `/api/auth/logout` | POST | Revoke tokens server-side |
-| `/api/auth/forgot-password` | POST | Request password reset email |
-| `/api/auth/reset-password` | POST | Reset password with token |
-| `/api/auth/validate` | GET | Validate token |
-| `/api/v2/users/me` | GET | Get current user profile |
-| `/api/users/me` | PATCH | Update profile (first_name, last_name) |
-| `/api/listings` | GET | List listings (supports filtering) |
-| `/api/listings` | POST | Create listing |
-| `/api/listings/{id}` | GET | Get listing |
-| `/api/listings/{id}` | PUT | Update listing |
-| `/api/listings/{id}` | DELETE | Delete listing |
-| `/api/v2/wallet/balance` | GET | Get user balance |
-| `/api/v2/wallet/transactions` | GET | List transactions |
-| `/api/v2/messages` | GET | List conversations |
-| `/api/messages/{id}` | POST | Send message in conversation |
-| `/api/messages/{id}/read` | PUT | Mark conversation as read |
-| `/api/connections` | GET | List connections (?status=accepted\|pending) |
-| `/api/connections/pending` | GET | Pending requests (incoming/outgoing) |
-| `/api/connections` | POST | Send connection request |
-| `/api/connections/{id}/accept` | PUT | Accept connection request |
-| `/api/connections/{id}/decline` | PUT | Decline connection request |
-| `/api/connections/{id}` | DELETE | Remove/cancel connection |
-| `/api/users` | GET | List users in tenant |
-| `/api/users/{id}` | GET | Get user by ID |
-| `/api/notifications` | GET | List notifications (?page, ?limit, ?unread_only) |
-| `/api/notifications/unread-count` | GET | Get unread count (for badge) |
-| `/api/notifications/{id}` | GET | Get single notification |
-| `/api/notifications/{id}/read` | PUT | Mark notification as read |
-| `/api/notifications/read-all` | PUT | Mark all as read |
-| `/api/notifications/{id}` | DELETE | Delete notification |
+`src/lib/api.js` is authoritative. This table records the core contracts that
+are easy to regress; module-specific helpers in that file cover the rest. Most
+authenticated calls send `Authorization: Bearer {token}`. Request-scoped tenant
+authority adds `X-Tenant-Slug` when there is no bearer, explicit tenant header,
+or Host/Origin tenant context. The fallback order is routed lowercase slug,
+configured `ACCESSIBLE_TENANT_SLUG`, then legacy `TENANT_ID`.
+
+| Area | Endpoint | Method | Current use |
+|------|----------|--------|-------------|
+| Auth | `/api/auth/login` | POST | Login with routed tenant context; returns tokens or a two-factor challenge |
+| Auth | `/api/auth/validate-token` | GET | Validate a bearer token for role-protected routes |
+| Registration | `/api/v2/auth/registration-info` | GET | Read tenant registration policy before rendering or submitting |
+| Registration | `/api/v2/auth/register` | POST | Create a pending account using the Laravel v2 registration payload |
+| Registration | `/api/v2/auth/validate-invite` | POST | Validate an invite code for the routed tenant |
+| Auth | `/api/auth/refresh-token` | POST | Exchange `{ refresh_token }` for a new token envelope |
+| Auth | `/api/auth/logout` | POST | Revoke the current bearer token server-side |
+| Two-factor login | `/api/totp/verify` | POST | Verify `{ two_factor_token, code }` with routed tenant authority |
+| Password recovery | `/api/auth/forgot-password` | POST | Request reset email; tenant authority is `X-Tenant-Slug` |
+| Password recovery | `/api/auth/reset-password` | POST | Submit `{ token, password, password_confirmation }` |
+| Profile | `/api/v2/users/me` | GET / PUT | Read or update the current profile |
+| Profile | `/api/v2/users/me/avatar` | POST | Upload the current member's avatar as multipart data |
+| Members | `/api/v2/users` | GET | Directory using `q`, `sort`, `order`, `limit`, and `offset` |
+| Members | `/api/v2/users/{id}` | GET | Read a member profile |
+| Listings | `/api/v2/listings` | GET / POST | Public list read and authenticated core create |
+| Listings | `/api/v2/listings/{id}` | GET / PUT / DELETE | Public detail read and authenticated owner update/delete |
+| Listings | `/api/v2/listings/{id}/tags` | PUT | Save enabled skill tags after core persistence |
+| Listings | `/api/v2/listings/{id}/image` | POST | Upload a listing cover as multipart data |
+| Events | `/api/v2/events` | GET / POST | Public list read and authenticated create |
+| Events | `/api/v2/events/{id}` | GET / PUT / DELETE | Public detail read and authenticated organiser update/delete |
+| Events | `/api/v2/events/{id}/cancel` | POST | Cancel an event with a reason payload |
+| Wallet | `/api/v2/wallet/balance` | GET | Read the current balance |
+| Wallet | `/api/v2/wallet/transactions` | GET | Cursor-paginated transaction history |
+| Wallet | `/api/v2/wallet/transfer` | POST | Send `recipient`, `amount`, `description`, and `idempotency_key` |
+| Messages | `/api/v2/messages` | GET / POST | Cursor-paginated conversations and direct-message send |
+| Messages | `/api/v2/messages/{userId}` | GET | Read a direct conversation, including older-message cursors |
+| Messages | `/api/v2/messages/{userId}/read` | PUT | Mark the direct conversation read |
+| Messages | `/api/v2/messages/unread-count` | GET | Read the message badge count |
+| Connections | `/api/v2/connections` | GET | Cursor-paginated accepted/pending network rows |
+| Connections | `/api/v2/connections/pending` | GET | Pending connection counts/rows |
+| Connections | `/api/v2/connections/request` | POST | Send `{ user_id }` connection request |
+| Connections | `/api/v2/connections/status/{userId}` | GET | Read exact current connection state |
+| Connections | `/api/v2/connections/{id}/accept` | POST | Accept a connection request |
+| Connections | `/api/v2/connections/{id}/decline` | POST | Decline a connection request |
+| Connections | `/api/v2/connections/{id}` | DELETE | Remove or cancel a connection |
+| Notifications | `/api/v2/notifications/grouped` | GET | Normal grouped inbox with cursor pagination |
+| Notifications | `/api/v2/notifications` | GET / DELETE | Ungrouped unread filtering, or delete all notifications |
+| Notifications | `/api/v2/notifications/counts` | GET | Read unread/count badge data |
+| Notifications | `/api/v2/notifications/{id}/read` | POST | Mark one notification read |
+| Notifications | `/api/v2/notifications/read-all` | POST | Mark all notifications read |
+| Notifications | `/api/v2/notifications/group/read` | POST | Mark a notification group read |
+| Notifications | `/api/v2/notifications/{id}` | DELETE | Delete one notification |
+| Resources | `/api/v2/resources` | GET / POST | Cursor-paginated list or multipart upload |
+| Resources | `/api/v2/resources/{id}` | DELETE | Delete an authorized resource |
+| Exchanges | `/api/v2/exchanges/config` | GET | Read workflow and messaging config; consumers fail closed |
+| Exchanges | `/api/v2/exchanges` | GET / POST | Cursor-paginated list or listing exchange request |
+| Exchanges | `/api/v2/exchanges/{id}/{action}` | POST | Accept, decline, start, complete, or confirm |
+| Exchanges | `/api/v2/exchanges/{id}` | GET / DELETE | Read or cancel an exchange |
+| Reviews | `/api/v2/reviews` | POST | Create a review |
+| Reviews | `/api/v2/reviews/user/{userId}`, `/api/v2/reviews/given`, `/api/v2/reviews/pending` | GET | Received, given, and pending review collections |
+| Reviews | `/api/v2/reviews/{id}` | GET / DELETE | Read or delete a review |
+| Discussion | `/api/v2/comments` | GET / POST | Read or create target comments and replies |
+| Discussion | `/api/v2/comments/{id}` | PUT / DELETE | Edit or delete an owned comment |
+| Discussion | `/api/v2/reactions` | POST | Toggle a reaction |
 
 ### Authentication Flow
 
-1. User submits login form → POST to `/api/auth/login`
-2. API returns `access_token` (1 hour) + `refresh_token` (7 days)
-3. Tokens stored in HTTP-only signed cookies (`token`, `refresh_token`)
-4. All authenticated requests include `Authorization: Bearer {token}` header
-5. On 401 response, attempt token refresh via `/api/auth/refresh`
-6. If refresh succeeds, retry the original request with new token
-7. If refresh fails, clear cookies and redirect to `/login`
-8. On logout, call `/api/auth/logout` to revoke tokens server-side
+1. The route resolves the authoritative tenant, then submits login to
+   `POST /api/auth/login` with `X-Tenant-Slug` and the Laravel login payload.
+2. A normal success returns `access_token` and `refresh_token`. A
+   `requires_2fa` response stores only the short-lived challenge token plus its
+   tenant slug in the Express session and continues through
+   `POST /api/totp/verify`.
+3. Successful access and refresh tokens are stored in HTTP-only, signed,
+   SameSite=Lax cookies named `token` and `refresh_token`; the selected tenant
+   slug is stored in the signed `tenant_slug` cookie.
+4. Authenticated API calls send `Authorization: Bearer {token}`.
+5. When an access token is absent but a refresh cookie exists, or a wrapped API
+   call returns 401, auth middleware calls `POST /api/auth/refresh-token` with
+   `{ refresh_token }`.
+6. A successful refresh replaces the cookies and a 401-wrapped handler retries
+   once with the new bearer token. Refresh attempts are locked per refresh
+   token to avoid concurrent cross-request races.
+7. A missing or failed refresh clears `token`, `refresh_token`, and
+   `tenant_slug`, then redirects through the tenant-aware URL helper to login.
+8. Logout calls `POST /api/auth/logout` before clearing local auth state.
 
 ### Password Reset Flow
 
-1. User requests reset → POST `/api/auth/forgot-password` with email + tenant_slug
-2. API sends email with reset link containing token
-3. User clicks link → GET `/reset-password?token=xxx`
-4. User submits new password → POST `/api/auth/reset-password` with token + new_password
-5. On success, redirect to login with success message
+1. The user submits local `POST /login/forgot-password`; Web UK calls
+   `POST /api/auth/forgot-password` with `{ email }` and the authoritative
+   `X-Tenant-Slug` header.
+2. The response remains enumeration-safe while Laravel sends any eligible
+   reset email.
+3. The email returns the user to local
+   `GET /password/reset?token=...`.
+4. Local `POST /password/reset` calls `POST /api/auth/reset-password` with
+   `{ token, password, password_confirmation }`.
+5. Success stores the neutral `password-reset` status and redirects to the
+   tenant-aware login page.
 
 ## Key Files
 
@@ -361,6 +459,10 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 |------|---------|
 | `src/server.js` | Express application with all middleware |
 | `src/lib/api.js` | API client for backend calls |
+| `src/lib/backend-contract.js` | Laravel-primary backend resolver; ASP.NET is future-not-certified |
+| `src/lib/request-tenant-context.js` | Request-scoped tenant slug propagation for API calls |
+| `src/middleware/request-tenant-context.js` | Seeds request tenant context after tenant routing |
+| `src/lib/account-links.js` | Blade-aligned, tenant-gated account hub inventory |
 | `src/middleware/auth.js` | Authentication middleware |
 | `src/routes/auth.js` | Auth routes (login, register, logout, forgot/reset password) |
 | `src/routes/listings.js` | Listings CRUD routes |
@@ -459,17 +561,25 @@ Per official GOV.UK Frontend docs, JS uses ES modules:
 
 ### Error Handling in Routes
 ```javascript
-if (error instanceof ApiError && error.status === 401) {
-  res.clearCookie('token');
-  return res.redirect('/login');
-}
+router.get('/example', asyncRoute(async (req, res) => {
+  const result = await getExample(req.token);
+  return res.render('example', { result });
+}, {
+  redirectOn401: '/login?status=auth-required',
+  notFoundTitle: 'Example not found'
+}));
 ```
+
+`asyncRoute()` delegates to `handleApiError()`, which clears all auth cookies
+and resolves redirects through the active tenant URL helper. Wrap a handler in
+`withTokenRefresh()` when a 401 should first refresh through
+`POST /api/auth/refresh-token` and retry once.
 
 ### Flash Messages
 ```javascript
 // In route
 req.flash('success', 'Listing created successfully');
-res.redirect('/listings');
+res.redirect(res.locals.urlFor('/listings'));
 
 // In template
 {% if successMessage %}

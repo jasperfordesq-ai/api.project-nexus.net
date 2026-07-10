@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const { requireAuth } = require('../middleware/auth');
 const {
   getListings,
@@ -11,13 +12,16 @@ const {
   createListing,
   updateListing,
   deleteListing,
+  getListingCategories,
+  setListingSkillTags,
+  uploadListingImage,
   callListingApi,
   createExchangeRequest,
   getExchangeConfig,
+  checkExchangeForListing,
   createComment,
   getComments,
   toggleFeedLike,
-  getListingReviews,
   callWalletApi,
   ApiError
 } = require('../lib/api');
@@ -27,6 +31,21 @@ const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
+
+const LISTING_CONFIG_DEFAULTS = Object.freeze({
+  'listing.allow_offers': true,
+  'listing.allow_requests': true,
+  'listing.require_category': true,
+  'listing.require_location': false,
+  'listing.require_hours_estimate': false,
+  'listing.enable_skill_tags': true,
+  'listing.enable_service_type': true,
+  'listing.require_image': false,
+  'listing.min_title_length': 5,
+  'listing.min_description_length': 20,
+  'listing.max_image_size_mb': 8
+});
+const LISTING_SERVICE_TYPES = new Set(['physical_only', 'remote_only', 'hybrid', 'location_dependent']);
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -56,10 +75,367 @@ function dataFrom(result) {
     : result;
 }
 
+function characterLength(value) {
+  return Array.from(String(value || '')).length;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function listingFrom(result) {
+  const data = dataFrom(result);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return data.listing && typeof data.listing === 'object' ? data.listing : data;
+}
+
+function profileFrom(result) {
+  const data = dataFrom(result);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return data.user || data.profile || data;
+}
+
+function booleanValue(value, fallback) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  const normalized = trimmed(value).toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
+function numberValue(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
+function listingConfigFrom(req) {
+  const tenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+  const configured = tenant.listing_config && typeof tenant.listing_config === 'object'
+    ? tenant.listing_config
+    : {};
+  const config = { ...LISTING_CONFIG_DEFAULTS, ...configured };
+
+  return {
+    allowOffers: booleanValue(config['listing.allow_offers'], true),
+    allowRequests: booleanValue(config['listing.allow_requests'], true),
+    requireCategory: booleanValue(config['listing.require_category'], true),
+    requireLocation: booleanValue(config['listing.require_location'], false),
+    requireHours: booleanValue(config['listing.require_hours_estimate'], false),
+    enableSkillTags: booleanValue(config['listing.enable_skill_tags'], true),
+    enableServiceType: booleanValue(config['listing.enable_service_type'], true),
+    requireImage: booleanValue(config['listing.require_image'], false),
+    minTitleLength: Math.round(numberValue(config['listing.min_title_length'], 5, 1, 255)),
+    minDescriptionLength: Math.round(numberValue(config['listing.min_description_length'], 20, 1, 10000)),
+    maxImageSizeMb: numberValue(config['listing.max_image_size_mb'], 8, 1, 25)
+  };
+}
+
+function listingCategoryFrom(value) {
+  const category = value && typeof value === 'object' ? value : {};
+  const id = positiveInteger(category.id);
+  const name = trimmed(category.name || category.title);
+  return id !== null && name ? { id, name } : null;
+}
+
+async function listingFormSupport(req) {
+  const config = listingConfigFrom(req);
+  let setupErrorMessage = null;
+  let categoriesResult;
+
+  try {
+    categoriesResult = await getListingCategories(tokenFrom(req));
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    setupErrorMessage = 'Sorry, there is a problem loading listing categories.';
+    categoriesResult = { data: [] };
+  }
+
+  const categories = collectionFrom(categoriesResult)
+    .map(listingCategoryFrom)
+    .filter(Boolean);
+  const allowedTypes = [];
+  if (config.allowOffers) allowedTypes.push('offer');
+  if (config.allowRequests) allowedTypes.push('request');
+  if (!setupErrorMessage && config.requireCategory && categories.length === 0) {
+    setupErrorMessage = 'No listing categories are currently available. Contact your community administrator.';
+  }
+  if (!setupErrorMessage && allowedTypes.length === 0) {
+    setupErrorMessage = 'This community is not currently accepting offers or requests.';
+  }
+
+  return { config, categories, allowedTypes, setupErrorMessage };
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
+async function uploadListingCoverImage(token, listingId, image) {
+  if (!image || !image.filepath || listingId === null) return;
+  const buffer = await fs.readFile(image.filepath);
+  await uploadListingImage(token, listingId, {
+    file: {
+      buffer,
+      filename: trimmed(image.originalFilename) || 'listing-image',
+      contentType: trimmed(image.mimetype) || 'application/octet-stream',
+      size: image.size
+    }
+  });
+}
+
+function skillTagsFrom(value) {
+  const seen = new Set();
+  return String(value || '')
+    .split(',')
+    .map(tag => trimmed(tag, 100))
+    .filter((tag) => {
+      const key = tag.toLocaleLowerCase('en');
+      if (!tag || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 10);
+}
+
+function listingFormValues(source = {}, listing = null) {
+  const base = listing && typeof listing === 'object' ? listing : {};
+  const values = source && typeof source === 'object' ? source : {};
+  const skillTags = values.skill_tags !== undefined
+    ? values.skill_tags
+    : (Array.isArray(base.skill_tags) ? base.skill_tags.join(', ') : (base.skill_tags || ''));
+
+  return {
+    title: values.title !== undefined ? values.title : (base.title || ''),
+    description: values.description !== undefined ? values.description : (base.description || ''),
+    type: values.type !== undefined ? values.type : (base.type || 'offer'),
+    category_id: values.category_id !== undefined ? values.category_id : (base.category_id || base.category?.id || ''),
+    hours_estimate: values.hours_estimate !== undefined
+      ? values.hours_estimate
+      : (base.hours_estimate ?? base.estimated_hours ?? ''),
+    service_type: values.service_type !== undefined ? values.service_type : (base.service_type || 'physical_only'),
+    location: values.location !== undefined ? values.location : (base.location || ''),
+    skill_tags: skillTags,
+    has_existing_image: values.has_existing_image === '1' || values.has_existing_image === true || Boolean(base.image_url)
+  };
+}
+
+function listingPayloadFrom(values) {
+  const hours = trimmed(values.hours_estimate);
+  return {
+    title: trimmed(values.title),
+    description: trimmed(values.description),
+    type: trimmed(values.type),
+    category_id: positiveInteger(values.category_id),
+    hours_estimate: hours === '' ? null : Number(hours),
+    service_type: LISTING_SERVICE_TYPES.has(trimmed(values.service_type))
+      ? trimmed(values.service_type)
+      : 'physical_only',
+    location: trimmed(values.location) || null
+  };
+}
+
+function validateListingValues(values, config, allowedTypes, image = null, hasExistingImage = false) {
+  const errors = [];
+  const fieldErrors = {};
+  const add = (field, text) => {
+    if (fieldErrors[field]) return;
+    fieldErrors[field] = text;
+    errors.push({ text, href: `#${field}` });
+  };
+  const title = trimmed(values.title);
+  const description = trimmed(values.description);
+  const type = trimmed(values.type);
+  const categoryText = trimmed(values.category_id);
+  const hoursText = trimmed(values.hours_estimate);
+  const location = trimmed(values.location);
+  const titleLength = characterLength(title);
+  const descriptionLength = characterLength(description);
+  const locationLength = characterLength(location);
+
+  if (!title) add('title', 'Enter a title');
+  else if (titleLength < config.minTitleLength) add('title', `Title must be at least ${config.minTitleLength} characters`);
+  else if (titleLength > 255) add('title', 'Title must be 255 characters or fewer');
+
+  if (!description) add('description', 'Enter a description');
+  else if (descriptionLength < config.minDescriptionLength) add('description', `Description must be at least ${config.minDescriptionLength} characters`);
+  else if (descriptionLength > 10000) add('description', 'Description must be 10,000 characters or fewer');
+
+  if (!allowedTypes.includes(type)) add('type', 'Select an available listing type');
+  if (config.requireCategory && !categoryText) add('category_id', 'Select a category');
+  else if (categoryText && positiveInteger(categoryText) === null) add('category_id', 'Select a valid category');
+
+  if (config.requireHours && !hoursText) add('hours_estimate', 'Enter the estimated hours');
+  if (hoursText) {
+    const hours = Number(hoursText);
+    if (!Number.isFinite(hours) || hours < 0.5 || hours > 2000) {
+      add('hours_estimate', 'Estimated hours must be between 0.5 and 2,000');
+    }
+  }
+
+  if (config.requireLocation && !location) add('location', 'Enter a location');
+  else if (locationLength > 255) add('location', 'Location must be 255 characters or fewer');
+
+  if (config.enableServiceType && !LISTING_SERVICE_TYPES.has(trimmed(values.service_type))) {
+    add('service_type', 'Select how the service will be delivered');
+  }
+  if (config.requireImage && !image && !hasExistingImage) add('image', 'Choose an image');
+  if (image) {
+    const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+    if (!allowedMimes.has(trimmed(image.mimetype).toLowerCase())) {
+      add('image', 'Choose a JPEG, PNG, GIF or WebP image');
+    } else if (Number(image.size) > config.maxImageSizeMb * 1024 * 1024) {
+      add('image', `Image must be ${config.maxImageSizeMb} MB or smaller`);
+    }
+  }
+
+  return { errors, fieldErrors };
+}
+
+function apiErrorsFrom(error) {
+  if (!(error instanceof ApiError) || !error.data || typeof error.data !== 'object') return [];
+  const entries = error.data.errors;
+  if (Array.isArray(entries)) {
+    return entries
+      .filter(entry => entry && typeof entry === 'object')
+      .map(entry => ({
+        code: trimmed(entry.code).toUpperCase(),
+        message: trimmed(entry.message),
+        field: trimmed(entry.field)
+      }));
+  }
+  if (entries && typeof entries === 'object') {
+    return Object.entries(entries).flatMap(([field, messages]) => {
+      const values = Array.isArray(messages) ? messages : [messages];
+      return values.map(message => ({
+        code: 'VALIDATION_ERROR',
+        message: trimmed(message),
+        field
+      })).filter(entry => entry.message);
+    });
+  }
+  return [];
+}
+
+function listingFormErrorState(error, fallback) {
+  const apiErrors = apiErrorsFrom(error);
+  if (apiErrors.length === 0) {
+    return { errors: [{ text: trimmed(error?.message) || fallback }], fieldErrors: {} };
+  }
+  const fieldAliases = { tags: 'skill_tags' };
+  const fieldErrors = {};
+  const errors = apiErrors.map((entry) => {
+    const field = fieldAliases[entry.field] || entry.field;
+    const text = entry.message || fallback;
+    if (field && !fieldErrors[field]) fieldErrors[field] = text;
+    return { text, ...(field ? { href: `#${field}` } : {}) };
+  });
+  return { errors, fieldErrors };
+}
+
+async function listingFormViewData(req, options) {
+  const support = await listingFormSupport(req);
+  const currentCategoryId = positiveInteger(
+    options.values?.category_id
+    || options.listing?.category_id
+    || options.listing?.category?.id
+  );
+  if (currentCategoryId !== null && !support.categories.some(category => category.id === currentCategoryId)) {
+    support.categories.push({
+      id: currentCategoryId,
+      name: trimmed(options.listing?.category_name || options.listing?.category?.name)
+        || `Current category (${currentCategoryId})`
+    });
+  }
+  return {
+    title: options.title,
+    listing: options.listing || null,
+    values: options.values || null,
+    errors: options.errors || null,
+    fieldErrors: options.fieldErrors || {},
+    ...support,
+    setupErrorMessage: options.setupErrorMessage || support.setupErrorMessage,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  };
+}
+
+function renderForbidden(res, error) {
+  return res.status(403).render('errors/403', {
+    title: 'Forbidden',
+    message: trimmed(error?.message) || 'You do not have permission to manage this listing.'
+  });
+}
+
+function isOnboardingRequired(error) {
+  return error instanceof ApiError && error.status === 403 && apiErrorCode(error) === 'ONBOARDING_REQUIRED';
+}
+
+function listingStatusMessage(status) {
+  const messages = {
+    'listing-created': 'Listing created successfully',
+    'listing-updated': 'Listing updated successfully',
+    'listing-deleted': 'Listing deleted successfully'
+  };
+  return messages[trimmed(status)] || null;
+}
+
+function listingStatusErrorMessage(status) {
+  const messages = {
+    'exchange-disabled': 'Exchange workflows are not enabled for this community.',
+    'own-listing': 'You cannot request an exchange for your own listing.',
+    'listing-delete-failed': 'The listing could not be deleted.'
+  };
+  return messages[trimmed(status)] || null;
+}
+
 async function exchangeWorkflowEnabled(token) {
-  const payload = await getExchangeConfig(token).catch(() => ({ data: { exchange_workflow_enabled: true } }));
+  const payload = await getExchangeConfig(token);
   const data = dataFrom(payload) || {};
-  return data.exchange_workflow_enabled !== false;
+  return data.exchange_workflow_enabled === true;
+}
+
+async function listingExchangeContext(token, listingId) {
+  const configPayload = await getExchangeConfig(token);
+  const config = dataFrom(configPayload) || {};
+  const exchangeWorkflowEnabled = config.exchange_workflow_enabled === true;
+
+  if (!exchangeWorkflowEnabled) {
+    return {
+      exchangeWorkflowEnabled: false,
+      directMessagingEnabled: config.direct_messaging_enabled === true,
+      exchangeContextReady: true,
+      activeExchange: null
+    };
+  }
+
+  const activePayload = await checkExchangeForListing(token, listingId);
+  const active = dataFrom(activePayload);
+  return {
+    exchangeWorkflowEnabled: true,
+    directMessagingEnabled: config.direct_messaging_enabled === true,
+    exchangeContextReady: true,
+    activeExchange: active && typeof active === 'object' && positiveInteger(active.id) !== null
+      ? active
+      : null
+  };
 }
 
 function loginRedirect() {
@@ -80,7 +456,7 @@ function isAuthError(error) {
 
 function apiErrorCode(error) {
   const data = error && error.data && typeof error.data === 'object' ? error.data : {};
-  return String(data.code || data.error || '').toUpperCase();
+  return apiErrorsFrom(error)[0]?.code || String(data.code || data.error || data.error_code || '').toUpperCase();
 }
 
 function redirectOnAuthError(error, res) {
@@ -143,7 +519,9 @@ function reportPayload(body) {
 
 function listingOwnerId(listing) {
   return positiveInteger(listing && (listing.user_id || listing.author_id || listing.userId || listing.authorId))
-    || positiveInteger(listing && listing.user && listing.user.id);
+    || positiveInteger(listing && listing.user && listing.user.id)
+    || positiveInteger(listing && listing.provider && listing.provider.id)
+    || positiveInteger(listing && listing.public_contract && listing.public_contract.provider && listing.public_contract.provider.id);
 }
 
 function listingReportStatus(status) {
@@ -483,7 +861,9 @@ router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) =>
     return redirectTo(res, listingRedirect(listingId, 'exchange-disabled'));
   }
 
-  const prepTime = boundedNumber(req.body.prep_time, 0, 24, null);
+  const prepTime = trimmed(req.body.prep_time) === ''
+    ? null
+    : boundedNumber(req.body.prep_time, 0, 24, null);
   const message = trimmed(req.body.message, 5000);
   const payload = {
     listing_id: listingId,
@@ -682,219 +1062,280 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
 }, { notFoundTitle: 'Listing not found' }));
 
 // List all listings with search/filter/pagination
-router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const { search, status, page = 1 } = req.query;
-  const params = { search, status, page, limit: 20 };
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const search = trimmed(req.query.search || req.query.q);
+  const type = ['offer', 'request'].includes(String(req.query.type || '')) ? String(req.query.type) : '';
+  const cursor = trimmed(req.query.cursor);
+  const params = {
+    per_page: 20,
+    ...(search ? { q: search } : {}),
+    ...(type ? { type } : {}),
+    ...(cursor ? { cursor } : {})
+  };
 
-  const [data, currentUser] = await Promise.all([
-    getListings(req.token, params),
-    getRequestProfile(req, req.token)
+  const [result, currentUserResult] = await Promise.all([
+    getListings(token, params),
+    token ? getRequestProfile(req, token).catch(() => null) : Promise.resolve(null)
   ]);
-
-  // Handle both array and paginated response formats
-  let listings, pagination;
-  if (Array.isArray(data)) {
-    listings = data;
-    pagination = null;
-  } else {
-    listings = data.data || data.items || [];
-    pagination = {
-      currentPage: parseInt(page, 10),
-      totalPages: data.pagination?.pages || data.totalPages || Math.ceil((data.pagination?.total || data.total || listings.length) / 20),
-      total: data.pagination?.total || data.total || listings.length
-    };
-  }
+  const listings = collectionFrom(result);
+  const meta = result?.meta || {};
+  const pagination = {
+    hasMore: Boolean(meta.has_more),
+    cursor: trimmed(meta.cursor || meta.next_cursor),
+    total: Number(meta.total_items ?? meta.total ?? listings.length) || 0
+  };
 
   res.render('listings/index', {
     title: 'Listings',
     listings,
     pagination,
-    filters: { search, status },
-    currentUser,
-    successMessage: req.flash ? req.flash('success')[0] : null,
+    filters: { search, type },
+    currentUser: profileFrom(currentUserResult),
+    isAuthenticated: Boolean(token),
+    successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),
+    errorMessage: (req.flash ? req.flash('error')[0] : null) || listingStatusErrorMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
 // New listing form
-router.get('/new', requireAuth, (req, res) => {
-  res.render('listings/form', {
+router.get('/new', requireAuth, asyncRoute(async (req, res) => {
+  res.render('listings/form', await listingFormViewData(req, {
     title: 'Create listing',
     listing: null,
     values: null,
     errors: null,
-    fieldErrors: {},
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-});
+    fieldErrors: {}
+  }));
+}, { redirectOn401: loginRedirect() }));
 
 // Create listing
 router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, res) => {
-  const { title, description, status, type } = req.body;
+  const image = uploadedFile(req, 'image');
+  const config = listingConfigFrom(req);
+  const allowedTypes = [
+    ...(config.allowOffers ? ['offer'] : []),
+    ...(config.allowRequests ? ['request'] : [])
+  ];
+  const values = listingFormValues(req.body);
+  const validation = validateListingValues(values, config, allowedTypes, image);
 
-  // Basic validation
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!title || !title.trim()) {
-    errors.push({ text: 'Enter a title', href: '#title' });
-    fieldErrors.title = 'Enter a title';
-  }
-
-  if (!type || !['offer', 'request'].includes(type)) {
-    errors.push({ text: 'Select a type', href: '#type' });
-    fieldErrors.type = 'Select a type';
-  }
-
-  if (!status) {
-    errors.push({ text: 'Select a status', href: '#status' });
-    fieldErrors.status = 'Select a status';
-  }
-
-  if (errors.length > 0) {
-    return res.render('listings/form', {
+  if (validation.errors.length > 0) {
+    await removeUploadedFile(image);
+    return res.render('listings/form', await listingFormViewData(req, {
       title: 'Create listing',
       listing: null,
-      values: { title, description, status, type },
-      errors,
-      fieldErrors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
+      values,
+      ...validation
+    }));
   }
 
   try {
-    await createListing(req.token, { title: title.trim(), description, status, type });
+    const result = await createListing(req.token, listingPayloadFrom(values));
+    const listingId = positiveInteger(listingFrom(result).id);
+    if (listingId === null) {
+      if (req.flash) {
+        req.flash('error', 'The listing was saved, but Laravel did not return its ID.');
+      }
+      return redirectTo(res, '/listings');
+    }
+
+    const secondaryFailures = [];
+    if (config.enableSkillTags) {
+      try {
+        await setListingSkillTags(req.token, listingId, skillTagsFrom(values.skill_tags));
+      } catch (error) {
+        secondaryFailures.push(error.message || 'skill tags could not be saved');
+      }
+    }
+    if (image) {
+      try {
+        await uploadListingCoverImage(req.token, listingId, image);
+      } catch (error) {
+        secondaryFailures.push(error.message || 'the image could not be uploaded');
+      }
+    }
 
     if (req.flash) {
       req.flash('success', 'Listing created successfully');
+      if (secondaryFailures.length > 0) {
+        req.flash('error', `The listing was created, but ${secondaryFailures.join('; ')}.`);
+      }
     }
-    return redirectTo(res, '/listings');
+    return redirectTo(res, `/listings/${listingId}?status=listing-created`);
   } catch (error) {
-    // Handle validation errors from API specifically for form re-render
-    if (error instanceof ApiError && error.status === 400) {
-      return res.render('listings/form', {
+    if (isOnboardingRequired(error)) return redirectTo(res, '/onboarding');
+    if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      const state = listingFormErrorState(error, 'Unable to create listing');
+      return res.render('listings/form', await listingFormViewData(req, {
         title: 'Create listing',
         listing: null,
-        values: req.body,
-        errors: [{ text: error.message }],
-        fieldErrors: error.data?.errors || {},
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+        values,
+        ...state
+      }));
     }
-    throw error; // Re-throw for asyncRoute to handle 401/404/etc
+    if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
+    throw error;
+  } finally {
+    await removeUploadedFile(image);
   }
-}));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Listing not found' }));
 
 // View listing detail
-router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
-  const [listing, reviewsResult, currentUser] = await Promise.all([
-    getListing(req.token, req.params.id),
-    getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null })),
-    getRequestProfile(req, req.token)
+router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const [listingResult, currentUserResult] = await Promise.all([
+    getListing(token, req.params.id),
+    token ? getRequestProfile(req, token).catch(() => null) : Promise.resolve(null)
   ]);
+  const listing = listingFrom(listingResult);
+  const currentUser = profileFrom(currentUserResult);
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  const can_edit = ownerId !== null && currentUserId !== null && ownerId === currentUserId;
+  const authorRating = Number(listing.author_rating ?? listing.user?.rating);
+  const authorReviewCount = Number(listing.author_reviews_count ?? listing.user?.reviews_count ?? 0);
+  const reviewSummary = Number.isFinite(authorRating) && authorRating > 0
+    ? { average_rating: authorRating, total_reviews: Number.isFinite(authorReviewCount) ? authorReviewCount : 0 }
+    : null;
+  let exchangeContext = {
+    exchangeWorkflowEnabled: false,
+    directMessagingEnabled: false,
+    exchangeContextReady: false,
+    activeExchange: null
+  };
 
-  const listingOwnerId = listing.user?.id || listing.userId || listing.user_id;
-  const can_edit = !!(listingOwnerId && currentUser && String(listingOwnerId) === String(currentUser.id));
+  if (token && !can_edit) {
+    try {
+      exchangeContext = await listingExchangeContext(token, req.params.id);
+    } catch (error) {
+      if (isAuthError(error)) throw error;
+      // Do not offer a second exchange request while the authoritative config or
+      // active-exchange check is unavailable. This deliberately fails closed.
+    }
+  }
 
   res.render('listings/detail', {
     title: listing.title || listing.name || 'Listing details',
     listing: { ...listing, can_edit },
-    reviews: reviewsResult.data || [],
-    reviewSummary: reviewsResult.summary || null,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null,
+    reviewSummary,
+    isAuthenticated: Boolean(token),
+    currentUserId,
+    ownerId,
+    ...exchangeContext,
+    successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),
+    errorMessage: (req.flash ? req.flash('error')[0] : null) || listingStatusErrorMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));
 
 // Edit listing form
 router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
-  const [listing, currentUser] = await Promise.all([
+  const [listingResult, currentUserResult] = await Promise.all([
     getListing(req.token, req.params.id),
     getRequestProfile(req, req.token)
   ]);
+  const listing = listingFrom(listingResult);
+  const currentUser = profileFrom(currentUserResult);
 
   // Only the owner may access the edit form
-  if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
-    return redirectTo(res, `/listings/${req.params.id}`);
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  if (ownerId === null || currentUserId === null || ownerId !== currentUserId) {
+    return renderForbidden(res);
   }
 
-  res.render('listings/form', {
+  res.render('listings/form', await listingFormViewData(req, {
     title: 'Edit listing',
     listing,
-    values: null,
+    values: listingFormValues({}, listing),
     errors: null,
-    fieldErrors: {},
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-}, { notFoundTitle: 'Listing not found' }));
+    fieldErrors: {}
+  }));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Listing not found' }));
 
 // Update listing
 router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { title, description, status, type } = req.body;
+  const image = uploadedFile(req, 'image');
+  const config = listingConfigFrom(req);
+  const allowedTypes = [
+    ...(config.allowOffers ? ['offer'] : []),
+    ...(config.allowRequests ? ['request'] : [])
+  ];
+  const values = listingFormValues(req.body);
+  const validation = validateListingValues(values, config, allowedTypes, image, values.has_existing_image);
 
-  // Basic validation
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!title || !title.trim()) {
-    errors.push({ text: 'Enter a title', href: '#title' });
-    fieldErrors.title = 'Enter a title';
-  }
-
-  if (!type || !['offer', 'request'].includes(type)) {
-    errors.push({ text: 'Select a type', href: '#type' });
-    fieldErrors.type = 'Select a type';
-  }
-
-  if (!status) {
-    errors.push({ text: 'Select a status', href: '#status' });
-    fieldErrors.status = 'Select a status';
-  }
-
-  if (errors.length > 0) {
-    return res.render('listings/form', {
+  if (validation.errors.length > 0) {
+    await removeUploadedFile(image);
+    return res.render('listings/form', await listingFormViewData(req, {
       title: 'Edit listing',
       listing: { id },
-      values: { title, description, status, type },
-      errors,
-      fieldErrors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
+      values,
+      ...validation
+    }));
   }
 
   try {
-    await updateListing(req.token, id, { title: title.trim(), description, status, type });
+    await updateListing(req.token, id, listingPayloadFrom(values));
+    const secondaryFailures = [];
+    if (config.enableSkillTags) {
+      try {
+        await setListingSkillTags(req.token, id, skillTagsFrom(values.skill_tags));
+      } catch (error) {
+        secondaryFailures.push(error.message || 'skill tags could not be saved');
+      }
+    }
+    if (image) {
+      try {
+        await uploadListingCoverImage(req.token, positiveInteger(id), image);
+      } catch (error) {
+        secondaryFailures.push(error.message || 'the image could not be uploaded');
+      }
+    }
 
     if (req.flash) {
       req.flash('success', 'Listing updated successfully');
+      if (secondaryFailures.length > 0) {
+        req.flash('error', `The listing was updated, but ${secondaryFailures.join('; ')}.`);
+      }
     }
-    return redirectTo(res, '/listings');
+    return redirectTo(res, `/listings/${id}?status=listing-updated`);
   } catch (error) {
-    // Handle validation errors from API specifically for form re-render
-    if (error instanceof ApiError && error.status === 400) {
-      return res.render('listings/form', {
+    if (isOnboardingRequired(error)) return redirectTo(res, '/onboarding');
+    if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      const state = listingFormErrorState(error, 'Unable to update listing');
+      return res.render('listings/form', await listingFormViewData(req, {
         title: 'Edit listing',
-        listing: { id: req.params.id },
-        values: req.body,
-        errors: [{ text: error.message }],
-        fieldErrors: error.data?.errors || {},
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+        listing: { id },
+        values,
+        ...state
+      }));
     }
-    throw error; // Re-throw for asyncRoute to handle 401/404/etc
+    if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
+    throw error;
+  } finally {
+    await removeUploadedFile(image);
   }
-}));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Listing not found' }));
 
 // Delete listing
 router.post('/:id(\\d+)/delete', requireAuth, audit.listingDelete(), asyncRoute(async (req, res) => {
-  await deleteListing(req.token, req.params.id);
-
-  if (req.flash) {
-    req.flash('success', 'Listing deleted successfully');
+  const { id } = req.params;
+  try {
+    await deleteListing(req.token, id);
+    if (req.flash) req.flash('success', 'Listing deleted successfully');
+    return redirectTo(res, '/listings?status=listing-deleted');
+  } catch (error) {
+    if (isOnboardingRequired(error)) return redirectTo(res, '/onboarding');
+    if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
+    if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      if (req.flash) req.flash('error', error.message || 'Unable to delete listing');
+      return redirectTo(res, `/listings/${id}?status=listing-delete-failed`);
+    }
+    throw error;
   }
-  return redirectTo(res, '/listings');
-}, { notFoundTitle: 'Listing not found' }));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Listing not found' }));
 
 module.exports = router;

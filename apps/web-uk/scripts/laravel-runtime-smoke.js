@@ -13,7 +13,20 @@ const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
 const ACCESSIBLE_COOKIE_NAME = 'nexus_accessible_cookie_consent';
-const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
+const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = [
+  '/volunteering',
+  '/kb',
+  '/help',
+  '/feed',
+  '/feed/posts/796',
+  '/feed/item/listing/42',
+  '/members',
+  '/password/reset',
+  '/events',
+  '/events/6',
+  '/listings',
+  '/listings/90992'
+];
 const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/events/6',
   '/events/6/map',
@@ -58,9 +71,6 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/courses/instructor/2/edit',
   '/federation/partners/1',
   '/federation/partners/5',
-  '/federation/members/353',
-  '/federation/members/353/transfer',
-  '/federation/members/351',
   '/ideation/23',
   '/ideation/22',
   '/ideation/2',
@@ -131,7 +141,13 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/partners/1',
   '/ideation/1',
   '/ideation/campaigns/1',
+  '/organisations',
+  '/organisations/browse',
+  '/organisations/register',
+  '/organisations/manage',
   '/organisations/1',
+  '/organisations/1/jobs',
+  '/organisations/opportunities/1/apply',
   '/podcasts/1',
   '/podcasts/1/episodes/1',
   '/resources/1/download',
@@ -179,13 +195,21 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/marketplace/coupons/5/edit', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
-  { path: '/password/reset', location: '/login/forgot-password' },
   { path: '/login/two-factor', location: '/login?status=two-factor-expired' },
   { path: '/onboarding', location: '/dashboard' },
   { path: '/events/6/recurring-edit', location: '/events/6/edit' },
   { path: '/groups/484/edit', location: '/groups/484' },
   { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' },
   { path: '/courses/1/certificate', location: '/courses/1?status=certificate-failed' },
+  { path: '/federation/members', location: '/federation/opt-in' },
+  { path: '/federation/members/353', location: '/federation/opt-in' },
+  { path: '/federation/members/353/transfer', location: '/federation/opt-in' },
+  { path: '/federation/members/351', location: '/federation/opt-in' },
+  { path: '/federation/groups', location: '/federation/opt-in' },
+  { path: '/federation/listings', location: '/federation/opt-in' },
+  { path: '/federation/events', location: '/federation/opt-in' },
+  { path: '/federation/connections', location: '/federation/opt-in' },
+  { path: '/federation/messages', location: '/federation/opt-in' },
   { path: '/federation/messages/conversation/77', location: '/federation/messages' },
   { path: '/jobs/90764/applications/export.csv', location: '/jobs/90764/applications?status=export-failed' },
   { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
@@ -228,7 +252,7 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/group-exchanges', text: 'Start a group exchange' },
   { path: '/group-exchanges/new', text: 'How are the hours shared out?' },
   { path: '/saved', text: 'Saved items' },
-  { path: '/members', text: 'Community members' },
+  { path: '/members', text: 'Members' },
   { path: '/members/discover', text: 'Recommended members' },
   { path: '/members/nearby', text: 'Members near me' },
   { path: '/members/77/insights', text: 'Reputation and recognition' },
@@ -282,6 +306,7 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/organisations/register', text: 'Register a volunteer organisation' },
   { path: '/login', text: 'Sign in' },
   { path: '/login/forgot-password', text: 'Reset your password' },
+  { path: '/password/reset', text: 'Choose a new password' },
   { path: '/password/reset?token=reset-token', text: 'Choose a new password' },
   { path: '/register', text: 'Register' },
   { path: '/contact', text: 'Contact Us' },
@@ -451,19 +476,10 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/federation/partners', text: 'Federation partners' },
   { path: '/federation/partners/1', text: 'Federation partner' },
   { path: '/federation/partners/5', text: 'Federation partner' },
-  { path: '/federation/members', text: 'Federated members' },
-  { path: '/federation/members/353', text: 'Federation member' },
-  { path: '/federation/members/353/transfer', text: 'Send time credits' },
-  { path: '/federation/members/351', text: 'Federation member' },
   { path: '/federation/settings', text: 'Federation settings' },
   { path: '/federation/opt-in', text: 'Opt in to federation' },
   { path: '/federation/opt-out', text: 'Opt out of federation' },
   { path: '/federation/onboarding', text: 'Welcome to the community network' },
-  { path: '/federation/groups', text: 'Groups from partner communities' },
-  { path: '/federation/listings', text: 'Federated listings' },
-  { path: '/federation/events', text: 'Federated events' },
-  { path: '/federation/connections', text: 'Federated connections' },
-  { path: '/federation/messages', text: 'Federated messages' },
   { path: '/groups', text: 'Groups' },
   { path: '/groups/new', text: 'Create a group' },
   { path: '/groups/484', text: 'Group events' },
@@ -538,16 +554,10 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/leaderboard/spotlight',
   '/nexus-score/tiers',
   '/federation/partners',
-  '/federation/members',
   '/federation/settings',
   '/federation/opt-in',
   '/federation/opt-out',
   '/federation/onboarding',
-  '/federation/groups',
-  '/federation/listings',
-  '/federation/events',
-  '/federation/connections',
-  '/federation/messages',
   '/courses/instructor',
   '/courses/instructor/new',
   '/marketplace/saved',
@@ -624,6 +634,8 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/messages/groups',
   '/messages/groups/new',
   '/newsletter/unsubscribe',
+  '/organisations',
+  '/organisations/browse',
   '/organisations/manage',
   '/organisations/register',
   '/podcasts/studio',
@@ -877,6 +889,14 @@ function modulePageCheckName(path) {
   return `module-page-${slug || 'home'}-renders`;
 }
 
+function publicModulePageCheckName(path) {
+  const slug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `public-module-page-${slug || 'home'}-renders-unsigned`;
+}
+
 function gatedPageCheckName(path, status) {
   const slug = String(path || '')
     .replace(/^\/+|\/+$/g, '')
@@ -1120,6 +1140,13 @@ function resolveOptions(options = {}, env = process.env) {
     password: options.password || env.SMOKE_PASSWORD || DEFAULT_SMOKE_PASSWORD,
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+    publicModulePagePaths: resolvePathList(
+      options,
+      'publicModulePagePaths',
+      env,
+      'SMOKE_PUBLIC_MODULE_PAGE_PATHS',
+      DEFAULT_PUBLIC_MODULE_PAGE_PATHS
+    ),
     modulePagePaths: resolveModulePagePaths(options, env),
     unsignedAuthRequiredPagePaths: resolvePathList(
       options,
@@ -1204,6 +1231,29 @@ async function runLaravelRuntimeSmoke(options = {}) {
       );
     } catch (error) {
       addCheck(checks, tenantDomainPageCheckName(host, path), false, error.message, { host, path, text: expectedText });
+    }
+  }
+
+  for (const path of config.publicModulePagePaths) {
+    try {
+      const unsignedCookieJar = new CookieJar();
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar: unsignedCookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      addCheck(
+        checks,
+        publicModulePageCheckName(path),
+        response.ok,
+        response.ok
+          ? `${path} rendered successfully without an authenticated session.`
+          : `expected unsigned 2xx from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, publicModulePageCheckName(path), false, error.message, { path });
     }
   }
 

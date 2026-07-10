@@ -6,7 +6,6 @@
 const express = require('express');
 const {
   getConnections,
-  getConnectionsV2,
   getConnectionPendingCountsV2,
   acceptMemberConnection,
   declineMemberConnection,
@@ -21,6 +20,7 @@ const router = express.Router();
 
 const NETWORK_TABS = new Set(['accepted', 'pending_received', 'pending_sent']);
 const NETWORK_STATUSES = new Set(['connection-accepted', 'connection-declined', 'connection-removed', 'connection-failed']);
+const CONNECTION_FILTERS = new Set(['accepted', 'pending_received', 'pending_sent']);
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -101,6 +101,25 @@ function normaliseConnection(connection) {
   };
 }
 
+function normaliseIndexConnection(connection, filter) {
+  const row = asObject(connection);
+  const partner = asObject(row.partner || row.user || row.other_user || row.otherUser);
+  const connectionId = row.connection_id || row.id || '';
+  const isRequester = filter === 'pending_sent';
+
+  return {
+    ...row,
+    id: connectionId,
+    partner,
+    otherUser: partner,
+    other_user: partner,
+    displayName: memberName(partner),
+    status: filter === 'accepted' ? 'accepted' : 'pending',
+    isRequester,
+    is_requester: isRequester
+  };
+}
+
 function connectionMatchesSearch(connection, query) {
   if (!query) return true;
   const needle = query.toLowerCase();
@@ -122,7 +141,7 @@ async function loadNetworkSection(token, status, activeTab, cursor) {
     params.cursor = cursor;
   }
 
-  const result = await getConnectionsV2(token, params);
+  const result = await getConnections(token, params);
   const meta = metaFrom(result);
   return {
     items: asList(dataFrom(result)).map(normaliseConnection),
@@ -152,6 +171,22 @@ function connectionActionUrl(status) {
   return `/connections?status=${encodeURIComponent(status)}#connections-top`;
 }
 
+function connectionsIndexHref(filter, cursor = '') {
+  const query = new URLSearchParams();
+  query.set('filter', filter);
+  if (cursor) query.set('cursor', cursor);
+  return `/connections?${query.toString()}`;
+}
+
+function actionSuccessMessage(status) {
+  const messages = {
+    'connection-accepted': 'Connection request accepted.',
+    'connection-declined': 'Connection request declined.',
+    'connection-removed': 'Connection removed.'
+  };
+  return messages[status] || null;
+}
+
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
   return res.redirect(urlFor(pathname));
@@ -174,6 +209,7 @@ router.get('/network', asyncRoute(async (req, res) => {
     pending_received: emptyNetworkSection(),
     pending_sent: emptyNetworkSection()
   };
+  let errorMessage = null;
 
   try {
     const [countsResult, accepted, received, sent] = await Promise.all([
@@ -187,8 +223,9 @@ router.get('/network', asyncRoute(async (req, res) => {
     sections.accepted = accepted;
     sections.pending_received = received;
     sections.pending_sent = sent;
-  } catch {
-    // Match Laravel Blade behavior: report upstream failures there, but render empty defaults here.
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    errorMessage = 'Sorry, there is a problem loading your connections.';
   }
 
   if (connSearch) {
@@ -208,6 +245,7 @@ router.get('/network', asyncRoute(async (req, res) => {
     counts,
     connSearch,
     status,
+    errorMessage,
     hasSearch: connSearch !== '',
     tabHrefs: {
       accepted: networkHref('accepted', connSearch),
@@ -220,48 +258,51 @@ router.get('/network', asyncRoute(async (req, res) => {
       pending_sent: sections.pending_sent.hasMore && sections.pending_sent.cursor ? `${networkHref('pending_sent', '', sections.pending_sent.cursor)}#net-sent-heading` : ''
     }
   });
-}));
+}, { redirectOn401: '/login?status=auth-required' }));
 
 router.use(requireAuth);
 
 // List connections (with optional status filter)
 router.get('/', asyncRoute(async (req, res) => {
-  const { status } = req.query;
-  const page = parseInt(req.query.page, 10) || 1;
+  const requestedStatus = String(req.query.status || '').trim();
+  const statusFilter = requestedStatus === 'pending'
+    ? 'pending_received'
+    : (CONNECTION_FILTERS.has(requestedStatus) ? requestedStatus : '');
+  const requestedFilter = String(req.query.filter || statusFilter).trim();
+  const currentStatus = allowed(requestedFilter, CONNECTION_FILTERS, 'accepted');
+  const cursor = trimmed(req.query.cursor, 512);
   const limit = 20;
   let connectionErrorMessage = null;
 
-  const result = await getConnections(req.token, status).catch((error) => {
+  const result = await getConnections(req.token, {
+    status: currentStatus,
+    per_page: limit,
+    ...(cursor ? { cursor } : {})
+  }).catch((error) => {
     if (error instanceof ApiError && error.status === 401) {
       throw error;
     }
     connectionErrorMessage = 'Sorry, there is a problem loading connections.';
     return { data: [] };
   });
-  const raw = result.items || result.data || result.connections || result;
-  const allConnections = Array.isArray(raw) ? raw : [];
-
-  // Client-side pagination
-  const total = allConnections.length;
-  const totalPages = Math.ceil(total / limit);
-  const offset = (page - 1) * limit;
-  const connections = allConnections.slice(offset, offset + limit);
+  const meta = metaFrom(result);
+  const connections = asList(dataFrom(result)).map((connection) => normaliseIndexConnection(connection, currentStatus));
+  const nextCursor = trimmed(meta.cursor, 512);
+  const hasMore = meta.has_more === true || meta.has_more === 1 || meta.has_more === '1';
+  const actionStatus = NETWORK_STATUSES.has(requestedStatus) ? requestedStatus : '';
 
   res.render('connections/index', {
     title: 'Connections',
     connections,
-    currentStatus: status || 'all',
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: totalPages
-    },
+    currentStatus,
+    nextHref: hasMore && nextCursor ? connectionsIndexHref(currentStatus, nextCursor) : '',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: connectionErrorMessage || (req.flash ? req.flash('error')[0] : null)
+    successMessage: actionSuccessMessage(actionStatus) || (req.flash ? req.flash('success')[0] : null),
+    errorMessage: connectionErrorMessage || (actionStatus === 'connection-failed'
+      ? 'Sorry, that action could not be completed. Please try again.'
+      : null) || (req.flash ? req.flash('error')[0] : null)
   });
-}));
+}, { redirectOn401: '/login?status=auth-required' }));
 
 // Accept connection request
 router.post('/:id/accept', asyncRoute(async (req, res) => {

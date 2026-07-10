@@ -24,6 +24,8 @@ const FORBIDDEN_PATTERNS = [
 ];
 
 const VIEWS_DIR = path.join(__dirname, '..', 'src', 'views');
+const BASE_LAYOUT = path.join(VIEWS_DIR, 'layouts', 'base.njk');
+const SHELL_CONTRACT = path.join(__dirname, '..', 'src', 'lib', 'accessible-shell.js');
 
 function isCommentLine(line) {
   const trimmed = line.trim();
@@ -90,6 +92,26 @@ function scanDirectory(dir) {
 console.log('Branding Guard - Checking for forbidden government branding...\n');
 
 const violations = scanDirectory(VIEWS_DIR);
+const baseLayout = fs.readFileSync(BASE_LAYOUT, 'utf8');
+const shellContract = fs.readFileSync(SHELL_CONTRACT, 'utf8');
+
+if (!baseLayout.includes('{{ shellNotAffiliated }}')) {
+  violations.push({
+    file: BASE_LAYOUT,
+    line: 1,
+    description: 'Mandatory non-government header disclosure is not rendered',
+    content: 'Expected {{ shellNotAffiliated }} in the shared header'
+  });
+}
+
+if (!shellContract.includes("en: 'Not affiliated with GOV.UK'")) {
+  violations.push({
+    file: SHELL_CONTRACT,
+    line: 1,
+    description: 'Mandatory non-government disclosure copy is missing',
+    content: 'Expected the exact English disclosure: Not affiliated with GOV.UK'
+  });
+}
 
 if (violations.length > 0) {
   console.error('BRANDING VIOLATIONS FOUND:\n');
@@ -112,6 +134,7 @@ if (violations.length > 0) {
   console.log('  - No govukHeader macro usage');
   console.log('  - No copyright logo classes');
   console.log('  - No crest SVG elements');
+  console.log('  - Mandatory non-government header disclosure is present');
   console.log('\nBranding check passed.\n');
   process.exit(0);
 }

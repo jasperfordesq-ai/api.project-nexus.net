@@ -72,14 +72,18 @@ const federationRoutes = require('./routes/federation');
 const federationActionRoutes = require('./routes/federation-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
+const { ApiError, getExchangeConfig } = require('./lib/api');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
+const { handleApiError } = require('./lib/routeHelpers');
 const { buildShellLocals } = require('./lib/accessible-shell');
 const { formatLocaleDate, translate, translateChoice } = require('./lib/localization');
 const { getRequestLocale } = require('./lib/request-locale-context');
 const { parseMultipartForm } = require('./middleware/multipart');
+const { buildAccountLinks } = require('./lib/account-links');
 const { localization } = require('./middleware/localization');
 const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
+const { requestTenantContext } = require('./middleware/request-tenant-context');
 
 const app = express();
 
@@ -218,6 +222,7 @@ app.set('view engine', 'njk');
 app.set('trust proxy', 1);
 
 app.use(tenantRouting);
+app.use(requestTenantContext);
 
 // Security headers with Helmet
 app.use(helmet({
@@ -365,8 +370,18 @@ app.use(async (req, res, next) => {
         getNotificationUnreadCount(token).catch(() => ({ unreadCount: 0 })),
         getUnreadCount(token).catch(() => ({ unreadCount: 0 }))
       ]);
-      res.locals.notificationCount = notifResult.unreadCount || notifResult.unread_count || 0;
-      res.locals.unreadMessageCount = msgResult.unreadCount || msgResult.unread_count || 0;
+      const notificationCounts = notifResult?.data || notifResult || {};
+      const messageCounts = msgResult?.data || msgResult || {};
+      res.locals.notificationCount = notificationCounts.unread
+        || notificationCounts.total
+        || notificationCounts.unreadCount
+        || notificationCounts.unread_count
+        || notificationCounts.count
+        || 0;
+      res.locals.unreadMessageCount = messageCounts.count
+        || messageCounts.unreadCount
+        || messageCounts.unread_count
+        || 0;
     } catch {
       // Silently fail - don't break the page if counts fail
       res.locals.notificationCount = 0;
@@ -645,49 +660,38 @@ app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
   return redirectTo(res, returnPath);
 });
 
-app.get('/account', (req, res) => {
-  const token = req.signedCookies.token;
+app.get('/account', async (req, res) => {
+  const token = req.signedCookies?.token;
 
   if (!token) {
-    return redirectTo(res, '/login');
+    return redirectTo(res, '/login?status=auth-required');
+  }
+
+  const tenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+  let directMessagingEnabled = false;
+  try {
+    const exchangeConfig = dataFrom(await getExchangeConfig(token));
+    directMessagingEnabled = exchangeConfig.direct_messaging_enabled === true;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      handleApiError(error, req, res, { redirectOn401: '/login?status=auth-required' });
+      return undefined;
+    }
+    // Fail closed: Laravel Blade hides this card when broker messaging is off.
   }
 
   res.render('account', {
     title: 'My account',
+    titleKey: 'account.title',
     activeNav: 'account',
-    accountLinks: [
-      {
-        title: 'Wallet',
-        description: 'View your time-credit balance and history, and send credits to other members.',
-        href: '/wallet'
-      },
-      {
-        title: 'Messages',
-        description: 'Read and send direct messages with members of this community.',
-        href: '/messages',
-        badge: res.locals.unreadMessageCount || 0
-      },
-      {
-        title: 'Connections',
-        description: 'Accept or decline connection requests and manage your network.',
-        href: '/connections'
-      },
-      {
-        title: 'Notifications',
-        description: 'Read service notifications and community updates.',
-        href: '/notifications'
-      },
-      {
-        title: 'My profile',
-        description: 'View and edit how you appear to other members.',
-        href: '/profile'
-      },
-      {
-        title: 'Account settings',
-        description: 'Email, password, two-factor sign in, language, notifications and privacy.',
-        href: '/profile/settings'
-      }
-    ]
+    accountLinks: buildAccountLinks({
+      tenant,
+      unreadMessageCount: res.locals.unreadMessageCount,
+      directMessagingEnabled,
+      t: req.t || res.locals.t
+    })
   });
 });
 
@@ -832,7 +836,14 @@ app.get('/volunteering/opportunities/:id(\\d+)', (req, res) => {
     });
 });
 
-app.get('/organisations', (req, res) => {
+function requireOrganisationAuth(req, res, next) {
+  if (!req.signedCookies || !req.signedCookies.token) {
+    return redirectTo(res, '/login?status=auth-required');
+  }
+  return next();
+}
+
+app.get('/organisations', requireOrganisationAuth, (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
@@ -867,7 +878,7 @@ app.get('/organisations', (req, res) => {
     });
 });
 
-app.get('/organisations/browse', (req, res) => {
+app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : '';
   const { getVolunteerOrganisations } = require('./lib/api');
@@ -942,7 +953,7 @@ app.get('/organisations/browse', (req, res) => {
     });
 });
 
-app.get('/organisations/register', (req, res) => {
+app.get('/organisations/register', requireOrganisationAuth, (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const errorMap = {
     'org-name-invalid': {
@@ -1054,7 +1065,7 @@ app.post('/organisations', formLimiter, doubleCsrfProtection, (req, res) => {
 
 app.post('/organisations/register', formLimiter, doubleCsrfProtection, handleOrganisationRegistrationPost);
 
-app.get('/organisations/manage', (req, res) => {
+app.get('/organisations/manage', requireOrganisationAuth, (req, res) => {
   const token = req.signedCookies.token;
   const renderManage = ({ organisations = [], error = false, authRequired = false } = {}) => {
     const manageableOrganisations = organisations.filter((organisation) => {
@@ -1094,7 +1105,7 @@ app.get('/organisations/manage', (req, res) => {
     });
 });
 
-app.get('/organisations/:id(\\d+)/jobs', (req, res) => {
+app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => {
   const token = req.signedCookies.token;
   const { ApiError, getOrganisationJobs, getVolunteerOrganisation } = require('./lib/api');
 
@@ -1173,7 +1184,7 @@ app.get('/organisations/:id(\\d+)/jobs', (req, res) => {
     });
 });
 
-app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
+app.get('/organisations/opportunities/:id(\\d+)/apply', requireOrganisationAuth, (req, res) => {
   const token = req.signedCookies.token || '';
   const { ApiError, getVolunteerOpportunity } = require('./lib/api');
 
@@ -1214,7 +1225,7 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
     });
 });
 
-app.get('/organisations/:id(\\d+)', (req, res) => {
+app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
   const token = req.signedCookies.token || '';
   if (!token) {
     return redirectTo(res, '/login?status=auth-required');
@@ -1291,12 +1302,23 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
 app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/volunteering/credentials', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/onboarding/avatar', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
-app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(
+  '/settings/insurance',
+  parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }),
+  multipartStatusErrorRedirect('/settings/insurance', 'insurance-file-large', 'insurance-file-required')
+);
+app.use(
+  '/profile/settings',
+  parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }),
+  multipartStatusErrorRedirect('/profile/settings', 'avatar-invalid', 'avatar-invalid')
+);
 app.use('/feed/posts', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/marketplace/create', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/marketplace\/\d+\/update$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/events/new', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/events\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use('/listings/new', parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }));
+app.use(/^\/listings\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }));
 app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
 app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(
@@ -1382,6 +1404,16 @@ function groupMultipartErrorRedirect(sizeStatus, invalidStatus) {
       || /max(?:imum)?\s*file\s*size|too large/i.test(String(error?.message || ''));
     const status = isSizeError ? sizeStatus : invalidStatus;
     return redirectTo(res, `/groups/${match[1]}/${match[2]}?status=${encodeURIComponent(status)}`);
+  };
+}
+
+function multipartStatusErrorRedirect(pathname, sizeStatus, invalidStatus) {
+  return (error, req, res, next) => { // eslint-disable-line no-unused-vars
+    const isSizeError = Number(error?.httpCode) === 413
+      || Number(error?.code) === 1009
+      || /max(?:imum)?\s*file\s*size|too large/i.test(String(error?.message || ''));
+    const status = isSizeError ? sizeStatus : invalidStatus;
+    return redirectTo(res, `${pathname}?status=${encodeURIComponent(status)}`);
   };
 }
 

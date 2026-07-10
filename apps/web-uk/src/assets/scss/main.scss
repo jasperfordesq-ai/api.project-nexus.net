@@ -28,6 +28,17 @@
   color: govuk-colour("black");
 }
 
+.nexus-alpha-header__identity {
+  min-width: 0;
+}
+
+.nexus-alpha-header__disclaimer {
+  margin: govuk-spacing(1) 0 0;
+  color: var(--nexus-alpha-header-fg, govuk-colour("white"));
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
 .nexus-alpha-header__links {
   display: flex;
   flex-wrap: wrap;

@@ -36,6 +36,20 @@
               {% if review.id %}
                 <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}">Comment on this review</a></p>
               {% endif %}
+              {% if review.id and review.canDelete %}
+                <details class="govuk-details govuk-!-margin-top-3 govuk-!-margin-bottom-0" data-module="govuk-details">
+                  <summary class="govuk-details__summary">
+                    <span class="govuk-details__summary-text">{{ t("polish_members.review_delete_toggle") }}</span>
+                  </summary>
+                  <div class="govuk-details__text">
+                    <p class="govuk-body">{{ t("polish_members.review_delete_confirm") }}</p>
+                    <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/delete') }}">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" type="submit">{{ t("polish_members.review_delete_button") }}</button>
+                    </form>
+                  </div>
+                </details>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>

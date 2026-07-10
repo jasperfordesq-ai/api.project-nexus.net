@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const { clearAuthCookies, requireAuth } = require('../middleware/auth');
 const {
   callUserSettingsApi,
@@ -11,6 +12,7 @@ const {
   callWebAuthnApi,
   invalidateUserCache,
   requestAccountDeletion,
+  uploadProfileAvatar,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -299,6 +301,20 @@ function checked(value) {
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
 
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
 function allowedValue(value, allowed, fallback = null) {
   const text = trimmed(value);
   return allowed.includes(text) ? text : fallback;
@@ -550,16 +566,39 @@ function normalizeSessions(payload) {
 }
 
 function normalizeSafeguarding(payload) {
-  return arrayFromPayload(payload, ['preferences', 'items']).map((option) => ({
-    option_id: option.option_id || option.id || '',
-    label: option.label || option.name || 'Safeguarding preference',
-    description: option.description || '',
-    activation_label: option.requires_broker_approval
-      ? 'Exchanges need broker approval'
-      : option.requires_guardian_approval
-        ? 'Exchanges need guardian approval'
-        : 'Active'
-  }));
+  return arrayFromPayload(payload, ['preferences', 'items']).map((option) => {
+    const activationSource = option.activations && typeof option.activations === 'object'
+      ? option.activations
+      : option;
+    const activations = [
+      'restricts_messaging',
+      'restricts_matching',
+      'requires_broker_approval',
+      'requires_vetted_interaction'
+    ].filter((key) => checked(activationSource[key]));
+
+    return {
+      option_id: option.option_id || option.id || '',
+      label: option.label || option.name || 'Safeguarding preference',
+      description: option.description || '',
+      activations
+    };
+  });
+}
+
+function marketingConsentFrom(payload) {
+  const rows = arrayFromPayload(payload, ['consents', 'items']);
+  const marketing = rows.find((consent) => (
+    String(consent.consent_type_slug || consent.slug || '') === 'marketing_email'
+  ));
+  return marketing ? checked(marketing.given) : undefined;
+}
+
+function insuranceEnabledForRequest(req) {
+  const compliance = req?.accessibleRouting?.tenant?.compliance;
+  if (!compliance || typeof compliance !== 'object') return true;
+  return !Object.prototype.hasOwnProperty.call(compliance, 'insurance_enabled')
+    || Boolean(compliance.insurance_enabled);
 }
 
 function buildProfileSettingsViewModel(req, data) {
@@ -611,7 +650,11 @@ function buildProfileSettingsViewModel(req, data) {
       privacy_profile: privacyProfile,
       privacy_search: boolValue(profileValue(profile, 'privacy_search'), true),
       privacy_contact: boolValue(account.privacy_contact, profileValue(profile, 'privacy_contact'), true),
-      newsletter_opt_in: boolValue(account.newsletter_opt_in, profileValue(profile, 'newsletter_opt_in')),
+      newsletter_opt_in: boolValue(
+        data.marketingConsent,
+        account.newsletter_opt_in,
+        profileValue(profile, 'newsletter_opt_in')
+      ),
       prefers_chronological_feed: boolValue(
         account.prefers_chronological_feed,
         profileValue(profile, 'prefers_chronological_feed')
@@ -646,30 +689,50 @@ function buildProfileSettingsViewModel(req, data) {
     settingsLinks: [
       {
         href: '/settings/linked-accounts',
-        title: 'Linked accounts',
-        text: 'Manage social sign-in providers connected to your account.'
+        title: translateStatusMessage(req, 'govuk_alpha_settings.nav.linked_accounts', 'Linked accounts'),
+        text: translateStatusMessage(
+          req,
+          'govuk_alpha_settings.linked.description',
+          'Manage linked family, guardian and carer accounts.'
+        )
       },
       {
         href: '/settings/appearance',
-        title: 'Appearance',
-        text: 'Choose display, colour and accessibility preferences.'
+        title: translateStatusMessage(req, 'govuk_alpha_settings.nav.appearance', 'Appearance'),
+        text: translateStatusMessage(
+          req,
+          'govuk_alpha_settings.appearance.description',
+          'Choose how this service looks on your device.'
+        )
       },
       {
         href: '/settings/data-rights',
-        title: 'Your data rights',
-        text: 'Review privacy controls and data protection requests.'
+        title: translateStatusMessage(req, 'govuk_alpha_settings.nav.data_rights', 'Your data rights'),
+        text: translateStatusMessage(
+          req,
+          'govuk_alpha_settings.gdpr.description',
+          'Review privacy controls and data protection requests.'
+        )
       },
-      {
+      insuranceEnabledForRequest(req) ? {
         href: '/settings/insurance',
-        title: 'Insurance certificates',
-        text: 'Upload or review proof of insurance for verified activity.'
-      },
+        title: translateStatusMessage(req, 'govuk_alpha_settings.nav.insurance', 'Insurance certificates'),
+        text: translateStatusMessage(
+          req,
+          'govuk_alpha_settings.insurance.description',
+          'Upload or review proof of insurance for verified activity.'
+        )
+      } : null,
       {
         href: '/settings/availability',
-        title: 'Your availability',
-        text: 'Keep times and preferred ways to help up to date.'
+        title: translateStatusMessage(req, 'govuk_alpha_settings.nav.availability', 'Your availability'),
+        text: translateStatusMessage(
+          req,
+          'govuk_alpha_settings.availability.description',
+          'Keep the times when you are available up to date.'
+        )
       }
-    ],
+    ].filter(Boolean),
     notificationGroups: [
       {
         title: 'Messages and connections',
@@ -791,7 +854,8 @@ router.get('/settings', asyncRoute(async (req, res) => {
     skills: [],
     passkeys: [],
     sessions: [],
-    safeguarding: []
+    safeguarding: [],
+    marketingConsent: undefined
   };
 
   try {
@@ -802,6 +866,14 @@ router.get('/settings', asyncRoute(async (req, res) => {
 
   try {
     data.account = payloadFrom(await callUserSettings(token, 'GET', ''));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.marketingConsent = marketingConsentFrom(
+      payloadFrom(await callUserSettings(token, 'GET', '/consent'))
+    );
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -833,13 +905,15 @@ router.get('/settings', asyncRoute(async (req, res) => {
   }
 
   try {
-    data.sessions = normalizeSessions(payloadFrom(await callProfile(token, 'GET', '/sessions')));
+    data.sessions = normalizeSessions(payloadFrom(await callProfile(token, 'GET', '/users/me/sessions')));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
   try {
-    data.safeguarding = normalizeSafeguarding(payloadFrom(await callProfile(token, 'GET', '/safeguarding/preferences')));
+    data.safeguarding = normalizeSafeguarding(
+      payloadFrom(await callProfile(token, 'GET', '/safeguarding/my-preferences'))
+    );
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -849,7 +923,11 @@ router.get('/settings', asyncRoute(async (req, res) => {
 
 router.post('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  if (!token) return redirectTo(res, loginRedirect());
+  const avatar = uploadedFile(req, 'avatar');
+  if (!token) {
+    await removeUploadedFile(avatar);
+    return redirectTo(res, loginRedirect());
+  }
 
   const profilePayload = {
     first_name: trimmed(req.body.first_name, 100),
@@ -859,16 +937,28 @@ router.post('/settings', asyncRoute(async (req, res) => {
     organization_name: trimmed(req.body.organization_name, 150),
     tagline: trimmed(req.body.tagline, 160),
     bio: trimmed(req.body.bio, 5000),
-    location: trimmed(req.body.location, 255),
-    newsletter_opt_in: checked(req.body.newsletter_opt_in)
+    location: trimmed(req.body.location, 255)
   };
+  if (!avatar && checked(req.body.remove_avatar)) profilePayload.avatar_url = null;
 
   if (profilePayload.first_name === '' || profilePayload.last_name === '') {
+    await removeUploadedFile(avatar);
     return redirectTo(res, profileSettingsRedirect('profile-update-failed'));
   }
 
   let status = 'profile-updated';
   try {
+    if (avatar) {
+      const buffer = await fs.readFile(avatar.filepath);
+      await uploadProfileAvatar(token, {
+        file: {
+          buffer,
+          filename: trimmed(avatar.originalFilename) || 'avatar',
+          contentType: trimmed(avatar.mimetype) || 'application/octet-stream',
+          size: avatar.size
+        }
+      });
+    }
     await callUserSettings(token, 'PUT', '', profilePayload);
     await callUserSettings(token, 'PUT', '/preferences', {
       privacy: {
@@ -877,12 +967,22 @@ router.post('/settings', asyncRoute(async (req, res) => {
         privacy_contact: checked(req.body.privacy_contact)
       }
     });
+    await callUserSettings(token, 'PUT', '/consent', {
+      slug: 'marketing_email',
+      given: checked(req.body.newsletter_opt_in)
+    });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    status = 'profile-update-failed';
+    status = avatar && error instanceof ApiError && [400, 413, 422].includes(error.status)
+      ? 'avatar-invalid'
+      : 'profile-update-failed';
+  } finally {
+    await removeUploadedFile(avatar);
   }
 
-  return redirectTo(res, statusRedirect('/profile', status));
+  return redirectTo(res, status === 'profile-updated'
+    ? statusRedirect('/profile', status)
+    : profileSettingsRedirect(status));
 }));
 
 router.post('/email', asyncRoute(async (req, res) => {

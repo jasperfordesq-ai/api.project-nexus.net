@@ -4,13 +4,13 @@
   <a class="govuk-back-link" href="{{ urlFor('/exchanges') }}">{{ t("actions.back_to_exchanges") }}</a>
 
   {% if statusMessage or successMessage %}
-    {% if status == 'exchange-action-failed' or status == 'rating-failed' or status == 'rating-invalid' %}
+    {% if status == 'exchange-action-failed' or status == 'exchange-hours-invalid' or status == 'rating-failed' or status == 'rating-invalid' %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
           <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
-              <li><a href="{% if status == 'rating-failed' or status == 'rating-invalid' %}#rating{% else %}#main-content{% endif %}">{{ statusMessage }}</a></li>
+              <li><a href="{% if status == 'rating-failed' or status == 'rating-invalid' %}#rating{% elif status == 'exchange-hours-invalid' %}#hours{% else %}#main-content{% endif %}">{{ statusMessage }}</a></li>
             </ul>
           </div>
         </div>
@@ -157,41 +157,51 @@
     {% endif %}
 
     {% if exchange.canDecline %}
-      <div class="govuk-warning-text">
-        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-        <strong class="govuk-warning-text__text">
-          <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
-          Declining will stop this exchange request.
-        </strong>
-      </div>
-      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}" class="govuk-!-margin-bottom-5">
-        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-        <input type="hidden" name="action" value="decline">
-        <div class="govuk-form-group">
-          <label class="govuk-label" for="decline-reason">{{ t("exchanges.reason_label") }}</label>
-          <textarea class="govuk-textarea" id="decline-reason" name="reason" rows="3"></textarea>
+      <details class="govuk-details govuk-!-margin-bottom-5">
+        <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("actions.decline") }}</span></summary>
+        <div class="govuk-details__text">
+          <div class="govuk-warning-text">
+            <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+            <strong class="govuk-warning-text__text">
+              <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
+              {{ t("polish_listings.exchange_warning_decline") }}
+            </strong>
+          </div>
+          <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="action" value="decline">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="decline-reason">{{ t("exchanges.reason_label") }}</label>
+              <textarea class="govuk-textarea" id="decline-reason" name="reason" rows="3"></textarea>
+            </div>
+            <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("actions.decline") }}</button>
+          </form>
         </div>
-        <button class="govuk-button govuk-button--warning" data-module="govuk-button">Decline</button>
-      </form>
+      </details>
     {% endif %}
 
     {% if exchange.canCancel %}
-      <div class="govuk-warning-text">
-        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-        <strong class="govuk-warning-text__text">
-          <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
-          Cancelling will stop this exchange.
-        </strong>
-      </div>
-      <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
-        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-        <input type="hidden" name="action" value="cancel">
-        <div class="govuk-form-group">
-          <label class="govuk-label" for="cancel-reason">{{ t("exchanges.reason_label") }}</label>
-          <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3"></textarea>
+      <details class="govuk-details govuk-!-margin-bottom-5">
+        <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("actions.cancel_exchange") }}</span></summary>
+        <div class="govuk-details__text">
+          <div class="govuk-warning-text">
+            <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+            <strong class="govuk-warning-text__text">
+              <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
+              {{ t("polish_listings.exchange_warning_cancel") }}
+            </strong>
+          </div>
+          <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="action" value="cancel">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="cancel-reason">{{ t("exchanges.reason_label") }}</label>
+              <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3"></textarea>
+            </div>
+            <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("actions.cancel_exchange") }}</button>
+          </form>
         </div>
-        <button class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("actions.cancel_exchange") }}</button>
-      </form>
+      </details>
     {% endif %}
   {% endif %}
 
@@ -230,7 +240,7 @@
       {% for rating in ratings %}
         <li class="nexus-alpha-card govuk-!-margin-bottom-3">
           <p class="govuk-body govuk-!-margin-bottom-1">
-            <strong>{{ rating.rater_first_name or rating.rater_username or 'Unknown member' }}</strong>
+            <strong>{{ rating.raterName }}</strong>
             - {{ rating.rating }} out of 5
           </p>
           {% if rating.comment %}

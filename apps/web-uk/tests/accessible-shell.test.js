@@ -73,6 +73,14 @@ describe('accessible shell tenant gating', () => {
       .toBe('/acme/accessible?locale=ar');
   });
 
+  it('localizes the mandatory non-government header disclosure', () => {
+    const english = buildShellLocals({ query: {}, locale: 'en', path: '/', originalUrl: '/' }, false);
+    const arabic = buildShellLocals({ query: {}, locale: 'ar', path: '/', originalUrl: '/' }, false);
+
+    expect(english.shellNotAffiliated).toBe('Not affiliated with GOV.UK');
+    expect(arabic.shellNotAffiliated).toBe('غير تابع لـ GOV.UK');
+  });
+
   it('matches Laravel Blade Explore card feature gates from tenant bootstrap', () => {
     const locals = buildShellLocals({
       query: {},

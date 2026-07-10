@@ -83,6 +83,10 @@ function communityName(res) {
   return res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible';
 }
 
+function routedTenantSlug(req) {
+  return String(req.accessibleRouting?.tenantSlug || '').trim();
+}
+
 function aboutContributorsByType() {
   return getContributors().reduce((groups, person) => {
     const type = person.type && Object.prototype.hasOwnProperty.call(groups, person.type)
@@ -175,7 +179,7 @@ router.get('/verify-email', async (req, res) => {
 
   if (token) {
     try {
-      const result = await verifyEmail(token);
+      const result = await verifyEmail(token, routedTenantSlug(req));
       const verified = Boolean(result?.data?.verified ?? result?.verified);
       state = verified ? 'success' : 'invalid';
     } catch {

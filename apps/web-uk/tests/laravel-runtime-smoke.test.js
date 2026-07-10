@@ -167,6 +167,7 @@ function createWebServer(requests, {
     const publicAuthFixtures = new Map([
       ['/login', 'Sign in'],
       ['/login/forgot-password', 'Reset your password'],
+      ['/password/reset', 'Choose a new password'],
       ['/password/reset?token=reset-token', 'Choose a new password'],
       ['/register', 'Register']
     ]);
@@ -242,7 +243,7 @@ function createWebServer(requests, {
       ['/group-exchanges', 'Start a group exchange'],
       ['/group-exchanges/new', 'How are the hours shared out?'],
       ['/saved', 'Saved items'],
-      ['/members', 'Community members'],
+      ['/members', 'Members'],
       ['/members/discover', 'Recommended members'],
       ['/members/nearby', 'Members near me'],
       ['/members/77/insights', 'Reputation and recognition'],
@@ -291,6 +292,7 @@ function createWebServer(requests, {
       ['/organisations/register', 'Register a volunteer organisation'],
       ['/login', 'Sign in'],
       ['/login/forgot-password', 'Reset your password'],
+      ['/password/reset', 'Choose a new password'],
       ['/password/reset?token=reset-token', 'Choose a new password'],
       ['/register', 'Register'],
       ['/contact', 'Contact Us'],
@@ -460,19 +462,10 @@ function createWebServer(requests, {
       ['/federation/partners', 'Federation partners'],
       ['/federation/partners/1', 'Federation partner'],
       ['/federation/partners/5', 'Federation partner'],
-      ['/federation/members', 'Federated members'],
-      ['/federation/members/353', 'Federation member'],
-      ['/federation/members/353/transfer', 'Send time credits'],
-      ['/federation/members/351', 'Federation member'],
       ['/federation/settings', 'Federation settings'],
       ['/federation/opt-in', 'Opt in to federation'],
       ['/federation/opt-out', 'Opt out of federation'],
       ['/federation/onboarding', 'Welcome to the community network'],
-      ['/federation/groups', 'Groups from partner communities'],
-      ['/federation/listings', 'Federated listings'],
-      ['/federation/events', 'Federated events'],
-      ['/federation/connections', 'Federated connections'],
-      ['/federation/messages', 'Federated messages'],
       ['/groups', 'Groups'],
       ['/groups/new', 'Create a group'],
       ['/groups/484', 'Group events'],
@@ -492,7 +485,20 @@ function createWebServer(requests, {
       ['/users/14/appreciations', 'Public thank-you notes other members have sent to this person.']
     ]);
 
-    const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
+    const modulePages = new Set([
+      '/volunteering',
+      '/kb',
+      '/help',
+      '/feed',
+      '/feed/posts/796',
+      '/feed/item/listing/42',
+      '/members',
+      '/password/reset',
+      '/events',
+      '/events/6',
+      '/listings',
+      '/listings/90992'
+    ]);
     if (req.method === 'GET' && modulePages.has(req.url)) {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end(`<h1>${bodyTextFixtures.get(req.url) || req.url}</h1>`);
@@ -550,16 +556,10 @@ function createWebServer(requests, {
       '/leaderboard/spotlight',
       '/nexus-score/tiers',
       '/federation/partners',
-      '/federation/members',
       '/federation/settings',
       '/federation/opt-in',
       '/federation/opt-out',
       '/federation/onboarding',
-      '/federation/groups',
-      '/federation/listings',
-      '/federation/events',
-      '/federation/connections',
-      '/federation/messages',
       '/courses/instructor',
       '/courses/instructor/new',
       '/marketplace/saved',
@@ -613,9 +613,6 @@ function createWebServer(requests, {
       '/courses/instructor/2/edit',
       '/federation/partners/1',
       '/federation/partners/5',
-      '/federation/members/353',
-      '/federation/members/353/transfer',
-      '/federation/members/351',
       '/ideation/23',
       '/ideation/22',
       '/ideation/2',
@@ -749,6 +746,8 @@ function createWebServer(requests, {
       '/messages/groups',
       '/messages/groups/new',
       '/newsletter/unsubscribe',
+      '/organisations',
+      '/organisations/browse',
       '/organisations/manage',
       '/organisations/register',
       '/podcasts/studio',
@@ -853,13 +852,21 @@ function createWebServer(requests, {
     }
 
     const signedRedirectPages = new Map([
-      ['/password/reset', '/login/forgot-password'],
       ['/login/two-factor', '/login?status=two-factor-expired'],
       ['/onboarding', '/dashboard'],
       ['/events/6/recurring-edit', '/events/6/edit'],
       ['/groups/484/edit', '/groups/484'],
       ['/courses/42/certificate', '/courses/42?status=certificate-failed'],
       ['/courses/1/certificate', '/courses/1?status=certificate-failed'],
+      ['/federation/members', '/federation/opt-in'],
+      ['/federation/members/353', '/federation/opt-in'],
+      ['/federation/members/353/transfer', '/federation/opt-in'],
+      ['/federation/members/351', '/federation/opt-in'],
+      ['/federation/groups', '/federation/opt-in'],
+      ['/federation/listings', '/federation/opt-in'],
+      ['/federation/events', '/federation/opt-in'],
+      ['/federation/connections', '/federation/opt-in'],
+      ['/federation/messages', '/federation/opt-in'],
       ['/federation/messages/conversation/77', '/federation/messages'],
       ['/jobs/90764/applications/export.csv', '/jobs/90764/applications?status=export-failed'],
       ['/courses/1/learn', '/courses/1?status=enrol-required'],
@@ -889,7 +896,13 @@ function createWebServer(requests, {
       '/federation/partners/1',
       '/ideation/1',
       '/ideation/campaigns/1',
+      '/organisations',
+      '/organisations/browse',
+      '/organisations/register',
+      '/organisations/manage',
       '/organisations/1',
+      '/organisations/1/jobs',
+      '/organisations/opportunities/1/apply',
       '/podcasts/1',
       '/podcasts/1/episodes/1',
       '/resources/1/download',
@@ -945,6 +958,7 @@ describe('Laravel runtime smoke harness', () => {
 
     const result = await runLaravelRuntimeSmokeAgainstApp(web, {
       laravelBaseUrl,
+      publicModulePagePaths: [],
       modulePagePaths: [],
       unsignedAuthRequiredPagePaths: [],
       unsignedLoginRedirectPagePaths: [],
@@ -967,6 +981,7 @@ describe('Laravel runtime smoke harness', () => {
   it('allows CLI environment overrides for targeted smoke page groups', () => {
     const options = resolveOptions({}, {
       SMOKE_MODULE_PAGE_PATHS: '/login, /register',
+      SMOKE_PUBLIC_MODULE_PAGE_PATHS: '/events, /listings',
       SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: "/federation/partners/1\n/podcasts/1",
       SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: "/exchanges/1\n/jobs/applications/1/cv",
       SMOKE_GATED_PAGE_PATHS: '',
@@ -977,6 +992,7 @@ describe('Laravel runtime smoke harness', () => {
     });
 
     expect(options.modulePagePaths).toEqual(['/login', '/register']);
+    expect(options.publicModulePagePaths).toEqual(['/events', '/listings']);
     expect(options.unsignedAuthRequiredPagePaths).toEqual(['/federation/partners/1', '/podcasts/1']);
     expect(options.unsignedLoginRedirectPagePaths).toEqual(['/exchanges/1', '/jobs/applications/1/cv']);
     expect(options.gatedPagePaths).toEqual([]);
@@ -997,6 +1013,7 @@ describe('Laravel runtime smoke harness', () => {
   it('treats none as a portable CLI sentinel for disabled smoke page groups', () => {
     const options = resolveOptions({}, {
       SMOKE_MODULE_PAGE_PATHS: 'none',
+      SMOKE_PUBLIC_MODULE_PAGE_PATHS: 'none',
       SMOKE_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS: 'none',
       SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: 'none',
       SMOKE_GATED_PAGE_PATHS: 'none',
@@ -1007,6 +1024,7 @@ describe('Laravel runtime smoke harness', () => {
     });
 
     expect(options.modulePagePaths).toEqual([]);
+    expect(options.publicModulePagePaths).toEqual([]);
     expect(options.unsignedAuthRequiredPagePaths).toEqual([]);
     expect(options.unsignedLoginRedirectPagePaths).toEqual([]);
     expect(options.gatedPagePaths).toEqual([]);
@@ -1158,9 +1176,6 @@ describe('Laravel runtime smoke harness', () => {
       '/courses/instructor/2/edit',
       '/federation/partners/1',
       '/federation/partners/5',
-      '/federation/members/353',
-      '/federation/members/353/transfer',
-      '/federation/members/351',
       '/ideation/23',
       '/ideation/22',
       '/ideation/2',
@@ -1176,8 +1191,30 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
+      { path: '/federation/members', location: '/federation/opt-in' },
+      { path: '/federation/members/353', location: '/federation/opt-in' },
+      { path: '/federation/members/353/transfer', location: '/federation/opt-in' },
+      { path: '/federation/members/351', location: '/federation/opt-in' },
+      { path: '/federation/groups', location: '/federation/opt-in' },
+      { path: '/federation/listings', location: '/federation/opt-in' },
+      { path: '/federation/events', location: '/federation/opt-in' },
+      { path: '/federation/connections', location: '/federation/opt-in' },
+      { path: '/federation/messages', location: '/federation/opt-in' },
       { path: '/federation/messages/conversation/353', location: '/federation/messages' }
     ]));
+    for (const path of [
+      '/federation/members',
+      '/federation/members/353',
+      '/federation/members/353/transfer',
+      '/federation/members/351',
+      '/federation/groups',
+      '/federation/listings',
+      '/federation/events',
+      '/federation/connections',
+      '/federation/messages'
+    ]) {
+      expect(options.modulePagePaths).not.toContain(path);
+    }
   });
 
   it('does not treat the completed course 2 fixture as a signed redirect outcome', () => {
@@ -1207,9 +1244,7 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/coupons', status: 403 },
       { path: '/marketplace/coupons/5/edit', status: 403 }
     ]));
-    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
-      { path: '/password/reset', location: '/login/forgot-password' }
-    ]));
+    expect(options.publicModulePagePaths).toContain('/password/reset');
   });
 
   it('includes stable account, poll, listing, course certificate, job export, and onboarding outcomes in the default smoke scopes', () => {
@@ -1341,6 +1376,12 @@ describe('Laravel runtime smoke harness', () => {
 
     expect(options.unsignedAuthRequiredPagePaths).toEqual(expect.arrayContaining([
       '/ideation/campaigns/1',
+      '/organisations',
+      '/organisations/browse',
+      '/organisations/register',
+      '/organisations/manage',
+      '/organisations/1/jobs',
+      '/organisations/opportunities/1/apply',
       '/polls/1/export',
       '/marketplace/slots/1/edit',
       '/me/collections/1',
@@ -1414,7 +1455,7 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/group-exchanges', text: 'Start a group exchange' },
       { path: '/group-exchanges/new', text: 'How are the hours shared out?' },
       { path: '/saved', text: 'Saved items' },
-      { path: '/members', text: 'Community members' },
+      { path: '/members', text: 'Members' },
       { path: '/members/discover', text: 'Recommended members' },
       { path: '/members/nearby', text: 'Members near me' },
       { path: '/members/77/insights', text: 'Reputation and recognition' },
@@ -1464,6 +1505,7 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/organisations/register', text: 'Register a volunteer organisation' },
       { path: '/login', text: 'Sign in' },
       { path: '/login/forgot-password', text: 'Reset your password' },
+      { path: '/password/reset', text: 'Choose a new password' },
       { path: '/password/reset?token=reset-token', text: 'Choose a new password' },
       { path: '/register', text: 'Register' },
       { path: '/contact', text: 'Contact Us' },
@@ -1620,19 +1662,10 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/federation/partners', text: 'Federation partners' },
       { path: '/federation/partners/1', text: 'Federation partner' },
       { path: '/federation/partners/5', text: 'Federation partner' },
-      { path: '/federation/members', text: 'Federated members' },
-      { path: '/federation/members/353', text: 'Federation member' },
-      { path: '/federation/members/353/transfer', text: 'Send time credits' },
-      { path: '/federation/members/351', text: 'Federation member' },
       { path: '/federation/settings', text: 'Federation settings' },
       { path: '/federation/opt-in', text: 'Opt in to federation' },
       { path: '/federation/opt-out', text: 'Opt out of federation' },
       { path: '/federation/onboarding', text: 'Welcome to the community network' },
-      { path: '/federation/groups', text: 'Groups from partner communities' },
-      { path: '/federation/listings', text: 'Federated listings' },
-      { path: '/federation/events', text: 'Federated events' },
-      { path: '/federation/connections', text: 'Federated connections' },
-      { path: '/federation/messages', text: 'Federated messages' },
       { path: '/groups', text: 'Groups' },
       { path: '/groups/new', text: 'Create a group' },
       { path: '/groups/484', text: 'Group events' },
@@ -1651,6 +1684,19 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/groups/482/notifications', text: 'Notification preferences' },
       { path: '/users/14/appreciations', text: 'Public thank-you notes other members have sent to this person.' }
     ]));
+    for (const path of [
+      '/federation/members',
+      '/federation/members/353',
+      '/federation/members/353/transfer',
+      '/federation/members/351',
+      '/federation/groups',
+      '/federation/listings',
+      '/federation/events',
+      '/federation/connections',
+      '/federation/messages'
+    ]) {
+      expect(options.bodyTextPagePaths.map((entry) => entry.path)).not.toContain(path);
+    }
   });
 
   it('includes the stable ideation idea fixture outcome in the default smoke scopes', () => {
@@ -1787,19 +1833,52 @@ describe('Laravel runtime smoke harness', () => {
     const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
 
     expect(checks).toEqual(expect.objectContaining({
-      'module-page-volunteering-renders': true,
-      'module-page-organisations-renders': true,
-      'module-page-organisations-browse-renders': true,
-      'module-page-kb-renders': true,
-      'module-page-help-renders': true
+      'public-module-page-volunteering-renders-unsigned': true,
+      'public-module-page-kb-renders-unsigned': true,
+      'public-module-page-help-renders-unsigned': true,
+      'public-module-page-feed-renders-unsigned': true,
+      'public-module-page-feed-posts-796-renders-unsigned': true,
+      'public-module-page-feed-item-listing-42-renders-unsigned': true,
+      'public-module-page-members-renders-unsigned': true,
+      'public-module-page-password-reset-renders-unsigned': true,
+      'public-module-page-events-renders-unsigned': true,
+      'public-module-page-events-6-renders-unsigned': true,
+      'public-module-page-listings-renders-unsigned': true,
+      'public-module-page-listings-90992-renders-unsigned': true
     }));
     expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual(expect.arrayContaining([
       'GET /volunteering',
-      'GET /organisations',
-      'GET /organisations/browse',
       'GET /kb',
-      'GET /help'
+      'GET /help',
+      'GET /feed',
+      'GET /feed/posts/796',
+      'GET /feed/item/listing/42',
+      'GET /members',
+      'GET /password/reset',
+      'GET /events',
+      'GET /events/6',
+      'GET /listings',
+      'GET /listings/90992'
     ]));
+    const publicPaths = [
+      '/volunteering',
+      '/kb',
+      '/help',
+      '/feed',
+      '/feed/posts/796',
+      '/feed/item/listing/42',
+      '/members',
+      '/password/reset',
+      '/events',
+      '/events/6',
+      '/listings',
+      '/listings/90992'
+    ];
+    expect(publicPaths.every((path) => requests.some((request) => (
+      request.method === 'GET'
+      && request.url === path
+      && !request.cookie.includes('token=')
+    )))).toBe(true);
   });
 
   it('smokes tenant-domain pages with a Host header and rejects legacy alpha URLs', async () => {
@@ -1917,16 +1996,10 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-leaderboard-spotlight-renders': true,
       'module-page-nexus-score-tiers-renders': true,
       'module-page-federation-partners-renders': true,
-      'module-page-federation-members-renders': true,
       'module-page-federation-settings-renders': true,
       'module-page-federation-opt-in-renders': true,
       'module-page-federation-opt-out-renders': true,
       'module-page-federation-onboarding-renders': true,
-      'module-page-federation-groups-renders': true,
-      'module-page-federation-listings-renders': true,
-      'module-page-federation-events-renders': true,
-      'module-page-federation-connections-renders': true,
-      'module-page-federation-messages-renders': true,
       'module-page-courses-instructor-renders': true,
       'module-page-courses-instructor-new-renders': true,
       'module-page-marketplace-saved-renders': true,
@@ -1974,9 +2047,6 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-courses-instructor-2-edit-renders': true,
       'module-page-federation-partners-1-renders': true,
       'module-page-federation-partners-5-renders': true,
-      'module-page-federation-members-353-renders': true,
-      'module-page-federation-members-353-transfer-renders': true,
-      'module-page-federation-members-351-renders': true,
       'module-page-ideation-23-renders': true,
       'module-page-ideation-22-renders': true,
       'module-page-ideation-2-renders': true,
@@ -2082,12 +2152,20 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-premium-return-renders': true,
       'module-page-profile-renders': true,
       'module-page-report-a-problem-renders': true,
-      'redirect-page-password-reset-redirects-login-forgot-password': true,
       'redirect-page-login-two-factor-redirects-login-status-two-factor-expired': true,
       'redirect-page-onboarding-redirects-dashboard': true,
       'redirect-page-events-6-recurring-edit-redirects-events-6-edit': true,
       'redirect-page-groups-484-edit-redirects-groups-484': true,
       'redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed': true,
+      'redirect-page-federation-members-redirects-federation-opt-in': true,
+      'redirect-page-federation-members-353-redirects-federation-opt-in': true,
+      'redirect-page-federation-members-353-transfer-redirects-federation-opt-in': true,
+      'redirect-page-federation-members-351-redirects-federation-opt-in': true,
+      'redirect-page-federation-groups-redirects-federation-opt-in': true,
+      'redirect-page-federation-listings-redirects-federation-opt-in': true,
+      'redirect-page-federation-events-redirects-federation-opt-in': true,
+      'redirect-page-federation-connections-redirects-federation-opt-in': true,
+      'redirect-page-federation-messages-redirects-federation-opt-in': true,
       'redirect-page-federation-messages-conversation-77-redirects-federation-messages': true,
       'redirect-page-courses-1-learn-redirects-courses-1-status-enrol-required': true,
       'redirect-page-federation-messages-conversation-353-redirects-federation-messages': true,
@@ -2127,10 +2205,18 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-groups-482-files-1-download-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-5-edit-returns-403'].status).toBe(403);
-    expect(checkByName['redirect-page-password-reset-redirects-login-forgot-password'].location).toBe('/login/forgot-password');
     expect(checkByName['redirect-page-events-6-recurring-edit-redirects-events-6-edit'].location).toBe('/events/6/edit');
     expect(checkByName['redirect-page-groups-484-edit-redirects-groups-484'].location).toBe('/groups/484');
     expect(checkByName['redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed'].location).toBe('/courses/42?status=certificate-failed');
+    expect(checkByName['redirect-page-federation-members-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-members-353-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-members-353-transfer-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-members-351-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-groups-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-listings-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-events-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-connections-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
+    expect(checkByName['redirect-page-federation-messages-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-messages-conversation-77-redirects-federation-messages'].location).toBe('/federation/messages');
     expect(checkByName['redirect-page-courses-1-learn-redirects-courses-1-status-enrol-required'].location).toBe('/courses/1?status=enrol-required');
     expect(checkByName['redirect-page-federation-messages-conversation-353-redirects-federation-messages'].location).toBe('/federation/messages');
@@ -2169,7 +2255,13 @@ describe('Laravel runtime smoke harness', () => {
       'auth-required-page-federation-listings-1-1-redirects-login-status-auth-required': true,
       'auth-required-page-federation-partners-1-redirects-login-status-auth-required': true,
       'auth-required-page-ideation-1-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-browse-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-register-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-manage-redirects-login-status-auth-required': true,
       'auth-required-page-organisations-1-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-1-jobs-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-opportunities-1-apply-redirects-login-status-auth-required': true,
       'auth-required-page-podcasts-1-redirects-login-status-auth-required': true,
       'auth-required-page-podcasts-1-episodes-1-redirects-login-status-auth-required': true,
       'auth-required-page-resources-1-download-redirects-login-status-auth-required': true,
@@ -2259,7 +2351,7 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-group-exchanges-contains-start-a-group-exchange': true,
       'body-text-page-group-exchanges-new-contains-how-are-the-hours-shared-out': true,
       'body-text-page-saved-contains-saved-items': true,
-      'body-text-page-members-contains-community-members': true,
+      'body-text-page-members-contains-members': true,
       'body-text-page-members-discover-contains-recommended-members': true,
       'body-text-page-members-nearby-contains-members-near-me': true,
       'body-text-page-members-77-insights-contains-reputation-and-recognition': true,
@@ -2313,6 +2405,7 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-organisations-register-contains-register-a-volunteer-organisation': true,
       'body-text-page-login-contains-sign-in': true,
       'body-text-page-login-forgot-password-contains-reset-your-password': true,
+      'body-text-page-password-reset-contains-choose-a-new-password': true,
       'body-text-page-password-reset-token-reset-token-contains-choose-a-new-password': true,
       'body-text-page-register-contains-register': true,
       'body-text-page-contact-contains-contact-us': true,
@@ -2482,19 +2575,10 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-federation-partners-contains-federation-partners': true,
       'body-text-page-federation-partners-1-contains-federation-partner': true,
       'body-text-page-federation-partners-5-contains-federation-partner': true,
-      'body-text-page-federation-members-contains-federated-members': true,
-      'body-text-page-federation-members-353-contains-federation-member': true,
-      'body-text-page-federation-members-353-transfer-contains-send-time-credits': true,
-      'body-text-page-federation-members-351-contains-federation-member': true,
       'body-text-page-federation-settings-contains-federation-settings': true,
       'body-text-page-federation-opt-in-contains-opt-in-to-federation': true,
       'body-text-page-federation-opt-out-contains-opt-out-of-federation': true,
       'body-text-page-federation-onboarding-contains-welcome-to-the-community-network': true,
-      'body-text-page-federation-groups-contains-groups-from-partner-communities': true,
-      'body-text-page-federation-listings-contains-federated-listings': true,
-      'body-text-page-federation-events-contains-federated-events': true,
-      'body-text-page-federation-connections-contains-federated-connections': true,
-      'body-text-page-federation-messages-contains-federated-messages': true,
       'body-text-page-groups-contains-groups': true,
       'body-text-page-groups-new-contains-create-a-group': true,
       'body-text-page-groups-484-contains-group-events': true,

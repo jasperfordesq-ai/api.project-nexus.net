@@ -26,6 +26,12 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = "" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">Listings</h1>
 
       <div class="govuk-grid-row govuk-!-margin-bottom-6">
@@ -42,14 +48,13 @@
               </div>
               <div class="govuk-grid-column-one-third">
                 {{ govukSelect({
-                  id: "status",
-                  name: "status",
-                  label: { text: "Status" },
+                  id: "type",
+                  name: "type",
+                  label: { text: "Type" },
                   items: [
-                    { value: "", text: "All statuses", selected: not filters.status },
-                    { value: "draft", text: "Draft", selected: filters.status == "draft" },
-                    { value: "active", text: "Active", selected: filters.status == "active" },
-                    { value: "inactive", text: "Inactive", selected: filters.status == "inactive" }
+                    { value: "", text: t("feed.subtypes.all"), selected: not filters.type },
+                    { value: "offer", text: "Offers", selected: filters.type == "offer" },
+                    { value: "request", text: "Requests", selected: filters.type == "request" }
                   ]
                 }) }}
               </div>
@@ -58,7 +63,7 @@
                   text: t("goals.templates_filter_button"),
                   classes: "govuk-button--secondary"
                 }) }}
-                {% if filters.search or filters.status %}
+                {% if filters.search or filters.type %}
                   <a href="{{ urlFor('/listings') }}" class="govuk-link govuk-!-margin-left-2">Clear</a>
                 {% endif %}
               </div>
@@ -67,9 +72,9 @@
         </div>
       </div>
 
-      <p class="govuk-body">
-        <a href="{{ urlFor('/listings/new') }}" class="govuk-button">Create listing</a>
-      </p>
+      {% if isAuthenticated %}
+        <p class="govuk-body"><a href="{{ urlFor('/listings/new') }}" class="govuk-button">Create listing</a></p>
+      {% endif %}
 
       {% if listings and listings.length > 0 %}
         <table class="govuk-table">
@@ -78,7 +83,7 @@
               <th scope="col" class="govuk-table__header">{{ t("group_exchanges.form_title_label") }}</th>
               <th scope="col" class="govuk-table__header">Status</th>
               <th scope="col" class="govuk-table__header">Created</th>
-              <th scope="col" class="govuk-table__header">Actions</th>
+              {% if isAuthenticated %}<th scope="col" class="govuk-table__header">Actions</th>{% endif %}
             </tr>
           </thead>
           <tbody class="govuk-table__body">
@@ -96,21 +101,17 @@
                     {{ listing.title or listing.name or "Untitled" }}
                   </a>
                 </td>
-                <td class="govuk-table__cell">
+                {% if isAuthenticated %}<td class="govuk-table__cell">
                   <strong class="govuk-tag govuk-tag--{{ tagColour }}">
                     {{ listing.status or "N/A" }}
                   </strong>
-                </td>
+                </td>{% endif %}
                 <td class="govuk-table__cell">{{ (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }}</td>
                 <td class="govuk-table__cell">
                   {% set listingOwnerId = listing.user_id or listing.userId or listing.author_id or listing.authorId or (listing.user.id if listing.user and listing.user.id else null) %}
                   {% set currentUserId = currentUser.id if currentUser and currentUser.id else null %}
                   {% if listing.can_edit or (listingOwnerId and currentUserId and (listingOwnerId | string) == (currentUserId | string)) %}
                     <a href="{{ urlFor('/listings/' + (listing.id | string) + '/edit') }}" class="govuk-link govuk-!-margin-right-2">{{ t("jobs_t3.edit_button") }}</a>
-                    <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/delete') }}" class="nexus-alpha-linkform govuk-!-display-inline-block">
-                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <button type="submit" class="govuk-link app-link--destructive nexus-alpha-linkbutton">{{ t("jobs_t3.delete_button") }}</button>
-                    </form>
                   {% endif %}
                 </td>
               </tr>
@@ -118,25 +119,18 @@
           </tbody>
         </table>
 
-        {% if pagination and pagination.totalPages > 1 %}
-          {% set paginationItems = [] %}
-          {% for i in range(1, pagination.totalPages + 1) %}
-            {% set paginationItems = (paginationItems.push({
-              number: i,
-              href: urlFor("/listings?page=" + i + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")),
-              current: i == pagination.currentPage
-            }), paginationItems) %}
-          {% endfor %}
-
+        {% if pagination.hasMore and pagination.cursor %}
           {{ govukPagination({
-            previous: { href: urlFor("/listings?page=" + (pagination.currentPage - 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")) } if pagination.currentPage > 1 else undefined,
-            next: { href: urlFor("/listings?page=" + (pagination.currentPage + 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "")) } if pagination.currentPage < pagination.totalPages else undefined,
-            items: paginationItems
+            next: {
+              labelText: t("listings.more_results_label"),
+              href: urlFor("/listings?" + ("search=" + (filters.search | urlencode) + "&" if filters.search else "") + ("type=" + filters.type + "&" if filters.type else "") + "cursor=" + (pagination.cursor | urlencode))
+            },
+            landmarkLabel: t("listings.pagination_label")
           }) }}
         {% endif %}
 
       {% else %}
-        {% if filters.search or filters.status %}
+        {% if filters.search or filters.type %}
           {% set emptyState = {
             icon: "🔍",
             heading: "No results found",
@@ -152,8 +146,8 @@
             heading: "No listings yet",
             message: "Create your first listing to share with the community.",
             action: {
-              text: "Create listing",
-              href: urlFor("/listings/new"),
+              text: "Create listing" if isAuthenticated else t("nav.login"),
+              href: urlFor("/listings/new") if isAuthenticated else urlFor("/login"),
               isButton: true
             }
           } %}
