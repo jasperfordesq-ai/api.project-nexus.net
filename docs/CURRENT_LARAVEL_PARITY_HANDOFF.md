@@ -57,7 +57,9 @@ containers from this repo.
 Backend commit `d2132a50` (`Harden backend auth roles and scheduled parity`) is
 on `main` and was pushed to `origin/main`. Concurrent dirty files under
 `apps/web-uk/` belong to another active workstream and were not staged or
-modified by this backend slice.
+modified by this backend slice. Follow-up commit `bcc317e3` adds the
+fail-closed migration-discovery quarantine gate and fixes the CI model-drift
+exit-code interpretation.
 
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
@@ -79,12 +81,15 @@ Verification evidence for this slice:
 - API comparator: 2,436/2,436 matched, 0 missing;
 - EF Release discovery: 75 migrations, latest
   `20260710092435_CanonicalRoleSemantics`; no pending model changes.
+- migration discovery quarantine gate: 1/1, with 104 source classes split into
+  75 EF-discovered and 29 explicitly quarantined classes.
 
-Migration discovery is a current red gate: the source tree contains 104 main
-migration classes, but 29 legacy classes are not discoverable by EF. Because
-most contain non-idempotent DDL, do not restore their metadata until supported
-database histories and schemas are reconciled. No production database or
-container was touched.
+Migration discovery now fails closed in CI, but schema reconciliation remains a
+red gate: 29 legacy classes are not discoverable by EF. Because most contain
+non-idempotent DDL, do not restore their metadata until supported database
+histories and schemas are reconciled. The test prevents silent inventory drift;
+it does not certify fresh bootstrap. No production database or container was
+touched.
 
 ## Historical Snapshot (2026-07-07)
 
@@ -173,8 +178,8 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Add a fail-closed migration-discovery test with an explicit 29-entry legacy
-   quarantine, then reconcile histories before restoring any missing metadata.
+1. Reconcile supported database histories and schemas for the explicit
+   29-entry migration quarantine before restoring any missing metadata.
 2. Replace the remaining 40 unmapped cron definitions with real jobs or keep
    them explicitly disabled/unsupported until equivalent work executes.
 3. Continue the catch-all/fabricated-write inventory, starting with federation

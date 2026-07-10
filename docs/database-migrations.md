@@ -28,6 +28,13 @@ the 75 runtime migrations. `dotnet ef migrations has-pending-model-changes`
 reports no current model drift. These facts do not certify a fresh bootstrap
 while the 29-class quarantine remains.
 
+`MigrationDiscoveryParityTests` now fails closed if any `Migration` subclass
+is neither discovered by EF nor listed in the explicit 29-entry legacy
+quarantine, if a quarantined class becomes discoverable without review, or if
+an intended migration id no longer matches its type. The PR workflow runs this
+gate after the Release build. Commit `bcc317e3` introduced the gate and also
+corrected the EF drift step so its zero exit code is treated as a clean model.
+
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
 ```
@@ -110,14 +117,16 @@ git push
 The PR Quality Gate workflow automatically:
 - **Builds** the project
 - **Runs tests** against a fresh PostgreSQL database
+- **Verifies migration discovery** - fails on an unclassified or accidentally restored migration class
 - **Checks for pending model changes** - fails if you changed entities without a migration
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The existing EF checks only see the runtime-discovered set. Until the planned
-reflection/quarantine gate is added, they cannot detect a newly invisible
-migration class. A successful `database update` is therefore not, by itself,
-fresh-bootstrap certification for the complete source tree.
+The reflection/quarantine gate covers all 104 compiled migration subclasses,
+including the 29 classes that EF cannot currently discover. It prevents a new
+class from becoming silently invisible, but it does not prove that the
+quarantined DDL is safe to replay. A successful `database update` is therefore
+not, by itself, fresh-bootstrap certification for the complete source tree.
 
 ### 7. Deploy to Production
 
@@ -169,6 +178,7 @@ The PR workflow prevents drift from entering `main`:
 
 | Check | Severity | What it catches |
 |-------|----------|----------------|
+| Migration discovery quarantine | **Error** (blocks merge) | New invisible migrations, abstract migration classes, stale quarantine entries, and migration-id mismatches |
 | Pending model changes | **Error** (blocks merge) | Entity changes without migration |
 | Migrations apply cleanly | **Error** (blocks merge) | Broken/conflicting migrations |
 | Entity changes without migration files | **Warning** | Possible missing migration |

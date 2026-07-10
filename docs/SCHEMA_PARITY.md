@@ -12,7 +12,7 @@ Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-09.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 323 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 102 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
+| ASP.NET EF migrations | 104 | Compiled EF migration subclasses; 75 are runtime-discovered and 29 are explicitly quarantined. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
@@ -42,6 +42,13 @@ DDL, so adding metadata blindly could replay them against existing databases.
 Treat those 29 classes as quarantined until migration history and schema state
 are reconciled across supported environments. No production database was
 inspected or modified for this audit.
+
+Commit `bcc317e3` adds a fail-closed `MigrationDiscoveryParityTests` gate to the
+PR workflow. The focused Release test passes 1/1 with
+`source=104, discovered=75, quarantined=29`; it also rejects abstract migration
+classes, stale quarantine entries, and intended ids that do not match their
+class names. This guards discovery drift but does not certify quarantined DDL
+or a fresh database bootstrap.
 
 ## Generated Artifacts
 
