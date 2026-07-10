@@ -34,11 +34,16 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,391/1,391` tests),
-ESLint, the brand-policy gate, CSS compilation, the `28/28` Chromium/axe gate,
+The current checkout has passed `45/45` Jest suites (`1,394/1,394` tests),
+ESLint, the brand-policy gate, CSS compilation, the `30/30` Chromium/axe gate,
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
 missing, `0` extra parity routes, and `3` ignored infrastructure routes.
+
+The browser matrix includes signed Arabic dashboard, account, and structurally
+rebuilt own-profile pages at 320 CSS pixels, with RTL/reflow and serious/critical
+axe assertions. Authenticated cases have a 90-second ceiling to accommodate the
+observed local Laravel API latency; the accessibility assertions are unchanged.
 
 Localization is structurally complete across `11` locales, `24` namespaces,
 and `7,337` keys per locale. It is not linguistically complete: the non-English

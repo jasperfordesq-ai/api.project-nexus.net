@@ -10,12 +10,17 @@ const {
   callUserSettingsApi,
   callProfileApi,
   callWebAuthnApi,
+  getAllBadges,
+  getGamificationProfileByUserId,
+  getListings,
+  getUserReviews,
   invalidateUserCache,
   requestAccountDeletion,
   uploadProfileAvatar,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { flagEnabled } = require('../lib/accessible-shell');
 const { createChoiceTranslator, createTranslator, SUPPORTED_LOCALES } = require('../lib/localization');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
@@ -544,6 +549,128 @@ function normalizeSkills(payload) {
     is_requesting: boolValue(skill.is_requesting),
     endorsement_count: Number(skill.endorsement_count || skill.endorsements_count || 0)
   })).filter((skill) => skill.skill_name !== '');
+}
+
+function numericProfileValue(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return 0;
+}
+
+function formatProfileNumber(value, options = {}) {
+  return new Intl.NumberFormat(getRequestIntlLocale(), options).format(numericProfileValue(value));
+}
+
+function ownProfileDisplayName(profile, t = fallbackTranslator) {
+  const explicit = trimmed(profileValue(profile, 'name') || profileValue(profile, 'display_name'));
+  if (explicit) return explicit;
+  const combined = [profileValue(profile, 'first_name'), profileValue(profile, 'last_name')]
+    .map((value) => trimmed(value))
+    .filter(Boolean)
+    .join(' ');
+  return combined || t('members.unknown_member');
+}
+
+function ownProfileSkills(profile) {
+  const rows = Array.isArray(profile.skills) ? profile.skills : [];
+  return rows
+    .map((skill) => {
+      if (typeof skill === 'string') {
+        return { name: trimmed(skill), isOffering: false, isRequesting: false };
+      }
+      if (!skill || typeof skill !== 'object') return null;
+      return {
+        name: trimmed(skill.skill_name || skill.skillName || skill.name),
+        isOffering: boolValue(skill.is_offering, skill.isOffering),
+        isRequesting: boolValue(skill.is_requesting, skill.isRequesting)
+      };
+    })
+    .filter((skill) => skill && skill.name)
+    .slice(0, 20);
+}
+
+function ownProfileListings(result) {
+  return arrayFromPayload(payloadFrom(result), ['items', 'listings'])
+    .map((listing) => ({
+      id: Number(listing?.id) || null,
+      title: trimmed(listing?.title || listing?.name),
+      description: trimmed(String(listing?.description || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' '),
+      type: String(listing?.type || 'offer').toLowerCase() === 'request' ? 'request' : 'offer',
+      imageUrl: listing?.image_url || listing?.imageUrl || ''
+    }))
+    .filter((listing) => listing.id && listing.title)
+    .slice(0, 6);
+}
+
+function ownProfileReviews(result) {
+  return arrayFromPayload(payloadFrom(result), ['items', 'reviews'])
+    .map((review) => ({
+      id: Number(review?.id) || null,
+      rating: Math.max(0, Math.min(5, numericProfileValue(review?.rating))),
+      comment: trimmed(review?.comment || review?.body),
+      reviewerName: review?.is_anonymous || review?.isAnonymous
+        ? ''
+        : trimmed(review?.reviewer?.name || review?.reviewer_name || review?.reviewerName),
+      createdAt: review?.created_at || review?.createdAt || ''
+    }))
+    .slice(0, 6);
+}
+
+function ownProfileBadges(result) {
+  return arrayFromPayload(payloadFrom(result), ['items', 'badges'])
+    .map((badge) => ({
+      name: trimmed(badge?.name || badge?.title || badge?.badge_name || badge?.badgeName),
+      icon: trimmed(badge?.icon || badge?.emoji)
+    }))
+    .filter((badge) => badge.name)
+    .slice(0, 8);
+}
+
+function ownProfileStats(profile, gamificationResult) {
+  const stats = profile.stats && typeof profile.stats === 'object' ? profile.stats : {};
+  const gamification = normalizeProfilePayload(gamificationResult);
+  const hoursGiven = numericProfileValue(
+    profile.total_hours_given,
+    profile.totalHoursGiven,
+    stats.total_hours_given,
+    stats.totalHoursGiven,
+    stats.given_count,
+    stats.givenCount
+  );
+  const hoursReceived = numericProfileValue(
+    profile.total_hours_received,
+    profile.totalHoursReceived,
+    stats.total_hours_received,
+    stats.totalHoursReceived,
+    stats.received_count,
+    stats.receivedCount
+  );
+  const listingsCount = Math.trunc(numericProfileValue(stats.listings_count, stats.listingsCount));
+  const ratingValue = profile.rating ?? stats.average_rating ?? stats.averageRating;
+  const rating = ratingValue === null || ratingValue === undefined || ratingValue === ''
+    ? null
+    : numericProfileValue(ratingValue);
+  const level = Math.trunc(numericProfileValue(profile.level, gamification.level, 1));
+  const xp = Math.trunc(numericProfileValue(profile.xp, gamification.xp));
+
+  return {
+    hoursGivenLabel: formatProfileNumber(hoursGiven, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    hoursReceivedLabel: formatProfileNumber(hoursReceived, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    listingsCountLabel: formatProfileNumber(listingsCount, { maximumFractionDigits: 0 }),
+    ratingLabel: rating === null ? '' : formatProfileNumber(rating, { maximumFractionDigits: 1 }),
+    levelLabel: formatProfileNumber(level, { maximumFractionDigits: 0 }),
+    xpLabel: formatProfileNumber(xp, { maximumFractionDigits: 0 })
+  };
+}
+
+function optionalOwnProfileResult(promise, fallback) {
+  return promise.catch((error) => {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    return fallback;
+  });
 }
 
 function normalizePasskeys(payload) {
@@ -1406,16 +1533,70 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
   return redirectTo(res, twoFactorRedirect(status));
 }));
 
+function requireOwnProfileFeature(req, res, next) {
+  const tenant = req.accessibleRouting?.tenant;
+  if (tenant && typeof tenant === 'object' && !flagEnabled(tenant, 'connections', 'features', true)) {
+    return res.status(403).render('errors/403', {
+      title: 'Forbidden',
+      message: 'This feature is not enabled for this community.'
+    });
+  }
+  return next();
+}
+
 // View profile
-router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const profile = await getRequestProfile(req, req.token);
+router.get('/', requireOwnProfileFeature, requireAuth, asyncRoute(async (req, res) => {
+  const profile = normalizeProfilePayload(await getRequestProfile(req, req.token));
+  const memberId = Number(profile.id || profile.user_id || profile.userId) || null;
+  const tenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+  const profileFeatures = {
+    listings: flagEnabled(tenant, 'listings', 'modules', true),
+    reviews: flagEnabled(tenant, 'reviews', 'features', true),
+    gamification: flagEnabled(tenant, 'gamification', 'features', true)
+  };
+  const [listingsResult, reviewsResult, gamificationResult, badgesResult] = await Promise.all([
+    memberId && profileFeatures.listings
+      ? optionalOwnProfileResult(getListings(req.token, { user_id: memberId, limit: 6 }), { data: [] })
+      : Promise.resolve({ data: [] }),
+    memberId && profileFeatures.reviews
+      ? optionalOwnProfileResult(getUserReviews(req.token, memberId), { data: [] })
+      : Promise.resolve({ data: [] }),
+    memberId && profileFeatures.gamification
+      ? optionalOwnProfileResult(getGamificationProfileByUserId(req.token, memberId), { data: null })
+      : Promise.resolve({ data: null }),
+    memberId && profileFeatures.gamification
+      ? optionalOwnProfileResult(getAllBadges(req.token, { user_id: memberId }), { data: [] })
+      : Promise.resolve({ data: [] })
+  ]);
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const statusConfig = status === 'profile-updated' ? profileStatusConfig(req, status) : null;
   const flashSuccess = req.flash ? req.flash('success')[0] : null;
+  const t = typeof req.t === 'function' ? req.t : fallbackTranslator;
+  const displayName = ownProfileDisplayName(profile, t);
+  const firstName = trimmed(profileValue(profile, 'first_name'));
+  const lastName = trimmed(profileValue(profile, 'last_name'));
+  const profileType = profileValue(profile, 'profile_type') === 'organisation' ? 'organisation' : 'individual';
 
   res.render('profile/index', {
-    title: 'Your profile',
+    title: displayName,
+    activeNav: 'profile',
+    alphaActiveNav: 'profile',
     profile,
+    displayName,
+    initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || displayName.charAt(0).toUpperCase(),
+    avatarUrl: profileValue(profile, 'avatar_url'),
+    profileType,
+    identityVerified: boolValue(profile.id_verified, profile.idVerified),
+    profileStats: ownProfileStats(profile, gamificationResult),
+    profileSkills: ownProfileSkills(profile),
+    profileListings: ownProfileListings(listingsResult),
+    profileReviews: ownProfileReviews(reviewsResult),
+    profileBadges: ownProfileBadges(badgesResult),
+    joinedLabel: formatProfileDate(profileValue(profile, 'created_at')),
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
+    profileFeatures,
     successMessage: statusConfig?.message || flashSuccess
   });
 }));

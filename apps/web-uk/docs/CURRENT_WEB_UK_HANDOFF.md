@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,391/1,391` tests passed.
+- Jest: `45/45` suites and `1,394/1,394` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `28/28` cases.
+- Automated browser accessibility: Chromium/axe passed `30/30` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,9 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard case proves its Laravel-owned headings, welcome, CTA, statistics,
+  dashboard/account/profile cases prove their Laravel-owned headings, actions,
+  labels, plural/number formatting, and structural sections. The dashboard's
+  welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
   formatting no longer fall back to the previous hard-coded English strings.
   This is still not a completed screen-reader or assistive-technology record.
@@ -137,6 +139,30 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Own-Profile Structural Parity And Localization Slice
+
+The signed `/profile` page is no longer the legacy three-field name/email/phone
+summary. It now follows Laravel's own-profile composition with an identity hero,
+verification/member-type state, localized activity statistics, About, skills,
+recent listings, reviews, account summary, badges, and links to edit profile,
+achievements, and the leaderboard. Existing Laravel APIs provide the supplemental
+listing, review, gamification, and badge data; their non-authentication failures
+degrade individual sections without taking down the profile.
+
+Laravel-style tenant boundaries are enforced before data access. A tenant with
+connections disabled receives 403 before authentication/profile reads, and
+listings, reviews, or gamification disabled states suppress both their API calls
+and sections. Catalog copy, locale-aware numbers/dates, and Arabic RTL semantics
+replace the former hard-coded summary. Focused route coverage passed `4/4`; the
+complete Jest suite passed `45/45` and `1,394/1,394`; lint, brand, template, and
+diff gates passed; and the full current-checkout Chromium/axe matrix passed
+`30/30`, including standard and Arabic profile pages at 320 CSS pixels. The
+authenticated cases now use a measured 90-second ceiling because local Laravel
+responses can exceed the former 30-second per-test limit; assertions were not
+relaxed. Availability/activity-timeline depth, exact supplemental service data,
+live feature-disabled tenant proof, manual screen-reader evidence, and ASP.NET
+backend switching remain open.
 
 ## 2026-07-10 Account-Hub Localization Slice
 

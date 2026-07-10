@@ -1636,12 +1636,30 @@ describe('shared accessible frontend shell', () => {
   it('renders the profile page with Laravel gamification links', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValueOnce({
+      id: 101,
       first_name: 'Alex',
       last_name: 'River',
       email: 'alex@example.test',
       phone: '07123 456789',
-      bio: 'I help with repair cafes.'
+      profile_type: 'individual',
+      tagline: 'Repair and reuse',
+      bio: 'I help with repair cafes.',
+      location: 'Belfast',
+      created_at: '2024-06-01T10:00:00Z',
+      id_verified: true,
+      total_hours_given: 12.25,
+      total_hours_received: 4,
+      stats: { listings_count: 1, average_rating: 4.5 },
+      skills: [{ skill_name: 'Bike repair', is_offering: true }]
     });
+    api.getListings.mockResolvedValueOnce({
+      data: [{ id: 501, title: 'Borrow a repair kit', type: 'offer', description: '<p>Hand tools.</p>' }]
+    });
+    api.getUserReviews.mockResolvedValueOnce({
+      data: [{ id: 91, rating: 5, comment: 'Very helpful.', reviewer: { name: 'Mo' }, created_at: '2026-06-01T10:00:00Z' }]
+    });
+    api.getGamificationProfileByUserId.mockResolvedValueOnce({ data: { level: 4, xp: 1250 } });
+    api.getAllBadges.mockResolvedValueOnce({ data: [{ name: 'Community helper', icon: 'star' }] });
 
     const signed = await request(app)
       .get('/profile')
@@ -1652,8 +1670,23 @@ describe('shared accessible frontend shell', () => {
 
     expect(signed.status).toBe(200);
     expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getListings).toHaveBeenCalledWith('test-token', { user_id: 101, limit: 6 });
+    expect(api.getUserReviews).toHaveBeenCalledWith('test-token', 101);
+    expect(api.getGamificationProfileByUserId).toHaveBeenCalledWith('test-token', 101);
+    expect(api.getAllBadges).toHaveBeenCalledWith('test-token', { user_id: 101 });
     expect(signed.text).toContain('Your profile');
+    expect(signed.text).toContain('Alex River');
+    expect(signed.text).toContain('Repair and reuse');
+    expect(signed.text).toContain('Verified member');
+    expect(signed.text).toContain('Hours given');
+    expect(signed.text).toContain('12.3');
     expect(signed.text).toContain('I help with repair cafes.');
+    expect(signed.text).toContain('Bike repair');
+    expect(signed.text).toContain('Borrow a repair kit');
+    expect(signed.text).toContain('Hand tools.');
+    expect(signed.text).toContain('Very helpful.');
+    expect(signed.text).toContain('Community helper');
+    expect(signed.text).toContain('Belfast');
     expect(signed.text).toContain('href="/profile/settings"');
     expect(signed.text).not.toContain('href="/profile/edit"');
     expect(signed.text).toContain('href="/achievements"');
@@ -1663,6 +1696,84 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('href="/progress/leaderboard"');
     expect(legacyEdit.status).toBe(404);
     expect(legacyEdit.text).toContain('Page not found');
+  });
+
+  it('renders the signed profile summary from the Laravel Arabic catalog', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getProfile.mockResolvedValue({
+      id: 101,
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      email: 'ada@example.test',
+      phone: '+44 20 0000 0000',
+      profile_type: 'individual',
+      bio: 'Community computing',
+      location: 'Belfast',
+      total_hours_given: 12.25,
+      total_hours_received: 4,
+      stats: { listings_count: 3 },
+      skills: [{ skill_name: 'Mathematics', is_offering: true }]
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/profile?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain('Ada Lovelace');
+    expect(response.text).toContain(translate('ar', 'profile.own_caption'));
+    expect(response.text).toContain(translate('ar', 'actions.edit_profile'));
+    expect(response.text).toContain(translate('ar', 'profile.activity_title'));
+    expect(response.text).toContain(translate('ar', 'profile.hours_given_label'));
+    expect(response.text).toContain(new Intl.NumberFormat('ar', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    }).format(12.25));
+    expect(response.text).toContain(translate('ar', 'profile.about_title'));
+    expect(response.text).toContain(translate('ar', 'profile.skills_title'));
+    expect(response.text).toContain(translate('ar', 'profile.summary_title'));
+    expect(response.text).not.toContain('Your profile');
+    expect(response.text).not.toContain('Edit profile');
+    expect(response.text).not.toContain('Hours given');
+    expect(response.text).not.toContain('Back to dashboard');
+  });
+
+  it('does not call or link disabled profile subfeatures', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue(tenantBootstrap('acme', {
+      modules: { dashboard: true, feed: true, wallet: true, listings: false },
+      features: { connections: true, reviews: false, gamification: false }
+    }));
+    api.getProfile.mockResolvedValue({ id: 101, first_name: 'Ada', last_name: 'Lovelace' });
+
+    const response = await request(app)
+      .get('/acme/accessible/profile')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getListings).not.toHaveBeenCalled();
+    expect(api.getUserReviews).not.toHaveBeenCalled();
+    expect(api.getGamificationProfileByUserId).not.toHaveBeenCalled();
+    expect(api.getAllBadges).not.toHaveBeenCalled();
+    expect(response.text).not.toContain('href="/acme/accessible/achievements"');
+    expect(response.text).not.toContain('href="/acme/accessible/leaderboard"');
+    expect(response.text).not.toContain('href="/acme/accessible/listings/');
+  });
+
+  it('applies Laravel connections gating before profile authentication', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue(tenantBootstrap('acme', {
+      features: { connections: false }
+    }));
+
+    const response = await request(app).get('/acme/accessible/profile');
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain('This feature is not enabled for this community.');
+    expect(api.getProfile).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel-style profile settings page', async () => {
