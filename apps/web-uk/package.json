@@ -15,6 +15,7 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/",
     "route:matrix": "node scripts/generate-accessible-route-matrix.js",
+    "visual:blade": "node scripts/blade-visual-spotcheck.js",
     "smoke:laravel": "node scripts/laravel-runtime-smoke.js"
   },
   "dependencies": {

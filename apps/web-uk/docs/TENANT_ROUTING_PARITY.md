@@ -375,14 +375,28 @@ follow-up focused smoke on 2026-07-09 against temporary Web UK
 `tenant-domain-page-timebank-global-home-renders` with no `/alpha` or
 `/accessible` link leakage.
 
-The eleventh template-helper source slice extends the direct `urlFor()`
+The visual-domain guard adds `npm run visual:blade` as a repeatable
+tenant/home spot-check. The command compares Laravel Blade
+`/hour-timebank/alpha` with Web UK `/hour-timebank/accessible` for the tenant
+home markers, then checks Web UK `project-nexus.ie` and `timebank.global`
+custom-domain roots with real Host headers. The master and cluster expected
+headings are sourced from Laravel `/api/v2/tenant/bootstrap` using matching
+Host/Origin headers because the local Laravel Blade host-route proof is covered
+by Laravel's synthetic accessible-domain test fixture rather than by direct
+production-host HTML. A live run on 2026-07-10 against temporary Web UK
+`http://127.0.0.1:6661`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
+passed all three checks with no `/alpha` or `/accessible` leakage on host-root
+responses. This is visual/domain guard evidence only; it is not full
+route-family visual parity or ASP.NET backend certification.
+
+The account template-helper source slice extends the direct `urlFor()`
 conversion from event detail into the account hub. `src/views/account.njk` now
 passes `accountLinks` card targets and the `/logout` form action through
 `urlFor()`, with a source-level regression in
 `tests/template-source.test.js` plus a focused account render test proving the
 flat `/account` output remains unchanged.
 
-The twelfth template-helper source slice extends the same direct `urlFor()`
+The activity template-helper source slice extends the same direct `urlFor()`
 conversion into activity pages. `src/views/activity/index.njk` now passes the
 detailed-insights link through `urlFor('/activity/insights')`, and
 `src/views/activity/insights.njk` passes both back-to-activity links through

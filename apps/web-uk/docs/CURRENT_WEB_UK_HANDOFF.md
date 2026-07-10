@@ -602,6 +602,27 @@ home shell and footer meta:
   not certify every route family, feature-disabled page behavior, tenant
   logo/colour depth, localization, or ASP.NET backend switching.
 
+Latest repeatable Blade visual spot-check command on 2026-07-10:
+
+- `npm run visual:blade` was added as a scoped visual checkpoint. It compares
+  Laravel `http://127.0.0.1:8088/hour-timebank/alpha` with Web UK
+  `/hour-timebank/accessible` for the tenant home markers `Hour Timebank`,
+  `Accessible`, `Connecting Communities`, and `What you can do`.
+- The same command checks Web UK custom-domain roots with real Host headers for
+  `project-nexus.ie` and `timebank.global`. Expected master/cluster headings
+  are loaded from Laravel `/api/v2/tenant/bootstrap` using matching Host/Origin
+  headers, then verified against Web UK root HTML while asserting no `/alpha`
+  or `/accessible` public-slug leakage.
+- Focused Jest first failed while the script still treated Laravel host-root
+  HTML as the source, then passed after host-root expectations were moved to
+  Laravel bootstrap. A live run against temporary Web UK
+  `http://127.0.0.1:6661`, started with `TENANT_ID=2`,
+  `ACCESSIBLE_BACKEND_TARGET=laravel`, and
+  `LARAVEL_BASE_URL=http://127.0.0.1:8088`, passed all 3 checks.
+- This is a repeatable tenant/home visual guard only. It does not certify every
+  page, tab, form, workflow, feature gate, localization variant, disabled-tenant
+  fixture, or ASP.NET backend switching.
+
 Latest focused verification on 2026-07-09 for the events index/form
 template-helper slice:
 
@@ -2305,6 +2326,7 @@ git diff --stat -- apps/web-uk
 
 cd apps\web-uk
 npm run route:matrix
+npm run visual:blade
 npm run lint
 npm test -- --runInBand
 npm run smoke:laravel
@@ -2325,7 +2347,9 @@ For local Laravel auth smoke, ensure the web-uk process was started with
 `SMOKE_TIMEOUT_MS` available for exceptionally slow local runs. For
 tenant-domain checks, add `SMOKE_TENANT_DOMAIN_PAGE_PATHS` entries as
 `host|/path=>Expected text`; the harness will send a real HTTP `Host` header to
-the local Web UK process.
+the local Web UK process. For the scoped tenant/home visual checkpoint, start a
+tenant-correct Web UK process the same way and run `npm run visual:blade` with
+`WEB_UK_BASE_URL` pointing at that process.
 
 ## Documents To Trust
 
