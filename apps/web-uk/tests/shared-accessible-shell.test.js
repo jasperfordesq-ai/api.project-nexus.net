@@ -5791,16 +5791,20 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Wallet');
+    expect(response.text).toContain('Time wallet');
+    expect(response.text).toContain('Your time-credit balance, transaction history, and a way to send credits to other members.');
     expect(response.text).toContain('Donate time credits');
     expect(response.text).toContain('href="/wallet/manage"');
     expect(response.text).not.toContain('href="/wallet/transfer"');
     expect(response.text).not.toContain('href="/wallet/transactions"');
     expect(response.text).toContain('method="post" action="/wallet/donate"');
-    expect(response.text).toContain('name="target" type="radio" value="community_fund" checked');
-    expect(response.text).toContain('name="target" type="radio" value="user"');
-    expect(response.text).toContain('Recipient member ID');
-    expect(response.text).toContain('Your current balance is 8 credits.');
+    expect(response.text).toContain('name="target" value="community_fund"');
+    expect(response.text).not.toContain('name="target" type="radio" value="user"');
+    expect(response.text).not.toContain('Recipient member ID');
+    expect(response.text).toContain('This donates your time credits');
+    expect(response.text).toContain('Donations are final.');
+    expect(response.text).toContain('href="/wallet/export.csv"');
+    expect(response.text).toContain('href="/wallet?filter=pending#transactions"');
     expect(legacyTransactions.status).toBe(404);
     expect(legacyTransactions.text).toContain('Page not found');
     expect(legacyTransfer.status).toBe(404);
@@ -5830,8 +5834,8 @@ describe('shared accessible frontend shell', () => {
     });
     expect(response.text).toContain('Repair tools');
     expect(response.text).toContain('Garden help');
-    expect(response.text).toContain('class="app-text--negative">-2');
-    expect(response.text).toContain('class="app-text--positive">+3');
+    expect(response.text).toContain('−2.00');
+    expect(response.text).toContain('+3.00');
     expect(response.text).toContain('href="/wallet?filter=spent&amp;cursor=next-page#transactions"');
     expect(response.text).toContain('aria-current="page">Spent');
   });
@@ -6189,7 +6193,7 @@ describe('shared accessible frontend shell', () => {
       expect(failure.status).toBe(200);
       expect(failure.text).toContain('govuk-error-summary');
       expect(failure.text).toContain('You do not have enough credits for this transfer.');
-      expect(failure.text).toContain('href="/wallet/manage#transfer"');
+      expect(failure.text).toContain('href="#transfer"');
     });
   });
 

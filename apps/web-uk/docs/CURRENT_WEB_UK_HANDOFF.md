@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet-management/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -140,27 +140,31 @@ completion gate open are:
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
 
-## 2026-07-10 Wallet Management Contextual Localization Slice
+## 2026-07-10 Wallet Family Structural And Localization Slice
 
-The signed `/wallet/manage` page now resolves its document title, back link,
-caption, description, balance, pending badge, summary, recipient search,
-transfer fields, donation choices, warnings, actions, success states, and error
-states through the exact `govuk_alpha_wallet` catalog. Values now use Laravel's
-hours contract and request-locale two-decimal formatting instead of the former
-local `credits` labels. Recipient dates are locale-aware, blank recipient names
-use Laravel's localized unknown-member fallback, and the missing one-way
-donation warning plus not-money explanation now match Blade.
+The signed `/wallet` overview now matches Laravel's time-wallet structure
+instead of the former simplified credits page. It loads the balance summary,
+community fund, safe member search/transfer forms, community-fund-only donation
+form, final/not-money warnings, CSV export, all/earned/spent/pending filters,
+and four-column transaction history. The raw member-ID donation control was
+removed. Transaction dates, amounts, directions, member fallbacks, and empty
+values are normalized and locale-aware. `/wallet/manage` now resolves its
+document title, back link, caption, description, balance, pending badge,
+summary, recipient search, transfer fields, donation choices, warnings,
+actions, success states, and errors through the exact `govuk_alpha_wallet`
+catalog. Both pages use Laravel's hours contract and request-locale two-decimal
+formatting instead of local `credits` labels.
 
-Focused wallet-manage/source coverage passed `4/4`; the targeted signed Arabic
-live page passed RTL, 320px reflow, the authoritative donation warning, and
-serious/critical axe checks. The complete Jest gate passed `45/45` suites and
-`1,400/1,400` tests, and the expanded aggregate Chromium/axe matrix passed
-`53/53` in 8.8 minutes. The authoritative `govuk_alpha_wallet` namespace is
-English-identical in Arabic, so Web UK preserves it rather than inventing
-translations. Existing transfer/donation contract tests remain green, but live
-mutation effects, recipient privacy depth, broader wallet-overview contextual
-review, manual assistive-technology evidence, and ASP.NET switching remain
-open.
+Focused wallet/source coverage passed after three stale legacy expectations
+were corrected; the combined complete Jest gate passed `45/45` suites and
+`1,400/1,400` tests. A signed Arabic traversal of both pages passed RTL, 320px
+reflow, authoritative donation warnings, and serious/critical axe checks. The
+fresh aggregate Chromium/axe matrix passed `53/53` in 8.5 minutes. The
+authoritative `govuk_alpha_wallet` namespace is English-identical in Arabic,
+while the overview's `wallet` and `wallet_t1` keys provide Arabic source copy;
+Web UK preserves both sources exactly. Existing transfer/donation contract
+tests remain green, but live mutation effects, exact recipient privacy, manual
+assistive-technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Connections Structural And Localization Slice
 

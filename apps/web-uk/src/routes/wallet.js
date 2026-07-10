@@ -119,6 +119,19 @@ function walletManageStatus(status, transferError = '', donateError = '', t = (k
   return null;
 }
 
+function transactionDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date);
+}
+
 function transferRecipients(recipients) {
   return recipients.map((recipient) => ({
     ...recipient,
@@ -201,38 +214,53 @@ function redirectTo(res, pathname) {
 
 // Wallet overview
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const txFilter = ['earned', 'spent'].includes(String(req.query.filter || ''))
+  const txFilter = ['earned', 'spent', 'pending'].includes(String(req.query.filter || ''))
     ? String(req.query.filter)
     : 'all';
-  const txType = txFilter === 'earned' ? 'received' : (txFilter === 'spent' ? 'sent' : undefined);
+  const txType = txFilter === 'earned' ? 'received' : (txFilter === 'spent' ? 'sent' : (txFilter === 'pending' ? 'pending' : undefined));
   const txCursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
-  const [balanceData, transactionsData] = await Promise.all([
+  const recipientQuery = String(req.query.recipient_q || '').trim();
+  const [balanceData, transactionsData, fundData, recipients] = await Promise.all([
     getBalance(req.token),
     getTransactions(req.token, {
       per_page: 20,
       ...(txType ? { type: txType } : {}),
       ...(txCursor ? { cursor: txCursor } : {})
-    })
+    }),
+    callWalletApi(req.token, 'GET', '/community-fund'),
+    walletRecipientsFor(req.token, recipientQuery, res.locals.t)
   ]);
 
-  const wallet = dataFrom(balanceData);
-  const transactions = itemsFrom(transactionsData).map((transaction) => ({
-    ...transaction,
-    // Laravel formats wallet rows from the caller's perspective as credit/debit.
-    relative_type: transaction.type === 'credit' ? 'received' : 'sent'
-  }));
+  const wallet = normalizeWallet(balanceData);
+  const transactions = itemsFrom(transactionsData).map((transaction) => {
+    const otherUser = transaction.other_user || transaction.otherUser || {};
+    return {
+      ...transaction,
+      isCredit: transaction.type === 'credit',
+      otherName: String(otherUser.name || [otherUser.first_name, otherUser.last_name].filter(Boolean).join(' ')).trim()
+        || res.locals.t('members.unknown_member'),
+      dateLabel: transactionDate(transaction.created_at || transaction.createdAt),
+      amountLabel: hoursValue(Math.abs(numberValue(transaction.amount))),
+      descriptionLabel: String(transaction.description || '').trim()
+    };
+  });
   const txMeta = transactionsData?.meta || dataFrom(transactionsData)?.meta || {};
 
   res.render('wallet/index', {
-    title: 'Wallet',
-    balance: wallet && typeof wallet === 'object' ? numberValue(wallet.balance) : numberValue(wallet),
+    title: res.locals.t('wallet.title'),
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
+    wallet,
+    fund: normalizeFund(fundData),
+    recipients: transferRecipients(recipients),
+    recipientQuery,
     transactions,
     txFilter,
     txNextCursor: txMeta.has_more && txMeta.cursor ? String(txMeta.cursor) : '',
     status: typeof req.query.status === 'string' ? req.query.status : '',
     transferError: typeof req.query.error === 'string' ? req.query.error : '',
     donateError: typeof req.query.donate_error === 'string' ? req.query.donate_error : '',
-    successMessage: req.flash ? req.flash('success')[0] : null
+    hoursValue,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
