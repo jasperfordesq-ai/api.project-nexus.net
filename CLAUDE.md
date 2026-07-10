@@ -1,6 +1,6 @@
 # Project NEXUS .NET Edition - Agent Guide
 
-Last reviewed: 2026-07-09
+Last reviewed: 2026-07-10
 
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
@@ -187,9 +187,23 @@ Preserve these invariants when implementing parity:
 
 - ASP.NET Core 8 backend with EF Core and PostgreSQL.
 - JWT authentication, refresh-token safety, and admin policies.
+- Privileged authorization is database-backed. Rehydrate the current user role,
+  tenant, activation state, and `is_admin`, `is_super_admin`,
+  `is_tenant_super_admin`, and `is_god` flags before granting access; reject
+  stale role or tenant claims. `GodOnly` requires the explicit `is_god` flag.
 - Tenant isolation on every business query and write path.
 - CORS origins aligned with deployed frontend domains.
 - FIDO2/WebAuthn relying-party domain and origin rules.
+- Authentication challenges must be opaque, time-bounded, single-use
+  capabilities, never bearer tokens. The current 2FA and WebAuthn challenge
+  stores are process-local; distributed challenge continuity remains an open
+  production-readiness gap.
+- Manual scheduled-job endpoints may report success only after a registered
+  equivalent job executes and its successful outcome is persisted. Unmapped,
+  busy, disabled, cancelled, and failed executions must fail explicitly.
+- Keep one controller owner per HTTP verb and normalized `/api/admin` or
+  `/api/v2/admin` route template. Preserve `AdminRouteOwnershipParityTests`
+  when adding aliases or replacing compatibility handlers.
 - No raw provider PII persisted beyond documented sanitized audit data.
 - Migrations committed to git; no direct production database edits.
 - AGPL-3.0-or-later license and NOTICE attribution preserved.

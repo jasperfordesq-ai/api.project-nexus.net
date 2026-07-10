@@ -1,12 +1,11 @@
 # Current Laravel Backend Parity Handoff
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-07-10
 
-> **Current audit notice (2026-07-10):** Read
-> `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the numeric snapshot or
-> score below. The runbook records the latest cross-repository audit and
-> supersedes older counts while this detailed handoff remains implementation
-> history.
+> **Current audit notice (2026-07-10):** Read the verified slice below and
+> `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the historical numeric
+> snapshot or score. Route closure is not workflow, schema, localization, or
+> runtime certification.
 
 This is the first file to read if an agent needs to resume the Laravel backend
 parity job after a session interruption. The implementation branches may still
@@ -53,7 +52,41 @@ containers from this repo.
 - Keep generated scratch artifacts out of committed docs unless curated into a
   maintained map.
 
-## Current Snapshot
+## Latest Verified Backend Slice — 2026-07-10
+
+Backend commit `d2132a50` (`Harden backend auth roles and scheduled parity`) is
+on `main` and was pushed to `origin/main`. Concurrent dirty files under
+`apps/web-uk/` belong to another active workstream and were not staged or
+modified by this backend slice.
+
+| Area | Verified completed behavior | Explicit remaining gap |
+| --- | --- | --- |
+| Roles | `CanonicalRoleSemantics` adds `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god`; named policies read current DB state and reject inactive, deleted, role-drifted, or tenant-drifted users; v2 failures use canonical errors. Role-only `god` never satisfies `GodOnly`, and explicit-God targets cannot be deleted, suspended, banned, reset, or impersonated by lower privilege tiers. | Fresh migration-chain application is uncertified; resource-level SuperPanel/hub rules, notifications, and audit side effects remain. |
+| 2FA | Password login uses opaque 64-character challenges bound to user, tenant, and TOTP enrollment; `/api/totp/verify` supports TOTP and backup codes, limits attempts, consumes successful or drifted challenges, and rechecks account/tenant state. Canonical setup/verify/disable uses a real SVG QR code, atomic enabled-state/backup-code persistence, and password-confirmed disable. Unsupported forced first-login admin enrollment now fails startup when either legacy flag is enabled instead of emitting a lockout challenge. | Challenges are process-local; trusted-device lifecycle, security notifications, a TOTP-specific encryption key, multi-node proof, and a compatible first-login enrollment client remain open. |
+| Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
+| Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; inactive tenants are excluded and per-tenant failures aggregate. V2 manual execution requires platform-super access. `listing-expiry` and `job-expiry` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports only these two mappings active and the other 40 disabled with `execution_supported:false`. | 40 of 42 catalog jobs remain unmapped; fresh-runtime `scheduled_job_runs` proof remains open. |
+| Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
+| Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
+
+Verification evidence for this slice:
+
+- combined Release build: success, 4 pre-existing `xUnit1031` warnings, 0 errors;
+- `AdminRouteOwnershipParityTests` + `AdminV2RouteAliasUnitTests`: 134/134;
+- roles, hidden privilege routes, role writers, 2FA, TOTP, and passkeys: 63/63;
+- `Phase73NewScheduledJobsTests`: 16/16 after one Testcontainers-only startup retry;
+- exact React cron/security contracts: 3/3;
+- canonical broker persistence contract: 1/1;
+- API comparator: 2,436/2,436 matched, 0 missing;
+- EF Release discovery: 75 migrations, latest
+  `20260710092435_CanonicalRoleSemantics`; no pending model changes.
+
+Migration discovery is a current red gate: the source tree contains 104 main
+migration classes, but 29 legacy classes are not discoverable by EF. Because
+most contain non-idempotent DDL, do not restore their metadata until supported
+database histories and schemas are reconciled. No production database or
+container was touched.
+
+## Historical Snapshot (2026-07-07)
 
 Snapshot captured during documentation handoff work on 2026-07-07. Regenerate
 before trusting it.
@@ -140,14 +173,18 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Regenerate comparators and update stale count tables in curated docs.
-2. Finish dirty in-progress backend parity work without overwriting other
-   agents' changes.
-3. Convert static API matches into runtime-proven workflow contracts.
-4. Close or explicitly alias schema gaps, especially renamed-table families.
-5. Close localization gaps for backend, admin, email, API, and accessible copy.
-6. Add Laravel React smoke coverage for high-value workflows.
-7. Resolve the `dotnet test` blocker or document the approved local workaround.
+1. Add a fail-closed migration-discovery test with an explicit 29-entry legacy
+   quarantine, then reconcile histories before restoring any missing metadata.
+2. Replace the remaining 40 unmapped cron definitions with real jobs or keep
+   them explicitly disabled/unsupported until equivalent work executes.
+3. Continue the catch-all/fabricated-write inventory, starting with federation
+   partnership and volunteering approval workflows, then broker archive reads.
+4. Complete multi-node challenge storage, trusted devices, auth security
+   notifications, TOTP key separation, and WebAuthn sign-counter concurrency.
+5. Close or explicitly alias schema gaps, especially renamed-table families.
+6. Close localization gaps for backend, admin, email, API, and accessible copy.
+7. Convert static API matches into runtime-proven Laravel React workflows and
+   add browser smoke for the highest-risk auth/admin/provider paths.
 8. Update `docs/PARITY_BACKLOG.md` after each completed workflow batch.
 
 ## Scoring Guide

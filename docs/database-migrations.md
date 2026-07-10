@@ -1,10 +1,32 @@
 # Database Migration Workflow
 
+Last reviewed: 2026-07-10
+
 ## Overview
 
 All database schema changes go through a single canonical workflow. This prevents schema drift between local development and production environments.
 
 **Golden Rule: Never modify the production database directly. All changes flow through migrations committed to git.**
+
+## Current Discovery Quarantine
+
+The repository currently contains 104 main `Migration` classes, while EF
+Release discovery returns 75. The 29-class difference is a known legacy
+quarantine, not evidence that those migrations are safe to enable. Two
+designer-less migrations are valid because they carry inline `[Migration]` and
+`[DbContext]` metadata; a `.Designer.cs` file is not itself the contract.
+
+Most quarantined classes contain non-idempotent DDL. Adding missing attributes
+or designers without reconciling every supported database's migration history
+could replay tables or columns that already exist. Do not restore discovery
+metadata blindly. First inventory the source class, intended migration id,
+schema effects, and each supported environment's history/schema state. No
+production inspection or change is implied by the source audit.
+
+`20260710092435_CanonicalRoleSemantics` is discoverable and is the latest of
+the 75 runtime migrations. `dotnet ef migrations has-pending-model-changes`
+reports no current model drift. These facts do not certify a fresh bootstrap
+while the 29-class quarantine remains.
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -91,6 +113,11 @@ The PR Quality Gate workflow automatically:
 - **Checks for pending model changes** - fails if you changed entities without a migration
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
+
+The existing EF checks only see the runtime-discovered set. Until the planned
+reflection/quarantine gate is added, they cannot detect a newly invisible
+migration class. A successful `database update` is therefore not, by itself,
+fresh-bootstrap certification for the complete source tree.
 
 ### 7. Deploy to Production
 

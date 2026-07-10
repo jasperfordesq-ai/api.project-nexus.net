@@ -304,6 +304,19 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 8. Port regression tests for Laravel's recent cross-tenant read and route-auth
    fixes. Prove tenant isolation with negative tests, not only happy paths.
 
+> **2026-07-10 backend progress:** P0 items 1 and 2 now have real wellbeing and
+> group-exchange workflows with focused tests. P0 item 4 now fails closed: the
+> manual-run endpoint executes real `ListingExpiry` and `JobVacancyExpiry`
+> jobs, persists their outcomes, prevents overlapping scheduled/manual
+> execution, excludes inactive tenants, and returns explicit unsupported,
+> busy, disabled, and failure responses. Only 2 of the 42 Laravel cron
+> definitions are mapped; the other 40 are reported disabled/unsupported. P0
+> item 5 now has explicit user privilege columns, DB-backed policies,
+> stale-token rejection, canonical v2 auth errors, protected explicit-God
+> targets, and focused role regression coverage. Fresh migration-chain/runtime
+> certification remains open. This progress does not close the catch-all
+> inventory, wider scheduled/provider backlog, or the backend 1000/1000 gate.
+
 ### P1: replace compatibility scaffolding with domain behavior
 
 1. Prioritize React-used/admin-used fallbacks in
@@ -326,6 +339,10 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
    locales and relevant keys.
 6. Split oversized compatibility controllers when doing so reduces collisions
    and allows focused ownership/tests; preserve public contracts throughout.
+
+Admin and WebAuthn route-owner collisions found in the 2026-07-10 slice were
+removed and are now guarded by live endpoint-table ownership tests. Ownership
+is not evidence that every remaining handler has workflow parity.
 
 ### Backend 1000/1000 gate
 

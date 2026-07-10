@@ -1,6 +1,6 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-10
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -26,6 +26,22 @@ These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
+
+## 2026-07-10 Role Migration And Discovery Status
+
+`20260710092435_CanonicalRoleSemantics` adds the Laravel-aligned `is_admin`,
+`is_super_admin`, `is_tenant_super_admin`, and `is_god` user columns plus
+indexes and guarded legacy-value adoption. EF Release discovery reports 75
+migrations and this migration is the latest; `has-pending-model-changes`
+reports no model drift.
+
+That is not fresh-bootstrap certification. Source inspection found 104 main
+migration classes but only 75 discoverable by EF: 29 legacy classes lack the
+complete runtime metadata needed for discovery. Most contain non-idempotent
+DDL, so adding metadata blindly could replay them against existing databases.
+Treat those 29 classes as quarantined until migration history and schema state
+are reconciled across supported environments. No production database was
+inspected or modified for this audit.
 
 ## Generated Artifacts
 
