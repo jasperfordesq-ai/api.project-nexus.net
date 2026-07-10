@@ -2264,6 +2264,57 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTierSyncStripe_ReturnsLaravelReactTierAndPersistsPriceMetadata()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id && p.Name == "Stripe Sync Circle")
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/tiers", new
+        {
+            slug = "stripe-sync-circle",
+            name = "Stripe Sync Circle",
+            description = "Stripe sync compatibility tier",
+            monthly_price_cents = 1900,
+            yearly_price_cents = 19000,
+            features = new[] { "stripe_sync_badge" },
+            sort_order = 6,
+            is_active = true
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var id = createJson.GetProperty("data").GetProperty("tier").GetProperty("id").GetInt32();
+
+        var response = await Client.PostAsJsonAsync($"/api/v2/admin/member-premium/tiers/{id}/sync-stripe", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tier = json.GetProperty("data").GetProperty("tier");
+        tier.GetProperty("id").GetInt32().Should().Be(id);
+        tier.GetProperty("slug").GetString().Should().Be("stripe-sync-circle");
+        tier.GetProperty("stripe_price_id_monthly").GetString().Should().StartWith("price_local_");
+        tier.GetProperty("stripe_price_id_yearly").GetString().Should().StartWith("price_local_");
+        tier.GetProperty("stripe_price_account_id").GetString().Should().Be("platform_default");
+
+        var detail = await Client.GetAsync($"/api/v2/admin/member-premium/tiers/{id}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var detailTier = detailJson.GetProperty("data").GetProperty("tier");
+        detailTier.GetProperty("stripe_price_id_monthly").GetString().Should().Be(tier.GetProperty("stripe_price_id_monthly").GetString());
+        detailTier.GetProperty("stripe_price_id_yearly").GetString().Should().Be(tier.GetProperty("stripe_price_id_yearly").GetString());
+        detailTier.GetProperty("stripe_price_account_id").GetString().Should().Be("platform_default");
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();

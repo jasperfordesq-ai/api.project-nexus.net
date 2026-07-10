@@ -664,6 +664,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/reject", out var rejectPushCampaignId) => await RejectPushCampaign(rejectPushCampaignId),
             _ when TryGetFederationCreditAgreementAction(path, out var creditAgreementId, out var creditAgreementAction) => await UpdateFederationCreditAgreementStatus(creditAgreementId, creditAgreementAction),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/member-premium/tiers/", "/sync-stripe", out var syncTierId) => await SyncMemberPremiumAdminTierStripe(syncTierId),
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
@@ -4249,6 +4250,61 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> SyncMemberPremiumAdminTierStripe(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var plan = await _db.SubscriptionPlans
+            .Where(p => p.TenantId == tenantId && p.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (plan == null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                error = "STRIPE_SYNC_FAILED",
+                message = $"Tier {id} not found"
+            });
+        }
+
+        var metadata = await LoadMemberPremiumTierMetadata(id) ?? new MemberPremiumTierMetadata
+        {
+            Slug = Slugify(plan.Name),
+            MonthlyPriceCents = ToCents(plan.Price),
+            YearlyPriceCents = ToCents(plan.Price * 12m),
+            Features = NormalizePlanFeatures(plan.Features).ToList(),
+            CreatedAt = plan.CreatedAt,
+            UpdatedAt = plan.UpdatedAt
+        };
+
+        var priceAccountId = "platform_default";
+        if (metadata.MonthlyPriceCents > 0)
+        {
+            metadata.StripePriceIdMonthly ??= LocalMemberPremiumStripePriceId(tenantId, id, "monthly");
+        }
+
+        if (metadata.YearlyPriceCents > 0)
+        {
+            metadata.StripePriceIdYearly ??= LocalMemberPremiumStripePriceId(tenantId, id, "yearly");
+        }
+
+        metadata.StripePriceAccountId = priceAccountId;
+        var now = DateTime.UtcNow;
+        metadata.UpdatedAt = now;
+        plan.UpdatedAt = now;
+        await SaveMemberPremiumTierMetadata(id, metadata);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                tier = MapMemberPremiumAdminTierDetail(plan, metadata)
+            }
+        });
+    }
+
     private async Task<IActionResult> PutMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -4682,6 +4738,9 @@ public class AdminExplicitParityController : ControllerBase
     }
 
     private static string MemberPremiumTierMetadataKey(int tierId) => $"{MemberPremiumTierMetadataKeyPrefix}{tierId}";
+
+    private static string LocalMemberPremiumStripePriceId(int tenantId, int tierId, string interval)
+        => $"price_local_member_premium_{tenantId}_{tierId}_{interval}";
 
     private static bool IsValidMemberPremiumTierSlug(string slug)
     {
