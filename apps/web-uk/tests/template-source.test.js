@@ -124,6 +124,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res, loginRedirect())');
   });
 
+  it('keeps shared auth and error middleware redirects behind the active tenant URL helper', () => {
+    const sources = [
+      path.join('src', 'middleware', 'auth.js'),
+      path.join('src', 'lib', 'errorHandler.js')
+    ].map((sourcePath) => fs.readFileSync(
+      path.join(__dirname, '..', sourcePath),
+      'utf8'
+    ));
+    const source = sources.join('\n');
+
+    expect(source).toContain('res.locals.urlFor');
+    expect(source).not.toMatch(/res\.redirect\(['"`]\/(?:login|dashboard)/);
+  });
+
   it('keeps member dashboard links behind urlFor()', () => {
     const template = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'dashboard', 'index.njk'),

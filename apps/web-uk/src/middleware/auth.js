@@ -50,6 +50,11 @@ function clearAuthCookies(res) {
   res.clearCookie('tenant_slug', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 // Middleware to require authentication
 // Will attempt to refresh token if access token is missing but refresh token exists
 async function requireAuth(req, res, next) {
@@ -75,12 +80,12 @@ async function requireAuth(req, res, next) {
       refreshLocks.delete(tokenKey);
       // Refresh failed - clear cookies and redirect to login
       clearAuthCookies(res);
-      return res.redirect('/login');
+      return redirectTo(res, '/login');
     }
   }
 
   if (!token) {
-    return res.redirect('/login');
+    return redirectTo(res, '/login');
   }
 
   req.token = token;
@@ -93,7 +98,7 @@ function redirectIfAuthenticated(req, res, next) {
   const token = req.signedCookies.token;
 
   if (token) {
-    return res.redirect('/dashboard');
+    return redirectTo(res, '/dashboard');
   }
 
   next();
@@ -124,13 +129,13 @@ function withTokenRefresh(handler) {
           } catch {
             // Refresh failed - clear cookies and redirect
             clearAuthCookies(res);
-            return res.redirect('/login');
+            return redirectTo(res, '/login');
           }
         }
 
         // No refresh token - redirect to login
         clearAuthCookies(res);
-        return res.redirect('/login');
+        return redirectTo(res, '/login');
       }
 
       // Not a 401 error - pass to error handler
@@ -159,7 +164,7 @@ async function requireAdmin(req, res, next) {
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       clearAuthCookies(res);
-      return res.redirect('/login');
+      return redirectTo(res, '/login');
     }
     next(error);
   }

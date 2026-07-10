@@ -113,11 +113,14 @@ Current implemented slice:
 
 Current gaps:
 
-- Most individual templates still contain direct root-relative paths. Shared
-  tenant-mount rendering now protects those links at response time, but the
-  templates still need gradual conversion to `urlFor()` or equivalent helpers
-  so custom-domain and flat-host modes remain easier to audit. The first
-  focused source conversion covers `src/views/events/detail.njk`, including
+- A 2026-07-10 source audit found no direct root-relative `href`/`action`
+  attributes in `src/views`, no object-style `href: "/"` or `action: "/"`
+  targets in Web UK source, and no raw root-relative `res.redirect("/...")`
+  calls in `src/middleware`, `src/lib`, `src/routes`, or `src/server.js`.
+  Helper-mediated redirects still pass local paths into `urlFor()` and must
+  remain covered by route-family tests. Keep these audits green as regression
+  guards when adding or replacing Blade-clone templates. Earlier focused
+  source conversion covers `src/views/events/detail.njk`, including
   breadcrumbs, group/member links, RSVP/admin forms, attendee links, and the
   report return path. The next focused source conversion covers
   `src/views/account.njk`, including account card links and the CSRF-protected

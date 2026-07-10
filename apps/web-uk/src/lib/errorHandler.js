@@ -9,6 +9,11 @@
 
 const { ApiError, ApiOfflineError } = require('./api');
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 /**
  * Wrap an async route handler to catch errors and pass them to next()
  * @param {Function} fn - Async route handler function
@@ -42,7 +47,7 @@ function apiErrorHandler(options = {}) {
       if (err.status === 401) {
         res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
         res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
-        return res.redirect('/login');
+        return redirectTo(res, '/login');
       }
 
       // Forbidden
@@ -63,7 +68,7 @@ function apiErrorHandler(options = {}) {
         if (req.flash) {
           req.flash('error', err.message || 'Invalid request');
         }
-        return res.redirect(options.redirectTo);
+        return redirectTo(res, options.redirectTo);
       }
 
       // If we have a custom error view, use it
@@ -136,7 +141,7 @@ function finalErrorHandler(err, req, res, next) {
   if (status === 401) {
     res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
     res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
-    return res.redirect('/login');
+    return redirectTo(res, '/login');
   }
 
   if (status === 403) {

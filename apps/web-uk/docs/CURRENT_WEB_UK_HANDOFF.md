@@ -83,8 +83,13 @@ load-more links, tier link, and profile links with `urlFor()`. A follow-up
 leaderboard/NEXUS score route-redirect slice now sends unsigned and Laravel-401
 auth handoffs through `res.locals.urlFor`, so those GET pages stay inside shared
 tenant mounts and custom-domain child paths instead of relying on flat
-`/login` redirects. Most other templates still need the same source-level
-conversion. A follow-up
+`/login` redirects. A 2026-07-10 source audit now finds no direct
+root-relative `href`/`action` attributes in `src/views`, no object-style
+`href: "/"` or `action: "/"` Web UK source targets, and no raw root-relative
+`res.redirect("/...")` calls in `src/middleware`, `src/lib`, `src/routes`, or
+`src/server.js`. Helper-mediated redirects still pass local paths into
+`urlFor()` and must remain covered by route-family tests. Keep those audits
+green as regression guards for new Blade-clone work. A follow-up
 activity route-redirect slice now sends unsigned activity dashboard and
 insights auth handoffs through `res.locals.urlFor`, with shared-mount coverage
 proving `/acme/accessible/activity` and `/acme/accessible/activity/insights`
