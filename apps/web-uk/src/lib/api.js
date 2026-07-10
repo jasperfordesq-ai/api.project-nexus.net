@@ -1021,6 +1021,14 @@ async function callUserSettingsApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/users/me${normalizedPath}`, options);
 }
 
+async function requestAccountDeletion(token, data) {
+  return request('/api/gdpr/delete-account', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function callProfileApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -3192,6 +3200,7 @@ module.exports = {
   callGoalApi,
   callUgcTranslateApi,
   callUserSettingsApi,
+  requestAccountDeletion,
   callProfileApi,
   callWebAuthnApi,
   getOrganisationJobs,

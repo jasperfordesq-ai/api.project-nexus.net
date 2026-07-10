@@ -62,6 +62,7 @@ jest.mock('../src/lib/api', () => ({
     }
   }),
   getProfile: jest.fn(),
+  invalidateUserCache: jest.fn(),
   verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
   getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
@@ -263,6 +264,9 @@ jest.mock('../src/lib/api', () => ({
   createEvent: jest.fn().mockResolvedValue({ id: 42 }),
   updateEvent: jest.fn().mockResolvedValue({ id: 42 }),
   callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  requestAccountDeletion: jest.fn().mockResolvedValue({
+    data: { request_id: 123, logout_required: true }
+  }),
   callProfileApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callWebAuthnApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callListingApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -477,6 +481,10 @@ describe('shared accessible frontend shell', () => {
     api.createEvent.mockReset().mockResolvedValue({ id: 42 });
     api.updateEvent.mockReset().mockResolvedValue({ id: 42 });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.requestAccountDeletion.mockReset().mockResolvedValue({
+      data: { request_id: 123, logout_required: true }
+    });
+    api.invalidateUserCache.mockReset();
     api.callProfileApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callWebAuthnApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callListingApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -18892,17 +18900,6 @@ describe('shared accessible frontend shell', () => {
       notes: 'Accessible frontend data export request'
     });
 
-    const deleteResponse = await post('/profile/delete-account', {
-      password: 'current-password',
-      confirm: 'on',
-      reason: ' No longer needed '
-    });
-    expect(deleteResponse.headers.location).toBe('/login?status=account-deletion-requested');
-    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '', {
-      password: 'current-password',
-      reason: 'No longer needed'
-    });
-
     api.callProfileApi.mockResolvedValueOnce({
       data: { backup_codes: ['otter-amber', 'cedar-river'] }
     });
@@ -18923,6 +18920,22 @@ describe('shared accessible frontend shell', () => {
     expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/auth/2fa/disable', {
       password: 'current-password'
     });
+
+    const deleteResponse = await post('/profile/delete-account', {
+      password: 'current-password',
+      confirm: 'on',
+      reason: ' No longer needed '
+    });
+    expect(deleteResponse.headers.location).toBe('/login?status=account-deletion-requested');
+    expect(api.requestAccountDeletion).toHaveBeenLastCalledWith('test-token', {
+      password: 'current-password',
+      reason: 'No longer needed'
+    });
+    expect(api.invalidateUserCache).toHaveBeenCalledWith('test-token');
+    const clearedCookies = (deleteResponse.headers['set-cookie'] || []).join(';');
+    expect(clearedCookies).toContain('token=');
+    expect(clearedCookies).toContain('refresh_token=');
+    expect(clearedCookies).toContain('tenant_slug=');
 
     api.callUserSettingsApi.mockClear();
     api.callProfileApi.mockClear();

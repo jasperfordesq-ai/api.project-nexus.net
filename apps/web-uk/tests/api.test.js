@@ -2158,6 +2158,36 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should submit a password-gated pending erasure request without calling the immediate purge endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          data: { request_id: 123, logout_required: true }
+        })
+      });
+
+      await api.requestAccountDeletion('test-token', {
+        password: 'current-password',
+        reason: 'No longer needed'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/gdpr/delete-account',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            password: 'current-password',
+            reason: 'No longer needed'
+          })
+        })
+      );
+      expect(mockFetch.mock.calls[0][0]).not.toContain('/api/v2/users/me');
+    });
+
     it('should join a group through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

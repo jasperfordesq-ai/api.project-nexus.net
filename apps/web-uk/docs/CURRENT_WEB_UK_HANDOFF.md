@@ -244,6 +244,35 @@ namespaces are wholly English upstream.
   Disable persistence, security notifications/email, throttling behavior, and
   ASP.NET backend compatibility remain uncertified until that fixture exists.
 
+### 2026-07-10 Pending Account-erasure Contract Follow-up
+
+- Web UK no longer calls `DELETE /api/v2/users/me`, Laravel's immediate
+  purge/anonymisation endpoint. The accessible password-gated form now submits
+  only `password` and the optional trimmed `reason` to
+  `POST /api/gdpr/delete-account`, which creates Laravel's pending tenant-scoped
+  erasure request.
+- Local password/confirmation validation remains no-JS and tenant-aware. API
+  400 maps to password required, 403 to incorrect password, 401 to the mounted
+  login path, and 429/500 to the generic request failure. Failure paths do not
+  clear the signed-in session.
+- After a successful request, Web UK invalidates its user cache, destroys the
+  Express session, clears `token`, `refresh_token`, and `tenant_slug`, then
+  redirects through the active tenant mount to the localized deletion-requested
+  login state.
+- The document/H1 and warning now use exact Laravel keys, including the
+  community replacement. All three scoped keys resolve across all 11 catalogs
+  (33 checks).
+- Focused API/route/shared-shell proof passed 11 assertions; changed source and
+  tests linted, the 290-template conservative audit and `git diff --check`
+  passed. A safe current-source Laravel GET/render run passed 13/13 base,
+  signed-page, Irish, and Arabic checks. The complete current Web UK gate then
+  passed 39/39 suites and 1,187/1,187 tests plus full source lint.
+- A successful live POST was deliberately not run because it creates a legally
+  significant pending GDPR request, audit/metric records, and notifications.
+  It requires a disposable isolated user plus cleanup. Laravel's duplicate-
+  pending API path also currently returns a generic 500 while Blade treats it
+  as success; that upstream inconsistency remains explicit.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared

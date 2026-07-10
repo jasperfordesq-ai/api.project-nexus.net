@@ -20,10 +20,13 @@ jest.mock('../src/lib/api', () => ({
   callProfileApi: jest.fn(),
   callUserSettingsApi: jest.fn(),
   callWebAuthnApi: jest.fn(),
-  getProfile: jest.fn()
+  getProfile: jest.fn(),
+  invalidateUserCache: jest.fn(),
+  requestAccountDeletion: jest.fn()
 }));
 
 jest.mock('../src/middleware/auth', () => ({
+  clearAuthCookies: jest.fn(),
   requireAuth: (req, res, next) => next()
 }));
 

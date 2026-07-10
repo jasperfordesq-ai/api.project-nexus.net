@@ -171,6 +171,16 @@ successful enrolment remains blocked on a disposable security-test fixture;
 the complete current Web UK gate passed 38/38 suites and 1,177/1,177 tests. Do
 not mutate a persistent member merely to create proof.
 
+The profile deletion form now uses Laravel's pending-erasure contract instead
+of the immediate `/api/v2/users/me` purge. It submits to
+`POST /api/gdpr/delete-account`, maps password/auth/service failures, and clears
+the Web UK cache, server session, and all auth cookies only after success.
+Focused proof passed 11 assertions and safe current-source Laravel GET plus
+Irish/Arabic rendering passed 13/13 checks; the complete current Web UK gate
+passed 39/39 suites and 1,187/1,187 tests. A successful live POST is blocked
+on a disposable isolated GDPR fixture; it must not be run against the shared
+smoke member.
+
 ## Workstream A: Accessible Frontend To Laravel Completion
 
 This workstream ends at complete, evidence-backed Laravel-first certification.

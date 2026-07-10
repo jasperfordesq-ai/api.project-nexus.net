@@ -4,11 +4,13 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
+const { clearAuthCookies, requireAuth } = require('../middleware/auth');
 const {
   callUserSettingsApi,
   callProfileApi,
   callWebAuthnApi,
+  invalidateUserCache,
+  requestAccountDeletion,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -361,6 +363,13 @@ function twoFactorRedirect(status) {
 
 function deleteAccountRedirect(status) {
   return statusRedirect('/profile/delete-account', status);
+}
+
+async function destroyRequestSession(req) {
+  if (!req.session || typeof req.session.destroy !== 'function') return;
+  await new Promise((resolve) => {
+    req.session.destroy(() => resolve());
+  });
 }
 
 function validEmail(value) {
@@ -1158,16 +1167,21 @@ router.post('/delete-account', asyncRoute(async (req, res) => {
   }
 
   try {
-    await callUserSettings(token, 'DELETE', '', {
+    await requestAccountDeletion(token, {
       password,
-      reason: trimmed(req.body.reason, 1000) || null
+      reason: trimmed(req.body.reason) || null
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    const status = error instanceof ApiError && error.status === 403 ? 'delete-password-incorrect' : 'delete-failed';
+    const status = error instanceof ApiError && error.status === 400
+      ? 'delete-password-required'
+      : (error instanceof ApiError && error.status === 403 ? 'delete-password-incorrect' : 'delete-failed');
     return redirectTo(res, deleteAccountRedirect(status));
   }
 
+  invalidateUserCache(token);
+  await destroyRequestSession(req);
+  clearAuthCookies(res);
   return redirectTo(res, '/login?status=account-deletion-requested');
 }));
 
@@ -1184,6 +1198,7 @@ router.get('/delete-account', (req, res) => {
 
   return res.render('profile/delete', {
     title: 'Delete your account',
+    titleKey: 'delete_account.title',
     activeNav: 'profile',
     status,
     errorMessage,
