@@ -84,14 +84,21 @@ jobs:
       - name: Build
         run: dotnet build Nexus.sln --no-restore --configuration Release
 
+      - name: Verify migration discovery quarantine
+        run: >-
+          dotnet test tests/Nexus.Api.Tests/Nexus.Api.Tests.csproj
+          --no-restore --no-build --configuration Release
+          --filter "FullyQualifiedName~MigrationDiscoveryParityTests"
+
       - name: Check for pending model changes
         run: |
           echo "=== Checking for uncommitted model changes ==="
           cd src/Nexus.Api
 
-          # has-pending-model-changes returns 0 if there ARE pending changes (confusing but true)
-          # We need to negate: if the command succeeds, there's drift
-          if dotnet ef migrations has-pending-model-changes 2>&1; then
+          # A zero exit code means the current model matches the latest snapshot.
+          if dotnet ef migrations has-pending-model-changes --no-build --configuration Release 2>&1; then
+            echo "OK: Model matches the last migration snapshot."
+          else
             echo ""
             echo "::error::DbContext has changes not captured in a migration!"
             echo "::error::Run 'make migrate NAME=DescriptiveName' to create a migration."
@@ -99,8 +106,6 @@ jobs:
             echo "The EF Core model has been modified but no migration exists for the changes."
             echo "This will cause schema drift between the codebase and database."
             exit 1
-          else
-            echo "OK: Model matches the last migration snapshot."
           fi
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
