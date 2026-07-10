@@ -42,7 +42,7 @@ public class AdminBlogController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] int? category_id = null,
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 50)
+        [FromQuery] int limit = 20)
     {
         page = Math.Max(page, 1);
         limit = Math.Clamp(limit, 1, 100);
@@ -52,8 +52,13 @@ public class AdminBlogController : ControllerBase
             .Include(p => p.Category)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (!string.IsNullOrWhiteSpace(status) &&
+            (status.Equals("draft", StringComparison.OrdinalIgnoreCase) ||
+             status.Equals("published", StringComparison.OrdinalIgnoreCase)))
+        {
+            status = status.ToLowerInvariant();
             query = query.Where(p => p.Status == status);
+        }
 
         if (category_id.HasValue)
             query = query.Where(p => p.CategoryId == category_id.Value);
@@ -61,10 +66,13 @@ public class AdminBlogController : ControllerBase
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim().ToLower();
-            query = query.Where(p => p.Title.ToLower().Contains(s));
+            query = query.Where(p =>
+                p.Title.ToLower().Contains(s) ||
+                p.Content.ToLower().Contains(s));
         }
 
         var total = await query.CountAsync();
+        var totalPages = total > 0 ? (int)Math.Ceiling(total / (double)limit) : 0;
 
         var posts = await query
             .AsNoTracking()
@@ -73,26 +81,35 @@ public class AdminBlogController : ControllerBase
             .Take(limit)
             .Select(p => new
             {
-                p.Id,
-                p.Title,
-                p.Slug,
-                p.Excerpt,
-                p.Status,
-                p.Tags,
-                is_featured = p.IsFeatured,
-                view_count = p.ViewCount,
-                published_at = p.PublishedAt,
+                id = p.Id,
+                title = p.Title,
+                slug = p.Slug,
+                excerpt = p.Excerpt ?? string.Empty,
+                status = p.Status,
+                featured_image = p.FeaturedImageUrl,
+                author_id = p.AuthorId,
+                author_name = p.Author == null
+                    ? string.Empty
+                    : (p.Author.FirstName + " " + p.Author.LastName).Trim(),
+                category_id = p.CategoryId,
+                category_name = p.Category == null ? null : p.Category.Name,
                 created_at = p.CreatedAt,
-                updated_at = p.UpdatedAt,
-                category = p.Category != null ? new { p.Category.Id, p.Category.Name } : null,
-                author = p.Author != null ? new { p.Author.Id, p.Author.FirstName, p.Author.LastName } : null
+                updated_at = p.UpdatedAt
             })
             .ToListAsync();
 
         return Ok(new
         {
             data = posts,
-            meta = new { page, limit, total }
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}",
+                current_page = page,
+                per_page = limit,
+                total,
+                total_pages = totalPages,
+                has_more = page < totalPages
+            }
         });
     }
 

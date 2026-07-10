@@ -92,6 +92,86 @@ public class AdminBlogControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ListPosts_V2_ReturnsLaravelReactPaginatedRows()
+    {
+        var needle = $"NeedleContent{Guid.NewGuid():N}";
+        var categoryName = $"Laravel Contract {Guid.NewGuid():N}";
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var now = DateTime.UtcNow;
+
+            var category = new BlogCategory
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = categoryName,
+                Slug = $"laravel-contract-{Guid.NewGuid():N}",
+                CreatedAt = now.AddMinutes(-5)
+            };
+
+            db.BlogCategories.Add(category);
+            await db.SaveChangesAsync();
+
+            db.BlogPosts.AddRange(
+                new BlogPost
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    AuthorId = TestData.AdminUser.Id,
+                    CategoryId = category.Id,
+                    Title = "Laravel React list target",
+                    Slug = $"laravel-react-list-target-{Guid.NewGuid():N}",
+                    Content = $"Body includes {needle} for Laravel content search",
+                    Excerpt = "List target excerpt",
+                    FeaturedImageUrl = "/uploads/blog/list-target.jpg",
+                    Status = "draft",
+                    CreatedAt = now.AddMinutes(-1)
+                },
+                new BlogPost
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    AuthorId = TestData.AdminUser.Id,
+                    Title = "Unrelated Laravel React list row",
+                    Slug = $"unrelated-list-row-{Guid.NewGuid():N}",
+                    Content = "No matching body",
+                    Status = "published",
+                    CreatedAt = now.AddMinutes(-2)
+                });
+
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync($"/api/v2/admin/blog?status=archived&search={needle}&page=1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        var data = root.GetProperty("data");
+        data.GetArrayLength().Should().Be(1);
+
+        var row = data[0];
+        row.GetProperty("title").GetString().Should().Be("Laravel React list target");
+        row.GetProperty("excerpt").GetString().Should().Be("List target excerpt");
+        row.GetProperty("status").GetString().Should().Be("draft");
+        row.GetProperty("featured_image").GetString().Should().Be("/uploads/blog/list-target.jpg");
+        row.GetProperty("author_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        row.GetProperty("author_name").GetString().Should().NotBeNullOrWhiteSpace();
+        row.GetProperty("category_id").GetInt32().Should().BeGreaterThan(0);
+        row.GetProperty("category_name").GetString().Should().Be(categoryName);
+        row.TryGetProperty("author", out _).Should().BeFalse();
+        row.TryGetProperty("category", out _).Should().BeFalse();
+
+        var meta = root.GetProperty("meta");
+        meta.GetProperty("current_page").GetInt32().Should().Be(1);
+        meta.GetProperty("per_page").GetInt32().Should().Be(20);
+        meta.GetProperty("total").GetInt32().Should().Be(1);
+        meta.GetProperty("total_pages").GetInt32().Should().Be(1);
+        meta.GetProperty("has_more").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BulkActions_V2_ReturnLaravelReactBulkResultsAndPersistTenantScopedChanges()
     {
         int draftOneId;
