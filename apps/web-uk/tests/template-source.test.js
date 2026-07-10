@@ -1144,6 +1144,7 @@ describe('tenant-aware template helper conversion', () => {
     );
 
     expect(route).not.toMatch(/res\.redirect\(['"`]\/(?:login|reviews)/);
+    expect(route).not.toMatch(/res\.redirect\(safeReturnUrl\)/);
     expect(route).not.toContain('return `/reviews');
     expect(route).toContain('res.locals.urlFor');
     expect(route).toContain('redirectTo(res,');

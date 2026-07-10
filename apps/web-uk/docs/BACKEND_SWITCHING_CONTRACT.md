@@ -1,6 +1,6 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-09
+Last reviewed: 2026-07-10
 
 ## Decision
 
@@ -681,9 +681,10 @@ The remaining signed/detail body-marker routes `/connections/network`,
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
 0; the current default smoke scope has `281` module-page checks and `283`
 body-text contract checks. Review action redirects for auth-required, create,
-comment, reaction, and Laravel-401 outcomes now use `res.locals.urlFor`; any
-future ASP.NET backend mode must preserve those tenant-aware redirect targets
-rather than returning flat root-relative review/login paths.
+comment, reaction, delete-review returns, and Laravel-401 outcomes now use
+`res.locals.urlFor`; any future ASP.NET backend mode must preserve those
+tenant-aware redirect targets rather than returning flat root-relative
+review/login paths.
 `/dashboard` now carries stable body-text checks for
 `Welcome back`, `Your time bank`, `Quick links`, `Recent feed`, and `Recent
 listings`.

@@ -1,6 +1,6 @@
 # Web UK Tenant Routing Parity
 
-Last reviewed: 2026-07-09
+Last reviewed: 2026-07-10
 
 This note records the Laravel tenant-routing contract that `apps/web-uk` must
 clone before it can be called tenant-domain parity complete.
@@ -1349,6 +1349,16 @@ passed after conversion. This is source/template routing evidence only; it does
 not newly certify moderation/deletion display, threaded reply depth, feature
 gates, localization, runtime persistence, visual Blade parity, or ASP.NET
 backend compatibility.
+
+A follow-up review redirect slice now sends review deletion success and
+non-auth API-error return redirects through the same `redirectTo(res, ...)`
+helper. The helper preserves already-mounted return paths such as
+`/{tenantSlug}/accessible/members/{id}` and otherwise delegates local return
+paths through `res.locals.urlFor`. The focused source regression first failed
+on `res.redirect(safeReturnUrl)`, then passed after conversion. Focused
+shared-mount coverage proves signed
+`/acme/accessible/reviews/91/delete` with `return_url=/dashboard` redirects to
+`/acme/accessible/dashboard`.
 
 The seventy-third source slice extends route-level redirect cleanup into event
 actions. `src/routes/events.js` now sends unsigned event handoffs, recurring

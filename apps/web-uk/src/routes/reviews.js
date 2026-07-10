@@ -55,8 +55,25 @@ function trimmed(value, limit = null) {
 }
 
 function redirectTo(res, pathname) {
+  const target = typeof pathname === 'string' && pathname ? pathname : '/';
+  const activePrefix = typeof res.locals.accessibleRoutePrefix === 'string'
+    ? res.locals.accessibleRoutePrefix
+    : '';
+
+  if (
+    activePrefix
+    && (
+      target === activePrefix
+      || target.startsWith(`${activePrefix}/`)
+      || target.startsWith(`${activePrefix}?`)
+      || target.startsWith(`${activePrefix}#`)
+    )
+  ) {
+    return res.redirect(target);
+  }
+
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
-  return res.redirect(urlFor(pathname));
+  return res.redirect(urlFor(target));
 }
 
 function commentsRedirect(id, status, fragment = '') {
@@ -401,14 +418,14 @@ router.post('/:id/delete', requireAuth, audit.reviewDelete(), asyncRoute(async (
     if (req.flash) {
       req.flash('success', 'Review deleted');
     }
-    res.redirect(safeReturnUrl);
+    redirectTo(res, safeReturnUrl);
   } catch (error) {
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {
         req.flash('error', error.message);
       }
-      return res.redirect(safeReturnUrl);
+      return redirectTo(res, safeReturnUrl);
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }

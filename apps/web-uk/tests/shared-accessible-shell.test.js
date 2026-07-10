@@ -198,6 +198,7 @@ jest.mock('../src/lib/api', () => ({
   callCouponApi: jest.fn().mockResolvedValue({ data: { items: [] } }),
   callReviewApi: jest.fn().mockResolvedValue({ data: [] }),
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
+  deleteReview: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   updateComment: jest.fn().mockResolvedValue({ data: { id: 12, content: 'Updated' } }),
   deleteComment: jest.fn().mockResolvedValue({ data: { deleted: true } }),
@@ -389,6 +390,7 @@ describe('shared accessible frontend shell', () => {
     api.callCouponApi.mockReset().mockResolvedValue({ data: { items: [] } });
     api.callReviewApi.mockReset().mockResolvedValue({ data: [] });
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
+    api.deleteReview.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.updateComment.mockReset().mockResolvedValue({ data: { id: 12, content: 'Updated' } });
     api.deleteComment.mockReset().mockResolvedValue({ data: { deleted: true } });
@@ -11067,6 +11069,31 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('keeps Laravel review delete return redirects inside the shared accessible mount', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/reviews/91/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        return_url: '/dashboard'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/dashboard');
+    expect(api.deleteReview).toHaveBeenCalledWith('test-token', '91');
   });
 
   it('renders the Laravel reviews summary for signed-in members', async () => {
