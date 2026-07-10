@@ -91,26 +91,29 @@ public class BlogService
 
     public async Task<(BlogPost? Post, string? Error)> CreatePostAsync(
         int authorId, string title, string content, string? excerpt,
-        string? featuredImageUrl, int? categoryId, string? tags, bool publish)
+        string? featuredImageUrl, int? categoryId, string? tags, bool publish,
+        string? metaTitle = null, string? metaDescription = null, string? slug = null)
     {
-        var slug = GenerateSlug(title);
+        var generatedSlug = GenerateSlug(string.IsNullOrWhiteSpace(slug) ? title : slug);
 
         // Ensure unique slug
-        var existing = await _db.Set<BlogPost>().AnyAsync(p => p.Slug == slug);
+        var existing = await _db.Set<BlogPost>().AnyAsync(p => p.Slug == generatedSlug);
         if (existing)
-            slug = $"{slug}-{DateTime.UtcNow.Ticks % 10000}";
+            generatedSlug = $"{generatedSlug}-{DateTime.UtcNow.Ticks % 10000}";
 
         var post = new BlogPost
         {
             TenantId = _tenantContext.GetTenantIdOrThrow(),
             AuthorId = authorId,
             Title = title,
-            Slug = slug,
+            Slug = generatedSlug,
             Content = content,
             Excerpt = excerpt,
             FeaturedImageUrl = featuredImageUrl,
             CategoryId = categoryId,
             Tags = tags,
+            MetaTitle = metaTitle,
+            MetaDescription = metaDescription,
             Status = publish ? "published" : "draft",
             PublishedAt = publish ? DateTime.UtcNow : null
         };
@@ -124,7 +127,8 @@ public class BlogService
 
     public async Task<(BlogPost? Post, string? Error)> UpdatePostAsync(
         int postId, string? title, string? content, string? excerpt,
-        string? featuredImageUrl, int? categoryId, string? tags, string? status)
+        string? featuredImageUrl, int? categoryId, string? tags, string? status,
+        string? metaTitle = null, string? metaDescription = null, string? slug = null)
     {
         var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return (null, "Post not found");
@@ -132,6 +136,18 @@ public class BlogService
         if (title != null)
         {
             post.Title = title;
+        }
+
+        if (!string.IsNullOrWhiteSpace(slug))
+        {
+            var newSlug = GenerateSlug(slug);
+            var slugExists = await _db.Set<BlogPost>().AnyAsync(p => p.Slug == newSlug && p.Id != postId);
+            if (slugExists)
+                newSlug = $"{newSlug}-{DateTime.UtcNow.Ticks % 10000}";
+            post.Slug = newSlug;
+        }
+        else if (title != null)
+        {
             var newSlug = GenerateSlug(title);
             var slugExists = await _db.Set<BlogPost>().AnyAsync(p => p.Slug == newSlug && p.Id != postId);
             if (slugExists)
@@ -143,6 +159,8 @@ public class BlogService
         if (featuredImageUrl != null) post.FeaturedImageUrl = featuredImageUrl;
         if (categoryId.HasValue) post.CategoryId = categoryId;
         if (tags != null) post.Tags = tags;
+        if (metaTitle != null) post.MetaTitle = metaTitle;
+        if (metaDescription != null) post.MetaDescription = metaDescription;
 
         if (status != null && status != post.Status)
         {

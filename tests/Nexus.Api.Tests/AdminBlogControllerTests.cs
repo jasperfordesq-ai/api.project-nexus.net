@@ -188,4 +188,79 @@ public class AdminBlogControllerTests : IntegrationTestBase
                 .Should().Be("published");
         }
     }
+
+    [Fact]
+    public async Task CrudActions_V2_ReturnLaravelReactBlogPostEnvelopes()
+    {
+        await AuthenticateAsAdminAsync();
+        var customSlug = $"laravel-react-blog-contract-{Guid.NewGuid():N}";
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/blog", new
+        {
+            title = "Laravel React Blog Contract",
+            slug = customSlug,
+            content = "<p>Contract body</p>",
+            excerpt = "Contract excerpt",
+            status = "published",
+            featured_image = "/uploads/blog/contract.jpg",
+            meta_title = "Contract SEO title",
+            meta_description = "Contract SEO description",
+            noindex = true
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var createDocument = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        createDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createDocument.RootElement.GetProperty("data");
+        var postId = created.GetProperty("id").GetInt32();
+        created.GetProperty("title").GetString().Should().Be("Laravel React Blog Contract");
+        created.GetProperty("slug").GetString().Should().Be(customSlug);
+        created.GetProperty("status").GetString().Should().Be("published");
+
+        var show = await Client.GetAsync($"/api/v2/admin/blog/{postId}");
+        show.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var showDocument = JsonDocument.Parse(await show.Content.ReadAsStringAsync());
+        showDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var shown = showDocument.RootElement.GetProperty("data");
+        shown.GetProperty("content").GetString().Should().Contain("Contract body");
+        shown.GetProperty("featured_image").GetString().Should().Be("/uploads/blog/contract.jpg");
+        shown.GetProperty("meta_title").GetString().Should().Be("Contract SEO title");
+        shown.GetProperty("meta_description").GetString().Should().Be("Contract SEO description");
+        shown.GetProperty("noindex").GetBoolean().Should().BeTrue();
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/blog/{postId}", new
+        {
+            title = "Updated Laravel React Blog Contract",
+            excerpt = "Updated excerpt",
+            status = "draft",
+            featured_image = "/uploads/blog/updated.jpg",
+            meta_title = "Updated SEO title",
+            meta_description = "Updated SEO description",
+            noindex = false
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var updateDocument = JsonDocument.Parse(await update.Content.ReadAsStringAsync());
+        updateDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updated = updateDocument.RootElement.GetProperty("data");
+        updated.GetProperty("title").GetString().Should().Be("Updated Laravel React Blog Contract");
+        updated.GetProperty("status").GetString().Should().Be("draft");
+        updated.GetProperty("featured_image").GetString().Should().Be("/uploads/blog/updated.jpg");
+        updated.GetProperty("meta_title").GetString().Should().Be("Updated SEO title");
+        updated.GetProperty("noindex").GetBoolean().Should().BeFalse();
+
+        var toggle = await Client.PostAsync($"/api/v2/admin/blog/{postId}/toggle-status", null);
+        toggle.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var toggleDocument = JsonDocument.Parse(await toggle.Content.ReadAsStringAsync());
+        toggleDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        toggleDocument.RootElement.GetProperty("data").GetProperty("status").GetString().Should().Be("published");
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/blog/{postId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var deleteDocument = JsonDocument.Parse(await delete.Content.ReadAsStringAsync());
+        deleteDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var deleted = deleteDocument.RootElement.GetProperty("data");
+        deleted.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleted.GetProperty("id").GetInt32().Should().Be(postId);
+    }
 }

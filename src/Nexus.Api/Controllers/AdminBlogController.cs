@@ -25,6 +25,7 @@ public class AdminBlogController : ControllerBase
 {
     private readonly BlogService _blog;
     private readonly NexusDbContext _db;
+    private const string BlogSeoNoIndexKeyPrefix = "admin_blog.seo.noindex.";
 
     public AdminBlogController(BlogService blog, NexusDbContext db)
     {
@@ -102,32 +103,16 @@ public class AdminBlogController : ControllerBase
     public async Task<IActionResult> GetPost(int id)
     {
         var post = await _blog.GetPostByIdAsync(id);
-        if (post == null) return NotFound(new { error = "Post not found" });
-
-        return Ok(new
+        if (post == null)
         {
-            data = new
+            return NotFound(new
             {
-                post.Id,
-                post.Title,
-                post.Slug,
-                post.Content,
-                post.Excerpt,
-                featured_image_url = post.FeaturedImageUrl,
-                post.Status,
-                post.Tags,
-                is_featured = post.IsFeatured,
-                view_count = post.ViewCount,
-                published_at = post.PublishedAt,
-                created_at = post.CreatedAt,
-                updated_at = post.UpdatedAt,
-                category_id = post.CategoryId,
-                category = post.Category != null ? new { post.Category.Id, post.Category.Name, post.Category.Slug, post.Category.Color } : null,
-                author = post.Author != null ? new { post.Author.Id, post.Author.FirstName, post.Author.LastName } : null,
-                meta_title = post.MetaTitle,
-                meta_description = post.MetaDescription
-            }
-        });
+                success = false,
+                errors = new[] { new { code = "RESOURCE_NOT_FOUND", message = "Blog post not found." } }
+            });
+        }
+
+        return Ok(new { success = true, data = await FormatAdminBlogPost(post, includeContent: true) });
     }
 
     /// <summary>
@@ -141,11 +126,30 @@ public class AdminBlogController : ControllerBase
 
         var (post, error) = await _blog.CreatePostAsync(
             userId.Value, request.Title, request.Content, request.Excerpt,
-            request.FeaturedImageUrl, request.CategoryId, request.Tags, request.Publish);
+            request.FeaturedImage ?? request.FeaturedImageUrl,
+            request.CategoryId,
+            request.Tags,
+            request.IsPublished,
+            request.MetaTitle,
+            request.MetaDescription,
+            request.Slug);
 
-        if (error != null) return BadRequest(new { error });
+        if (error != null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = error } }
+            });
+        }
 
-        return Created($"/api/blog/{post!.Slug}", new { data = new { post.Id, post.Title, post.Slug, post.Status } });
+        if (request.NoIndex.HasValue)
+        {
+            await SaveBlogNoIndex(post!.Id, request.NoIndex.Value);
+        }
+
+        var formatted = await FormatAdminBlogPost(post!, includeContent: false);
+        return Created($"/api/v2/admin/blog/{post!.Id}", new { success = true, data = formatted });
     }
 
     /// <summary>
@@ -156,10 +160,30 @@ public class AdminBlogController : ControllerBase
     {
         var (post, error) = await _blog.UpdatePostAsync(
             id, request.Title, request.Content, request.Excerpt,
-            request.FeaturedImageUrl, request.CategoryId, request.Tags, request.Status);
+            request.FeaturedImage ?? request.FeaturedImageUrl,
+            request.CategoryId,
+            request.Tags,
+            request.Status,
+            request.MetaTitle,
+            request.MetaDescription,
+            request.Slug);
 
-        if (error != null) return NotFound(new { error });
-        return Ok(new { data = new { post!.Id, post.Title, post.Slug, post.Status } });
+        if (error != null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[] { new { code = "RESOURCE_NOT_FOUND", message = error } }
+            });
+        }
+
+        if (request.NoIndex.HasValue)
+        {
+            await SaveBlogNoIndex(post!.Id, request.NoIndex.Value);
+        }
+
+        var formatted = await FormatAdminBlogPost(post!, includeContent: true);
+        return Ok(new { success = true, data = formatted });
     }
 
     /// <summary>
@@ -169,8 +193,17 @@ public class AdminBlogController : ControllerBase
     public async Task<IActionResult> DeletePost(int id)
     {
         var error = await _blog.DeletePostAsync(id);
-        if (error != null) return NotFound(new { error });
-        return Ok(new { message = "Post deleted" });
+        if (error != null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[] { new { code = "RESOURCE_NOT_FOUND", message = error } }
+            });
+        }
+
+        await DeleteBlogNoIndex(id);
+        return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
     /// <summary>
@@ -180,8 +213,16 @@ public class AdminBlogController : ControllerBase
     public async Task<IActionResult> ToggleStatus(int id)
     {
         var (post, error) = await _blog.ToggleStatusAsync(id);
-        if (error != null) return NotFound(new { error });
-        return Ok(new { data = new { post!.Id, post.Status } });
+        if (error != null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                errors = new[] { new { code = "RESOURCE_NOT_FOUND", message = error } }
+            });
+        }
+
+        return Ok(new { success = true, data = new { id = post!.Id, status = post.Status } });
     }
 
     /// <summary>
@@ -250,42 +291,150 @@ public class AdminBlogController : ControllerBase
         if (error != null) return NotFound(new { error });
         return Ok(new { message = "Category deleted" });
     }
+
+    private async Task<object> FormatAdminBlogPost(Entities.BlogPost post, bool includeContent)
+    {
+        var noIndex = await GetBlogNoIndex(post.Id);
+        var authorName = post.Author == null
+            ? null
+            : string.Join(" ", new[] { post.Author.FirstName, post.Author.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+
+        return new
+        {
+            id = post.Id,
+            title = post.Title,
+            slug = post.Slug,
+            content = includeContent ? post.Content : null,
+            excerpt = post.Excerpt ?? string.Empty,
+            status = post.Status,
+            featured_image = string.IsNullOrWhiteSpace(post.FeaturedImageUrl) ? null : post.FeaturedImageUrl,
+            author_id = post.AuthorId,
+            author_name = string.IsNullOrWhiteSpace(authorName) ? null : authorName,
+            category_id = post.CategoryId,
+            category_name = post.Category?.Name,
+            meta_title = post.MetaTitle,
+            meta_description = post.MetaDescription,
+            noindex = noIndex,
+            created_at = post.CreatedAt,
+            updated_at = post.UpdatedAt
+        };
+    }
+
+    private async Task SaveBlogNoIndex(int postId, bool noIndex)
+    {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return;
+
+        var key = BlogSeoNoIndexKey(postId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId.Value && c.Key == key);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new Entities.TenantConfig
+            {
+                TenantId = tenantId.Value,
+                Key = key,
+                Value = noIndex ? "true" : "false",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            row.Value = noIndex ? "true" : "false";
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<bool> GetBlogNoIndex(int postId)
+    {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return false;
+
+        var key = BlogSeoNoIndexKey(postId);
+        var value = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId.Value && c.Key == key)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        return bool.TryParse(value, out var parsed) && parsed;
+    }
+
+    private async Task DeleteBlogNoIndex(int postId)
+    {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return;
+
+        var key = BlogSeoNoIndexKey(postId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId.Value && c.Key == key);
+        if (row == null) return;
+
+        _db.TenantConfigs.Remove(row);
+        await _db.SaveChangesAsync();
+    }
+
+    private static string BlogSeoNoIndexKey(int postId) => BlogSeoNoIndexKeyPrefix + postId;
 }
 
 public class CreateBlogPostRequest
 {
     [JsonPropertyName("title"), MaxLength(200)]
     public string Title { get; set; } = string.Empty;
+    [JsonPropertyName("slug"), MaxLength(500)]
+    public string? Slug { get; set; }
     [JsonPropertyName("content"), MaxLength(50000)]
     public string Content { get; set; } = string.Empty;
     [JsonPropertyName("excerpt"), MaxLength(500)]
     public string? Excerpt { get; set; }
     [JsonPropertyName("featured_image_url"), MaxLength(2000)]
     public string? FeaturedImageUrl { get; set; }
+    [JsonPropertyName("featured_image"), MaxLength(2000)]
+    public string? FeaturedImage { get; set; }
     [JsonPropertyName("category_id")]
     public int? CategoryId { get; set; }
     [JsonPropertyName("tags"), MaxLength(1000)]
     public string? Tags { get; set; }
     [JsonPropertyName("publish")]
     public bool Publish { get; set; } = false;
+    [JsonPropertyName("status"), MaxLength(50)]
+    public string? Status { get; set; }
+    [JsonPropertyName("meta_title"), MaxLength(200)]
+    public string? MetaTitle { get; set; }
+    [JsonPropertyName("meta_description"), MaxLength(500)]
+    public string? MetaDescription { get; set; }
+    [JsonPropertyName("noindex")]
+    public bool? NoIndex { get; set; }
+
+    [JsonIgnore]
+    public bool IsPublished => Publish || string.Equals(Status, "published", StringComparison.OrdinalIgnoreCase);
 }
 
 public class UpdateBlogPostRequest
 {
     [JsonPropertyName("title"), MaxLength(200)]
     public string? Title { get; set; }
+    [JsonPropertyName("slug"), MaxLength(500)]
+    public string? Slug { get; set; }
     [JsonPropertyName("content"), MaxLength(50000)]
     public string? Content { get; set; }
     [JsonPropertyName("excerpt"), MaxLength(500)]
     public string? Excerpt { get; set; }
     [JsonPropertyName("featured_image_url"), MaxLength(2000)]
     public string? FeaturedImageUrl { get; set; }
+    [JsonPropertyName("featured_image"), MaxLength(2000)]
+    public string? FeaturedImage { get; set; }
     [JsonPropertyName("category_id")]
     public int? CategoryId { get; set; }
     [JsonPropertyName("tags"), MaxLength(1000)]
     public string? Tags { get; set; }
     [JsonPropertyName("status"), MaxLength(50)]
     public string? Status { get; set; }
+    [JsonPropertyName("meta_title"), MaxLength(200)]
+    public string? MetaTitle { get; set; }
+    [JsonPropertyName("meta_description"), MaxLength(500)]
+    public string? MetaDescription { get; set; }
+    [JsonPropertyName("noindex")]
+    public bool? NoIndex { get; set; }
 }
 
 public class CreateBlogCategoryRequest
