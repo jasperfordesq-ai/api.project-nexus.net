@@ -285,6 +285,10 @@ The latest review action redirect slice now routes auth-required, comment,
 reaction, and Laravel-401 review workflow redirects through `res.locals.urlFor`,
 with shared-mount coverage proving `/acme/accessible/reviews` stays under the
 active tenant mount when redirecting to auth-required login.
+The latest review source slice now routes review summary/list/comment links,
+received/given tabs, load-more links, pending-review forms, comment forms, and
+reaction forms through `urlFor()`, with source regression coverage guarding
+against raw `/reviews` template targets returning.
 The latest group-exchange action redirect slice now sends auth-required,
 validation, success, and API-failure POST redirects through `res.locals.urlFor`.
 Focused shared-mount coverage proves an invalid signed

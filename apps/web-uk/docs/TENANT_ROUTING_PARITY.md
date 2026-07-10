@@ -1292,6 +1292,17 @@ only; it does not newly certify exact moderation/deletion display, threaded
 reply depth, feature gates, localization, runtime persistence, visual Blade
 parity, or ASP.NET backend compatibility.
 
+A follow-up review source slice converts the rendered review templates
+themselves. `src/views/reviews/index.njk`, `list.njk`, and `comments.njk` now
+route review summary/list/comment links, received/given tabs, load-more links,
+pending-review forms, comment forms, and reaction forms through `urlFor()`.
+The focused source regression first failed on literal `href="/reviews...` and
+`action="/reviews...` template targets plus the raw `loadMoreHref`, then
+passed after conversion. This is source/template routing evidence only; it does
+not newly certify moderation/deletion display, threaded reply depth, feature
+gates, localization, runtime persistence, visual Blade parity, or ASP.NET
+backend compatibility.
+
 The seventy-third source slice extends route-level redirect cleanup into event
 actions. `src/routes/events.js` now sends unsigned event handoffs, recurring
 non-series handoffs, waitlist/check-in/poll/recurring/translation POST

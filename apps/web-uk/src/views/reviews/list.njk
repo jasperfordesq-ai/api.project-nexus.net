@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/reviews">Back to reviews summary</a>
+  <a class="govuk-back-link" href="{{ urlFor('/reviews') }}">Back to reviews summary</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -19,8 +19,8 @@
 
       <nav class="govuk-!-margin-bottom-5" aria-label="Review tabs">
         <ul class="govuk-list govuk-list--inline">
-          <li><a class="govuk-link{% if reviewsTab == 'received' %} govuk-!-font-weight-bold{% endif %}" href="/reviews/list?tab=received">Received</a></li>
-          <li><a class="govuk-link{% if reviewsTab == 'given' %} govuk-!-font-weight-bold{% endif %}" href="/reviews/list?tab=given">Given</a></li>
+          <li><a class="govuk-link{% if reviewsTab == 'received' %} govuk-!-font-weight-bold{% endif %}" href="{{ urlFor('/reviews/list?tab=received') }}">Received</a></li>
+          <li><a class="govuk-link{% if reviewsTab == 'given' %} govuk-!-font-weight-bold{% endif %}" href="{{ urlFor('/reviews/list?tab=given') }}">Given</a></li>
         </ul>
       </nav>
 
@@ -34,7 +34,7 @@
                 <p class="govuk-body">{{ review.comment }}</p>
               {% endif %}
               {% if review.id %}
-                <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="/reviews/{{ review.id }}/comments">Comment on this review</a></p>
+                <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}">Comment on this review</a></p>
               {% endif %}
             </li>
           {% endfor %}
@@ -44,7 +44,7 @@
       {% endif %}
 
       {% if reviewsHasMore and loadMoreHref %}
-        <p class="govuk-body govuk-!-margin-top-6"><a class="govuk-link" href="{{ loadMoreHref }}">Load more reviews</a></p>
+        <p class="govuk-body govuk-!-margin-top-6"><a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more reviews</a></p>
       {% endif %}
     </div>
   </div>

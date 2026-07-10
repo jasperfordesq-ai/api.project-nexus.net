@@ -7,7 +7,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="/reviews/list">Back to all reviews</a>
+  <a class="govuk-back-link" href="{{ urlFor('/reviews/list') }}">Back to all reviews</a>
 {% endblock %}
 
 {% block mainContent %}
@@ -40,7 +40,7 @@
         <p class="govuk-body-s nexus-alpha-meta">{{ reactionTotal }} reactions</p>
         <div class="govuk-button-group">
           {% for reaction in alphaReactions %}
-            <form method="post" action="/reviews/{{ review.id }}/react#review-reactions">
+            <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/react') }}#review-reactions">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="emoji" value="{{ reaction.value }}">
               <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">
@@ -71,7 +71,7 @@
 
       <section class="govuk-!-margin-top-6" aria-labelledby="add-comment-heading">
         <h2 class="govuk-heading-m" id="add-comment-heading">Add a comment</h2>
-        <form method="post" action="/reviews/{{ review.id }}/comments" novalidate>
+        <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
             <label class="govuk-label govuk-label--s" for="body">Your comment</label>

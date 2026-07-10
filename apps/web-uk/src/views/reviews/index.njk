@@ -13,7 +13,7 @@
       <p class="govuk-body govuk-!-margin-bottom-2">{{ review.comment }}</p>
     {% endif %}
     {% if review.id %}
-      <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="/reviews/{{ review.id }}/comments">Comment on this review</a></p>
+      <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}">Comment on this review</a></p>
     {% endif %}
   </li>
 {% endmacro %}
@@ -35,7 +35,7 @@
       <span class="govuk-caption-xl">Your reviews</span>
       <h1 class="govuk-heading-xl">Reviews</h1>
       <p class="govuk-body-l">Read the reviews you have received, check reviews you have given, and leave pending reviews after completed exchanges.</p>
-      <p class="govuk-body"><a class="govuk-link" href="/reviews/list">View all reviews</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/reviews/list') }}">View all reviews</a></p>
     </div>
     <div class="govuk-grid-column-one-third">
       <div class="nexus-alpha-card">
@@ -83,7 +83,7 @@
             <li class="nexus-alpha-card">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ pending.receiverName }}</h3>
               <p class="govuk-body-s nexus-alpha-meta">{{ pending.title }}</p>
-              <form method="post" action="/reviews" novalidate>
+              <form method="post" action="{{ urlFor('/reviews') }}" novalidate>
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="receiver_id" value="{{ pending.receiverId }}">
                 <input type="hidden" name="transaction_id" value="{{ pending.transactionId }}">

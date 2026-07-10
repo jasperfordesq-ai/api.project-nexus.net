@@ -1052,6 +1052,22 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps review summary, list, and comment controls behind urlFor()', () => {
+    const templates = [
+      path.join('reviews', 'index.njk'),
+      path.join('reviews', 'list.njk'),
+      path.join('reviews', 'comments.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/(?:href|action)="\/reviews/);
+    expect(source).toMatch(/urlFor\(["']\/reviews/);
+    expect(source).toContain('urlFor(loadMoreHref)');
+  });
+
   it('keeps ideation action redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'ideation-actions.js'),
