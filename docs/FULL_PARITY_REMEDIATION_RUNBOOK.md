@@ -155,6 +155,9 @@ smoked against ASP.NET later.
    error, upload, destructive, and RTL states, and perform a recorded manual
    pass for keyboard use, focus order and visibility, screen-reader
    announcements, zoom/reflow, contrast, error summaries, and RTL behavior.
+   The source-level error-summary focus audit is complete for current Nunjucks
+   source: all 135 summaries carry `tabindex="-1"`, down from six omissions at
+   the 2026-07-10 audit.
 7. Rebuild/restart a current-source Web UK process. Do not use a stale port 5180
    process as certification evidence.
 8. Rerun the complete Laravel smoke scope, chunked if necessary, including

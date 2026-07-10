@@ -823,6 +823,10 @@ Latest browser accessibility-gate verification on 2026-07-10:
 - This is an automated foundation, not full WCAG 2.2 AA certification.
   Authenticated/error/upload/destructive/RTL states and recorded manual
   keyboard, zoom/reflow, contrast, and screen-reader checks remain required.
+- A recursive Nunjucks regression now inspects all 135 GOV.UK error summaries
+  for `tabindex="-1"`. It first identified six omissions across organisation
+  browse/jobs/status, feed hashtags, and wallet failure states; all six are
+  fixed and the current source violation count is zero.
 
 Historical focused verification on 2026-07-09 for the earlier tenant
 parent-domain reserved-path slice:

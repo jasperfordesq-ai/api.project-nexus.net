@@ -39,6 +39,11 @@ Chromium checks the tenant home, about, guide, FAQ, sign-in, registration, conta
 
 Playwright writes its JSON report, HTML report, per-test axe JSON attachments, failure screenshots, and retained failure traces to `apps/web-uk/artifacts/accessibility/`. The repository ignores that directory; generated evidence is not a committed fixture.
 
+A separate Jest source regression inspects every Nunjucks template and requires
+each `govuk-error-summary` opening tag to include `tabindex="-1"`. The
+2026-07-10 audit covered 135 summaries; six missing focus targets were fixed
+and the remaining violation count is zero.
+
 ## What a passing gate does not prove
 
 Axe and structural assertions find only a subset of accessibility problems. This gate does not by itself prove WCAG 2.2 AA conformance, validate every route or authenticated state, or replace manual testing. Release assessment still needs keyboard-only use, zoom and reflow, high-contrast and forced-colour checks, screen-reader journeys, error recovery, and testing with representative disabled users. Those manual results should be recorded separately with the browser, assistive technology, page, date, and observed outcome.
