@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering') }}">Back to volunteering</a>
 
   {% if status %}
     {% if status.type == "success" %}
@@ -33,7 +33,7 @@
   <h1 class="govuk-heading-xl">Volunteer certificates</h1>
   <p class="govuk-body-l">Generate and download a certificate of your approved volunteering hours.</p>
 
-  <form method="post" action="/volunteering/certificates/generate" class="govuk-!-margin-bottom-7">
+  <form method="post" action="{{ urlFor('/volunteering/certificates/generate') }}" class="govuk-!-margin-bottom-7">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <button class="govuk-button" data-module="govuk-button">Generate a certificate</button>
   </form>
@@ -86,7 +86,7 @@
             </ul>
           {% endif %}
           {% if certificate.downloadPath %}
-            <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" href="{{ certificate.downloadPath }}">Download certificate</a>
+            <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" href="{{ urlFor(certificate.downloadPath) }}">Download certificate</a>
           {% endif %}
         </article>
       {% endfor %}

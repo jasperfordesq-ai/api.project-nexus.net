@@ -252,6 +252,9 @@ load-more link, opportunity detail back/organisation/apply links, and clear
 filter links through `urlFor()`. Volunteering action redirects now route auth,
 validation, success, and API-failure destinations through `res.locals.urlFor`
 from the central action helper and direct validation branches. The latest
+volunteering certificate/credential source slice now routes certificate back,
+generate, and download controls plus credential back, upload, and delete
+controls through `urlFor()`. The latest
 resources source slice now routes resource browse, library, upload, delete,
 download, comment, reaction, reorder, category, search, and pagination
 controls through `urlFor()`. The latest resources redirect slice now routes

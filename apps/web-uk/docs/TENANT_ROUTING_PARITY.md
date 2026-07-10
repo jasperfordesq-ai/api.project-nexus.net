@@ -207,7 +207,9 @@ Current gaps:
   and apply CTAs. The latest volunteering route-redirect cleanup sends
   volunteering auth-required, validation, success, and failure redirects
   through `res.locals.urlFor`, including the central action helper and direct
-  validation branches.
+  validation branches. The latest volunteering certificate/credential source
+  conversion routes certificate back, generate, and download controls plus
+  credential back, upload, and delete controls through `urlFor()`.
   The latest focused
   source conversion covers the connections index and network templates,
   including tabs, pending-request links, member links, action forms,

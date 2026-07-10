@@ -461,6 +461,20 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('redirectTo(res,');
   });
 
+  it('keeps volunteering certificate and credential controls behind urlFor()', () => {
+    const templates = [
+      path.join('volunteering', 'certificates.njk'),
+      path.join('volunteering', 'credentials.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    ));
+    const source = templates.join('\n');
+
+    expect(source).not.toMatch(/(?:href|action)="\/volunteering/);
+    expect(source).toMatch(/urlFor\(["']\/volunteering/);
+  });
+
   it('keeps member directory, discovery, nearby, and insights controls behind urlFor()', () => {
     const templates = [
       path.join('members', 'index.njk'),

@@ -1299,6 +1299,14 @@ be shared:
 
 ## Next Certification Work
 
+Volunteering certificate/credential source update, 2026-07-10: the
+certificate and credential templates now route their local back links, generate
+form, certificate download links, credential upload form, and credential delete
+forms through `urlFor()`, with focused source coverage in
+`tests/template-source.test.js`. This is source-level tenant/custom-domain
+helper proof only; visual parity, live feature-gate proof, localization, and
+ASP.NET backend compatibility remain uncertified.
+
 Volunteering owner-page update, 2026-07-07: the generated route matrix now maps
 `/volunteering/organisations/{id}/dashboard`, `/manage`, `/settings`,
 `/volunteers`, and `/wallet` to `src/routes/volunteering-actions.js` and the
