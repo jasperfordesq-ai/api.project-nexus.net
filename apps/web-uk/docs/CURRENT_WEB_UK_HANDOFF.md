@@ -113,7 +113,10 @@ follow-up marketplace browse/action slice now routes marketplace browse nav,
 listing cards, category links, search and category filter forms, listing detail
 buy/offer/save/report controls, buyer buy/offer/report forms, listing
 create/edit form actions, seller profile back links, and seller onboarding
-links/forms through `urlFor()`. A tenant-home parity slice now replaces the old
+links/forms through `urlFor()`. A follow-up marketplace page redirect slice now
+sends signed-out GET auth handoffs and Laravel-401 marketplace page handoffs
+through `res.locals.urlFor`, so marketplace page exits no longer rely on flat
+`/login` redirects before shared-mount or custom-domain rewriting. A tenant-home parity slice now replaces the old
 generic Web UK home inside tenant contexts with the Laravel Blade-style
 `Accessible` home page, including community caption, tenant tagline, platform
 stats, sign-in/register CTAs, module availability rows, and service details. A

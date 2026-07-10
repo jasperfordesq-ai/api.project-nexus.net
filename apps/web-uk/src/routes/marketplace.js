@@ -169,10 +169,15 @@ function loginRedirect() {
   return '/login?status=auth-required';
 }
 
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function requireToken(req, res) {
   const token = tokenFrom(req);
   if (!token) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return null;
   }
   return token;
@@ -278,7 +283,7 @@ function isNotFound(error) {
 
 function renderMarketplaceError(error, res, title = 'Marketplace') {
   if (isAuthError(error)) {
-    res.redirect(loginRedirect());
+    redirectTo(res, loginRedirect());
     return true;
   }
   if (isForbidden(error)) {

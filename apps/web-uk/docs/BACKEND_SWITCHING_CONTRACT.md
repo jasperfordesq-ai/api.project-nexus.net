@@ -78,8 +78,9 @@ API-error outcomes. The course routes now follow it for auth handoffs,
 certificate/learn errors, learner actions, instructor course, section, lesson,
 publish/delete, and grading outcomes. The Jobs action routes now follow it for
 create/update/delete/renew/apply/save/unsave, application status/withdrawal,
-alert, interview, offer, and owner CSV failure outcomes; future ASP.NET mode
-must preserve equivalent local redirect semantics.
+alert, interview, offer, and owner CSV failure outcomes. Marketplace page routes
+now follow it for signed-out GET auth handoffs and Laravel-401 page handoffs;
+future ASP.NET mode must preserve equivalent local redirect semantics.
 
 ## Laravel Runtime Smoke
 
