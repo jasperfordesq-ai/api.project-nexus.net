@@ -220,6 +220,30 @@ namespaces are wholly English upstream.
   contextual template copy, manual/visual accessibility, and ASP.NET backend
   compatibility still require evidence.
 
+### 2026-07-10 Two-factor Enrolment Contract Follow-up
+
+- The profile enrolment page now reads `GET /api/v2/auth/2fa/status`, calls
+  `POST /api/v2/auth/2fa/setup` only while disabled, and normalizes Laravel's
+  `qr_code_url` response. It no longer attempts a non-existent GET setup
+  contract.
+- Successful verification renders Laravel's one-time backup codes directly on
+  the POST response. A subsequent GET reads status only and cannot redisplay
+  those codes.
+- Empty and invalid codes retain the Laravel redirects. API 401 responses use
+  the tenant-aware login path; 429 and 5xx responses retain their real HTTP
+  status instead of being mislabeled as an invalid authenticator code.
+- The document title, back link, backup-code pluralization, warning label,
+  disable heading, and QR alternative text now use exact request-locale Laravel
+  keys. The six scoped keys resolve in all 11 catalogs (66 checks).
+- Focused contract/status tests and shared rendered-shell selection passed 31
+  assertions; source/touched-test lint, the 290-template conservative audit,
+  and `git diff --check` passed. The complete current Web UK gate then passed
+  38/38 suites and 1,177/1,177 tests plus full source lint.
+- A live successful setup/verification was deliberately not run: it mutates
+  account security state and no dedicated disposable 2FA fixture is available.
+  Disable persistence, security notifications/email, throttling behavior, and
+  ASP.NET backend compatibility remain uncertified until that fixture exists.
+
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
 routes through the flat Express app, shell/home links use the active shared

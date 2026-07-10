@@ -7,7 +7,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to settings</a>
+      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">{{ t("security_2fa.back") }}</a>
 
       {% if statusConfig and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="tfa-success-title">
@@ -41,7 +41,7 @@
         <div class="govuk-warning-text">
           <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
           <strong class="govuk-warning-text__text">
-            <span class="govuk-visually-hidden">Warning</span>
+            <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
             {{ t("security_2fa.backup_codes_warning") }}
           </strong>
         </div>
@@ -55,7 +55,7 @@
         <p class="govuk-body-l">{{ t("security_2fa.is_on") }}</p>
         <p class="govuk-body">{{ backupCodesRemainingLabel }}</p>
 
-        <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("security_2fa.disable_button") }}</h2>
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("security_2fa.disable_heading") }}</h2>
         <p class="govuk-body">{{ t("security_2fa.disable_intro") }}</p>
         <form id="tfa-form" method="post" action="{{ urlFor('/profile/two-factor/disable') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -74,7 +74,7 @@
         </ol>
 
         {% if setup.qr_data_uri %}
-          <img class="nexus-alpha-qr" src="{{ setup.qr_data_uri }}" alt="QR code for setting up two-step verification" width="200" height="200">
+          <img class="nexus-alpha-qr" src="{{ setup.qr_data_uri }}" alt="{{ t("security_2fa.qr_alt") }}" width="200" height="200">
         {% endif %}
 
         <p class="govuk-body govuk-!-margin-top-4">{{ t("security_2fa.manual_intro") }}</p>

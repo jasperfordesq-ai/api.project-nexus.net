@@ -163,6 +163,14 @@ proof keep Marketplace open. Laravel's non-English
 `premium.*` Explore copy is also stale relative to current English donation
 semantics and requires an upstream catalog fix.
 
+The profile two-factor enrolment contract now follows Laravel's status-then-
+setup sequence, accepts `qr_code_url`, renders one-time backup codes on the
+verification POST, preserves rate/service failures, and localizes its remaining
+high-impact setup chrome. Focused tests passed 31 selected assertions. Live
+successful enrolment remains blocked on a disposable security-test fixture;
+the complete current Web UK gate passed 38/38 suites and 1,177/1,177 tests. Do
+not mutate a persistent member merely to create proof.
+
 ## Workstream A: Accessible Frontend To Laravel Completion
 
 This workstream ends at complete, evidence-backed Laravel-first certification.

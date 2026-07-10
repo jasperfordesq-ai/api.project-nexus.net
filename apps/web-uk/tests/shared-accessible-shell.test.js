@@ -1538,10 +1538,14 @@ describe('shared accessible frontend shell', () => {
     api.callProfileApi.mockResolvedValueOnce({
       data: {
         enabled: false,
-        setup: {
-          qr_data_uri: 'data:image/svg+xml;base64,PHN2Zy8+',
-          secret: 'ABCD EFGH IJKL'
-        }
+        setup_required: false,
+        backup_codes_remaining: 0
+      }
+    }).mockResolvedValueOnce({
+      data: {
+        qr_code_url: 'data:image/svg+xml;base64,PHN2Zy8+',
+        secret: 'ABCD EFGH IJKL',
+        backup_codes: []
       }
     });
 
@@ -1554,7 +1558,8 @@ describe('shared accessible frontend shell', () => {
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
 
     expect(setup.status).toBe(200);
-    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/auth/2fa/setup');
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/auth/2fa/status');
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'POST', '/auth/2fa/setup');
     expect(setup.text).toContain('Back to settings');
     expect(setup.text).toContain('There is a problem');
     expect(setup.text).toContain('That code was not correct or has expired. Try the current code from your app.');
@@ -18898,10 +18903,15 @@ describe('shared accessible frontend shell', () => {
       reason: 'No longer needed'
     });
 
+    api.callProfileApi.mockResolvedValueOnce({
+      data: { backup_codes: ['otter-amber', 'cedar-river'] }
+    });
     const verify2faResponse = await post('/profile/two-factor/verify', {
       code: '123456'
     });
-    expect(verify2faResponse.headers.location).toBe('/profile/two-factor?status=2fa-enabled');
+    expect(verify2faResponse.status).toBe(200);
+    expect(verify2faResponse.text).toContain('otter-amber');
+    expect(verify2faResponse.text).toContain('cedar-river');
     expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/auth/2fa/verify', {
       code: '123456'
     });

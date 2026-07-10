@@ -12,12 +12,13 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
-const { createTranslator, SUPPORTED_LOCALES } = require('../lib/localization');
+const { createChoiceTranslator, createTranslator, SUPPORTED_LOCALES } = require('../lib/localization');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 const fallbackTranslator = createTranslator('en');
+const fallbackChoiceTranslator = createChoiceTranslator('en');
 
 const PROFILE_LOCALES = SUPPORTED_LOCALES;
 const PROFILE_DIGEST_FREQUENCIES = ['off', 'instant', 'daily', 'monthly'];
@@ -695,18 +696,22 @@ function twoFactorStatusConfig(req, status) {
   return localizedStatusConfig(req, status, TWO_FACTOR_STATUS_MESSAGES, TWO_FACTOR_STATUS_MESSAGE_KEYS);
 }
 
-function backupCodesRemainingLabel(count) {
+function backupCodesRemainingLabel(req, count) {
   const number = Number(count || 0);
-  if (number === 0) return 'You have no backup codes left.';
-  if (number === 1) return 'You have 1 backup code left.';
-  return `You have ${number} backup codes left.`;
+  const translator = typeof req?.tc === 'function' ? req.tc : fallbackChoiceTranslator;
+  return translator('security_2fa.backup_remaining', number, { count: number });
 }
 
 function normalizeTwoFactorPayload(payload) {
   const source = payload && typeof payload === 'object' ? payload : {};
   const setup = source.setup && typeof source.setup === 'object' ? source.setup : source;
   const enabled = boolValue(source.enabled, source.is_enabled, source.two_factor_enabled);
-  const qrDataUri = setup.qr_data_uri || setup.qrDataUri || setup.qr_code_data_uri || '';
+  const qrDataUri = setup.qr_code_url
+    || setup.qrCodeUrl
+    || setup.qr_data_uri
+    || setup.qrDataUri
+    || setup.qr_code_data_uri
+    || '';
   const secret = setup.secret || setup.setup_key || setup.manual_key || '';
   const backupCodes = arrayFromPayload(source, ['backup_codes', 'backupCodes']);
   const backupCodesRemaining = Number(
@@ -720,11 +725,31 @@ function normalizeTwoFactorPayload(payload) {
       : {
           qr_data_uri: qrDataUri,
           secret
-        },
+    },
     backupCodes,
-    backupCodesRemaining: Number.isFinite(backupCodesRemaining) ? backupCodesRemaining : 0,
-    backupCodesRemainingLabel: backupCodesRemainingLabel(backupCodesRemaining)
+    backupCodesRemaining: Number.isFinite(backupCodesRemaining) ? backupCodesRemaining : 0
   };
+}
+
+function renderTwoFactor(req, res, twoFactor, status = '') {
+  const statusConfig = twoFactorStatusConfig(req, status);
+
+  return res.render('profile/two-factor', {
+    title: 'Authenticator app (two-step verification)',
+    titleKey: 'security_2fa.title',
+    activeNav: 'profile',
+    status,
+    statusConfig,
+    successStatus: statusConfig && statusConfig.type === 'success',
+    errorStatus: statusConfig && statusConfig.type === 'error',
+    errorAnchor: statusConfig ? statusConfig.anchor || 'tfa-form' : '',
+    enabled: twoFactor.enabled,
+    setup: twoFactor.setup,
+    backupCodes: twoFactor.backupCodes,
+    backupCodesRemaining: twoFactor.backupCodesRemaining,
+    backupCodesRemainingLabel: backupCodesRemainingLabel(req, twoFactor.backupCodesRemaining),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
 }
 
 function normalizeBlockedUsers(payload) {
@@ -1174,29 +1199,19 @@ router.get('/two-factor', asyncRoute(async (req, res) => {
 
   let twoFactor = normalizeTwoFactorPayload({});
   try {
-    twoFactor = normalizeTwoFactorPayload(payloadFrom(await callProfile(token, 'GET', '/auth/2fa/setup')));
+    const statusPayload = payloadFrom(await callProfile(token, 'GET', '/auth/2fa/status'));
+    twoFactor = normalizeTwoFactorPayload(statusPayload);
+
+    if (!twoFactor.enabled) {
+      const setupPayload = payloadFrom(await callProfile(token, 'POST', '/auth/2fa/setup'));
+      twoFactor = normalizeTwoFactorPayload({ ...statusPayload, setup: setupPayload });
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
   const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const statusConfig = twoFactorStatusConfig(req, status);
-
-  return res.render('profile/two-factor', {
-    title: 'Authenticator app (two-step verification)',
-    activeNav: 'profile',
-    status,
-    statusConfig,
-    successStatus: statusConfig && statusConfig.type === 'success',
-    errorStatus: statusConfig && statusConfig.type === 'error',
-    errorAnchor: statusConfig ? statusConfig.anchor || 'tfa-form' : '',
-    enabled: twoFactor.enabled,
-    setup: twoFactor.setup,
-    backupCodes: twoFactor.backupCodes,
-    backupCodesRemaining: twoFactor.backupCodesRemaining,
-    backupCodesRemainingLabel: twoFactor.backupCodesRemainingLabel,
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
+  return renderTwoFactor(req, res, twoFactor, status);
 }));
 
 router.get('/blocked', asyncRoute(async (req, res) => {
@@ -1231,15 +1246,29 @@ router.post('/two-factor/verify', asyncRoute(async (req, res) => {
     return redirectTo(res, twoFactorRedirect('2fa-code-required'));
   }
 
-  let status = '2fa-enabled';
   try {
-    await callProfile(token, 'POST', '/auth/2fa/verify', { code });
+    const verifiedPayload = payloadFrom(await callProfile(token, 'POST', '/auth/2fa/verify', { code }));
+    const twoFactor = normalizeTwoFactorPayload({
+      ...verifiedPayload,
+      enabled: true,
+      backup_codes_remaining: arrayFromPayload(verifiedPayload, ['backup_codes', 'backupCodes']).length
+    });
+    return renderTwoFactor(req, res, twoFactor, '2fa-enabled');
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    status = '2fa-code-invalid';
+    if (error instanceof ApiError && error.status === 400) {
+      return redirectTo(res, twoFactorRedirect('2fa-code-invalid'));
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/500', { title: 'Too many requests' });
+    }
+    if (error instanceof ApiError && error.status >= 500) {
+      const view = error.status === 503 ? 'errors/503' : 'errors/500';
+      const title = error.status === 503 ? 'Service unavailable' : 'Problem with the service';
+      return res.status(error.status).render(view, { title });
+    }
+    throw error;
   }
-
-  return redirectTo(res, twoFactorRedirect(status));
 }));
 
 router.post('/two-factor/disable', asyncRoute(async (req, res) => {
