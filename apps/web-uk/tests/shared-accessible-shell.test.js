@@ -2323,6 +2323,47 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('localizes the activity dashboard and insights from Laravel Arabic catalogs', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    const payload = {
+      data: {
+        hours_summary: { hours_given: 12.5, hours_received: 5, net_balance: 7.5 },
+        connection_stats: { total_connections: 4, groups_joined: 2 },
+        engagement: { posts_count: 3, comments_count: 6, likes_given: 9, likes_received: 11 },
+        skills_breakdown: {
+          offering_count: 1,
+          requesting_count: 0,
+          skills: [{ skill_name: 'Repair cafes', is_offering: true, endorsements: 2 }]
+        },
+        monthly_hours: [{ label: 'March 2026', given: 3.5, received: 1 }],
+        timeline: [{ activity_type: 'gave_hours', description: 'Helped Grace' }]
+      }
+    };
+    api.callProfileApi.mockReset().mockResolvedValue(payload);
+
+    const dashboard = await request(app)
+      .get('/acme/accessible/activity?locale=ar')
+      .set('Cookie', signedCookieHeader());
+    const insights = await request(app)
+      .get('/acme/accessible/activity/insights?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    for (const response of [dashboard, insights]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    }
+    expect(dashboard.text).toContain(translate('ar', 'activity.title'));
+    expect(dashboard.text).toContain(translate('ar', 'govuk_alpha_activity.nav.insights'));
+    expect(dashboard.text).toContain(translate('ar', 'activity.hours_given'));
+    expect(dashboard.text).not.toContain('Hours given');
+    expect(insights.text).toContain(translate('ar', 'govuk_alpha_activity.insights.heading'));
+    expect(insights.text).toContain(translate('ar', 'govuk_alpha_activity.insights.chart_title'));
+    expect(insights.text).toContain(translate('ar', 'govuk_alpha_activity.insights.quick_stats_title'));
+    expect(insights.text).toContain(translate('ar', 'govuk_alpha_activity.insights.type_gave_hours'));
+  });
+
   it('renders the Laravel-style achievements page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

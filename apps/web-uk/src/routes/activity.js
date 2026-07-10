@@ -10,18 +10,18 @@ const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
 const router = express.Router();
 
-const ACTIVITY_TYPE_LABELS = {
-  post: 'Post',
-  gave_hours: 'Gave hours',
-  received_hours: 'Received hours',
-  comment: 'Comment',
-  connection: 'Connection',
-  event_rsvp: 'Event',
-  event: 'Event',
-  listing: 'Listing',
-  message: 'Message',
-  review: 'Review',
-  activity: 'Activity'
+const ACTIVITY_TYPE_KEYS = {
+  post: 'type_post',
+  gave_hours: 'type_gave_hours',
+  received_hours: 'type_received_hours',
+  comment: 'type_comment',
+  connection: 'type_connection',
+  event_rsvp: 'type_event_rsvp',
+  event: 'type_event_rsvp',
+  listing: 'type_listing',
+  message: 'type_message',
+  review: 'type_review',
+  activity: 'type_activity'
 };
 const ACTIVITY_TYPE_TAGS = {
   gave_hours: 'govuk-tag--green',
@@ -128,7 +128,7 @@ function truncate(value, maxLength = 160) {
   return `${text.slice(0, maxLength - 3).trim()}...`;
 }
 
-function normalizeSkill(skill) {
+function normalizeSkill(skill, t) {
   const name = textFrom(skill.skill_name ?? skill.name);
   const endorsements = intFrom(skill.endorsements ?? skill.endorsements_count);
   return {
@@ -136,7 +136,9 @@ function normalizeSkill(skill) {
     isOffering: boolFrom(skill.is_offering ?? skill.offering),
     isRequesting: boolFrom(skill.is_requesting ?? skill.requesting),
     endorsements,
-    endorsementsLabel: endorsements > 0 ? `Endorsed ${formatInteger(endorsements)} times` : ''
+    endorsementsLabel: endorsements > 0
+      ? t('govuk_alpha_activity.insights.skill_endorsements', { count: formatInteger(endorsements) })
+      : ''
   };
 }
 
@@ -168,43 +170,43 @@ function normalizeMonthly(monthly) {
   }));
 }
 
-function normalizeTimelineItem(item) {
+function normalizeTimelineItem(item, t) {
   const type = textFrom(item.activity_type, 'activity') || 'activity';
   const text = truncate(item.description ?? item.title ?? item.message ?? item.content);
   const dateLabel = formatDate(item.created_at ?? item.date);
   return {
     type,
-    typeLabel: ACTIVITY_TYPE_LABELS[type] || ACTIVITY_TYPE_LABELS.activity,
+    typeLabel: t(`govuk_alpha_activity.insights.${ACTIVITY_TYPE_KEYS[type] || ACTIVITY_TYPE_KEYS.activity}`),
     tagClass: ACTIVITY_TYPE_TAGS[type] || ACTIVITY_TYPE_TAGS.activity,
     text,
     dateLabel
   };
 }
 
-function netBalanceInsight(netBalance) {
+function netBalanceInsight(netBalance, t) {
   const absolute = formatNumber(Math.abs(netBalance));
   if (netBalance > 0) {
     return {
-      label: `+${absolute} hours`,
+      label: t('govuk_alpha_activity.insights.net_balance_positive', { value: absolute }),
       tagClass: 'govuk-tag--green',
-      meaning: 'You have received more help than you have given.'
+      meaning: t('govuk_alpha_activity.insights.net_balance_positive_meaning')
     };
   }
   if (netBalance < 0) {
     return {
-      label: `-${absolute} hours`,
+      label: t('govuk_alpha_activity.insights.net_balance_negative', { value: `-${absolute}` }),
       tagClass: 'govuk-tag--red',
-      meaning: 'You have given more help than you have received.'
+      meaning: t('govuk_alpha_activity.insights.net_balance_negative_meaning')
     };
   }
   return {
-    label: `${absolute} hours`,
+    label: t('govuk_alpha_activity.insights.net_balance_negative', { value: absolute }),
     tagClass: 'govuk-tag--grey',
-    meaning: 'Your hours given and received are balanced.'
+    meaning: t('govuk_alpha_activity.insights.net_balance_even_meaning')
   };
 }
 
-function normalizeActivity(payload) {
+function normalizeActivity(payload, t) {
   const data = payloadFrom(payload);
   const hours = data.hours_summary && typeof data.hours_summary === 'object' ? data.hours_summary : {};
   const connections = data.connection_stats && typeof data.connection_stats === 'object' ? data.connection_stats : {};
@@ -213,7 +215,7 @@ function normalizeActivity(payload) {
   const netBalance = Object.prototype.hasOwnProperty.call(hours, 'net_balance') ? numberFrom(hours.net_balance) : null;
   const monthly = normalizeMonthly(data.monthly_hours);
   const skills = arrayFrom(skillsBreakdown.skills)
-    .map(normalizeSkill)
+    .map((skill) => normalizeSkill(skill, t))
     .filter((skill) => skill.name);
   const offeringCount = intFrom(skillsBreakdown.offering_count);
   const requestingCount = intFrom(skillsBreakdown.requesting_count);
@@ -231,15 +233,20 @@ function normalizeActivity(payload) {
       likesReceivedLabel: formatInteger(engagement.likes_received)
     },
     hasEngagement: Object.keys(engagement).length > 0,
-    netBalanceLabel: netBalance === null ? '' : `${formatNumber(netBalance)} hrs`,
-    netBalanceInsight: netBalanceInsight(netBalance || 0),
+    netBalanceLabel: netBalance === null
+      ? ''
+      : t('polish_discovery.activity_net_hours', { value: formatNumber(netBalance) }),
+    netBalanceInsight: netBalanceInsight(netBalance || 0, t),
     skills,
-    skillsSummaryLabel: `${formatInteger(offeringCount)} offered, ${formatInteger(requestingCount)} requested.`,
+    skillsSummaryLabel: t('govuk_alpha_activity.insights.skills_summary', {
+      offering: formatInteger(offeringCount),
+      requesting: formatInteger(requestingCount)
+    }),
     monthly,
     chartMonths: monthly.filter((row) => row.given > 0 || row.received > 0),
     hasChart: monthly.some((row) => row.given > 0 || row.received > 0),
     timeline: arrayFrom(data.timeline)
-      .map(normalizeTimelineItem)
+      .map((item) => normalizeTimelineItem(item, t))
       .filter((item) => item.text || item.dateLabel)
   };
 }
@@ -266,12 +273,12 @@ async function activityContext(req, res, title) {
     title,
     activeNav: 'activity',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
-    activity: normalizeActivity(payload)
+    activity: normalizeActivity(payload, res.locals.t)
   };
 }
 
 router.get('/insights', asyncRoute(async (req, res) => {
-  const context = await activityContext(req, res, 'Activity insights');
+  const context = await activityContext(req, res, res.locals.t('govuk_alpha_activity.insights.title'));
   if (!context) {
     return null;
   }
@@ -279,7 +286,7 @@ router.get('/insights', asyncRoute(async (req, res) => {
 }));
 
 router.get('/', asyncRoute(async (req, res) => {
-  const context = await activityContext(req, res, 'My activity');
+  const context = await activityContext(req, res, res.locals.t('activity.title'));
   if (!context) {
     return null;
   }

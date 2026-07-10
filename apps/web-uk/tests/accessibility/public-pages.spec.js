@@ -39,6 +39,8 @@ const AUTHENTICATED_ROUTES = [
   { name: 'account hub', path: '/account' },
   { name: 'profile summary', path: '/profile' },
   { name: 'profile settings', path: '/profile/settings' },
+  { name: 'activity dashboard', path: '/activity' },
+  { name: 'activity insights', path: '/activity/insights' },
   { name: 'wallet', path: '/wallet' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
@@ -542,6 +544,51 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Arabic activity pages preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(150_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      for (const route of [
+        { path: '/activity?locale=ar', heading: translate('ar', 'activity.title') },
+        { path: '/activity/insights?locale=ar', heading: translate('ar', 'govuk_alpha_activity.insights.heading') }
+      ]) {
+        const path = `${authenticatedMountPath}${route.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(route.heading);
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-${route.path.includes('insights') ? 'activity-insights' : 'activity'}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow,
+            violations: formatViolations(axeResults.violations),
+            incomplete: formatViolations(axeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
     } finally {
       await context.close();
     }

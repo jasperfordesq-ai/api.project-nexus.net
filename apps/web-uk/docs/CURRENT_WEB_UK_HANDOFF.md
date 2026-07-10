@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,394/1,394` tests passed.
+- Jest: `45/45` suites and `1,395/1,395` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `32/32` cases.
+- Automated browser accessibility: Chromium/axe passed `35/35` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,26 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Activity And Insights Contextual Localization Slice
+
+`/activity` and `/activity/insights` now resolve their document titles, captions,
+stats, engagement labels, skill tags/endorsement counts, monthly-chart text and
+ARIA, timeline headings/type tags, net-balance text and hidden meanings, quick
+stats, summaries, empty states, and navigation through Laravel's `govuk_alpha`
+and `govuk_alpha_activity` catalogs. Dynamic member activity, skill names, month
+labels, and timeline content remain user/service data rather than translated copy.
+
+Focused activity coverage passed `5/5`, including signed Arabic request semantics
+and locale-aware numeric output. The complete Jest gate passed `45/45` suites and
+`1,395/1,395` tests; lint, template, and diff gates passed; and the expanded live
+Chromium/axe matrix passed `35/35`. Standard activity/insights pages and a signed
+Arabic case covering both pages passed structure, unique IDs, RTL, 320px reflow,
+and serious/critical axe checks. The authoritative Laravel
+`govuk_alpha_activity` Arabic namespace still contains English values; Web UK
+deliberately preserves those values rather than inventing divergent translations.
+Laravel-owned translation completion, relative-time parity, exact service-row
+depth, manual assistive-technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Profile-Settings Contextual Localization Slice
 
