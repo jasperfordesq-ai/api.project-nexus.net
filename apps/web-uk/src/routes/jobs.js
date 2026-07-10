@@ -17,10 +17,12 @@ const {
   uploadJobApplication
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { createTranslator } = require('../lib/localization');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
+const fallbackTranslator = createTranslator('en');
 
 const JOB_TYPES = ['paid', 'volunteer', 'timebank'];
 const JOB_COMMITMENTS = ['full_time', 'part_time', 'flexible', 'one_off'];
@@ -91,6 +93,13 @@ const JOB_ALERT_SUCCESS_MESSAGES = {
 const JOB_ALERT_ERROR_MESSAGES = {
   'alert-failed': 'We could not complete that action. Please try again.'
 };
+const JOB_ALERT_MESSAGE_KEYS = Object.freeze({
+  'alert-created': 'jobs_t4.states.alert-created',
+  'alert-paused': 'jobs_t4.states.alert-paused',
+  'alert-resumed': 'jobs_t4.states.alert-resumed',
+  'alert-deleted': 'jobs_t4.states.alert-deleted',
+  'alert-failed': 'jobs_t4.states.alert-failed'
+});
 const JOB_RESPONSE_SUCCESS_MESSAGES = {
   'interview-accepted': 'You accepted the interview. The employer has been notified.',
   'interview-declined': 'You declined the interview. The employer has been notified.',
@@ -101,6 +110,14 @@ const JOB_RESPONSE_ERROR_MESSAGES = {
   'interview-failed': 'Sorry, we could not update that interview. It may have already been responded to.',
   'offer-failed': 'Sorry, we could not update that offer. It may have expired or already been responded to.'
 };
+const JOB_RESPONSE_MESSAGE_KEYS = Object.freeze({
+  'interview-accepted': 'govuk_alpha_jobs.responses.states_interview_accepted',
+  'interview-declined': 'govuk_alpha_jobs.responses.states_interview_declined',
+  'interview-failed': 'govuk_alpha_jobs.responses.states_interview_failed',
+  'offer-accepted': 'govuk_alpha_jobs.responses.states_offer_accepted',
+  'offer-rejected': 'govuk_alpha_jobs.responses.states_offer_rejected',
+  'offer-failed': 'govuk_alpha_jobs.responses.states_offer_failed'
+});
 const JOB_INTERVIEW_STATUSES = ['proposed', 'accepted', 'declined'];
 const JOB_INTERVIEW_TYPE_LABELS = {
   video: 'Video',
@@ -153,12 +170,81 @@ const JOB_APPLICANT_ERROR_MESSAGES = {
   'status-failed': 'We could not update the application. Please try again.',
   'export-failed': 'We could not prepare the download. Please try again.'
 };
+const JOB_APPLICANT_MESSAGE_KEYS = Object.freeze({
+  'status-updated': 'jobs_t3.states.status-updated',
+  'status-failed': 'jobs_t3.states.status-failed',
+  'export-failed': 'jobs_t3.states.export-failed'
+});
 const JOB_PIPELINE_SUCCESS_MESSAGES = {
   'status-updated': 'Candidate moved to the new stage.'
 };
 const JOB_PIPELINE_ERROR_MESSAGES = {
   'status-failed': 'Sorry, we could not move that candidate. Please try again.'
 };
+const JOB_PIPELINE_MESSAGE_KEYS = Object.freeze({
+  'status-updated': 'govuk_alpha_jobs.pipeline.status_moved',
+  'status-failed': 'govuk_alpha_jobs.pipeline.status_failed'
+});
+const JOB_STATUS_MESSAGES = Object.freeze({
+  applied: 'Your application has been submitted.',
+  saved: 'Opportunity saved.',
+  unsaved: 'Opportunity removed from your saved list.',
+  withdrawn: 'Your application has been withdrawn.',
+  deleted: 'The opportunity has been deleted.',
+  created: 'Your opportunity has been posted.',
+  updated: 'Your changes have been saved.',
+  renewed: 'The closing date has been extended.'
+});
+const JOB_STATUS_MESSAGE_KEYS = Object.freeze({
+  applied: 'jobs.states.applied',
+  saved: 'jobs_t2.states.saved',
+  unsaved: 'jobs_t2.states.unsaved',
+  withdrawn: 'jobs_t2.states.withdrawn',
+  deleted: 'jobs_t3.states.deleted',
+  created: 'jobs_t3.states.created',
+  updated: 'jobs_t3.states.updated',
+  renewed: 'jobs_t3.states.renewed'
+});
+const JOB_STATUS_ERROR_MESSAGES = Object.freeze({
+  'delete-failed': 'We could not delete the opportunity. Please try again.',
+  'create-failed': 'The opportunity could not be saved. Check the details and try again.'
+});
+const JOB_STATUS_ERROR_MESSAGE_KEYS = Object.freeze({
+  'delete-failed': 'jobs_t3.states.delete-failed',
+  'create-failed': 'jobs_t3.error_generic'
+});
+const JOB_APPLICATION_ERROR_MESSAGES = Object.freeze({
+  'withdraw-failed': 'We could not withdraw your application. Please try again.'
+});
+const JOB_APPLICATION_ERROR_MESSAGE_KEYS = Object.freeze({
+  'withdraw-failed': 'jobs_t2.states.withdraw-failed'
+});
+const JOB_ACTION_ERROR_MESSAGES = Object.freeze({
+  'apply-failed': 'We could not submit your application. You may have already applied.',
+  'save-failed': 'We could not save this opportunity. Please try again.',
+  'renew-failed': 'We could not renew the opportunity. Please try again.',
+  'cv-invalid': 'Your CV must be a PDF, DOC or DOCX file. Your application was not submitted.',
+  'cv-too-large': 'Your CV must be 5MB or smaller. Your application was not submitted.',
+  'cover-required': 'Please tell the employer why you are a good fit. Your application was not submitted.'
+});
+const JOB_ACTION_ERROR_MESSAGE_KEYS = Object.freeze({
+  'apply-failed': 'jobs.states.apply-failed',
+  'save-failed': 'jobs_t2.states.save-failed',
+  'renew-failed': 'jobs_t3.states.renew-failed',
+  'cv-invalid': 'jobs.states.cv-invalid',
+  'cv-too-large': 'jobs.states.cv-too-large',
+  'cover-required': 'jobs.states.cover-required'
+});
+const JOB_FORM_ERROR_MESSAGES = Object.freeze({
+  'title-required': 'Enter a title for the opportunity.',
+  'create-failed': 'The opportunity could not be saved. Check the details and try again.',
+  'update-failed': 'The opportunity could not be saved. Check the details and try again.'
+});
+const JOB_FORM_ERROR_MESSAGE_KEYS = Object.freeze({
+  'title-required': 'jobs_t3.error_title_required',
+  'create-failed': 'jobs_t3.error_generic',
+  'update-failed': 'jobs_t3.error_generic'
+});
 const JOB_QUALIFICATION_LABELS = {
   excellent: 'Excellent match',
   good: 'Good match',
@@ -937,7 +1023,7 @@ function groupPipeline(applications) {
     }));
 }
 
-function decorateQualification(result) {
+function decorateQualification(result, req) {
   const qualification = objectFrom(result);
   if (!qualification) return null;
 
@@ -951,7 +1037,18 @@ function decorateQualification(result) {
     jobTitle: trimmed(qualification.job_title || qualification.jobTitle, 255) || 'Opportunity',
     percentage: finiteNumber(qualification.percentage, 0),
     level,
-    levelLabel: JOB_QUALIFICATION_LABELS[level] || JOB_QUALIFICATION_LABELS.low,
+    levelLabel: translateStatusMessage(
+      req,
+      `govuk_alpha_jobs.qualification.level_${level || 'low'}`,
+      JOB_QUALIFICATION_LABELS[level] || JOB_QUALIFICATION_LABELS.low
+    ),
+    levelTagClass: level === 'excellent'
+      ? 'govuk-tag--green'
+      : level === 'good'
+        ? 'govuk-tag--turquoise'
+        : level === 'moderate'
+          ? 'govuk-tag--yellow'
+          : 'govuk-tag--grey',
     totalRequired,
     totalMatched,
     skillsMatchedLabel: `${totalMatched} of ${totalRequired} skills matched`,
@@ -983,8 +1080,9 @@ function candidateInitial(name) {
   return (trimmed(name).charAt(0) || 'A').toUpperCase();
 }
 
-function decorateCandidate(candidate) {
-  const name = trimmed(candidate.name || candidate.display_name || candidate.full_name, 255) || 'Anonymous candidate';
+function decorateCandidate(candidate, req) {
+  const name = trimmed(candidate.name || candidate.display_name || candidate.full_name, 255)
+    || translateStatusMessage(req, 'govuk_alpha_jobs.shared.anonymous', 'Anonymous candidate');
   const skills = candidateSkills(candidate.skills);
 
   return {
@@ -992,7 +1090,8 @@ function decorateCandidate(candidate) {
     id: positiveInteger(candidate.id) || 0,
     name,
     initial: candidateInitial(name),
-    headline: trimmed(candidate.headline || candidate.resume_headline, 255) || 'No headline provided',
+    headline: trimmed(candidate.headline || candidate.resume_headline, 255)
+      || translateStatusMessage(req, 'govuk_alpha_jobs.talent.headline_none', 'No headline provided'),
     location: trimmed(candidate.location, 255),
     avatarUrl: trimmed(candidate.avatar_url || candidate.avatarUrl, 1000),
     skills,
@@ -1150,10 +1249,16 @@ function percentLabel(value) {
   return `${formatDecimal(value, 1)}%`;
 }
 
-function dateRangeLabel(from, to) {
+function dateRangeLabel(req, from, to) {
   const fromLabel = formatDateOnlyLong(from);
   const toLabel = formatDateOnlyLong(to);
-  if (fromLabel && toLabel) return `Period: ${fromLabel} to ${toLabel}`;
+  if (fromLabel && toLabel) {
+    return translateStatusMessage(
+      req,
+      'govuk_alpha_jobs.bias_audit.period_label',
+      `Period: ${fromLabel} to ${toLabel}`
+    ).replace(':from', fromLabel).replace(':to', toLabel);
+  }
   if (fromLabel) return `From ${fromLabel}`;
   if (toLabel) return `To ${toLabel}`;
   return '';
@@ -1167,11 +1272,15 @@ function orderedKeys(source, preferred) {
   ];
 }
 
-function biasStageLabel(stage) {
-  return JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage) || 'Other';
+function biasStageLabel(req, stage) {
+  return translateStatusMessage(
+    req,
+    `govuk_alpha_jobs.stage.${stage}`,
+    JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage) || 'Other'
+  );
 }
 
-function decorateBiasReport(result) {
+function decorateBiasReport(result, req) {
   const report = objectFrom(result);
   if (!report) return null;
 
@@ -1193,13 +1302,13 @@ function decorateBiasReport(result) {
     totalApplicationsLabel: formatPlainNumber(totalApplications),
     hiringVelocityLabel: report.hiring_velocity_days === null || report.hiring_velocity_days === undefined
       ? ''
-      : `${formatDecimal(report.hiring_velocity_days, 1)} days`,
-    periodLabel: dateRangeLabel(period.from, period.to),
+      : `${formatDecimal(report.hiring_velocity_days, 1)} ${translateStatusMessage(req, 'govuk_alpha_jobs.bias_audit.days', 'days')}`,
+    periodLabel: dateRangeLabel(req, period.from, period.to),
     funnelRows: orderedKeys(funnel, stageOrder).map((stage) => {
       const count = finiteNumber(funnel[stage], 0);
       return {
         stage,
-        label: biasStageLabel(stage),
+        label: biasStageLabel(req, stage),
         count,
         countLabel: formatPlainNumber(count),
         percentLabel: percentLabel(totalApplications > 0 ? (count / totalApplications) * 100 : 0)
@@ -1209,7 +1318,7 @@ function decorateBiasReport(result) {
       const row = rejectionRates[stage] && typeof rejectionRates[stage] === 'object' ? rejectionRates[stage] : {};
       return {
         stage,
-        label: biasStageLabel(stage),
+        label: biasStageLabel(req, stage),
         entered: finiteNumber(row.total, 0),
         rejected: finiteNumber(row.rejected, 0),
         rateLabel: percentLabel(finiteNumber(row.rate, 0))
@@ -1217,17 +1326,17 @@ function decorateBiasReport(result) {
     }),
     timeRows: orderedKeys(avgTime, stageOrder).map((stage) => ({
       stage,
-      label: biasStageLabel(stage),
-      daysLabel: `${formatDecimal(avgTime[stage], 1)} days`
+      label: biasStageLabel(req, stage),
+      daysLabel: `${formatDecimal(avgTime[stage], 1)} ${translateStatusMessage(req, 'govuk_alpha_jobs.bias_audit.days', 'days')}`
     })),
     outcomeRows: [
       {
-        label: 'Accepted',
+        label: biasStageLabel(req, 'accepted'),
         count: finiteNumber(outcomes.accepted_count ?? outcomes.acceptedCount, 0),
         proportionLabel: percentLabel(finiteNumber(outcomes.accepted_avg ?? outcomes.acceptedAvg, 0) * 100)
       },
       {
-        label: 'Rejected',
+        label: biasStageLabel(req, 'rejected'),
         count: finiteNumber(outcomes.rejected_count ?? outcomes.rejectedCount, 0),
         proportionLabel: percentLabel(finiteNumber(outcomes.rejected_avg ?? outcomes.rejectedAvg, 0) * 100)
       }
@@ -1236,7 +1345,11 @@ function decorateBiasReport(result) {
       const row = sources[source] && typeof sources[source] === 'object' ? sources[source] : {};
       return {
         source,
-        label: JOB_BIAS_SOURCE_LABELS[source] || statusTitle(source),
+        label: translateStatusMessage(
+          req,
+          `govuk_alpha_jobs.bias_audit.source_${source}`,
+          JOB_BIAS_SOURCE_LABELS[source] || statusTitle(source)
+        ),
         applications: finiteNumber(row.applications, 0),
         accepted: finiteNumber(row.accepted, 0),
         rateLabel: percentLabel(finiteNumber(row.rate, 0))
@@ -1256,7 +1369,7 @@ function statusTitle(value) {
     .join(' ');
 }
 
-function decorateApplicationHistory(entry) {
+function decorateApplicationHistory(entry, req) {
   const toStatus = trimmed(entry.to_status || entry.toStatus);
   const fromStatus = trimmed(entry.from_status || entry.fromStatus);
   const changedByName = trimmed(entry.changed_by_name || entry.changedByName);
@@ -1264,68 +1377,107 @@ function decorateApplicationHistory(entry) {
   return {
     ...entry,
     id: positiveInteger(entry.id) || 0,
-    statusLabel: JOB_APPLICATION_LABELS[toStatus] || statusTitle(toStatus) || 'Updated',
-    fromLabel: fromStatus ? `from ${JOB_APPLICATION_LABELS[fromStatus] || statusTitle(fromStatus)}` : '',
+    statusLabel: toStatus
+      ? translateStatusMessage(
+        req,
+        `jobs_t2.app_status_${toStatus}`,
+        JOB_APPLICATION_LABELS[toStatus] || statusTitle(toStatus)
+      )
+      : translateStatusMessage(req, 'govuk_alpha_jobs.history.status_unknown', 'Updated'),
+    fromLabel: fromStatus
+      ? translateStatusMessage(req, 'govuk_alpha_jobs.history.from', `from ${statusTitle(fromStatus)}`)
+        .replace(
+          ':status',
+          translateStatusMessage(
+            req,
+            `jobs_t2.app_status_${fromStatus}`,
+            JOB_APPLICATION_LABELS[fromStatus] || statusTitle(fromStatus)
+          )
+        )
+      : '',
     changedAtLabel: formatDateTimeMeridiem(entry.changed_at || entry.changedAt),
-    changedByLabel: changedByName ? `by ${changedByName}` : '',
+    changedByLabel: changedByName
+      ? translateStatusMessage(req, 'govuk_alpha_jobs.history.by', `by ${changedByName}`)
+        .replace(':name', changedByName)
+      : '',
     notesText: trimmed(entry.notes, 5000)
   };
 }
 
-function statusMessage(status) {
-  const messages = {
-    applied: 'Your application has been submitted.',
-    saved: 'Opportunity saved.',
-    unsaved: 'Opportunity removed from your saved list.',
-    withdrawn: 'Your application has been withdrawn.',
-    deleted: 'The opportunity has been deleted.',
-    created: 'Opportunity created.',
-    updated: 'Opportunity updated.',
-    renewed: 'Opportunity renewed.'
-  };
+function translateStatusMessage(req, key, fallbackMessage = '') {
+  if (!key) return fallbackMessage;
 
-  return messages[status] || '';
+  const requestTranslator = typeof req?.t === 'function' ? req.t : fallbackTranslator;
+  const translated = requestTranslator(key);
+  if (typeof translated === 'string' && translated !== '' && translated !== key) return translated;
+
+  const english = fallbackTranslator(key);
+  return typeof english === 'string' && english !== '' && english !== key ? english : fallbackMessage;
 }
 
-function statusErrorMessage(status) {
-  const messages = {
-    'delete-failed': 'We could not delete the opportunity. Please try again.',
-    'create-failed': 'The opportunity could not be saved. Check the details and try again.'
-  };
+function localizedStatusMessage(req, status, messages, messageKeys) {
+  const fallbackMessage = messages[status] || '';
+  if (!fallbackMessage) return '';
 
-  return messages[status] || '';
+  return translateStatusMessage(req, messageKeys[status], fallbackMessage);
 }
 
-function alertSuccessMessage(status) {
-  return JOB_ALERT_SUCCESS_MESSAGES[status] || '';
+function statusMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_STATUS_MESSAGES, JOB_STATUS_MESSAGE_KEYS);
 }
 
-function alertErrorMessage(status) {
-  return JOB_ALERT_ERROR_MESSAGES[status] || '';
+function statusErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_STATUS_ERROR_MESSAGES, JOB_STATUS_ERROR_MESSAGE_KEYS);
 }
 
-function responseSuccessMessage(status) {
-  return JOB_RESPONSE_SUCCESS_MESSAGES[status] || '';
+function applicationErrorMessage(req, status) {
+  return localizedStatusMessage(
+    req,
+    status,
+    JOB_APPLICATION_ERROR_MESSAGES,
+    JOB_APPLICATION_ERROR_MESSAGE_KEYS
+  );
 }
 
-function responseErrorMessage(status) {
-  return JOB_RESPONSE_ERROR_MESSAGES[status] || '';
+function actionErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_ACTION_ERROR_MESSAGES, JOB_ACTION_ERROR_MESSAGE_KEYS);
 }
 
-function applicantSuccessMessage(status) {
-  return JOB_APPLICANT_SUCCESS_MESSAGES[status] || '';
+function formErrors(req, status) {
+  const message = localizedStatusMessage(req, status, JOB_FORM_ERROR_MESSAGES, JOB_FORM_ERROR_MESSAGE_KEYS);
+  return message ? [message] : [];
 }
 
-function applicantErrorMessage(status) {
-  return JOB_APPLICANT_ERROR_MESSAGES[status] || '';
+function alertSuccessMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_ALERT_SUCCESS_MESSAGES, JOB_ALERT_MESSAGE_KEYS);
 }
 
-function pipelineSuccessMessage(status) {
-  return JOB_PIPELINE_SUCCESS_MESSAGES[status] || '';
+function alertErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_ALERT_ERROR_MESSAGES, JOB_ALERT_MESSAGE_KEYS);
 }
 
-function pipelineErrorMessage(status) {
-  return JOB_PIPELINE_ERROR_MESSAGES[status] || '';
+function responseSuccessMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_RESPONSE_SUCCESS_MESSAGES, JOB_RESPONSE_MESSAGE_KEYS);
+}
+
+function responseErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_RESPONSE_ERROR_MESSAGES, JOB_RESPONSE_MESSAGE_KEYS);
+}
+
+function applicantSuccessMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_APPLICANT_SUCCESS_MESSAGES, JOB_APPLICANT_MESSAGE_KEYS);
+}
+
+function applicantErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_APPLICANT_ERROR_MESSAGES, JOB_APPLICANT_MESSAGE_KEYS);
+}
+
+function pipelineSuccessMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_PIPELINE_SUCCESS_MESSAGES, JOB_PIPELINE_MESSAGE_KEYS);
+}
+
+function pipelineErrorMessage(req, status) {
+  return localizedStatusMessage(req, status, JOB_PIPELINE_ERROR_MESSAGES, JOB_PIPELINE_MESSAGE_KEYS);
 }
 
 function resultId(result) {
@@ -1417,6 +1569,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   return res.render('jobs/index', {
     title: 'Jobs',
+    titleKey: 'jobs.title',
     activeNav: 'explore',
     jobs,
     filters,
@@ -1424,7 +1577,7 @@ router.get('/', asyncRoute(async (req, res) => {
     resultsLabel: resultsLabel(jobsMeta.total),
     nextHref: jobsMeta.has_more ? jobsHref(filters, nextOffset) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req.query.status),
+    successMessage: statusMessage(req, req.query.status),
     loadError
   });
 }));
@@ -1447,12 +1600,13 @@ router.get('/saved', asyncRoute(async (req, res) => {
 
   return res.render('jobs/saved', {
     title: 'Saved opportunities',
+    titleKey: 'jobs_t2.saved_title',
     activeNav: 'explore',
     jobs,
     jobsMeta,
     nextHref: jobsMeta.has_more && jobsMeta.cursor ? savedJobsHref(jobsMeta.cursor) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req.query.status),
+    successMessage: statusMessage(req, req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1476,6 +1630,7 @@ router.get('/applications', asyncRoute(async (req, res) => {
 
   return res.render('jobs/applications', {
     title: 'My applications',
+    titleKey: 'jobs_t2.applications_title',
     activeNav: 'explore',
     applications,
     filters,
@@ -1486,8 +1641,8 @@ router.get('/applications', asyncRoute(async (req, res) => {
     jobsMeta,
     nextHref: jobsMeta.has_more && jobsMeta.cursor ? applicationsHref(filters, jobsMeta.cursor) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req.query.status),
-    errorMessage: req.query.status === 'withdraw-failed' ? 'Your application could not be withdrawn. Try again.' : '',
+    successMessage: statusMessage(req, req.query.status),
+    errorMessage: applicationErrorMessage(req, req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1497,6 +1652,7 @@ router.get('/applications/:appId(\\d+)/history', asyncRoute(async (req, res) => 
   const token = tokenFrom(req);
   const appId = Number(req.params.appId);
   let result = null;
+  let applicationsResult = null;
 
   try {
     result = await callJob(token, 'GET', `/applications/${appId}/history`);
@@ -1509,11 +1665,23 @@ router.get('/applications/:appId(\\d+)/history', asyncRoute(async (req, res) => 
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }
 
+  try {
+    applicationsResult = await callJob(token, 'GET', '/applications?limit=200');
+  } catch {
+    // History is still renderable with the tenant-name caption when the
+    // secondary vacancy-title lookup is unavailable.
+  }
+
+  const application = collectionItems(applicationsResult)
+    .find((row) => positiveInteger(row.id) === appId);
+
   return res.render('jobs/application-history', {
     title: 'Application timeline',
+    titleKey: 'govuk_alpha_jobs.history.title',
     activeNav: 'explore',
     applicationId: appId,
-    history: collectionItems(result).map(decorateApplicationHistory)
+    vacancyTitle: application ? vacancyTitle(application) : '',
+    history: collectionItems(result).map((entry) => decorateApplicationHistory(entry, req))
   });
 }));
 
@@ -1561,13 +1729,14 @@ router.get('/mine', asyncRoute(async (req, res) => {
 
   return res.render('jobs/mine', {
     title: 'My postings',
+    titleKey: 'jobs_t3.mine_title',
     activeNav: 'explore',
     jobs,
     jobsMeta,
     nextHref: jobsMeta.has_more && jobsMeta.cursor ? myPostingsHref(jobsMeta.cursor) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req.query.status),
-    errorMessage: statusErrorMessage(req.query.status),
+    successMessage: statusMessage(req, req.query.status),
+    errorMessage: statusErrorMessage(req, req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1575,11 +1744,12 @@ router.get('/mine', asyncRoute(async (req, res) => {
 
 router.get('/create', (req, res) => res.render('jobs/form', {
   title: 'Post an opportunity',
+  titleKey: 'jobs_t3.create_title',
   activeNav: 'explore',
   formMode: 'create',
   formAction: '/jobs',
   jobForm: {},
-  jobFormErrors: [],
+  jobFormErrors: formErrors(req, req.query.status),
   csrfToken: req.csrfToken ? req.csrfToken() : ''
 }));
 
@@ -1597,11 +1767,12 @@ router.get('/alerts', asyncRoute(async (req, res) => {
 
   return res.render('jobs/alerts', {
     title: 'Job alerts',
+    titleKey: 'jobs_t4.title',
     activeNav: 'explore',
     alerts: collectionItems(result).map(decorateAlert),
     status: req.query.status || '',
-    successMessage: alertSuccessMessage(req.query.status),
-    errorMessage: alertErrorMessage(req.query.status),
+    successMessage: alertSuccessMessage(req, req.query.status),
+    errorMessage: alertErrorMessage(req, req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1629,12 +1800,13 @@ router.get('/responses', asyncRoute(async (req, res) => {
 
   return res.render('jobs/responses', {
     title: 'Interviews and offers',
+    titleKey: 'govuk_alpha_jobs.responses.title',
     activeNav: 'explore',
     interviews: collectionItems(interviewsResult).map(decorateInterview),
     offers: collectionItems(offersResult).map(decorateOffer),
     status: req.query.status || '',
-    successMessage: responseSuccessMessage(req.query.status),
-    errorMessage: responseErrorMessage(req.query.status),
+    successMessage: responseSuccessMessage(req, req.query.status),
+    errorMessage: responseErrorMessage(req, req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1660,6 +1832,7 @@ router.get('/employer-onboarding', asyncRoute(async (req, res) => {
 
   return res.render('jobs/onboarding', {
     title: 'Post your first opportunity',
+    titleKey: 'govuk_alpha_jobs.onboarding.title',
     activeNav: 'explore',
     hasPosted: onboardingHasPosted(postingsResult),
     loadError
@@ -1733,6 +1906,7 @@ router.get('/bias-audit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const filters = biasAuditFilters(req.query);
   let result;
+  let jobsResult = null;
 
   try {
     result = await callAdminJob(token, 'GET', biasAuditPath(filters));
@@ -1751,11 +1925,24 @@ router.get('/bias-audit', asyncRoute(async (req, res) => {
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }
 
+  try {
+    jobsResult = await callAdminJob(token, 'GET', '/?limit=200');
+  } catch {
+    // The report remains useful when the optional filter choices cannot load.
+  }
+
+  const jobs = collectionItems(jobsResult)
+    .map((job) => ({ id: positiveInteger(job.id), title: trimmed(job.title, 255) }))
+    .filter((job) => job.id && job.title)
+    .sort((left, right) => left.title.localeCompare(right.title, getRequestIntlLocale()));
+
   return res.render('jobs/bias-audit', {
     title: 'Hiring bias audit',
+    titleKey: 'govuk_alpha_jobs.bias_audit.title',
     activeNav: 'admin',
     filters,
-    report: decorateBiasReport(result)
+    jobs,
+    report: decorateBiasReport(result, req)
   });
 }));
 
@@ -1781,11 +1968,12 @@ router.get('/talent-search', asyncRoute(async (req, res) => {
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }
 
-  const candidates = collectionItems(result).map(decorateCandidate);
+  const candidates = collectionItems(result).map((candidate) => decorateCandidate(candidate, req));
   const meta = talentSearchMeta(result, filters, candidates.length);
 
   return res.render('jobs/talent-search', {
     title: 'Find candidates',
+    titleKey: 'govuk_alpha_jobs.talent.title',
     activeNav: 'explore',
     filters,
     candidates,
@@ -1821,9 +2009,11 @@ router.get('/talent-search/:candidateId(\\d+)', asyncRoute(async (req, res) => {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
 
-  const decorated = decorateCandidate(candidate);
+  const authoredName = trimmed(candidate.name || candidate.display_name || candidate.full_name, 255);
+  const decorated = decorateCandidate(candidate, req);
   return res.render('jobs/talent-profile', {
-    title: decorated.name,
+    title: authoredName || 'Candidate profile',
+    titleKey: authoredName ? undefined : 'govuk_alpha_jobs.talent.profile_title',
     activeNav: 'explore',
     candidate: decorated
   });
@@ -1904,6 +2094,7 @@ router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
 
   return res.render('jobs/analytics', {
     title: 'Opportunity analytics',
+    titleKey: 'govuk_alpha_jobs.analytics.title',
     activeNav: 'explore',
     job: decorateJob(job),
     analytics: decorateAnalytics(analyticsResult),
@@ -1945,11 +2136,12 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
 
   return res.render('jobs/form', {
     title: 'Edit opportunity',
+    titleKey: 'jobs_t3.edit_title',
     activeNav: 'explore',
     formMode: 'edit',
     formAction: `/jobs/${id}/update`,
     jobForm: jobFormForEdit(job),
-    jobFormErrors: [],
+    jobFormErrors: formErrors(req, req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -2000,13 +2192,14 @@ router.get('/:id(\\d+)/pipeline', asyncRoute(async (req, res) => {
 
   return res.render('jobs/pipeline', {
     title: 'Application pipeline',
+    titleKey: 'govuk_alpha_jobs.pipeline.title',
     activeNav: 'explore',
     job: decorateJob(job),
     pipelineColumns: groupPipeline(applications),
     hasApplications: applications.length > 0,
     status: req.query.status || '',
-    successMessage: pipelineSuccessMessage(req.query.status),
-    errorMessage: pipelineErrorMessage(req.query.status),
+    successMessage: pipelineSuccessMessage(req, req.query.status),
+    errorMessage: pipelineErrorMessage(req, req.query.status),
     statusOptions: JOB_PIPELINE_COLUMNS.map((status) => ({
       value: status,
       label: JOB_PIPELINE_LABELS[status] || status
@@ -2063,13 +2256,14 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
 
   return res.render('jobs/applicants', {
     title: 'Applications',
+    titleKey: 'jobs_t3.applicants_title',
     activeNav: 'explore',
     job: decorateJob(job),
     applications: collectionItems(applicationsResult).map(decorateApplicant),
     analytics: analyticsFrom(analyticsResult),
     status: req.query.status || '',
-    successMessage: applicantSuccessMessage(req.query.status),
-    errorMessage: applicantErrorMessage(req.query.status),
+    successMessage: applicantSuccessMessage(req, req.query.status),
+    errorMessage: applicantErrorMessage(req, req.query.status),
     statusOptions: JOB_APPLICANT_STAGE_OPTIONS.map((status) => ({
       value: status,
       label: JOB_APPLICATION_LABELS[status] || status
@@ -2101,13 +2295,14 @@ router.get('/:id(\\d+)/qualified', asyncRoute(async (req, res) => {
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }
 
-  const qualification = decorateQualification(qualificationResult);
+  const qualification = decorateQualification(qualificationResult, req);
   if (!qualification) {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
 
   return res.render('jobs/qualification', {
     title: 'Am I qualified?',
+    titleKey: 'govuk_alpha_jobs.qualification.title',
     activeNav: 'explore',
     qualification
   });
@@ -2139,7 +2334,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     job: decorated,
     status: req.query.status || '',
-    successMessage: statusMessage(req.query.status),
+    successMessage: statusMessage(req, req.query.status),
+    errorMessage: actionErrorMessage(req, req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -2150,7 +2346,7 @@ router.post('/', asyncRoute(async (req, res) => {
 
   const payload = jobFormPayload(req.body);
   if (payload === null) {
-    return redirectTo(res, '/jobs/create');
+    return redirectTo(res, statusRedirect('/jobs/create', 'title-required'));
   }
 
   let result;
@@ -2172,7 +2368,7 @@ router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = jobFormPayload(req.body);
   if (payload === null) {
-    return redirectTo(res, `/jobs/${id}/edit`);
+    return redirectTo(res, statusRedirect(`/jobs/${id}/edit`, 'title-required'));
   }
 
   try {

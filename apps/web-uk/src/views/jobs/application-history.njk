@@ -6,14 +6,14 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/jobs/applications') }}">Back to my applications</a>
+  <a class="govuk-back-link" href="{{ urlFor('/jobs/applications') }}">{{ t("govuk_alpha_jobs.history.back_link") }}</a>
 
-  <span class="govuk-caption-xl">Application {{ applicationId }}</span>
-  <h1 class="govuk-heading-xl">Application timeline</h1>
+  <span class="govuk-caption-xl">{{ vacancyTitle or tenantName }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_jobs.history.title") }}</h1>
 
   {% if history.length == 0 %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no status updates for this application yet.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_jobs.history.empty") }}</p>
     </div>
   {% else %}
     <ol class="govuk-list">

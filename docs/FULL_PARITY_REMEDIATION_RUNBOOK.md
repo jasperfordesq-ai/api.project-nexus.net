@@ -150,7 +150,12 @@ keys, and profile/settings translates 45 exact status/error keys at render time.
 The immutable `92357a95` residual audit still measured 381 effective hard-coded
 title sites, 153 static H1s, 3,178 pure static nodes, 53 dynamic accessible-label
 occurrences, and about 715 raw route-message candidates before those two slices.
-Jobs and Marketplace are the next high-yield families. Laravel's non-English
+Jobs now delegates 16 fixed document titles, its exact status/error families,
+and selected high-impact detail/history/talent/bias/qualification copy to
+authoritative keys while preserving user-authored dynamic content. Fresh
+ephemeral Laravel proof passed 41/41 signed/gated/redirect/body checks plus a
+13/13 Irish/Arabic rendered-output run. Marketplace is the next high-yield
+family. Laravel's non-English
 `premium.*` Explore copy is also stale relative to current English donation
 semantics and requires an upstream catalog fix.
 

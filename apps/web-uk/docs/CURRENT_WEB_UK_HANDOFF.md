@@ -156,9 +156,40 @@ translator call, 53 dynamic hard-coded accessible labels, and about 715 raw
 route-message literal candidates. After the Explore/profile slice the expected
 headline counts are approximately 379 titles, 152 H1s, and 3,173 static nodes;
 45 profile statuses are effectively localized even though their English
-fallback maps remain in source. Jobs is the next highest-yield coherent family,
-followed by Marketplace. Federation and Volunteering are deferred behind them
-because their authoritative feature namespaces are wholly English upstream.
+fallback maps remain in source. The Jobs family now has a focused contextual
+localization slice in the current worktree, with Marketplace next. Federation
+and Volunteering are deferred behind it because their authoritative feature
+namespaces are wholly English upstream.
+
+### 2026-07-10 Jobs Contextual Localization Follow-up
+
+- Sixteen fixed Jobs document-title sites now pass exact authoritative keys to
+  the shared layout while dynamic opportunity, employer, and candidate titles
+  remain user-authored content.
+- Browse, saved, application, owner, form, alert, response, pipeline,
+  applicant, and detail status/error messages translate at render time from
+  neutral redirect tokens. Unknown tokens stay silent, and isolated route tests
+  retain the authoritative English fallback when request localization is not
+  installed.
+- Non-empty application history, talent profile, the visible bias-audit report,
+  qualification progress/table semantics, and the detail page's errors and
+  high-impact chrome now follow Blade and use exact Laravel keys.
+  Candidate-authored fields remain escaped.
+- Every literal key introduced by the slice resolves through all 11 imported
+  locale catalogs. The focused Jobs plus shared source/render gate passed 58
+  tests, source and touched-test lint passed, the conservative template audit
+  remained at zero matches across 290 templates, and `git diff --check` passed.
+- A fresh ephemeral current-checkout Laravel smoke passed 41/41 checks across
+  the signed Jobs page/body family, expected owner/admin 403 states, unsigned
+  CV/history redirects, and base auth/cookie behavior. A second 13/13 run
+  proved live Irish `/jobs` and `/jobs/alerts` output plus Arabic Jobs-detail
+  output. These GET/render checks do not replace destructive/upload persistence
+  certification, and English-identical upstream values remain external catalog
+  work.
+- Remaining Jobs workflow work is explicit: create/edit API validation still
+  needs Laravel-style one-request input/error replay, and live mutation proof is
+  still required for applications, alerts, interview/offer responses, CV
+  upload/download, owner updates, renewals, and deletion.
 
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
