@@ -11,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
-using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -20,16 +19,17 @@ namespace Nexus.Api.Controllers;
 public class ResourcesV2Controller : ControllerBase
 {
     private static readonly Regex SlugUnsafeCharacters = new("[^a-z0-9]+", RegexOptions.Compiled);
+    private const long MaxUploadBytes = 10 * 1024 * 1024;
 
     private readonly NexusDbContext _db;
-    private readonly ResourceService _resourceService;
     private readonly TenantContext _tenantContext;
+    private readonly IConfiguration _configuration;
 
-    public ResourcesV2Controller(NexusDbContext db, ResourceService resourceService, TenantContext tenantContext)
+    public ResourcesV2Controller(NexusDbContext db, TenantContext tenantContext, IConfiguration configuration)
     {
         _db = db;
-        _resourceService = resourceService;
         _tenantContext = tenantContext;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -72,11 +72,12 @@ public class ResourcesV2Controller : ControllerBase
         var hasMore = items.Count > perPage;
         var pageItems = items.Take(perPage).ToList();
         var nextCursor = hasMore && pageItems.Count > 0 ? EncodeCursor(pageItems[^1].Id) : null;
+        var metadata = await LoadUploadMetadataAsync(pageItems.Select(r => r.Id), ct);
 
         return Ok(new
         {
             success = true,
-            data = pageItems.Select(MapResource),
+            data = pageItems.Select(resource => MapResource(resource, metadata.GetValueOrDefault(resource.Id))),
             meta = new
             {
                 base_url = BaseUrl(),
@@ -157,23 +158,59 @@ public class ResourcesV2Controller : ControllerBase
             return BadRequest(new { success = false, error = "Title is required" });
 
         var file = form.Files.GetFile("file");
-        var filePath = file?.FileName ?? form["file_path"].FirstOrDefault() ?? form["url"].FirstOrDefault();
-        var resourceType = form["file_type"].FirstOrDefault() ?? form["resource_type"].FirstOrDefault() ?? "file";
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, error = "File is required" });
+        if (file.Length > MaxUploadBytes)
+            return BadRequest(new { success = false, error = "File exceeds 10 MB" });
+
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? "application/octet-stream"
+            : file.ContentType;
+        var storedFilename = $"{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}";
+        var relativePath = $"{TenantId()}/resources/{storedFilename}";
+        var fullPath = Path.Combine(UploadsRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        await using (var output = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+            await file.CopyToAsync(output, ct);
+
         var categoryId = int.TryParse(form["category_id"].FirstOrDefault(), out var parsedCategoryId)
             ? parsedCategoryId
             : (int?)null;
 
-        var (resource, error) = await _resourceService.CreateResourceAsync(
-            TenantId(),
-            userId.Value,
-            title,
-            form["description"].FirstOrDefault(),
-            filePath,
-            resourceType,
-            categoryId);
+        var resource = new Resource
+        {
+            TenantId = TenantId(),
+            Title = title.Trim(),
+            Description = form["description"].FirstOrDefault()?.Trim(),
+            Url = storedFilename,
+            ResourceType = contentType,
+            CategoryId = categoryId,
+            CreatedById = userId.Value,
+            SortOrder = await NextSortOrderAsync(categoryId, ct),
+            IsPublished = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Resources.Add(resource);
+        await _db.SaveChangesAsync(ct);
 
-        if (error != null) return BadRequest(new { success = false, error });
-        return StatusCode(StatusCodes.Status201Created, new { success = true, data = MapResource(resource!) });
+        var upload = new FileUpload
+        {
+            TenantId = resource.TenantId,
+            UserId = userId.Value,
+            OriginalFilename = SanitizeFilename(file.FileName),
+            StoredFilename = storedFilename,
+            FilePath = relativePath,
+            ContentType = contentType,
+            FileSizeBytes = file.Length,
+            Category = FileCategory.Document,
+            EntityId = resource.Id,
+            EntityType = "resource",
+            CreatedAt = resource.CreatedAt
+        };
+        _db.FileUploads.Add(upload);
+        await _db.SaveChangesAsync(ct);
+
+        return StatusCode(StatusCodes.Status201Created, new { success = true, data = MapResource(resource, UploadMetadata.From(upload)) });
     }
 
     [HttpGet("{id:int}/download")]
@@ -183,15 +220,35 @@ public class ResourcesV2Controller : ControllerBase
         var resource = await _db.Resources.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id && r.TenantId == TenantId(), ct);
         if (resource == null) return NotFound(new { success = false, error = "Resource not found" });
 
-        var fileName = string.IsNullOrWhiteSpace(resource.Url) ? $"resource-{id}.txt" : Path.GetFileName(resource.Url);
-        return File(System.Text.Encoding.UTF8.GetBytes(resource.Title), "application/octet-stream", fileName);
+        var upload = await _db.FileUploads
+            .AsNoTracking()
+            .Where(f => f.TenantId == TenantId() && f.EntityType == "resource" && f.EntityId == id)
+            .OrderByDescending(f => f.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (upload == null)
+        {
+            var fileName = string.IsNullOrWhiteSpace(resource.Url) ? $"resource-{id}.txt" : Path.GetFileName(resource.Url);
+            return File(System.Text.Encoding.UTF8.GetBytes(resource.Title), "application/octet-stream", fileName);
+        }
+
+        var fullPath = Path.Combine(UploadsRoot(), upload.FilePath.Replace('/', Path.DirectorySeparatorChar));
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound(new { success = false, error = "File not found" });
+
+        var bytes = await System.IO.File.ReadAllBytesAsync(fullPath, ct);
+        var downloadName = FriendlyDownloadName(resource.Title, upload.StoredFilename);
+        return File(bytes, upload.ContentType, downloadName);
     }
 
     [HttpPut("{id:int}")]
     [Authorize]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateResourceV2Request request)
     {
-        var existing = await _resourceService.GetResourceAsync(id);
+        var existing = await _db.Resources
+            .Include(r => r.CreatedBy)
+            .Include(r => r.Category)
+            .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == TenantId());
         if (existing == null) return NotFound(new { success = false, error = "Resource not found" });
 
         var userId = User.GetUserId();
@@ -199,23 +256,33 @@ public class ResourcesV2Controller : ControllerBase
         if (existing.CreatedById != userId.Value && !User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "You can only update your own resources" });
 
-        var (resource, error) = await _resourceService.UpdateResourceAsync(
-            id,
-            request.Title ?? existing.Title,
-            request.Description ?? existing.Description,
-            request.FilePath ?? request.Url ?? existing.Url,
-            request.FileType ?? request.ResourceType ?? existing.ResourceType,
-            request.CategoryId ?? existing.CategoryId);
+        if (request.Title is not null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+                return BadRequest(new { success = false, error = "Title is required" });
+            existing.Title = request.Title.Trim();
+        }
 
-        if (error != null) return BadRequest(new { success = false, error });
-        return Ok(new { success = true, data = MapResource(resource!) });
+        if (request.Description is not null)
+            existing.Description = request.Description.Trim();
+        if (request.CategoryId.HasValue)
+            existing.CategoryId = request.CategoryId.Value;
+        if (!string.IsNullOrWhiteSpace(request.FilePath ?? request.Url))
+            existing.Url = request.FilePath ?? request.Url;
+        if (!string.IsNullOrWhiteSpace(request.FileType ?? request.ResourceType))
+            existing.ResourceType = request.FileType ?? request.ResourceType ?? existing.ResourceType;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        var metadata = (await LoadUploadMetadataAsync(new[] { existing.Id }, CancellationToken.None)).GetValueOrDefault(existing.Id);
+        return Ok(new { success = true, data = MapResource(existing, metadata) });
     }
 
     [HttpDelete("{id:int}")]
     [Authorize]
     public async Task<IActionResult> Delete(int id)
     {
-        var existing = await _resourceService.GetResourceAsync(id);
+        var existing = await _db.Resources.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == TenantId());
         if (existing == null) return NotFound(new { success = false, error = "Resource not found" });
 
         var userId = User.GetUserId();
@@ -223,8 +290,19 @@ public class ResourcesV2Controller : ControllerBase
         if (existing.CreatedById != userId.Value && !User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "You can only delete your own resources" });
 
-        var (success, error) = await _resourceService.DeleteResourceAsync(id);
-        if (!success) return BadRequest(new { success = false, error });
+        var uploads = await _db.FileUploads
+            .Where(f => f.TenantId == TenantId() && f.EntityType == "resource" && f.EntityId == id)
+            .ToListAsync();
+        foreach (var upload in uploads)
+        {
+            var fullPath = Path.Combine(UploadsRoot(), upload.FilePath.Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.File.Exists(fullPath))
+                System.IO.File.Delete(fullPath);
+        }
+
+        _db.FileUploads.RemoveRange(uploads);
+        _db.Resources.Remove(existing);
+        await _db.SaveChangesAsync();
         return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
@@ -235,8 +313,13 @@ public class ResourcesV2Controller : ControllerBase
         if (!User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "Admin access required" });
 
-        var (success, error) = await _resourceService.ReorderResourcesAsync(request.Order ?? request.ResourceIds ?? Array.Empty<int>());
-        if (!success) return BadRequest(new { success = false, error });
+        var resourceIds = request.Order ?? request.ResourceIds ?? Array.Empty<int>();
+        if (resourceIds.Length == 0) return BadRequest(new { success = false, error = "Resource IDs are required" });
+        var resources = await _db.Resources.Where(r => r.TenantId == TenantId() && resourceIds.Contains(r.Id)).ToListAsync();
+        if (resources.Count != resourceIds.Length) return BadRequest(new { success = false, error = "One or more resources not found" });
+        for (var i = 0; i < resourceIds.Length; i++)
+            resources.First(r => r.Id == resourceIds[i]).SortOrder = i + 1;
+        await _db.SaveChangesAsync();
         return Ok(new { success = true, data = new { reordered = true } });
     }
 
@@ -247,9 +330,20 @@ public class ResourcesV2Controller : ControllerBase
         if (!User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "Admin access required" });
 
-        var (category, error) = await _resourceService.CreateCategoryAsync(TenantId(), request.Name, request.Description, request.ParentId);
-        if (error != null) return BadRequest(new { success = false, error });
-        return StatusCode(StatusCodes.Status201Created, new { success = true, data = MapCategory(category!, 0) });
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { success = false, error = "Name is required" });
+        var category = new ResourceCategory
+        {
+            TenantId = TenantId(),
+            Name = request.Name.Trim(),
+            Description = request.Description?.Trim(),
+            ParentId = request.ParentId,
+            SortOrder = 1,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.ResourceCategories.Add(category);
+        await _db.SaveChangesAsync();
+        return StatusCode(StatusCodes.Status201Created, new { success = true, data = MapCategory(category, 0) });
     }
 
     [HttpPut("categories/{id:int}")]
@@ -259,10 +353,15 @@ public class ResourcesV2Controller : ControllerBase
         if (!User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "Admin access required" });
 
-        var (category, error) = await _resourceService.UpdateCategoryAsync(id, request.Name, request.Description);
-        if (error == "Category not found") return NotFound(new { success = false, error });
-        if (error != null) return BadRequest(new { success = false, error });
-        return Ok(new { success = true, data = MapCategory(category!, 0) });
+        var category = await _db.ResourceCategories.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId());
+        if (category == null) return NotFound(new { success = false, error = "Category not found" });
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { success = false, error = "Name is required" });
+        category.Name = request.Name.Trim();
+        category.Description = request.Description?.Trim();
+        await _db.SaveChangesAsync();
+        var count = await _db.Resources.CountAsync(r => r.TenantId == TenantId() && r.CategoryId == id);
+        return Ok(new { success = true, data = MapCategory(category, count) });
     }
 
     [HttpDelete("categories/{id:int}")]
@@ -272,17 +371,23 @@ public class ResourcesV2Controller : ControllerBase
         if (!User.IsAdmin())
             return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "Admin access required" });
 
-        var (success, error) = await _resourceService.DeleteCategoryAsync(id);
-        if (error == "Category not found") return NotFound(new { success = false, error });
-        if (!success) return BadRequest(new { success = false, error });
+        var category = await _db.ResourceCategories
+            .Include(c => c.Children)
+            .Include(c => c.Resources)
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId());
+        if (category == null) return NotFound(new { success = false, error = "Category not found" });
+        if (category.Children.Any() || category.Resources.Any())
+            return BadRequest(new { success = false, error = "Cannot delete category with related resources" });
+        _db.ResourceCategories.Remove(category);
+        await _db.SaveChangesAsync();
         return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
     private int TenantId() => _tenantContext.GetTenantIdOrThrow();
 
-    private object MapResource(Resource resource)
+    private object MapResource(Resource resource, UploadMetadata? metadata = null)
     {
-        var filePath = resource.Url ?? string.Empty;
+        var filePath = metadata?.StoredFilename ?? resource.Url ?? string.Empty;
         return new
         {
             id = resource.Id,
@@ -290,8 +395,8 @@ public class ResourcesV2Controller : ControllerBase
             description = resource.Description ?? string.Empty,
             file_url = FileUrl(filePath),
             file_path = filePath,
-            file_type = resource.ResourceType,
-            file_size = 0,
+            file_type = metadata?.ContentType ?? resource.ResourceType,
+            file_size = metadata?.Size ?? 0,
             downloads = 0,
             sort_order = resource.SortOrder,
             content_type = "plain",
@@ -364,6 +469,48 @@ public class ResourcesV2Controller : ControllerBase
 
     private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
 
+    private string UploadsRoot() => _configuration["FileUpload:UploadsRoot"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+
+    private async Task<int> NextSortOrderAsync(int? categoryId, CancellationToken ct)
+    {
+        var maxSort = await _db.Resources
+            .Where(r => r.TenantId == TenantId() && r.CategoryId == categoryId)
+            .Select(r => (int?)r.SortOrder)
+            .MaxAsync(ct);
+        return (maxSort ?? 0) + 1;
+    }
+
+    private async Task<Dictionary<int, UploadMetadata>> LoadUploadMetadataAsync(IEnumerable<int> resourceIds, CancellationToken ct)
+    {
+        var ids = resourceIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<int, UploadMetadata>();
+
+        var uploads = await _db.FileUploads
+            .AsNoTracking()
+            .Where(f => f.TenantId == TenantId() && f.EntityType == "resource" && f.EntityId.HasValue && ids.Contains(f.EntityId.Value))
+            .OrderByDescending(f => f.CreatedAt)
+            .ToListAsync(ct);
+
+        return uploads
+            .GroupBy(f => f.EntityId!.Value)
+            .ToDictionary(g => g.Key, g => UploadMetadata.From(g.First()));
+    }
+
+    private static string FriendlyDownloadName(string title, string storedFilename)
+    {
+        var extension = Path.GetExtension(storedFilename);
+        var safeTitle = Regex.Replace(title, "[^a-zA-Z0-9_\\-\\s]", string.Empty).Trim();
+        safeTitle = Regex.Replace(safeTitle, "\\s+", "_");
+        return string.IsNullOrWhiteSpace(safeTitle) ? $"download{extension}" : $"{safeTitle}{extension}";
+    }
+
+    private static string SanitizeFilename(string filename)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = string.Concat(filename.Where(c => !invalid.Contains(c)));
+        return string.IsNullOrWhiteSpace(sanitized) ? "upload" : sanitized;
+    }
+
     private static string Slugify(string value)
     {
         var slug = SlugUnsafeCharacters.Replace(value.Trim().ToLowerInvariant(), "-").Trim('-');
@@ -388,6 +535,11 @@ public class ResourcesV2Controller : ControllerBase
         {
             return false;
         }
+    }
+
+    private sealed record UploadMetadata(string StoredFilename, string ContentType, long Size)
+    {
+        public static UploadMetadata From(FileUpload upload) => new(upload.StoredFilename, upload.ContentType, upload.FileSizeBytes);
     }
 }
 

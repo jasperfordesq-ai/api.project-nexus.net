@@ -1,6 +1,7 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
@@ -16,6 +17,58 @@ namespace Nexus.Api.Tests;
 public class ResourcesControllerTests : IntegrationTestBase
 {
     public ResourcesControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    [Fact]
+    public async Task ResourceUploadV2_PersistsLaravelReactFileMetadataAndDownloadBytes()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var fileBytes = "hello from laravel react resources upload"u8.ToArray();
+
+        await AuthenticateAsMemberAsync();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent($"Laravel React upload {marker}"), "title");
+        form.Add(new StringContent("Uploaded through the React resources page"), "description");
+        var fileContent = new ByteArrayContent(fileBytes);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("text/plain");
+        form.Add(fileContent, "file", "react-resource.txt");
+
+        var uploadResponse = await Client.PostAsync("/api/v2/resources", form);
+
+        uploadResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var uploadDocument = JsonDocument.Parse(await uploadResponse.Content.ReadAsStringAsync());
+        var uploadRoot = uploadDocument.RootElement;
+        uploadRoot.GetProperty("success").GetBoolean().Should().BeTrue();
+        var uploadData = uploadRoot.GetProperty("data");
+        var resourceId = uploadData.GetProperty("id").GetInt32();
+        uploadData.GetProperty("title").GetString().Should().Be($"Laravel React upload {marker}");
+        uploadData.GetProperty("description").GetString().Should().Be("Uploaded through the React resources page");
+        uploadData.GetProperty("file_path").GetString().Should().NotBeNullOrWhiteSpace();
+        uploadData.GetProperty("file_path").GetString().Should().EndWith(".txt");
+        uploadData.GetProperty("file_url").GetString().Should().Contain($"/uploads/{TestData.Tenant1.Id}/resources/");
+        uploadData.GetProperty("file_type").GetString().Should().Be("text/plain");
+        uploadData.GetProperty("file_size").GetInt64().Should().Be(fileBytes.Length);
+        uploadData.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        ClearAuthToken();
+        using var listRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v2/resources?search=Laravel%20React%20upload%20{marker}");
+        listRequest.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var listResponse = await Client.SendAsync(listRequest);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var listDocument = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var listed = listDocument.RootElement.GetProperty("data").EnumerateArray().Single();
+        listed.GetProperty("id").GetInt32().Should().Be(resourceId);
+        listed.GetProperty("file_type").GetString().Should().Be("text/plain");
+        listed.GetProperty("file_size").GetInt64().Should().Be(fileBytes.Length);
+        listed.GetProperty("downloads").GetInt32().Should().Be(0);
+
+        await AuthenticateAsMemberAsync();
+        var downloadResponse = await Client.GetAsync($"/api/v2/resources/{resourceId}/download");
+        downloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        downloadResponse.Content.Headers.ContentType?.MediaType.Should().Be("text/plain");
+        (await downloadResponse.Content.ReadAsByteArrayAsync()).Should().Equal(fileBytes);
+    }
 
     [Fact]
     public async Task PublicResourcesV2_ReturnsLaravelReactAnonymousCursorContract()

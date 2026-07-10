@@ -453,7 +453,8 @@ remain deeper parity gaps beyond the deterministic local fallback.
 
 The Laravel React resources page now has focused ASP.NET contract coverage for
 anonymous tenant-scoped `GET /api/v2/resources`, anonymous
-`GET /api/v2/resources/categories`, and authenticated
+`GET /api/v2/resources/categories`, authenticated multipart
+`POST /api/v2/resources`, and authenticated
 `GET /api/v2/resources/{id}/download`, driven from
 `react-frontend/src/pages/resources/ResourcesPage.tsx` and Laravel
 `Api\ResourcePublicController`. ASP.NET now returns the React-facing
@@ -461,10 +462,11 @@ anonymous tenant-scoped `GET /api/v2/resources`, anonymous
 `has_more`, `base_url`, search/category filters, `file_url`, `file_path`,
 `file_type`, `file_size`, `downloads`, uploader rows, category color rows,
 and social count defaults while preserving legacy `/api/resources` auth
-behavior. Exact Laravel `resources.file_*`/`downloads` schema fidelity,
-stored file serving, multipart upload storage, update/delete authorization
-messages, category color persistence, resource likes/comments, and browser
-smoke coverage remain deeper resource gaps.
+behavior. Uploads now persist resource-linked `FileUpload` metadata and stream
+the stored bytes back through the download route with focused runtime coverage.
+Exact Laravel `resources.file_*`/`downloads` column fidelity, download-counter
+mutation, update/delete authorization messages, category color persistence,
+resource likes/comments, and browser smoke coverage remain deeper resource gaps.
 
 ## Known High-Risk API Gaps
 
