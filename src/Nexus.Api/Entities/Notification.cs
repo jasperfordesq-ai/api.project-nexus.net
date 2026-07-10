@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
+
 namespace Nexus.Api.Entities;
 
 /// <summary>
@@ -38,6 +40,13 @@ public class Notification : ITenantEntity
     /// Example: {"connection_id": 123, "from_user_id": 456}
     /// </summary>
     public string? Data { get; set; }
+
+    /// <summary>
+    /// Canonical frontend navigation target. This is stored separately from
+    /// Data because React consumes a top-level <c>link</c> property.
+    /// </summary>
+    [MaxLength(2000)]
+    public string? Link { get; set; }
 
     /// <summary>
     /// Whether the user has read/dismissed this notification.

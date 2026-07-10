@@ -7,6 +7,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -913,7 +916,7 @@ public class VolunteeringControllerTests : IntegrationTestBase
     #region Withdraw Application
 
     [Fact]
-    public async Task WithdrawApplication_AsMember_ReturnsOk()
+    public async Task WithdrawApplication_AsMember_ReturnsNoContentAndDeletesApplication()
     {
         // Arrange
         await AuthenticateAsAdminAsync();
@@ -926,10 +929,13 @@ public class VolunteeringControllerTests : IntegrationTestBase
         var response = await Client.DeleteAsync($"/api/volunteering/applications/{applicationId}");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("status").GetString().Should().Be("withdrawn");
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.VolunteerApplications.IgnoreQueryFilters()
+            .AnyAsync(application => application.Id == applicationId))
+            .Should().BeFalse();
     }
 
     #endregion

@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net;
 using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -29,9 +30,21 @@ public class EmailNotificationService
     /// <summary>
     /// Send a templated email to a user.
     /// </summary>
-    public async Task<bool> SendTemplatedEmailAsync(int userId, string templateKey, Dictionary<string, string> placeholders)
+    public async Task<bool> SendTemplatedEmailAsync(
+        int userId,
+        string templateKey,
+        Dictionary<string, string> placeholders,
+        int? tenantId = null)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        IQueryable<User> users = _db.Users;
+        if (tenantId.HasValue)
+        {
+            users = users
+                .IgnoreQueryFilters()
+                .Where(user => user.TenantId == tenantId.Value);
+        }
+
+        var user = await users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return false;
 
         var template = await _db.Set<EmailTemplate>()
@@ -47,8 +60,17 @@ public class EmailNotificationService
         }
         else
         {
-            subject = $"Notification: {templateKey}";
-            body = string.Join("<br>", placeholders.Select(p => $"{p.Key}: {p.Value}"));
+            var volunteerFallback = await BuildVolunteerFallbackAsync(user, templateKey, placeholders);
+            if (volunteerFallback is not null)
+            {
+                subject = volunteerFallback.Subject;
+                body = volunteerFallback.HtmlBody;
+            }
+            else
+            {
+                subject = $"Notification: {templateKey}";
+                body = string.Join("<br>", placeholders.Select(p => $"{p.Key}: {p.Value}"));
+            }
         }
 
         var log = new EmailLog
@@ -212,4 +234,106 @@ public class EmailNotificationService
         }
         return result;
     }
+
+    private async Task<VolunteerFallbackContent?> BuildVolunteerFallbackAsync(
+        User user,
+        string templateKey,
+        IReadOnlyDictionary<string, string> placeholders)
+    {
+        var approved = templateKey is "volunteer_application_approved" or "vol_application_approved";
+        var declined = templateKey == "vol_application_declined";
+        var waitlistSpot = templateKey == "vol_waitlist_spot";
+        if (!approved && !declined && !waitlistSpot)
+        {
+            return null;
+        }
+
+        var userName = SafeHtml(ValueOrDefault(
+            placeholders,
+            "user_name",
+            string.IsNullOrWhiteSpace(user.FirstName) ? "Volunteer" : user.FirstName));
+        var opportunityTitle = SafeHtml(ValueOrDefault(placeholders, "opportunity_title", "the opportunity"));
+        var requestedLink = ValueOrDefault(placeholders, "volunteering_url", "/volunteering");
+        var volunteeringUrl = await ResolveTenantUrlAsync(user.TenantId, requestedLink);
+        var safeUrl = WebUtility.HtmlEncode(volunteeringUrl);
+        var organizationNote = SafeHtml(ValueOrDefault(placeholders, "org_note", string.Empty));
+
+        if (waitlistSpot)
+        {
+            return new VolunteerFallbackContent(
+                "Volunteer shift spot available",
+                $"<p>Hello {userName},</p>" +
+                "<p>A place has opened on a volunteer shift you joined the waitlist for. " +
+                "Claim it soon, before the offer expires.</p>" +
+                $"<p><a href=\"{safeUrl}\">Claim your volunteer shift place</a></p>");
+        }
+
+        // These explicit English fallbacks prevent production emails from
+        // degrading to a debug key/value dump when tenant templates are absent.
+        // Localized built-in fallbacks remain a documented localization residual;
+        // tenant-authored active templates still take precedence above.
+        if (approved)
+        {
+            return new VolunteerFallbackContent(
+                "Your volunteer application was approved",
+                $"<p>Hello {userName},</p>" +
+                $"<p>Your volunteer application for <strong>{opportunityTitle}</strong> has been approved.</p>" +
+                $"<p><a href=\"{safeUrl}\">View volunteering details</a></p>");
+        }
+
+        var noteParagraph = string.IsNullOrWhiteSpace(organizationNote)
+            ? string.Empty
+            : $"<p><strong>Note from the organiser:</strong> {organizationNote}</p>";
+        return new VolunteerFallbackContent(
+            "Update on your volunteer application",
+            $"<p>Hello {userName},</p>" +
+            $"<p>Your volunteer application for <strong>{opportunityTitle}</strong> was not accepted.</p>" +
+            noteParagraph +
+            $"<p><a href=\"{safeUrl}\">View volunteering details</a></p>");
+    }
+
+    private async Task<string> ResolveTenantUrlAsync(int tenantId, string requestedLink)
+    {
+        if (Uri.TryCreate(requestedLink, UriKind.Absolute, out var absolute)
+            && absolute.Scheme is "http" or "https")
+        {
+            return absolute.ToString();
+        }
+
+        var tenant = await _db.Tenants
+            .AsNoTracking()
+            .Where(candidate => candidate.Id == tenantId)
+            .Select(candidate => new { candidate.Slug, candidate.Domain })
+            .SingleOrDefaultAsync();
+
+        var origin = !string.IsNullOrWhiteSpace(tenant?.Domain)
+            ? NormalizeTenantDomain(tenant!.Domain!)
+            : !string.IsNullOrWhiteSpace(tenant?.Slug)
+                ? $"https://app.project-nexus.ie/{Uri.EscapeDataString(tenant!.Slug)}"
+                : "https://app.project-nexus.ie";
+
+        return $"{origin.TrimEnd('/')}/{requestedLink.TrimStart('/')}";
+    }
+
+    private static string NormalizeTenantDomain(string domain)
+    {
+        var trimmed = domain.Trim().TrimEnd('/');
+        return Uri.TryCreate(trimmed, UriKind.Absolute, out var absolute)
+            && absolute.Scheme is "http" or "https"
+                ? absolute.ToString().TrimEnd('/')
+                : $"https://{trimmed}";
+    }
+
+    private static string ValueOrDefault(
+        IReadOnlyDictionary<string, string> values,
+        string key,
+        string fallback) =>
+        values.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : fallback;
+
+    private static string SafeHtml(string value) =>
+        WebUtility.HtmlEncode(WebUtility.HtmlDecode(value));
+
+    private sealed record VolunteerFallbackContent(string Subject, string HtmlBody);
 }

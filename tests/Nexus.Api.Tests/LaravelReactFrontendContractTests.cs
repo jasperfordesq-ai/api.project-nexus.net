@@ -1058,14 +1058,58 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     {
         await AuthenticateAsMemberAsync();
         var shiftId = await SeedVolunteerShiftAsync("Laravel React waitlist shift");
+        var groupId = await SeedVolunteerGroupAsync("Laravel React full waitlist shift group");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var shift = await db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.Id == shiftId);
+            db.VolunteerApplications.Add(new VolunteerApplication
+            {
+                TenantId = TestData.Tenant1.Id,
+                OpportunityId = shift.OpportunityId,
+                UserId = TestData.MemberUser.Id,
+                Status = ApplicationStatus.Approved,
+                CreatedAt = DateTime.UtcNow
+            });
+            db.ShiftGroupReservations.Add(new ShiftGroupReservation
+            {
+                TenantId = TestData.Tenant1.Id,
+                ShiftId = shiftId,
+                GroupId = groupId,
+                ReservedBy = TestData.MemberUser.Id,
+                ReservedSlots = shift.MaxVolunteers,
+                Status = "active",
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
 
         var join = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/waitlist", new { });
 
         join.StatusCode.Should().Be(HttpStatusCode.Created);
         var joinJson = await join.Content.ReadFromJsonAsync<JsonElement>();
-        joinJson.GetProperty("data").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        var waitlistId = joinJson.GetProperty("data").GetProperty("id").GetInt32();
+        waitlistId.Should().BeGreaterThan(0);
         joinJson.GetProperty("data").GetProperty("position").GetInt32().Should().Be(1);
         joinJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var waitlist = await db.ShiftWaitlistEntries
+                .IgnoreQueryFilters()
+                .SingleAsync(entry => entry.Id == waitlistId);
+            var reservation = await db.ShiftGroupReservations
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.ShiftId == shiftId && candidate.GroupId == groupId);
+            waitlist.Status = "notified";
+            waitlist.NotifiedAt = DateTime.UtcNow;
+            reservation.Status = "cancelled";
+            await db.SaveChangesAsync();
+        }
 
         var promote = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/waitlist/promote", new { });
 
@@ -1079,6 +1123,23 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     {
         await AuthenticateAsMemberAsync();
         var shiftId = await SeedVolunteerShiftAsync("Laravel React signup shift");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var shift = await db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.Id == shiftId);
+            db.VolunteerApplications.Add(new VolunteerApplication
+            {
+                TenantId = TestData.Tenant1.Id,
+                OpportunityId = shift.OpportunityId,
+                UserId = TestData.MemberUser.Id,
+                Status = ApplicationStatus.Approved,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
 
         var signup = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/signup", new { });
 

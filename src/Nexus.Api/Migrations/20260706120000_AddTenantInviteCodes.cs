@@ -47,19 +47,19 @@ namespace Nexus.Api.Migrations
                         name: "FK_tenant_invite_codes_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_tenant_invite_codes_users_created_by",
                         column: x => x.created_by,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_tenant_invite_codes_users_last_used_by",
                         column: x => x.last_used_by,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 

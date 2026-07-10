@@ -45,6 +45,7 @@ public class CompatibilityAliasController : ControllerBase
     private readonly ListingFeatureService _listingFeatures;
     private readonly FileUploadService _fileService;
     private readonly IRealTimeMessagingService _realTimeMessaging;
+    private readonly AdminVolunteerApprovalService _volunteerApprovals;
     private readonly ILogger<CompatibilityAliasController> _logger;
 
     public CompatibilityAliasController(
@@ -55,6 +56,7 @@ public class CompatibilityAliasController : ControllerBase
         ListingFeatureService listingFeatures,
         FileUploadService fileService,
         IRealTimeMessagingService realTimeMessaging,
+        AdminVolunteerApprovalService volunteerApprovals,
         ILogger<CompatibilityAliasController> logger)
     {
         _db = db;
@@ -64,6 +66,7 @@ public class CompatibilityAliasController : ControllerBase
         _listingFeatures = listingFeatures;
         _fileService = fileService;
         _realTimeMessaging = realTimeMessaging;
+        _volunteerApprovals = volunteerApprovals;
         _logger = logger;
     }
 
@@ -2407,48 +2410,90 @@ public class CompatibilityAliasController : ControllerBase
     }
 
     /// <summary>
-    /// PUT /api/volunteering/applications/{id} — Update volunteering application.
+    /// PUT /api/volunteering/applications/{id} — Approve or decline an application as its organizer.
     /// </summary>
     [HttpPut("api/volunteering/applications/{id:int}")]
     public async Task<IActionResult> UpdateVolunteeringApplication(int id, [FromBody] UpdateVolunteeringApplicationAliasRequest? request = null)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (userId == null)
+            return VolunteerApplicationError(StatusCodes.Status401Unauthorized, "UNAUTHENTICATED", "Invalid token");
 
-        var application = await _db.VolunteerApplications
-            .Include(a => a.Opportunity)
-            .FirstOrDefaultAsync(a => a.Id == id);
-        if (application == null) return NotFound(new { error = "Application not found" });
-
-        var isOrganizer = application.Opportunity?.OrganizerId == userId.Value;
-        if (application.UserId != userId.Value && !isOrganizer)
-            return StatusCode(403, new { error = "You cannot update this application" });
-
-        if (request?.Message != null && application.UserId == userId.Value)
-            application.Message = request.Message.Trim();
-
-        if (!string.IsNullOrWhiteSpace(request?.Status))
+        if (request?.Action is not ("approve" or "decline"))
         {
-            if (application.UserId == userId.Value && request.Status.Equals("withdrawn", StringComparison.OrdinalIgnoreCase))
-            {
-                application.Status = ApplicationStatus.Withdrawn;
-            }
-            else if (isOrganizer && Enum.TryParse<ApplicationStatus>(request.Status, true, out var parsed))
-            {
-                application.Status = parsed;
-                application.ReviewedById = userId.Value;
-                application.ReviewedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                return BadRequest(new { error = "Unsupported application status update" });
-            }
+            return VolunteerApplicationError(
+                StatusCodes.Status400BadRequest,
+                "VALIDATION_ERROR",
+                "Action must be approve or decline",
+                "action");
         }
 
-        application.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        var approved = request.Action == "approve";
+        try
+        {
+            var result = await _volunteerApprovals.DecideForOrganizerAsync(
+                id,
+                _tenantContext.GetTenantIdOrThrow(),
+                userId.Value,
+                approved,
+                request.OrgNote,
+                HttpContext.RequestAborted);
 
-        return Ok(new { success = true, message = "Application updated", id = application.Id, status = application.Status.ToString().ToLowerInvariant() });
+            if (!result.Succeeded)
+            {
+                return result.Failure switch
+                {
+                    AdminVolunteerDecisionFailure.FeatureDisabled => VolunteerApplicationError(
+                        StatusCodes.Status403Forbidden,
+                        "FEATURE_DISABLED",
+                        "Service unavailable"),
+                    AdminVolunteerDecisionFailure.NotFound => VolunteerApplicationError(
+                        StatusCodes.Status404NotFound,
+                        "NOT_FOUND",
+                        "Application not found"),
+                    AdminVolunteerDecisionFailure.Forbidden => VolunteerApplicationError(
+                        StatusCodes.Status403Forbidden,
+                        "FORBIDDEN",
+                        result.Message ?? "You do not have permission to manage this opportunity"),
+                    AdminVolunteerDecisionFailure.AlreadyDecided => VolunteerApplicationError(
+                        StatusCodes.Status409Conflict,
+                        "ALREADY_EXISTS",
+                        result.Message ?? "This application has already been decided"),
+                    _ => VolunteerApplicationError(
+                        StatusCodes.Status422UnprocessableEntity,
+                        "VALIDATION_ERROR",
+                        result.Message ?? "Failed to update application",
+                        result.Field)
+                };
+            }
+
+            return Ok(new
+            {
+                data = new
+                {
+                    id,
+                    status = approved ? "approved" : "declined",
+                    org_note = string.IsNullOrWhiteSpace(request.OrgNote)
+                        ? null
+                        : request.OrgNote.Trim()
+                },
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}"
+                }
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(
+                ex,
+                "Failed organizer decision for volunteer application {ApplicationId}",
+                id);
+            return VolunteerApplicationError(
+                StatusCodes.Status500InternalServerError,
+                "SERVER_ERROR",
+                "Failed to update application");
+        }
     }
 
     // Withdraw application route removed — served by VolunteeringController
@@ -3571,6 +3616,24 @@ public class CompatibilityAliasController : ControllerBase
 
     private int? GetCurrentUserId() => User.GetUserId();
 
+    private ObjectResult VolunteerApplicationError(
+        int statusCode,
+        string code,
+        string message,
+        string? field = null)
+    {
+        var error = new Dictionary<string, object?>
+        {
+            ["code"] = code,
+            ["message"] = message
+        };
+
+        if (field is not null)
+            error["field"] = field;
+
+        return StatusCode(statusCode, new { errors = new[] { error } });
+    }
+
     private sealed record AvailabilitySlotInput(int DayOfWeek, string StartTime, string EndTime, string? Note);
 }
 
@@ -3866,11 +3929,11 @@ public class UpdateEmergencyAlertAliasRequest
 
 public class UpdateVolunteeringApplicationAliasRequest
 {
-    [JsonPropertyName("status")]
-    public string? Status { get; set; }
+    [JsonPropertyName("action")]
+    public string? Action { get; set; }
 
-    [JsonPropertyName("message")]
-    public string? Message { get; set; }
+    [JsonPropertyName("org_note")]
+    public string? OrgNote { get; set; }
 }
 
 public class GroupRequestActionAliasRequest

@@ -292,25 +292,58 @@ public class VolunteeringController : ControllerBase
     /// Apply to a volunteer opportunity.
     /// </summary>
     [HttpPost("opportunities/{id:int}/apply")]
-    public async Task<IActionResult> Apply(int id, [FromBody] ApplyRequest? request = null)
+    public async Task<IActionResult> Apply(
+        int id,
+        [FromBody] ApplyRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var (application, error) = await _volunteerService.ApplyToOpportunityAsync(
-            id, userId.Value, request?.Message);
+        var result = await _volunteerService.ApplyToOpportunityAsync(
+            id,
+            userId.Value,
+            request?.Message,
+            request?.ShiftId,
+            cancellationToken);
 
-        if (error != null)
-            return BadRequest(new { error });
-
-        return CreatedAtAction(nameof(GetOpportunity), new { id }, new
+        if (!result.Succeeded)
         {
-            id = application!.Id,
+            var error = result.Error!;
+            return IsCanonicalV2Request()
+                ? ApplyError(error)
+                : BadRequest(new { error = error.LegacyMessage });
+        }
+
+        var application = result.Application!;
+        var data = new
+        {
+            id = application.Id,
+            tenant_id = application.TenantId,
             opportunity_id = application.OpportunityId,
+            user_id = application.UserId,
+            shift_id = application.ShiftId,
             status = application.Status.ToString().ToLowerInvariant(),
             message = application.Message,
-            created_at = application.CreatedAt
-        });
+            reviewed_by_id = application.ReviewedById,
+            reviewed_at = application.ReviewedAt,
+            created_at = application.CreatedAt,
+            updated_at = application.UpdatedAt
+        };
+
+        if (IsCanonicalV2Request())
+        {
+            return StatusCode(StatusCodes.Status201Created, new
+            {
+                data,
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}"
+                }
+            });
+        }
+
+        return CreatedAtAction(nameof(GetOpportunity), new { id }, data);
     }
 
     /// <summary>
@@ -402,21 +435,27 @@ public class VolunteeringController : ControllerBase
     /// Withdraw a volunteer application.
     /// </summary>
     [HttpDelete("applications/{id:int}")]
-    public async Task<IActionResult> WithdrawApplication(int id)
+    public async Task<IActionResult> WithdrawApplication(
+        int id,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var (application, error) = await _volunteerService.WithdrawApplicationAsync(id, userId.Value);
+        var result = await _volunteerService.WithdrawApplicationAsync(
+            id,
+            userId.Value,
+            cancellationToken);
 
-        if (error != null)
-            return BadRequest(new { error });
-
-        return Ok(new
+        if (!result.Succeeded)
         {
-            id = application!.Id,
-            status = application.Status.ToString().ToLowerInvariant()
-        });
+            var error = result.Error!;
+            return IsCanonicalV2Request()
+                ? ApplyError(error)
+                : StatusCode(error.StatusCode, new { error = error.LegacyMessage });
+        }
+
+        return NoContent();
     }
 
     // === Shifts ===
@@ -639,6 +678,25 @@ public class VolunteeringController : ControllerBase
         var stats = await _volunteerService.GetVolunteerStatsAsync(userId.Value);
         return Ok(stats);
     }
+
+    private bool IsCanonicalV2Request() =>
+        Request.Path.StartsWithSegments("/api/v2", StringComparison.OrdinalIgnoreCase);
+
+    private ObjectResult ApplyError(VolunteerApplicationApplyError error)
+    {
+        var item = new Dictionary<string, object?>
+        {
+            ["code"] = error.Code,
+            ["message"] = error.Message
+        };
+
+        if (error.Field is not null)
+        {
+            item["field"] = error.Field;
+        }
+
+        return StatusCode(error.StatusCode, new { errors = new[] { item } });
+    }
 }
 
 // === Request DTOs ===
@@ -722,6 +780,9 @@ public class ApplyRequest
 {
     [JsonPropertyName("message")]
     public string? Message { get; set; }
+
+    [JsonPropertyName("shift_id")]
+    public int? ShiftId { get; set; }
 }
 
 public class ReviewApplicationRequest

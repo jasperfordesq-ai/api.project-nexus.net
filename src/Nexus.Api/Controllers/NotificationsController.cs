@@ -3,7 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.Text.Json.Serialization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -60,22 +60,12 @@ public class NotificationsController : ControllerBase
         var total = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(total / (double)limit);
 
-        var notifications = await query
+        var rows = await query
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
-            .Select(n => new
-            {
-                n.Id,
-                n.Type,
-                n.Title,
-                n.Body,
-                n.Data,
-                n.IsRead,
-                n.CreatedAt,
-                n.ReadAt
-            })
             .ToListAsync();
+        var notifications = rows.Select(MapNotification).ToList();
 
         // Get unread count
         var unreadCount = await _db.Notifications
@@ -122,26 +112,14 @@ public class NotificationsController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var notification = await _db.Notifications
-            .Where(n => n.Id == id && n.UserId == userId)
-            .Select(n => new
-            {
-                n.Id,
-                n.Type,
-                n.Title,
-                n.Body,
-                n.Data,
-                n.IsRead,
-                n.CreatedAt,
-                n.ReadAt
-            })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
 
         if (notification == null)
         {
             return NotFound(new { error = "Notification not found" });
         }
 
-        return Ok(notification);
+        return Ok(MapNotification(notification));
     }
 
     /// <summary>
@@ -289,6 +267,43 @@ public class NotificationsController : ControllerBase
             success = true,
             message = "Notification deleted"
         });
+    }
+
+    private static object MapNotification(Notification notification) => new
+    {
+        id = notification.Id,
+        type = notification.Type,
+        title = notification.Title,
+        body = notification.Body,
+        message = notification.Body,
+        link = notification.Link,
+        data = ParseNotificationData(notification.Data),
+        isRead = notification.IsRead,
+        createdAt = notification.CreatedAt,
+        readAt = notification.ReadAt,
+        is_read = notification.IsRead,
+        created_at = notification.CreatedAt,
+        read_at = notification.ReadAt
+    };
+
+    private static JsonElement? ParseNotificationData(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<JsonElement>(raw);
+            return parsed.ValueKind == JsonValueKind.Object
+                ? parsed
+                : JsonSerializer.SerializeToElement(new { value = parsed });
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.SerializeToElement(new { value = raw });
+        }
     }
 
     private int? GetCurrentUserId() => User.GetUserId();

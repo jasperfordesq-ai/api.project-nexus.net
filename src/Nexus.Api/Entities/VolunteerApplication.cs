@@ -22,6 +22,12 @@ public class VolunteerApplication : ITenantEntity
     public int OpportunityId { get; set; }
 
     /// <summary>
+    /// Optional shift selected for this application. Applications created for an
+    /// opportunity without a specific rota slot remain valid with a null value.
+    /// </summary>
+    public int? ShiftId { get; set; }
+
+    /// <summary>
     /// The user who is applying.
     /// </summary>
     public int UserId { get; set; }
@@ -36,6 +42,13 @@ public class VolunteerApplication : ITenantEntity
     /// </summary>
     [MaxLength(2000)]
     public string? Message { get; set; }
+
+    /// <summary>
+    /// Optional note recorded by the opportunity manager when deciding the
+    /// application. Tenants may require this field for declines.
+    /// </summary>
+    [MaxLength(2000)]
+    public string? OrgNote { get; set; }
 
     /// <summary>
     /// User who reviewed the application (organizer).
@@ -53,6 +66,7 @@ public class VolunteerApplication : ITenantEntity
     // Navigation properties
     public Tenant? Tenant { get; set; }
     public VolunteerOpportunity? Opportunity { get; set; }
+    public VolunteerShift? Shift { get; set; }
     public User? User { get; set; }
     public User? ReviewedBy { get; set; }
 }

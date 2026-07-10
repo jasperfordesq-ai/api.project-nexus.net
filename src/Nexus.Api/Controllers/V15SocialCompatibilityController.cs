@@ -1227,7 +1227,8 @@ public class V15SocialCompatibilityController : ControllerBase
         var userId = RequireUserId();
         var query = _db.Notifications.Where(n => n.UserId == userId);
         var total = await query.CountAsync();
-        var data = await query.OrderByDescending(n => n.CreatedAt).Skip((safePage - 1) * safeLimit).Take(safeLimit).ToListAsync();
+        var rows = await query.OrderByDescending(n => n.CreatedAt).Skip((safePage - 1) * safeLimit).Take(safeLimit).ToListAsync();
+        var data = rows.Select(MapNotification).ToList();
         var unread = await query.CountAsync(n => !n.IsRead);
         return Ok(new { data, unread_count = unread, meta = PageMeta(safePage, safeLimit, total) });
     }
@@ -1236,7 +1237,7 @@ public class V15SocialCompatibilityController : ControllerBase
     public async Task<IActionResult> Notification(int id)
     {
         var row = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.UserId == RequireUserId());
-        return row == null ? NotFound(new { error = "Notification not found" }) : Ok(new { data = row });
+        return row == null ? NotFound(new { error = "Notification not found" }) : Ok(new { data = MapNotification(row) });
     }
 
     [HttpPost("/api/notifications/read")]
@@ -1250,7 +1251,7 @@ public class V15SocialCompatibilityController : ControllerBase
         row.IsRead = true;
         row.ReadAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { success = true, data = row });
+        return Ok(new { success = true, data = MapNotification(row) });
     }
 
     [HttpPost("/api/v2/notifications/read-all")]
@@ -1298,7 +1299,50 @@ public class V15SocialCompatibilityController : ControllerBase
     {
         var userId = RequireUserId();
         var rows = await _db.Notifications.Where(n => n.UserId == userId).OrderByDescending(n => n.CreatedAt).ToListAsync();
-        return Ok(new { data = rows.GroupBy(n => n.Type).Select(g => new { group_key = g.Key, count = g.Count(), unread_count = g.Count(n => !n.IsRead), items = g }) });
+        return Ok(new
+        {
+            data = rows.GroupBy(n => n.Type).Select(group => new
+            {
+                group_key = group.Key,
+                count = group.Count(),
+                unread_count = group.Count(notification => !notification.IsRead),
+                items = group.Select(MapNotification).ToList()
+            })
+        });
+    }
+
+    private static object MapNotification(Notification notification) => new
+    {
+        id = notification.Id,
+        type = notification.Type,
+        title = notification.Title,
+        body = notification.Body,
+        message = notification.Body,
+        link = notification.Link,
+        data = ParseNotificationData(notification.Data),
+        is_read = notification.IsRead,
+        created_at = notification.CreatedAt,
+        read_at = notification.ReadAt
+    };
+
+    private static JsonElement? ParseNotificationData(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<JsonElement>(raw);
+            return parsed.ValueKind == JsonValueKind.Object
+                ? parsed
+                : JsonSerializer.SerializeToElement(new { value = parsed });
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.SerializeToElement(new { value = raw });
+        }
     }
 
     [HttpGet("/api/wallet/config")]

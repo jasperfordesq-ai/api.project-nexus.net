@@ -88,6 +88,11 @@ public class VolunteerGuardianConsent : ITenantEntity
     /// <summary>The under-18 volunteer this consent applies to.</summary>
     public int MinorUserId { get; set; }
 
+    /// <summary>
+    /// Optional opportunity scope. Null grants tenant-wide volunteering consent.
+    /// </summary>
+    public int? OpportunityId { get; set; }
+
     [Required, MaxLength(200)]
     public string GuardianName { get; set; } = string.Empty;
 
@@ -99,6 +104,7 @@ public class VolunteerGuardianConsent : ITenantEntity
 
     public DateTime? ConsentedAt { get; set; }
     public DateTime? RevokedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 
     [MaxLength(2000)]
     public string? ConsentDocumentUrl { get; set; }
@@ -116,6 +122,7 @@ public class VolunteerGuardianConsent : ITenantEntity
 
     public Tenant? Tenant { get; set; }
     public User? Minor { get; set; }
+    public VolunteerOpportunity? Opportunity { get; set; }
 }
 
 // ─── VolunteerTenantPolicy ──────────────────────────────────────────────────

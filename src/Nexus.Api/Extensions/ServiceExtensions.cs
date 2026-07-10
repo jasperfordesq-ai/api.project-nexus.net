@@ -37,7 +37,9 @@ public static class ServiceExtensions
         services.AddScoped<GamificationService>();
         services.AddScoped<ExchangeService>();
         services.AddScoped<MatchingService>();
+        services.AddScoped<VolunteerGuardianConsentService>();
         services.AddScoped<VolunteerService>();
+        services.AddScoped<AdminVolunteerApprovalService>();
         services.AddScoped<ShiftManagementService>();
         services.AddScoped<WalletFeatureService>();
         services.AddScoped<ListingFeatureService>();
@@ -319,6 +321,7 @@ public static class ServiceExtensions
         services.AddHostedService<Nexus.Api.Services.Scheduled.ListingExpiryJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.OnboardingNurtureJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.ExpiredTokenCleanupJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerWaitlistOfferExpiryJob>();
 
         // Meilisearch (semantic search — optional, falls back to ILIKE)
         services.Configure<MeilisearchOptions>(

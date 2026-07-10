@@ -33,6 +33,7 @@ public class AdminCompatibility2Controller : ControllerBase
     private readonly NewsletterService _newsletter;
     private readonly LocationService _location;
     private readonly FederationService? _federation;
+    private readonly AdminVolunteerApprovalService? _volunteerApprovals;
     private readonly ILogger<AdminCompatibility2Controller> _logger;
 
     public AdminCompatibility2Controller(
@@ -41,13 +42,15 @@ public class AdminCompatibility2Controller : ControllerBase
         NewsletterService newsletter,
         LocationService location,
         ILogger<AdminCompatibility2Controller> logger,
-        FederationService? federation = null)
+        FederationService? federation = null,
+        AdminVolunteerApprovalService? volunteerApprovals = null)
     {
         _db = db;
         _tenantContext = tenantContext;
         _newsletter = newsletter;
         _location = location;
         _federation = federation;
+        _volunteerApprovals = volunteerApprovals;
         _logger = logger;
     }
 
@@ -878,20 +881,45 @@ public class AdminCompatibility2Controller : ControllerBase
         });
     }
 
-    /// <summary>GET /api/admin/volunteering/approvals - Pending volunteering approvals.</summary>
+    /// <summary>GET /api/admin/volunteering/approvals - Current volunteering applications, pending first.</summary>
     [HttpGet("volunteering/approvals")]
-    public IActionResult VolunteeringApprovals()
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
+    public async Task<IActionResult> VolunteeringApprovals(CancellationToken cancellationToken = default)
+    {
+        if (_volunteerApprovals is null)
+            return VolunteeringError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Volunteering approval service is unavailable.");
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        try
+        {
+            if (!await _volunteerApprovals.IsFeatureEnabledAsync(tenantId, cancellationToken))
+                return VolunteeringError(StatusCodes.Status403Forbidden, "FEATURE_DISABLED", "Service unavailable");
+
+            var rows = await _volunteerApprovals.ListAsync(tenantId, cancellationToken);
+            return Ok(new
+            {
+                data = rows,
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}"
+                }
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to list volunteer applications for tenant {TenantId}", tenantId);
+            return VolunteeringError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Failed to load volunteer applications.");
+        }
+    }
 
     /// <summary>POST /api/admin/volunteering/approvals/{id}/approve - Approve volunteering.</summary>
     [HttpPost("volunteering/approvals/{id:int}/approve")]
-    public IActionResult ApproveVolunteering(int id)
-        => Ok(new { message = "Volunteering approved", id });
+    public Task<IActionResult> ApproveVolunteering(int id, CancellationToken cancellationToken = default)
+        => DecideVolunteering(id, approved: true, cancellationToken: cancellationToken);
 
     /// <summary>POST /api/admin/volunteering/approvals/{id}/decline - Decline volunteering.</summary>
     [HttpPost("volunteering/approvals/{id:int}/decline")]
-    public IActionResult DeclineVolunteering(int id)
-        => Ok(new { message = "Volunteering declined", id });
+    public Task<IActionResult> DeclineVolunteering(int id, CancellationToken cancellationToken = default)
+        => DecideVolunteering(id, approved: false, cancellationToken: cancellationToken);
 
     // =====================================================================
     // FEDERATION (at /api/admin/federation/... — no conflict with AdminFederationController at /api/admin/system/federation/...)
@@ -1243,6 +1271,93 @@ public class AdminCompatibility2Controller : ControllerBase
     // =====================================================================
     // Helpers & DTOs
     // =====================================================================
+
+    private async Task<IActionResult> DecideVolunteering(
+        int applicationId,
+        bool approved,
+        CancellationToken cancellationToken)
+    {
+        if (_volunteerApprovals is null)
+            return VolunteeringError(StatusCodes.Status500InternalServerError, "SERVER_ERROR", "Volunteering approval service is unavailable.");
+
+        var reviewerId = User.GetUserId();
+        if (!reviewerId.HasValue)
+            return VolunteeringError(StatusCodes.Status401Unauthorized, "UNAUTHENTICATED", "Invalid token.");
+
+        try
+        {
+            var result = await _volunteerApprovals.DecideAsync(
+                applicationId,
+                _tenantContext.GetTenantIdOrThrow(),
+                reviewerId.Value,
+                approved,
+                cancellationToken);
+
+            if (!result.Succeeded)
+            {
+                return result.Failure switch
+                {
+                    AdminVolunteerDecisionFailure.FeatureDisabled => VolunteeringError(
+                        StatusCodes.Status403Forbidden,
+                        "FEATURE_DISABLED",
+                        result.Message ?? "Service unavailable",
+                        result.Field),
+                    AdminVolunteerDecisionFailure.NotFound => VolunteeringError(
+                        StatusCodes.Status404NotFound,
+                        "NOT_FOUND",
+                        result.Message ?? "Application not found.",
+                        result.Field),
+                    _ => VolunteeringError(
+                        StatusCodes.Status422UnprocessableEntity,
+                        "VALIDATION_ERROR",
+                        result.Message ?? "The application could not be updated.",
+                        result.Field)
+                };
+            }
+
+            return Ok(new
+            {
+                data = new
+                {
+                    message = approved
+                        ? "Application approved"
+                        : "Application declined"
+                },
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}"
+                }
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to {Decision} volunteer application {ApplicationId}",
+                approved ? "approve" : "decline",
+                applicationId);
+            return VolunteeringError(
+                StatusCodes.Status500InternalServerError,
+                "SERVER_ERROR",
+                approved
+                    ? "Failed to approve application"
+                    : "Failed to reject application");
+        }
+    }
+
+    private ObjectResult VolunteeringError(int statusCode, string code, string message, string? field = null)
+    {
+        var error = new Dictionary<string, object?>
+        {
+            ["code"] = code,
+            ["message"] = message
+        };
+
+        if (field is not null)
+            error["field"] = field;
+
+        return StatusCode(statusCode, new { errors = new[] { error } });
+    }
 
     private object FederationMeta() => new
     {

@@ -3,7 +3,10 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -18,13 +21,26 @@ public class VolunteerService
     private readonly TenantContext _tenantContext;
     private readonly GamificationService _gamification;
     private readonly ILogger<VolunteerService> _logger;
+    private readonly AdminVolunteerApprovalService _approvalDecisions;
+    private readonly VolunteerGuardianConsentService _guardianConsent;
+    private readonly PushNotificationService? _pushNotifications;
 
-    public VolunteerService(NexusDbContext db, TenantContext tenantContext, GamificationService gamification, ILogger<VolunteerService> logger)
+    public VolunteerService(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        GamificationService gamification,
+        ILogger<VolunteerService> logger,
+        AdminVolunteerApprovalService approvalDecisions,
+        VolunteerGuardianConsentService guardianConsent,
+        PushNotificationService? pushNotifications = null)
     {
         _db = db;
         _tenantContext = tenantContext;
         _gamification = gamification;
         _logger = logger;
+        _approvalDecisions = approvalDecisions;
+        _guardianConsent = guardianConsent;
+        _pushNotifications = pushNotifications;
     }
 
     // === Opportunities ===
@@ -204,66 +220,471 @@ public class VolunteerService
     /// <summary>
     /// Apply to a published volunteer opportunity.
     /// </summary>
-    public async Task<(VolunteerApplication? Application, string? Error)> ApplyToOpportunityAsync(
-        int opportunityId, int userId, string? message)
+    public async Task<VolunteerApplicationApplyResult> ApplyToOpportunityAsync(
+        int opportunityId,
+        int userId,
+        string? message,
+        int? shiftId = null,
+        CancellationToken cancellationToken = default)
     {
-        var opportunity = await _db.VolunteerOpportunities
-            .FirstOrDefaultAsync(o => o.Id == opportunityId);
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
 
-        if (opportunity == null)
-            return (null, "Opportunity not found");
-
-        if (opportunity.Status != OpportunityStatus.Published)
-            return (null, "This opportunity is not accepting applications");
-
-        if (opportunity.OrganizerId == userId)
-            return (null, "Cannot apply to your own opportunity");
-
-        if (opportunity.ApplicationDeadline.HasValue && DateTime.UtcNow > opportunity.ApplicationDeadline.Value)
-            return (null, "The application deadline has passed");
-
-        // Check for existing active application
-        var existingApplication = await _db.VolunteerApplications
-            .AnyAsync(a => a.OpportunityId == opportunityId
-                && a.UserId == userId
-                && a.Status != ApplicationStatus.Withdrawn
-                && a.Status != ApplicationStatus.Declined);
-
-        if (existingApplication)
-            return (null, "You already have an active application for this opportunity");
-
-        var application = new VolunteerApplication
+        if (!await IsVolunteeringEnabledAsync(tenantId, cancellationToken))
         {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
-            OpportunityId = opportunityId,
-            UserId = userId,
-            Status = ApplicationStatus.Pending,
-            Message = message?.Trim(),
+            return VolunteerApplicationApplyResult.Failure(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community",
+                "Volunteering module is not enabled for this community");
+        }
+
+        if (message?.Length > 2000)
+        {
+            return VolunteerApplicationApplyResult.Failure(
+                422,
+                "VALIDATION_ERROR",
+                "The message field must not be greater than 2000 characters.",
+                "Message must not exceed 2000 characters",
+                "message");
+        }
+
+        if (shiftId.HasValue && shiftId.Value <= 0)
+        {
+            return VolunteerApplicationApplyResult.Failure(
+                422,
+                "VALIDATION_ERROR",
+                "The shift id field must be at least 1.",
+                "Shift id must be at least 1",
+                "shift_id");
+        }
+
+        VolunteerApplication application;
+        int organizerId;
+        string opportunityTitle;
+        try
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.ReadCommitted,
+                cancellationToken);
+
+            // Laravel uses a keyed cache lock because historical declined and
+            // withdrawn rows make a natural-key unique index invalid. Locking
+            // the tenant opportunity row gives the database-backed equivalent:
+            // duplicate-check and insert are serialized without deleting history.
+            if (!await LockOpportunityAsync(opportunityId, tenantId, cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    404,
+                    "NOT_FOUND",
+                    "Opportunity not found or is not active",
+                    "Opportunity not found");
+            }
+
+            var opportunity = await _db.VolunteerOpportunities
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(candidate => candidate.Id == opportunityId && candidate.TenantId == tenantId)
+                .Select(candidate => new
+                {
+                    candidate.Id,
+                    candidate.OrganizerId,
+                    candidate.Title,
+                    candidate.Status,
+                    candidate.ApplicationDeadline
+                })
+                .SingleAsync(cancellationToken);
+
+            if (opportunity.Status != OpportunityStatus.Published)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    404,
+                    "NOT_FOUND",
+                    "Opportunity not found or is not active",
+                    "This opportunity is not accepting applications");
+            }
+
+            if (await _guardianConsent.IsBlockedAsync(
+                userId,
+                tenantId,
+                opportunityId,
+                cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    StatusCodes.Status403Forbidden,
+                    VolunteerGuardianConsentService.RequiredCode,
+                    VolunteerGuardianConsentService.RequiredMessage,
+                    VolunteerGuardianConsentService.RequiredMessage);
+            }
+
+            if (opportunity.OrganizerId == userId)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    422,
+                    "VALIDATION_ERROR",
+                    "You cannot apply to your own opportunity",
+                    "Cannot apply to your own opportunity");
+            }
+
+            organizerId = opportunity.OrganizerId;
+            opportunityTitle = opportunity.Title;
+
+            // Preserve the existing .NET deadline guard. Laravel normally closes
+            // expired opportunities asynchronously, but a stale published row
+            // must not accept an application in the interim.
+            if (opportunity.ApplicationDeadline.HasValue
+                && DateTime.UtcNow > opportunity.ApplicationDeadline.Value)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    422,
+                    "VALIDATION_ERROR",
+                    "The application deadline has passed",
+                    "The application deadline has passed");
+            }
+
+            var activeApplicationExists = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(candidate =>
+                    candidate.TenantId == tenantId
+                    && candidate.OpportunityId == opportunityId
+                    && candidate.UserId == userId
+                    && (candidate.Status == ApplicationStatus.Pending
+                        || candidate.Status == ApplicationStatus.Approved),
+                    cancellationToken);
+            if (activeApplicationExists)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return VolunteerApplicationApplyResult.Failure(
+                    409,
+                    "ALREADY_EXISTS",
+                    "You have already applied to this opportunity",
+                    "You already have an active application for this opportunity");
+            }
+
+            if (shiftId.HasValue)
+            {
+                // This is the same tenant-scoped shift lock used by admin
+                // approval, direct signup, and group reservation capacity writers.
+                if (!await LockShiftAsync(shiftId.Value, tenantId, cancellationToken))
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return VolunteerApplicationApplyResult.Failure(
+                        404,
+                        "NOT_FOUND",
+                        "Shift not found",
+                        "Shift not found");
+                }
+
+                var shift = await _db.VolunteerShifts
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(candidate => candidate.Id == shiftId.Value && candidate.TenantId == tenantId)
+                    .Select(candidate => new
+                    {
+                        candidate.OpportunityId,
+                        candidate.StartsAt,
+                        candidate.MaxVolunteers
+                    })
+                    .SingleAsync(cancellationToken);
+
+                if (shift.OpportunityId != opportunityId)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return VolunteerApplicationApplyResult.Failure(
+                        404,
+                        "NOT_FOUND",
+                        "Shift not found",
+                        "Shift not found");
+                }
+
+                if (shift.StartsAt < DateTime.UtcNow)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return VolunteerApplicationApplyResult.Failure(
+                        422,
+                        "VALIDATION_ERROR",
+                        "This shift has already started",
+                        "This shift has already started");
+                }
+
+                if (shift.MaxVolunteers > 0)
+                {
+                    var approvedApplications = await _db.VolunteerApplications
+                        .IgnoreQueryFilters()
+                        .AsNoTracking()
+                        .LongCountAsync(candidate =>
+                            candidate.TenantId == tenantId
+                            && candidate.ShiftId == shiftId.Value
+                            && candidate.Status == ApplicationStatus.Approved,
+                            cancellationToken);
+
+                    var activeReservedSlots = await _db.ShiftGroupReservations
+                        .IgnoreQueryFilters()
+                        .AsNoTracking()
+                        .Where(reservation =>
+                            reservation.TenantId == tenantId
+                            && reservation.ShiftId == shiftId.Value
+                            && reservation.Status == "active")
+                        .SumAsync(
+                            reservation => reservation.ReservedSlots > 0
+                                ? (long)reservation.ReservedSlots
+                                : 0L,
+                            cancellationToken);
+
+                    if (approvedApplications + activeReservedSlots >= shift.MaxVolunteers)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return VolunteerApplicationApplyResult.Failure(
+                            422,
+                            "VALIDATION_ERROR",
+                            "This shift is at capacity",
+                            "This shift is at capacity");
+                    }
+                }
+            }
+
+            var autoApprove = await AutoApproveApplicationsAsync(tenantId, cancellationToken);
+            var now = DateTime.UtcNow;
+            application = new VolunteerApplication
+            {
+                TenantId = tenantId,
+                OpportunityId = opportunityId,
+                ShiftId = shiftId,
+                UserId = userId,
+                Status = autoApprove ? ApplicationStatus.Approved : ApplicationStatus.Pending,
+                Message = message?.Trim() ?? string.Empty,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _db.VolunteerApplications.Add(application);
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogError(
+                exception,
+                "Failed to apply user {UserId} to volunteer opportunity {OpportunityId} for tenant {TenantId}",
+                userId,
+                opportunityId,
+                tenantId);
+            return VolunteerApplicationApplyResult.Failure(
+                500,
+                "SERVER_ERROR",
+                "Failed to submit volunteer application",
+                "Failed to submit volunteer application");
+        }
+
+        _logger.LogInformation(
+            "User {UserId} applied to volunteer opportunity {OpportunityId} with status {Status}",
+            userId,
+            opportunityId,
+            application.Status);
+
+        try
+        {
+            await DispatchApplicationReceivedNotificationAsync(
+                application,
+                organizerId,
+                opportunityTitle,
+                userId,
+                tenantId);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Failed to dispatch organizer notification for committed volunteer application {ApplicationId}",
+                application.Id);
+        }
+
+        // The application transaction is already committed. Every XP failure is
+        // non-critical and must not turn a durable application into an apparent
+        // failed request that the client may dangerously retry.
+        try
+        {
+            await _gamification.AwardXpAsync(
+                userId,
+                5,
+                "volunteer_applied",
+                application.Id,
+                "Applied to a volunteer opportunity");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Failed to award XP for committed volunteer application {ApplicationId}",
+                application.Id);
+        }
+
+        return VolunteerApplicationApplyResult.Success(application);
+    }
+
+    private async Task<bool> LockOpportunityAsync(
+        int opportunityId,
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText =
+            "SELECT \"Id\" FROM volunteer_opportunities " +
+            "WHERE \"Id\" = @opportunity_id AND \"TenantId\" = @tenant_id FOR UPDATE";
+
+        var opportunityParameter = command.CreateParameter();
+        opportunityParameter.ParameterName = "opportunity_id";
+        opportunityParameter.Value = opportunityId;
+        command.Parameters.Add(opportunityParameter);
+
+        var tenantParameter = command.CreateParameter();
+        tenantParameter.ParameterName = "tenant_id";
+        tenantParameter.Value = tenantId;
+        command.Parameters.Add(tenantParameter);
+
+        return await command.ExecuteScalarAsync(cancellationToken) is not null;
+    }
+
+    private async Task<bool> LockShiftAsync(
+        int shiftId,
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText =
+            "SELECT \"Id\" FROM volunteer_shifts " +
+            "WHERE \"Id\" = @shift_id AND \"TenantId\" = @tenant_id FOR UPDATE";
+
+        var shiftParameter = command.CreateParameter();
+        shiftParameter.ParameterName = "shift_id";
+        shiftParameter.Value = shiftId;
+        command.Parameters.Add(shiftParameter);
+
+        var tenantParameter = command.CreateParameter();
+        tenantParameter.ParameterName = "tenant_id";
+        tenantParameter.Value = tenantId;
+        command.Parameters.Add(tenantParameter);
+
+        return await command.ExecuteScalarAsync(cancellationToken) is not null;
+    }
+
+    private async Task<bool> AutoApproveApplicationsAsync(
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        const string key = "volunteering.auto_approve_applications";
+        var value = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config => config.TenantId == tenantId && config.Key == key)
+            .Select(config => config.Value)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value.Trim().Trim('"').ToLowerInvariant() is "1" or "true" or "yes" or "on" or "enabled";
+    }
+
+    private async Task<bool> IsVolunteeringEnabledAsync(
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var value = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config =>
+                config.TenantId == tenantId
+                && config.Key == AdminVolunteerApprovalService.FeatureConfigKey)
+            .Select(config => config.Value)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return string.IsNullOrWhiteSpace(value)
+            || value.Trim().Trim('"').ToLowerInvariant()
+                is not ("0" or "false" or "no" or "off" or "disabled");
+    }
+
+    private async Task DispatchApplicationReceivedNotificationAsync(
+        VolunteerApplication application,
+        int organizerId,
+        string opportunityTitle,
+        int applicantId,
+        int tenantId)
+    {
+        if (organizerId == applicantId)
+        {
+            return;
+        }
+
+        var applicantName = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.Id == applicantId && user.TenantId == tenantId)
+            .Select(user => (user.FirstName + " " + user.LastName).Trim())
+            .SingleOrDefaultAsync(CancellationToken.None);
+        applicantName = string.IsNullOrWhiteSpace(applicantName) ? "Someone" : applicantName;
+
+        const string title = "New volunteer application";
+        var body = $"{applicantName} applied for your volunteer opportunity: {opportunityTitle}";
+        var data = JsonSerializer.Serialize(new
+        {
+            application_id = application.Id,
+            opportunity_id = application.OpportunityId,
+            url = $"/volunteering/opportunities/{application.OpportunityId}"
+        });
+        var notification = new Notification
+        {
+            TenantId = tenantId,
+            UserId = organizerId,
+            Type = "vol_application_received",
+            Title = title,
+            Body = body,
+            Data = data,
+            Link = $"/volunteering/opportunities/{application.OpportunityId}",
             CreatedAt = DateTime.UtcNow
         };
 
-        _db.VolunteerApplications.Add(application);
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("User {UserId} applied to volunteer opportunity {OpportunityId}",
-            userId, opportunityId);
-
-        // Award XP for applying (non-critical)
         try
         {
-            await _gamification.AwardXpAsync(userId, 5, "volunteer_applied", application.Id,
-                "Applied to a volunteer opportunity");
+            _db.Notifications.Add(notification);
+            await _db.SaveChangesAsync(CancellationToken.None);
         }
-        catch (DbUpdateException ex)
+        catch (Exception exception)
         {
-            _logger.LogWarning(ex, "Failed to award XP for volunteer application {ApplicationId}", application.Id);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Failed to award XP for volunteer application {ApplicationId}", application.Id);
+            _db.Entry(notification).State = EntityState.Detached;
+            _logger.LogWarning(
+                exception,
+                "Failed to create organizer notification for committed volunteer application {ApplicationId}",
+                application.Id);
         }
 
-        return (application, null);
+        if (_pushNotifications is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _pushNotifications.SendPushAsync(organizerId, title, body, data);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Failed to queue organizer push for committed volunteer application {ApplicationId}",
+                application.Id);
+        }
     }
 
     /// <summary>
@@ -288,49 +709,129 @@ public class VolunteerService
         if (application.Status != ApplicationStatus.Pending)
             return (null, $"Cannot review an application with status {application.Status}");
 
-        application.Status = approved ? ApplicationStatus.Approved : ApplicationStatus.Declined;
-        application.ReviewedById = reviewerId;
-        application.ReviewedAt = DateTime.UtcNow;
-        application.UpdatedAt = DateTime.UtcNow;
+        var result = await _approvalDecisions.DecideForOrganizerAsync(
+            applicationId,
+            _tenantContext.GetTenantIdOrThrow(),
+            reviewerId,
+            approved,
+            reason);
 
-        await _db.SaveChangesAsync();
+        if (!result.Succeeded)
+            return (null, result.Message ?? "The volunteer application could not be reviewed");
 
-        _logger.LogInformation("Volunteer application {ApplicationId} {Status} by user {ReviewerId}",
-            applicationId, application.Status, reviewerId);
-
+        await _db.Entry(application).ReloadAsync();
         return (application, null);
     }
 
     /// <summary>
     /// Withdraw a volunteer application. Only the applicant can withdraw.
     /// </summary>
-    public async Task<(VolunteerApplication? Application, string? Error)> WithdrawApplicationAsync(
-        int applicationId, int userId)
+    public async Task<VolunteerApplicationWithdrawResult> WithdrawApplicationAsync(
+        int applicationId,
+        int userId,
+        CancellationToken cancellationToken = default)
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        if (!await IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return VolunteerApplicationWithdrawResult.Failure(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community",
+                "Volunteering module is not enabled for this community");
+        }
+
         var application = await _db.VolunteerApplications
-            .FirstOrDefaultAsync(a => a.Id == applicationId);
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate =>
+                candidate.Id == applicationId
+                && candidate.TenantId == tenantId,
+                cancellationToken);
 
         if (application == null)
-            return (null, "Application not found");
+        {
+            return VolunteerApplicationWithdrawResult.Failure(
+                StatusCodes.Status404NotFound,
+                "NOT_FOUND",
+                "Application not found",
+                "Application not found");
+        }
 
         if (application.UserId != userId)
-            return (null, "Only the applicant can withdraw their application");
+        {
+            return VolunteerApplicationWithdrawResult.Failure(
+                StatusCodes.Status403Forbidden,
+                "FORBIDDEN",
+                "This is not your application",
+                "This is not your application");
+        }
 
-        if (application.Status == ApplicationStatus.Withdrawn)
-            return (null, "Application has already been withdrawn");
+        if (application.Status == ApplicationStatus.Approved)
+        {
+            return VolunteerApplicationWithdrawResult.Failure(
+                StatusCodes.Status400BadRequest,
+                "VALIDATION_ERROR",
+                "You cannot withdraw an approved application. Please contact the organisation directly.",
+                "You cannot withdraw an approved application. Please contact the organisation directly.");
+        }
 
-        if (application.Status == ApplicationStatus.Declined)
-            return (null, "Cannot withdraw a declined application");
+        try
+        {
+            var affected = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .Where(candidate =>
+                    candidate.Id == applicationId
+                    && candidate.TenantId == tenantId
+                    && candidate.UserId == userId
+                    && candidate.Status != ApplicationStatus.Approved)
+                .ExecuteDeleteAsync(cancellationToken);
 
-        application.Status = ApplicationStatus.Withdrawn;
-        application.UpdatedAt = DateTime.UtcNow;
+            if (affected == 1)
+            {
+                _logger.LogInformation(
+                    "Volunteer application {ApplicationId} withdrawn by user {UserId}",
+                    applicationId,
+                    userId);
+                return VolunteerApplicationWithdrawResult.Success();
+            }
 
-        await _db.SaveChangesAsync();
+            var currentStatus = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(candidate =>
+                    candidate.Id == applicationId
+                    && candidate.TenantId == tenantId
+                    && candidate.UserId == userId)
+                .Select(candidate => (ApplicationStatus?)candidate.Status)
+                .SingleOrDefaultAsync(cancellationToken);
 
-        _logger.LogInformation("Volunteer application {ApplicationId} withdrawn by user {UserId}",
-            applicationId, userId);
-
-        return (application, null);
+            return currentStatus == ApplicationStatus.Approved
+                ? VolunteerApplicationWithdrawResult.Failure(
+                    StatusCodes.Status400BadRequest,
+                    "VALIDATION_ERROR",
+                    "You cannot withdraw an approved application. Please contact the organisation directly.",
+                    "You cannot withdraw an approved application. Please contact the organisation directly.")
+                : VolunteerApplicationWithdrawResult.Failure(
+                    StatusCodes.Status404NotFound,
+                    "NOT_FOUND",
+                    "Application not found",
+                    "Application not found");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                exception,
+                "Failed to withdraw volunteer application {ApplicationId} for tenant {TenantId}",
+                applicationId,
+                tenantId);
+            return VolunteerApplicationWithdrawResult.Failure(
+                StatusCodes.Status400BadRequest,
+                "SERVER_ERROR",
+                "Failed to withdraw application",
+                "Failed to withdraw application");
+        }
     }
 
     // === Shifts ===
@@ -634,4 +1135,43 @@ public class VolunteerService
             credits_earned = Math.Round(creditsEarned, 2)
         };
     }
+}
+
+public sealed record VolunteerApplicationApplyError(
+    int StatusCode,
+    string Code,
+    string Message,
+    string LegacyMessage,
+    string? Field);
+
+public sealed record VolunteerApplicationApplyResult(
+    VolunteerApplication? Application,
+    VolunteerApplicationApplyError? Error)
+{
+    public bool Succeeded => Application is not null && Error is null;
+
+    public static VolunteerApplicationApplyResult Success(VolunteerApplication application) =>
+        new(application, null);
+
+    public static VolunteerApplicationApplyResult Failure(
+        int statusCode,
+        string code,
+        string message,
+        string legacyMessage,
+        string? field = null) =>
+        new(null, new VolunteerApplicationApplyError(statusCode, code, message, legacyMessage, field));
+}
+
+public sealed record VolunteerApplicationWithdrawResult(
+    bool Succeeded,
+    VolunteerApplicationApplyError? Error)
+{
+    public static VolunteerApplicationWithdrawResult Success() => new(true, null);
+
+    public static VolunteerApplicationWithdrawResult Failure(
+        int statusCode,
+        string code,
+        string message,
+        string legacyMessage) =>
+        new(false, new VolunteerApplicationApplyError(statusCode, code, message, legacyMessage, null));
 }

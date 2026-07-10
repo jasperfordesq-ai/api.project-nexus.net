@@ -48,8 +48,10 @@ public class VolunteerAdminConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.MinorUserId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.TenantId, e.MinorUserId, e.Status, e.OpportunityId, e.ExpiresAt });
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Minor).WithMany().HasForeignKey(e => e.MinorUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Opportunity).WithMany().HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 

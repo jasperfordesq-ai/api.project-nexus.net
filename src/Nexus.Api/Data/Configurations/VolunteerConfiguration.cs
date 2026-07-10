@@ -64,16 +64,29 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.ToTable("volunteer_applications");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.OrgNote).HasMaxLength(2000);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.OpportunityId);
+            entity.HasIndex(e => e.ShiftId);
             entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => new { e.TenantId, e.OpportunityId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ShiftId, e.Status });
+            // Historical declined/withdrawn applications are retained and a
+            // volunteer may reapply. Active duplicate prevention is serialized
+            // by VolunteerService rather than a natural-key unique constraint.
+            entity.HasIndex(e => new { e.TenantId, e.OpportunityId, e.UserId });
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Opportunity).WithMany(o => o.Applications).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Shift).WithMany().HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById).OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        // Capacity checks count active group reservations for one tenant/shift.
+        modelBuilder.Entity<ShiftGroupReservation>(entity =>
+        {
+            entity.HasIndex(e => new { e.TenantId, e.ShiftId, e.Status });
         });
 
         // VolunteerCheckIn

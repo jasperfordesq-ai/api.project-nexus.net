@@ -137,9 +137,22 @@ public class PushNotificationService
     /// Queue a push notification for all active devices for a user.
     /// Creates honest provider-status log entries for each delivery attempt.
     /// </summary>
-    public async Task<int> SendPushAsync(int userId, string title, string body, string? data = null)
+    public async Task<int> SendPushAsync(
+        int userId,
+        string title,
+        string body,
+        string? data = null,
+        int? tenantId = null)
     {
-        var devices = await _db.Set<PushSubscription>()
+        IQueryable<PushSubscription> subscriptions = _db.Set<PushSubscription>();
+        if (tenantId.HasValue)
+        {
+            subscriptions = subscriptions
+                .IgnoreQueryFilters()
+                .Where(subscription => subscription.TenantId == tenantId.Value);
+        }
+
+        var devices = await subscriptions
             .Where(s => s.UserId == userId && s.IsActive)
             .ToListAsync();
 
