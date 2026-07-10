@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <span class="govuk-caption-xl">{{ t("account.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("account.title") }}</h1>
   <p class="govuk-body-l">{{ t("account.description") }}</p>
 
@@ -17,11 +17,7 @@
           <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
           {% if item.badge and item.badge > 0 %}
             <strong class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">
-              {% if item.badge == 1 %}
-                1 unread message
-              {% else %}
-                {{ item.badge }} unread messages
-              {% endif %}
+              {{ tc("messages.unread_count", item.badge) }}
             </strong>
           {% endif %}
         </h2>
@@ -32,6 +28,6 @@
 
   <form method="post" action="{{ urlFor('/logout') }}" class="govuk-!-margin-top-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Sign out</button>
+    <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("account.sign_out") }}</button>
   </form>
 {% endblock %}

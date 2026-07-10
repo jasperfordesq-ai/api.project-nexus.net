@@ -5559,6 +5559,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('localizes account chrome and unread-message plurals from the Laravel Arabic catalog', async () => {
+    const api = require('../src/lib/api');
+    const { translate, translateChoice } = require('../src/lib/localization');
+    api.getUnreadCount.mockResolvedValue({ data: { count: 2 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/account?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('<html lang="ar" dir="rtl"');
+    expect(response.text).toContain(translate('ar', 'account.caption', { community: 'acme Timebank' }));
+    expect(response.text).toContain(translate('ar', 'account.title'));
+    expect(response.text).toContain(translate('ar', 'account.wallet_title'));
+    expect(response.text).toContain(translateChoice('ar', 'messages.unread_count', 2));
+    expect(response.text).toContain(translate('ar', 'account.sign_out'));
+    expect(response.text).not.toContain('2 unread messages');
+    expect(response.text).not.toContain('Sign out');
+  });
+
   it('clears every auth cookie when the account hub detects an expired Laravel token', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

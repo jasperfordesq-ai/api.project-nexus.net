@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,390/1,390` tests passed.
+- Jest: `45/45` suites and `1,391/1,391` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `27/27` cases.
+- Automated browser accessibility: Chromium/axe passed `28/28` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -137,6 +137,26 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Account-Hub Localization Slice
+
+The signed account hub now uses Laravel's `account.caption` and
+`account.sign_out` catalog keys and `messages.unread_count` choice string
+instead of hard-coded English caption handling, sign-out text, and singular/
+plural unread badges. Its existing card builder already translates each
+Laravel-owned title/description and applies the tenant and broker messaging
+gates, so the page now keeps its own remaining shell copy in the same request
+locale as those cards.
+
+Focused Jest proves Arabic document semantics, translated account/card copy,
+the two-message plural, and the absence of the former English sign-out/badge
+strings. The first focused browser assertion correctly found both main and
+footer sign-out controls translated and failed only because the selector was
+not scoped to `main`; the narrowed rerun passed. The complete suite passed
+`45/45` and `1,391/1,391`, lint/brand/template/diff gates passed, and the full
+real-Laravel Chromium/axe gate passed `28/28`, including signed Arabic account
+and dashboard pages at 320 CSS pixels with RTL semantics, no overflow, and no
+serious or critical violations. No mutation or shared fixture was changed.
 
 ## 2026-07-10 Dashboard Localization And Tenant-Gate Slice
 
