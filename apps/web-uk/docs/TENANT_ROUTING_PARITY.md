@@ -113,7 +113,7 @@ Current implemented slice:
   stay host-scoped platform paths and no longer trigger a child-tenant
   `/api/v2/tenant/bootstrap?slug=classic` probe. The reserved list is now exact
   rather than broader than Laravel's list, so Laravel-unreserved route-looking
-  names such as `courses` can still resolve as child tenant slugs when Laravel
+  names such as `gardeners` can still resolve as child tenant slugs when Laravel
   returns a matching `parent_domain`.
 
 Current gaps:
@@ -272,14 +272,11 @@ Current gaps:
   login page and by live Laravel runtime smoke against the local
   `hour-timebank` fixture, whose public bootstrap payload includes
   `parent_domain: timebank.global`.
-- Laravel-reserved parent-domain path handling is covered by Jest for
-  `parent-domain.test/classic`: the regression first failed because Web UK
-  called `/api/v2/tenant/bootstrap?slug=classic`, then passed after aligning
-  the reserved segment set with Laravel `TenantContext::getReservedPaths()`.
-  Over-reserved path handling is covered by Jest for
-  `parent-domain.test/courses/login`: the regression first failed because Web
-  UK treated `courses` as a reserved parent route segment even though Laravel
-  does not reserve it, then passed after the set was made an exact source match.
+- Laravel-reserved parent-domain path handling is covered by Jest for the full
+  current set. The 2026-07-10 refresh added behavior cases for the 21 new
+  Laravel segments and proved none triggers a child-slug bootstrap probe.
+  Unreserved handling is covered by `parent-domain.test/gardeners/login`,
+  which still resolves through `getTenantBootstrap({ slug: "gardeners" })`.
   `tests/tenant-routing-source.test.js` now compares Web UK's exported
   reserved child-segment set with Laravel `TenantContext::getReservedPaths()`,
   and currently reports no Web UK-only or Laravel-only reserved child
@@ -703,16 +700,23 @@ child tenant slugs. The source-level regression first failed on an unexpected
 `getTenantBootstrap({ slug: "classic" })` call, then passed after the reserved
 segment set was expanded.
 
-The forty-sixth tenant-routing slice tightens that same guard from a
-Laravel-plus-local reserved list to an exact Laravel reserved list. Names that
-look like accessible pages locally but are not reserved by Laravel, such as
-`courses`, are again eligible to resolve as parent-domain child tenant slugs.
+The forty-sixth tenant-routing slice tightened that same guard from a
+Laravel-plus-local reserved list to the Laravel reserved list at that source
+revision. Names that looked like accessible pages locally but were not then
+reserved by Laravel, such as `courses`, became eligible to resolve as
+parent-domain child tenant slugs.
 The focused regression first failed because `/courses/login` on
 `parent-domain.test` stayed on the parent route path, then passed after Web UK
 called `getTenantBootstrap({ slug: "courses" })` and served the child login page
 under `/courses`. `tests/tenant-routing-source.test.js` now automates the
 source comparison between Laravel `TenantContext::getReservedPaths()` and Web
 UK `RESERVED_CHILD_SEGMENTS`, and currently reports no differences.
+
+The 2026-07-10 source refresh supersedes the old `/courses` fixture because
+Laravel now reserves it. Web UK added all 21 current Laravel-only entries,
+focused route coverage proves each remains host-scoped, and the unreserved
+control now uses `/gardeners/login`. The source-parity test and full Jest suite
+pass with no Laravel-only or Web-UK-only reserved segments.
 
 A scoped Laravel runtime smoke against temporary in-process Web UK
 `http://127.0.0.1:59115` and Laravel `http://127.0.0.1:8088` passed the base

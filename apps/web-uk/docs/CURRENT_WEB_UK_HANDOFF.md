@@ -4,9 +4,10 @@ Last reviewed: 2026-07-10
 
 > **Current audit notice (2026-07-10):** Read
 > `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before relying on completion
-> claims or scores below. The audit found current Jest tenant-routing drift,
-> remaining root-relative template controls, recent Laravel Blade drift, and
-> incomplete accessibility/localization certification.
+> claims or scores below. The audit found reserved-path tenant-routing drift,
+> which is fixed in current source, plus remaining root-relative template
+> controls, recent Laravel Blade drift, and incomplete
+> accessibility/localization certification.
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
@@ -756,11 +757,31 @@ template-helper slice:
 - `npm --prefix apps/web-uk test -- --runInBand` passed: 10 suites and 730 tests, with the existing Node `DEP0044 util.isArray` deprecation warning.
 - A focused exported `runLaravelRuntimeSmoke()` invocation against temporary in-process Web UK `http://127.0.0.1:54932` and Laravel `http://127.0.0.1:8088`, started with `TENANT_ID=2`, passed 18 checks: base API/health, cookie, login, account, logout, module renders for `/resources`, `/resources/library`, `/resources/upload`, and `/resources/10/comments`, plus body markers `Resources`, `Resource library`, `Upload a resource`, and `Discussion`.
 
-Latest focused verification on 2026-07-09 for the tenant parent-domain
-reserved-path slice:
+Latest focused verification on 2026-07-10 for current Laravel parent-domain
+reserved-path drift:
+
+- Laravel `TenantContext::getReservedPaths()` added 21 first segments:
+  `advertise`, `auth`, `clubs`, `coupons`, `courses`, `developers`,
+  `donations`, `join`, `me`, `municipality-calendar`, `partner-analytics`,
+  `pilot-apply`, `pilot-inquiry`, `podcasts`, `premium`, `pricing`,
+  `regional-analytics`, `saved`, `trust-and-safety`, `users`, and
+  `verify-identity-optional`.
+- `npm test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand`
+  first failed with those 21 Laravel-only entries, then passed after
+  `RESERVED_CHILD_SEGMENTS` was synchronized.
+- Focused route coverage now exercises all 21 new segments and proves none is
+  probed as a child tenant slug, while `/gardeners/login` remains a real
+  unreserved parent-domain child case. The focused run passed 22/22 selected
+  tests.
+- `npm test -- --runInBand` passed all 13 suites and 891/891 tests; `npm run
+  lint` passed; and `npm run route:matrix` remained 608/608 matched, 0 missing,
+  0 extra application routes, and 3 ignored infrastructure routes.
+
+Historical focused verification on 2026-07-09 for the earlier tenant
+parent-domain reserved-path slice:
 
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-reserved parent-domain"` first failed because `/classic` on `parent-domain.test` called `getTenantBootstrap({ slug: "classic" })`, then passed after Web UK's reserved child-segment set was aligned with Laravel `TenantContext::getReservedPaths()`.
-- `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-unreserved accessible route names"` first failed because `/courses/login` on `parent-domain.test` stayed on the parent route path instead of probing `getTenantBootstrap({ slug: "courses" })`, then passed after Web UK's reserved child-segment set was made exact rather than over-broad.
+- At that Laravel source revision, `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath -t "Laravel-unreserved accessible route names"` first failed because `/courses/login` on `parent-domain.test` stayed on the parent route path instead of probing `getTenantBootstrap({ slug: "courses" })`, then passed after Web UK's reserved child-segment set was made exact rather than over-broad. Laravel now reserves `courses`; the 2026-07-10 verification above supersedes this fixture with `/gardeners/login`.
 - `npm --prefix apps/web-uk test -- --runTestsByPath tests/tenant-routing-source.test.js --runInBand` first failed because Web UK did not export the copied reserved set for automated parity checks, then passed after the middleware exposed it. The test compares Laravel `TenantContext::getReservedPaths()` with Web UK `RESERVED_CHILD_SEGMENTS` and currently reports no differences.
 - `npm --prefix apps/web-uk test -- tests/routes.test.js --runInBand --runTestsByPath` passed: 40 tests.
 - `npm --prefix apps/web-uk run route:matrix` passed with 608/608 Laravel accessible routes matched, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes.

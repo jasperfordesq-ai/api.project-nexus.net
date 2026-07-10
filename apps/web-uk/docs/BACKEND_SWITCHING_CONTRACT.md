@@ -54,7 +54,10 @@ first-segment behavior. Web UK mirrors Laravel `TenantContext::getReservedPaths(
 so reserved platform paths such as `/classic` remain host-scoped platform paths
 and are not treated as child tenant slugs. The Web UK regression covers
 `parent-domain.test/classic` so future backend modes must preserve the same
-reserved-path outcome.
+reserved-path outcome. The 2026-07-10 source refresh synchronized 21 newly
+reserved Laravel segments and added behavior coverage for every one, while an
+unreserved `/gardeners/login` control still proves parent-domain child routing.
+Future backend modes must preserve both outcomes.
 Dedicated custom-domain hosts must also remain slugless when a browser reaches
 them with a matching tenant-prefixed accessible path. Web UK now asks Laravel
 bootstrap to resolve the host before shared-mount handling; if the host-resolved

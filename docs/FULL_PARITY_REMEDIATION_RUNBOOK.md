@@ -119,9 +119,10 @@ smoked against ASP.NET later.
 
 ### Immediate blockers
 
-1. Synchronize the 21 parent-domain reserved route segments currently present
-   in Laravel `TenantContext` but missing from Web UK. Restore all Jest suites to
-   green and add regression coverage for future source drift.
+1. **Completed 2026-07-10:** synchronized the 21 parent-domain reserved route
+   segments added to Laravel `TenantContext`, restored full Jest to green, and
+   added behavior coverage for every new segment plus the existing automatic
+   source-drift comparison.
 2. Replace the 54 direct root-relative internal `href` and `action` attributes
    across 17 volunteering templates with the tenant-aware URL helper. Do not
    rely on response rewriting as the primary correctness mechanism.

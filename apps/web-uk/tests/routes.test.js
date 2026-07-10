@@ -548,34 +548,56 @@ describe('Public Routes', () => {
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 
-    it('allows Laravel-unreserved accessible route names to resolve as parent-domain child slugs', async () => {
+    it('allows Laravel-unreserved first segments to resolve as parent-domain child slugs', async () => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();
       api.getTenantBootstrap.mockClear();
       api.getTenantBootstrap.mockResolvedValueOnce({
         data: {
           id: 33,
-          name: 'Courses Timebank',
-          slug: 'courses',
+          name: 'Gardeners Timebank',
+          slug: 'gardeners',
           parent_domain: 'parent-domain.test'
         }
       });
 
       const response = await request(app)
-        .get('/courses/login?status=auth-required')
+        .get('/gardeners/login?status=auth-required')
         .set('Host', 'parent-domain.test');
 
       expect(response.status).toBe(200);
       expect(response.text).toContain('Sign in');
-      expect(response.text).toContain('action="/courses/login"');
-      expect(response.text).toContain('href="/courses/register"');
-      expect(response.text).not.toContain('/courses/accessible');
-      expect(response.text).not.toContain('/courses/alpha');
-      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'courses' });
+      expect(response.text).toContain('action="/gardeners/login"');
+      expect(response.text).toContain('href="/gardeners/register"');
+      expect(response.text).not.toContain('/gardeners/accessible');
+      expect(response.text).not.toContain('/gardeners/alpha');
+      expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'gardeners' });
       expect(api.getTenants).not.toHaveBeenCalled();
     });
 
-    it('does not treat Laravel-reserved parent-domain paths as child tenant slugs', async () => {
+    it.each([
+      'advertise',
+      'auth',
+      'clubs',
+      'coupons',
+      'courses',
+      'developers',
+      'donations',
+      'join',
+      'me',
+      'municipality-calendar',
+      'partner-analytics',
+      'pilot-apply',
+      'pilot-inquiry',
+      'podcasts',
+      'premium',
+      'pricing',
+      'regional-analytics',
+      'saved',
+      'trust-and-safety',
+      'users',
+      'verify-identity-optional'
+    ])('does not treat newly Laravel-reserved /%s as a child tenant slug', async (segment) => {
       const api = require('../src/lib/api');
       api.getTenants.mockClear();
       api.getTenantBootstrap.mockClear();
@@ -589,11 +611,11 @@ describe('Public Routes', () => {
       });
 
       await request(app)
-        .get('/classic')
+        .get(`/${segment}`)
         .set('Host', 'parent-domain.test');
 
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ host: 'parent-domain.test' });
-      expect(api.getTenantBootstrap).not.toHaveBeenCalledWith({ slug: 'classic' });
+      expect(api.getTenantBootstrap).not.toHaveBeenCalledWith({ slug: segment });
       expect(api.getTenants).not.toHaveBeenCalled();
     });
   });
