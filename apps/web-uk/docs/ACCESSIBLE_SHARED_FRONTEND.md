@@ -59,12 +59,14 @@ matching Laravel's active-club gate.
 On 2026-07-10, `smoke:laravel:local` passed the core Laravel-backed flow with
 10/10 checks. The module-page bucket is also green by chunks: chunk 1/8 passed
 106/106 against a tenant-correct temporary Web UK process, and chunks 2/8
-through 8/8 passed 106/106 through `smoke:laravel:local`. The harness now
-refreshes and retries a signed gated check once when Laravel returns a login
-redirect mid-batch, preserving route-authorization proof without forcing a full
-login before every gated route. Some expected Laravel `403` routes still log
-application errors while the harness records the intended green gated-status
-checks.
+through 8/8 passed 106/106 through `smoke:laravel:local`. The body-text bucket
+is green by chunks too: chunk 1/8 passed 107/107, chunk 2/8 passed 107/107, and
+chunks 3/8 through 8/8 passed 106/106 with `SMOKE_MODULE_PAGE_PATHS=none`. The
+harness now refreshes and retries a signed gated check once when Laravel returns
+a login redirect mid-batch, preserving route-authorization proof without
+forcing a full login before every gated route. Some expected Laravel `403`
+routes still log application errors while the harness records the intended
+green gated-status checks.
 
 The command checks Laravel API reachability, web-uk health, unsigned `/account`
 redirects, `/login` CSRF handling, login POST redirect behavior, and a signed

@@ -141,8 +141,10 @@ valid E2E credentials. On 2026-07-10, the new `npm run smoke:laravel:local`
 wrapper passed the core Laravel-backed flow with 10/10 checks and module chunks
 `SMOKE_MODULE_PAGE_CHUNK=2/8` through `8/8` with 106/106 checks each against
 Laravel `http://127.0.0.1:8088`; chunk 1/8 was also green at 106/106 against a
-tenant-correct temporary Web UK process. The harness now retries a signed gated
-check once after an unexpected login redirect, which handles long-batch Laravel
+tenant-correct temporary Web UK process. The body-text chunks also passed:
+1/8 and 2/8 at 107/107, and 3/8 through 8/8 at 106/106 with
+`SMOKE_MODULE_PAGE_PATHS=none`. The harness now retries a signed gated check
+once after an unexpected login redirect, which handles long-batch Laravel
 session churn without making every gated route perform a full login first.
 Together these prove the in-process ephemeral Web UK runner can replace fragile
 ad hoc temporary process launchers for chunked certification.

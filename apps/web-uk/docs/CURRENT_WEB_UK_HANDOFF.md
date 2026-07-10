@@ -2389,10 +2389,12 @@ passed, the core local Laravel smoke passed 10/10 checks, and the module-page
 bucket is green by chunks. Chunk 1/8 passed 106/106 against a tenant-correct
 temporary Web UK process; chunks 2/8 through 8/8 passed 106/106 with
 `SMOKE_BODY_TEXT_PAGE_PATHS=none npm run smoke:laravel:local` against Laravel
-`http://127.0.0.1:8088`. The harness now refreshes and retries a signed gated
-check once after an unexpected login redirect, which fixed a long-batch
-`/jobs/talent-search/77` false negative without forcing a full login before
-every gated route. Expected Laravel `403` gated routes may still emit
+`http://127.0.0.1:8088`. The body-text bucket is green by chunks too:
+`SMOKE_MODULE_PAGE_PATHS=none` with chunk 1/8 at 107/107, chunk 2/8 at 107/107,
+and chunks 3/8 through 8/8 at 106/106. The harness now refreshes and retries a
+signed gated check once after an unexpected login redirect, which fixed a
+long-batch `/jobs/talent-search/77` false negative without forcing a full login
+before every gated route. Expected Laravel `403` gated routes may still emit
 application error logs while the JSON smoke result remains green.
 
 ## Documents To Trust
