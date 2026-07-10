@@ -2864,6 +2864,12 @@ describe('shared accessible frontend shell', () => {
               user: { id: 88, name: 'Morgan Lee' },
               score: 31,
               is_current_user: false
+            },
+            {
+              position: 3,
+              user: { id: 99, name: '' },
+              score: 20,
+              is_current_user: false
             }
           ],
           meta: {
@@ -2929,6 +2935,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('You');
     expect(signed.text).toContain('42');
     expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).toContain('<a class="govuk-link" href="/members/99">Community member</a>');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

@@ -11,36 +11,22 @@ const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const router = express.Router();
 
 const LEADERBOARD_TYPES = [
-  ['credits_earned', 'Time credits earned'],
-  ['credits_spent', 'Time credits spent'],
-  ['vol_hours', 'Volunteer hours'],
-  ['badges', 'Badges earned'],
-  ['xp', 'Experience points'],
-  ['connections', 'Connections made'],
-  ['reviews', 'Reviews given'],
-  ['posts', 'Posts created'],
-  ['streak', 'Login streak']
+  'credits_earned',
+  'credits_spent',
+  'vol_hours',
+  'badges',
+  'xp',
+  'connections',
+  'reviews',
+  'posts',
+  'streak'
 ];
 
-const LEADERBOARD_PERIODS = [
-  ['all_time', 'All time'],
-  ['month', 'This month'],
-  ['week', 'This week']
-];
+const LEADERBOARD_PERIODS = ['all_time', 'month', 'week'];
 
-const COMPETITIVE_TYPES = [
-  ['xp', 'Experience points'],
-  ['volunteer_hours', 'Volunteer hours'],
-  ['credits_earned', 'Credits earned'],
-  ['nexus_score', 'NEXUS score']
-];
+const COMPETITIVE_TYPES = ['xp', 'volunteer_hours', 'credits_earned', 'nexus_score'];
 
-const COMPETITIVE_PERIODS = [
-  ['all', 'All time'],
-  ['season', 'This season'],
-  ['month', 'This month'],
-  ['week', 'This week']
-];
+const COMPETITIVE_PERIODS = ['all', 'season', 'month', 'week'];
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -126,7 +112,7 @@ function formatScore(value, type) {
 }
 
 function selectedOption(options, requested, fallback) {
-  return options.some(([value]) => value === requested) ? requested : fallback;
+  return options.includes(requested) ? requested : fallback;
 }
 
 function boundedLimit(value) {
@@ -137,7 +123,7 @@ function boundedLimit(value) {
   return Math.min(maxLimit, Math.ceil(minimum / pageSize) * pageSize);
 }
 
-function normalizeRows(result) {
+function normalizeRows(result, t) {
   const payload = payloadFrom(result);
   const rows = Array.isArray(payload) ? payload : [];
 
@@ -150,7 +136,8 @@ function normalizeRows(result) {
     return {
       rank: intFrom(object.rank ?? object.position),
       userId,
-      name: textFrom(user.name ?? object.name ?? `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim(), 'Unknown member'),
+      name: textFrom(user.name ?? object.name ?? `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim())
+        || t('govuk_alpha_gamification.common.unknown_member'),
       href: userId > 0 ? `/members/${userId}` : '',
       isCurrentUser: boolFrom(object.is_current_user),
       scoreLabel: scoreDisplay || formatInteger(object.score)
@@ -171,28 +158,22 @@ function normalizeImpact(result) {
   };
 }
 
-function countLabel(count) {
-  if (count === 0) return 'No members shown';
-  if (count === 1) return 'Showing 1 member';
-  return `Showing ${formatInteger(count)} members`;
+function countLabel(count, tc) {
+  return tc('govuk_alpha_gamification.competitive.showing_count', count, { count: formatInteger(count) });
 }
 
-function daysRemainingLabel(count) {
-  if (count === 0) return 'ends today';
-  if (count === 1) return '1 day remaining';
-  return `${formatInteger(count)} days remaining`;
+function daysRemainingLabel(count, tc, key) {
+  return tc(key, count, { count: formatInteger(count) });
 }
 
-function participantsLabel(count) {
-  if (count === 0) return 'no participants';
-  if (count === 1) return '1 participant';
-  return `${formatInteger(count)} participants`;
+function participantsLabel(count, tc, key) {
+  return tc(key, count, { count: formatInteger(count) });
 }
 
-function dateRangeLabel(startDate, endDate) {
+function dateRangeLabel(startDate, endDate, t) {
   const start = formatDateLabel(startDate);
   const end = formatDateLabel(endDate);
-  return start && end ? `${start} to ${end}` : '';
+  return start && end ? t('govuk_alpha_gamification.seasons.date_range', { start, end }) : '';
 }
 
 function rewardValueLabel(value) {
@@ -211,7 +192,7 @@ function rewardValueLabel(value) {
   return String(value);
 }
 
-function normalizeCompetitiveRows(result, type) {
+function normalizeCompetitiveRows(result, type, t) {
   const payload = payloadFrom(result);
   const rows = Array.isArray(payload) ? payload : [];
 
@@ -224,7 +205,8 @@ function normalizeCompetitiveRows(result, type) {
     return {
       rank: intFrom(object.rank ?? object.position),
       userId,
-      name: textFrom(user.name ?? object.name ?? `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim(), 'Community member'),
+      name: textFrom(user.name ?? object.name ?? `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim())
+        || t('govuk_alpha_gamification.common.unknown_member'),
       href: userId > 0 ? `/members/${userId}` : '',
       isCurrentUser: boolFrom(object.is_current_user),
       scoreLabel: scoreDisplay || formatScore(object.score, type)
@@ -232,7 +214,7 @@ function normalizeCompetitiveRows(result, type) {
   }).filter((row) => row.rank > 0);
 }
 
-function normalizeCompetitiveSeason(result) {
+function normalizeCompetitiveSeason(result, tc) {
   const payload = objectFrom(payloadFrom(result));
   const season = objectFrom(payload.season);
   const userData = objectFrom(payload.user_data);
@@ -243,18 +225,18 @@ function normalizeCompetitiveSeason(result) {
   return {
     hasSeason: Object.keys(season).length > 0,
     seasonName,
-    daysRemainingLabel: daysRemainingLabel(daysRemaining),
-    participantsLabel: participantsLabel(participants),
+    daysRemainingLabel: daysRemainingLabel(daysRemaining, tc, 'govuk_alpha_gamification.competitive.season_days_remaining'),
+    participantsLabel: participantsLabel(participants, tc, 'govuk_alpha_gamification.competitive.season_participants'),
     xpLabel: formatInteger(userData.xp_earned),
     hasUserData: Object.keys(userData).length > 0
   };
 }
 
-function normalizeSeasonTopMembers(rows) {
+function normalizeSeasonTopMembers(rows, t) {
   return (Array.isArray(rows) ? rows : []).map((row, index) => {
     const object = objectFrom(row);
     const fullName = `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim();
-    const name = fullName || textFrom(object.name, 'Community member');
+    const name = fullName || textFrom(object.name) || t('govuk_alpha_gamification.common.unknown_member');
 
     return {
       rank: index + 1,
@@ -264,51 +246,51 @@ function normalizeSeasonTopMembers(rows) {
   }).filter((member) => member.name);
 }
 
-function normalizeSeasonRewards(rewards) {
+function normalizeSeasonRewards(rewards, t) {
   if (!rewards || typeof rewards !== 'object') {
     return [];
   }
 
   return Object.entries(rewards).map(([rank, reward]) => ({
     rank,
-    rankLabel: `Rank ${Number.isFinite(Number(rank)) ? intFrom(rank) : rank}`,
+    rankLabel: t('govuk_alpha_gamification.seasons.reward_row', { rank: Number.isFinite(Number(rank)) ? intFrom(rank) : rank }),
     rewardLabel: rewardValueLabel(reward)
   })).filter((reward) => reward.rewardLabel);
 }
 
-function normalizeCurrentSeason(result) {
+function normalizeCurrentSeason(result, t, tc) {
   const payload = objectFrom(payloadFrom(result));
   const season = objectFrom(payload.season);
   const userData = objectFrom(payload.user_data);
   const daysRemaining = intFrom(payload.days_remaining);
   const participants = intFrom(payload.total_participants);
-  const dateRange = dateRangeLabel(season.start_date, season.end_date);
+  const dateRange = dateRangeLabel(season.start_date, season.end_date, t);
 
   return {
     hasCurrent: Object.keys(season).length > 0,
-    name: textFrom(season.name, 'Current season'),
+    name: textFrom(season.name, t('govuk_alpha_gamification.seasons.current_heading')),
     dateRange,
-    daysRemainingLabel: daysRemainingLabel(daysRemaining),
-    participantsLabel: participantsLabel(participants),
+    daysRemainingLabel: daysRemainingLabel(daysRemaining, tc, 'govuk_alpha_gamification.seasons.days_remaining'),
+    participantsLabel: participantsLabel(participants, tc, 'govuk_alpha_gamification.seasons.participants'),
     endingSoon: boolFrom(payload.is_ending_soon),
     hasUserData: Object.keys(userData).length > 0,
     userRank: intFrom(userData.rank),
     hasUserRank: Object.prototype.hasOwnProperty.call(userData, 'rank') && userData.rank !== null,
     userXpLabel: formatInteger(userData.xp_earned),
-    rewards: normalizeSeasonRewards(payload.rewards),
-    topMembers: normalizeSeasonTopMembers(payload.leaderboard)
+    rewards: normalizeSeasonRewards(payload.rewards, t),
+    topMembers: normalizeSeasonTopMembers(payload.leaderboard, t)
   };
 }
 
-function normalizeAllSeasons(result) {
+function normalizeAllSeasons(result, t) {
   const payload = payloadFrom(result);
   const rows = Array.isArray(payload) ? payload : [];
 
   return rows.map((row) => {
     const object = objectFrom(row);
     return {
-      name: textFrom(object.name, 'Season'),
-      dateRange: dateRangeLabel(object.start_date, object.end_date)
+      name: textFrom(object.name, t('govuk_alpha_gamification.seasons.season_name_column')),
+      dateRange: dateRangeLabel(object.start_date, object.end_date, t)
     };
   }).filter((season) => season.name);
 }
@@ -389,7 +371,7 @@ function normalizeJourney(result) {
   };
 }
 
-function normalizeSpotlightMembers(result) {
+function normalizeSpotlightMembers(result, t) {
   const payload = payloadFrom(result);
   const rows = Array.isArray(payload) ? payload : [];
 
@@ -400,10 +382,10 @@ function normalizeSpotlightMembers(result) {
 
     return {
       id,
-      name: fullName || textFrom(object.name, 'Community member'),
+      name: fullName || textFrom(object.name) || t('govuk_alpha_gamification.common.unknown_member'),
       bio: textFrom(object.bio),
-      levelLabel: `Level ${Math.max(1, intFrom(object.level) || 1)}`,
-      xpLabel: `${formatInteger(object.xp)} XP`,
+      levelLabel: t('govuk_alpha_gamification.spotlight.level', { level: Math.max(1, intFrom(object.level) || 1) }),
+      xpLabel: t('govuk_alpha_gamification.spotlight.xp', { xp: formatInteger(object.xp) }),
       memberSince: textFrom(object.member_since),
       recentActivity: textFrom(object.recent_activity),
       href: id > 0 ? `/members/${id}` : ''
@@ -443,24 +425,24 @@ router.get('/competitive', asyncRoute(async (req, res) => {
   }
 
   const meta = metaFrom(leaderboardPayload);
-  const rows = normalizeCompetitiveRows(leaderboardPayload, selectedType);
+  const rows = normalizeCompetitiveRows(leaderboardPayload, selectedType, res.locals.t);
 
   return res.render('leaderboard/competitive', {
-    title: 'Competitive leaderboard',
+    title: res.locals.t('govuk_alpha_gamification.competitive.title'),
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     competitive: {
       rows,
       type: selectedType,
       period: selectedPeriod,
-      types: COMPETITIVE_TYPES.map(([value, label]) => ({ value, label })),
-      periods: COMPETITIVE_PERIODS.map(([value, label]) => ({ value, label })),
-      season: normalizeCompetitiveSeason(seasonPayload),
+      types: COMPETITIVE_TYPES.map((value) => ({ value, label: res.locals.t(`govuk_alpha_gamification.competitive.metrics.${value}`) })),
+      periods: COMPETITIVE_PERIODS.map((value) => ({ value, label: res.locals.t(`govuk_alpha_gamification.competitive.periods.${value}`) })),
+      season: normalizeCompetitiveSeason(seasonPayload, res.locals.tc),
       yourRank: intFrom(meta.your_position),
       hasYourRank: intFrom(meta.your_position) > 0,
       hasMore: boolFrom(meta.has_more),
       nextLimit: Math.min(200, limit + 20),
-      countLabel: countLabel(rows.length)
+      countLabel: countLabel(rows.length, res.locals.tc)
     }
   });
 }));
@@ -480,7 +462,7 @@ router.get('/journey', asyncRoute(async (req, res) => {
   }
 
   return res.render('leaderboard/journey', {
-    title: 'My journey',
+    title: res.locals.t('govuk_alpha_gamification.journey.title'),
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     journey: normalizeJourney(journeyPayload)
@@ -502,10 +484,10 @@ router.get('/spotlight', asyncRoute(async (req, res) => {
   }
 
   return res.render('leaderboard/spotlight', {
-    title: 'Member spotlight',
+    title: res.locals.t('govuk_alpha_gamification.spotlight.title'),
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
-    spotlightMembers: normalizeSpotlightMembers(spotlightPayload)
+    spotlightMembers: normalizeSpotlightMembers(spotlightPayload, res.locals.t)
   });
 }));
 
@@ -529,12 +511,12 @@ router.get('/seasons', asyncRoute(async (req, res) => {
   }
 
   return res.render('leaderboard/seasons', {
-    title: 'Leaderboard seasons',
+    title: res.locals.t('govuk_alpha_gamification.seasons.title'),
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     seasons: {
-      current: normalizeCurrentSeason(currentPayload),
-      history: normalizeAllSeasons(seasonsPayload)
+      current: normalizeCurrentSeason(currentPayload, res.locals.t, res.locals.tc),
+      history: normalizeAllSeasons(seasonsPayload, res.locals.t)
     }
   });
 }));
@@ -562,15 +544,15 @@ router.get('/', asyncRoute(async (req, res) => {
   }
 
   return res.render('leaderboard/index', {
-    title: 'Leaderboard',
+    title: res.locals.t('leaderboard.title'),
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     leaderboard: {
-      rows: normalizeRows(leaderboardPayload),
+      rows: normalizeRows(leaderboardPayload, res.locals.t),
       type: selectedType,
       period: selectedPeriod,
-      types: LEADERBOARD_TYPES.map(([value, label]) => ({ value, label })),
-      periods: LEADERBOARD_PERIODS.map(([value, label]) => ({ value, label })),
+      types: LEADERBOARD_TYPES.map((value) => ({ value, label: res.locals.t(`leaderboard.metrics.${value}`) })),
+      periods: LEADERBOARD_PERIODS.map((value) => ({ value, label: res.locals.t(`leaderboard.periods.${value}`) })),
       impact: normalizeImpact(impactPayload)
     }
   });

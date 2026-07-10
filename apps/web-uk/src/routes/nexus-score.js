@@ -11,25 +11,18 @@ const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const router = express.Router();
 
 const TIERS = [
-  { key: 'novice', name: 'Novice', min: 0 },
-  { key: 'beginner', name: 'Beginner', min: 200 },
-  { key: 'developing', name: 'Developing', min: 300 },
-  { key: 'intermediate', name: 'Intermediate', min: 400 },
-  { key: 'proficient', name: 'Proficient', min: 500 },
-  { key: 'advanced', name: 'Advanced', min: 600 },
-  { key: 'expert', name: 'Expert', min: 700 },
-  { key: 'elite', name: 'Elite', min: 800 },
-  { key: 'legendary', name: 'Legendary', min: 900 }
+  { key: 'novice', min: 0 },
+  { key: 'beginner', min: 200 },
+  { key: 'developing', min: 300 },
+  { key: 'intermediate', min: 400 },
+  { key: 'proficient', min: 500 },
+  { key: 'advanced', min: 600 },
+  { key: 'expert', min: 700 },
+  { key: 'elite', min: 800 },
+  { key: 'legendary', min: 900 }
 ];
 
-const BREAKDOWN_CATEGORIES = [
-  { key: 'engagement', label: 'Engagement' },
-  { key: 'quality', label: 'Quality' },
-  { key: 'volunteer', label: 'Volunteering' },
-  { key: 'activity', label: 'Activity' },
-  { key: 'badges', label: 'Badges' },
-  { key: 'impact', label: 'Impact' }
-];
+const BREAKDOWN_CATEGORIES = ['engagement', 'quality', 'volunteer', 'activity', 'badges', 'impact'];
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -89,10 +82,10 @@ function labelFromInsight(value) {
   return textFrom(insight.message ?? insight.text ?? insight.tip);
 }
 
-function normalizeBreakdownRows(breakdown) {
+function normalizeBreakdownRows(breakdown, t) {
   const object = objectFrom(breakdown);
-  return BREAKDOWN_CATEGORIES.map((category) => {
-    const row = objectFrom(object[category.key]);
+  return BREAKDOWN_CATEGORIES.map((key) => {
+    const row = objectFrom(object[key]);
     if (!Object.keys(row).length) {
       return null;
     }
@@ -101,16 +94,17 @@ function normalizeBreakdownRows(breakdown) {
     const max = Math.round(numberFrom(row.max));
     const percentage = clampPercentage(row.percentage);
 
+    const label = t(`nexus_score.categories.${key}`);
     return {
-      label: category.label,
+      label,
       scoreLabel: `${formatInteger(score)} / ${formatInteger(max)}`,
       percentage,
-      progressLabel: `${category.label}: ${percentage}%`
+      progressLabel: `${label}: ${percentage}%`
     };
   }).filter(Boolean);
 }
 
-function normalizeScoreOverview(result) {
+function normalizeScoreOverview(result, t) {
   const payload = objectFrom(payloadFrom(result));
   const hasScore = Object.prototype.hasOwnProperty.call(payload, 'total_score') && payload.total_score !== null;
   const total = Math.round(numberFrom(payload.total_score));
@@ -118,7 +112,7 @@ function normalizeScoreOverview(result) {
   const tier = objectFrom(payload.tier);
   const tierName = textFrom(tier.name) || (typeof payload.tier === 'string' ? textFrom(payload.tier) : '');
   const tierIcon = textFrom(tier.icon);
-  const scoreLabel = `${tierIcon ? `${tierIcon} ` : ''}${formatInteger(total)} out of ${formatInteger(max)}`;
+  const scoreLabel = `${tierIcon ? `${tierIcon} ` : ''}${t('nexus_score.out_of', { score: formatInteger(total), max: formatInteger(max) })}`;
   const hasPercentile = payload.percentile !== null && payload.percentile !== undefined && payload.percentile !== '';
   const insights = (Array.isArray(payload.insights) ? payload.insights : []).map(labelFromInsight).filter(Boolean);
 
@@ -126,13 +120,13 @@ function normalizeScoreOverview(result) {
     hasScore,
     scoreLabel,
     tierName,
-    percentileLabel: hasPercentile ? `Top ${intFrom(payload.percentile)}% in this community` : '',
-    breakdownRows: normalizeBreakdownRows(payload.breakdown),
+    percentileLabel: hasPercentile ? t('nexus_score.percentile', { percent: intFrom(payload.percentile) }) : '',
+    breakdownRows: normalizeBreakdownRows(payload.breakdown, t),
     insights
   };
 }
 
-function normalizeTierScore(result) {
+function normalizeTierScore(result, t) {
   const payload = objectFrom(payloadFrom(result));
   const hasScore = Object.prototype.hasOwnProperty.call(payload, 'total_score') && payload.total_score !== null;
   const total = Math.round(numberFrom(payload.total_score));
@@ -152,20 +146,25 @@ function normalizeTierScore(result) {
 
   return {
     hasScore,
-    scoreLabel: `Your score: ${formatInteger(total)} of ${formatInteger(max)}`,
-    currentTierLabel: currentTierName ? `Current tier: ${currentTierName}` : '',
-    nextTierLabel: nextTier ? `${formatInteger(pointsToNext)} points to ${nextTier.name}` : 'You have reached the top tier.',
+    scoreLabel: t('govuk_alpha_gamification.tiers.your_score', { score: formatInteger(total), max: formatInteger(max) }),
+    currentTierLabel: currentTierName ? t('govuk_alpha_gamification.tiers.current_tier', { tier: currentTierName }) : '',
+    nextTierLabel: nextTier
+      ? t('govuk_alpha_gamification.tiers.points_to_next', {
+        points: formatInteger(pointsToNext),
+        tier: t(`govuk_alpha_gamification.tiers.names.${nextTier.key}`)
+      })
+      : t('govuk_alpha_gamification.tiers.top_tier'),
     rows: TIERS.map((tierRow, index) => {
       const isCurrent = index === currentIndex;
       const isReached = total >= tierRow.min;
-      const statusLabel = isCurrent ? 'Current' : (isReached ? 'Reached' : 'Locked');
+      const statusKey = isCurrent ? 'status_current' : (isReached ? 'status_reached' : 'status_locked');
       const statusClass = isCurrent ? 'govuk-tag--blue' : (isReached ? 'govuk-tag--green' : 'govuk-tag--grey');
 
       return {
-        name: tierRow.name,
+        name: t(`govuk_alpha_gamification.tiers.names.${tierRow.key}`),
         thresholdLabel: formatInteger(tierRow.min),
         isCurrent,
-        statusLabel,
+        statusLabel: t(`govuk_alpha_gamification.tiers.${statusKey}`),
         statusClass
       };
     })
@@ -195,10 +194,10 @@ router.get('/tiers', asyncRoute(async (req, res) => {
   }
 
   return res.render('nexus-score/tiers', {
-    title: 'NEXUS tier ladder',
+    title: res.locals.t('govuk_alpha_gamification.tiers.title'),
     activeNav: 'nexus_score',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
-    tierScore: normalizeTierScore(scorePayload)
+    tierScore: normalizeTierScore(scorePayload, res.locals.t)
   });
 }));
 
@@ -217,10 +216,10 @@ router.get('/', asyncRoute(async (req, res) => {
   }
 
   return res.render('nexus-score/index', {
-    title: 'NEXUS score',
+    title: res.locals.t('nexus_score.title'),
     activeNav: 'nexus_score',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
-    nexusScore: normalizeScoreOverview(scorePayload)
+    nexusScore: normalizeScoreOverview(scorePayload, res.locals.t)
   });
 }));
 

@@ -5,41 +5,41 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">Back to leaderboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">{{ t("govuk_alpha_gamification.common.back_to_leaderboard") }}</a>
 
-  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Leaderboard seasons</h1>
-  <p class="govuk-body-l">Each season resets the leaderboard so everyone has a fresh chance to compete.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.seasons.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.seasons.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.seasons.description") }}</p>
 
   <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
     <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">{{ t("govuk_alpha_gamification.nav.competitive") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}" aria-current="page">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.seasons") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">My journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">{{ t("govuk_alpha_gamification.nav.journey") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">{{ t("govuk_alpha_gamification.nav.spotlight") }}</a>
       </li>
     </ul>
   </nav>
 
-  <h2 class="govuk-heading-l">Current season</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_gamification.seasons.current_heading") }}</h2>
   {% if not seasons.current.hasCurrent %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There is no active season at the moment.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.seasons.no_current") }}</p>
     </div>
   {% else %}
     <article class="nexus-alpha-card govuk-!-margin-bottom-6">
       <div class="nexus-alpha-module-row">
         <h3 class="govuk-heading-m govuk-!-margin-bottom-1">{{ seasons.current.name }}</h3>
         {% if seasons.current.endingSoon %}
-          <strong class="govuk-tag govuk-tag--orange">Ending soon</strong>
+          <strong class="govuk-tag govuk-tag--orange">{{ t("govuk_alpha_gamification.seasons.ending_soon") }}</strong>
         {% endif %}
       </div>
       <p class="govuk-body-s nexus-alpha-meta">
@@ -51,18 +51,18 @@
         <dl class="govuk-summary-list govuk-!-margin-bottom-2">
           {% if seasons.current.hasUserRank %}
             <div class="govuk-summary-list__row">
-              <dt class="govuk-summary-list__key">Your rank:</dt>
+              <dt class="govuk-summary-list__key">{{ t("govuk_alpha_gamification.seasons.your_rank", { rank: "" }) | trim }}</dt>
               <dd class="govuk-summary-list__value">{{ seasons.current.userRank }}</dd>
             </div>
           {% endif %}
           <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Season XP</dt>
+            <dt class="govuk-summary-list__key">{{ t("govuk_alpha_gamification.seasons.your_xp", { xp: "" }) | trim }}</dt>
             <dd class="govuk-summary-list__value">{{ seasons.current.userXpLabel }}</dd>
           </div>
         </dl>
       {% endif %}
 
-      <h4 class="govuk-heading-s govuk-!-margin-bottom-1">Season rewards</h4>
+      <h4 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("govuk_alpha_gamification.seasons.rewards_heading") }}</h4>
       {% if seasons.current.rewards.length %}
         <ul class="govuk-list govuk-list--bullet">
           {% for reward in seasons.current.rewards %}
@@ -70,18 +70,18 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body-s nexus-alpha-meta">No rewards have been set for this season.</p>
+        <p class="govuk-body-s nexus-alpha-meta">{{ t("govuk_alpha_gamification.seasons.no_rewards") }}</p>
       {% endif %}
 
       {% if seasons.current.topMembers.length %}
-        <h4 class="govuk-heading-s govuk-!-margin-top-4 govuk-!-margin-bottom-1">Season leaders</h4>
+        <h4 class="govuk-heading-s govuk-!-margin-top-4 govuk-!-margin-bottom-1">{{ t("govuk_alpha_gamification.seasons.top_members") }}</h4>
         <table class="govuk-table">
-          <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Season leaders</caption>
+          <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_gamification.seasons.top_members") }}</caption>
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
-              <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("leaderboard.rank_column") }}</th>
-              <th scope="col" class="govuk-table__header">Member</th>
-              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Season XP</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_gamification.seasons.rank_column") }}</th>
+              <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.seasons.member_column") }}</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_gamification.seasons.xp_column") }}</th>
             </tr>
           </thead>
           <tbody class="govuk-table__body">
@@ -98,14 +98,14 @@
     </article>
   {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-7">Past seasons</h2>
+  <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("govuk_alpha_gamification.seasons.history_heading") }}</h2>
   {% if seasons.history.length %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Past seasons</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_gamification.seasons.history_heading") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Season</th>
-          <th scope="col" class="govuk-table__header">{{ t("leaderboard.period_label") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.seasons.season_name_column") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.seasons.period_column") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -119,7 +119,7 @@
     </table>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no past seasons yet.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.seasons.no_history") }}</p>
     </div>
   {% endif %}
 {% endblock %}

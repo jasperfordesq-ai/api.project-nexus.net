@@ -46,6 +46,13 @@ const AUTHENTICATED_ROUTES = [
   { name: 'badge collections', path: '/achievements/collections' },
   { name: 'badge showcase', path: '/achievements/showcase' },
   { name: 'engagement history', path: '/achievements/engagement' },
+  { name: 'leaderboard', path: '/leaderboard' },
+  { name: 'competitive leaderboard', path: '/leaderboard/competitive' },
+  { name: 'leaderboard seasons', path: '/leaderboard/seasons' },
+  { name: 'personal journey', path: '/leaderboard/journey' },
+  { name: 'member spotlight', path: '/leaderboard/spotlight' },
+  { name: 'NEXUS score', path: '/nexus-score' },
+  { name: 'NEXUS tier ladder', path: '/nexus-score/tiers' },
   { name: 'wallet', path: '/wallet' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
@@ -636,6 +643,55 @@ test.describe('representative authenticated-page accessibility gate', () => {
       await testInfo.attach('authenticated-arabic-achievements-family', {
         body: Buffer.from(JSON.stringify({
           pages: 5,
+          viewport: { width: 320, height: 640 },
+          finalUrl: page.url()
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Arabic leaderboard and NEXUS score pages preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(360_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      for (const route of [
+        { path: '/leaderboard?locale=ar', heading: translate('ar', 'leaderboard.title') },
+        { path: '/leaderboard/competitive?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.competitive.title') },
+        { path: '/leaderboard/seasons?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.seasons.title') },
+        { path: '/leaderboard/journey?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.journey.title') },
+        { path: '/leaderboard/spotlight?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.spotlight.title') },
+        { path: '/nexus-score?locale=ar', heading: translate('ar', 'nexus_score.title') },
+        { path: '/nexus-score/tiers?locale=ar', heading: translate('ar', 'govuk_alpha_gamification.tiers.title') }
+      ]) {
+        const path = `${authenticatedMountPath}${route.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(route.heading);
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
+
+      await testInfo.attach('authenticated-arabic-leaderboard-nexus-family', {
+        body: Buffer.from(JSON.stringify({
+          pages: 7,
           viewport: { width: 320, height: 640 },
           finalUrl: page.url()
         }, null, 2)),

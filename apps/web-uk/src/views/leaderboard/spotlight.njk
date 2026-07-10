@@ -5,33 +5,33 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">Back to leaderboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">{{ t("govuk_alpha_gamification.common.back_to_leaderboard") }}</a>
 
-  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Member spotlight</h1>
-  <p class="govuk-body-l">A daily rotating look at active members of the community.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.spotlight.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.spotlight.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.spotlight.description") }}</p>
 
   <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
     <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">{{ t("govuk_alpha_gamification.nav.competitive") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">{{ t("govuk_alpha_gamification.nav.seasons") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">My journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">{{ t("govuk_alpha_gamification.nav.journey") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}" aria-current="page">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.spotlight") }}</a>
       </li>
     </ul>
   </nav>
 
   {% if not spotlightMembers.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no featured members to show today.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.spotlight.empty") }}</p>
     </div>
   {% else %}
     <ul class="nexus-alpha-card-list govuk-list">
@@ -40,7 +40,7 @@
           <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ member.name }}</h2>
           <p class="govuk-body-s nexus-alpha-meta">
             {{ member.levelLabel }} &middot; {{ member.xpLabel }}
-            {% if member.memberSince %} &middot; Member since {{ member.memberSince }}{% endif %}
+            {% if member.memberSince %} &middot; {{ t("govuk_alpha_gamification.spotlight.member_since", { date: member.memberSince }) }}{% endif %}
           </p>
           {% if member.bio %}
             <p class="govuk-body">{{ member.bio }}</p>
@@ -49,7 +49,7 @@
             <p class="govuk-body-s">{{ member.recentActivity }}</p>
           {% endif %}
           {% if member.href %}
-            <a class="govuk-link" href="{{ urlFor(member.href) }}">View profile</a>
+            <a class="govuk-link" href="{{ urlFor(member.href) }}">{{ t("govuk_alpha_gamification.spotlight.view_profile") }}</a>
           {% endif %}
         </li>
       {% endfor %}

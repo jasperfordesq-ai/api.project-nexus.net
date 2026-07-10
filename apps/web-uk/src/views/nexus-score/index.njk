@@ -12,7 +12,7 @@
   <nav class="govuk-!-margin-bottom-6" aria-label="{{ t("nexus_score.title") }}">
     <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("nexus_score.title") }}</h2>
     <ul class="govuk-list">
-      <li><a class="govuk-link" href="{{ urlFor('/nexus-score/tiers') }}">Tier ladder</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/nexus-score/tiers') }}">{{ t("govuk_alpha_gamification.nav.tiers") }}</a></li>
     </ul>
   </nav>
 
@@ -35,7 +35,7 @@
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">{{ t("nexus_score.category_column") }}</th>
-          <th scope="col" class="govuk-table__header">Score</th>
+          <th scope="col" class="govuk-table__header">{{ t("nexus_score.score_column") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">

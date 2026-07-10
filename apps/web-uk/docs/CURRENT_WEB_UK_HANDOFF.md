@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `41/41` cases.
+- Automated browser accessibility: Chromium/axe passed `49/49` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/achievements cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,29 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Leaderboard And NEXUS-Score Contextual Localization Slice
+
+The leaderboard, competitive leaderboard, seasons, personal journey, member
+spotlight, NEXUS-score overview, and tier-ladder pages now resolve document
+titles, navigation, captions, descriptions, filters, metrics, periods, rank and
+score labels, season states, journey sections, spotlight metadata, score
+breakdown categories, tier names, progress, and statuses through Laravel's
+`govuk_alpha` and `govuk_alpha_gamification` catalogs. Dynamic member, season,
+reward, activity, insight, and score data remains Laravel-supplied content.
+
+The first live run exposed two real leaderboard rows with valid profile URLs but
+empty member names, producing serious axe `link-name` failures. The normalizer
+now applies Laravel's `Community member` fallback to empty strings as well as
+missing values, with a focused regression fixture. The second standard live run
+passed all seven pages, and the isolated Arabic traversal passed all seven pages.
+The complete Jest gate passed `45/45` suites and `1,395/1,395` tests; the expanded
+current-checkout Chromium/axe matrix passed `49/49` in 7.5 minutes. An earlier
+retry hit the 60-second login-navigation ceiling during a transient Laravel
+dashboard stall; the unchanged retry and complete matrix passed, so no timeout
+or assertion was relaxed. Exact metric formatting for every legacy service,
+feature gates, upstream English-identical translations, manual assistive-
+technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Achievements-Family Contextual Localization Slice
 

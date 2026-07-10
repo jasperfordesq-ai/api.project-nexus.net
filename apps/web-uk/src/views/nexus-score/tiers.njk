@@ -5,15 +5,15 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/nexus-score') }}">Back to NEXUS score</a>
+  <a class="govuk-back-link" href="{{ urlFor('/nexus-score') }}">{{ t("govuk_alpha_gamification.common.back_to_nexus_score") }}</a>
 
-  <span class="govuk-caption-xl">NEXUS score at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">NEXUS tier ladder</h1>
-  <p class="govuk-body-l">There are 9 tiers. Your tier rises as your NEXUS score grows.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.tiers.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.tiers.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.tiers.description") }}</p>
 
   {% if not tierScore.hasScore %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">Your NEXUS score is not available yet.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.tiers.unavailable") }}</p>
     </div>
   {% else %}
     <div class="govuk-panel govuk-panel--confirmation nexus-alpha-panel govuk-!-margin-bottom-6">
@@ -26,12 +26,12 @@
     <div class="govuk-inset-text">{{ tierScore.nextTierLabel }}</div>
 
     <table class="govuk-table govuk-!-margin-top-4">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">NEXUS tier ladder</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_gamification.tiers.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">{{ t("nexus_score.tier_label") }}</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Score needed</th>
-          <th scope="col" class="govuk-table__header">Status</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.tiers.tier_column") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_gamification.tiers.threshold_column") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.tiers.status_column") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">

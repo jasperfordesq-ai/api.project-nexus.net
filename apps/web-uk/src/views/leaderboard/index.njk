@@ -9,16 +9,16 @@
     <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive leaderboard</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">{{ t("govuk_alpha_gamification.nav.competitive") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">{{ t("govuk_alpha_gamification.nav.seasons") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">Personal journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">{{ t("govuk_alpha_gamification.nav.journey") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">{{ t("govuk_alpha_gamification.nav.spotlight") }}</a>
       </li>
     </ul>
   </nav>
@@ -40,15 +40,15 @@
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalExchanges }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Hours exchanged</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_hours") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalVolunteerHours }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Active listings</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_listings") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalListings }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
-        <dt class="govuk-body-s nexus-alpha-meta">Connections made</dt>
+        <dt class="govuk-body-s nexus-alpha-meta">{{ t("polish_gamify.stat_total_connections") }}</dt>
         <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ leaderboard.impact.totalConnections }}</dd>
       </dl>
       <dl class="nexus-alpha-stat">
@@ -85,7 +85,7 @@
           </div>
         </div>
       </div>
-      <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Update</button>
+      <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("leaderboard.apply") }}</button>
     </fieldset>
   </form>
 
@@ -95,8 +95,8 @@
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("leaderboard.rank_column") }}</th>
-          <th scope="col" class="govuk-table__header">Member</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Score</th>
+          <th scope="col" class="govuk-table__header">{{ t("leaderboard.member_column") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("leaderboard.score_column") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -109,7 +109,7 @@
               {% else %}
                 {{ row.name }}
               {% endif %}
-              {% if row.isCurrentUser %}<strong class="govuk-tag govuk-tag--blue">You</strong>{% endif %}
+              {% if row.isCurrentUser %}<strong class="govuk-tag govuk-tag--blue">{{ t("leaderboard.you") }}</strong>{% endif %}
             </td>
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.scoreLabel }}</td>
           </tr>

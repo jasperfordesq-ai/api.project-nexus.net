@@ -5,37 +5,37 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">Back to leaderboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/leaderboard') }}">{{ t("govuk_alpha_gamification.common.back_to_leaderboard") }}</a>
 
-  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">My journey</h1>
-  <p class="govuk-body-l">A timeline of your activity, milestones and progress in the community.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_gamification.journey.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.journey.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_gamification.journey.description") }}</p>
 
   <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
     <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
     <ul class="govuk-tabs__list">
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">Competitive</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}">{{ t("govuk_alpha_gamification.nav.competitive") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">Seasons</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">{{ t("govuk_alpha_gamification.nav.seasons") }}</a>
       </li>
       <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}" aria-current="page">My journey</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.journey") }}</a>
       </li>
       <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">Member spotlight</a>
+        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">{{ t("govuk_alpha_gamification.nav.spotlight") }}</a>
       </li>
     </ul>
   </nav>
 
   {% if journey.isEmpty %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There is nothing to show on your journey yet. Get involved to build your timeline.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_gamification.journey.empty") }}</p>
     </div>
   {% else %}
     {% if journey.summaryRows.length %}
-      <h2 class="govuk-heading-l">Summary</h2>
+      <h2 class="govuk-heading-l">{{ t("govuk_alpha_gamification.journey.summary_heading") }}</h2>
       <dl class="govuk-summary-list">
         {% for row in journey.summaryRows %}
           <div class="govuk-summary-list__row">
@@ -46,7 +46,7 @@
       </dl>
     {% endif %}
 
-    <h2 class="govuk-heading-l govuk-!-margin-top-6">Milestones</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">{{ t("govuk_alpha_gamification.journey.milestones_heading") }}</h2>
     {% if journey.milestoneRows.length %}
       <ul class="govuk-list govuk-list--bullet">
         {% for milestone in journey.milestoneRows %}
@@ -55,18 +55,18 @@
       </ul>
     {% else %}
       <div class="govuk-inset-text">
-        <p class="govuk-body">You have not reached any milestones yet.</p>
+        <p class="govuk-body">{{ t("govuk_alpha_gamification.journey.no_milestones") }}</p>
       </div>
     {% endif %}
 
-    <h2 class="govuk-heading-l govuk-!-margin-top-6">Monthly activity</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-6">{{ t("govuk_alpha_gamification.journey.activity_heading") }}</h2>
     {% if journey.activityRows.length %}
       <table class="govuk-table">
-        <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Monthly activity</caption>
+        <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_gamification.journey.activity_heading") }}</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
-            <th scope="col" class="govuk-table__header">{{ t("volunteering.month_label") }}</th>
-            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Activities</th>
+            <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_gamification.journey.month_column") }}</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_gamification.journey.activity_column") }}</th>
           </tr>
         </thead>
         <tbody class="govuk-table__body">
@@ -80,12 +80,12 @@
       </table>
     {% else %}
       <div class="govuk-inset-text">
-        <p class="govuk-body">No monthly activity recorded yet.</p>
+        <p class="govuk-body">{{ t("govuk_alpha_gamification.journey.no_activity") }}</p>
       </div>
     {% endif %}
 
     {% if journey.badgeRows.length %}
-      <h2 class="govuk-heading-l govuk-!-margin-top-6">Badge progression</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-6">{{ t("govuk_alpha_gamification.journey.badges_heading") }}</h2>
       <ul class="govuk-list govuk-list--bullet">
         {% for badge in journey.badgeRows %}
           <li>{{ badge }}</li>
