@@ -110,15 +110,16 @@ route coverage is not a completion score.
 | --- | --- |
 | ASP.NET static operations | 4,309 |
 | Laravel source operations | 2,436 |
-| Static method/path matches | 2,433 matched, 3 missing |
+| Static method/path matches | 2,436 matched, 0 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | 361 Laravel tables, 131 exact matches, 230 missing names, 193 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
-| ASP.NET Release build | Passed with 0 errors and 4 xUnit warnings |
-| Focused ASP.NET regression | Failed: stale catch-all test expected 202 and received 404 |
+| ASP.NET API/test Release builds | Current builds passed with no compile errors |
+| Transactional volunteering regression | 61/61 focused tests and 180/180 wider route/auth/notification/legacy contract tests passed |
+| Migration runtime chain | 105 source classes = 76 EF-discovered + 29 quarantined; no model drift; all 76 discovered migrations applied to blank disposable PostgreSQL through `20260710171315_AdminVolunteerApprovalWorkflow` |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -154,6 +155,15 @@ that implementation movement and the lower amount of current green evidence.
   only the intentional root public asset paths.
 - ASP.NET switching remains intentionally labelled future/not-certified in
   `apps\web-uk\src\lib\backend-contract.js:9`.
+- Transactional volunteering anchors are
+  `src\Nexus.Api\Services\VolunteerService.cs`,
+  `src\Nexus.Api\Services\AdminVolunteerApprovalService.cs`,
+  `src\Nexus.Api\Services\ShiftManagementService.cs`, and
+  `src\Nexus.Api\Controllers\VolunteeringParityController.cs`; focused proof is
+  the 61/61 volunteering workflow set. Migration source is
+  `src\Nexus.Api\Migrations\20260710171315_AdminVolunteerApprovalWorkflow.cs`,
+  with 105/76/29 discovery, no model drift, and a green 76-migration disposable
+  fresh chain. The adjacent wider contract set is 180/180.
 
 ### Web UK localization/RTL progress after the audit baseline
 
@@ -352,16 +362,32 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > definitions are mapped; the other 40 are reported disabled/unsupported. P0
 > item 5 now has explicit user privilege columns, DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
-> targets, and focused role regression coverage. Fresh migration-chain/runtime
-> certification remains open. P0 item 3 now includes real canonical federation
+> targets, and focused role regression coverage. The 76-migration discovered
+> chain is fresh-database certified; full application runtime remains open. P0
+> item 3 now includes real canonical federation
 > partnership list/approve/reject behavior: receiver-only pending transitions,
 > atomic audit, post-commit in-app notifications, Laravel error envelopes, and
 > one-winner concurrency tests. It does not yet include Laravel federation-level
 > permission fields, durable rejection metadata, localized push, initial-sync
-> scheduling, or canonical audit-read visibility. Volunteering approval remains
-> an unconditional compatibility success pending its ShiftId/capacity migration.
-> This progress does not close the catch-all inventory, wider
-> scheduled/provider backlog, or the backend 1000/1000 gate.
+> scheduling, or canonical audit-read visibility. Core volunteering now has real
+> transactional behavior: selected-shift apply, admin/organizer decisions,
+> direct signup/cancellation, group reservations and roster changes, waitlist
+> join/leave/claim, displaced-shift re-offers, and stale-offer expiry use
+> tenant-scoped persistence, conditional transitions, shared capacity locks,
+> and surface-specific post-commit notification delivery. The shared guardian
+> gate covers apply, signup, waitlist, and group-add entry paths with opportunity
+> scope and expiry. The focused PostgreSQL-backed volunteering set is 61/61, and
+> the API and test-project Release builds are green. The latest source migration
+> is `20260710171315_AdminVolunteerApprovalWorkflow`; discovery is 105/76/29,
+> EF reports no model drift, the 76 discovered migrations apply to blank
+> PostgreSQL, and the wider contract regression is 180/180. Unchanged-frontend
+> runtime smoke remains open. The migration's
+> downgrade deliberately fails before destructive changes because the former
+> unique application index cannot be restored after legitimate reapplication
+> history without data loss. Volunteer-organisation status/membership ownership,
+> localized built-in delivery copy, live provider proof, and unrelated long-tail
+> volunteering scaffolds also remain. This progress does not close the catch-all
+> inventory, wider scheduled/provider backlog, or the backend 1000/1000 gate.
 
 ### P1: replace compatibility scaffolding with domain behavior
 

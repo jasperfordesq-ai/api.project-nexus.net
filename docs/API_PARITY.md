@@ -491,10 +491,37 @@ list reads expose the updated `downloads` value. Exact Laravel
 update/delete authorization messages, category color persistence, resource
 likes/comments, and browser smoke coverage remain deeper resource gaps.
 
+The transactional volunteering slice now has 61/61 focused ASP.NET regression
+tests plus a green 180/180 wider route/auth/notification/legacy contract set.
+tests passing. Tenant administrators can list and conditionally approve or
+decline pending applications, while opportunity organizers can make the same
+Laravel-shaped decision through `PUT /api/v2/volunteering/applications/{id}`
+with persisted `org_note` data. Selected-shift application, historical
+re-application after decline or withdrawal, direct shift signup and movement,
+signup cancellation, application withdrawal, group reservation create/add/
+remove/cancel, waitlist join/leave/claim, released-place notification, and
+scheduled stale-offer expiry/reoffer now mutate real tenant-scoped state with
+Laravel-compatible status and error envelopes.
+
+Every capacity-changing path uses a database transaction and the shared
+tenant-scoped shift lock; application/opportunity, reservation, and waitlist
+queue/offer locks serialize duplicate and final-place races. Capacity includes
+approved shift assignments plus active group-reservation slots, and
+post-commit side effects persist canonical bell notifications with top-level
+links and object-valued data before attempting tenant-aware push and fallback
+email delivery. The guardian gate is also shared by application, direct signup,
+waitlist join, and group-member addition: when enabled, a minor must have a
+granted, unrevoked and unexpired consent scoped to that opportunity or to the
+whole tenant. Remaining confirmed gaps are the missing Laravel-equivalent
+volunteer-organization relationship/status model, full localization and live
+provider delivery proof, and Laravel React/browser runtime smoke against the
+ASP.NET backend.
+
 ## Known High-Risk API Gaps
 
 | Area | Laravel source | .NET source | Gap |
 | --- | --- | --- | --- |
+| Volunteering transactional workflows | `VolunteerController.php`, `AdminVolunteerController.php`, `VolunteerCommunityController.php`, `VolunteerService.php`, `ShiftWaitlistService.php`, `ShiftGroupReservationService.php`, `GuardianConsentService.php`, `vol_applications`, `vol_shift_waitlist`, `vol_shift_group_reservations`, `vol_guardian_consents` | `VolunteeringController.cs`, `VolunteeringParityController.cs`, `ShiftManagementController.cs`, `AdminCompatibility2Controller.cs`, `VolunteerService.cs`, `AdminVolunteerApprovalService.cs`, `ShiftManagementService.cs`, `VolunteerGuardianConsentService.cs`, `VolunteerWaitlistOfferExpiryJob.cs`, focused workflow and concurrency tests | Transactional member, organizer, and admin application decisions; selected-shift apply/signup/cancel/withdraw; group reservation membership/cancellation; waitlist claim, released-place reoffer, and stale-offer expiry; opportunity/global expiry-aware guardian gates; canonical bell/push/email links; and shared locking/capacity accounting are implemented with 61/61 focused tests passing. Confirmed residuals are the Laravel volunteer-organization relation/status model, complete localization and configured-provider delivery proof, and live Laravel React/browser runtime smoke. |
 | Caring Community | `routes/caring-community-*.txt`, `routes/municipality-survey-routes.txt`, `routes/caring-community-trust-tier-routes.txt`, `CaringCommunity*Controller.php`, `AdminCaringCommunityController::workflow/tandemSuggestions/dismissTandemSuggestion/assistedOnboarding`, `MunicipalSurveyController.php`, `TrustTierController.php`, `WarmthPassController.php`, `CaregiverApiController.php`, `VereinFederationMemberController.php`, `app/Services/CaringCommunity/*`, `app/Services/Verein/VereinFederationService.php`, `FutureCareFundService.php`, `AhvPensionExportService.php`, `CaregiverService.php`, `CaringCommunityWorkflowService.php`, `CaringTandemMatchingService.php`, `MunicipalSurveyService.php`, `TrustTierService.php`, `WarmthPassService.php` | Initial .NET parity now covers many municipal/KISS slices: emergency alerts, federation peers/admin plus member federation-directory, sub-regions, care providers, success stories, caregiver links plus burnout/schedule/request-on-behalf and cover-request reads/create/assign, public municipality events-calendar default/code routes, admin assisted onboarding, admin workflow dashboard read, policy update, review assignment, review decision, and review escalation routes, admin tandem suggestions read/dismiss routes, project announcements, municipal feedback, municipality surveys, trust-tier member/admin routes, warmth-pass member/admin read routes, hour-estate/hour-transfer, hour-gift inbox/sent reads plus send/accept/decline/revert mutations, KISS Treffen member list/detail reads plus admin upsert/minutes mutations, Caring Community Markt member feed, member offer-favour mutation, member request-help submission and voice prefill routes, member safeguarding report submission, invite codes, loyalty, lead nurture, operating policy, launch readiness, disclosure packs, KPI/forecasting, nudge analytics/config plus tandem-candidate dispatch, regional-points admin plus member summary/history/transfer/marketplace quote/redeem, research reads/writes plus member consent and agreement-template render, role-preset status/install, safeguarding reads plus report assignment/escalation/note/status actions, SLA/support reads plus admin support-relationship create/update/hour logging, admin and member Verein member import/preview plus admin assignment, isolated-node readiness, member GDPR/FADP data export, member Future Care Fund summary, and member AHV pension evidence-pack export. | Non-tandem nudge trigger parity, frontend survey/trust-tier/warmth-pass/workflow routes, and accessible coverage remain gaps. |
 | Caring trust tier | `TrustTierController.php`, `TrustTierService.php`, `CaringCommunityApiController::myTrustTierBreakdown`, `routes/caring-community-trust-tier-routes.txt`, `caring_trust_tier_config`, `users.trust_tier` | `CaringCommunityTrustTierController.cs`, `AdminCaringCommunityTrustTierController`, `TrustTierService.cs`, `CaringTrustTierConfig`, `AddCaringTrustTierConfig`, `users.trust_tier` | Member `my-trust-tier` and breakdown plus admin config GET/PUT and recompute routes now match Laravel route surface with feature guard, tenant-scoped criteria JSON, default criteria merge, approved-hour/review/identity signals, active-user recompute, validation errors, and focused regression tests. Frontend trust-tier route coverage remains open. |
 | Caring warmth pass | `WarmthPassController.php`, `WarmthPassService.php`, `GET /v2/caring-community/my-warmth-pass`, `GET /v2/admin/caring-community/warmth-pass/{userId}` | `CaringCommunityWarmthPassController.cs`, `AdminCaringCommunityWarmthPassController`, `WarmthPassService.cs` | Member and admin read routes now match Laravel route surface with caring feature guard, tenant-scoped user lookup, stored trust-tier label/eligibility, approved-hour aggregation, review count, identity verification signal, tenant/member names, date fields, categories envelope, and focused regression tests. .NET currently returns an empty category list until the Laravel `caring_help_requests.category_id` schema is represented. |

@@ -12,7 +12,7 @@ Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-09.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 323 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 104 | Compiled EF migration subclasses; 75 are runtime-discovered and 29 are explicitly quarantined. |
+| ASP.NET EF migrations | 105 | Release discovery verifies 76 runtime migrations and 29 explicitly quarantined classes. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
@@ -27,28 +27,46 @@ some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
-## 2026-07-10 Role Migration And Discovery Status
+## 2026-07-10 Volunteering Migration And Discovery Status
 
-`20260710092435_CanonicalRoleSemantics` adds the Laravel-aligned `is_admin`,
-`is_super_admin`, `is_tenant_super_admin`, and `is_god` user columns plus
-indexes and guarded legacy-value adoption. EF Release discovery reports 75
-migrations and this migration is the latest; `has-pending-model-changes`
-reports no model drift.
+`20260710171315_AdminVolunteerApprovalWorkflow` is the current latest migration.
+It adds nullable `ShiftId` and `OrgNote` fields to volunteer applications,
+stores canonical notification `Link` values, and replaces the former unique
+tenant/opportunity/user application index with a non-unique lookup index so
+legitimate declined or withdrawn history can be followed by a new application.
+It also adds shift/capacity indexes and `SET NULL` relationships from
+applications to shifts.
 
-That is not fresh-bootstrap certification. Source inspection found 104 main
-migration classes but only 75 discoverable by EF: 29 legacy classes lack the
-complete runtime metadata needed for discovery. Most contain non-idempotent
-DDL, so adding metadata blindly could replay them against existing databases.
-Treat those 29 classes as quarantined until migration history and schema state
-are reconciled across supported environments. No production database was
-inspected or modified for this audit.
+Guardian consent now has nullable `OpportunityId` and `ExpiresAt` fields. A null
+opportunity represents tenant-wide consent; a populated value scopes consent to
+one opportunity, and expired or revoked grants do not satisfy the safeguarding
+gate. The migration adds the opportunity relationship and a tenant/minor/status/
+opportunity/expiry lookup index. The API and test projects build cleanly, and
+the transactional volunteering regression slice passes 61/61 focused tests.
 
-Commit `bcc317e3` adds a fail-closed `MigrationDiscoveryParityTests` gate to the
-PR workflow. The focused Release test passes 1/1 with
-`source=104, discovered=75, quarantined=29`; it also rejects abstract migration
-classes, stale quarantine entries, and intended ids that do not match their
-class names. This guards discovery drift but does not certify quarantined DDL
-or a fresh database bootstrap.
+The verified inventory is 105 main migration classes: 76 discoverable by EF and
+29 explicitly quarantined legacy classes. The Release discovery gate passes and
+EF reports no pending model changes. All 76 discovered migrations apply to a
+blank disposable PostgreSQL database through
+`20260710171315_AdminVolunteerApprovalWorkflow`.
+
+Most quarantined classes contain non-idempotent DDL, so adding metadata blindly
+could replay tables or columns against existing databases. Treat those 29
+classes as quarantined until migration history and schema state are reconciled
+across supported environments. Commit `bcc317e3` keeps the
+`MigrationDiscoveryParityTests` gate fail-closed for unclassified classes,
+abstract migrations, stale quarantine entries, and migration-id mismatches.
+
+The historical `20260706120000_AddTenantInviteCodes` migration now references
+the quoted PostgreSQL principal column `Id` for tenant and user foreign keys
+instead of lowercase `id`. This repairs future fresh-chain execution only; it
+does not reapply or mutate databases that already recorded that migration. No
+production database was inspected or modified for this audit.
+
+`AdminVolunteerApprovalWorkflow.Down()` is intentionally irreversible. Restoring
+the former unique application index after valid reapplication history could
+fail or require silent data loss, so `Down()` throws before dropping any of the
+new constraints or columns.
 
 ## Generated Artifacts
 
@@ -76,7 +94,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
-| `vol_*` | 19 | `vol_logs` is now represented for Caring recipient-circle and KPI inputs; the rest of volunteering may include renamed .NET equivalents and still requires alias mapping. |
+| `vol_*` | 19 | `vol_logs` is represented for Caring recipient-circle and KPI inputs. The renamed .NET volunteering schema now has migration-backed `ShiftId`/`OrgNote` application state, shared application/group-reservation capacity indexes, canonical notification links, and opportunity-scoped or tenant-wide expiring guardian consent. The transactional application, signup, waitlist, and group-reservation slice passes 61/61 focused tests. Exact Laravel `vol_*` name aliases and the remaining volunteering schema families still require table-by-table reconciliation. |
 | `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |

@@ -10,11 +10,11 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Discovery Quarantine
 
-The repository currently contains 104 main `Migration` classes, while EF
-Release discovery returns 75. The 29-class difference is a known legacy
-quarantine, not evidence that those migrations are safe to enable. Two
-designer-less migrations are valid because they carry inline `[Migration]` and
-`[DbContext]` metadata; a `.Designer.cs` file is not itself the contract.
+The repository currently contains 105 main `Migration` classes. EF Release
+discovery verifies 76 while the known legacy quarantine remains 29 classes.
+Two designer-less migrations are
+valid because they carry inline `[Migration]` and `[DbContext]` metadata; a
+`.Designer.cs` file is not itself the contract.
 
 Most quarantined classes contain non-idempotent DDL. Adding missing attributes
 or designers without reconciling every supported database's migration history
@@ -23,17 +23,32 @@ metadata blindly. First inventory the source class, intended migration id,
 schema effects, and each supported environment's history/schema state. No
 production inspection or change is implied by the source audit.
 
-`20260710092435_CanonicalRoleSemantics` is discoverable and is the latest of
-the 75 runtime migrations. `dotnet ef migrations has-pending-model-changes`
-reports no current model drift. These facts do not certify a fresh bootstrap
-while the 29-class quarantine remains.
+`20260710171315_AdminVolunteerApprovalWorkflow` is the current latest migration.
+It adds application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped
+and expiring guardian consent, and the indexes and `SET NULL` foreign keys used
+by transactional volunteering capacity checks. The API and test projects build
+cleanly, and the focused transactional volunteering suite passes 61/61. Final
+discovery reports `source=105, discovered=76, quarantined=29`, EF reports no
+pending model changes, and all 76 discovered migrations apply to a blank
+disposable PostgreSQL database through this exact migration id.
 
-`MigrationDiscoveryParityTests` now fails closed if any `Migration` subclass
-is neither discovered by EF nor listed in the explicit 29-entry legacy
-quarantine, if a quarantined class becomes discoverable without review, or if
-an intended migration id no longer matches its type. The PR workflow runs this
-gate after the Release build. Commit `bcc317e3` introduced the gate and also
-corrected the EF drift step so its zero exit code is treated as a clean model.
+The migration deliberately changes the tenant/opportunity/user application
+index from unique to non-unique. Declined or withdrawn history can therefore be
+retained when a volunteer reapplies. Its `Down()` method intentionally throws
+before any destructive operation because recreating the former unique index
+could fail after valid use or require data loss.
+
+The historical `20260706120000_AddTenantInviteCodes` migration now uses the
+quoted PostgreSQL principal column `Id`, not lowercase `id`, for its tenant and
+user foreign keys. This repairs future fresh installs; databases that already
+recorded the migration are not changed or replayed.
+
+`MigrationDiscoveryParityTests` fails closed if any `Migration` subclass is
+neither discovered by EF nor listed in the explicit 29-entry legacy quarantine,
+if a quarantined class becomes discoverable without review, or if an intended
+migration id no longer matches its type. Commit `bcc317e3` introduced the gate
+and corrected the EF drift step so its zero exit code is treated as a clean
+model. The verified inventory is `source=105, discovered=76, quarantined=29`.
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -122,11 +137,12 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The reflection/quarantine gate covers all 104 compiled migration subclasses,
-including the 29 classes that EF cannot currently discover. It prevents a new
-class from becoming silently invisible, but it does not prove that the
-quarantined DDL is safe to replay. A successful `database update` is therefore
-not, by itself, fresh-bootstrap certification for the complete source tree.
+The reflection/quarantine gate is expected to cover all 105 compiled migration
+subclasses, including the 29 classes that EF cannot currently discover. It
+prevents a new class from becoming silently invisible, but it does not prove
+that the quarantined DDL is safe to replay. A successful `database update`
+certifies only the discovered runtime chain that was actually applied, not the
+quarantined source classes.
 
 ### 7. Deploy to Production
 
@@ -211,6 +227,12 @@ If a migration causes issues in production:
    ```
 
 2. **Revert the migration code** and redeploy (preferred over manual DB changes).
+
+`20260710171315_AdminVolunteerApprovalWorkflow` cannot be rolled back with an
+automatic down-migration: its `Down()` throws before changing schema because
+restoring the former unique volunteer-application index is not data-safe after
+legitimate reapplications. Use a tested forward remediation or restore the
+pre-migration backup instead.
 
 ### Connection Strings
 
