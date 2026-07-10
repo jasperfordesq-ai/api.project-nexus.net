@@ -326,6 +326,13 @@ describe('shared accessible frontend shell', () => {
     api.getFeedPostV2.mockReset();
     api.getFeedItemV2.mockReset();
     api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Group',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
     api.getConversations.mockReset().mockResolvedValue({ data: [] });
@@ -6333,6 +6340,184 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGoals).toHaveBeenCalledWith('test-token', { per_page: 30 });
   });
 
+  it('renders the Laravel goal detail workflow for the owner with history and buddy updates', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        description: 'Prepare the raised beds for autumn planting.',
+        current_value: 3,
+        target_value: 6,
+        status: 'active',
+        is_public: true,
+        is_owner: true,
+        is_buddy: false,
+        mentor_id: 17
+      }
+    });
+    api.callGoalApi
+      .mockReset()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 10,
+            type: 'created',
+            description: 'Goal created with a six-bed target.',
+            created_at: '2026-07-01T09:30:00Z'
+          },
+          {
+            id: 11,
+            event_type: 'buddy_action',
+            description: 'Alex sent encouragement.',
+            created_at: '2026-07-02T10:00:00Z'
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: {
+          buddy_notes: [
+            {
+              message: 'The first bed is looking great.',
+              buddy_name: 'Alex Morgan',
+              created_at: '2026-07-03T10:00:00Z'
+            }
+          ]
+        }
+      });
+
+    const unsigned = await request(app).get('/goals/42');
+    const signed = await request(app)
+      .get('/goals/42?status=goal-edited')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(staticPageRoutes.pages['/goals/{param}']).toBeUndefined();
+    expect(signed.text).toContain('Back to goals');
+    expect(signed.text).toContain('Your goal has been updated.');
+    expect(signed.text).toContain('Restore the community garden');
+    expect(signed.text).toContain('Prepare the raised beds for autumn planting.');
+    expect(signed.text).toContain('In progress');
+    expect(signed.text).toContain('3 of 6');
+    expect(signed.text).toContain('<progress max="100" value="50" aria-label="50%">50%</progress>');
+    expect(signed.text).toContain('href="/goals/42/edit"');
+    expect(signed.text).toContain('href="/goals/42/insights"');
+    expect(signed.text).toContain('href="/goals/42/social"');
+    expect(signed.text).toContain('href="/goals/42/history"');
+    expect(signed.text).toContain('method="post" action="/goals/42/progress"');
+    expect(signed.text).toContain('id="increment" name="increment" type="number" min="0.25" step="0.25"');
+    expect(signed.text).toContain('method="post" action="/goals/42/complete"');
+    expect(signed.text).toContain('This goal has a buddy supporting it.');
+    expect(signed.text).toContain('Buddy updates');
+    expect(signed.text).toContain('The first bed is looking great.');
+    expect(signed.text).toContain('Alex Morgan');
+    expect(signed.text).toContain('Progress history');
+    expect(signed.text).toContain('Goal created');
+    expect(signed.text).toContain('Goal created with a six-bed target.');
+    expect(signed.text).toContain('Buddy update');
+    expect(signed.text).toContain('Alex sent encouragement.');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', 42);
+    expect(api.callGoalApi).toHaveBeenCalledTimes(2);
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42/history?per_page=30');
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/insights');
+  });
+
+  it('renders the public goal buddy offer without exposing owner-only controls', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 77,
+        title: 'Share weekly cycling miles',
+        current_value: 2,
+        target_value: 5,
+        status: 'active',
+        is_public: true,
+        is_owner: false,
+        is_buddy: false,
+        mentor_id: null
+      }
+    });
+    api.callGoalApi
+      .mockReset()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: { buddy_notes: [] } });
+
+    const response = await request(app)
+      .get('/acme/accessible/goals/77?status=buddy-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('We could not add you as a buddy. The goal may already have one.');
+    expect(response.text).toContain('href="#buddy-section"');
+    expect(response.text).toContain('Support this goal');
+    expect(response.text).toContain('Offer to be a buddy and help keep this member on track.');
+    expect(response.text).toContain('method="post" action="/acme/accessible/goals/77/buddy"');
+    expect(response.text).toContain('Become a buddy');
+    expect(response.text).toContain('href="/acme/accessible/goals/77/social"');
+    expect(response.text).toContain('href="/acme/accessible/goals/77/history"');
+    expect(response.text).not.toContain('href="/acme/accessible/goals/77/edit"');
+    expect(response.text).not.toContain('href="/acme/accessible/goals/77/insights"');
+    expect(response.text).not.toContain('action="/acme/accessible/goals/77/progress"');
+    expect(response.text).not.toContain('Progress history');
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', 77);
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/77/history?per_page=30');
+    expect(api.callGoalApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/77/insights');
+    api.getGoal.mockClear();
+    api.callGoalApi.mockClear();
+  });
+
+  it('keeps the goal detail usable when optional history and insights reads fail', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        current_value: 3,
+        target_value: 6,
+        status: 'active',
+        is_public: false,
+        is_owner: true,
+        is_buddy: false
+      }
+    });
+    api.callGoalApi
+      .mockReset()
+      .mockRejectedValueOnce(new api.ApiError('History unavailable', 503))
+      .mockRejectedValueOnce(new api.ApiError('Insights unavailable', 503));
+
+    const response = await request(app)
+      .get('/goals/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Restore the community garden');
+    expect(response.text).toContain('No progress has been recorded for this goal yet.');
+    expect(response.text).toContain('method="post" action="/goals/42/progress"');
+    api.getGoal.mockClear();
+    api.callGoalApi.mockClear();
+  });
+
+  it('does not request goal history or insights when the goal itself is unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockRejectedValueOnce(new api.ApiError('Goal not found', 404));
+    api.callGoalApi.mockReset();
+
+    const response = await request(app)
+      .get('/goals/999999')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('Goal not found');
+    expect(api.callGoalApi).not.toHaveBeenCalled();
+    api.getGoal.mockClear();
+    api.callGoalApi.mockClear();
+  });
+
   it('renders the Laravel goal template picker for signed-in members', async () => {
     const api = require('../src/lib/api');
     api.callGoalApi
@@ -11444,6 +11629,60 @@ describe('shared accessible frontend shell', () => {
     expect(api.markNotificationGroupRead).toHaveBeenCalledWith('test-token', 'post_like:/feed/posts/7');
   });
 
+  it('submits a single notification read through the Laravel v2 API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{ id: 7, type: 'system', title: 'System notice', is_read: false }],
+      unreadCount: 1,
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const first = await agent
+      .get('/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/notifications/7/read')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/notifications');
+    expect(api.markNotificationRead).toHaveBeenCalledWith('test-token', '7');
+  });
+
+  it('submits a single notification delete through the Laravel v2 API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{ id: 8, type: 'system', title: 'System notice', is_read: false }],
+      unreadCount: 1,
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const first = await agent
+      .get('/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/notifications/8/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/notifications');
+    expect(api.deleteNotification).toHaveBeenCalledWith('test-token', '8');
+  });
+
   it('submits the Laravel delete-all notification route through the v2 API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
@@ -14864,6 +15103,13 @@ describe('shared accessible frontend shell', () => {
   it('submits Laravel group depth aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'admin', status: 'active' }
+      }
+    });
     api.callGroupApi.mockImplementation(async (_token, _method, pathName) => {
       if (pathName === '/42/discussions') {
         return { data: { id: 33 } };
@@ -15169,7 +15415,8 @@ describe('shared accessible frontend shell', () => {
         id: 42,
         name: 'Garden Helpers',
         image_url: 'https://example.test/images/group-avatar.webp',
-        cover_image_url: 'https://example.test/images/group-cover.webp'
+        cover_image_url: 'https://example.test/images/group-cover.webp',
+        viewer_membership: { role: 'admin', status: 'active' }
       }
     });
 
@@ -15742,7 +15989,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
-    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/files');
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/files?per_page=50');
   });
 
   it('proxies Laravel group file downloads for signed-in group members', async () => {
@@ -15776,6 +16023,14 @@ describe('shared accessible frontend shell', () => {
   it('submits Laravel group image and file uploads with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
+    api.getProfile.mockReset().mockResolvedValue({ id: 101, role: 'member' });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'admin', status: 'active' }
+      }
+    });
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
     const first = await agent
@@ -15826,6 +16081,256 @@ describe('shared accessible frontend shell', () => {
         buffer: Buffer.from('%PDF group handbook', 'utf8')
       })
     }));
+  });
+
+  it('enforces the Laravel group image and file membership boundaries', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockReset().mockResolvedValue({ id: 101, role: 'member' });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        owner_id: 14,
+        viewer_membership: null
+      }
+    });
+    api.callGroupApi.mockReset().mockRejectedValue(new api.ApiError('Membership required', 403, {
+      success: false,
+      error: 'Membership required'
+    }));
+
+    const image = await request(app)
+      .get('/groups/42/image')
+      .set('Cookie', signedCookieHeader());
+    const files = await request(app)
+      .get('/groups/42/files')
+      .set('Cookie', signedCookieHeader());
+
+    expect(image.status).toBe(403);
+    expect(image.text).toContain('Forbidden');
+    expect(files.status).toBe(403);
+    expect(files.text).toContain('Forbidden');
+    expect(files.text).not.toContain('No files have been shared in this group yet.');
+    api.callGroupApi.mockClear();
+    api.downloadGroupFile.mockClear();
+
+    const fileDownload = await request(app)
+      .get('/groups/42/files/7/download')
+      .set('Cookie', signedCookieHeader());
+    const missingFileDownload = await request(app)
+      .get('/groups/42/files/999999/download')
+      .set('Cookie', signedCookieHeader());
+    expect(fileDownload.status).toBe(403);
+    expect(missingFileDownload.status).toBe(403);
+    expect(api.downloadGroupFile).not.toHaveBeenCalled();
+
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    api.uploadGroupImage.mockClear();
+    api.uploadGroupFile.mockClear();
+
+    const imagePost = await agent
+      .post('/groups/42/image')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], type: 'cover' });
+    const filePost = await agent
+      .post('/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    const fileDelete = await agent
+      .post('/groups/42/files/7/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    const missingFileDelete = await agent
+      .post('/groups/42/files/999999/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(imagePost.status).toBe(403);
+    expect(filePost.status).toBe(403);
+    expect(fileDelete.status).toBe(403);
+    expect(missingFileDelete.status).toBe(403);
+    expect(api.uploadGroupImage).not.toHaveBeenCalled();
+    expect(api.uploadGroupFile).not.toHaveBeenCalled();
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+  });
+
+  it('shows group file delete controls to the uploader without exposing other members files', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockReset().mockResolvedValue({ id: 101, role: 'member' });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValue({
+      data: {
+        items: [
+          { id: 7, file_name: 'my-plan.pdf', uploaded_by: 101 },
+          { id: 8, file_name: 'another-plan.pdf', uploaded_by: 202 }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/groups/42/files')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('action="/groups/42/files/7/delete"');
+    expect(response.text).not.toContain('action="/groups/42/files/8/delete"');
+  });
+
+  it('preserves Laravel 403 and 404 outcomes for group file downloads and deletes', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.getProfile.mockReset().mockResolvedValue({ id: 101, role: 'member' });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
+
+    api.downloadGroupFile.mockReset()
+      .mockRejectedValueOnce(new api.ApiError('Membership required', 403, {}))
+      .mockRejectedValueOnce(new api.ApiError('File not found', 404, {}));
+
+    const forbiddenDownload = await request(app)
+      .get('/groups/42/files/7/download')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const missingDownload = await request(app)
+      .get('/groups/42/files/8/download')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(forbiddenDownload.status).toBe(403);
+    expect(missingDownload.status).toBe(404);
+
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    api.callGroupApi.mockReset()
+      .mockRejectedValueOnce(new api.ApiError('Delete forbidden', 403, {}))
+      .mockRejectedValueOnce(new api.ApiError('File not found', 404, {}));
+
+    const forbiddenDelete = await agent
+      .post('/groups/42/files/7/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    const missingDelete = await agent
+      .post('/groups/42/files/8/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(forbiddenDelete.headers.location).toBe('/groups/42/files?status=file-forbidden');
+    expect(missingDelete.headers.location).toBe('/groups/42/files?status=file-not-found');
+  });
+
+  it('keeps group multipart uploads tenant-aware and rejects non-Laravel file types', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.getProfile.mockReset().mockResolvedValue({ id: 101, role: 'member' });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.uploadGroupFile.mockClear();
+
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const response = await agent
+      .post('/acme/accessible/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .attach('file', Buffer.from('{"unsafe":true}', 'utf8'), {
+        filename: 'payload.json',
+        contentType: 'application/json'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/groups/42/files?status=file-type-invalid');
+    expect(api.uploadGroupFile).not.toHaveBeenCalled();
+
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+    expect(serverSource).toContain('parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 })');
+    expect(serverSource).toContain('parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 })');
+
+    api.uploadGroupFile.mockRejectedValueOnce(new api.ApiError('Rejected after content inspection', 422, {
+      errors: [{ code: 'INVALID_TYPE', message: 'Rejected after content inspection' }]
+    }));
+    const rejectedByBackend = await agent
+      .post('/acme/accessible/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .attach('file', Buffer.from('%PDF spoofed content', 'utf8'), {
+        filename: 'spoofed.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(rejectedByBackend.status).toBe(302);
+    expect(rejectedByBackend.headers.location).toBe('/acme/accessible/groups/42/files?status=file-type-invalid');
+
+    api.uploadGroupFile.mockResolvedValueOnce({ data: { id: 99 } });
+    const acceptedSize = 10 * 1024 * 1024 + 1024;
+    const accepted = await agent
+      .post('/acme/accessible/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('folder', ` ${'F'.repeat(110)} `)
+      .field('description', ` ${'D'.repeat(510)} `)
+      .attach('file', Buffer.alloc(acceptedSize, 1), {
+        filename: 'large-handbook.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(accepted.status).toBe(302);
+    expect(accepted.headers.location).toBe('/acme/accessible/groups/42/files?status=file-uploaded');
+    expect(api.uploadGroupFile).toHaveBeenCalledWith('test-token', 42, expect.objectContaining({
+      folder: 'F'.repeat(100),
+      description: 'D'.repeat(500),
+      file: expect.objectContaining({
+        filename: 'large-handbook.pdf',
+        contentType: 'application/pdf',
+        size: acceptedSize
+      })
+    }));
+
+    const oversized = await agent
+      .post('/acme/accessible/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .attach('file', Buffer.alloc(25 * 1024 * 1024 + 1, 1), {
+        filename: 'oversized-handbook.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(oversized.status).toBe(302);
+    expect(oversized.headers.location).toBe('/acme/accessible/groups/42/files?status=file-too-large');
+    expect(api.uploadGroupFile).toHaveBeenCalledTimes(2);
   });
 
   it('submits Laravel jobs action aliases and redirects signed-out visitors', async () => {
@@ -18767,11 +19272,8 @@ describe('shared accessible frontend shell', () => {
       email: ' new@example.org ',
       current_password: 'current-password'
     });
-    expect(emailResponse.headers.location).toBe('/profile/settings?status=email-changed');
-    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '', {
-      email: 'new@example.org',
-      current_password: 'current-password'
-    });
+    expect(emailResponse.headers.location).toBe('/profile/settings?status=email-reauthentication-unavailable');
+    expect(api.callUserSettingsApi).toHaveBeenCalledTimes(2);
 
     const passwordResponse = await post('/profile/password', {
       current_password: 'current-password',
@@ -20622,11 +21124,11 @@ describe('shared accessible frontend shell', () => {
       reason: 'Buyer changed plans'
     });
 
+    api.callMarketplaceApi.mockClear();
     const payResponse = await post('/marketplace/orders/42/pay');
-    expect(payResponse.headers.location).toBe('/marketplace/orders?status=payment-started');
-    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/payments/create-intent', {
-      order_id: 42
-    });
+    expect(payResponse.status).toBe(302);
+    expect(payResponse.headers.location).toBe('/marketplace/orders?status=pay-failed');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
 
     const rateResponse = await post('/marketplace/orders/42/rate', {
       rating: '5',

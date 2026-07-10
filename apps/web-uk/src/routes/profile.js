@@ -95,6 +95,11 @@ const PROFILE_STATUS_MESSAGES = {
     message: 'Your current password was incorrect. Your email was not changed.',
     anchor: 'current_password'
   },
+  'email-reauthentication-unavailable': {
+    type: 'error',
+    message: 'Email changes are temporarily unavailable because we cannot securely confirm your password. Your email was not changed.',
+    anchor: 'current_password'
+  },
   'email-failed': {
     type: 'error',
     message: 'Your email address could not be updated. It may already be in use.',
@@ -889,18 +894,13 @@ router.post('/email', asyncRoute(async (req, res) => {
     return redirectTo(res, profileSettingsRedirect('email-invalid'));
   }
 
-  let status = 'email-changed';
-  try {
-    await callUserSettings(token, 'PUT', '', {
-      email,
-      current_password: String(req.body.current_password || '')
-    });
-  } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
-    status = error instanceof ApiError && error.status === 403 ? 'email-password-incorrect' : 'email-failed';
-  }
-
-  return redirectTo(res, profileSettingsRedirect(status));
+  // Laravel's generic PUT /api/v2/users/me ignores current_password. Calling
+  // it here would let a stolen bearer session replace the recovery email
+  // without re-authentication. The Laravel accessible controller verifies the
+  // password server-side, but no bearer-authenticated equivalent is exposed.
+  // Fail closed until that dedicated contract exists; never claim success or
+  // send the sensitive write through the ungated generic profile endpoint.
+  return redirectTo(res, profileSettingsRedirect('email-reauthentication-unavailable'));
 }));
 
 router.post('/password', asyncRoute(async (req, res) => {

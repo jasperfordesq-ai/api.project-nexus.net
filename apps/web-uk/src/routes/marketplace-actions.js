@@ -533,18 +533,17 @@ router.post('/orders/:id(\\d+)/cancel', asyncRoute(async (req, res) => {
   );
 }));
 
-router.post('/orders/:id(\\d+)/pay', asyncRoute(async (req, res) => {
-  const id = Number(req.params.id);
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/payments/create-intent',
-    { order_id: id },
-    '/marketplace/orders?status=payment-started',
-    '/marketplace/orders?status=pay-failed'
-  );
-}));
+router.post('/orders/:id(\\d+)/pay', (req, res) => {
+  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+
+  // Laravel's accessible flow creates a hosted Stripe Checkout Session and
+  // 303-redirects to it. The current Laravel API only exposes PaymentIntent
+  // creation, whose client_secret cannot be used by this no-JS route. Do not
+  // create and discard an intent or claim that payment started. Use Laravel's
+  // localized generic start failure instead of pay-unavailable, whose source
+  // copy would incorrectly blame a seller who may already be fully onboarded.
+  return redirectTo(res, '/marketplace/orders?status=pay-failed');
+});
 
 router.post('/orders/:id(\\d+)/rate', asyncRoute(async (req, res) => {
   if (!tokenFrom(req)) return redirectTo(res, loginRedirect());

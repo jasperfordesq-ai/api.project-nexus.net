@@ -215,10 +215,41 @@ namespaces are wholly English upstream.
   merchant-coupon 403 gates, and live Irish plus Arabic Marketplace filter
   output.
 - This is not full Marketplace certification. Listing/order/offer/slot/coupon
-  mutations, the currently non-parity payment-intent flow (Laravel uses hosted
-  checkout with a 303 redirect), uploads, destructive actions, remaining
+  mutations, hosted checkout, uploads, destructive actions, remaining
   contextual template copy, manual/visual accessibility, and ASP.NET backend
   compatibility still require evidence.
+
+### 2026-07-10 Marketplace Hosted-checkout Boundary Follow-up
+
+- Laravel's accessible source creates a hosted Stripe Checkout Session and
+  returns a `303` external redirect. The Laravel API route inventory currently
+  exposes only `POST /api/v2/marketplace/payments/create-intent`, `POST
+  /api/v2/marketplace/payments/confirm`, and `GET
+  /api/v2/marketplace/payments/{id}/status`; create-intent returns a
+  `client_secret` and `payment_intent_id`, not a hosted `checkout_url`.
+- Web UK's no-JS pay action previously called create-intent, discarded that
+  secret, and redirected to a non-user-facing `payment-started` token. It now
+  makes no payment API call and claims no success. Signed buyers are redirected
+  through `res.locals.urlFor` to Laravel's localized generic
+  `/marketplace/orders?status=pay-failed` state; unsigned buyers retain the
+  tenant-mounted `/login?status=auth-required` handoff. The seller-specific
+  `pay-unavailable` copy is deliberately not used because the missing hosted
+  API is a Web UK/backend boundary, not evidence that the seller is unready.
+- This is an honest safe failure, not payment completion. The external blocker
+  is a Laravel bearer-authenticated hosted-checkout endpoint, preferably `POST
+  /api/v2/marketplace/payments/checkout`, which validates buyer/order state and
+  a tenant-aware accessible return path, derives the `payment-submitted` and
+  `payment-cancelled` callback URLs, and returns a v2 `data.checkout_url`.
+  Web UK must then accept only a parsed HTTPS URL on `checkout.stripe.com` or an
+  explicitly configured exact Stripe custom-checkout host and issue a `303` so
+  the original form POST becomes a GET. The existing Laravel web route cannot
+  substitute for this API boundary because it is a session/CSRF web route.
+- Focused proof is green: the dedicated payment-boundary suite passed `4/4`,
+  the existing integrated Marketplace order-action case passed, the four
+  Marketplace-focused suites passed `105/105`, and `npm run lint` plus
+  `git diff --check` passed. The subsequent combined current-source gate passed
+  all `42/42` suites and `1,222/1,222` tests after the Goal mock was made
+  order-independent.
 
 ### 2026-07-10 Two-factor Enrolment Contract Follow-up
 
@@ -272,6 +303,28 @@ namespaces are wholly English upstream.
   It requires a disposable isolated user plus cleanup. Laravel's duplicate-
   pending API path also currently returns a generic 500 while Blade treats it
   as success; that upstream inconsistency remains explicit.
+
+### 2026-07-10 Profile Email Re-authentication Boundary Follow-up
+
+- Web UK's email-change form previously sent `email` and `current_password` to
+  generic `PUT /api/v2/users/me` and treated a successful response as proof of
+  re-authentication. Laravel's generic user update does not inspect or verify
+  `current_password`; only the authoritative accessible controller performs a
+  tenant-scoped password-hash check before changing the recovery email.
+- The Web UK POST now fails closed after auth and email-format validation. It
+  makes no generic profile write, claims no success, preserves the signed-in
+  session, and redirects through the active tenant mount to an explicit
+  `email-reauthentication-unavailable` error anchored to the password field.
+  This prevents a stolen bearer session from replacing the recovery email.
+- Completion is externally blocked on a Laravel bearer-authenticated,
+  password-gated email-change endpoint with stable invalid-password, unchanged,
+  duplicate-email, validation, throttling, and success outcomes. The Laravel
+  accessible web route cannot be proxied as that API boundary because it uses
+  Laravel's own session and CSRF context.
+- Focused security and status-localization proof passed `21/21`; the integrated
+  profile-action route case also passed, proving no email write was added to
+  the two expected preceding profile settings calls. Full Web UK verification
+  is rerun at the end of the combined slice.
 
 Tenant-routing source notes now live in `docs/TENANT_ROUTING_PARITY.md`. The
 first shared-mount slice is implemented in Web UK: `/{tenantSlug}/accessible`
@@ -2358,8 +2411,10 @@ against the same temporary process: all four chunks passed on 2026-07-07 with
 
 The default Laravel runtime smoke scope now additionally covers
 `/users/14/appreciations` and `/jobs/employers/14` as signed 2xx user
-appreciation and employer-brand routes, plus `/groups/484/files/1/download` as
-the signed missing-file redirect to `/groups/484/files?status=file-not-found`.
+appreciation and employer-brand routes. At the time of this 2026-07-07 run it
+also treated `/groups/484/files/1/download` as the signed missing-file redirect
+to `/groups/484/files?status=file-not-found`; the 2026-07-10 group authorization
+follow-up below supersedes that fixture assumption with the live Laravel 403.
 This also fixes those two public member/employer pages to read Laravel
 `/api/v2/users/{id}` instead of the legacy `/api/users/{id}` helper. A targeted
 live run against `WEB_UK_BASE_URL=http://127.0.0.1:5343`, started with
@@ -2671,16 +2726,17 @@ The remaining signed/detail body-marker routes `/connections/network`,
 `/reviews/list`, `/users/14/appreciations`, `/kb/90001`,
 `/achievements/badges/vol_1h`, and `/reviews/18/comments` now carry
 Laravel-backed body-text markers. The core module-page/body-text marker gap is
-0; after the 2026-07-10 clubs no-active-club correction, the current default
-smoke scope has `280` module-page checks and `282` body-text contract checks.
+0; after the 2026-07-10 clubs no-active-club and group authorization
+corrections, the current default smoke scope has `276` module-page checks and
+`278` body-text contract checks.
 `/dashboard` now carries stable body-text checks for
 `Welcome back`, `Your time bank`, `Quick links`, `Recent feed`, and `Recent
 listings`.
-The default scope now contains `633` checks:
-`280`
+The default scope now contains `630` checks:
+`276`
 module-page checks, 14 unsigned auth-required redirect checks, 3 unsigned login
-redirect checks, 23 gated-status checks, and 19 signed redirect checks, plus 2
-content-type contract checks, 282 body-text contract checks, 3 cookie-consent
+redirect checks, 29 gated-status checks, and 18 signed redirect checks, plus 2
+content-type contract checks, 278 body-text contract checks, 3 cookie-consent
 POST workflow checks, 1 logout POST workflow check, and the 6 auth/health
 checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
@@ -2693,6 +2749,75 @@ matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
+
+### 2026-07-10 focused auth, onboarding, and notification endpoint correction
+
+The Web UK API client now matches five exact Laravel contracts that were still
+using legacy paths or methods:
+
+- token renewal uses `POST /api/auth/refresh-token` with
+  `{ refresh_token }`;
+- onboarding bio/profile writes use `PUT /api/v2/users/me`;
+- onboarding avatar multipart uploads use
+  `POST /api/v2/users/me/avatar` with the `avatar` field;
+- single-notification reads use
+  `POST /api/v2/notifications/{id}/read`;
+- single-notification deletes use
+  `DELETE /api/v2/notifications/{id}`.
+
+This was a Web UK-only contract correction; Laravel was not modified. Focused
+verification passed:
+
+- `npm --prefix apps/web-uk test -- tests/api.test.js --runInBand --runTestsByPath -t "refreshToken|Laravel onboarding helpers|Laravel notification helpers"`
+  passed `10/10` selected tests;
+- `npm --prefix apps/web-uk test -- tests/shared-accessible-shell.test.js --runInBand --runTestsByPath -t "refreshes an expired signed token|submits the Laravel onboarding profile step|submits the Laravel onboarding avatar route|submits a single notification"`
+  passed `5/5` selected tests, covering the 401 refresh retry, trimmed onboarding
+  bio, multipart avatar proxy, and both single-notification POST aliases;
+- `npm --prefix apps/web-uk run lint` passed with no ESLint errors or warnings.
+
+Live refresh-token rotation, profile/avatar persistence, and notification
+mutation persistence still require isolated Laravel fixtures; the focused
+tests prove the Web UK request contracts and route handoffs, not those external
+side effects.
+
+### 2026-07-10 Goal Detail, Group Media, And Combined Contract Follow-up
+
+- `/goals/{id}` now authenticates before lookup, unwraps Laravel's v2 detail
+  envelope, then reads optional history and insights without allowing either
+  supplementary request to hide a valid goal. It renders the Blade owner,
+  buddy, public-action, progress, history, notes, insight, social, edit, and
+  completion states through tenant-aware URLs. A missing goal stops before the
+  supplementary calls. The scoped localization keys resolve through all 11
+  catalogs, and the current public fixture `/goals/162` passed its signed body,
+  unsigned auth-handoff, and depth-page Laravel smoke checks.
+- Group image management is now owner/group-admin/platform-admin only. Group
+  file list, upload, download, and delete are active-member/admin only and fail
+  closed when membership cannot be proved. Both existing and arbitrary file IDs
+  return the same 403 to a non-member before the file API is touched, removing a
+  file-existence oracle. Uploads enforce Laravel's 8 MB image and 25 MB file
+  limits, MIME allowlists, folder/description limits, exact multipart fields,
+  and temporary-file cleanup; file delete controls render only for the uploader
+  or an administrator.
+- The local Laravel E2E smoke account is not a member or administrator of group
+  fixtures 482 or 484. A fresh live run therefore correctly returned 403 for
+  each fixture's image page, files page, and direct file download while the goal
+  detail remained 200; all `19/19` scoped checks passed. The default smoke
+  contract now records those six group routes as gated 403 outcomes instead of
+  false rendered-page or missing-file expectations, and its dedicated harness
+  passed `43/43` tests.
+- The final combined Web UK gate passed `42/42` Jest suites and
+  `1,222/1,222` tests, full ESLint, CSS compilation, the 290-template
+  conservative localization audit with zero safe matches, the 11-locale
+  catalog audit with zero missing/extra keys, the generated route matrix with
+  all 608 Laravel routes matched and zero missing, and the Chromium/axe
+  accessibility gate `12/12`. The latter covers public and Arabic RTL 320px
+  reflow; authenticated Arabic account-deletion rendering was additionally
+  inspected at 320px with one main/H1, unique IDs, labelled controls, correct
+  RTL direction, and no horizontal overflow. Destructive POSTs were not run.
+- The safe hosted-checkout and secure email-change failures described above are
+  intentional external boundaries, not completed workflows. Completion still
+  needs Laravel bearer APIs for hosted checkout and password-gated email change,
+  plus isolated fixtures for mutation/upload/destructive side-effect proof.
 
 ## Refresh Protocol
 

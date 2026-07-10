@@ -163,6 +163,26 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('refreshToken', () => {
+    it('should use Laravel\'s refresh-token endpoint and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ access_token: 'fresh-token', refresh_token: 'fresh-refresh-token' })
+      });
+
+      await api.refreshToken('expired-access-refresh-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/auth/refresh-token',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ refresh_token: 'expired-access-refresh-token' })
+        })
+      );
+    });
+  });
+
   describe('getTenants', () => {
     it('should call the Laravel tenant list endpoint without master by default', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -4355,6 +4375,27 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel onboarding helpers', () => {
+    it('should update the onboarding profile through Laravel\'s v2 user endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { bio: 'I can help with gardening' } })
+      });
+
+      await api.updateProfile('test-token', { bio: 'I can help with gardening' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ bio: 'I can help with gardening' })
+        })
+      );
+    });
+
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -4428,7 +4469,7 @@ describe('API Request Functions', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/v2/users/me/avatar',
         expect.objectContaining({
-          method: 'PUT',
+          method: 'POST',
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token'
           })
@@ -4439,6 +4480,26 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel notification helpers', () => {
+    it('should mark one notification read through Laravel\'s v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { marked_read: true } })
+      });
+
+      await api.markNotificationRead('test-token', 17);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/notifications/17/read',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should mark all notifications read through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -4491,6 +4552,26 @@ describe('API Request Functions', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/v2/notifications',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should delete one notification through Laravel\'s v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.deleteNotification('test-token', 23);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/notifications/23',
         expect.objectContaining({
           method: 'DELETE',
           headers: expect.objectContaining({

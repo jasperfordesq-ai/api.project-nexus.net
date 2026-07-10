@@ -100,6 +100,7 @@ describe('request-scoped profile status localization', () => {
 
   it.each([
     ['avatar-invalid', 'Upload a JPG, PNG, GIF or WEBP image smaller than 10MB.'],
+    ['email-reauthentication-unavailable', 'Email changes are temporarily unavailable because we cannot securely confirm your password. Your email was not changed.'],
     ['language-failed', 'Your language could not be updated.'],
     ['passkey-failed', 'Your passkey could not be updated.']
   ])('keeps the English fallback for %s because Laravel has no exact message key', async (status, fallback) => {

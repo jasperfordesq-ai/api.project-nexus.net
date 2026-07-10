@@ -478,21 +478,17 @@ function createWebServer(requests, {
       ['/groups/484', 'Group events'],
       ['/groups/484/invite', 'Invite members'],
       ['/groups/484/notifications', 'Notification preferences'],
-      ['/groups/484/image', 'Group images'],
       ['/groups/484/announcements', 'Announcements'],
       ['/groups/484/discussions', 'Discussions'],
       ['/groups/484/discussions/new', 'Start a discussion'],
-      ['/groups/484/files', 'Group files'],
       ['/groups/484/manage', 'Manage group'],
       ['/groups/482', 'Group events'],
       ['/groups/482/announcements', 'Announcements'],
       ['/groups/482/discussions', 'Discussions'],
       ['/groups/482/discussions/new', 'Start a discussion'],
-      ['/groups/482/files', 'Group files'],
       ['/groups/482/manage', 'Manage group'],
       ['/groups/482/invite', 'Invite members'],
       ['/groups/482/notifications', 'Notification preferences'],
-      ['/groups/482/image', 'Group images'],
       ['/users/14/appreciations', 'Public thank-you notes other members have sent to this person.']
     ]);
 
@@ -599,11 +595,9 @@ function createWebServer(requests, {
       '/groups/484',
       '/groups/484/invite',
       '/groups/484/notifications',
-      '/groups/484/image',
       '/groups/484/announcements',
       '/groups/484/discussions',
       '/groups/484/discussions/new',
-      '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments',
       '/volunteering/organisations/636/dashboard',
@@ -649,11 +643,9 @@ function createWebServer(requests, {
       '/groups/482/announcements',
       '/groups/482/discussions',
       '/groups/482/discussions/new',
-      '/groups/482/files',
       '/groups/482/manage',
       '/groups/482/invite',
       '/groups/482/notifications',
-      '/groups/482/image',
       '/marketplace/6',
       '/marketplace/6/buy',
       '/marketplace/6/offer',
@@ -819,6 +811,12 @@ function createWebServer(requests, {
       ['/events/6/edit', 403],
       ['/events/14/edit', 403],
       ['/groups/484/announcements/1/edit', 403],
+      ['/groups/484/image', 403],
+      ['/groups/484/files', 403],
+      ['/groups/484/files/1/download', 403],
+      ['/groups/482/image', 403],
+      ['/groups/482/files', 403],
+      ['/groups/482/files/1/download', 403],
       ['/jobs/90764/edit', 403],
       ['/jobs/90764/analytics', 403],
       ['/jobs/90764/pipeline', 403],
@@ -869,7 +867,6 @@ function createWebServer(requests, {
       ['/onboarding/profile', '/dashboard'],
       ['/events/14/recurring-edit', '/events/14/edit'],
       ['/groups/482/edit', '/groups/482'],
-      ['/groups/484/files/1/download', '/groups/484/files?status=file-not-found'],
       ['/onboarding/interests', '/dashboard'],
       ['/onboarding/safeguarding', '/dashboard'],
       ['/onboarding/confirm', '/dashboard'],
@@ -1064,10 +1061,8 @@ describe('Laravel runtime smoke harness', () => {
       '/groups/484',
       '/groups/484/invite',
       '/groups/484/notifications',
-      '/groups/484/image',
       '/groups/484/announcements',
       '/groups/484/discussions',
-      '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments'
     ]));
@@ -1264,11 +1259,9 @@ describe('Laravel runtime smoke harness', () => {
       '/groups/482/announcements',
       '/groups/482/discussions',
       '/groups/482/discussions/new',
-      '/groups/482/files',
       '/groups/482/manage',
       '/groups/482/invite',
       '/groups/482/notifications',
-      '/groups/482/image',
       '/marketplace/6',
       '/marketplace/6/buy',
       '/marketplace/6/offer',
@@ -1366,15 +1359,20 @@ describe('Laravel runtime smoke harness', () => {
     ]));
   });
 
-  it('includes stable user appreciation, employer brand, and group file fixture outcomes in the default smoke scopes', () => {
+  it('includes stable user appreciation, employer brand, and group authorization outcomes in the default smoke scopes', () => {
     const options = resolveOptions({}, {});
 
     expect(options.modulePagePaths).toEqual(expect.arrayContaining([
       '/users/14/appreciations',
       '/jobs/employers/14'
     ]));
-    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
-      { path: '/groups/484/files/1/download', location: '/groups/484/files?status=file-not-found' }
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/groups/484/image', status: 403 },
+      { path: '/groups/484/files', status: 403 },
+      { path: '/groups/484/files/1/download', status: 403 },
+      { path: '/groups/482/image', status: 403 },
+      { path: '/groups/482/files', status: 403 },
+      { path: '/groups/482/files/1/download', status: 403 }
     ]));
   });
 
@@ -1640,21 +1638,17 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/groups/484', text: 'Group events' },
       { path: '/groups/484/invite', text: 'Invite members' },
       { path: '/groups/484/notifications', text: 'Notification preferences' },
-      { path: '/groups/484/image', text: 'Group images' },
       { path: '/groups/484/announcements', text: 'Announcements' },
       { path: '/groups/484/discussions', text: 'Discussions' },
       { path: '/groups/484/discussions/new', text: 'Start a discussion' },
-      { path: '/groups/484/files', text: 'Group files' },
       { path: '/groups/484/manage', text: 'Manage group' },
       { path: '/groups/482', text: 'Group events' },
       { path: '/groups/482/announcements', text: 'Announcements' },
       { path: '/groups/482/discussions', text: 'Discussions' },
       { path: '/groups/482/discussions/new', text: 'Start a discussion' },
-      { path: '/groups/482/files', text: 'Group files' },
       { path: '/groups/482/manage', text: 'Manage group' },
       { path: '/groups/482/invite', text: 'Invite members' },
       { path: '/groups/482/notifications', text: 'Notification preferences' },
-      { path: '/groups/482/image', text: 'Group images' },
       { path: '/users/14/appreciations', text: 'Public thank-you notes other members have sent to this person.' }
     ]));
   });
@@ -1964,11 +1958,9 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-groups-484-renders': true,
       'module-page-groups-484-invite-renders': true,
       'module-page-groups-484-notifications-renders': true,
-      'module-page-groups-484-image-renders': true,
       'module-page-groups-484-announcements-renders': true,
       'module-page-groups-484-discussions-renders': true,
       'module-page-groups-484-discussions-new-renders': true,
-      'module-page-groups-484-files-renders': true,
       'module-page-groups-484-manage-renders': true,
       'module-page-resources-10-comments-renders': true,
       'module-page-volunteering-organisations-636-dashboard-renders': true,
@@ -2056,6 +2048,12 @@ describe('Laravel runtime smoke harness', () => {
       'gated-page-clubs-returns-404': true,
       'gated-page-coupons-1-returns-403': true,
       'gated-page-coupons-2-returns-403': true,
+      'gated-page-groups-484-image-returns-403': true,
+      'gated-page-groups-484-files-returns-403': true,
+      'gated-page-groups-484-files-1-download-returns-403': true,
+      'gated-page-groups-482-image-returns-403': true,
+      'gated-page-groups-482-files-returns-403': true,
+      'gated-page-groups-482-files-1-download-returns-403': true,
       'module-page-legal-renders': true,
       'module-page-legal-acceptable-use-renders': true,
       'module-page-legal-community-guidelines-renders': true,
@@ -2121,6 +2119,12 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-clubs-returns-404'].status).toBe(404);
     expect(checkByName['gated-page-coupons-1-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-coupons-2-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-484-image-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-484-files-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-484-files-1-download-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-482-image-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-482-files-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-groups-482-files-1-download-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-5-edit-returns-403'].status).toBe(403);
     expect(checkByName['redirect-page-password-reset-redirects-login-forgot-password'].location).toBe('/login/forgot-password');
@@ -2496,21 +2500,17 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-groups-484-contains-group-events': true,
       'body-text-page-groups-484-invite-contains-invite-members': true,
       'body-text-page-groups-484-notifications-contains-notification-preferences': true,
-      'body-text-page-groups-484-image-contains-group-images': true,
       'body-text-page-groups-484-announcements-contains-announcements': true,
       'body-text-page-groups-484-discussions-contains-discussions': true,
       'body-text-page-groups-484-discussions-new-contains-start-a-discussion': true,
-      'body-text-page-groups-484-files-contains-group-files': true,
       'body-text-page-groups-484-manage-contains-manage-group': true,
       'body-text-page-groups-482-contains-group-events': true,
       'body-text-page-groups-482-announcements-contains-announcements': true,
       'body-text-page-groups-482-discussions-contains-discussions': true,
       'body-text-page-groups-482-discussions-new-contains-start-a-discussion': true,
-      'body-text-page-groups-482-files-contains-group-files': true,
       'body-text-page-groups-482-manage-contains-manage-group': true,
       'body-text-page-groups-482-invite-contains-invite-members': true,
       'body-text-page-groups-482-notifications-contains-notification-preferences': true,
-      'body-text-page-groups-482-image-contains-group-images': true,
       'body-text-page-users-14-appreciations-contains-public-thank-you-notes-other-members-have-sent-to-this-person': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');

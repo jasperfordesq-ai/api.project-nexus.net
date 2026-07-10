@@ -1299,8 +1299,16 @@ app.use('/events/new', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/events\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
 app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
-app.use(/^\/groups\/\d+\/image$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
-app.use(/^\/groups\/\d+\/files$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(
+  /^\/groups\/\d+\/image$/,
+  parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 }),
+  groupMultipartErrorRedirect('image-failed', 'image-missing')
+);
+app.use(
+  /^\/groups\/\d+\/files$/,
+  parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }),
+  groupMultipartErrorRedirect('file-too-large', 'file-missing')
+);
 app.use(/^\/podcasts\/studio\/\d+\/episodes$/, parseMultipartForm({ maxFileSize: 100 * 1024 * 1024 }));
 app.use(/^\/jobs\/\d+\/apply$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 
@@ -1362,6 +1370,19 @@ function safeLocalPath(input, fallback = '/') {
     return value;
   }
   return fallback;
+}
+
+function groupMultipartErrorRedirect(sizeStatus, invalidStatus) {
+  return (error, req, res, next) => {
+    const match = String(req.originalUrl || req.url || '').match(/\/groups\/(\d+)\/(image|files)(?:[?#]|$)/);
+    if (!match) return next(error);
+
+    const isSizeError = Number(error?.httpCode) === 413
+      || Number(error?.code) === 1009
+      || /max(?:imum)?\s*file\s*size|too large/i.test(String(error?.message || ''));
+    const status = isSizeError ? sizeStatus : invalidStatus;
+    return redirectTo(res, `/groups/${match[1]}/${match[2]}?status=${encodeURIComponent(status)}`);
+  };
 }
 
 function redirectTo(res, pathname) {

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-10T06:13:44.776Z",
+    "generatedAt": "2026-07-10T11:59:42.994Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 608,
@@ -10810,7 +10810,7 @@
       "gates": "",
       "apiNeeds": "service:TotpService",
       "webUkPath": "/profile/two-factor",
-      "webUkView": "profile/two-factor",
+      "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\profile.js"
     },
     {

@@ -197,7 +197,7 @@ async function register(data) {
 }
 
 async function refreshToken(refreshToken) {
-  return request('/api/auth/refresh', {
+  return request('/api/auth/refresh-token', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshToken })
   });
@@ -351,8 +351,8 @@ async function getProfile(token) {
 }
 
 async function updateProfile(token, data) {
-  return request('/api/users/me', {
-    method: 'PATCH',
+  return request('/api/v2/users/me', {
+    method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
@@ -368,7 +368,7 @@ async function uploadProfileAvatar(token, data) {
   }
 
   return request('/api/v2/users/me/avatar', {
-    method: 'PUT',
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form
   });
@@ -2091,8 +2091,8 @@ async function getNotificationUnreadCount(token) {
 }
 
 async function markNotificationRead(token, id) {
-  const result = await request(`/api/notifications/${encodeURIComponent(id)}/read`, {
-    method: 'PUT',
+  const result = await request(`/api/v2/notifications/${encodeURIComponent(id)}/read`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -2136,7 +2136,7 @@ async function deleteAllNotifications(token) {
 }
 
 async function deleteNotification(token, id) {
-  const result = await request(`/api/notifications/${encodeURIComponent(id)}`, {
+  const result = await request(`/api/v2/notifications/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });

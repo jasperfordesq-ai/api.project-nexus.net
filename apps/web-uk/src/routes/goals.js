@@ -4,7 +4,6 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
 const {
   getGoals,
   getGoal,
@@ -158,6 +157,15 @@ async function callGoal(token, method, path, data = undefined) {
   return callGoalApi(token, method, path, data);
 }
 
+async function optionalGoalRead(promise, fallback) {
+  try {
+    return await promise;
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    return fallback;
+  }
+}
+
 function goalRedirect(id, status, suffix = '') {
   return `${GOALS_PATH}/${id}?status=${encodeURIComponent(status)}${suffix}`;
 }
@@ -243,6 +251,8 @@ function normalizeGoal(item) {
   const current = raw.current_value ?? raw.currentValue ?? 0;
   const target = raw.target_value ?? raw.targetValue ?? 0;
   const status = raw.status || 'active';
+  const done = ['completed', 'achieved'].includes(trimmed(status).toLowerCase());
+  const isPublic = checked(raw.is_public ?? raw.isPublic);
   const streakCount = Number(raw.streak_count ?? raw.streakCount ?? 0) || 0;
 
   return {
@@ -253,10 +263,12 @@ function normalizeGoal(item) {
     currentText: formatNumber(current),
     targetText: formatNumber(target),
     progressPercent: progressPercent(raw),
+    done,
     statusLabel: statusLabel(status),
     statusClass: statusClass(status),
-    visibilityLabel: checked(raw.is_public) ? 'Public' : 'Private',
-    visibilityClass: checked(raw.is_public) ? 'govuk-tag--blue' : 'govuk-tag--grey',
+    isPublic,
+    visibilityLabel: isPublic ? 'Public' : 'Private',
+    visibilityClass: isPublic ? 'govuk-tag--blue' : 'govuk-tag--grey',
     streakCount,
     deadline: trimmed(raw.deadline || raw.target_date || raw.targetDate)
   };
@@ -313,6 +325,18 @@ function dateTimeLabel(value) {
     minute: '2-digit',
     hour12: false
   }).replace(',', '');
+}
+
+function dateLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(getRequestIntlLocale(), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
 }
 
 function normalizeEditableGoal(item) {
@@ -392,8 +416,28 @@ function normalizeBuddyNote(item) {
     typeLabel: GOAL_BUDDY_TYPE_LABELS[type],
     message: trimmed(raw.message || ''),
     buddyName: trimmed(raw.buddy_name || raw.buddyName || '') || 'A member',
+    createdAtDateLabel: dateLabel(raw.created_at || raw.createdAt),
     createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
   };
+}
+
+function goalDetailStatus(status) {
+  const value = trimmed(status);
+  if (['goal-updated', 'goal-edited', 'goal-completed', 'buddy-joined'].includes(value)) {
+    return {
+      successStateKey: `goals.states.${value}`,
+      errorStateKey: '',
+      errorHref: ''
+    };
+  }
+  if (['goal-failed', 'goal-invalid', 'buddy-failed'].includes(value)) {
+    return {
+      successStateKey: '',
+      errorStateKey: `goals.states.${value}`,
+      errorHref: value === 'buddy-failed' ? '#buddy-section' : '#increment'
+    };
+  }
+  return { successStateKey: '', errorStateKey: '', errorHref: '' };
 }
 
 function commentAuthorName(raw) {
@@ -1234,18 +1278,36 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }, { redirectOn401: loginRedirect() }));
 
-router.use(requireAuth);
+router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
 
-// View goal with milestones
-router.get('/:id', asyncRoute(async (req, res) => {
-  const result = await getGoal(req.token, req.params.id);
-  const goal = normalizeResponse(result.goal || result);
+  const id = Number(req.params.id);
+  const goalResult = await getGoal(token, id);
+  const [historyResult, insightsResult] = await Promise.all([
+    optionalGoalRead(callGoal(token, 'GET', `/${id}/history?per_page=30`), { data: [] }),
+    optionalGoalRead(callGoal(token, 'GET', `/${id}/insights`), { data: {} })
+  ]);
+  const goal = normalizeGoal(normalizeResponse(dataFrom(goalResult)));
+  const rawInsights = dataFrom(insightsResult) || {};
+  const isOwner = checked(goal.is_owner || goal.isOwner);
+  const isBuddy = checked(goal.is_buddy || goal.isBuddy);
+  const hasBuddy = positiveInteger(goal.mentor_id || goal.mentorId || goal.buddy_id || goal.buddyId) !== null;
 
-  res.render('goals/detail', {
-    title: goal.title || 'Goal',
+  return res.render('goals/detail', {
+    title: goal.title,
+    activeNav: 'explore',
     goal,
-    successMessage: req.flash ? req.flash('success')[0] : null
+    isOwner,
+    isBuddy,
+    hasBuddy,
+    canBecomeBuddy: checked(goal.is_public || goal.isPublic) && !isOwner && !hasBuddy,
+    goalHistory: collectionFrom(historyResult).map(normalizeHistoryEvent),
+    buddyNotes: collectionFrom({ data: rawInsights.buddy_notes || rawInsights.buddyNotes || [] })
+      .map(normalizeBuddyNote),
+    status: trimmed(req.query.status),
+    ...goalDetailStatus(req.query.status)
   });
-}, { notFoundTitle: 'Goal not found' }));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
 module.exports = router;

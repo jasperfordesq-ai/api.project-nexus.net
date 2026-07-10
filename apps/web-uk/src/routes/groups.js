@@ -27,6 +27,7 @@ const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -106,6 +107,18 @@ const GROUP_FILE_ERROR_MESSAGES = {
   'file-forbidden': 'You do not have permission to perform this action.',
   'file-not-found': 'That file could not be found.'
 };
+const GROUP_FILE_MAX_SIZE = 25 * 1024 * 1024;
+const GROUP_FILE_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain', 'text/csv', 'text/markdown',
+  'application/zip', 'application/x-rar-compressed',
+  'video/mp4', 'video/webm',
+  'audio/mpeg', 'audio/wav', 'audio/ogg'
+]);
 const GROUP_MANAGE_SUCCESS_MESSAGES = {
   'member-promoted': 'The member is now an admin.',
   'member-demoted': 'The member is no longer an admin.',
@@ -153,6 +166,14 @@ function collectionFrom(result) {
   if (data && Array.isArray(data.data)) return data.data;
   if (Array.isArray(result?.items)) return result.items;
   return [];
+}
+
+function objectFrom(result) {
+  const data = dataFrom(result);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  if (data.user && typeof data.user === 'object') return data.user;
+  if (data.profile && typeof data.profile === 'object') return data.profile;
+  return data;
 }
 
 function urlFor(res, path) {
@@ -268,6 +289,8 @@ function dateInputValue(value) {
 function normalizeGroup(item, fallbackId = null) {
   const raw = item && typeof item === 'object' ? item : {};
   const viewerMembership = raw.viewer_membership || raw.viewerMembership;
+  const viewerMembershipKnown = ['my_membership', 'myMembership', 'viewer_membership', 'viewerMembership', 'membership', 'my_role', 'myRole']
+    .some((key) => Object.prototype.hasOwnProperty.call(raw, key));
   return {
     ...raw,
     id: positiveInteger(raw.id) || fallbackId,
@@ -275,7 +298,8 @@ function normalizeGroup(item, fallbackId = null) {
     imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
     coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || ''),
     my_membership: raw.my_membership || raw.myMembership || raw.membership || viewerMembership || null,
-    myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null
+    myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null,
+    viewerMembershipKnown
   };
 }
 
@@ -374,16 +398,110 @@ function normalizeJoinRequest(item) {
   };
 }
 
-function isGroupAdmin(group) {
-  const role = trimmed(group?.my_membership?.role || group?.myMembership?.role || group?.membership?.role || '');
-  return ['admin', 'owner'].includes(role);
+function groupMembership(group) {
+  return group?.my_membership
+    || group?.myMembership
+    || group?.viewer_membership
+    || group?.viewerMembership
+    || group?.membership
+    || null;
 }
 
-function isActiveGroupMember(group) {
-  const membership = group?.my_membership || group?.myMembership || group?.membership || null;
+function isPlatformAdmin(profile) {
+  const role = trimmed(profile?.role || profile?.user_role || profile?.account_role || '');
+  return ['admin', 'tenant_admin', 'super_admin', 'god'].includes(role)
+    || checked(profile?.is_super_admin)
+    || checked(profile?.is_tenant_super_admin);
+}
+
+function isGroupAdmin(group, profile = {}) {
+  const membership = groupMembership(group);
+  const role = trimmed(membership?.role || group?.my_role || group?.myRole || '');
+  const status = trimmed(membership?.status || membership?.state || group?.my_status || group?.myStatus || '');
+  const profileId = positiveInteger(profile?.id || profile?.user_id || profile?.userId);
+  const ownerId = positiveInteger(group?.owner_id || group?.ownerId);
+
+  return (['admin', 'owner'].includes(role) && (status === '' || status === 'active'))
+    || (profileId !== null && ownerId === profileId)
+    || isPlatformAdmin(profile);
+}
+
+function isActiveGroupMember(group, profile = {}) {
+  if (isGroupAdmin(group, profile)) return true;
+  const membership = groupMembership(group);
   const role = trimmed(membership?.role || '');
   const status = trimmed(membership?.status || membership?.state || '');
-  return ['member', 'admin', 'owner'].includes(role) || status === 'active' || checked(group?.is_member || group?.isMember);
+  if (status !== '' && status !== 'active') return false;
+  return ['member', 'admin', 'owner'].includes(role)
+    || status === 'active'
+    || checked(group?.is_member || group?.isMember);
+}
+
+function hasViewerMembershipContract(group) {
+  return group?.viewerMembershipKnown === true;
+}
+
+function isKnownGroupAdmin(group, profile) {
+  if (isGroupAdmin(group, profile)) return true;
+  if (hasViewerMembershipContract(group)) return false;
+
+  const profileId = positiveInteger(profile?.id || profile?.user_id || profile?.userId);
+  const ownerId = positiveInteger(group?.owner_id || group?.ownerId);
+  return profileId !== null && ownerId !== null ? false : null;
+}
+
+function isKnownGroupMember(group, profile) {
+  if (isActiveGroupMember(group, profile)) return true;
+  return hasViewerMembershipContract(group) ? false : null;
+}
+
+function renderForbidden(res) {
+  return res.status(403).render('errors/403', { title: 'Forbidden' });
+}
+
+function renderNotFound(res, title = 'Page not found') {
+  return res.status(404).render('errors/404', { title });
+}
+
+function groupFileUploadErrorStatus(error) {
+  if (!(error instanceof ApiError)) return 'file-upload-failed';
+  if (error.status === 403) return 'file-forbidden';
+  if (error.status !== 422) return 'file-upload-failed';
+
+  const code = trimmed(
+    error.data?.code
+    || error.data?.error_code
+    || (Array.isArray(error.data?.errors) ? error.data.errors[0]?.code : '')
+  ).toUpperCase();
+  if (code === 'FILE_TOO_LARGE') return 'file-too-large';
+  if (code === 'INVALID_TYPE') return 'file-type-invalid';
+  if (code === 'INVALID_FILE') return 'file-missing';
+
+  const message = trimmed(error.message).toLowerCase();
+  if (message.includes('25 mb') || message.includes('25mb') || message.includes('too large') || message.includes('size')) {
+    return 'file-too-large';
+  }
+  if (message.includes('type') || message.includes('format') || message.includes('mime')) {
+    return 'file-type-invalid';
+  }
+  return 'file-upload-failed';
+}
+
+async function groupAccessContext(req, id) {
+  const groupResult = await getGroup(req.token, id);
+  const profileResult = await getRequestProfile(req, req.token);
+  return {
+    group: normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id)),
+    profile: objectFrom(profileResult)
+  };
+}
+
+function groupFileValidationStatus(file) {
+  if (!file) return 'file-missing';
+  if (Number(file.size) > GROUP_FILE_MAX_SIZE) return 'file-too-large';
+  const mimeType = trimmed(file.mimetype).toLowerCase();
+  if (mimeType !== '' && !GROUP_FILE_ALLOWED_MIME_TYPES.has(mimeType)) return 'file-type-invalid';
+  return null;
 }
 
 function inviteGeneratedLink(result) {
@@ -632,10 +750,6 @@ function discussionPayload(body) {
   return { title, content };
 }
 
-function hasUploadedValue(req, fieldName) {
-  return !!req.file || !!(req.files && req.files[fieldName]) || trimmed(req.body[fieldName]) !== '';
-}
-
 function uploadedFile(req, fieldName) {
   const file = req.files && req.files[fieldName];
   return file && typeof file === 'object' ? file : null;
@@ -837,8 +951,10 @@ router.get('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res) 
 
 router.get('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const groupResult = await getGroup(req.token, id);
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupAdmin(group, profile) !== true) {
+    return renderForbidden(res);
+  }
 
   return res.render('groups/image', {
     title: 'Group images',
@@ -962,6 +1078,11 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
 
 router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(async (req, res) => {
   const { id, fileId } = req.params;
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupMember(group, profile) !== true) {
+    return renderForbidden(res);
+  }
+
   let download;
 
   try {
@@ -971,13 +1092,12 @@ router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(as
       return redirectTo(res, loginRedirect());
     }
     if (error instanceof ApiError && error.status === 403) {
-      return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-forbidden'));
+      return renderForbidden(res);
     }
     if (error instanceof ApiError && error.status === 404) {
-      return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-not-found'));
+      return renderNotFound(res, 'File not found');
     }
-
-    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-upload-failed'));
+    throw error;
   }
 
   res.status(download.status || 200);
@@ -987,25 +1107,38 @@ router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(as
 
 router.get('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const [groupResult, filesResult] = await Promise.all([
-    getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/files`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return { data: { items: [] } };
-    })
-  ]);
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupMember(group, profile) !== true) {
+    return renderForbidden(res);
+  }
 
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  let filesResult;
+  try {
+    filesResult = await callGroup(req.token, 'GET', `/${id}/files?per_page=50`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return renderForbidden(res);
+    }
+    throw error;
+  }
+
+  const currentUserId = positiveInteger(profile.id || profile.user_id || profile.userId);
+  const isAdmin = isGroupAdmin(group, profile);
   const files = collectionFrom(filesResult)
     .map(normalizeGroupFile)
-    .filter((file) => file.id !== null);
+    .filter((file) => file.id !== null)
+    .map((file) => ({
+      ...file,
+      canDelete: isAdmin || (currentUserId !== null && file.uploadedBy === currentUserId)
+    }));
 
   return res.render('groups/files', {
     title: 'Group files',
     activeNav: 'explore',
     group,
     files,
-    isAdmin: isGroupAdmin(group),
+    isAdmin,
+    currentUserId,
     ...fileStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
@@ -1227,32 +1360,38 @@ router.post('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res)
 
 router.post('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  const type = allowed(req.body.type, ['avatar', 'cover'], 'avatar');
   const file = uploadedFile(req, 'image');
+  let group;
+  let profile;
+  try {
+    ({ group, profile } = await groupAccessContext(req, id));
+  } catch (error) {
+    await removeUploadedFile(file);
+    throw error;
+  }
+  if (isKnownGroupAdmin(group, profile) !== true) {
+    await removeUploadedFile(file);
+    return renderForbidden(res);
+  }
 
-  if (!file && !hasUploadedValue(req, 'image')) {
+  const type = allowed(req.body.type, ['avatar', 'cover'], 'avatar');
+
+  if (!file) {
     return res.redirect(groupSubpageRedirect(res, id, 'image', 'image-missing'));
   }
 
   return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'image', 'image-failed'), async (token) => {
     try {
-      if (!file) {
-        await callGroup(token, 'POST', `/${id}/image?type=${encodeURIComponent(type)}`, {
-          type,
-          image: req.body.image
-        });
-      } else {
-        const buffer = await fs.readFile(file.filepath);
-        await uploadGroupImage(token, id, {
-          type,
-          file: {
-            buffer,
-            filename: trimmed(file.originalFilename) || 'group-image',
-            contentType: trimmed(file.mimetype) || 'application/octet-stream',
-            size: file.size
-          }
-        });
-      }
+      const buffer = await fs.readFile(file.filepath);
+      await uploadGroupImage(token, id, {
+        type,
+        file: {
+          buffer,
+          filename: trimmed(file.originalFilename) || 'group-image',
+          contentType: trimmed(file.mimetype) || 'application/octet-stream',
+          size: file.size
+        }
+      });
     } finally {
       await removeUploadedFile(file);
     }
@@ -1263,32 +1402,41 @@ router.post('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const file = uploadedFile(req, 'file');
-
-  if (!file && !hasUploadedValue(req, 'file')) {
-    return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-missing'));
+  let group;
+  let profile;
+  try {
+    ({ group, profile } = await groupAccessContext(req, id));
+  } catch (error) {
+    await removeUploadedFile(file);
+    throw error;
+  }
+  if (isKnownGroupMember(group, profile) !== true) {
+    await removeUploadedFile(file);
+    return renderForbidden(res);
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'files', 'file-upload-failed'), async (token) => {
+  const validationStatus = groupFileValidationStatus(file);
+
+  if (validationStatus) {
+    await removeUploadedFile(file);
+    return res.redirect(groupSubpageRedirect(res, id, 'files', validationStatus));
+  }
+
+  return requireGroupAction(req, res, (error) => (
+    groupSubpageRedirect(res, id, 'files', groupFileUploadErrorStatus(error))
+  ), async (token) => {
     try {
-      if (!file) {
-        await callGroup(token, 'POST', `/${id}/files`, {
-          file: req.body.file,
-          folder: optionalText(req.body.folder, 255),
-          description: optionalText(req.body.description, 2000)
-        });
-      } else {
-        const buffer = await fs.readFile(file.filepath);
-        await uploadGroupFile(token, id, {
-          folder: optionalText(req.body.folder, 255),
-          description: optionalText(req.body.description, 2000),
-          file: {
-            buffer,
-            filename: trimmed(file.originalFilename) || 'group-file',
-            contentType: trimmed(file.mimetype) || 'application/octet-stream',
-            size: file.size
-          }
-        });
-      }
+      const buffer = await fs.readFile(file.filepath);
+      await uploadGroupFile(token, id, {
+        folder: optionalText(req.body.folder, 100),
+        description: optionalText(req.body.description, 500),
+        file: {
+          buffer,
+          filename: trimmed(file.originalFilename) || 'group-file',
+          contentType: trimmed(file.mimetype) || 'application/octet-stream',
+          size: file.size
+        }
+      });
     } finally {
       await removeUploadedFile(file);
     }
@@ -1299,8 +1447,19 @@ router.post('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const fileId = Number(req.params.fileId);
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupMember(group, profile) !== true) {
+    return renderForbidden(res);
+  }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'files', 'file-delete-failed'), async (token) => {
+  return requireGroupAction(req, res, (error) => {
+    const status = error instanceof ApiError && error.status === 404
+      ? 'file-not-found'
+      : error instanceof ApiError && error.status === 403
+        ? 'file-forbidden'
+        : 'file-delete-failed';
+    return groupSubpageRedirect(res, id, 'files', status);
+  }, async (token) => {
     await callGroup(token, 'DELETE', `/${id}/files/${fileId}`);
     return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-deleted'));
   });
