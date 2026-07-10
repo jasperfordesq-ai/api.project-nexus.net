@@ -1003,7 +1003,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/me/residency-verification",
             "api/me/verein-invitations",
             "api/comments",
-            "api/resources",
             "api/skills",
             "api/group-chatrooms",
             "api/team-tasks",

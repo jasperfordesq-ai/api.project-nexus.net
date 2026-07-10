@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -11,6 +16,121 @@ namespace Nexus.Api.Tests;
 public class ResourcesControllerTests : IntegrationTestBase
 {
     public ResourcesControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    [Fact]
+    public async Task PublicResourcesV2_ReturnsLaravelReactAnonymousCursorContract()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        ResourceCategory category;
+        int targetResourceId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+            category = new ResourceCategory
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = $"Guides {marker}",
+                Description = "Guides for public resource discovery",
+                SortOrder = 3,
+                CreatedAt = DateTime.UtcNow.AddMinutes(-10)
+            };
+
+            db.ResourceCategories.Add(category);
+            await db.SaveChangesAsync();
+
+            var targetResource = new Resource
+            {
+                TenantId = TestData.Tenant1.Id,
+                Title = $"Laravel React resource target {marker}",
+                Description = "Needle public resource contract",
+                Url = "public-guide.pdf",
+                ResourceType = "document",
+                CategoryId = category.Id,
+                CreatedById = TestData.MemberUser.Id,
+                SortOrder = 1,
+                IsPublished = true,
+                CreatedAt = DateTime.UtcNow.AddMinutes(-3)
+            };
+
+            db.Resources.AddRange(
+                targetResource,
+                new Resource
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    Title = $"Laravel React resource extra {marker}",
+                    Description = "Another public resource",
+                    Url = "/uploads/shared/extra.pdf",
+                    ResourceType = "document",
+                    CategoryId = category.Id,
+                    CreatedById = TestData.AdminUser.Id,
+                    SortOrder = 2,
+                    IsPublished = true,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+                });
+
+            await db.SaveChangesAsync();
+            targetResourceId = targetResource.Id;
+        }
+
+        ClearAuthToken();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v2/resources?per_page=1&search=Needle%20public&category_id={category.Id}");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        root.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var data = root.GetProperty("data").EnumerateArray().ToArray();
+        data.Should().HaveCount(1);
+        var row = data[0];
+        row.GetProperty("title").GetString().Should().Be($"Laravel React resource target {marker}");
+        row.GetProperty("description").GetString().Should().Be("Needle public resource contract");
+        row.GetProperty("file_path").GetString().Should().Be("public-guide.pdf");
+        row.GetProperty("file_url").GetString().Should().Contain($"/uploads/{TestData.Tenant1.Id}/resources/public-guide.pdf");
+        row.GetProperty("file_type").GetString().Should().Be("document");
+        row.GetProperty("file_size").GetInt32().Should().Be(0);
+        row.GetProperty("downloads").GetInt32().Should().Be(0);
+        row.GetProperty("uploader").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        row.GetProperty("uploader").GetProperty("name").GetString().Should().Be("Member User");
+        row.GetProperty("category").GetProperty("id").GetInt32().Should().Be(category.Id);
+        row.GetProperty("category").GetProperty("name").GetString().Should().Be(category.Name);
+        row.GetProperty("category").GetProperty("color").GetString().Should().Be("blue");
+        row.GetProperty("is_liked").GetBoolean().Should().BeFalse();
+        row.GetProperty("likes_count").GetInt32().Should().Be(0);
+        row.GetProperty("comments_count").GetInt32().Should().Be(0);
+
+        var meta = root.GetProperty("meta");
+        meta.GetProperty("per_page").GetInt32().Should().Be(1);
+        meta.GetProperty("has_more").GetBoolean().Should().BeFalse();
+        meta.GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+        meta.TryGetProperty("cursor", out _).Should().BeTrue();
+
+        using var categoriesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v2/resources/categories");
+        categoriesRequest.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var categoriesResponse = await Client.SendAsync(categoriesRequest);
+
+        categoriesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var categoriesDocument = JsonDocument.Parse(await categoriesResponse.Content.ReadAsStringAsync());
+        categoriesDocument.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        var categories = categoriesDocument.RootElement.GetProperty("data").EnumerateArray().ToArray();
+        var contractCategory = categories.Single(c => c.GetProperty("id").GetInt32() == category.Id);
+        contractCategory.GetProperty("name").GetString().Should().Be(category.Name);
+        contractCategory.GetProperty("slug").GetString().Should().NotBeNullOrWhiteSpace();
+        contractCategory.GetProperty("color").GetString().Should().Be("blue");
+        contractCategory.GetProperty("resource_count").GetInt32().Should().Be(2);
+
+        await AuthenticateAsMemberAsync();
+        var downloadResponse = await Client.GetAsync($"/api/v2/resources/{targetResourceId}/download");
+        downloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        downloadResponse.Content.Headers.ContentDisposition?.FileNameStar.Should().Be("public-guide.pdf");
+    }
 
     [Fact]
     public async Task List_WithoutAuth_ReturnsUnauthorized()
