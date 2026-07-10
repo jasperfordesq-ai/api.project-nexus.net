@@ -450,6 +450,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/gift-aid-export" => await GetMemberPremiumGiftAidCsv(),
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
+            "/api/v2/admin/member-premium/tiers" => await GetMemberPremiumAdminTiers(),
             "/api/v2/admin/moderation/queue" => await GetModerationQueue(),
             "/api/v2/admin/moderation/settings" => await GetModerationSettings(),
             "/api/v2/admin/moderation/stats" => await GetModerationStats(),
@@ -3865,6 +3866,40 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> GetMemberPremiumAdminTiers()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var plans = await _db.SubscriptionPlans
+            .AsNoTracking()
+            .Where(p => p.TenantId == tenantId)
+            .OrderBy(p => p.Price)
+            .ThenBy(p => p.Name)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var activeSubscriberCounts = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .GroupBy(s => s.PlanId)
+            .Select(g => new { PlanId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(row => row.PlanId, row => row.Count);
+
+        var tiers = plans.Select((plan, index) => MapMemberPremiumAdminTier(
+            plan,
+            index,
+            activeSubscriberCounts.GetValueOrDefault(plan.Id)));
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                tiers
+            }
+        });
+    }
+
     private async Task<IActionResult> PutMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -4230,6 +4265,49 @@ public class AdminExplicitParityController : ControllerBase
             fallback_reason = accountId == string.Empty ? null : "stripe_connect_not_ready"
         };
     }
+
+    private static object MapMemberPremiumAdminTier(SubscriptionPlan plan, int sortOrder, int activeSubscriberCount) => new
+    {
+        id = plan.Id,
+        tenant_id = plan.TenantId,
+        slug = Slugify(plan.Name),
+        name = plan.Name,
+        description = plan.Description,
+        monthly_price_cents = ToCents(plan.Price),
+        yearly_price_cents = ToCents(plan.Price * 12m),
+        stripe_price_id_monthly = (string?)null,
+        stripe_price_id_yearly = (string?)null,
+        stripe_price_account_id = (string?)null,
+        features = NormalizePlanFeatures(plan.Features),
+        sort_order = sortOrder,
+        is_active = plan.IsActive,
+        active_subscriber_count = activeSubscriberCount
+    };
+
+    private static string[] NormalizePlanFeatures(string? features)
+    {
+        if (string.IsNullOrWhiteSpace(features))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(features, StoreJsonOptions)?
+                .Where(feature => !string.IsNullOrWhiteSpace(feature))
+                .Select(feature => feature.Trim())
+                .ToArray() ?? [];
+        }
+        catch (JsonException)
+        {
+            return features
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(feature => !string.IsNullOrWhiteSpace(feature))
+                .ToArray();
+        }
+    }
+
+    private static int ToCents(decimal amount) => (int)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
 
     private async Task<Dictionary<string, bool>> BuildModerationSettings()
     {

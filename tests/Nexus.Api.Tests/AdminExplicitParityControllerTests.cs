@@ -1780,6 +1780,98 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumAdminTiers_ReturnsLaravelReactTierListEnvelope()
+    {
+        var now = DateTime.UtcNow;
+        int activePlanId;
+        int inactivePlanId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var stalePlans = await db.SubscriptionPlans
+                .Where(p => p.TenantId == TestData.Tenant1.Id
+                    && (p.Name == "Admin Member Premium Tier" || p.Name == "Admin Hidden Premium Tier"))
+                .ToListAsync();
+            db.SubscriptionPlans.RemoveRange(stalePlans);
+            await db.SaveChangesAsync();
+
+            var activePlan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Admin Member Premium Tier",
+                Description = "Admin tier visible to Laravel React",
+                Price = 8.75m,
+                Currency = "EUR",
+                Features = """["priority_support","premium_badge"]""",
+                IsActive = true,
+                IsPublic = true,
+                CreatedAt = now.AddDays(-5),
+                UpdatedAt = now.AddDays(-1)
+            };
+            var inactivePlan = new SubscriptionPlan
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Admin Hidden Premium Tier",
+                Description = "Inactive admin tier still visible to admins",
+                Price = 21.00m,
+                Currency = "EUR",
+                Features = """["archive_access"]""",
+                IsActive = false,
+                IsPublic = false,
+                CreatedAt = now.AddDays(-4),
+                UpdatedAt = now.AddDays(-1)
+            };
+            db.SubscriptionPlans.AddRange(activePlan, inactivePlan);
+            await db.SaveChangesAsync();
+
+            db.UserSubscriptions.Add(new UserSubscription
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                PlanId = activePlan.Id,
+                Status = SubscriptionStatus.Active,
+                StartedAt = now.AddDays(-2),
+                NextBillingDate = now.AddMonths(1),
+                CreatedAt = now.AddDays(-2),
+                UpdatedAt = now.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+
+            activePlanId = activePlan.Id;
+            inactivePlanId = inactivePlan.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/member-premium/tiers");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var tiers = json.GetProperty("data").GetProperty("tiers").EnumerateArray().ToList();
+        var activeTier = tiers.Single(t => t.GetProperty("id").GetInt32() == activePlanId);
+        activeTier.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        activeTier.GetProperty("slug").GetString().Should().Be("admin-member-premium-tier");
+        activeTier.GetProperty("name").GetString().Should().Be("Admin Member Premium Tier");
+        activeTier.GetProperty("description").GetString().Should().Be("Admin tier visible to Laravel React");
+        activeTier.GetProperty("monthly_price_cents").GetInt32().Should().Be(875);
+        activeTier.GetProperty("yearly_price_cents").GetInt32().Should().Be(10500);
+        activeTier.GetProperty("stripe_price_id_monthly").ValueKind.Should().Be(JsonValueKind.Null);
+        activeTier.GetProperty("stripe_price_id_yearly").ValueKind.Should().Be(JsonValueKind.Null);
+        activeTier.GetProperty("stripe_price_account_id").ValueKind.Should().Be(JsonValueKind.Null);
+        activeTier.GetProperty("features").EnumerateArray().Select(v => v.GetString())
+            .Should().Equal("priority_support", "premium_badge");
+        activeTier.GetProperty("sort_order").ValueKind.Should().Be(JsonValueKind.Number);
+        activeTier.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        activeTier.GetProperty("active_subscriber_count").GetInt32().Should().Be(1);
+
+        var inactiveTier = tiers.Single(t => t.GetProperty("id").GetInt32() == inactivePlanId);
+        inactiveTier.GetProperty("is_active").GetBoolean().Should().BeFalse();
+        inactiveTier.GetProperty("active_subscriber_count").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
     public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
     {
         await AuthenticateAsAdminAsync();
