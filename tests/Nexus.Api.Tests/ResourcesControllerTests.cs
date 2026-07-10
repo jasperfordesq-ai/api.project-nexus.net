@@ -68,6 +68,17 @@ public class ResourcesControllerTests : IntegrationTestBase
         downloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         downloadResponse.Content.Headers.ContentType?.MediaType.Should().Be("text/plain");
         (await downloadResponse.Content.ReadAsByteArrayAsync()).Should().Equal(fileBytes);
+
+        ClearAuthToken();
+        using var afterDownloadRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v2/resources?search=Laravel%20React%20upload%20{marker}");
+        afterDownloadRequest.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var afterDownloadResponse = await Client.SendAsync(afterDownloadRequest);
+        afterDownloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var afterDownloadDocument = JsonDocument.Parse(await afterDownloadResponse.Content.ReadAsStringAsync());
+        var afterDownloadResource = afterDownloadDocument.RootElement.GetProperty("data").EnumerateArray().Single();
+        afterDownloadResource.GetProperty("downloads").GetInt32().Should().Be(1);
     }
 
     [Fact]

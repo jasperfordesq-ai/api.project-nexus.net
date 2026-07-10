@@ -464,9 +464,11 @@ anonymous tenant-scoped `GET /api/v2/resources`, anonymous
 and social count defaults while preserving legacy `/api/resources` auth
 behavior. Uploads now persist resource-linked `FileUpload` metadata and stream
 the stored bytes back through the download route with focused runtime coverage.
-Exact Laravel `resources.file_*`/`downloads` column fidelity, download-counter
-mutation, update/delete authorization messages, category color persistence,
-resource likes/comments, and browser smoke coverage remain deeper resource gaps.
+Downloads now increment a tenant-scoped compatibility counter and subsequent
+list reads expose the updated `downloads` value. Exact Laravel
+`resources.file_*`/`downloads` column fidelity, update/delete authorization
+messages, category color persistence, resource likes/comments, and browser
+smoke coverage remain deeper resource gaps.
 
 ## Known High-Risk API Gaps
 

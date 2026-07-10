@@ -73,11 +73,15 @@ public class ResourcesV2Controller : ControllerBase
         var pageItems = items.Take(perPage).ToList();
         var nextCursor = hasMore && pageItems.Count > 0 ? EncodeCursor(pageItems[^1].Id) : null;
         var metadata = await LoadUploadMetadataAsync(pageItems.Select(r => r.Id), ct);
+        var downloadCounts = await LoadDownloadCountsAsync(pageItems.Select(r => r.Id), ct);
 
         return Ok(new
         {
             success = true,
-            data = pageItems.Select(resource => MapResource(resource, metadata.GetValueOrDefault(resource.Id))),
+            data = pageItems.Select(resource => MapResource(
+                resource,
+                metadata.GetValueOrDefault(resource.Id),
+                downloadCounts.GetValueOrDefault(resource.Id))),
             meta = new
             {
                 base_url = BaseUrl(),
@@ -229,6 +233,7 @@ public class ResourcesV2Controller : ControllerBase
         if (upload == null)
         {
             var fileName = string.IsNullOrWhiteSpace(resource.Url) ? $"resource-{id}.txt" : Path.GetFileName(resource.Url);
+            await IncrementDownloadCountAsync(id, ct);
             return File(System.Text.Encoding.UTF8.GetBytes(resource.Title), "application/octet-stream", fileName);
         }
 
@@ -238,6 +243,7 @@ public class ResourcesV2Controller : ControllerBase
 
         var bytes = await System.IO.File.ReadAllBytesAsync(fullPath, ct);
         var downloadName = FriendlyDownloadName(resource.Title, upload.StoredFilename);
+        await IncrementDownloadCountAsync(id, ct);
         return File(bytes, upload.ContentType, downloadName);
     }
 
@@ -275,7 +281,8 @@ public class ResourcesV2Controller : ControllerBase
 
         await _db.SaveChangesAsync();
         var metadata = (await LoadUploadMetadataAsync(new[] { existing.Id }, CancellationToken.None)).GetValueOrDefault(existing.Id);
-        return Ok(new { success = true, data = MapResource(existing, metadata) });
+        var downloads = (await LoadDownloadCountsAsync(new[] { existing.Id }, CancellationToken.None)).GetValueOrDefault(existing.Id);
+        return Ok(new { success = true, data = MapResource(existing, metadata, downloads) });
     }
 
     [HttpDelete("{id:int}")]
@@ -385,7 +392,7 @@ public class ResourcesV2Controller : ControllerBase
 
     private int TenantId() => _tenantContext.GetTenantIdOrThrow();
 
-    private object MapResource(Resource resource, UploadMetadata? metadata = null)
+    private object MapResource(Resource resource, UploadMetadata? metadata = null, int downloads = 0)
     {
         var filePath = metadata?.StoredFilename ?? resource.Url ?? string.Empty;
         return new
@@ -397,7 +404,7 @@ public class ResourcesV2Controller : ControllerBase
             file_path = filePath,
             file_type = metadata?.ContentType ?? resource.ResourceType,
             file_size = metadata?.Size ?? 0,
-            downloads = 0,
+            downloads,
             sort_order = resource.SortOrder,
             content_type = "plain",
             content_body = (string?)null,
@@ -494,6 +501,63 @@ public class ResourcesV2Controller : ControllerBase
         return uploads
             .GroupBy(f => f.EntityId!.Value)
             .ToDictionary(g => g.Key, g => UploadMetadata.From(g.First()));
+    }
+
+    private async Task<Dictionary<int, int>> LoadDownloadCountsAsync(IEnumerable<int> resourceIds, CancellationToken ct)
+    {
+        var keys = resourceIds.Distinct().Select(DownloadCountKey).ToArray();
+        if (keys.Length == 0) return new Dictionary<int, int>();
+
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == TenantId() && keys.Contains(c.Key))
+            .ToListAsync(ct);
+
+        return rows
+            .Select(row => new
+            {
+                ResourceId = ParseDownloadCountResourceId(row.Key),
+                Downloads = int.TryParse(row.Value, out var parsed) ? parsed : 0
+            })
+            .Where(row => row.ResourceId.HasValue)
+            .ToDictionary(row => row.ResourceId!.Value, row => row.Downloads);
+    }
+
+    private async Task IncrementDownloadCountAsync(int resourceId, CancellationToken ct)
+    {
+        var key = DownloadCountKey(resourceId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Key == key, ct);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = TenantId(),
+                Key = key,
+                Value = "1",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            var downloads = int.TryParse(row.Value, out var parsed) ? parsed : 0;
+            row.Value = (downloads + 1).ToString();
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static string DownloadCountKey(int resourceId) => $"resources.{resourceId}.downloads";
+
+    private static int? ParseDownloadCountResourceId(string key)
+    {
+        const string prefix = "resources.";
+        const string suffix = ".downloads";
+        if (!key.StartsWith(prefix, StringComparison.Ordinal) || !key.EndsWith(suffix, StringComparison.Ordinal))
+            return null;
+
+        var idText = key[prefix.Length..^suffix.Length];
+        return int.TryParse(idText, out var id) ? id : null;
     }
 
     private static string FriendlyDownloadName(string title, string storedFilename)
