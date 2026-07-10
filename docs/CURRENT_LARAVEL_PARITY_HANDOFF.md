@@ -59,7 +59,9 @@ on `main` and was pushed to `origin/main`. Concurrent dirty files under
 `apps/web-uk/` belong to another active workstream and were not staged or
 modified by this backend slice. Follow-up commit `bcc317e3` adds the
 fail-closed migration-discovery quarantine gate and fixes the CI model-drift
-exit-code interpretation.
+exit-code interpretation; `b6ab9d17` documents it. Commit `92440f48` replaces
+the canonical federation partnership list/approve/reject stubs with the first
+real receiver-scoped decision workflow.
 
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
@@ -68,6 +70,7 @@ exit-code interpretation.
 | Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
 | Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; inactive tenants are excluded and per-tenant failures aggregate. V2 manual execution requires platform-super access. `listing-expiry` and `job-expiry` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports only these two mappings active and the other 40 disabled with `execution_supported:false`. | 40 of 42 catalog jobs remain unmapped; fresh-runtime `scheduled_job_runs` proof remains open. |
 | Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
+| Federation partnership decisions | Canonical `/api[/v2]/admin/federation/partnerships` lists incoming and outgoing rows without changing the legacy outgoing-only route. Approve/reject require the receiving tenant, conditionally transition only `pending`, atomically persist one receiver-to-requester audit row, return Laravel status/error envelopes, and notify initiating-tenant admins only after commit. Same-action and approve-versus-reject races produce one winner and one side-effect set. | Laravel federation-level permission initialization, durable rejection actor/time/reason columns, localized link/push notifications, durable initial-sync scheduling, and canonical audit-log read visibility remain open. This is core decision-state parity, not complete federation parity. |
 | Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
 
 Verification evidence for this slice:
@@ -83,6 +86,12 @@ Verification evidence for this slice:
   `20260710092435_CanonicalRoleSemantics`; no pending model changes.
 - migration discovery quarantine gate: 1/1, with 104 source classes split into
   75 EF-discovered and 29 explicitly quarantined classes.
+- federation partnership workflow: 6/6 PostgreSQL-backed tests, including
+  simultaneous approve/approve and approve/reject races;
+- adjacent legacy federation, compatibility, and route-ownership regressions:
+  129/129; corrected dual-route reflection coverage: 2/2;
+- post-review API Release build: 0 warnings, 0 errors; test-project build:
+  4 pre-existing `xUnit1031` warnings, 0 errors; EF still reports no model drift.
 
 Migration discovery now fails closed in CI, but schema reconciliation remains a
 red gate: 29 legacy classes are not discoverable by EF. Because most contain
@@ -182,8 +191,10 @@ are mostly closed; the remaining work is contract correctness.
    29-entry migration quarantine before restoring any missing metadata.
 2. Replace the remaining 40 unmapped cron definitions with real jobs or keep
    them explicitly disabled/unsupported until equivalent work executes.
-3. Continue the catch-all/fabricated-write inventory, starting with federation
-   partnership and volunteering approval workflows, then broker archive reads.
+3. Implement the migration-backed volunteering approval/list/decline workflow,
+   then finish federation permission/rejection schema, initial-sync/outbox,
+   localized notification, and canonical audit-read parity before broker
+   archive reads.
 4. Complete multi-node challenge storage, trusted devices, auth security
    notifications, TOTP key separation, and WebAuthn sign-counter concurrency.
 5. Close or explicitly alias schema gaps, especially renamed-table families.

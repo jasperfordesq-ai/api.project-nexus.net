@@ -314,8 +314,15 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > item 5 now has explicit user privilege columns, DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
 > targets, and focused role regression coverage. Fresh migration-chain/runtime
-> certification remains open. This progress does not close the catch-all
-> inventory, wider scheduled/provider backlog, or the backend 1000/1000 gate.
+> certification remains open. P0 item 3 now includes real canonical federation
+> partnership list/approve/reject behavior: receiver-only pending transitions,
+> atomic audit, post-commit in-app notifications, Laravel error envelopes, and
+> one-winner concurrency tests. It does not yet include Laravel federation-level
+> permission fields, durable rejection metadata, localized push, initial-sync
+> scheduling, or canonical audit-read visibility. Volunteering approval remains
+> an unconditional compatibility success pending its ShiftId/capacity migration.
+> This progress does not close the catch-all inventory, wider
+> scheduled/provider backlog, or the backend 1000/1000 gate.
 
 ### P1: replace compatibility scaffolding with domain behavior
 
