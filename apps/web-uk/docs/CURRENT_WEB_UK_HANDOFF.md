@@ -62,7 +62,7 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `52/52` cases.
+- Automated browser accessibility: Chromium/axe passed `53/53` cases.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -73,7 +73,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet-management/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -139,6 +139,28 @@ completion gate open are:
   volunteering recommendations; and
 - live destructive/upload proof requires isolated disposable fixtures. It must
   not be manufactured against shared local data.
+
+## 2026-07-10 Wallet Management Contextual Localization Slice
+
+The signed `/wallet/manage` page now resolves its document title, back link,
+caption, description, balance, pending badge, summary, recipient search,
+transfer fields, donation choices, warnings, actions, success states, and error
+states through the exact `govuk_alpha_wallet` catalog. Values now use Laravel's
+hours contract and request-locale two-decimal formatting instead of the former
+local `credits` labels. Recipient dates are locale-aware, blank recipient names
+use Laravel's localized unknown-member fallback, and the missing one-way
+donation warning plus not-money explanation now match Blade.
+
+Focused wallet-manage/source coverage passed `4/4`; the targeted signed Arabic
+live page passed RTL, 320px reflow, the authoritative donation warning, and
+serious/critical axe checks. The complete Jest gate passed `45/45` suites and
+`1,400/1,400` tests, and the expanded aggregate Chromium/axe matrix passed
+`53/53` in 8.8 minutes. The authoritative `govuk_alpha_wallet` namespace is
+English-identical in Arabic, so Web UK preserves it rather than inventing
+translations. Existing transfer/donation contract tests remain green, but live
+mutation effects, recipient privacy depth, broader wallet-overview contextual
+review, manual assistive-technology evidence, and ASP.NET switching remain
+open.
 
 ## 2026-07-10 Connections Structural And Localization Slice
 

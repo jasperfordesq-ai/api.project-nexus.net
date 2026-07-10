@@ -42,8 +42,11 @@ function numberValue(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function creditsLabel(value) {
-  return `${numberValue(value).toFixed(2)} credits`;
+function hoursValue(value) {
+  return new Intl.NumberFormat(getRequestIntlLocale(), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(numberValue(value));
 }
 
 function monthYear(value, style = 'long') {
@@ -75,29 +78,30 @@ function normalizeFund(raw) {
   };
 }
 
-function normalizeRecipient(row) {
+function normalizeRecipient(row, t = (key) => key) {
   const recipient = row && typeof row === 'object' ? row : {};
   const id = Number.parseInt(recipient.id, 10);
   if (!Number.isFinite(id) || id <= 0) return null;
   return {
     id,
-    name: String(recipient.name || [recipient.first_name, recipient.last_name].filter(Boolean).join(' ') || `Member #${id}`).trim(),
+    name: String(recipient.name || [recipient.first_name, recipient.last_name].filter(Boolean).join(' ')).trim()
+      || t('members.unknown_member'),
     location: String(recipient.location || '').trim(),
     since: String(recipient.since || '').trim() || monthYear(recipient.created_at ?? recipient.createdAt, 'short'),
     memberSince: monthYear(recipient.created_at ?? recipient.createdAt, 'long')
   };
 }
 
-function walletManageStatus(status, transferError = '', donateError = '') {
+function walletManageStatus(status, transferError = '', donateError = '', t = (key) => key) {
   const errors = {
-    invalid: 'Check the details and try again.',
-    insufficient: 'You do not have enough credits for that transfer.',
-    'not-found': 'The recipient could not be found.',
-    self: 'You cannot send credits to yourself.',
-    inactive: 'That member cannot receive credits right now.',
-    'too-large': 'Enter 1,000 credits or fewer.',
-    decimals: 'Enter a valid credit amount.',
-    failed: 'We could not complete that wallet action. Try again.'
+    invalid: t('govuk_alpha_wallet.errors.invalid'),
+    insufficient: t('govuk_alpha_wallet.errors.insufficient'),
+    'not-found': t('govuk_alpha_wallet.errors.not_found'),
+    self: t('govuk_alpha_wallet.errors.self'),
+    inactive: t('govuk_alpha_wallet.errors.inactive'),
+    'too-large': t('govuk_alpha_wallet.errors.too_large'),
+    decimals: t('govuk_alpha_wallet.errors.decimals'),
+    failed: t('govuk_alpha_wallet.errors.failed')
   };
 
   if (status === 'transfer-failed') {
@@ -107,10 +111,10 @@ function walletManageStatus(status, transferError = '', donateError = '') {
     return { type: 'error', href: '#donate', message: errors[donateError] || errors.failed };
   }
   if (status === 'transfer-sent') {
-    return { type: 'success', message: 'Your time-credit transfer was sent.' };
+    return { type: 'success', message: t('govuk_alpha_wallet.states.transfer_sent') };
   }
   if (status === 'donate-sent') {
-    return { type: 'success', message: 'Your time-credit donation was sent.' };
+    return { type: 'success', message: t('govuk_alpha_wallet.states.donate_sent') };
   }
   return null;
 }
@@ -182,11 +186,11 @@ function walletSearchPath(query) {
   return `/user-search?${params.toString()}`;
 }
 
-async function walletRecipientsFor(token, query) {
+async function walletRecipientsFor(token, query, t) {
   const trimmed = String(query || '').trim();
   if (trimmed.length < 2) return [];
   return itemsFrom(await callWalletApi(token, 'GET', walletSearchPath(trimmed)), 'users')
-    .map(normalizeRecipient)
+    .map((recipient) => normalizeRecipient(recipient, t))
     .filter(Boolean);
 }
 
@@ -252,7 +256,7 @@ router.get('/recipients', asyncRoute(async (req, res) => {
 
   let recipients;
   try {
-    recipients = await walletRecipientsFor(token, req.query.q);
+    recipients = await walletRecipientsFor(token, req.query.q, res.locals.t);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       return res.status(401).json({ results: [] });
@@ -275,18 +279,18 @@ router.get('/manage', requireAuth, asyncRoute(async (req, res) => {
   const [walletRaw, fundRaw, recipients] = await Promise.all([
     callWalletApi(req.token, 'GET', '/balance'),
     callWalletApi(req.token, 'GET', '/community-fund'),
-    walletRecipientsFor(req.token, recipientQuery)
+    walletRecipientsFor(req.token, recipientQuery, res.locals.t)
   ]);
 
   res.render('wallet/manage', {
-    title: 'Manage credits',
+    title: res.locals.t('govuk_alpha_wallet.manage.title'),
     wallet: normalizeWallet(walletRaw),
     fund: normalizeFund(fundRaw),
     recipients: transferRecipients(recipients),
     recipientQuery,
     donateTarget,
-    status: walletManageStatus(req.query.status, req.query.error, req.query.donate_error),
-    creditsLabel,
+    status: walletManageStatus(req.query.status, req.query.error, req.query.donate_error, res.locals.t),
+    hoursValue,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
