@@ -118,8 +118,8 @@ route coverage is not a completion score.
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test Release builds | Current builds passed with no compile errors |
-| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; combined workflow/guardian/ownership run 67/68 with the sole PostgreSQL fixture-clear timeout occurring before its test body, then that exact case passed 1/1 in isolation; guardian ownership/migration focus 97/97; targeted config/cron/legacy contracts 3/3; pre-guardian wider baseline 180/180 |
-| Migration runtime chain | 106 source classes = 77 EF-discovered + 29 quarantined; no model drift; all 77 discovered migrations applied to blank disposable PostgreSQL through `20260710192521_GuardianConsentLifecycle` |
+| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-shift generation/scheduler 13/13; combined workflow/guardian/ownership run 67/68 with the sole PostgreSQL fixture-clear timeout occurring before its test body, then that exact case passed 1/1 in isolation; guardian ownership/migration focus 97/97; refreshed cron/discovery 2/2; pre-guardian wider baseline 180/180 |
+| Migration runtime chain | 107 source classes = 78 EF-discovered + 29 quarantined; no model drift; all 78 discovered migrations applied to blank disposable PostgreSQL through `20260710211122_RecurringShiftGenerationParity` |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -165,9 +165,14 @@ that implementation movement and the lower amount of current green evidence.
   `src\Nexus.Api\Services\Scheduled\VolunteerGuardianConsentExpiryJob.cs`,
   `src\Nexus.Api\Migrations\20260710192521_GuardianConsentLifecycle.cs`,
   `tests\Nexus.Api.Tests\GuardianConsentLifecycleTests.cs`, and
-  `tests\Nexus.Api.Tests\GuardianConsentRouteOwnershipTests.cs`. Focused proof
-  is the prior 61/61 core plus the clean 7/7 guardian lifecycle. Migration
-  discovery is 106/77/29 with no model drift and a green 77-migration
+  `tests\Nexus.Api.Tests\GuardianConsentRouteOwnershipTests.cs`. Recurring
+  generation anchors are `src\Nexus.Api\Services\ShiftManagementService.cs`,
+  `src\Nexus.Api\Services\Scheduled\VolunteerRecurringShiftGenerationJob.cs`,
+  `src\Nexus.Api\Migrations\20260710211122_RecurringShiftGenerationParity.cs`,
+  and `tests\Nexus.Api.Tests\RecurringShiftGenerationTests.cs`. Focused proof
+  is the prior 61/61 core, clean 7/7 guardian lifecycle, and clean 13/13
+  recurring generation/scheduler set. Migration discovery is 107/78/29 with
+  no model drift and a green 78-migration
   disposable fresh chain. The pre-guardian wider contract baseline is 180/180.
 
 ### Web UK localization/RTL progress after the audit baseline
@@ -363,13 +368,14 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > manual-run endpoint executes real `ListingExpiry` and `JobVacancyExpiry`
 > jobs, persists their outcomes, prevents overlapping scheduled/manual
 > execution, excludes inactive tenants, and returns explicit unsupported,
-> busy, disabled, and failure responses. `volunteer-expire-consents` now maps
-> to the real global guardian-consent expiry job, so 3 of the 42 Laravel cron
-> definitions are executable and the other 39 are reported disabled/
+> busy, disabled, and failure responses. `volunteer-expire-consents` maps to
+> the real global guardian-consent expiry job, while `recurring-shifts` now
+> maps to a 06:00 UTC all-active-tenant 14-day sweep. Four of the 42 Laravel
+> cron definitions are executable and the other 38 are reported disabled/
 > unsupported. P0
 > item 5 now has explicit user privilege columns, DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
-> targets, and focused role regression coverage. The 77-migration discovered
+> targets, and focused role regression coverage. The 78-migration discovered
 > chain is fresh-database certified; full application runtime remains open. P0
 > item 3 now includes real canonical federation
 > partnership list/approve/reject behavior: receiver-only pending transitions,
@@ -392,15 +398,24 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > its sole PostgreSQL fixture-clear timeout occurred before the test body and
 > that exact case then passed 1/1 in isolation. The guardian ownership/migration
 > focus is 97/97. The API and test-project Release builds are
-> green. The latest source migration is
-> `20260710192521_GuardianConsentLifecycle`; discovery is 106/77/29, EF reports
-> no model drift, and the 77 discovered migrations apply to blank PostgreSQL.
+> green. Recurring generation now preserves Laravel's original recurrence
+> anchor, strict ISO weekdays and true-empty day behavior, biweekly parity,
+> month-end clamping, end/max bounds, and counter accuracy. Pattern-row locks,
+> a filtered unique occurrence key, and targeted conflict handling make
+> scheduled/manual retries race-safe; per-pattern errors fail the persisted job
+> after the remaining tenants continue. The focused set is 13/13. The latest
+> source migration is `20260710211122_RecurringShiftGenerationParity`;
+> discovery is 107/78/29, EF reports no model drift, and the 78 discovered
+> migrations apply to blank PostgreSQL.
 > The 180/180 wider contract result is the pre-guardian baseline.
 > Unchanged-frontend runtime smoke remains open. Both new volunteering
 > migrations reject unsafe downgrades: the former unique application index
 > cannot be restored after legitimate reapplication history, and hashed
 > guardian credentials/status semantics cannot be safely discarded.
-> Volunteer-organisation status/membership ownership, localized built-in
+> The recurrence index migration is reversible but fails closed when duplicate
+> historical occurrences require manual linked-history reconciliation.
+> Recurring-pattern CRUD envelopes/authorization/feature gates/delete cleanup,
+> volunteer-organisation status/membership ownership, localized built-in
 > guardian delivery copy and the full tenant-link fallback chain, live provider
 > proof, and unrelated long-tail volunteering scaffolds also remain. This
 > progress does not close the catch-all

@@ -961,8 +961,8 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         master.GetProperty("last_run_at").ValueKind.Should().Be(JsonValueKind.Null);
         master.GetProperty("last_status").ValueKind.Should().Be(JsonValueKind.Null);
 
-        jobs.Count(job => job.GetProperty("status").GetString() == "active").Should().Be(3);
-        jobs.Count(job => job.GetProperty("execution_supported").GetBoolean()).Should().Be(3);
+        jobs.Count(job => job.GetProperty("status").GetString() == "active").Should().Be(4);
+        jobs.Count(job => job.GetProperty("execution_supported").GetBoolean()).Should().Be(4);
         jobs.Should().ContainSingle(job =>
             job.GetProperty("slug").GetString() == "listing-expiry" &&
             job.GetProperty("status").GetString() == "active" &&
@@ -973,6 +973,10 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             job.GetProperty("execution_supported").GetBoolean());
         jobs.Should().ContainSingle(job =>
             job.GetProperty("slug").GetString() == "volunteer-expire-consents" &&
+            job.GetProperty("status").GetString() == "active" &&
+            job.GetProperty("execution_supported").GetBoolean());
+        jobs.Should().ContainSingle(job =>
+            job.GetProperty("slug").GetString() == "recurring-shifts" &&
             job.GetProperty("status").GetString() == "active" &&
             job.GetProperty("execution_supported").GetBoolean());
 

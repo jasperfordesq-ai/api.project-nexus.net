@@ -100,7 +100,8 @@ public class AdminCompatibilityController : ControllerBase
         {
             ["listing-expiry"] = "ListingExpiry",
             ["job-expiry"] = "JobVacancyExpiry",
-            ["volunteer-expire-consents"] = "VolunteerGuardianConsentExpiry"
+            ["volunteer-expire-consents"] = "VolunteerGuardianConsentExpiry",
+            ["recurring-shifts"] = "VolunteerRecurringShiftGeneration"
         };
 
     private static readonly (int Id, string Name, string Location)[] MenuDefinitions =

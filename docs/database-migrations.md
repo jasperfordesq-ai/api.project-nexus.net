@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Discovery Quarantine
 
-The repository currently contains 106 main `Migration` classes. EF Release
-discovery verifies 77 while the known legacy quarantine remains 29 classes.
+The repository currently contains 107 main `Migration` classes. EF Release
+discovery verifies 78 while the known legacy quarantine remains 29 classes.
 Two designer-less migrations are
 valid because they carry inline `[Migration]` and `[DbContext]` metadata; a
 `.Designer.cs` file is not itself the contract.
@@ -23,8 +23,15 @@ metadata blindly. First inventory the source class, intended migration id,
 schema effects, and each supported environment's history/schema state. No
 production inspection or change is implied by the source audit.
 
-`20260710192521_GuardianConsentLifecycle` is the current latest migration. It
-adds guardian phone, consent IP, a unique nullable SHA-256 token hash, required
+`20260710211122_RecurringShiftGenerationParity` is the current latest
+migration. It replaces the recurring-pattern tenant index with a
+tenant/active/end-date sweep index and adds a filtered unique generated-shift
+key on tenant, pattern, and exact start time. The migration fails before index
+creation if duplicate historical occurrences exist; it never chooses a shift
+to delete because linked operational history may already depend on either row.
+
+The preceding `20260710192521_GuardianConsentLifecycle` migration adds guardian
+phone, consent IP, a unique nullable SHA-256 token hash, required
 relationship storage, canonical lifecycle-status cleanup, safe read indexes,
 and a cascade minor-user relationship. It expires unverifiable legacy pending/
 active rows and removes orphan minor rows before enforcing the new constraint.
@@ -32,10 +39,16 @@ The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
 application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
 and the indexes and `SET NULL` foreign keys used by transactional volunteering
 capacity checks. The API and test projects build cleanly; the prior focused
-transactional suite passes 61/61 and the guardian lifecycle passes 7/7. Final
-discovery reports `source=106, discovered=77, quarantined=29`, EF reports no
-pending model changes, and all 77 discovered migrations apply to a blank
-disposable PostgreSQL database through the latest migration id.
+transactional suite passes 61/61, guardian lifecycle 7/7, and recurring-shift
+generation 13/13. Final discovery reports
+`source=107, discovered=78, quarantined=29`, EF reports no pending model
+changes, and all 78 discovered migrations apply to a blank disposable
+PostgreSQL database through the latest migration id.
+
+Before applying `RecurringShiftGenerationParity`, inventory duplicate rows by
+`("TenantId", "RecurringPatternId", "StartsAt")` where the pattern id is not
+null. Reconcile any duplicates and their linked check-ins, applications,
+reservations, waitlist entries, and other history explicitly before retrying.
 
 Before applying `GuardianConsentLifecycle` to production, take the normal
 pre-migration backup and review affected-row counts. The migration deliberately
@@ -58,7 +71,7 @@ neither discovered by EF nor listed in the explicit 29-entry legacy quarantine,
 if a quarantined class becomes discoverable without review, or if an intended
 migration id no longer matches its type. Commit `bcc317e3` introduced the gate
 and corrected the EF drift step so its zero exit code is treated as a clean
-model. The verified inventory is `source=106, discovered=77, quarantined=29`.
+model. The verified inventory is `source=107, discovered=78, quarantined=29`.
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -147,7 +160,7 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The reflection/quarantine gate is expected to cover all 106 compiled migration
+The reflection/quarantine gate is expected to cover all 107 compiled migration
 subclasses, including the 29 classes that EF cannot currently discover. It
 prevents a new class from becoming silently invisible, but it does not prove
 that the quarantined DDL is safe to replay. A successful `database update`
@@ -248,6 +261,10 @@ pre-migration backup instead.
 its `Down()` throws before changing schema because rollback would discard
 hashed guardian credentials and restore unsafe legacy status and verification
 semantics. Use a tested forward remediation or restore the pre-migration backup.
+
+`20260710211122_RecurringShiftGenerationParity` has a data-preserving `Down()`:
+it removes the filtered occurrence and active-pattern indexes and restores the
+former simple recurring-pattern tenant index.
 
 ### Connection Strings
 

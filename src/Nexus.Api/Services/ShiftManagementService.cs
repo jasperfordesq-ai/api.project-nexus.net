@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -72,6 +73,8 @@ public sealed record GroupReservationMemberItem(
     string Status,
     DateTime CreatedAt);
 
+public sealed record RecurringShiftGenerationResult(int Processed, int Generated, int Errors);
+
 public class ShiftManagementService
 {
     private readonly NexusDbContext _db;
@@ -132,7 +135,6 @@ public class ShiftManagementService
 
         _db.RecurringShiftPatterns.Add(pattern);
         await _db.SaveChangesAsync();
-        await GenerateOccurrencesAsync(pattern.Id, 14);
         return (pattern, null);
     }
 
@@ -171,60 +173,94 @@ public class ShiftManagementService
         return null;
     }
 
-    public async Task GenerateOccurrencesAsync(int patternId, int daysAhead)
+    public async Task<int> GenerateOccurrencesAsync(
+        int patternId,
+        int daysAhead,
+        CancellationToken cancellationToken = default)
     {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
+            cancellationToken);
+
+        // Serialize every generator for one pattern. The database uniqueness
+        // constraint remains the final guard against inserts outside this
+        // service or process.
         var pattern = await _db.RecurringShiftPatterns
-            .FirstOrDefaultAsync(p => p.Id == patternId);
-        if (pattern == null || !pattern.IsActive) return;
+            .FromSqlInterpolated(
+                $"""
+                SELECT *
+                FROM "RecurringShiftPatterns"
+                WHERE "Id" = {patternId} AND "TenantId" = {tenantId}
+                FOR UPDATE
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (pattern is null || !pattern.IsActive)
+        {
+            return 0;
+        }
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var cutoff = today.AddDays(daysAhead);
-
-        var existing = await _db.VolunteerShifts
-            .Where(s => s.RecurringPatternId == patternId)
-            .Select(s => DateOnly.FromDateTime(s.StartsAt))
-            .ToListAsync();
-
-        var daysOfWeek = pattern.DaysOfWeek?
-            .Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(d => Enum.TryParse<DayOfWeek>(d.Trim(), true, out var day) ? day : (DayOfWeek?)null)
-            .Where(d => d.HasValue)
-            .Select(d => d!.Value)
-            .ToHashSet() ?? new HashSet<DayOfWeek>();
-
         var current = pattern.StartDate > today ? pattern.StartDate : today;
-        var generated = 0;
-
-        while (current <= cutoff &&
-               (pattern.EndDate == null || current <= pattern.EndDate) &&
-               (pattern.MaxOccurrences == null ||
-                pattern.OccurrencesGenerated + generated < pattern.MaxOccurrences))
+        var cutoff = today.AddDays(Math.Max(0, daysAhead));
+        if (pattern.EndDate is { } endDate && endDate < cutoff)
         {
-            bool shouldGenerate = pattern.Frequency switch
-            {
-                "daily" => true,
-                "weekly" => daysOfWeek.Contains(current.DayOfWeek),
-                "biweekly" => daysOfWeek.Contains(current.DayOfWeek) &&
-                              ((current.DayNumber - pattern.StartDate.DayNumber) / 7) % 2 == 0,
-                "monthly" => current.Day == pattern.StartDate.Day,
-                _ => false
-            };
+            cutoff = endDate;
+        }
 
-            if (shouldGenerate && !existing.Contains(current))
+        if (pattern.MaxOccurrences is < 0)
+        {
+            throw new InvalidOperationException(
+                $"Recurring shift pattern {pattern.Id} has a negative max-occurrences value.");
+        }
+
+        var maxOccurrences = pattern.MaxOccurrences is null or 0
+            ? int.MaxValue
+            : pattern.MaxOccurrences.Value;
+        var remaining = maxOccurrences - pattern.OccurrencesGenerated;
+        if (remaining <= 0 || current > cutoff)
+        {
+            return 0;
+        }
+
+        var frequency = pattern.Frequency;
+        if (frequency is not ("daily" or "weekly" or "biweekly" or "monthly"))
+        {
+            throw new InvalidOperationException(
+                $"Recurring shift pattern {pattern.Id} has unsupported frequency '{frequency}'.");
+        }
+
+        var isoDays = ParseIsoDaysOfWeek(pattern.DaysOfWeek);
+        var generated = 0;
+        while (current <= cutoff && generated < remaining)
+        {
+            if (ShouldGenerateOccurrence(pattern, current, isoDays))
             {
-                _db.VolunteerShifts.Add(new VolunteerShift
-                {
-                    TenantId = pattern.TenantId,
-                    OpportunityId = pattern.OpportunityId,
-                    RecurringPatternId = patternId,
-                    Title = pattern.Title,
-                    StartsAt = current.ToDateTime(TimeOnly.FromTimeSpan(pattern.StartTime)),
-                    EndsAt = current.ToDateTime(TimeOnly.FromTimeSpan(pattern.EndTime)),
-                    MaxVolunteers = pattern.Capacity ?? 10,
-                    Status = ShiftStatus.Scheduled
-                });
-                generated++;
+                var startsAt = DateTime.SpecifyKind(
+                    current.ToDateTime(TimeOnly.FromTimeSpan(pattern.StartTime)),
+                    DateTimeKind.Utc);
+                var endsAt = DateTime.SpecifyKind(
+                    current.ToDateTime(TimeOnly.FromTimeSpan(pattern.EndTime)),
+                    DateTimeKind.Utc);
+                var createdAt = DateTime.UtcNow;
+
+                // The filtered recurring occurrence key keeps retries and
+                // concurrent callers safe without masking unrelated conflicts.
+                generated += await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    INSERT INTO volunteer_shifts
+                        ("TenantId", "OpportunityId", "RecurringPatternId", "Title",
+                         "StartsAt", "EndsAt", "MaxVolunteers", "Status", "CreatedAt")
+                    VALUES
+                        ({pattern.TenantId}, {pattern.OpportunityId}, {pattern.Id}, {pattern.Title},
+                         {startsAt}, {endsAt}, {pattern.Capacity ?? 1}, {ShiftStatus.Scheduled.ToString()}, {createdAt})
+                    ON CONFLICT ("TenantId", "RecurringPatternId", "StartsAt")
+                    WHERE "RecurringPatternId" IS NOT NULL
+                    DO NOTHING
+                    """,
+                    cancellationToken);
             }
+
             current = current.AddDays(1);
         }
 
@@ -232,9 +268,146 @@ public class ShiftManagementService
         {
             pattern.OccurrencesGenerated += generated;
             pattern.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return generated;
+    }
+
+    public async Task<RecurringShiftGenerationResult> ProcessAllPatternsAsync(
+        int daysAhead = 14,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var patternIds = await _db.RecurringShiftPatterns
+            .AsNoTracking()
+            .Where(pattern =>
+                pattern.TenantId == tenantId
+                && pattern.IsActive
+                && (pattern.EndDate == null || pattern.EndDate >= today))
+            .OrderBy(pattern => pattern.Id)
+            .Select(pattern => pattern.Id)
+            .ToListAsync(cancellationToken);
+
+        var processed = 0;
+        var generated = 0;
+        var errors = 0;
+        foreach (var patternId in patternIds)
+        {
+            try
+            {
+                generated += await GenerateOccurrencesAsync(
+                    patternId,
+                    daysAhead,
+                    cancellationToken);
+                processed++;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                errors++;
+                _db.ChangeTracker.Clear();
+                _logger.LogError(
+                    exception,
+                    "Recurring shift generation failed for pattern {PatternId} in tenant {TenantId}",
+                    patternId,
+                    tenantId);
+            }
+        }
+
+        return new RecurringShiftGenerationResult(processed, generated, errors);
+    }
+
+    private static bool ShouldGenerateOccurrence(
+        RecurringShiftPattern pattern,
+        DateOnly date,
+        ParsedIsoDays isoDays)
+    {
+        return pattern.Frequency switch
+        {
+            "daily" => true,
+            "weekly" => isoDays.MatchEveryDay || isoDays.Days.Contains(ToIsoDayOfWeek(date.DayOfWeek)),
+            "biweekly" =>
+                ((date.DayNumber - pattern.StartDate.DayNumber) / 7) % 2 == 0
+                && (isoDays.MatchEveryDay || isoDays.Days.Contains(ToIsoDayOfWeek(date.DayOfWeek))),
+            "monthly" => date.Day == Math.Min(
+                pattern.StartDate.Day,
+                DateTime.DaysInMonth(date.Year, date.Month)),
+            _ => false
+        };
+    }
+
+    private static ParsedIsoDays ParseIsoDaysOfWeek(string? value)
+    {
+        var days = new HashSet<int>();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return new ParsedIsoDays(days, MatchEveryDay: true);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                var elementCount = 0;
+                foreach (var element in document.RootElement.EnumerateArray())
+                {
+                    elementCount++;
+                    if (element.ValueKind == JsonValueKind.Number
+                        && element.TryGetInt32(out var numeric)
+                        && numeric is >= 1 and <= 7)
+                    {
+                        days.Add(numeric);
+                    }
+                }
+
+                // Laravel uses strict integer membership. A genuinely empty
+                // JSON array means every day, but a non-empty array whose
+                // values are invalid or strings must not collapse to that.
+                return new ParsedIsoDays(days, MatchEveryDay: elementCount == 0);
+            }
+
+            return new ParsedIsoDays(days, MatchEveryDay: false);
+        }
+        catch (JsonException)
+        {
+            // Legacy ASP.NET rows used comma-separated DayOfWeek names.
+        }
+
+        var legacyItems = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var item in legacyItems)
+        {
+            AddIsoDay(days, item);
+        }
+
+        return new ParsedIsoDays(days, MatchEveryDay: legacyItems.Length == 0);
+    }
+
+    private static void AddIsoDay(ISet<int> days, string? value)
+    {
+        var normalized = value?.Trim().Trim('"');
+        if (int.TryParse(normalized, out var numeric) && numeric is >= 1 and <= 7)
+        {
+            days.Add(numeric);
+            return;
+        }
+
+        if (Enum.TryParse<DayOfWeek>(normalized, true, out var legacyDay))
+        {
+            days.Add(ToIsoDayOfWeek(legacyDay));
         }
     }
+
+    private static int ToIsoDayOfWeek(DayOfWeek day) =>
+        day == DayOfWeek.Sunday ? 7 : (int)day;
+
+    private sealed record ParsedIsoDays(IReadOnlySet<int> Days, bool MatchEveryDay);
 
     // ── Shift Swaps ───────────────────────────────────────────────────────────
 

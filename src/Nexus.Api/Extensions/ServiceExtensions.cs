@@ -323,6 +323,7 @@ public static class ServiceExtensions
         services.AddHostedService<Nexus.Api.Services.Scheduled.ExpiredTokenCleanupJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerWaitlistOfferExpiryJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerGuardianConsentExpiryJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerRecurringShiftGenerationJob>();
 
         // Meilisearch (semantic search — optional, falls back to ILIKE)
         services.Configure<MeilisearchOptions>(

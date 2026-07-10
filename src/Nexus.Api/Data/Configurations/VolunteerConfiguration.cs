@@ -53,8 +53,18 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.OpportunityId);
             entity.HasIndex(e => e.StartsAt);
+            entity.HasIndex(e => new { e.TenantId, e.RecurringPatternId, e.StartsAt })
+                .IsUnique()
+                .HasFilter("\"RecurringPatternId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Opportunity).WithMany(o => o.Shifts).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        // RecurringShiftPattern
+        modelBuilder.Entity<RecurringShiftPattern>(entity =>
+        {
+            entity.HasIndex(e => new { e.TenantId, e.IsActive, e.EndDate });
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 

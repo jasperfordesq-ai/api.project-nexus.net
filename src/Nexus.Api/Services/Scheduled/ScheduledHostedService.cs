@@ -103,6 +103,13 @@ public abstract class ScheduledHostedService : BackgroundService
     protected abstract TimeSpan DefaultInterval { get; }
 
     /// <summary>
+    /// Resolve the delay after a completed run. Interval-based jobs use the
+    /// configured/default interval; calendar-aligned jobs may override this
+    /// while still respecting an explicit interval override.
+    /// </summary>
+    protected virtual TimeSpan DelayAfterRun(TimeSpan resolvedInterval) => resolvedInterval;
+
+    /// <summary>
     /// Initial delay before the first run, to avoid all jobs firing at startup.
     /// Default: 30 seconds. Override per-job to spread load.
     /// </summary>
@@ -162,7 +169,7 @@ public abstract class ScheduledHostedService : BackgroundService
 
             try
             {
-                await Task.Delay(interval, stoppingToken);
+                await Task.Delay(DelayAfterRun(interval), stoppingToken);
             }
             catch (OperationCanceledException)
             {
