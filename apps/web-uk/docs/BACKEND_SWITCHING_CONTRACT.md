@@ -68,6 +68,9 @@ shared `/{tenantSlug}/accessible`, parent-domain child paths, and slugless
 custom-domain contexts do not rely only on last-mile response rewriting. The
 volunteering action routes now follow this rule for auth-required handoffs,
 direct validation branches, and Laravel API success/failure outcomes. The
+group routes now follow this rule for the shared group action helper and the
+file-download auth handoff while preserving already-mounted failure targets
+without double-prefixing. The
 podcast page routes now follow this rule for signed-out and Laravel-401 auth
 handoffs, and the podcast action routes follow it for subscribe, studio show,
 and episode POST outcomes. The federation action routes now follow it for

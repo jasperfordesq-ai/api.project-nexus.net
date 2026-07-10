@@ -186,8 +186,11 @@ Current gaps:
   The latest focused group source conversion covers group announcement edit,
   discussion, invite, image, notification, manage, member, and file local
   links/forms through `urlFor()`, and group route-level redirects now resolve
-  through `res.locals.urlFor` so group POST outcomes stay inside shared tenant
-  mounts and custom-domain child paths. The latest focused group/volunteering
+  through `res.locals.urlFor` so auth handoffs, API-failure POST outcomes, and
+  file-download auth exits stay inside shared tenant mounts and custom-domain
+  child paths. Focused source coverage plus a shared-mount group notification
+  API-failure test guard the central helper against flat or double-prefixed
+  redirects. The latest focused group/volunteering
   source conversion also covers volunteering recommended shifts, including
   recommended opportunity links.
   The latest public volunteering source conversion covers the public

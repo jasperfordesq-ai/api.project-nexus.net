@@ -157,6 +157,12 @@ with focused shared-mount coverage for `/acme/accessible/group-exchanges`,
 `/acme/accessible/group-exchanges/new`, and
 `/acme/accessible/group-exchanges/7`.
 
+Group route redirect note: `src/routes/groups.js` now sends central group
+action auth and API-failure redirects plus file-download auth handoffs through a
+route-local helper backed by `res.locals.urlFor`, with focused source coverage
+and shared-mount notification failure coverage guarding against flat or
+double-prefixed redirects.
+
 Ideation action redirect note: `src/routes/ideation-actions.js` now sends
 challenge, idea, outcome, media, conversion, and campaign POST redirects
 through `res.locals.urlFor`, with focused shared-mount create redirect coverage

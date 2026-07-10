@@ -158,6 +158,25 @@ function urlFor(res, path) {
   return typeof res?.locals?.urlFor === 'function' ? res.locals.urlFor(path) : path;
 }
 
+function redirectTo(res, pathname) {
+  const target = typeof pathname === 'string' && pathname ? pathname : '/';
+  const activePrefix = typeof res?.locals?.accessibleRoutePrefix === 'string'
+    ? res.locals.accessibleRoutePrefix
+    : '';
+  if (
+    activePrefix
+    && (
+      target === activePrefix
+      || target.startsWith(`${activePrefix}/`)
+      || target.startsWith(`${activePrefix}?`)
+      || target.startsWith(`${activePrefix}#`)
+    )
+  ) {
+    return res.redirect(target);
+  }
+  return res.redirect(urlFor(res, target));
+}
+
 function statusRedirect(res, path, status, fragment = '') {
   return `${urlFor(res, path)}?status=${encodeURIComponent(status)}${fragment}`;
 }
@@ -178,8 +197,8 @@ function discussionRedirect(res, id, discussionId, status, fragment = '') {
   return statusRedirect(res, `/groups/${id}/discussions/${discussionId}`, status, fragment);
 }
 
-function loginRedirect(res) {
-  return urlFor(res, '/login?status=auth-required');
+function loginRedirect() {
+  return '/login?status=auth-required';
 }
 
 function isAuthError(error) {
@@ -204,17 +223,18 @@ async function callGroup(token, method, path, data = undefined) {
 
 async function requireGroupAction(req, res, failureRedirect, action) {
   if (!req.token) {
-    return res.redirect(loginRedirect(res));
+    return redirectTo(res, loginRedirect());
   }
 
   try {
     return await action(req.token);
   } catch (error) {
     if (isAuthError(error)) {
-      return res.redirect(loginRedirect(res));
+      return redirectTo(res, loginRedirect());
     }
 
-    return res.redirect(typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect);
+    const failurePath = typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect;
+    return redirectTo(res, failurePath);
   }
 }
 
@@ -947,7 +967,7 @@ router.get('/:id(\\d+)/files/:fileId(\\d+)/download', requireAuth, asyncRoute(as
     download = await downloadGroupFile(req.token, `/${id}/files/${fileId}/download`);
   } catch (error) {
     if (isAuthError(error)) {
-      return res.redirect(loginRedirect(res));
+      return redirectTo(res, loginRedirect());
     }
     if (error instanceof ApiError && error.status === 403) {
       return res.redirect(groupSubpageRedirect(res, id, 'files', 'file-forbidden'));

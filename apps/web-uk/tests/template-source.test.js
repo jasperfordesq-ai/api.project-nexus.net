@@ -409,9 +409,14 @@ describe('tenant-aware template helper conversion', () => {
       'utf8'
     );
 
+    expect(route).toContain('function redirectTo(res, pathname)');
     expect(route).not.toMatch(/res\.redirect\(`\/groups/);
     expect(route).not.toMatch(/res\.redirect\(['"]\/groups/);
+    expect(route).not.toContain('res.redirect(loginRedirect(res))');
+    expect(route).not.toContain("res.redirect(typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect)");
     expect(route).not.toMatch(/statusRedirect\(`\/groups/);
+    expect(route).toContain('redirectTo(res, loginRedirect())');
+    expect(route).toContain('redirectTo(res, failurePath)');
     expect(route).toContain('res.locals.urlFor');
   });
 

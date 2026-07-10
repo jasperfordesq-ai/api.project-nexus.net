@@ -14925,6 +14925,38 @@ describe('shared accessible frontend shell', () => {
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
   });
 
+  it('keeps Laravel group API failure redirects inside the shared tenant mount', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.callGroupApi.mockRejectedValueOnce(new api.ApiError('Unable to save preferences', 500));
+
+    const first = await agent
+      .get('/acme/accessible/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/acme/accessible/groups/42/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        frequency: 'digest',
+        email_enabled: 'on'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/groups/42/notifications?status=prefs-failed');
+    expect(response.headers.location).not.toContain('/acme/accessible/acme/accessible');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/notification-prefs', {
+      frequency: 'digest',
+      email_enabled: true,
+      push_enabled: false
+    });
+  });
+
   it('renders the Laravel group invite page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({

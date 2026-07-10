@@ -225,8 +225,10 @@ links, and legacy my-groups source controls through `urlFor()`. The latest
 group depth source slice now routes group announcement edit, discussion,
 invite, image, notification, manage, member, and file local links/forms through
 `urlFor()`, and group route redirects now resolve through `res.locals.urlFor`
-so group POST outcomes stay under shared tenant mounts and custom-domain child
-paths. A scoped Laravel runtime smoke against temporary Web UK
+so group auth handoffs, API-failure POST outcomes, and file-download auth exits
+stay under shared tenant mounts and custom-domain child paths. Focused source
+coverage plus a shared-mount group notification API-failure test now guard that
+central helper. A scoped Laravel runtime smoke against temporary Web UK
 `http://127.0.0.1:6611`, Laravel `http://127.0.0.1:8088`, and `TENANT_ID=2`
 passed `22/22` checks for base auth/cookie/logout plus `/groups/484/invite`,
 `/groups/484/notifications`, `/groups/484/image`, `/groups/484/manage`,
