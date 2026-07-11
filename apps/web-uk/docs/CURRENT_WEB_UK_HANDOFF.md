@@ -79,6 +79,12 @@ scores must not be reused as current results.
   and verified absence in both the final Saved page and Laravel BookmarkService.
   This exposed and fixed the prior wrong SOC10 delete boundary: the route now
   matches Blade's `POST /api/v2/bookmarks` `{ type, id }` toggle contract.
+- Opt-in Resources side-effect smoke: `1/1` passed in `1.4` minutes. It
+  uploaded a unique 59-byte text file through the Web UK multipart form,
+  found the exact Laravel-backed library card, downloaded an attachment with
+  byte-for-byte equality, deleted it through the rendered warning action, and
+  proved final Laravel listing absence. The disposable row and file were not
+  retained.
 - Default-English branded header proof: the real `timebanking-org` bootstrap
   logo loaded at `392x105` intrinsic and `179x48` rendered size, with the exact
   tenant name as alt text and no horizontal overflow. Web UK now follows
