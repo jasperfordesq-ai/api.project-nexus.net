@@ -279,16 +279,6 @@ function normalizeNearbyMember(member, t, formatNumber) {
   };
 }
 
-function decimalLabel(value, fallback = '0.0') {
-  const number = Number(value);
-  return Number.isFinite(number) ? number.toFixed(1) : fallback;
-}
-
-function integerLabel(value, fallback = '0') {
-  const number = Number(value);
-  return Number.isFinite(number) ? String(Math.trunc(number)) : fallback;
-}
-
 function titleLabel(value) {
   const raw = String(value || '').replace(/_/g, ' ').trim();
   if (!raw) return '';
@@ -301,7 +291,12 @@ function dateLabel(value) {
   return date.toLocaleDateString(getRequestIntlLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function normalizeInsightsProfile(profile) {
+function translatedOrFallback(t, key, fallback, replacements = {}) {
+  const translated = t(key, replacements);
+  return translated === key ? fallback : translated;
+}
+
+function normalizeInsightsProfile(profile, t, formatNumber) {
   const stats = profile && typeof profile.stats === 'object' && profile.stats !== null ? profile.stats : {};
   const nexusScore = profile && typeof profile.nexus_score === 'object' && profile.nexus_score !== null
     ? profile.nexus_score
@@ -309,30 +304,40 @@ function normalizeInsightsProfile(profile) {
   const badges = Array.isArray(profile.badges)
     ? profile.badges
     : (Array.isArray(profile.showcased_badges) ? profile.showcased_badges : []);
+  const score = Number(nexusScore?.total_score);
+  const displayName = String(profile?.name || '').trim()
+    || `${String(profile?.first_name || profile?.firstName || '').trim()} ${String(profile?.last_name || profile?.lastName || '').trim()}`.trim()
+    || t('govuk_alpha_members.insights.unknown_member');
 
   return {
-    displayName: memberName(profile || {}),
+    displayName,
     nexusScore: nexusScore
       ? {
-          scoreLabel: decimalLabel(nexusScore.total_score, ''),
-          tierLabel: titleLabel(nexusScore.tier),
+          scoreLabel: Number.isFinite(score)
+            ? formatNumber(score, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+            : '',
+          tierLabel: translatedOrFallback(
+            t,
+            `govuk_alpha_members.insights.tier_${String(nexusScore.tier || '').trim().toLowerCase().replaceAll(' ', '_')}`,
+            titleLabel(nexusScore.tier)
+          ),
           percentile: boundedInteger(nexusScore.percentile, 0, 0, 100)
         }
       : null,
     stats: {
-      hoursGiven: decimalLabel(profile.total_hours_given ?? stats.total_hours_given),
-      hoursReceived: decimalLabel(profile.total_hours_received ?? stats.total_hours_received),
-      listingsCount: integerLabel(stats.listings_count),
-      groupsCount: integerLabel(profile.groups_count ?? stats.groups_count),
-      eventsAttended: integerLabel(profile.events_attended ?? stats.events_attended),
-      connectionsCount: integerLabel(stats.connections_count),
-      reviewsCount: integerLabel(stats.reviews_count),
+      hoursGiven: formatNumber(Number(profile.total_hours_given ?? stats.total_hours_given) || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      hoursReceived: formatNumber(Number(profile.total_hours_received ?? stats.total_hours_received) || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      listingsCount: formatNumber(Number(stats.listings_count) || 0, { maximumFractionDigits: 0 }),
+      groupsCount: formatNumber(Number(profile.groups_count ?? stats.groups_count) || 0, { maximumFractionDigits: 0 }),
+      eventsAttended: formatNumber(Number(profile.events_attended ?? stats.events_attended) || 0, { maximumFractionDigits: 0 }),
+      connectionsCount: formatNumber(Number(stats.connections_count) || 0, { maximumFractionDigits: 0 }),
+      reviewsCount: formatNumber(Number(stats.reviews_count) || 0, { maximumFractionDigits: 0 }),
       rating: profile.rating ?? stats.average_rating,
       ratingLabel: Number.isFinite(Number(profile.rating ?? stats.average_rating))
-        ? decimalLabel(profile.rating ?? stats.average_rating)
+        ? formatNumber(profile.rating ?? stats.average_rating, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
         : '',
-      level: integerLabel(profile.level, '1'),
-      xp: integerLabel(profile.xp)
+      level: formatNumber(Number(profile.level) || 1, { maximumFractionDigits: 0 }),
+      xp: formatNumber(Number(profile.xp) || 0, { maximumFractionDigits: 0 })
     },
     badges: badges.slice(0, 12).map((badge) => ({
       name: String(badge.name || badge.badge_name || badge.badge_key || '').trim(),
@@ -341,11 +346,15 @@ function normalizeInsightsProfile(profile) {
   };
 }
 
-function normalizeVerificationBadges(result) {
+function normalizeVerificationBadges(result, t) {
   return rowsFrom(result).map((badge) => {
     const type = String(badge.badge_type || badge.type || '').trim();
     return {
-      label: String(badge.label || titleLabel(type) || 'Verified').trim(),
+      label: translatedOrFallback(
+        t,
+        `govuk_alpha_members.insights.verification_type_${type}`,
+        String(badge.label || titleLabel(type) || t('members.verified')).trim()
+      ),
       grantedLabel: dateLabel(badge.granted_at || badge.created_at || badge.verified_at)
     };
   }).filter((badge) => badge.label);
@@ -679,11 +688,11 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
     ]);
     const viewer = dataFrom(viewerResult) || {};
     const profile = dataFrom(profileResult) || {};
-    const normalized = normalizeInsightsProfile(profile);
+    const normalized = normalizeInsightsProfile(profile, res.locals.t, res.locals.formatLocaleNumber);
     const isOwnProfile = Number(viewer.id) === id;
 
     res.render('members/insights', {
-      title: `Reputation and recognition - ${normalized.displayName}`,
+      title: res.locals.t('govuk_alpha_members.insights.title', { name: normalized.displayName }),
       activeNav: isOwnProfile ? 'profile' : 'members',
       alphaActiveNav: isOwnProfile ? 'profile' : 'members',
       memberId: id,
@@ -691,7 +700,7 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
       displayName: normalized.displayName,
       nexusScore: normalized.nexusScore,
       insightsStats: normalized.stats,
-      verificationBadges: normalizeVerificationBadges(verificationResult),
+      verificationBadges: normalizeVerificationBadges(verificationResult, res.locals.t),
       earnedBadges: normalized.badges
     });
   } catch (error) {

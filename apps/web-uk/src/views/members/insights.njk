@@ -8,24 +8,24 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
-      <a class="govuk-back-link" href="{{ urlFor('/members/' + (memberId | string)) }}">{{ t("actions.back_to_profile") }}</a>
+      <a class="govuk-back-link" href="{{ urlFor('/members/' + (memberId | string)) }}">{{ t("govuk_alpha_members.insights.back_to_profile") }}</a>
 
       <span class="govuk-caption-l">{{ displayName }}</span>
-      <h1 class="govuk-heading-xl">Reputation and recognition</h1>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_members.insights.heading") }}</h1>
       <p class="govuk-body-l">
         {% if isOwnProfile %}
-          A summary of your standing in the community: your NEXUS score, activity totals, verifications and earned badges.
+          {{ t("govuk_alpha_members.insights.intro_own") }}
         {% else %}
-          A summary of {{ displayName }}'s standing in the community: NEXUS score, activity totals, verifications and earned badges.
+          {{ t("govuk_alpha_members.insights.intro_other", { name: displayName }) }}
         {% endif %}
       </p>
 
-      <h2 class="govuk-heading-l">{{ t("nexus_score.title") }}</h2>
+      <h2 class="govuk-heading-l">{{ t("govuk_alpha_members.insights.nexus_score_title") }}</h2>
       {% if nexusScore and nexusScore.scoreLabel %}
         <div class="nexus-alpha-card govuk-!-margin-bottom-6">
           <p class="govuk-body govuk-!-margin-bottom-2">
             <span class="govuk-!-font-size-48 govuk-!-font-weight-bold">{{ nexusScore.scoreLabel }}</span>
-            <span class="govuk-body">out of 1,000</span>
+            <span class="govuk-body">{{ t("govuk_alpha_members.insights.nexus_score_out_of") }}</span>
           </p>
           {% if nexusScore.tierLabel %}
             <p class="govuk-!-margin-bottom-2">
@@ -33,83 +33,83 @@
             </p>
           {% endif %}
           {% if nexusScore.percentile > 0 %}
-            <p class="govuk-body govuk-!-margin-bottom-2">Top {{ nexusScore.percentile }}% of members in this community.</p>
-            <progress class="nexus-alpha-progress" value="{{ nexusScore.percentile }}" max="100" aria-label="Ranked in the top {{ nexusScore.percentile }} per cent of members">{{ nexusScore.percentile }}%</progress>
+            <p class="govuk-body govuk-!-margin-bottom-2">{{ t("govuk_alpha_members.insights.nexus_percentile", { percentile: nexusScore.percentile }) }}</p>
+            <progress class="nexus-alpha-progress" value="{{ nexusScore.percentile }}" max="100" aria-label="{{ t('govuk_alpha_members.insights.nexus_percentile_aria', { percentile: nexusScore.percentile }) }}">{{ nexusScore.percentile }}%</progress>
           {% endif %}
           {% if isOwnProfile %}
-            <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">Your NEXUS score reflects your engagement, contribution quality and impact across the community.</p>
+            <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">{{ t("govuk_alpha_members.insights.nexus_own_hint") }}</p>
           {% endif %}
         </div>
       {% else %}
-        <div class="govuk-inset-text">No NEXUS score has been calculated yet. Take part in the community to build one.</div>
+        <div class="govuk-inset-text">{{ t("govuk_alpha_members.insights.nexus_empty") }}</div>
       {% endif %}
 
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">Activity</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("govuk_alpha_members.insights.stats_title") }}</h2>
       <dl class="nexus-alpha-stat-grid">
         <div class="nexus-alpha-stat">
-          <dt>Hours given</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_hours_given") }}</dt>
           <dd>{{ insightsStats.hoursGiven }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>Hours received</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_hours_received") }}</dt>
           <dd>{{ insightsStats.hoursReceived }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>Active listings</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_listings") }}</dt>
           <dd>{{ insightsStats.listingsCount }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>{{ t("activity.groups_joined") }}</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_groups") }}</dt>
           <dd>{{ insightsStats.groupsCount }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>Events attended</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_events") }}</dt>
           <dd>{{ insightsStats.eventsAttended }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>Connections</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_connections") }}</dt>
           <dd>{{ insightsStats.connectionsCount }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>Reviews received</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_reviews") }}</dt>
           <dd>{{ insightsStats.reviewsCount }}</dd>
         </div>
         {% if insightsStats.ratingLabel %}
           <div class="nexus-alpha-stat">
-            <dt>Average rating</dt>
+            <dt>{{ t("govuk_alpha_members.insights.stat_rating") }}</dt>
             <dd>{{ insightsStats.ratingLabel }}</dd>
           </div>
         {% endif %}
         <div class="nexus-alpha-stat">
-          <dt>Level</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_level") }}</dt>
           <dd>{{ insightsStats.level }}</dd>
         </div>
         <div class="nexus-alpha-stat">
-          <dt>{{ t("achievements.xp_label") }}</dt>
+          <dt>{{ t("govuk_alpha_members.insights.stat_xp") }}</dt>
           <dd>{{ insightsStats.xp }}</dd>
         </div>
       </dl>
 
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">Verifications</h2>
-      <p class="govuk-body">Checks completed for this member.</p>
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("govuk_alpha_members.insights.verification_title") }}</h2>
+      <p class="govuk-body">{{ t("govuk_alpha_members.insights.verification_intro") }}</p>
       {% if not verificationBadges or not verificationBadges.length %}
-        <div class="govuk-inset-text">No verifications have been recorded yet.</div>
+        <div class="govuk-inset-text">{{ t("govuk_alpha_members.insights.verification_empty") }}</div>
       {% else %}
         <ul class="govuk-list">
           {% for badge in verificationBadges %}
             <li class="govuk-!-margin-bottom-2">
               <strong class="govuk-tag govuk-tag--green">{{ badge.label }}</strong>
               {% if badge.grantedLabel %}
-                <span class="nexus-alpha-meta">Verified on {{ badge.grantedLabel }}</span>
+                <span class="nexus-alpha-meta">{{ t("govuk_alpha_members.insights.verified_on", { date: badge.grantedLabel }) }}</span>
               {% endif %}
             </li>
           {% endfor %}
         </ul>
       {% endif %}
 
-      <h2 class="govuk-heading-l govuk-!-margin-top-7">Earned badges</h2>
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("govuk_alpha_members.insights.badges_title") }}</h2>
       {% if not earnedBadges or not earnedBadges.length %}
-        <div class="govuk-inset-text">No badges earned yet.</div>
+        <div class="govuk-inset-text">{{ t("govuk_alpha_members.insights.badges_empty") }}</div>
       {% else %}
         <ul class="govuk-list nexus-alpha-actions">
           {% for badge in earnedBadges %}
@@ -122,7 +122,7 @@
       {% endif %}
 
       <p class="govuk-body govuk-!-margin-top-7">
-        <a class="govuk-link" href="{{ urlFor('/members/' + (memberId | string)) }}">{{ t("actions.back_to_profile") }}</a>
+        <a class="govuk-link" href="{{ urlFor('/members/' + (memberId | string)) }}">{{ t("govuk_alpha_members.insights.back_to_profile") }}</a>
       </p>
     </div>
   </div>

@@ -10078,7 +10078,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Level');
     expect(signed.text).toContain('5');
     expect(signed.text).toContain('Experience points');
-    expect(signed.text).toContain('1470');
+    expect(signed.text).toContain('1,470');
     expect(signed.text).toContain('Verifications');
     expect(signed.text).toContain('Email verified');
     expect(signed.text).toContain('ID verified');

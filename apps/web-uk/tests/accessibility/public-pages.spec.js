@@ -784,8 +784,20 @@ test.describe('representative authenticated-page accessibility gate', () => {
 
     try {
       for (const route of [
-        { path: '/members/discover?locale=ar', key: 'discover' },
-        { path: '/members/nearby?locale=ar', key: 'nearby' }
+        {
+          path: '/members/discover?locale=ar',
+          heading: 'govuk_alpha_members.discover.heading',
+          description: 'govuk_alpha_members.discover.description'
+        },
+        {
+          path: '/members/nearby?locale=ar',
+          heading: 'govuk_alpha_members.nearby.heading',
+          description: 'govuk_alpha_members.nearby.description'
+        },
+        {
+          path: '/members/77/insights?locale=ar',
+          heading: 'govuk_alpha_members.insights.heading'
+        }
       ]) {
         const path = `${authenticatedMountPath}${route.path}`;
         const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
@@ -795,8 +807,10 @@ test.describe('representative authenticated-page accessibility gate', () => {
         expect(page.url()).not.toContain('/login');
         await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
         await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-        await expect(page.locator('h1')).toHaveText(translate('ar', `govuk_alpha_members.${route.key}.heading`));
-        await expect(page.locator('.govuk-body-l')).toHaveText(translate('ar', `govuk_alpha_members.${route.key}.description`));
+        await expect(page.locator('h1')).toHaveText(translate('ar', route.heading));
+        if (route.description) {
+          await expect(page.locator('.govuk-body-l')).toHaveText(translate('ar', route.description));
+        }
 
         const overflow = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,
@@ -805,7 +819,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
         expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
         const axeResults = await new AxeBuilder({ page }).analyze();
-        await testInfo.attach(`authenticated-arabic-members-${route.key}`, {
+        await testInfo.attach(`authenticated-arabic-${route.heading.replaceAll('.', '-')}`, {
           body: Buffer.from(JSON.stringify({
             url: page.url(),
             viewport: { width: 320, height: 640 },

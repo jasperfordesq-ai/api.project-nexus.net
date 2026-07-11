@@ -63,7 +63,7 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `606.2` seconds.
+  `544.8` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -99,6 +99,29 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Member Insights Localization And Semantics Slice
+
+The signed `/members/{id}/insights` route and template now resolve their
+document title, profile navigation, own/other introduction, NEXUS score and
+tier, percentile text and progress ARIA, all ten activity statistics,
+verification types and dates, earned-badge states, and empty states through the
+exact `govuk_alpha_members.insights` catalog. Unknown members use the
+insights-specific Laravel fallback; known tiers and verification types use
+their source keys with safe payload-label fallbacks for future unknown values.
+Scores, hours, ratings, levels, XP, and counts use request-locale formatting,
+including English grouping such as `1,470` XP.
+
+The focused insight route test and ESLint passed, and the conservative
+localization audit remained 290 templates with zero matches. The live
+authenticated Arabic members case now traverses discovery, nearby, and member
+insights at 320 CSS pixels and passed RTL/reflow/axe in `55.4` seconds. The
+complete Jest gate passed `45/45` suites and `1,401/1,401` tests, and the
+exact-current full Chromium/axe matrix passed `54/54` in `544.8` seconds.
+Laravel's insights namespace remains English-identical in Arabic, so Web UK
+preserves that authoritative source while the shell and number formatting
+remain Arabic-aware. Live privacy/onboarding variations, manual
+assistive-technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Nearby Members Localization And Semantics Slice
 
