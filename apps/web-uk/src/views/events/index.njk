@@ -151,29 +151,15 @@
           }) }}
         {% endif %}
       {% else %}
-        {% if searchQuery %}
-          {% set emptyState = {
-            icon: "🔍",
-            heading: "No results found",
-            message: "No events match \"" + searchQuery + "\". Try a different search term.",
-            action: {
-              text: t("polish_members.connections_search_clear"),
-              href: urlFor("/events")
-            }
-          } %}
-        {% else %}
-          {% set emptyState = {
-            icon: "📅",
-            heading: "No events yet",
-            message: "Be the first to organise an event for the community.",
-            action: {
-              text: t("actions.create_event") if isAuthenticated else t("nav.login"),
-              href: urlFor("/events/new") if isAuthenticated else urlFor("/login"),
-              isButton: true
-            }
-          } %}
-        {% endif %}
-        {% include "partials/empty-state.njk" %}
+        <div class="govuk-inset-text">
+          <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
+          <p class="govuk-body">{{ t("events.empty") }}</p>
+          {% if hasFilters %}
+            <p class="govuk-body">
+              <a class="govuk-link" href="{{ urlFor('/events') }}">{{ t("actions.clear_filters") }}</a>
+            </p>
+          {% endif %}
+        </div>
       {% endif %}
 
     </div>

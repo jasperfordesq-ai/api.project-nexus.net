@@ -624,6 +624,7 @@ router.get('/', asyncRoute(async (req, res) => {
     ? req.query.when
     : (req.query.upcoming_only === 'false' ? 'all' : 'upcoming');
   const upcomingOnly = when === 'upcoming';
+  const hasFilters = Boolean(searchQuery || groupId || when !== 'upcoming');
 
   const result = await getEvents(token, {
     per_page: limit,
@@ -641,6 +642,7 @@ router.get('/', asyncRoute(async (req, res) => {
     events,
     searchQuery,
     groupId,
+    hasFilters,
     upcomingOnly,
     when,
     pagination: {

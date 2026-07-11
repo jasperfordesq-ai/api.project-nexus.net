@@ -20995,6 +20995,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/events?when=past&amp;q=repair&amp;cursor=next-page"');
   });
 
+  it('matches the Blade event empty state and only clears active filters', async () => {
+    const api = require('../src/lib/api');
+    api.getEvents.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+
+    const unfiltered = await request(app).get('/events');
+
+    expect(unfiltered.status).toBe(200);
+    expect(unfiltered.text).toContain('No results found');
+    expect(unfiltered.text).toContain('No events match your filters.');
+    expect(unfiltered.text).not.toContain('>Clear filters<');
+    expect(unfiltered.text).not.toContain('Be the first to organise an event');
+
+    api.getEvents.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+    const filtered = await request(app).get('/events?q=repair');
+
+    expect(filtered.status).toBe(200);
+    expect(filtered.text).toContain('href="/events">Clear filters</a>');
+  });
+
   it('allows anonymous Laravel event browse and detail while keeping RSVP and management authenticated', async () => {
     const api = require('../src/lib/api');
     api.getEvents.mockResolvedValueOnce({
