@@ -4220,6 +4220,26 @@ infrastructure routes. Currency-symbol parity, external Stripe checkout/portal
 behavior, enabled-tenant persistence, feature-gate depth, recorded manual
 parity, and ASP.NET backend compatibility remain open.
 
+Latest focused Blog localization slice: `/blog`, `/blog/{slug}`, signed
+`/blog/{slug}/comments`, and signed `/blog/{slug}/likers/{reaction}` now use
+Laravel's exact request-locale `blog` and `govuk_alpha_blogreviews` catalogs for
+route titles, tenant captions, filters/results, post metadata/image labels,
+likes/comments/reactions plurals, recursive comment controls/statuses, reaction
+labels, and liker states/fallbacks. The RSS channel title/description also uses
+the request catalog. Laravel's Arabic BlogReviews catalog remains English-
+identical; those source values are intentionally preserved rather than
+inventing divergent translations. The first focused run exposed one missed
+legacy `feed_t1` reaction-heading key; replacing it with the exact BlogReviews
+key made the Arabic index/detail/discussion/likers route test pass `1/1`.
+The live Arabic Blog index passed HTTP 200, exact title/search markers, RTL,
+320px reflow, and axe with no serious/critical violations (`1/1`, 47.6 seconds
+wall time; 11.3 seconds inside the test). Complete verification passed 45/45
+Jest suites and 1,424/1,424 tests, warning-free ESLint, the 290-template
+zero-match audit, and the route matrix at 608 Laravel routes, 608 matched, 0
+missing, 0 extra, and 3 ignored infrastructure routes. Feature-gate depth,
+exact rich-text policy, live discussion/reaction mutations, RSS metadata depth,
+recorded manual parity, and ASP.NET backend compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

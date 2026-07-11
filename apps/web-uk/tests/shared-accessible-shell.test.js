@@ -11785,6 +11785,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders Laravel-backed blog index, detail, comments and likers pages', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
 
     const blogPost = {
       id: 42,
@@ -11845,7 +11847,7 @@ describe('shared accessible frontend shell', () => {
       meta: { total: 2, has_more: false, page: 1 }
     });
 
-    const index = await request(app).get('/blog?q=garden&category=3&cursor=abc');
+    const index = await request(app).get('/blog?q=garden&category=3&cursor=abc&locale=ar');
 
     expect(index.status).toBe(200);
     expect(api.getBlogPosts).toHaveBeenCalledWith('', {
@@ -11854,29 +11856,40 @@ describe('shared accessible frontend shell', () => {
       cursor: 'abc',
       per_page: 12
     });
-    expect(index.text).toContain('Blog');
-    expect(index.text).toContain('News, stories and updates from');
-    expect(index.text).toContain('Search the blog');
+    for (const key of [
+      'blog.title',
+      'blog.search_label',
+      'blog.search_hint',
+      'blog.category_label',
+      'blog.all_categories',
+      'blog.search_button',
+      'blog.results_title',
+      'blog.featured_label'
+    ]) {
+      expect(index.text).toContain(t(key));
+    }
+    expect(index.text).toContain(t('blog.caption', { community: 'Project NEXUS Accessible' }));
+    expect(index.text).toContain(t('blog.subtitle', { name: 'Project NEXUS Accessible' }));
     expect(index.text).toContain('value="garden"');
     expect(index.text).toContain('Community garden opens');
-    expect(index.text).toContain('Featured');
     expect(index.text).toContain('/images/garden.jpg');
     expect(index.text).toContain('Ada Lovelace');
-    expect(index.text).toContain('4 min read');
+    expect(index.text).toContain(t('blog.read_time', { count: 4 }));
     expect(index.text).toContain('cursor=next-cursor');
     expect(index.text).not.toContain('Laravel Blade route');
 
-    const detail = await request(app).get('/blog/community-news?status=comment-added');
+    const detail = await request(app).get('/blog/community-news?status=comment-added&locale=ar');
 
     expect(detail.status).toBe(200);
     expect(api.getBlogPost).toHaveBeenCalledWith('', 'community-news');
-    expect(detail.text).toContain('Back to the blog');
+    expect(detail.text).toContain(t('blog.back_to_blog'));
     expect(detail.text).toContain('Community garden opens');
     expect(detail.text).toContain('The community garden opened this week.');
-    expect(detail.text).toContain('Written by');
-    expect(detail.text).toContain('No likes yet');
-    expect(detail.text).toContain('Comments');
-    expect(detail.text).toContain('Sign in to read and join the discussion.');
+    expect(detail.text).toContain(t('blog.author_label'));
+    expect(detail.text).toContain(tc('blog.likes_count', 0, { count: 0 }));
+    expect(detail.text).toContain(t('blog.comments_heading'));
+    expect(detail.text).toContain(t('blog.comments_signin'));
+    expect(detail.text).toContain(t('govuk_alpha_blogreviews.nav.view_discussion'));
     expect(detail.text).toContain('href="/blog/community-news/comments"');
     expect(detail.text).not.toContain('Laravel Blade route');
 
@@ -11886,7 +11899,7 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedComments.headers.location).toBe('/login?status=auth-required');
 
     const comments = await request(app)
-      .get('/blog/community-news/comments?status=reply-added')
+      .get('/blog/community-news/comments?status=reply-added&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(comments.status).toBe(200);
@@ -11895,20 +11908,21 @@ describe('shared accessible frontend shell', () => {
       target_id: 42
     });
     expect(api.getReactionSummary).toHaveBeenCalledWith('test-token', 'blog', 42);
-    expect(comments.text).toContain('Blog discussion');
-    expect(comments.text).toContain('React to this post');
-    expect(comments.text).toContain('3 reactions');
-    expect(comments.text).toContain('Love (1)');
-    expect(comments.text).toContain('See who reacted (2)');
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.comments.caption'));
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.reactions.post_legend'));
+    expect(comments.text).toContain(tc('govuk_alpha_blogreviews.reactions.count', 3, { count: 3 }));
+    expect(comments.text).toContain(`${t('govuk_alpha_blogreviews.reactions.love')} (1)`);
+    expect(comments.text).toContain(`${t('govuk_alpha_blogreviews.reactions.view_likers')} (2)`);
     expect(comments.text).toContain('This is brilliant news.');
     expect(comments.text).toContain('I can help on Saturday.');
-    expect(comments.text).toContain('Your reply has been posted.');
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.comment_states.reply-added'));
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.comments.body_hint'));
     expect(comments.text).toContain('action="/blog/community-news/comments/add"');
     expect(comments.text).toContain('action="/blog/comments/12/update"');
     expect(comments.text).toContain('action="/blog/comments/12/delete"');
 
     const likers = await request(app)
-      .get('/blog/community-news/likers/like?page=1')
+      .get('/blog/community-news/likers/like?page=1&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(likers.status).toBe(200);
@@ -11916,15 +11930,15 @@ describe('shared accessible frontend shell', () => {
       page: 1,
       per_page: 20
     });
-    expect(likers.text).toContain('Blog reactions');
-    expect(likers.text).toContain('People who reacted');
-    expect(likers.text).toContain('2 people');
+    expect(likers.text).toContain(t('govuk_alpha_blogreviews.likers.caption'));
+    expect(likers.text).toContain(t('govuk_alpha_blogreviews.likers.heading', { emoji: 'Like' }));
+    expect(likers.text).toContain(tc('govuk_alpha_blogreviews.likers.count', 2, { count: 2 }));
     expect(likers.text).toContain('Grace Hopper');
     expect(likers.text).toContain('Alan Turing');
     expect(likers.text).not.toContain('Laravel Blade route');
 
     const numericLikers = await request(app)
-      .get('/blog/community-news/likers/1?page=1')
+      .get('/blog/community-news/likers/1?page=1&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(numericLikers.status).toBe(200);
@@ -11932,7 +11946,7 @@ describe('shared accessible frontend shell', () => {
       page: 1,
       per_page: 20
     });
-    expect(numericLikers.text).toContain('Blog reactions');
+    expect(numericLikers.text).toContain(t('govuk_alpha_blogreviews.likers.caption'));
     expect(numericLikers.text).not.toContain('Laravel Blade route');
   });
 

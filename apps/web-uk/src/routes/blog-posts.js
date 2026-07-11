@@ -20,14 +20,6 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 const BLOG_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
-const BLOG_REACTION_LABELS = {
-  like: 'Like',
-  love: 'Love',
-  laugh: 'Haha',
-  wow: 'Wow',
-  sad: 'Sad',
-  celebrate: 'Celebrate'
-};
 const BLOG_REACTION_EMOJI = {
   like: 'Like',
   love: 'Love',
@@ -127,7 +119,7 @@ function normalizeCategory(category) {
   };
 }
 
-function normalizeComment(comment) {
+function normalizeComment(comment, t) {
   const item = asObject(comment);
   const user = asObject(item.user || item.author);
   return {
@@ -137,9 +129,10 @@ function normalizeComment(comment) {
     updatedAt: trimmed(item.updated_at || item.updatedAt),
     user: {
       id: positiveInteger(user.id || item.user_id),
-      name: trimmed(user.name || item.user_name || [user.first_name, user.last_name].filter(Boolean).join(' ')) || 'Community member'
+      name: trimmed(user.name || item.user_name || [user.first_name, user.last_name].filter(Boolean).join(' '))
+        || t('govuk_alpha_blogreviews.likers.unknown_member')
     },
-    replies: asList(item.replies || item.children).map(normalizeComment)
+    replies: asList(item.replies || item.children).map((reply) => normalizeComment(reply, t))
   };
 }
 
@@ -156,24 +149,33 @@ function commentCount(comments) {
   return comments.reduce((count, comment) => count + 1 + commentCount(comment.replies || []), 0);
 }
 
-function statusBanner(status) {
+function statusBanner(status, t) {
   const banners = {
-    'comment-added': { type: 'success', message: 'Your comment has been posted.' },
-    'reply-added': { type: 'success', message: 'Your reply has been posted.' },
-    'comment-updated': { type: 'success', message: 'Your comment has been updated.' },
-    'comment-deleted': { type: 'success', message: 'Your comment has been deleted.' },
-    'reaction-added': { type: 'success', message: 'Your reaction has been added.' },
-    'reaction-removed': { type: 'success', message: 'Your reaction has been removed.' },
-    liked: { type: 'success', message: 'Your reaction has been added.' },
-    unliked: { type: 'success', message: 'Your reaction has been removed.' },
-    'comment-invalid': { type: 'error', anchor: 'body', message: 'Enter a comment before posting.' },
-    'comment-empty': { type: 'error', anchor: 'body', message: 'Enter some text before saving.' },
-    'comment-failed': { type: 'error', anchor: 'body', message: 'Sorry, your comment could not be posted. Try again.' },
-    'comment-update-failed': { type: 'error', anchor: null, message: 'Sorry, your comment could not be updated. Try again.' },
-    'comment-delete-failed': { type: 'error', anchor: null, message: 'Sorry, your comment could not be deleted. Try again.' },
-    'reaction-failed': { type: 'error', anchor: null, message: 'Sorry, your reaction could not be saved. Try again.' }
+    'comment-added': { type: 'success' },
+    'reply-added': { type: 'success' },
+    'comment-updated': { type: 'success' },
+    'comment-deleted': { type: 'success' },
+    'reaction-added': { type: 'success' },
+    'reaction-removed': { type: 'success' },
+    liked: { type: 'success', key: 'reaction-added' },
+    unliked: { type: 'success', key: 'reaction-removed' },
+    'comment-invalid': { type: 'error', anchor: 'body' },
+    'comment-empty': { type: 'error', anchor: 'body' },
+    'comment-failed': { type: 'error', anchor: 'body' },
+    'comment-update-failed': { type: 'error', anchor: null },
+    'comment-delete-failed': { type: 'error', anchor: null },
+    'reaction-failed': { type: 'error', anchor: null }
   };
-  return banners[trimmed(status)] || null;
+  const statusKey = trimmed(status);
+  const banner = banners[statusKey];
+  return banner ? { ...banner, message: t(`govuk_alpha_blogreviews.comment_states.${banner.key || statusKey}`) } : null;
+}
+
+function reactionLabels(t) {
+  return Object.fromEntries([...BLOG_REACTIONS].map((reaction) => [
+    reaction,
+    t(`govuk_alpha_blogreviews.reactions.${reaction}`)
+  ]));
 }
 
 async function blogPostFromSlug(token, slug) {
@@ -228,7 +230,7 @@ router.get('/', asyncRoute(async (req, res) => {
   const categories = asList(payload.categories).map(normalizeCategory).filter((category) => category.id && category.name);
 
   return res.render('blog/index', {
-    title: 'Blog',
+    title: res.locals.t('blog.title'),
     activeNav: 'blog',
     posts,
     categories,
@@ -249,7 +251,8 @@ router.get('/feed.xml', asyncRoute(async (req, res) => {
     .join('');
 
   res.type('application/rss+xml; charset=UTF-8');
-  return res.send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Blog</title><link>/blog</link><description>Blog</description>${items}</channel></rss>`);
+  const blogTitle = res.locals.t('blog.title');
+  return res.send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${blogTitle}</title><link>/blog</link><description>${blogTitle}</description>${items}</channel></rss>`);
 }));
 
 router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
@@ -265,21 +268,22 @@ router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
   if (postId !== null) {
     const commentsResult = await getComments(token, { target_type: 'blog', target_id: postId });
     const commentsData = asObject(dataFrom(commentsResult));
-    comments = asList(commentsData.comments || dataFrom(commentsResult)).map(normalizeComment);
+    comments = asList(commentsData.comments || dataFrom(commentsResult))
+      .map((comment) => normalizeComment(comment, res.locals.t));
     commentsTotal = positiveInteger(commentsData.count) || commentCount(comments);
     reactions = reactionSummaryFrom(await getReactionSummary(token, 'blog', postId));
   }
 
   return res.render('blog/comments', {
-    title: `Comments on ${post.title}`,
+    title: res.locals.t('govuk_alpha_blogreviews.comments.title', { title: post.title }),
     activeNav: 'blog',
     post,
     comments,
     commentsTotal,
     reactions,
-    reactionLabels: BLOG_REACTION_LABELS,
+    reactionLabels: reactionLabels(res.locals.t),
     reactionEmoji: BLOG_REACTION_EMOJI,
-    statusBanner: statusBanner(req.query && req.query.status)
+    statusBanner: statusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 
@@ -298,12 +302,13 @@ router.get('/:slug([a-zA-Z0-9_-]+)/likers/:reaction([a-zA-Z0-9_]+)', asyncRoute(
     const item = asObject(liker);
     return {
       id: positiveInteger(item.id),
-      name: trimmed(item.name || item.user_name || [item.first_name, item.last_name].filter(Boolean).join(' ')) || 'Community member'
+      name: trimmed(item.name || item.user_name || [item.first_name, item.last_name].filter(Boolean).join(' '))
+        || res.locals.t('govuk_alpha_blogreviews.likers.unknown_member')
     };
   });
 
   return res.render('blog/likers', {
-    title: 'People who reacted',
+    title: res.locals.t('govuk_alpha_blogreviews.likers.title'),
     activeNav: 'blog',
     post,
     reaction,
@@ -324,12 +329,13 @@ router.get('/:slug([a-zA-Z0-9_-]+)', asyncRoute(async (req, res) => {
   if (token && post.id !== null) {
     const commentsResult = await getComments(token, { target_type: 'blog', target_id: post.id });
     const commentsData = asObject(dataFrom(commentsResult));
-    comments = asList(commentsData.comments || dataFrom(commentsResult)).map(normalizeComment);
+    comments = asList(commentsData.comments || dataFrom(commentsResult))
+      .map((comment) => normalizeComment(comment, res.locals.t));
     commentsTotal = positiveInteger(commentsData.count) || commentCount(comments);
   }
 
   return res.render('blog/detail', {
-    title: post.title || 'Blog post',
+    title: post.title || res.locals.t('blog.title'),
     activeNav: 'blog',
     post,
     comments,
@@ -337,7 +343,7 @@ router.get('/:slug([a-zA-Z0-9_-]+)', asyncRoute(async (req, res) => {
     isAuthenticated: Boolean(token),
     likeCount: post.likeCount,
     hasLiked: post.hasLiked,
-    statusBanner: statusBanner(req.query && req.query.status)
+    statusBanner: statusBanner(req.query && req.query.status, res.locals.t)
   });
 }, { notFoundTitle: 'Post not found' }));
 
