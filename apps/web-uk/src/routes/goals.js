@@ -223,14 +223,15 @@ function metaFrom(result) {
   };
 }
 
-function statusLabel(status) {
+function statusLabel(status, t) {
   const value = trimmed(status || 'active').toLowerCase();
-  if (['completed', 'achieved'].includes(value)) return 'Completed';
-  return 'Active';
+  if (['completed', 'achieved'].includes(value)) return t ? t('goals.status_completed') : 'Completed';
+  return t ? t('goals.status_active') : 'Active';
 }
 
 function statusClass(status) {
-  return statusLabel(status) === 'Completed' ? 'govuk-tag--green' : 'govuk-tag--blue';
+  const value = trimmed(status || 'active').toLowerCase();
+  return ['completed', 'achieved'].includes(value) ? 'govuk-tag--green' : 'govuk-tag--blue';
 }
 
 function formatNumber(value) {
@@ -246,7 +247,7 @@ function progressPercent(goal) {
   return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
 }
 
-function normalizeGoal(item) {
+function normalizeGoal(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const current = raw.current_value ?? raw.currentValue ?? 0;
   const target = raw.target_value ?? raw.targetValue ?? 0;
@@ -258,19 +259,23 @@ function normalizeGoal(item) {
   return {
     ...raw,
     id: positiveInteger(raw.id),
-    title: trimmed(raw.title) || 'Goal',
+    title: trimmed(raw.title) || (t ? t('goals.title') : 'Goal'),
     description: trimmed(raw.description || raw.summary || ''),
     currentText: formatNumber(current),
     targetText: formatNumber(target),
     progressPercent: progressPercent(raw),
     done,
-    statusLabel: statusLabel(status),
+    statusLabel: statusLabel(status, t),
     statusClass: statusClass(status),
     isPublic,
-    visibilityLabel: isPublic ? 'Public' : 'Private',
+    visibilityLabel: isPublic
+      ? (t ? t('groups.visibility_public') : 'Public')
+      : (t ? t('groups.visibility_private') : 'Private'),
     visibilityClass: isPublic ? 'govuk-tag--blue' : 'govuk-tag--grey',
     streakCount,
-    deadline: trimmed(raw.deadline || raw.target_date || raw.targetDate)
+    deadline: trimmed(raw.deadline || raw.target_date || raw.targetDate),
+    isOverdue: !done && Boolean(trimmed(raw.deadline || raw.target_date || raw.targetDate))
+      && new Date(raw.deadline || raw.target_date || raw.targetDate).getTime() < Date.now()
   };
 }
 
@@ -548,19 +553,19 @@ function normalizeReminder(item) {
   };
 }
 
-function statusMessage(status) {
+function statusMessage(status, t) {
   const messages = {
-    'goal-created': 'Goal created',
-    'goal-completed': 'Goal completed',
-    'goal-deleted': 'Goal deleted'
+    'goal-created': t('goals.states.goal-created'),
+    'goal-completed': t('goals.states.goal-completed'),
+    'goal-deleted': t('goals.states.goal-deleted')
   };
   return messages[trimmed(status)] || '';
 }
 
-function errorMessage(status) {
+function errorMessage(status, t) {
   const messages = {
-    'goal-failed': 'We could not update the goal. Try again.',
-    'goal-invalid': 'Enter a title and target value.'
+    'goal-failed': t('goals.states.goal-failed'),
+    'goal-invalid': t('goals.states.goal-invalid')
   };
   return messages[trimmed(status)] || '';
 }
@@ -1264,17 +1269,17 @@ router.get('/', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const result = await getGoals(token, { per_page: 30 });
-  const goals = collectionFrom(result).map(normalizeGoal).filter((goal) => goal.id !== null);
+  const goals = collectionFrom(result).map((goal) => normalizeGoal(goal, res.locals.t)).filter((goal) => goal.id !== null);
   const status = trimmed(req.query.status);
 
   return res.render('goals/index', {
-    title: 'Goals',
+    title: res.locals.t('goals.title'),
     activeNav: 'explore',
     goals,
     meta: metaFrom(result),
     status,
-    successMessage: statusMessage(status),
-    errorMessage: errorMessage(status)
+    successMessage: statusMessage(status, res.locals.t),
+    errorMessage: errorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect() }));
 

@@ -4016,6 +4016,23 @@ routes. The visible poll-family catalog conversion is complete; authorization
 depth, live mutation/destructive-side-effect proof, manual parity, and a fresh
 full current-source browser aggregate remain open.
 
+Latest focused Goals-index localization slice: signed `/goals` now uses
+Laravel's exact request-locale `goals`, `groups`, `polish_gamify`, `actions`,
+and shared state keys for its document/page title, tenant caption, description,
+navigation, outcomes, status and visibility tags, overdue/streak/progress copy,
+empty/load-more states, and every create-form label, hint, and action. Progress
+ARIA names now include the goal title like Blade. The focused Arabic test first
+failed because it guessed a fixture tenant name; it was corrected to assert the
+actual contract, a non-empty caption with no `undefined`, and passed `1/1`.
+The authenticated Arabic Laravel-backed index passed HTTP 200, exact catalog
+markers, RTL, 320px reflow, and axe (`1/1`, 1.1 minutes wall time; 7.0 seconds
+inside the page test). Full verification passed 45/45 Jest suites and
+1,424/1,424 tests, ESLint, the 290-template conservative audit with zero
+matches, and the refreshed route matrix at 608/608 matched with 0 missing,
+0 extra, and 3 ignored infrastructure routes. Goals detail and subpages remain
+open; the latest uninterrupted full browser aggregate remains 62/62 at
+`e155375c`, so this current-source route is focused-green only.
+
 ## Documents To Trust
 
 Read these in order:

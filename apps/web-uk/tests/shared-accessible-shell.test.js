@@ -7698,9 +7698,10 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGoals).not.toHaveBeenCalled();
   });
 
-  it('renders the Laravel-backed goals index with progress cards and create form', async () => {
+  it('renders the Laravel-backed goals index from the exact Arabic catalog', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.getGoals.mockResolvedValueOnce({
       data: [
         {
@@ -7727,32 +7728,51 @@ describe('shared accessible frontend shell', () => {
     });
 
     const response = await request(app)
-      .get('/goals?status=goal-created')
+      .get('/goals?status=goal-created&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
     expect(staticPageRoutes.pages['/goals']).toBeUndefined();
-    expect(response.text).toContain('Goals');
-    expect(response.text).toContain('Goal created');
+    for (const key of [
+      'goals.title',
+      'goals.description',
+      'goals.states.goal-created',
+      'goals.templates_link',
+      'goals.buddying_link',
+      'polish_gamify.goals_discover_title',
+      'goals.status_active',
+      'groups.visibility_public',
+      'goals.status_completed',
+      'groups.visibility_private',
+      'goals.create_title',
+      'goals.title_label',
+      'goals.target_label',
+      'goals.target_hint',
+      'goals.description_label',
+      'goals.deadline_label',
+      'goals.public_label',
+      'goals.create_button'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).toMatch(/<span class="govuk-caption-xl">[^<]+<\/span>/);
+    expect(response.text).not.toContain('>undefined<');
     expect(response.text).toContain('/goals/templates');
     expect(response.text).toContain('/goals/buddying');
     expect(response.text).toContain('/goals/discover');
     expect(response.text).toContain('Learn bicycle repair');
     expect(response.text).toContain('Complete the local bike maintenance course.');
-    expect(response.text).toContain('Active');
-    expect(response.text).toContain('Public');
-    expect(response.text).toContain('4 day streak');
-    expect(response.text).toContain('3 of 6');
+    expect(response.text).toContain(t('polish_gamify.goals_streak_label', { count: 4 }));
+    expect(response.text).toContain(t('goals.progress_label', { current: '3', target: '6' }));
     expect(response.text).toContain('50%');
     expect(response.text).toContain('Start a reading circle');
-    expect(response.text).toContain('Completed');
-    expect(response.text).toContain('Private');
     expect(response.text).toContain('method="post" action="/goals"');
     expect(response.text).toContain('name="title"');
     expect(response.text).toContain('name="target_value"');
     expect(response.text).toContain('name="is_public"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
-    expect(response.text).not.toContain('Community Goals');
+    expect(response.text).not.toContain('Community goals');
     expect(api.getGoals).toHaveBeenCalledWith('test-token', { per_page: 30 });
   });
 
