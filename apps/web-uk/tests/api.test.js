@@ -4452,6 +4452,35 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should fetch the Laravel v2 member profile depth endpoints', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getUserListings('test-token', 77, { limit: 6, type: 'offer', cursor: 'next' });
+      await api.getUserSkills('test-token', 77);
+      await api.getUserAvailability('test-token', 77);
+      await api.getUserActivityDashboard('test-token', 77);
+      await api.getUserBlockStatus('test-token', 77);
+
+      const expectedPaths = [
+        '/api/v2/users/77/listings?limit=6&type=offer&cursor=next',
+        '/api/v2/users/77/skills',
+        '/api/v2/users/77/availability',
+        '/api/v2/users/77/activity/dashboard',
+        '/api/v2/users/77/block-status'
+      ];
+      expectedPaths.forEach((path, index) => {
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          index + 1,
+          `http://localhost:5000${path}`,
+          expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+        );
+      });
+    });
+
     it('should transfer wallet credits through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

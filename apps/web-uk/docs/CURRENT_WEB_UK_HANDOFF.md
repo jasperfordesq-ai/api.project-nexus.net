@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,402/1,402` tests passed.
+- Jest: `45/45` suites and `1,404/1,404` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -63,7 +63,7 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `706.4` seconds.
+  `559.6` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -100,6 +100,34 @@ route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
 
+## 2026-07-10 Member Profile Payload Depth Slice
+
+The signed `/members/{id}` route now consumes Laravel's real bearer contracts
+for the public profile, up to six user listings, user skills, weekly/specific-
+date availability, public activity dashboard, block status, endorsements,
+reviews, gamification, badges, and connection state. The page renders the Blade
+about/skills/listings/recent-activity/profile-summary/availability structure,
+locale-formatted activity statistics, endorsement counts and add/remove state,
+and block versus unblock controls. The listings API call obeys the tenant module
+gate. Auxiliary endpoint failures remain section-local instead of taking down
+the whole profile.
+
+Own-profile rendering merges Laravel's private `/users/me` payload only after
+the current user ID matches, exposing private email/phone and the edit action
+without leaking them to another member's public view. No-JS result feedback now
+covers connection, endorsement, block, review, and wallet-transfer statuses
+through Laravel's catalogs. Five API-client endpoint assertions and composed
+profile tests cover the exact paths, request parameters, feature gates, payload
+envelopes, self-action suppression, and blocked/unblocked states.
+
+The complete Jest gate passed `45/45` suites and `1,404/1,404` tests. The real
+Laravel-backed Arabic five-page member traversal passed RTL/reflow/axe in `85.1`
+seconds with the expanded endpoint fan-out, and the exact-current Chromium/axe
+matrix passed `54/54` in `559.6` seconds. Remaining profile gaps are live
+mutation-effect certification, disposable privacy/block/endorsement fixtures,
+localization of backend-generated activity descriptions, pixel/manual
+assistive-technology review, and ASP.NET backend compatibility.
+
 ## 2026-07-10 Member Profile Hero, Actions, And Reviews Slice
 
 The signed `/members/{id}` page now uses Laravel's profile caption, display-name
@@ -120,13 +148,10 @@ now covers directory, discovery, nearby, profile, and insights at 320 CSS pixels
 the post-guard targeted traversal passed in `68.3` seconds and the full Chromium/
 axe matrix passed `54/54` in `706.4` seconds.
 
-This remains explicitly partial. Web UK currently composes the page from the
-basic user, connection, gamification, badge, and review APIs; it does not yet
-consume Laravel's privacy-filtered `profileForViewer` composition for full
-profile statistics, listings, skills, availability, endorsements, activity, or
-block state. Those sections and unblock-state rendering must not be fabricated
-from thinner payloads. Manual assistive-technology evidence and ASP.NET backend
-compatibility also remain open.
+The payload-depth gap recorded at this checkpoint is superseded by the profile
+depth slice above, which wires Laravel's exposed bearer contracts rather than
+fabricating missing sections. Manual assistive-technology evidence and ASP.NET
+backend compatibility remain open.
 
 ## 2026-07-10 Core Member Directory Structural And Localization Slice
 

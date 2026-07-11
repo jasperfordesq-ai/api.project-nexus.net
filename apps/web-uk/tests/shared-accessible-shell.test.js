@@ -89,6 +89,11 @@ jest.mock('../src/lib/api', () => ({
   getUser: jest.fn(),
   getUserV2: jest.fn(),
   getMemberVerificationBadges: jest.fn(),
+  getUserListings: jest.fn().mockResolvedValue({ data: [] }),
+  getUserSkills: jest.fn().mockResolvedValue({ data: [] }),
+  getUserAvailability: jest.fn().mockResolvedValue({ data: { weekly: [] } }),
+  getUserActivityDashboard: jest.fn().mockResolvedValue({ data: { timeline: [] } }),
+  getUserBlockStatus: jest.fn().mockResolvedValue({ data: { is_blocked: false, is_blocked_by: false } }),
   getGamificationProfileByUserId: jest.fn().mockResolvedValue({ data: null }),
   getAllBadges: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } }),
   getUserReviews: jest.fn().mockResolvedValue({ data: [], summary: null }),
@@ -406,6 +411,11 @@ describe('shared accessible frontend shell', () => {
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.getUserV2.mockReset();
     api.getMemberVerificationBadges.mockReset();
+    api.getUserListings.mockReset().mockResolvedValue({ data: [] });
+    api.getUserSkills.mockReset().mockResolvedValue({ data: [] });
+    api.getUserAvailability.mockReset().mockResolvedValue({ data: { weekly: [] } });
+    api.getUserActivityDashboard.mockReset().mockResolvedValue({ data: { timeline: [] } });
+    api.getUserBlockStatus.mockReset().mockResolvedValue({ data: { is_blocked: false, is_blocked_by: false } });
     api.getGamificationProfileByUserId.mockReset().mockResolvedValue({ data: null });
     api.getAllBadges.mockReset().mockResolvedValue({ data: [], meta: { total: 0, available_types: [] } });
     api.getUserReviews.mockReset().mockResolvedValue({ data: [], summary: null });
@@ -9565,6 +9575,9 @@ describe('shared accessible frontend shell', () => {
         last_name: 'Lovelace',
         email: 'ada@example.test',
         created_at: '2026-01-03T12:00:00Z',
+        bio: 'Builds useful machines with neighbours.',
+        location: 'London',
+        stats: { listings_count: 1 },
         xp: 90,
         level: 4,
         badges: []
@@ -9614,6 +9627,12 @@ describe('shared accessible frontend shell', () => {
       meta: { cursor: null, per_page: 20, has_more: false }
     });
     api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
+    api.getUserListings.mockResolvedValueOnce({ data: [{ id: 42, title: 'Repair a radio', type: 'offer', description: 'Patient help with a vintage receiver.' }] });
+    api.getUserSkills.mockResolvedValueOnce({ data: [{ skill_name: 'Electronics', is_offering: true, is_requesting: false }] });
+    api.getUserAvailability.mockResolvedValueOnce({ data: { weekly: [{ day_of_week: 1, start_time: '09:00:00', end_time: '12:00:00', note: 'Please ask first.' }] } });
+    api.getUserActivityDashboard.mockResolvedValueOnce({ data: { hours_summary: { hours_given: 18.5, hours_received: 7 }, timeline: [{ activity_type: 'post', description: 'Shared a repair update', created_at: '2026-06-02T10:00:00Z' }] } });
+    api.getUserBlockStatus.mockResolvedValueOnce({ data: { is_blocked: true, is_blocked_by: false } });
+    api.getMemberEndorsements.mockResolvedValueOnce({ data: { endorsements: [{ skill_name: 'Electronics', count: 2, endorsed_by_ids: '101,55' }] } });
 
     const response = await request(app)
       .get('/acme/accessible/members/77')
@@ -9624,6 +9643,12 @@ describe('shared accessible frontend shell', () => {
     expect(api.getMemberConnectionStatus).toHaveBeenCalledWith('test-token', '77');
     expect(api.getGamificationProfileByUserId).toHaveBeenCalledWith('test-token', 77);
     expect(api.getAllBadges).toHaveBeenCalledWith('test-token', { user_id: 77 });
+    expect(api.getUserListings).toHaveBeenCalledWith('test-token', '77', { limit: 6 });
+    expect(api.getUserSkills).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getUserAvailability).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getUserActivityDashboard).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getUserBlockStatus).toHaveBeenCalledWith('test-token', '77');
+    expect(api.getMemberEndorsements).toHaveBeenCalledWith('test-token', 77);
     expect(response.text).toContain('Ada Lovelace');
     expect(response.text).toContain('Level');
     expect(response.text).toContain('XP');
@@ -9636,20 +9661,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="action" value="decline"');
     expect(response.text).toContain('A thoughtful neighbour.');
     expect(response.text).toContain('Grace Hopper');
+    expect(response.text).toContain('Builds useful machines with neighbours.');
+    expect(response.text).toContain('Electronics');
+    expect(response.text).toContain('2 endorsements');
+    expect(response.text).toContain('name="action" value="remove"');
+    expect(response.text).toContain('Repair a radio');
+    expect(response.text).toContain('Shared a repair update');
+    expect(response.text).toContain('Please ask first.');
+    expect(response.text).toContain('action="/acme/accessible/members/77/unblock"');
+    expect(response.text).not.toContain('action="/acme/accessible/members/77/block"');
   });
 
   it('does not render member-to-member actions on the signed-in user own profile', async () => {
     const api = require('../src/lib/api');
     api.getUser.mockResolvedValueOnce({
-      data: { id: 77, name: 'Ada Lovelace', email: 'ada@example.test' }
+      data: { id: 77, name: 'Ada Lovelace' }
     });
-    api.getProfile.mockResolvedValueOnce({ data: { id: 77 } });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 77, email: 'private@example.test', phone: '+44 20 1234 5678' } });
 
     const response = await request(app)
       .get('/acme/accessible/members/77')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
+    expect(response.text).toContain('Your profile');
+    expect(response.text).toContain('href="/acme/accessible/profile/settings"');
+    expect(response.text).toContain('private@example.test');
+    expect(response.text).toContain('+44 20 1234 5678');
     expect(response.text).not.toContain('href="/acme/accessible/messages/new/77"');
     expect(response.text).not.toContain('action="/acme/accessible/members/77/connection"');
     expect(response.text).not.toContain('action="/acme/accessible/members/77/block"');
@@ -10828,10 +10866,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('govuk-notification-banner');
   });
 
+  it('renders localized member action result feedback after no-JS redirects', async () => {
+    const cases = [
+      ['connection-accepted', 'You are now connected.'],
+      ['endorsement-removed', 'Your endorsement has been removed.'],
+      ['member-unblocked', 'The member has been unblocked.'],
+      ['transfer-insufficient', 'You do not have enough time credits.']
+    ];
+
+    for (const [status, message] of cases) {
+      const response = await request(app)
+        .get(`/members/77?status=${status}`)
+        .set('Cookie', signedCookieHeader());
+      expect(response.status).toBe(200);
+      expect(response.text).toContain(message);
+    }
+  });
+
   it('hides and rejects member review writes when the tenant reviews feature is disabled', async () => {
     const api = require('../src/lib/api');
     const disabledReviews = tenantBootstrap('acme', {
-      modules: { feed: true, listings: true, wallet: false },
+      modules: { feed: true, listings: false, wallet: false },
       features: { connections: true, reviews: false, direct_messaging: false }
     });
 
@@ -10841,6 +10896,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(profile.status).toBe(200);
+    expect(api.getUserListings).not.toHaveBeenCalled();
     expect(profile.text).not.toContain('action="/acme/accessible/members/77/review"');
     expect(profile.text).not.toContain('href="/acme/accessible/messages/new/77"');
     expect(profile.text).not.toContain('action="/acme/accessible/members/77/transfer"');

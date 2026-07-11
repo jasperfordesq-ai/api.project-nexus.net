@@ -504,6 +504,41 @@ async function getMemberVerificationBadges(token, id) {
   });
 }
 
+async function getUserListings(token, id, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.type) query.set('type', params.type);
+  if (params.cursor) query.set('cursor', params.cursor);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return request(`/api/v2/users/${encodeURIComponent(id)}/listings${suffix}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserSkills(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/skills`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserAvailability(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/availability`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserActivityDashboard(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/activity/dashboard`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserBlockStatus(token, id) {
+  return request(`/api/v2/users/${encodeURIComponent(id)}/block-status`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Listings
 async function getListings(token, params = {}) {
   const query = new URLSearchParams();
@@ -3152,6 +3187,11 @@ module.exports = {
   getUser,
   getUserV2,
   getMemberVerificationBadges,
+  getUserListings,
+  getUserSkills,
+  getUserAvailability,
+  getUserActivityDashboard,
+  getUserBlockStatus,
   // Listings
   getListings,
   getListing,

@@ -10,6 +10,11 @@ const {
   getUser,
   getUserV2,
   getMemberVerificationBadges,
+  getUserListings,
+  getUserSkills,
+  getUserAvailability,
+  getUserActivityDashboard,
+  getUserBlockStatus,
   getMembersV2,
   getMembersNearby,
   getMemberConnectionStatus,
@@ -26,6 +31,7 @@ const {
   getGamificationProfileByUserId,
   getAllBadges,
   getUserReviews,
+  getMemberEndorsements,
   ApiError
 } = require('../lib/api');
 const { requireAuth, withTokenRefresh } = require('../middleware/auth');
@@ -61,12 +67,29 @@ function reviewsEnabledFor(req, res) {
   return flagEnabled(tenant, 'reviews', 'features', true);
 }
 
-function reviewStatusMessage(req) {
+function profileStatusMessage(req) {
   const statuses = {
     'review-submitted': { type: 'success', key: 'polish_members.write_review_success' },
     'review-invalid': { type: 'error', key: 'reviews_page.submit_invalid' },
     'review-duplicate': { type: 'error', key: 'reviews_page.submit_duplicate' },
-    'review-failed': { type: 'error', key: 'reviews_page.submit_failed' }
+    'review-failed': { type: 'error', key: 'reviews_page.submit_failed' },
+    'transfer-sent': { type: 'success', key: 'polish_members.send_credits_success' },
+    'transfer-failed': { type: 'error', key: 'polish_members.send_credits_error_failed' },
+    'transfer-self': { type: 'error', key: 'polish_members.send_credits_error_self' },
+    'transfer-insufficient': { type: 'error', key: 'polish_members.send_credits_error_insufficient' },
+    'connection-sent': { type: 'success', key: 'states.connection-sent' },
+    'connection-accepted': { type: 'success', key: 'states.connection-accepted' },
+    'connection-declined': { type: 'success', key: 'states.connection-declined' },
+    'connection-cancelled': { type: 'success', key: 'states.connection-cancelled' },
+    'connection-removed': { type: 'success', key: 'states.connection-removed' },
+    'connection-failed': { type: 'error', key: 'states.connection-failed' },
+    'endorsement-added': { type: 'success', key: 'states.endorsement-added' },
+    'endorsement-removed': { type: 'success', key: 'states.endorsement-removed' },
+    'endorsement-failed': { type: 'error', key: 'states.endorsement-failed' },
+    'member-blocked': { type: 'success', key: 'profile.block.status_member_blocked' },
+    'member-unblocked': { type: 'success', key: 'profile.block.status_member_unblocked' },
+    'block-self': { type: 'error', key: 'profile.block.status_block_self' },
+    'block-failed': { type: 'error', key: 'profile.block.status_block_failed' }
   };
   const status = statuses[String(req.query.status || '')];
   if (!status) return null;
@@ -290,6 +313,114 @@ function dateLabel(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString(getRequestIntlLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function profileStatsFrom(user, activityResult, listings, reviewSummary, gamification, formatNumber) {
+  const userStats = user && typeof user.stats === 'object' && user.stats !== null ? user.stats : {};
+  const activity = dataFrom(activityResult) || {};
+  const hours = activity.hours_summary && typeof activity.hours_summary === 'object'
+    ? activity.hours_summary
+    : {};
+  const numberOr = (values, fallback = 0) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === '') continue;
+      const number = Number(value);
+      if (Number.isFinite(number)) return number;
+    }
+    return fallback;
+  };
+
+  const hoursGiven = numberOr([user.total_hours_given, user.hours_given, userStats.total_hours_given, userStats.given_count, hours.hours_given]);
+  const hoursReceived = numberOr([user.total_hours_received, user.hours_received, userStats.total_hours_received, userStats.received_count, hours.hours_received]);
+  const listingsCount = numberOr([userStats.listings_count], listings.length);
+  const rating = numberOr([user.rating, userStats.average_rating, reviewSummary?.average_rating], null);
+  const level = numberOr([gamification?.level, user.level], 1);
+  const xp = numberOr([gamification?.xp, gamification?.total_xp, gamification?.totalXp, user.xp], 0);
+  return {
+    hoursGivenLabel: formatNumber(hoursGiven, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    hoursReceivedLabel: formatNumber(hoursReceived, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    listingsCountLabel: formatNumber(listingsCount),
+    ratingLabel: rating === null ? '' : formatNumber(rating, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    levelLabel: formatNumber(level),
+    xpLabel: formatNumber(xp)
+  };
+}
+
+function profileAvailabilityFrom(result, t) {
+  const data = dataFrom(result);
+  const source = data && Array.isArray(data.weekly) ? data.weekly : (Array.isArray(data) ? data : []);
+  const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return source.map((slot) => {
+    const day = boundedInteger(slot.day_of_week ?? slot.dayOfWeek, -1, -1, 6);
+    const specificDate = dateLabel(slot.specific_date || slot.specificDate);
+    const start = String(slot.start_time || slot.startTime || '').slice(0, 5);
+    const end = String(slot.end_time || slot.endTime || '').slice(0, 5);
+    return {
+      label: specificDate || (day >= 0 ? t(`profile.days.${dayKeys[day]}`) : ''),
+      time: start && end ? `${start} - ${end}` : '',
+      note: String(slot.note || '').trim()
+    };
+  }).filter((slot) => slot.label || slot.time || slot.note).slice(0, 12);
+}
+
+function profileActivityFrom(result, t) {
+  const data = dataFrom(result);
+  const timeline = data && Array.isArray(data.timeline) ? data.timeline : [];
+  const knownTypes = new Set(['post', 'comment', 'gave_hours', 'received_hours', 'connection', 'event_rsvp']);
+  const classes = {
+    post: 'govuk-tag--blue',
+    comment: 'govuk-tag--blue',
+    gave_hours: 'govuk-tag--green',
+    received_hours: 'govuk-tag--turquoise',
+    connection: 'govuk-tag--purple',
+    event_rsvp: 'govuk-tag--yellow'
+  };
+  return timeline.map((item) => {
+    const type = String(item.activity_type || item.activityType || 'post');
+    return {
+      type,
+      label: knownTypes.has(type) ? t(`profile.activity_types.${type}`) : titleLabel(type),
+      tagClass: classes[type] || 'govuk-tag--grey',
+      description: String(item.description || '').trim().slice(0, 160),
+      date: dateLabel(item.created_at || item.createdAt)
+    };
+  }).slice(0, 30);
+}
+
+function profileEndorsementsFrom(result, viewerId) {
+  const data = dataFrom(result) || {};
+  const rows = Array.isArray(data.endorsements) ? data.endorsements : [];
+  const bySkill = {};
+  rows.forEach((row) => {
+    const skillName = String(row.skill_name || row.skillName || '').trim();
+    if (!skillName) return;
+    const viewerIds = String(row.endorsed_by_ids || row.endorsedByIds || '')
+      .split(',')
+      .map((value) => positiveInteger(value))
+      .filter(Boolean);
+    bySkill[skillName] = {
+      count: boundedInteger(row.count, 0, 0, Number.MAX_SAFE_INTEGER),
+      viewerEndorsed: viewerIds.includes(positiveInteger(viewerId))
+    };
+  });
+  return bySkill;
+}
+
+function profileSkillsFrom(result, user) {
+  const rows = rowsFrom(result);
+  const source = rows.length > 0
+    ? rows
+    : (Array.isArray(user.skills) ? user.skills : []);
+  return source.map((skill) => {
+    if (typeof skill === 'string') {
+      return { name: skill.trim(), isOffering: true, isRequesting: false };
+    }
+    return {
+      name: String(skill.skill_name || skill.name || '').trim(),
+      isOffering: !!(skill.is_offering ?? skill.isOffering),
+      isRequesting: !!(skill.is_requesting ?? skill.isRequesting)
+    };
+  }).filter((skill) => skill.name).slice(0, 20);
 }
 
 function translatedOrFallback(t, key, fallback, replacements = {}) {
@@ -808,7 +939,22 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
   let connectionErrorMessage = null;
 
-  const [userResult, connectionResult, gamificationResult, gamificationBadgesResult, reviewsResult, currentProfileResult] = await Promise.all([
+  const tenant = req.accessibleRouting?.tenant || res.locals.tenant || {};
+  const listingsEnabled = flagEnabled(tenant, 'listings', 'modules', true);
+  const [
+    userResult,
+    connectionResult,
+    gamificationResult,
+    gamificationBadgesResult,
+    reviewsResult,
+    currentProfileResult,
+    listingsResult,
+    skillsResult,
+    availabilityResult,
+    activityResult,
+    blockStatusResult,
+    endorsementsResult
+  ] = await Promise.all([
     getUser(req.token, id),
     getMemberConnectionStatus(req.token, id).catch((error) => {
       if (isAuthError(error)) throw error;
@@ -818,19 +964,32 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     getGamificationProfileByUserId(req.token, Number(id)).catch(() => ({ data: null })),
     getAllBadges(req.token, { user_id: Number(id) }).catch(() => ({ data: [], meta: { total: 0, available_types: [] } })),
     getUserReviews(req.token, id).catch(() => ({ data: [], summary: null })),
-    getRequestProfile(req, req.token).catch(() => null)
+    getRequestProfile(req, req.token).catch(() => null),
+    listingsEnabled ? getUserListings(req.token, id, { limit: 6 }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+    getUserSkills(req.token, id).catch(() => ({ data: [] })),
+    getUserAvailability(req.token, id).catch(() => ({ data: { weekly: [] } })),
+    getUserActivityDashboard(req.token, id).catch(() => ({ data: { timeline: [] } })),
+    getUserBlockStatus(req.token, id).catch(() => ({ data: { is_blocked: false, is_blocked_by: false } })),
+    getMemberEndorsements(req.token, Number(id)).catch(() => ({ data: { endorsements: [] } }))
   ]);
-  const user = dataFrom(userResult);
+  const publicUser = dataFrom(userResult);
 
-  if (!user || typeof user !== 'object') {
+  if (!publicUser || typeof publicUser !== 'object') {
     return res.status(404).render('errors/404', { title: 'User not found' });
   }
 
   const connection = memberConnectionFrom(connectionResult);
-  const displayName = memberName(user, res.locals.t);
   const currentProfile = dataFrom(currentProfileResult);
   const isOwnProfile = !!currentProfile && Number(currentProfile.id) === Number(id);
-  const reviewStatus = reviewStatusMessage(req);
+  const user = isOwnProfile ? { ...publicUser, ...currentProfile } : publicUser;
+  const displayName = memberName(user, res.locals.t);
+  const viewerId = positiveInteger(currentProfile?.id);
+  const profileListings = rowsFrom(listingsResult).slice(0, 6);
+  const profileSkills = profileSkillsFrom(skillsResult, user);
+  const reviewSummary = reviewSummaryFrom(reviewsResult);
+  const gamification = gamificationFrom(gamificationResult, user);
+  const blockStatus = dataFrom(blockStatusResult) || {};
+  const profileStatus = profileStatusMessage(req);
   const flashedSuccess = req.flash ? req.flash('success')[0] : null;
   const flashedError = req.flash ? req.flash('error')[0] : null;
 
@@ -838,6 +997,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     title: displayName,
     user,
     displayName,
+    communityName: res.locals.tenantName || res.locals.serviceName || '',
     identityVerified: !!(user.identity_verified || user.id_verified),
     profileType: String(user.profile_type || 'individual') === 'organisation' ? 'organisation' : 'individual',
     joinedLabel: dateLabel(user.created_at || user.createdAt),
@@ -848,16 +1008,24 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
       ? 'none'
       : (connection.status === 'accepted' ? 'connected' : (connection.is_requester ? 'pending_sent' : 'pending_received'))),
     isOwnProfile,
-    gamification: gamificationFrom(gamificationResult, user),
+    gamification,
     gamificationBadges: gamificationBadgesFrom(gamificationBadgesResult, user),
     reviews: rowsFrom(reviewsResult),
-    reviewSummary: reviewSummaryFrom(reviewsResult),
+    reviewSummary,
+    profileStats: profileStatsFrom(user, activityResult, profileListings, reviewSummary, gamification, res.locals.formatLocaleNumber),
+    profileListings,
+    profileSkills,
+    profileAvailability: profileAvailabilityFrom(availabilityResult, res.locals.t),
+    profileActivity: profileActivityFrom(activityResult, res.locals.t),
+    profileEndorsements: profileEndorsementsFrom(endorsementsResult, viewerId),
+    isBlocked: !isOwnProfile && !!blockStatus.is_blocked,
+    isBlockedBy: !isOwnProfile && !!blockStatus.is_blocked_by,
     reviewsEnabled: reviewsEnabledFor(req, res),
-    directMessagingEnabled: flagEnabled(req.accessibleRouting?.tenant || res.locals.tenant || {}, 'direct_messaging', 'features', true),
-    walletEnabled: flagEnabled(req.accessibleRouting?.tenant || res.locals.tenant || {}, 'wallet', 'modules', true),
+    directMessagingEnabled: flagEnabled(tenant, 'direct_messaging', 'features', true),
+    walletEnabled: flagEnabled(tenant, 'wallet', 'modules', true),
     transferIdempotencyKey: randomUUID(),
-    successMessage: reviewStatus?.type === 'success' ? reviewStatus.text : flashedSuccess,
-    errorMessage: connectionErrorMessage || (reviewStatus?.type === 'error' ? reviewStatus.text : flashedError)
+    successMessage: profileStatus?.type === 'success' ? profileStatus.text : flashedSuccess,
+    errorMessage: connectionErrorMessage || (profileStatus?.type === 'error' ? profileStatus.text : flashedError)
   });
 }, { redirectOn401: LOGIN_AUTH_REQUIRED_PATH, notFoundTitle: 'User not found' }));
 

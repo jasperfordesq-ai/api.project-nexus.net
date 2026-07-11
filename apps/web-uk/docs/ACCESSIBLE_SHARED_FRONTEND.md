@@ -34,7 +34,7 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,402/1,402` tests),
+The current checkout has passed `45/45` Jest suites (`1,404/1,404` tests),
 ESLint, the brand-policy gate, CSS compilation, the `54/54` Chromium/axe gate,
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
@@ -1463,10 +1463,13 @@ and wallet transfer controls. Connection transitions use Laravel's single
 their tenant feature/module gates, and wallet transfers carry UUID idempotency
 keys. Own-profile pages suppress all member-to-member actions. The profile is
 included in the signed Arabic member browser traversal.
-This remains partial because the current bearer APIs do not expose Laravel's
-complete privacy-filtered `profileForViewer` composition: listings, skills,
-availability, endorsements, full activity, and block-state depth are not yet
-rendered or certified.
+The page now reads Laravel's public profile, user listings, skills, availability,
+public activity dashboard, block status, endorsements, reviews, gamification,
+badges, and connection endpoints, and renders the corresponding Blade sections.
+Own-profile private fields come only from `/users/me` after the IDs match. This
+remains partial for live mutation effects, disposable privacy/block/endorsement
+fixtures, backend-generated activity-description localization, pixel/manual
+assistive-technology review, and ASP.NET backend compatibility.
 
 Legacy local review edit and target-specific submission routes are intentionally
 not exposed. Laravel's accessible source uses POST `/members/{id}/review` for
