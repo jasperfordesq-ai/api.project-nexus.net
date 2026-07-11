@@ -94,6 +94,10 @@ describe('Laravel-first error-page localization', () => {
         expect(html).toContain(`>${t('error_pages.home_link')}</a>`);
         expect((html.match(/<main\b/g) || [])).toHaveLength(1);
         expect((html.match(/id="main-content"/g) || [])).toHaveLength(1);
+        expect(html).not.toContain('nexus-alpha-header');
+        expect(html).not.toContain('govuk-cookie-banner');
+        expect(html).not.toContain('govuk-phase-banner');
+        expect(html).not.toContain('/js/');
       }
 
       const genericHtml = renderErrorTemplate('error.njk', locale);
@@ -107,7 +111,7 @@ describe('Laravel-first error-page localization', () => {
     }
   );
 
-  it('preserves safe dynamic headings and messages verbatim', () => {
+  it('preserves generic route copy but standardizes shared exception copy', () => {
     const genericHtml = renderErrorTemplate('error.njk', 'ga', {
       heading: 'Account access paused',
       message: 'Contact your community administrator.'
@@ -118,6 +122,7 @@ describe('Laravel-first error-page localization', () => {
 
     expect(genericHtml).toContain('Account access paused');
     expect(genericHtml).toContain('Contact your community administrator.');
-    expect(forbiddenHtml).toContain('Signed-in access is required.');
+    expect(forbiddenHtml).toContain(createTranslator('ar')('error_pages.403_body'));
+    expect(forbiddenHtml).not.toContain('Signed-in access is required.');
   });
 });

@@ -14,6 +14,8 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 const { createChoiceTranslator, createTranslator } = require('../src/lib/localization');
+const englishForbiddenTitle = createTranslator('en')('error_pages.403_title');
+const englishNotFoundTitle = createTranslator('en')('error_pages.404_title');
 
 jest.mock('../src/lib/api', () => ({
   ApiError: class ApiError extends Error {
@@ -1183,7 +1185,7 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(response.status).toBe(403);
-      expect(response.text).toContain('Forbidden');
+      expect(response.text).toContain(englishForbiddenTitle);
     }
   });
 
@@ -1264,7 +1266,7 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(response.status).toBe(403);
-      expect(response.text).toContain('Forbidden');
+      expect(response.text).toContain(englishForbiddenTitle);
     }
   });
 
@@ -1304,7 +1306,7 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(response.status).toBe(403);
-      expect(response.text).toContain('Forbidden');
+      expect(response.text).toContain(englishForbiddenTitle);
     }
   });
 
@@ -1404,8 +1406,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(404);
     expect(response.headers['content-language']).toBe('ar');
-    expect(response.text).toContain(translate('ar', 'kb.not_found_title'));
-    expect(response.text).toContain(translate('ar', 'kb.not_found_body'));
+    expect(response.text).toContain(translate('ar', 'error_pages.404_title'));
+    expect(response.text).toContain(translate('ar', 'error_pages.404_body'));
   });
 
   it('renders the Laravel-backed help centre and trust safety support pages', async () => {
@@ -2015,7 +2017,7 @@ describe('shared accessible frontend shell', () => {
     const response = await request(app).get('/acme/accessible/profile');
 
     expect(response.status).toBe(403);
-    expect(response.text).toContain('This feature is not enabled for this community.');
+    expect(response.text).toContain(englishForbiddenTitle);
     expect(api.getProfile).not.toHaveBeenCalled();
   });
 
@@ -7729,6 +7731,8 @@ describe('shared accessible frontend shell', () => {
 
       expect(forbidden.status).toBe(403);
       expect(forbidden.text).toContain(t('error_pages.403_title'));
+      expect(forbidden.text).toContain(t('error_pages.403_body'));
+      expect(forbidden.text).not.toContain('Forbidden');
       expect(missing.status).toBe(404);
       expect(missing.text).toContain(t('error_pages.404_title'));
       expect(missing.text).toContain(t('error_pages.404_body'));
@@ -7747,6 +7751,9 @@ describe('shared accessible frontend shell', () => {
       for (const response of [forbidden, missing, expired, limited, unavailable, failed]) {
         expect(response.text).toContain(t('error_pages.home_link'));
         expect(response.text).not.toContain('error_pages.');
+        expect(response.text).not.toContain('nexus-alpha-header');
+        expect(response.text).not.toContain('govuk-cookie-banner');
+        expect(response.text).not.toContain('/js/');
       }
     } finally {
       consoleError.mockRestore();
@@ -8028,7 +8035,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(404);
-    expect(response.text).toContain('Goal not found');
+    expect(response.text).toContain(englishNotFoundTitle);
     expect(api.callGoalApi).not.toHaveBeenCalled();
     api.getGoal.mockClear();
     api.callGoalApi.mockClear();
@@ -8706,9 +8713,9 @@ describe('shared accessible frontend shell', () => {
     expect(detail.status).toBe(302);
     expect(detail.headers.location).toBe('/login?status=auth-required');
     expect(mountedIndex.status).toBe(403);
-    expect(mountedIndex.text).toContain('This feature is not enabled for this community.');
+    expect(mountedIndex.text).toContain(englishForbiddenTitle);
     expect(mountedDetail.status).toBe(403);
-    expect(mountedDetail.text).toContain('This feature is not enabled for this community.');
+    expect(mountedDetail.text).toContain(englishForbiddenTitle);
     expect(api.callCouponApi).not.toHaveBeenCalled();
   });
 
@@ -18557,7 +18564,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(403);
-    expect(response.text).toContain('Forbidden');
+    expect(response.text).toContain(englishForbiddenTitle);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '484');
     expect(api.callGroupApi).not.toHaveBeenCalled();
   });
@@ -19102,9 +19109,9 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(image.status).toBe(403);
-    expect(image.text).toContain('Forbidden');
+    expect(image.text).toContain(englishForbiddenTitle);
     expect(files.status).toBe(403);
-    expect(files.text).toContain('Forbidden');
+    expect(files.text).toContain(englishForbiddenTitle);
     expect(files.text).not.toContain('No files have been shared in this group yet.');
     api.callGroupApi.mockClear();
     api.downloadGroupFile.mockClear();
@@ -21561,7 +21568,7 @@ describe('shared accessible frontend shell', () => {
         .get('/listings/42/edit')
         .set('Cookie', signedCookieHeader());
       expect(forbidden.status).toBe(403);
-      expect(forbidden.text).toContain('Forbidden');
+      expect(forbidden.text).toContain(englishForbiddenTitle);
     });
 
     it('maps Laravel v2 errors arrays to summary links and field errors', async () => {
@@ -22932,7 +22939,7 @@ describe('shared accessible frontend shell', () => {
     const mountedResponse = await request(app).get('/acme/accessible/podcasts');
 
     expect(mountedResponse.status).toBe(403);
-    expect(mountedResponse.text).toContain('This feature is not enabled for this community.');
+    expect(mountedResponse.text).toContain(englishForbiddenTitle);
     expect(api.callPodcastApi).not.toHaveBeenCalled();
   });
 
@@ -24422,7 +24429,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(analytics.status).toBe(403);
-    expect(analytics.text).toContain('Forbidden');
+    expect(analytics.text).toContain(englishForbiddenTitle);
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/1/analytics');
 
     api.callCourseApi.mockResolvedValueOnce({ data: { id: 1, title: 'Care skills' } });
@@ -24432,7 +24439,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(grading.status).toBe(403);
-    expect(grading.text).toContain('Forbidden');
+    expect(grading.text).toContain(englishForbiddenTitle);
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/1/grading');
   });
 

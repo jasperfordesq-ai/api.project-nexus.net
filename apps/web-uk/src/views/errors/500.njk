@@ -1,4 +1,6 @@
-{% extends "layouts/base.njk" %}
+{% extends "layouts/error.njk" %}
+
+{% block errorTitle %}{{ t("error_pages.generic_title") }}{% endblock %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
@@ -8,22 +10,6 @@
       <p class="govuk-body">
         <a href="{{ urlFor('/') }}" class="govuk-link">{{ t("error_pages.home_link") }}</a>
       </p>
-
-      {% if errorDetails %}
-        <details class="govuk-details govuk-!-margin-top-6">
-          <summary class="govuk-details__summary">
-            <span class="govuk-details__summary-text">
-              Error details (development only)
-            </span>
-          </summary>
-          <div class="govuk-details__text">
-            <p class="govuk-body"><strong>{{ t("vol_depth.swap_message_from") }}</strong> {{ errorDetails.message }}</p>
-            {% if errorDetails.stack %}
-              <pre style="overflow-x: auto; background: #f3f2f1; padding: 15px; font-size: 12px;">{{ errorDetails.stack }}</pre>
-            {% endif %}
-          </div>
-        </details>
-      {% endif %}
     </div>
   </div>
 {% endblock %}

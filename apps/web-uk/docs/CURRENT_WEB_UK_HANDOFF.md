@@ -4304,6 +4304,33 @@ markers, `Content-Language: ar`, RTL, 320px reflow, and axe (`1/1`, 9.2 seconds
 inside Playwright). The recurring Sass output remains the pre-existing GOV.UK
 palette deprecation warning set.
 
+Latest standalone error-document parity slice: direct comparison with Laravel
+`accessible-frontend/views/error.blade.php` found Web UK's six status templates
+still extended the full app shell. That could make exception rendering depend
+on tenant navigation, session state, cookie controls, the phase banner, and
+application JavaScript, while also exposing route- or backend-supplied English
+exception messages and development stack details. Laravel intentionally avoids
+all of those dependencies and always renders standardized catalog copy.
+
+Web UK now has `layouts/error.njk`, a standalone CSS-only document with exact
+request-locale title/body/home copy, skip link, one main landmark, `noindex`,
+and the minimal AGPL attribution footer. All 403/404/419/429/500/503 templates
+use it. Raw 403 exception messages, specialized 404 overrides, and development
+500 details are no longer emitted. The focused six-status integration test
+asserts the missing header, cookie banner, phase banner, and `/js/` assets as
+well as exact status/copy semantics.
+
+The first complete Jest run exposed 12 stale tests whose only 403 assertion was
+the old literal exception/feature-disabled message. After switching those to
+Laravel's authoritative `error_pages.403_title`, the next complete run exposed
+two specialized 404 expectations (Knowledge Base and Goals) that Laravel's
+standalone exception renderer also standardizes. Updating those assertions
+produced a clean 45/45-suite, 1,425/1,425-test run. Warning-free ESLint, the
+292-template zero-match audit, and 608/608 route parity also pass. Fresh
+ephemeral Chromium runs pass both the standalone Arabic 404 and invalid-CSRF
+419 journeys with exact markers, RTL, 320px reflow, and no serious/critical axe
+violations. The runs retain only the pre-existing GOV.UK Sass palette warnings.
+
 ## Documents To Trust
 
 Read these in order:
