@@ -3960,6 +3960,27 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should toggle a flat bookmark through Laravel BookmarkController', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { bookmarked: false } })
+      });
+
+      await api.toggleBookmark('test-token', 'listing', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/bookmarks',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ type: 'listing', id: 42 })
+        })
+      );
+    });
+
     it('should fetch suggestions through the Laravel v2 search endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

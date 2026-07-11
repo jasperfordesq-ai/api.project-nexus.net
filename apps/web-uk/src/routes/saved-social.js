@@ -10,7 +10,7 @@ const {
   getBookmarks,
   getUserPublicCollections,
   getUserAppreciations,
-  unsaveSavedItem,
+  toggleBookmark,
   sendAppreciation,
   reactToAppreciation,
   ApiError
@@ -283,7 +283,7 @@ router.post('/saved/destroy', requireAuth, asyncRoute(async (req, res) => {
 
   if (type && Number.isInteger(id) && id > 0) {
     try {
-      await unsaveSavedItem(req.token, type, id);
+      await toggleBookmark(req.token, type, id);
       ok = true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) throw error;

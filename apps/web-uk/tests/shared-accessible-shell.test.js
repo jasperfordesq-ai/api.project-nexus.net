@@ -173,6 +173,7 @@ jest.mock('../src/lib/api', () => ({
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   getBookmarks: jest.fn().mockResolvedValue({ data: [] }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
+  toggleBookmark: jest.fn().mockResolvedValue({}),
   getUserPublicCollections: jest.fn().mockResolvedValue({ data: [] }),
   getUserAppreciations: jest.fn().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 } }),
   sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
@@ -455,6 +456,7 @@ describe('shared accessible frontend shell', () => {
     api.getConnections.mockReset().mockResolvedValue({ data: [] });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
+    api.toggleBookmark.mockReset().mockResolvedValue({});
     api.getUserPublicCollections.mockReset().mockResolvedValue({ data: [] });
     api.getUserAppreciations.mockReset().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 } });
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
@@ -6765,7 +6767,7 @@ describe('shared accessible frontend shell', () => {
     }));
   });
 
-  it('submits the Laravel saved destroy route through the saved-items API helper', async () => {
+  it('submits the Laravel saved destroy route through the bookmark toggle API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
@@ -6788,7 +6790,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/saved?status=bookmark-removed');
-    expect(api.unsaveSavedItem).toHaveBeenCalledWith('test-token', 'listing', 42);
+    expect(api.toggleBookmark).toHaveBeenCalledWith('test-token', 'listing', 42);
   });
 
   it('renders the Laravel-backed saved items index with type filtering', async () => {

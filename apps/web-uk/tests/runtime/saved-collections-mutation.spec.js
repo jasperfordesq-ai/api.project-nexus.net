@@ -5,9 +5,30 @@
 
 const { test, expect } = require('@playwright/test');
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
+const {
+  getBookmarks,
+  getListings,
+  login,
+  toggleBookmark
+} = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
+
+function rowsFrom(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.data?.data)) return result.data.data;
+  if (Array.isArray(result?.data?.items)) return result.data.items;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function bookmarkPair(row) {
+  const rawType = String(row?.bookmarkable_type ?? row?.bookmarkableType ?? '').split('\\').pop().toLowerCase();
+  const id = Number(row?.bookmarkable_id ?? row?.bookmarkableId);
+  return `${rawType}:${id}`;
+}
 
 async function openCollections(page, status = '') {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
@@ -163,6 +184,74 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
           const cleanupResponse = await submitPost(page, deleteButton, '/delete');
           expect(cleanupResponse.status()).toBe(302);
         }
+      }
+    }
+  }
+});
+
+test('creates and removes a disposable flat bookmark through Web UK', async ({ page }) => {
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  expect(token).toBeTruthy();
+
+  const [listingResult, initialBookmarkResult] = await Promise.all([
+    getListings(token, { limit: 100 }),
+    getBookmarks(token, { type: 'listing', page: 1, per_page: 100 })
+  ]);
+  const savedPairs = new Set(rowsFrom(initialBookmarkResult).map(bookmarkPair));
+  const listing = rowsFrom(listingResult).find((row) => {
+    const id = Number(row?.id);
+    return Number.isInteger(id) && id > 0 && !savedPairs.has(`listing:${id}`);
+  });
+  expect(listing).toBeTruthy();
+
+  const listingId = Number(listing.id);
+  let bookmarkAdded = false;
+
+  try {
+    await toggleBookmark(token, 'listing', listingId);
+    bookmarkAdded = true;
+
+    await authenticate(page);
+    await page.goto(`${mountPath}/saved?type=listing`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+
+    const removeForm = page.locator(
+      `form[action$="/saved/destroy"]:has(input[name="type"][value="listing"]):has(input[name="id"][value="${listingId}"])`
+    );
+    await expect(removeForm).toHaveCount(1);
+
+    const removeResponse = await submitPost(
+      page,
+      removeForm.locator('button[type="submit"], button:not([type])'),
+      '/saved/destroy'
+    );
+    expect(removeResponse.status()).toBe(302);
+
+    await page.goto(`${mountPath}/saved?type=listing&status=bookmark-removed`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await expect(removeForm).toHaveCount(0);
+
+    const finalPairs = new Set(rowsFrom(await getBookmarks(token, {
+      type: 'listing',
+      page: 1,
+      per_page: 100
+    })).map(bookmarkPair));
+    expect(finalPairs.has(`listing:${listingId}`)).toBe(false);
+    bookmarkAdded = false;
+  } finally {
+    if (bookmarkAdded) {
+      const currentPairs = new Set(rowsFrom(await getBookmarks(token, {
+        type: 'listing',
+        page: 1,
+        per_page: 100
+      })).map(bookmarkPair));
+      if (currentPairs.has(`listing:${listingId}`)) {
+        await toggleBookmark(token, 'listing', listingId);
       }
     }
   }

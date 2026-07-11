@@ -1634,6 +1634,19 @@ async function getExchangeAttentionCount(token) {
   });
 }
 
+async function toggleBookmark(token, type, id, collectionId = null) {
+  const body = { type, id };
+  if (collectionId !== null && collectionId !== undefined) {
+    body.collection_id = collectionId;
+  }
+
+  return request('/api/v2/bookmarks', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body)
+  });
+}
+
 async function checkExchangeForListing(token, listingId) {
   return request(`/api/v2/exchanges/check?listing_id=${encodeURIComponent(listingId)}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -3260,6 +3273,7 @@ module.exports = {
   callWalletDownload,
   getBookmarks,
   saveSavedItem,
+  toggleBookmark,
   checkSavedItem,
   unsaveSavedItem,
   getSavedCollections,
