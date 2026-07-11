@@ -41,16 +41,6 @@ const GOAL_BUDDY_TYPE_HINTS = {
   encouragement: 'A few words of support and motivation.',
   offer_help: 'Let the owner know you can help out.'
 };
-const GOAL_MOOD_LABELS = {
-  great: 'Great',
-  good: 'Good',
-  neutral: 'Neutral',
-  okay: 'Okay',
-  struggling: 'Struggling',
-  stuck: 'Stuck',
-  motivated: 'Motivated',
-  grateful: 'Grateful'
-};
 const GOAL_HISTORY_LABELS = {
   created: 'Created',
   progress_update: 'Progress update',
@@ -358,7 +348,7 @@ function normalizeEditableGoal(item, t) {
   };
 }
 
-function normalizeCheckin(item) {
+function normalizeCheckin(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const progress = raw.progress_value ?? raw.progress_percent ?? raw.progressValue ?? raw.progressPercent ?? null;
   const mood = allowedValue(raw.mood, GOAL_CHECKIN_MOODS, '');
@@ -366,9 +356,9 @@ function normalizeCheckin(item) {
   return {
     id: positiveInteger(raw.id),
     progressText: progress === null || progress === undefined || progress === ''
-      ? 'Progress not recorded'
-      : `Progress: ${Math.round(Number(progress))}%`,
-    moodLabel: mood ? GOAL_MOOD_LABELS[mood] : '',
+      ? t('govuk_alpha_goals.checkin.history_progress_unknown')
+      : t('govuk_alpha_goals.checkin.history_progress', { percent: Math.round(Number(progress)) }),
+    moodLabel: mood ? t(`govuk_alpha_goals.mood.${mood}`) : '',
     note: trimmed(raw.note || ''),
     createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
   };
@@ -570,18 +560,18 @@ function errorMessage(status, t) {
   return messages[trimmed(status)] || '';
 }
 
-function checkinStatus(status) {
+function checkinStatus(status, t) {
   const value = trimmed(status);
   if (value === 'checkin-recorded') {
     return {
-      successMessage: 'Your check-in has been recorded.',
+      successMessage: t('govuk_alpha_goals.states.checkin-recorded'),
       errorMessage: ''
     };
   }
   if (value === 'checkin-failed') {
     return {
       successMessage: '',
-      errorMessage: 'We could not record your check-in. Please try again.'
+      errorMessage: t('govuk_alpha_goals.states.checkin-failed')
     };
   }
   return { successMessage: '', errorMessage: '' };
@@ -836,18 +826,21 @@ router.get('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const goal = normalizeGoal(dataFrom(goalResult));
+  const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
   goal.id = goal.id || Number(id);
   const currentPercent = progressPercent(goal);
-  const status = checkinStatus(req.query.status);
+  const status = checkinStatus(req.query.status, res.locals.t);
 
   return res.render('goals/checkin', {
-    title: 'Log a check-in',
+    title: res.locals.t('govuk_alpha_goals.checkin.title'),
     activeNav: 'explore',
     goal,
     currentPercent,
-    moods: GOAL_CHECKIN_MOODS.map((value) => ({ value, label: GOAL_MOOD_LABELS[value] })),
-    checkins: collectionFrom(checkinResult).map(normalizeCheckin),
+    moods: GOAL_CHECKIN_MOODS.map((value) => ({
+      value,
+      label: res.locals.t(`govuk_alpha_goals.mood.${value}`)
+    })),
+    checkins: collectionFrom(checkinResult).map((checkin) => normalizeCheckin(checkin, res.locals.t)),
     ...status
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));

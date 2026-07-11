@@ -8198,6 +8198,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal check-in form and recent history for signed-in owners', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8222,26 +8223,37 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/checkin');
     const signed = await request(app)
-      .get('/goals/42/checkin?status=checkin-failed')
+      .get('/goals/42/checkin?status=checkin-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Log a check-in');
-    expect(signed.text).toContain('Record your real progress, how you are feeling and an optional note.');
-    expect(signed.text).toContain('We could not record your check-in. Please try again.');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.checkin.caption',
+      'govuk_alpha_goals.checkin.title',
+      'govuk_alpha_goals.checkin.intro',
+      'govuk_alpha_goals.states.checkin-failed',
+      'govuk_alpha_goals.checkin.progress_label',
+      'govuk_alpha_goals.checkin.progress_help',
+      'govuk_alpha_goals.checkin.mood_legend',
+      'govuk_alpha_goals.checkin.mood_none',
+      'govuk_alpha_goals.checkin.note_label',
+      'govuk_alpha_goals.checkin.note_help',
+      'govuk_alpha_goals.checkin.submit',
+      'govuk_alpha_goals.checkin.history_title'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('method="post" action="/goals/42/checkin"');
     expect(signed.text).toContain('id="progress_percent" name="progress_percent" type="number" min="0" max="100" step="1" inputmode="numeric" value="30"');
-    expect(signed.text).toContain('How are you feeling?');
     expect(signed.text).toContain('id="mood-motivated" name="mood" type="radio" value="motivated"');
-    expect(signed.text).toContain('Note (optional)');
-    expect(signed.text).toContain('Record check-in');
-    expect(signed.text).toContain('Recent check-ins');
-    expect(signed.text).toContain('Progress: 30%');
-    expect(signed.text).toContain('Mood: Motivated');
+    expect(signed.text).toContain(t('govuk_alpha_goals.checkin.history_progress', { percent: 30 }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.checkin.history_mood', {
+      mood: t('govuk_alpha_goals.mood.motivated')
+    }));
     expect(signed.text).toContain('Cleared the first raised bed.');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);

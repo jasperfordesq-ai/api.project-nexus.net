@@ -980,7 +980,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic goals index detail and edit use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic goals index detail edit and check-in use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -1085,6 +1085,37 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(editAxeResults.violations))).toEqual([]);
+
+      const checkinPath = `${authenticatedMountPath}/goals/162/checkin?locale=ar`;
+      const checkinResponse = await page.goto(checkinPath, { waitUntil: 'domcontentloaded' });
+      expect(checkinResponse, `${checkinPath} did not return a document response`).not.toBeNull();
+      expect(checkinResponse.status(), `${checkinPath} returned HTTP ${checkinResponse.status()}`).toBeLessThan(400);
+      expect(checkinResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'govuk_alpha_goals.checkin.title'));
+      await expect(page.locator('#progress-hint')).toHaveText(translate('ar', 'govuk_alpha_goals.checkin.progress_help'));
+      await expect(page.locator('main form[action$="/checkin"] button[type="submit"]')).toHaveText(translate('ar', 'govuk_alpha_goals.checkin.submit'));
+      expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+      const checkinOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(checkinOverflow.scrollWidth, `${checkinPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(checkinOverflow.clientWidth + 1);
+      const checkinAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-goal-checkin', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: checkinOverflow,
+          violations: formatViolations(checkinAxeResults.violations),
+          incomplete: formatViolations(checkinAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(checkinAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

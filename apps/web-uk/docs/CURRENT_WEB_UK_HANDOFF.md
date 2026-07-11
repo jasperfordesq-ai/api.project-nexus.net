@@ -4062,6 +4062,21 @@ parity. Check-in, reminder, buddy-actions, insights, history, and social remain
 open; the latest uninterrupted full browser aggregate is still 62/62 at
 `e155375c`.
 
+Latest focused Goals-check-in localization slice: signed
+`/goals/{id}/checkin` now uses Laravel's exact `govuk_alpha_goals` keys for its
+document title, outcome states, goal fallback/caption, intro, progress guidance,
+mood choices, note form, submit action, recent-history empty state, and
+API-normalized progress/mood history strings. The obsolete English mood-label
+map was removed after the first full lint pass identified it as unused; the
+warning-free lint rerun passed. Focused Arabic check-in coverage passed `1/1`.
+The live Arabic index/detail/edit/check-in journey passed HTTP 200, exact
+markers, no `undefined`, RTL, 320px reflow, and axe (`1/1`, 1.9 minutes wall
+time; 1.0 minute inside the test). Full verification passed 45/45 Jest suites
+and 1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit,
+and 608/608 route parity. Reminder, buddy-actions, insights, history, and social
+remain open; the latest uninterrupted full browser aggregate is still 62/62 at
+`e155375c`.
+
 ## Documents To Trust
 
 Read these in order:
