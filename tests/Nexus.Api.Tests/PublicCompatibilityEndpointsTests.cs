@@ -37,6 +37,16 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelV2TenantBootstrap_WithSlugAndWithoutTenantIdHeader_IsPublic()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/v2/tenant/bootstrap?slug=test-tenant");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task TenantBootstrap_ExploreFeatureHonorsTenantOverride()
     {
         TenantConfig? existing;
@@ -134,6 +144,18 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
         stats.TryGetProperty("listings", out _).Should().BeTrue();
         stats.TryGetProperty("skills", out _).Should().BeTrue();
         stats.TryGetProperty("communities", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LaravelV2PlatformStats_WithSlugAndWithoutTenantIdHeader_IsPublic()
+    {
+        ClearAuthToken();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v2/platform/stats");
+        request.Headers.Add("X-Tenant-Slug", "test-tenant");
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]

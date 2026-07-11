@@ -49,9 +49,11 @@ tenant ID before bootstrap.
 The live 2026-07-11 run against `http://127.0.0.1:5080` is blocked: `/health`
 returned `200`, but both `/api/v2/tenant/bootstrap?slug=hour-timebank` and
 `/api/v2/platform/stats` returned `400` with `X-Tenant-ID header is required`.
-Do not work around this in Web UK. ASP.NET must accept the same slug or
-Host/Origin tenant discovery contract as Laravel before an unchanged frontend
-runtime smoke can begin.
+The backend fix now excludes both public v2 paths from ID-first middleware and
+registers the explicit v2 bootstrap route; the focused ASP.NET integration
+class passes `8/8`. The already-running port-5080 process still needs a normal
+owner-controlled rebuild/restart before this live audit can turn green. Do not
+work around this in Web UK.
 
 The static Laravel/API comparator currently reports `2,436/2,449` source
 operations matched and `13` missing. None of those 13 missing routes is called

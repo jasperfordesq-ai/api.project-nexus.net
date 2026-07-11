@@ -89,7 +89,9 @@ public class TenantResolutionMiddleware
         "/api/registration/config",            // Public registration config
         "/api/registration/webhook",           // Provider webhook callback
         "/api/tenant/bootstrap",               // Public tenant discovery endpoint; resolves tenant itself
+        "/api/v2/tenant/bootstrap",            // Laravel-compatible public tenant discovery alias
         "/api/platform/stats",                 // Public landing page stats
+        "/api/v2/platform/stats",              // Laravel-compatible public landing page stats alias
         "/api/metrics",                        // Public landing page stats alias
         "/api/sales/orders",                   // Public sales enquiry form; no tenant-scoped data
         "/api/v2/sales/orders",                // Laravel-compatible sales enquiry form

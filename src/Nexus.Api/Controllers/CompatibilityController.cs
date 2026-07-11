@@ -1643,6 +1643,7 @@ public class CompatibilityController : ControllerBase
     /// and compliance settings. Called on every page load (no auth required).
     /// </summary>
     [HttpGet("api/tenant/bootstrap")]
+    [HttpGet("api/v2/tenant/bootstrap")]
     [AllowAnonymous]
     public async Task<IActionResult> TenantBootstrap([FromQuery] string? slug = null)
     {

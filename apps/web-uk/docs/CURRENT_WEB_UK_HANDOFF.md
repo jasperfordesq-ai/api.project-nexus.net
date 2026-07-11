@@ -94,9 +94,13 @@ scores must not be reused as current results.
   `npm run audit:aspnet:readiness`. The live process on port `5080` is healthy,
   but slug-first tenant bootstrap and platform stats both return `400` because
   ASP.NET requires `X-Tenant-ID` before bootstrap. This is a backend blocker;
-  Web UK must not add an ASP.NET-specific tenant branch. The static comparator
-  reports `2,436/2,449` Laravel operations matched, and none of its 13 missing
-  routes is consumed by Web UK, but runtime switching is not certified.
+  Web UK did not add an ASP.NET-specific tenant branch. The on-disk backend fix
+  adds public v2 middleware exclusions and an explicit v2 bootstrap route; the
+  focused ASP.NET integration class passes `8/8`. The running port-5080 process
+  still needs an owner-controlled rebuild/restart before the live audit can be
+  rerun. The static comparator reports `2,436/2,449` Laravel operations matched,
+  and none of its 13 missing routes is consumed by Web UK, but runtime switching
+  is not certified.
 - Default-English branded header proof: the real `timebanking-org` bootstrap
   logo loaded at `392x105` intrinsic and `179x48` rendered size, with the exact
   tenant name as alt text and no horizontal overflow. Web UK now follows
