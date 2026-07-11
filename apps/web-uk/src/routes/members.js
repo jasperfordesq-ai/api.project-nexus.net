@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { randomUUID } = require('node:crypto');
 const {
   getUsers,
   getUser,
@@ -811,7 +812,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     getUser(req.token, id),
     getMemberConnectionStatus(req.token, id).catch((error) => {
       if (isAuthError(error)) throw error;
-      connectionErrorMessage = 'Connection status could not be loaded. You can still view this profile.';
+      connectionErrorMessage = res.locals.t('states.connection-failed');
       return { data: { status: 'none' } };
     }),
     getGamificationProfileByUserId(req.token, Number(id)).catch(() => ({ data: null })),
@@ -826,6 +827,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   }
 
   const connection = memberConnectionFrom(connectionResult);
+  const displayName = memberName(user, res.locals.t);
   const currentProfile = dataFrom(currentProfileResult);
   const isOwnProfile = !!currentProfile && Number(currentProfile.id) === Number(id);
   const reviewStatus = reviewStatusMessage(req);
@@ -833,15 +835,27 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const flashedError = req.flash ? req.flash('error')[0] : null;
 
   res.render('members/profile', {
-    title: memberName(user),
+    title: displayName,
     user,
+    displayName,
+    identityVerified: !!(user.identity_verified || user.id_verified),
+    profileType: String(user.profile_type || 'individual') === 'organisation' ? 'organisation' : 'individual',
+    joinedLabel: dateLabel(user.created_at || user.createdAt),
     connection,
+    connectionState: isOwnProfile
+      ? null
+      : (!connection
+      ? 'none'
+      : (connection.status === 'accepted' ? 'connected' : (connection.is_requester ? 'pending_sent' : 'pending_received'))),
     isOwnProfile,
     gamification: gamificationFrom(gamificationResult, user),
     gamificationBadges: gamificationBadgesFrom(gamificationBadgesResult, user),
     reviews: rowsFrom(reviewsResult),
     reviewSummary: reviewSummaryFrom(reviewsResult),
     reviewsEnabled: reviewsEnabledFor(req, res),
+    directMessagingEnabled: flagEnabled(req.accessibleRouting?.tenant || res.locals.tenant || {}, 'direct_messaging', 'features', true),
+    walletEnabled: flagEnabled(req.accessibleRouting?.tenant || res.locals.tenant || {}, 'wallet', 'modules', true),
+    transferIdempotencyKey: randomUUID(),
     successMessage: reviewStatus?.type === 'success' ? reviewStatus.text : flashedSuccess,
     errorMessage: connectionErrorMessage || (reviewStatus?.type === 'error' ? reviewStatus.text : flashedError)
   });

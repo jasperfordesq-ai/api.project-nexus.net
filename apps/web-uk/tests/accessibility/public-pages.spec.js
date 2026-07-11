@@ -801,6 +801,9 @@ test.describe('representative authenticated-page accessibility gate', () => {
           description: 'govuk_alpha_members.nearby.description'
         },
         {
+          path: '/members/77?locale=ar'
+        },
+        {
           path: '/members/77/insights?locale=ar',
           heading: 'govuk_alpha_members.insights.heading'
         }
@@ -813,7 +816,12 @@ test.describe('representative authenticated-page accessibility gate', () => {
         expect(page.url()).not.toContain('/login');
         await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
         await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-        await expect(page.locator('h1')).toHaveText(translate('ar', route.heading));
+        if (route.heading) {
+          await expect(page.locator('h1')).toHaveText(translate('ar', route.heading));
+        } else {
+          await expect(page.locator('h1')).toHaveCount(1);
+          await expect(page.locator('h1')).not.toBeEmpty();
+        }
         if (route.description) {
           await expect(page.locator('.govuk-body-l')).toHaveText(translate('ar', route.description));
         }
@@ -825,7 +833,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
         expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
         const axeResults = await new AxeBuilder({ page }).analyze();
-        await testInfo.attach(`authenticated-arabic-${route.heading.replaceAll('.', '-')}`, {
+        await testInfo.attach(`authenticated-arabic-${(route.heading || route.path).replaceAll(/[./?=]/g, '-')}`, {
           body: Buffer.from(JSON.stringify({
             url: page.url(),
             viewport: { width: 320, height: 640 },

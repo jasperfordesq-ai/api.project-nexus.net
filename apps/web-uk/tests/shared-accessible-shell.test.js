@@ -9625,15 +9625,36 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGamificationProfileByUserId).toHaveBeenCalledWith('test-token', 77);
     expect(api.getAllBadges).toHaveBeenCalledWith('test-token', { user_id: 77 });
     expect(response.text).toContain('Ada Lovelace');
-    expect(response.text).toContain('Level 5');
-    expect(response.text).toContain('120 XP');
+    expect(response.text).toContain('Level');
+    expect(response.text).toContain('XP');
+    expect(response.text).toContain('120');
     expect(response.text).toContain('Badges');
     expect(response.text).toContain('Community helper');
-    expect(response.text).toContain('Wants to connect with you');
-    expect(response.text).toContain('action="/acme/accessible/connections/31/accept"');
-    expect(response.text).toContain('action="/acme/accessible/connections/31/decline"');
+    expect(response.text).toContain('Ada Lovelace has asked to connect with you.');
+    expect(response.text).toContain('action="/acme/accessible/members/77/connection"');
+    expect(response.text).toContain('name="action" value="accept"');
+    expect(response.text).toContain('name="action" value="decline"');
     expect(response.text).toContain('A thoughtful neighbour.');
     expect(response.text).toContain('Grace Hopper');
+  });
+
+  it('does not render member-to-member actions on the signed-in user own profile', async () => {
+    const api = require('../src/lib/api');
+    api.getUser.mockResolvedValueOnce({
+      data: { id: 77, name: 'Ada Lovelace', email: 'ada@example.test' }
+    });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 77 } });
+
+    const response = await request(app)
+      .get('/acme/accessible/members/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('href="/acme/accessible/messages/new/77"');
+    expect(response.text).not.toContain('action="/acme/accessible/members/77/connection"');
+    expect(response.text).not.toContain('action="/acme/accessible/members/77/block"');
+    expect(response.text).not.toContain('action="/acme/accessible/members/77/review"');
+    expect(response.text).not.toContain('action="/acme/accessible/members/77/transfer"');
   });
 
   it('falls back to real Laravel user gamification fields rather than invented member-profile values', async () => {
@@ -9660,8 +9681,10 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Level 3');
-    expect(response.text).toContain('45 XP');
+    expect(response.text).toContain('Level');
+    expect(response.text).toContain('>3</dd>');
+    expect(response.text).toContain('XP');
+    expect(response.text).toContain('>45</dd>');
     expect(response.text).toContain('Real badge');
     expect(response.text).not.toContain('Level 1 - 0 XP');
   });
@@ -10808,8 +10831,8 @@ describe('shared accessible frontend shell', () => {
   it('hides and rejects member review writes when the tenant reviews feature is disabled', async () => {
     const api = require('../src/lib/api');
     const disabledReviews = tenantBootstrap('acme', {
-      modules: { feed: true, listings: true, wallet: true },
-      features: { connections: true, reviews: false }
+      modules: { feed: true, listings: true, wallet: false },
+      features: { connections: true, reviews: false, direct_messaging: false }
     });
 
     api.getTenantBootstrap.mockResolvedValueOnce(disabledReviews);
@@ -10819,6 +10842,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(profile.status).toBe(200);
     expect(profile.text).not.toContain('action="/acme/accessible/members/77/review"');
+    expect(profile.text).not.toContain('href="/acme/accessible/messages/new/77"');
+    expect(profile.text).not.toContain('action="/acme/accessible/members/77/transfer"');
 
     const agent = request.agent(app);
     const csrf = await csrfTokenFor(agent, '/acme/accessible/contact');

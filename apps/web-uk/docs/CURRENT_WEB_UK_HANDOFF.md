@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,401/1,401` tests passed.
+- Jest: `45/45` suites and `1,402/1,402` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -63,7 +63,7 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `772.2` seconds.
+  `706.4` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -74,7 +74,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/member-profile/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -99,6 +99,34 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Member Profile Hero, Actions, And Reviews Slice
+
+The signed `/members/{id}` page now uses Laravel's profile caption, display-name
+fallback, identity-verification and profile-type tags, tagline, reputation link,
+joined label, activity statistics, badges heading, review labels and empty state,
+and request-aware connection controls. Connection transitions submit Laravel's
+single POST `/members/{id}/connection` contract with `connect`, `cancel`,
+`accept`, `decline`, or `remove` actions. Direct-message visibility follows the
+tenant `direct_messaging` feature, wallet transfer visibility follows the wallet
+module, and transfer submissions carry a real UUID idempotency key. The block,
+review, and wallet forms remain tenant-mounted and CSRF protected. Own-profile
+views suppress message, connection, block, review, and transfer-to-self actions.
+
+The focused profile composition regressions passed after removing two obsolete
+inline `Level N - N XP` expectations from the former layout. The full Jest gate
+passed `45/45` suites and `1,402/1,402` tests. The signed Arabic member traversal
+now covers directory, discovery, nearby, profile, and insights at 320 CSS pixels;
+the post-guard targeted traversal passed in `68.3` seconds and the full Chromium/
+axe matrix passed `54/54` in `706.4` seconds.
+
+This remains explicitly partial. Web UK currently composes the page from the
+basic user, connection, gamification, badge, and review APIs; it does not yet
+consume Laravel's privacy-filtered `profileForViewer` composition for full
+profile statistics, listings, skills, availability, endorsements, activity, or
+block state. Those sections and unblock-state rendering must not be fabricated
+from thinner payloads. Manual assistive-technology evidence and ASP.NET backend
+compatibility also remain open.
 
 ## 2026-07-10 Core Member Directory Structural And Localization Slice
 

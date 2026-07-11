@@ -2,7 +2,6 @@
 
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
-{% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 
@@ -30,52 +29,40 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
-      <div class="govuk-!-margin-bottom-6" style="display: flex; align-items: center; gap: 20px;">
-        {% set size = 'large' %}
-        {% include "partials/avatar.njk" %}
-        <div>
-          <h1 class="govuk-heading-xl govuk-!-margin-bottom-1">
-            {% if user.name %}{{ user.name }}{% else %}{{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}{% endif %}
-          </h1>
-          {% if gamification %}
-            <div class="app-member-level">
-              <span class="app-level-badge app-level-badge--small" role="img" aria-label="Level {{ gamification.level }}">
-                <span class="app-level-badge__number" aria-hidden="true">{{ gamification.level }}</span>
-              </span>
-              <span class="govuk-body-s govuk-!-margin-left-2">Level {{ gamification.level }} - {{ gamification.xp or gamification.total_xp or gamification.totalXp or 0 }} XP</span>
-            </div>
-          {% endif %}
-          {# Rating summary if available #}
-          {% if reviewSummary and reviewSummary.average_rating %}
-            <div class="govuk-!-margin-top-2">
-              <span class="app-star-display" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
-                {% for i in [1, 2, 3, 4, 5] %}
-                  <svg class="app-star-display__star {% if i <= reviewSummary.average_rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                {% endfor %}
-              </span>
-              <span class="govuk-body-s govuk-!-margin-left-1">
-                {{ reviewSummary.average_rating | round(1) }} ({{ reviewSummary.total_reviews }} review{% if reviewSummary.total_reviews != 1 %}s{% endif %})
-              </span>
+      <div class="govuk-grid-row govuk-!-margin-bottom-6">
+        <div class="govuk-grid-column-one-quarter">
+          {% set size = 'large' %}{% include "partials/avatar.njk" %}
+        </div>
+        <div class="govuk-grid-column-three-quarters">
+          <span class="govuk-caption-l">{{ t("profile.member_caption") }}</span>
+          <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ displayName }}</h1>
+          <div class="nexus-alpha-inline-flex-tags govuk-!-margin-bottom-2">
+            {% if identityVerified %}<strong class="govuk-tag govuk-tag--green">{{ t("profile.verified") }}</strong>{% endif %}
+            <strong class="govuk-tag govuk-tag--grey">{{ t("profile.profile_type_" + profileType) }}</strong>
+          </div>
+          {% if user.tagline %}<p class="govuk-body-l govuk-!-margin-top-2">{{ user.tagline }}</p>{% endif %}
+          <p class="govuk-body govuk-!-margin-top-2"><a class="govuk-link" href="{{ urlFor('/members/' + (user.id | string) + '/insights') }}">{{ t("govuk_alpha_members.nav.reputation") }}</a></p>
+
+          {% if not isOwnProfile %}
+            {% if connectionState == 'pending_received' %}<p class="govuk-body">{{ t("profile.connection.request_received", { name: displayName }) }}</p>{% endif %}
+            <div class="govuk-button-group govuk-!-margin-top-4">
+            {% if directMessagingEnabled %}<a href="{{ urlFor('/messages/new/' + (user.id | string)) }}" class="govuk-button govuk-button--secondary">{{ t("actions.send_message") }}</a>{% endif %}
+            {% if connectionState == 'none' %}
+              <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="action" value="connect"><button class="govuk-button">{{ t("profile.connection.connect") }}</button></form>
+            {% elif connectionState == 'pending_sent' %}
+              <strong class="govuk-tag govuk-tag--yellow">{{ t("profile.connection.request_sent") }}</strong>
+              <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="action" value="cancel"><button class="govuk-button govuk-button--secondary">{{ t("profile.connection.cancel_request") }}</button></form>
+            {% elif connectionState == 'pending_received' %}
+              <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="action" value="accept"><button class="govuk-button">{{ t("profile.connection.accept") }}</button></form>
+              <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="action" value="decline"><button class="govuk-button govuk-button--warning">{{ t("profile.connection.decline") }}</button></form>
+            {% elif connectionState == 'connected' %}
+              <strong class="govuk-tag govuk-tag--green">{{ t("profile.connection.connected") }}</strong>
+              <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="action" value="remove"><button class="govuk-button govuk-button--warning">{{ t("profile.connection.remove") }}</button></form>
+            {% endif %}
             </div>
           {% endif %}
         </div>
       </div>
-
-      {% if connection %}
-        <p class="govuk-body govuk-!-margin-bottom-6">
-          {% if connection.status == 'accepted' %}
-            {{ govukTag({ text: "Connected", classes: "govuk-tag--green" }) }}
-          {% elif connection.status == 'pending' %}
-            {% if connection.is_requester %}
-              {{ govukTag({ text: "Request sent", classes: "govuk-tag--yellow" }) }}
-            {% else %}
-              {{ govukTag({ text: t("connections.wants_to_connect"), classes: "govuk-tag--blue" }) }}
-            {% endif %}
-          {% endif %}
-        </p>
-      {% endif %}
 
       {{ govukSummaryList({
         rows: [
@@ -84,14 +71,25 @@
             value: { text: user.email }
           },
           {
-            key: { text: "Member since" },
-            value: { text: (user.created_at or user.createdAt) | date if (user.created_at or user.createdAt) else "Unknown" }
+            key: { text: t("profile.joined_label") },
+            value: { text: joinedLabel or t("states.not_available") }
           }
         ]
       }) }}
 
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("profile.activity_title") }}</h2>
+      <dl class="nexus-alpha-stat-grid">
+        <div class="nexus-alpha-stat"><dt>{{ t("profile.hours_given_label") }}</dt><dd>{{ user.total_hours_given or user.hours_given or 0 }}</dd></div>
+        <div class="nexus-alpha-stat"><dt>{{ t("profile.hours_received_label") }}</dt><dd>{{ user.total_hours_received or user.hours_received or 0 }}</dd></div>
+        {% if reviewSummary and reviewSummary.average_rating %}<div class="nexus-alpha-stat"><dt>{{ t("profile.rating_label") }}</dt><dd>{{ reviewSummary.average_rating | round(1) }}</dd></div>{% endif %}
+        {% if gamification %}
+          <div class="nexus-alpha-stat"><dt>{{ t("profile.level_label") }}</dt><dd>{{ gamification.level }}</dd></div>
+          <div class="nexus-alpha-stat"><dt>{{ t("profile.xp_label") }}</dt><dd>{{ gamification.xp or gamification.total_xp or gamification.totalXp or 0 }}</dd></div>
+        {% endif %}
+      </dl>
+
       {% if gamificationBadges and gamificationBadges.length %}
-        <h2 class="govuk-heading-m govuk-!-margin-top-6">Badges</h2>
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("profile.badges_title") }}</h2>
         <ul class="govuk-list nexus-alpha-actions">
           {% for badge in gamificationBadges %}
             <li>
@@ -102,8 +100,6 @@
         </ul>
       {% endif %}
 
-      <h2 class="govuk-heading-m govuk-!-margin-top-6">Actions</h2>
-
       <p class="govuk-body govuk-!-margin-bottom-4">
         {% set reportType = "user" %}
         {% set reportId = user.id %}
@@ -111,66 +107,19 @@
         {% include "partials/report-link.njk" %}
       </p>
 
-      <div class="govuk-button-group">
-        {% if not connection %}
-          <form action="{{ urlFor('/members/' + (user.id | string) + '/connection') }}" method="post" style="display: inline;">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <input type="hidden" name="action" value="connect">
-            {{ govukButton({
-              text: "Send connection request"
-            }) }}
-          </form>
-        {% elif connection.status == 'accepted' %}
-          <a href="{{ urlFor('/messages/new/' + (user.id | string)) }}" class="govuk-button">
-            {{ t("actions.send_message") }}
-          </a>
-          <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-            <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
-            {{ govukButton({
-              text: "Remove connection",
-              classes: "govuk-button--warning"
-            }) }}
-          </form>
-        {% elif connection.status == 'pending' %}
-          {% if connection.is_requester %}
-            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/remove') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
-              {{ govukButton({
-                text: "Cancel request",
-                classes: "govuk-button--secondary"
-              }) }}
-            </form>
-          {% else %}
-            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/accept') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: "Accept request"
-              }) }}
-            </form>
-            <form action="{{ urlFor('/connections/' + (connection.id | string) + '/decline') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: "Decline request",
-                classes: "govuk-button--secondary"
-              }) }}
-            </form>
-          {% endif %}
-        {% endif %}
-      </div>
+      {% if not isOwnProfile %}<details class="govuk-details govuk-!-margin-top-4" data-module="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("profile.block.toggle") }}</span></summary><div class="govuk-details__text"><p class="govuk-body">{{ t("profile.block.explain") }}</p><form method="post" action="{{ urlFor('/members/' + (user.id | string) + '/block') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button govuk-button--warning">{{ t("profile.block.block") }}</button></form></div></details>{% endif %}
 
       {# Reviews Section #}
       <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
 
-      <h2 class="govuk-heading-l">Reviews</h2>
+      <h2 class="govuk-heading-l">{{ t("profile.reviews_title") }}</h2>
 
       {% if reviews and reviews.length > 0 %}
         <ul class="govuk-list app-reviews-list">
           {% for review in reviews %}
             <li class="app-review govuk-!-margin-bottom-6">
               <div class="app-review__header">
-                <span class="app-star-display" aria-label="{{ review.rating }} out of 5 stars">
+                <span class="app-star-display" aria-label="{{ t('polish_members.write_review_rating_label', { n: review.rating }) }}">
                   {% for i in [1, 2, 3, 4, 5] %}
                     <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -199,12 +148,13 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">{{ t("fed2.reviews.empty") }}</p>
+        <p class="govuk-body">{{ t("profile.empty_reviews") }}</p>
       {% endif %}
 
       {# Leave a Review Form #}
       {% if reviewsEnabled and not isOwnProfile %}
-      <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
+      <h3 class="govuk-heading-m govuk-!-margin-top-6">{{ t("polish_members.write_review_title", { name: displayName }) }}</h3>
+      <p class="govuk-body">{{ t("polish_members.write_review_hint") }}</p>
       <form method="post" action="{{ urlFor('/members/' + (user.id | string) + '/review') }}" class="govuk-!-margin-bottom-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="return_url" value="{{ urlFor('/members/' + (user.id | string)) }}">
@@ -212,14 +162,14 @@
         <div class="govuk-form-group">
           <fieldset class="govuk-fieldset">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
-              Your rating
+              {{ t("polish_members.write_review_rating_legend") }}
             </legend>
             <div class="app-star-rating" id="rating">
               {% for i in [1, 2, 3, 4, 5] %}
                 <input type="radio" name="rating" id="user-rating-{{ i }}" value="{{ i }}"
                        class="app-star-rating__input" required>
                 <label for="user-rating-{{ i }}" class="app-star-rating__label">
-                  <span class="govuk-visually-hidden">{{ i }} star{% if i != 1 %}s{% endif %}</span>
+                  <span class="govuk-visually-hidden">{{ t("polish_members.write_review_rating_label", { n: i }) }}</span>
                   <svg class="app-star-rating__star" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                   </svg>
@@ -233,10 +183,10 @@
           name: "comment",
           id: "comment",
           label: {
-            text: "Your review (optional)"
+            text: t("polish_members.write_review_comment_label")
           },
           hint: {
-            text: "Share details about your experience working with this member"
+            text: t("polish_members.write_review_comment_hint")
           },
           attributes: {
             maxlength: "2000"
@@ -245,9 +195,26 @@
         }) }}
 
         {{ govukButton({
-          text: "Submit review"
+          text: t("polish_members.write_review_submit")
         }) }}
       </form>
+      {% endif %}
+
+      {% if walletEnabled and not isOwnProfile %}
+        <details class="govuk-details govuk-!-margin-top-4" data-module="govuk-details">
+          <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("polish_members.send_credits_toggle") }}</span></summary>
+          <div class="govuk-details__text">
+            <h2 class="govuk-heading-m">{{ t("polish_members.send_credits_title", { name: displayName }) }}</h2>
+            <p class="govuk-body">{{ t("polish_members.send_credits_hint") }}</p>
+            <form method="post" action="{{ urlFor('/members/' + (user.id | string) + '/transfer') }}">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="idempotency_key" value="{{ transferIdempotencyKey }}">
+              <div class="govuk-form-group"><label class="govuk-label govuk-label--s" for="profile-transfer-amount">{{ t("polish_members.send_credits_amount_label") }}</label><div id="profile-transfer-amount-hint" class="govuk-hint">{{ t("polish_members.send_credits_amount_hint") }}</div><input class="govuk-input govuk-!-width-one-quarter" type="number" id="profile-transfer-amount" name="amount" min="1" step="1" value="1" aria-describedby="profile-transfer-amount-hint" required></div>
+              <div class="govuk-form-group"><label class="govuk-label govuk-label--s" for="profile-transfer-note">{{ t("polish_members.send_credits_note_label") }}</label><div id="profile-transfer-note-hint" class="govuk-hint">{{ t("polish_members.send_credits_note_hint") }}</div><input class="govuk-input" type="text" id="profile-transfer-note" name="note" maxlength="255" aria-describedby="profile-transfer-note-hint"></div>
+              <button class="govuk-button">{{ t("polish_members.send_credits_submit") }}</button>
+            </form>
+          </div>
+        </details>
       {% endif %}
 
     </div>

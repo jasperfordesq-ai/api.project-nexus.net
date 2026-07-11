@@ -34,7 +34,7 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,401/1,401` tests),
+The current checkout has passed `45/45` Jest suites (`1,402/1,402` tests),
 ESLint, the brand-policy gate, CSS compilation, the `54/54` Chromium/axe gate,
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
@@ -1454,6 +1454,19 @@ forms. `/reviews/list` renders the received/given cursor list, and
 review, comment, and reaction APIs. This remains partial: feature gates,
 moderation/deletion display, threaded reply depth, localization, live runtime
 behavior, and ASP.NET backend compatibility are not certified.
+
+The signed member profile now renders Laravel-catalog profile identity,
+verification/type tags, reputation navigation, joined/activity/badge summaries,
+state-aware connection controls, review content and submission labels, blocking,
+and wallet transfer controls. Connection transitions use Laravel's single
+`/members/{id}/connection` action contract; messaging and wallet controls obey
+their tenant feature/module gates, and wallet transfers carry UUID idempotency
+keys. Own-profile pages suppress all member-to-member actions. The profile is
+included in the signed Arabic member browser traversal.
+This remains partial because the current bearer APIs do not expose Laravel's
+complete privacy-filtered `profileForViewer` composition: listings, skills,
+availability, endorsements, full activity, and block-state depth are not yet
+rendered or certified.
 
 Legacy local review edit and target-specific submission routes are intentionally
 not exposed. Laravel's accessible source uses POST `/members/{id}/review` for
