@@ -6,11 +6,11 @@
 const express = require('express');
 const {
   ApiError,
-  ApiOfflineError,
   getClubs,
-  getExplore
+  getEvents,
+  getListings
 } = require('../lib/api');
-const { buildExploreLinks } = require('../lib/accessible-shell');
+const { buildExploreLinks, flagEnabled } = require('../lib/accessible-shell');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -21,12 +21,6 @@ function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
 }
 
-function dataFrom(result) {
-  return result && typeof result === 'object' && result.data && typeof result.data === 'object'
-    ? result.data
-    : result;
-}
-
 function trimmed(value) {
   return String(value || '').trim();
 }
@@ -34,10 +28,6 @@ function trimmed(value) {
 function positiveInteger(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function asList(value) {
-  return Array.isArray(value) ? value : [];
 }
 
 function dataList(result) {
@@ -80,14 +70,6 @@ function compact(items) {
   return items.filter(Boolean);
 }
 
-function normalizeExplore(result) {
-  const data = dataFrom(result) || {};
-  return {
-    recentListings: compact(asList(data.recent_listings || data.popular_listings).map(normalizeListing)).slice(0, 5),
-    upcomingEvents: compact(asList(data.upcoming_events).map(normalizeEvent)).slice(0, 5)
-  };
-}
-
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
   return res.redirect(urlFor(pathname));
@@ -128,21 +110,21 @@ async function applyExploreCardEvidence(req, res) {
   }), res);
 }
 
-function renderExploreError(error, res) {
+function renderExploreAuthError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
     return true;
   }
-
-  if (error instanceof ApiOfflineError || error instanceof ApiError) {
-    res.status(503).render('errors/503', {
-      title: 'Explore',
-      titleKey: 'explore.title'
-    });
-    return true;
-  }
-
   return false;
+}
+
+async function optionalExploreCollection(promise) {
+  try {
+    return dataList(await promise);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    return [];
+  }
 }
 
 router.get('/', asyncRoute(async (req, res) => {
@@ -151,12 +133,23 @@ router.get('/', asyncRoute(async (req, res) => {
     return redirectTo(res, LOGIN_AUTH_REQUIRED_PATH);
   }
 
-  let explore;
+  let recentListings = [];
+  let upcomingEvents = [];
   try {
-    explore = normalizeExplore(await getExplore(token));
+    const tenant = routedTenantFrom(req);
+    const [listingItems, eventItems] = await Promise.all([
+      flagEnabled(tenant, 'listings', 'modules', true)
+        ? optionalExploreCollection(getListings(token, { per_page: 5 }))
+        : Promise.resolve([]),
+      flagEnabled(tenant, 'events', 'features', true)
+        ? optionalExploreCollection(getEvents(token, { per_page: 5, when: 'upcoming' }))
+        : Promise.resolve([])
+    ]);
+    recentListings = compact(listingItems.map(normalizeListing)).slice(0, 5);
+    upcomingEvents = compact(eventItems.map(normalizeEvent)).slice(0, 5);
     await applyExploreCardEvidence(req, res);
   } catch (error) {
-    if (renderExploreError(error, res)) return undefined;
+    if (renderExploreAuthError(error, res)) return undefined;
     throw error;
   }
 
@@ -164,8 +157,8 @@ router.get('/', asyncRoute(async (req, res) => {
     title: 'Explore',
     titleKey: 'explore.title',
     activeNav: 'explore',
-    recentListings: explore.recentListings,
-    upcomingEvents: explore.upcomingEvents
+    recentListings,
+    upcomingEvents
   });
 }));
 

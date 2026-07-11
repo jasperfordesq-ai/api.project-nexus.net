@@ -4358,6 +4358,30 @@ routes. Live upload/delete/reorder/comment/reaction persistence was not run
 because it requires disposable mutation fixtures; this slice does not claim
 those effects.
 
+Latest Explore live-content source-parity slice: direct comparison with
+`AlphaController::explore()` showed Laravel's accessible page independently
+loads up to five active listings and five upcoming events through its Listing
+and Event services. Web UK instead consumed `popular_listings` and
+`upcoming_events` from the broad `/api/v2/explore` aggregate, so its listing
+selection and all-or-nothing failure behavior were not authoritative.
+
+Signed `/explore` now calls Laravel's exposed `/api/v2/listings?per_page=5` and
+`/api/v2/events?per_page=5&when=upcoming` boundaries. It skips a source when
+the routed tenant disables listings/events, suppresses each non-auth source
+failure independently to an empty optional section like Blade, and retains the
+tenant-mounted login handoff when either API reports 401. Existing card gates,
+active-club evidence, localized headings/tags/dates, and tenant-safe links are
+unchanged. Six focused Explore tests pass, covering live sections, mounted
+cards/defaults, dual 503 suppression, disabled-source non-calls, and 401. A
+fresh ephemeral Laravel-backed Arabic Explore journey passed HTTP 200 with
+exact catalog heading/cards, `Content-Language: ar`, RTL, 320px reflow, and no
+serious/critical axe violations (`1/1`, 11.2 seconds inside Playwright; 45.0
+seconds including login/setup). Complete verification passed 45/45 Jest suites
+and 1,429/1,429 tests, warning-free ESLint, branding guard, and 608/608 route
+parity with 0 missing, 0 extra, and 3 ignored infrastructure routes. The
+current live evidence recorded card/listing/event link counts without claiming
+mutations.
+
 ## Documents To Trust
 
 Read these in order:

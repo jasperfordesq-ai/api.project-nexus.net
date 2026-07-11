@@ -1031,17 +1031,13 @@ describe('shared accessible frontend shell', () => {
     api.getClubs.mockResolvedValueOnce({
       data: [{ id: 7, name: 'Velo Club', status: 'active', org_type: 'club' }]
     });
-    api.getExplore.mockResolvedValue({
-      data: {
-        popular_listings: [
-          { id: 501, title: 'Borrow a repair kit', type: 'offer' },
-          { id: 502, title: 'Need a folding table', type: 'request' }
-        ],
-        upcoming_events: [
-          { id: 77, title: 'Community supper', start_date: '2026-08-15T18:00:00Z' }
-        ]
-      }
-    });
+    api.getListings.mockResolvedValue({ data: [
+      { id: 501, title: 'Borrow a repair kit', type: 'offer' },
+      { id: 502, title: 'Need a folding table', type: 'request' }
+    ] });
+    api.getEvents.mockResolvedValue({ data: [
+      { id: 77, title: 'Community supper', start_date: '2026-08-15T18:00:00Z' }
+    ] });
 
     const unsigned = await request(app).get('/explore');
 
@@ -1058,7 +1054,8 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getExplore).toHaveBeenCalledWith('test-token');
+    expect(api.getListings).toHaveBeenCalledWith('test-token', { per_page: 5 });
+    expect(api.getEvents).toHaveBeenCalledWith('test-token', { per_page: 5, when: 'upcoming' });
     expect(api.getClubs).toHaveBeenCalledWith({ per_page: 1 });
     expect(response.text).toContain('Explore');
     expect(response.text).toContain('class="nexus-alpha-card-list');
@@ -1149,6 +1146,57 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Podcasts');
     expect(response.text).not.toContain('Coupons');
     expect(response.text).not.toContain('Premium');
+  });
+
+  it('keeps Explore renderable when Laravel recent listings or upcoming events are unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.getListings.mockRejectedValueOnce(new api.ApiError('Listings unavailable', 503));
+    api.getEvents.mockRejectedValueOnce(new api.ApiError('Events unavailable', 503));
+
+    const response = await request(app)
+      .get('/explore?locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain(createTranslator('ar')('explore.title'));
+    expect(response.text).not.toContain(createTranslator('ar')('polish_discovery.explore_listings_title'));
+    expect(response.text).not.toContain(createTranslator('ar')('polish_discovery.explore_events_title'));
+  });
+
+  it('does not fetch disabled Laravel Explore live-content sources', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { listings: false },
+        features: { events: false }
+      }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/explore')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getListings).not.toHaveBeenCalled();
+    expect(api.getEvents).not.toHaveBeenCalled();
+    expect(response.text).not.toContain('Recent listings');
+    expect(response.text).not.toContain('Upcoming events');
+  });
+
+  it('redirects Explore when either Laravel live-content source rejects authentication', async () => {
+    const api = require('../src/lib/api');
+    api.getListings.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401));
+
+    const response = await request(app)
+      .get('/acme/accessible/explore')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/login?status=auth-required');
   });
 
   it('returns Laravel-style 403 for tenant-mounted default-off feature pages', async () => {
