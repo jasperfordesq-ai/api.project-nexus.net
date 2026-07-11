@@ -43,7 +43,9 @@ certified by a `1/1` real Laravel-backed disposable-fixture smoke in `81.0`
 seconds; it verified the deleted collection was absent from the final listing.
 Listing create/image-upload/update/delete is separately certified by a `1/1`
 real Laravel-backed disposable-fixture smoke in `80.6` seconds, including HTTP
-200 retrieval of the uploaded image and final API absence.
+200 retrieval of the uploaded image and final API absence. Its strengthened
+320px run also passed detail/edit structure, unique-ID, reflow, and axe checks
+in `83.4` seconds.
 
 Localization remains open because each non-English catalog has roughly
 `3,903-3,951` English-identical keys and `16` wholly English namespaces in the

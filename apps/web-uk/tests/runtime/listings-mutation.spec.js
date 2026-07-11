@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const { test, expect } = require('@playwright/test');
+const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const {
   deleteListing,
@@ -51,6 +52,23 @@ async function submitListingForm(page, pathnameSuffix, button) {
   return responsePromise;
 }
 
+async function expectAccessibleReflow(page) {
+  await expect(page.locator('main')).toHaveCount(1);
+  await expect(page.locator('h1')).toHaveCount(1);
+  const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
+    const ids = elements.map(element => element.id).filter(Boolean);
+    return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  });
+  expect(duplicateIds).toEqual([]);
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
+}
+
 test('creates, updates, uploads an image for, and deletes a disposable listing', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable listing ${runId}`;
@@ -64,6 +82,7 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
   console.log(`Disposable listing fixture: ${createdTitle}`);
 
   try {
+    await page.setViewportSize({ width: 320, height: 640 });
     await authenticate(page);
     await page.goto(`${mountPath}/listings/new`, {
       waitUntil: 'domcontentloaded',
@@ -103,6 +122,7 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
     expect(createdRow.image_url ?? createdRow.imageUrl).toBeTruthy();
     expect(new URL(page.url()).pathname).toBe(`${mountPath}/listings/${listingId}`);
     await expect(page.locator('h1')).toContainText(createdTitle);
+    await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/listings/${listingId}/edit`, {
       waitUntil: 'domcontentloaded',
@@ -112,6 +132,7 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
     expect(currentImageSrc).toBeTruthy();
     expect(new URL(currentImageSrc).origin).toBe(new URL(smoke.laravelBaseUrl).origin);
     expect((await page.request.get(currentImageSrc, { timeout: 300_000 })).status()).toBe(200);
+    await expectAccessibleReflow(page);
     await page.locator('#title').fill(updatedTitle);
     const updateResponse = await submitListingForm(
       page,

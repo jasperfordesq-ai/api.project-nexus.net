@@ -4782,6 +4782,13 @@ duplicate bottom back link were removed. Focused source/render proof passed
 disposable create/upload/edit/detail/delete journey also passed `1/1` in `85.2`
 seconds and retained no fixture.
 
+The disposable journey now runs at 320 CSS pixels and additionally proves one
+main/H1, unique IDs, no horizontal overflow, and no serious/critical axe
+violations on both the created Listing detail and populated edit form. The
+strengthened exact-current run passed `1/1` in `83.4` seconds and retained no
+fixture. This is automated browser evidence, not a claim of manual screen-
+reader or assistive-technology certification.
+
 ## Documents To Trust
 
 Read these in order:
