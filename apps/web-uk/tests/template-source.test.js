@@ -2055,6 +2055,19 @@ describe('tenant-aware template helper conversion', () => {
     expect(detail.match(/actions.back_to_listings/g)).toHaveLength(1);
   });
 
+  it('derives event owner controls from the signed profile on detail pages', () => {
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'events.js'),
+      'utf8'
+    );
+
+    expect(route).toContain('getRequestProfile(req, token)');
+    expect(route).toContain('const isCurrentUserOwner = ownerId !== null && currentUserId !== null');
+    expect(route).toContain('const canEditFromApi = event.can_edit === true || event.canEdit === true');
+    expect(route).toContain('event.can_edit = Boolean(token) && (canEditFromApi || isCurrentUserOwner)');
+    expect(route).toContain('event.canEdit = event.can_edit');
+  });
+
   it('avoids duplicate navigation on direct conversations', () => {
     const directConversation = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'messages', 'direct-conversation.njk'),

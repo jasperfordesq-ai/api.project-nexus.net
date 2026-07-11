@@ -819,12 +819,22 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const { id } = req.params;
   const token = tokenFrom(req);
 
-  const [eventResult, rsvpsResult] = await Promise.all([
+  const [eventResult, rsvpsResult, currentUserResult] = await Promise.all([
     getEvent(token, id),
-    getEventRsvps(token, id).catch(() => ({ data: [] }))
+    getEventRsvps(token, id).catch(() => ({ data: [] })),
+    token ? getRequestProfile(req, token).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return null;
+    }) : Promise.resolve(null)
   ]);
 
   const event = eventFrom(eventResult);
+  const ownerId = eventOwnerId(event);
+  const currentUserId = idFrom(currentUserResult);
+  const isCurrentUserOwner = ownerId !== null && currentUserId !== null && String(ownerId) === String(currentUserId);
+  const canEditFromApi = event.can_edit === true || event.canEdit === true;
+  event.can_edit = Boolean(token) && (canEditFromApi || isCurrentUserOwner);
+  event.canEdit = event.can_edit;
   const rawRsvp = event.myRsvp ?? event.my_rsvp ?? event.user_rsvp ?? event.rsvp_status;
   const myRsvpStatus = trimmed(
     rawRsvp && typeof rawRsvp === 'object' ? rawRsvp.status : rawRsvp

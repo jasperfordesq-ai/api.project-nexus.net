@@ -4789,6 +4789,16 @@ strengthened exact-current run passed `1/1` in `83.4` seconds and retained no
 fixture. This is automated browser evidence, not a claim of manual screen-
 reader or assistive-technology certification.
 
+## 2026-07-11 Disposable Event Mutation Certification
+
+`npm run smoke:laravel:events-mutation` creates a uniquely named future Event
+through Web UK, verifies it in Laravel, edits it, proves the owner-only manage
+controls are rendered from the signed profile or Laravel capability flag,
+deletes it through the no-JavaScript disclosure, and proves final API absence.
+The terminal run passed `1/1` in `54.4` seconds and retained no fixture; direct
+Laravel cleanup remains the failure fallback. Full Jest passed `45/45` suites
+and `1,448/1,448` tests, with green lint.
+
 ## Documents To Trust
 
 Read these in order:
