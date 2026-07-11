@@ -9971,7 +9971,7 @@ describe('shared accessible frontend shell', () => {
       offset: 24
     });
     expect(signed.text).toContain('href="/members"');
-    expect(signed.text).toContain('Community members at');
+    expect(signed.text).toContain('<span class="govuk-caption-l">Project NEXUS Accessible</span>');
     expect(signed.text).toContain('Members near me');
     expect(signed.text).toContain('Members within the chosen distance of the location saved on your profile.');
     expect(signed.text).toContain('href="/members/discover"');

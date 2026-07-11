@@ -63,7 +63,7 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `779.1` seconds.
+  `606.2` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -74,7 +74,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-discovery/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -99,6 +99,29 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Nearby Members Localization And Semantics Slice
+
+The signed `/members/nearby` route and template now mirror the Laravel Blade
+catalog contract for the document title, directory filters, no-location state,
+search and radius controls, result/error/empty states, member identity and
+metrics, profile actions, connection-state colours, and pagination semantics.
+Distance values use the request locale's one-decimal formatting before being
+inserted into Laravel's exact nearby-distance key, and the shared discovery
+normalizer supplies localized hour/rating/level/connection and unknown-member
+labels. Radius choices use Laravel's `near_me.options` keys rather than locally
+assembled English labels.
+
+The focused nearby render test, member-family `3/3` rerun, ESLint, and the
+290-template/zero-match audit passed. The authenticated Arabic browser case
+now traverses both discovery and nearby at 320 CSS pixels and passed RTL,
+reflow, and serious/critical axe checks in `49.1` seconds. The complete Jest
+gate passed `45/45` suites and `1,401/1,401` tests, and the exact-current full
+Chromium/axe matrix passed `54/54` in `606.2` seconds. The live nearby fixture
+currently renders Laravel's valid no-location state, so populated live distance
+cards retain mocked contract evidence rather than fabricated shared-data
+changes. Live privacy/visibility depth, disposable location fixtures, manual
+assistive-technology evidence, and ASP.NET switching remain open.
 
 ## 2026-07-10 Member Discovery Localization And Semantics Slice
 

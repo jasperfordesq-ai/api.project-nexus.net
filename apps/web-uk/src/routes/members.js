@@ -268,12 +268,14 @@ function numericCoordinate(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function normalizeNearbyMember(member, t) {
+function normalizeNearbyMember(member, t, formatNumber) {
   const normalized = normalizeDiscoverMember(member, t);
   const distance = Number(member.distance);
   return {
     ...normalized,
-    distanceLabel: Number.isFinite(distance) ? `${distance.toFixed(1)} km away` : ''
+    distanceLabel: Number.isFinite(distance)
+      ? t('govuk_alpha_members.nearby.distance', { distance: formatNumber(distance, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+      : ''
   };
 }
 
@@ -637,15 +639,17 @@ router.get('/nearby', asyncRoute(async (req, res) => {
         offset
       });
       const meta = metaFrom(result);
-      members = rowsFrom(result).map((member) => normalizeNearbyMember(member, res.locals.t)).filter((member) => member.id > 0);
+      members = rowsFrom(result)
+        .map((member) => normalizeNearbyMember(member, res.locals.t, res.locals.formatLocaleNumber))
+        .filter((member) => member.id > 0);
       hasMore = !!meta.has_more;
     }
   } catch {
-    errorMessage = 'Nearby members could not be loaded. Try again.';
+    errorMessage = res.locals.t('govuk_alpha_members.nearby.error_detail');
   }
 
   res.render('members/nearby', {
-    title: 'Members near me',
+    title: res.locals.t('govuk_alpha_members.nearby.title'),
     activeNav: 'members',
     alphaActiveNav: 'members',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
