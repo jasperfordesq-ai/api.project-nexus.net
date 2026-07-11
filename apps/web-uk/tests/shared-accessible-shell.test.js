@@ -23575,8 +23575,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(2, 'test-token', 'PUT', '/preferences', {
       privacy: {
         privacy_profile: 'members',
-        privacy_search: true,
-        privacy_contact: false
+        privacy_search: true
       }
     });
     expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(3, 'test-token', 'PUT', '/consent', {

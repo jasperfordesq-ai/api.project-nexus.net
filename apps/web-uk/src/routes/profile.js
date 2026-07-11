@@ -1090,8 +1090,7 @@ router.post('/settings', asyncRoute(async (req, res) => {
     await callUserSettings(token, 'PUT', '/preferences', {
       privacy: {
         privacy_profile: allowedValue(req.body.privacy_profile, PROFILE_PRIVACY_OPTIONS, 'public'),
-        privacy_search: checked(req.body.privacy_search),
-        privacy_contact: checked(req.body.privacy_contact)
+        privacy_search: checked(req.body.privacy_search)
       }
     });
     await callUserSettings(token, 'PUT', '/consent', {

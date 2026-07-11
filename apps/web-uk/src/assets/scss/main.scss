@@ -77,6 +77,13 @@
   white-space: nowrap;
 }
 
+// GOV.UK Frontend gives checkbox hints width: 100% plus inline padding. Keep
+// that padding inside the declared width so long hints cannot create a
+// horizontal scrollbar at the WCAG reflow viewport.
+.govuk-checkboxes__hint {
+  box-sizing: border-box;
+}
+
 // Explicit system colours keep form controls and footer attribution readable
 // when Windows High Contrast or another forced-colour mode is active. System
 // colour keywords follow the user's palette; forced-color-adjust is disabled

@@ -523,6 +523,7 @@ test.describe('keyboard, focus, error, and forced-colour gate', () => {
   });
 
   test('forced colours preserve visible focus and 320px reflow in RTL', async ({ page, baseURL }, testInfo) => {
+    test.setTimeout(90_000);
     await hideCookieBanner(page, baseURL);
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'more', forcedColors: 'active' });
     await page.setViewportSize({ width: 320, height: 640 });
@@ -613,11 +614,62 @@ test.describe('representative authenticated-page accessibility gate', () => {
         });
         expect(duplicateIds).toEqual([]);
 
-        const overflow = await page.evaluate(() => ({
-          clientWidth: document.documentElement.clientWidth,
-          scrollWidth: document.documentElement.scrollWidth
-        }));
-        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+        const overflow = await page.evaluate(() => {
+          const clientWidth = document.documentElement.clientWidth;
+          const baselineScrollWidth = document.documentElement.scrollWidth;
+          if (baselineScrollWidth <= clientWidth + 1) {
+            return {
+              clientWidth,
+              scrollWidth: baselineScrollWidth,
+              sectionReductions: [],
+              offenders: []
+            };
+          }
+          const sectionReductions = [...document.querySelectorAll('main section')]
+            .map((section) => {
+              const previousDisplay = section.style.display;
+              section.style.display = 'none';
+              const scrollWidth = document.documentElement.scrollWidth;
+              section.style.display = previousDisplay;
+              return {
+                id: section.id,
+                heading: section.querySelector('h2, h3')?.textContent?.trim() || '',
+                scrollWidth
+              };
+            })
+            .filter((section) => section.scrollWidth < baselineScrollWidth);
+          return {
+            clientWidth,
+            scrollWidth: baselineScrollWidth,
+            sectionReductions,
+            offenders: [...document.querySelectorAll('body *')]
+              .map((element) => {
+                const rect = element.getBoundingClientRect();
+                return {
+                  element: element.tagName.toLowerCase(),
+                  id: element.id,
+                  className: typeof element.className === 'string' ? element.className : '',
+                  left: Math.round(rect.left),
+                  right: Math.round(rect.right),
+                  width: Math.round(rect.width),
+                  scrollWidth: element.scrollWidth,
+                  text: (element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120)
+                };
+              })
+              .filter((element) => (
+                element.left < -1
+                || element.right > clientWidth + 1
+                || element.scrollWidth > element.width + 1
+              ))
+              .filter((element) => ['input', 'select', 'textarea', 'table', 'button', 'a'].includes(element.element))
+              .sort((left, right) => (right.scrollWidth - right.width) - (left.scrollWidth - left.width))
+              .slice(0, 20)
+          };
+        });
+        expect(
+          overflow.scrollWidth,
+          `${path} has horizontal overflow at 320px: ${JSON.stringify({ offenders: overflow.offenders, sectionReductions: overflow.sectionReductions })}`
+        ).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
         const axeResults = await new AxeBuilder({ page }).analyze();
         await testInfo.attach('authenticated-axe-results', {

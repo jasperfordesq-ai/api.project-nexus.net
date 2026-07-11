@@ -1,8 +1,8 @@
 # Current Web UK Accessible Frontend Handoff
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-11
 
-> **Current audit notice (2026-07-10):** The verified checkpoint below
+> **Current audit notice (2026-07-11):** The verified checkpoint below
 > supersedes older counts and completion estimates in this chronological handoff.
 > Read `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before issuing a score.
 > Route equality is current, but it is not workflow, localization, runtime, or
@@ -43,30 +43,30 @@ toward Laravel's accessible contracts.
 
 The Laravel repo is read-only reference material from this workspace.
 
-## Current Verified Checkpoint (2026-07-10)
+## Current Verified Checkpoint (2026-07-11)
 
 This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,417/1,417` tests passed.
+- Jest: `45/45` suites and `1,429/1,429` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
   routes. This proves declarations only.
-- Localization structure: all `11` locales, `24` namespaces, and `7,337` keys
+- Localization structure: all `11` locales, `24` namespaces, and `7,364` keys
   per locale are present with zero structural drift. It is not translation
   completion: each non-English catalog still has roughly `3,903-3,951` values
   identical to English and `16` namespaces are wholly English in the
   authoritative read-only Laravel source.
-- Conservative template audit: `290` templates and `0` safe exact-value
+- Conservative template audit: `292` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted automated browser accessibility pass: Chromium/axe
-  passed `62/62` cases in `13.1` minutes at checkpoint `e155375c`. The current
-  Guide source passed its focused live Arabic four-page journey, but the full
-  aggregate rerun is latency-blocked as documented below and is not claimed
-  green for the current commit.
+  passed `74/74` cases in `1,120.8` seconds (`18.7` minutes), with `0` skipped,
+  `0` unexpected, and `0` flaky results, against the exact current source on
+  2026-07-11. The outer command wall time, including CSS compilation and runner
+  startup, was `1,138.1` seconds (`19.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4381,6 +4381,37 @@ and 1,429/1,429 tests, warning-free ESLint, branding guard, and 608/608 route
 parity with 0 missing, 0 extra, and 3 ignored infrastructure routes. The
 current live evidence recorded card/listing/event link counts without claiming
 mutations.
+
+## 2026-07-11 Full Accessibility Aggregate Recovery
+
+The first expanded 74-case current-source aggregate exposed two real problems.
+The forced-colour Arabic login case exhausted the suite's generic 30-second
+ceiling while running its final axe scan, and signed Profile settings expanded
+the 320px viewport to 389px. Element- and section-level browser diagnostics
+localized the reflow defect to an extra `privacy_contact` checkbox. That
+control and its request fields do not exist in Laravel's Blade form or
+`AlphaController::updateProfileSettings()`, and its label/hint keys do not
+exist in the authoritative Laravel catalogs, so Web UK rendered the raw
+unbreakable key `profile_settings.privacy_contact_hint`.
+
+Web UK now omits that non-source control and preference field, matching
+Laravel's `privacy_profile` plus `privacy_search` contract. Checkbox hints also
+use border-box sizing so GOV.UK's `width: 100%` plus inline padding cannot
+create a reflow scrollbar on valid localized hints. The expensive
+forced-colour/axe case has the same explicit 90-second budget as other measured
+browser gates. When a future authenticated route does overflow, the assertion
+now records the offending controls and which section removal collapses the
+document width; the diagnostic path is skipped entirely on passing pages.
+
+Focused recovery passed `631/631` contract tests and both failed browser cases.
+Complete verification then passed `45/45` Jest suites and `1,429/1,429` tests,
+warning-free ESLint, branding guard, CSS compilation, the 11-locale/24-
+namespace/7,364-key structural audit, the 292-template zero-match audit, and
+608/608 route parity with 0 missing, 0 extra parity routes, and 3 ignored
+infrastructure routes. The uninterrupted live Laravel-backed Chromium/axe
+aggregate passed all `74/74` cases in `1,120.8` seconds with `0` skipped, `0`
+unexpected, and `0` flaky results; outer wall time was `1,138.1` seconds.
+Only the pre-existing GOV.UK Sass palette deprecation warnings remain.
 
 ## Documents To Trust
 
