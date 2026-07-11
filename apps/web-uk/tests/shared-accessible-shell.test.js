@@ -7971,6 +7971,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal template picker for signed-in members', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.callGoalApi
       .mockResolvedValueOnce({ data: ['Health', 'Learning'] })
       .mockResolvedValueOnce({
@@ -7994,25 +7995,32 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/templates');
     const signed = await request(app)
-      .get('/goals/templates?category=Health&status=goal-failed')
+      .get('/goals/templates?category=Health&status=goal-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goals');
-    expect(signed.text).toContain('Start a goal from a ready-made template.');
-    expect(signed.text).toContain('Goal templates');
-    expect(signed.text).toContain('Something went wrong. Please try again.');
-    expect(signed.text).toContain('Filter by category');
+    for (const key of [
+      'goals.back_to_goals',
+      'goals.templates_caption',
+      'goals.templates_title',
+      'goals.states.goal-failed',
+      'goals.templates_category_label',
+      'goals.templates_category_all',
+      'goals.template_title_override_label',
+      'goals.template_title_override_hint',
+      'goals.public_label',
+      'goals.template_use_button',
+      'actions.load_more'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('<option value="Health" selected>Health</option>');
     expect(signed.text).toContain('Build a walking habit');
     expect(signed.text).toContain('Walk three times each week with a neighbour.');
-    expect(signed.text).toContain('Suggested target: 12');
+    expect(signed.text).toContain(t('goals.template_target', { target: '12' }));
     expect(signed.text).toContain('method="post" action="/goals/templates/7"');
-    expect(signed.text).toContain('Goal name (optional)');
-    expect(signed.text).toContain('Leave blank to use the template name.');
-    expect(signed.text).toContain('Start this goal');
     expect(signed.text).toContain('href="/goals/templates?category=Health&amp;cursor=next-template"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/templates/categories');
@@ -8022,6 +8030,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel goal discovery page for signed-in members', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.callGoalApi.mockReset().mockResolvedValueOnce({
       data: [
         {
@@ -8041,25 +8050,30 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/discover');
     const signed = await request(app)
-      .get('/goals/discover?status=buddy-failed')
+      .get('/goals/discover?status=buddy-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(staticPageRoutes.pages['/goals/discover']).toBeUndefined();
-    expect(signed.text).toContain('Back to goals');
-    expect(signed.text).toContain('Community goals');
-    expect(signed.text).toContain('Discover goals');
-    expect(signed.text).toContain('Browse public goals from community members and offer to become a buddy.');
-    expect(signed.text).toContain('We could not add you as a buddy. The goal may already have one.');
+    for (const key of [
+      'goals.back_to_goals',
+      'polish_gamify.goals_discover_title',
+      'polish_gamify.goals_discover_description',
+      'goals.states.buddy-failed',
+      'polish_gamify.goals_discover_become_buddy',
+      'actions.load_more'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
+    expect(signed.text).toContain(t('goals.caption', { community: 'Project NEXUS Accessible' }));
     expect(signed.text).toContain('Share weekly cycling miles');
     expect(signed.text).toContain('Track rides and invite a neighbour to encourage progress.');
-    expect(signed.text).toContain('Owned by Avery Morgan');
-    expect(signed.text).toContain('2 of 5');
+    expect(signed.text).toContain(t('goals.owned_by', { name: 'Avery Morgan' }));
+    expect(signed.text).toContain(t('goals.progress_label', { current: '2', target: '5' }));
     expect(signed.text).toContain('40%');
     expect(signed.text).toContain('method="post" action="/goals/77/buddy"');
-    expect(signed.text).toContain('Become buddy');
     expect(signed.text).toContain('href="/goals/discover?cursor=next-goal"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callGoalApi).toHaveBeenCalledTimes(1);
@@ -8069,6 +8083,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel goal buddying page for signed-in members', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.callGoalApi
       .mockReset()
       .mockResolvedValueOnce({
@@ -8103,31 +8118,35 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/buddying');
     const signed = await request(app)
-      .get('/goals/buddying?status=buddy-nudge-failed')
+      .get('/goals/buddying?status=buddy-nudge-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(staticPageRoutes.pages['/goals/buddying']).toBeUndefined();
-    expect(signed.text).toContain('Back to goals');
-    expect(signed.text).toContain('Goals you support and public goals you can offer to buddy.');
-    expect(signed.text).toContain('Goals you buddy');
-    expect(signed.text).toContain('Unable to send encouragement. Please try again.');
+    for (const key of [
+      'goals.back_to_goals',
+      'goals.buddying_caption',
+      'goals.buddying_title',
+      'polish_gamify.buddy_nudge_failed',
+      'goals.buddying_yours_heading',
+      'goals.status_active',
+      'polish_gamify.buddy_nudge_button',
+      'goals.buddying_available_heading',
+      'goals.become_buddy_button'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('href="#your-buddied-goals"');
-    expect(signed.text).toContain('Goals you are buddying');
     expect(signed.text).toContain('Support repairs training');
-    expect(signed.text).toContain('Owned by Avery Morgan');
-    expect(signed.text).toContain('Active');
+    expect(signed.text).toContain(t('goals.owned_by', { name: 'Avery Morgan' }));
     expect(signed.text).toContain('50%');
     expect(signed.text).toContain('method="post" action="/goals/42/buddy-nudge"');
-    expect(signed.text).toContain('Send encouragement');
-    expect(signed.text).toContain('Public goals looking for a buddy');
     expect(signed.text).toContain('Share weekly cycling miles');
-    expect(signed.text).toContain('Owned by Sam Taylor');
+    expect(signed.text).toContain(t('goals.owned_by', { name: 'Sam Taylor' }));
     expect(signed.text).toContain('40%');
     expect(signed.text).toContain('method="post" action="/goals/77/buddy"');
-    expect(signed.text).toContain('Become a buddy');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callGoalApi).toHaveBeenCalledTimes(2);
     expect(api.callGoalApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/mentoring?per_page=30');

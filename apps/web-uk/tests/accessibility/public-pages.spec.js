@@ -981,7 +981,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic goals workflow uses exact Laravel catalogs across all pages', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
@@ -1019,6 +1019,44 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+
+      for (const auxiliaryPage of [
+        { slug: 'templates', titleKey: 'goals.templates_title' },
+        { slug: 'buddying', titleKey: 'goals.buddying_title' },
+        { slug: 'discover', titleKey: 'polish_gamify.goals_discover_title' }
+      ]) {
+        const auxiliaryPath = `${authenticatedMountPath}/goals/${auxiliaryPage.slug}?locale=ar`;
+        const auxiliaryResponse = await page.goto(auxiliaryPath, { waitUntil: 'domcontentloaded' });
+        expect(auxiliaryResponse, `${auxiliaryPath} did not return a document response`).not.toBeNull();
+        expect(auxiliaryResponse.status(), `${auxiliaryPath} returned HTTP ${auxiliaryResponse.status()}`).toBeLessThan(400);
+        expect(auxiliaryResponse.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(translate('ar', auxiliaryPage.titleKey));
+        await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+        await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+        expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+        const auxiliaryOverflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(auxiliaryOverflow.scrollWidth, `${auxiliaryPath} has horizontal overflow at 320px`)
+          .toBeLessThanOrEqual(auxiliaryOverflow.clientWidth + 1);
+        const auxiliaryAxeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-goals-${auxiliaryPage.slug}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow: auxiliaryOverflow,
+            violations: formatViolations(auxiliaryAxeResults.violations),
+            incomplete: formatViolations(auxiliaryAxeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(auxiliaryAxeResults.violations))).toEqual([]);
+      }
 
       const detailPath = `${authenticatedMountPath}/goals/162?locale=ar`;
       const detailResponse = await page.goto(detailPath, { waitUntil: 'domcontentloaded' });

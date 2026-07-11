@@ -258,11 +258,11 @@ function normalizeGoal(item, t) {
   };
 }
 
-function normalizeTemplate(item) {
+function normalizeTemplate(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   return {
     id: positiveInteger(raw.id),
-    title: trimmed(raw.title) || 'Goal',
+    title: trimmed(raw.title) || (t ? t('goals.title') : 'Goal'),
     description: trimmed(raw.description || ''),
     category: trimmed(raw.category || ''),
     targetText: positiveNumber(raw.default_target_value ?? raw.defaultTargetValue) === null
@@ -271,20 +271,20 @@ function normalizeTemplate(item) {
   };
 }
 
-function ownerNameFrom(raw) {
+function ownerNameFrom(raw, t) {
   const user = raw && typeof raw.user === 'object' && raw.user !== null ? raw.user : {};
   const explicit = trimmed(raw.owner_name || raw.ownerName || raw.user_name || raw.userName || raw.owner);
   const joined = trimmed(`${trimmed(user.first_name || user.firstName)} ${trimmed(user.last_name || user.lastName)}`);
   const name = explicit || joined || trimmed(user.name);
-  return name || 'A member';
+  return name || (t ? t('goals.a_member') : 'A member');
 }
 
-function normalizeDiscoverGoal(item) {
-  const goal = normalizeGoal(item);
+function normalizeDiscoverGoal(item, t) {
+  const goal = normalizeGoal(item, t);
   const raw = item && typeof item === 'object' ? item : {};
   return {
     ...goal,
-    ownerName: ownerNameFrom(raw)
+    ownerName: ownerNameFrom(raw, t)
   };
 }
 
@@ -616,19 +616,19 @@ function editErrorMessage(status, t) {
   return messages[trimmed(status)] || '';
 }
 
-function buddyingStatus(status) {
+function buddyingStatus(status, t) {
   const value = trimmed(status);
   if (value === 'buddy-nudge-sent') {
-    return { successMessage: 'Encouragement sent!', errorMessage: '', errorHref: '' };
+    return { successMessage: t('polish_gamify.buddy_nudge_success'), errorMessage: '', errorHref: '' };
   }
   if (value === 'buddy-joined') {
-    return { successMessage: 'You are now a buddy for this goal.', errorMessage: '', errorHref: '' };
+    return { successMessage: t('goals.states.buddy-joined'), errorMessage: '', errorHref: '' };
   }
   if (value === 'buddy-nudge-failed') {
-    return { successMessage: '', errorMessage: 'Unable to send encouragement. Please try again.', errorHref: '#your-buddied-goals' };
+    return { successMessage: '', errorMessage: t('polish_gamify.buddy_nudge_failed'), errorHref: '#your-buddied-goals' };
   }
   if (value === 'buddy-failed') {
-    return { successMessage: '', errorMessage: 'We could not add you as a buddy. The goal may already have one.', errorHref: '#available-goals' };
+    return { successMessage: '', errorMessage: t('goals.states.buddy-failed'), errorHref: '#available-goals' };
   }
   return { successMessage: '', errorMessage: '', errorHref: '' };
 }
@@ -699,7 +699,9 @@ router.get('/templates', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const templates = collectionFrom(templateResult).map(normalizeTemplate).filter((template) => template.id !== null);
+  const templates = collectionFrom(templateResult)
+    .map((template) => normalizeTemplate(template, res.locals.t))
+    .filter((template) => template.id !== null);
   const meta = metaFrom(templateResult);
   const nextParams = new URLSearchParams();
   if (category) nextParams.set('category', category);
@@ -707,14 +709,14 @@ router.get('/templates', asyncRoute(async (req, res) => {
   const status = trimmed(req.query.status);
 
   return res.render('goals/templates', {
-    title: 'Goal templates',
+    title: res.locals.t('goals.templates_title'),
     activeNav: 'explore',
     templates,
     categories: collectionFrom(categoryResult).map((item) => trimmed(item)).filter(Boolean),
     category,
     meta,
     nextHref: meta.hasMore && meta.cursor ? `/goals/templates?${nextParams.toString()}` : '',
-    errorMessage: status === 'goal-failed' ? 'Something went wrong. Please try again.' : ''
+    errorMessage: status === 'goal-failed' ? res.locals.t('goals.states.goal-failed') : ''
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -734,13 +736,15 @@ router.get('/buddying', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const status = buddyingStatus(req.query.status);
+  const status = buddyingStatus(req.query.status, res.locals.t);
 
   return res.render('goals/buddying', {
-    title: 'Goals you buddy',
+    title: res.locals.t('goals.buddying_title'),
     activeNav: 'explore',
-    buddying: collectionFrom(buddyingResult).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null),
-    available: collectionFrom(availableResult).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null),
+    buddying: collectionFrom(buddyingResult)
+      .map((goal) => normalizeDiscoverGoal(goal, res.locals.t)).filter((goal) => goal.id !== null),
+    available: collectionFrom(availableResult)
+      .map((goal) => normalizeDiscoverGoal(goal, res.locals.t)).filter((goal) => goal.id !== null),
     ...status
   });
 }, { redirectOn401: loginRedirect() }));
@@ -753,20 +757,21 @@ router.get('/discover', asyncRoute(async (req, res) => {
   if (trimmed(req.query.cursor)) params.set('cursor', trimmed(req.query.cursor));
 
   const result = await callGoal(token, 'GET', `/discover?${params.toString()}`);
-  const goals = collectionFrom(result).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null);
+  const goals = collectionFrom(result)
+    .map((goal) => normalizeDiscoverGoal(goal, res.locals.t)).filter((goal) => goal.id !== null);
   const meta = metaFrom(result);
   const status = trimmed(req.query.status);
   const nextParams = new URLSearchParams();
   if (meta.cursor) nextParams.set('cursor', meta.cursor);
 
   return res.render('goals/discover', {
-    title: 'Discover goals',
+    title: res.locals.t('polish_gamify.goals_discover_title'),
     activeNav: 'explore',
     goals,
     meta,
     nextHref: meta.hasMore && meta.cursor ? `/goals/discover?${nextParams.toString()}` : '',
-    successMessage: status === 'buddy-joined' ? 'You are now a buddy for this goal.' : '',
-    errorMessage: status === 'buddy-failed' ? 'We could not add you as a buddy. The goal may already have one.' : ''
+    successMessage: status === 'buddy-joined' ? res.locals.t('goals.states.buddy-joined') : '',
+    errorMessage: status === 'buddy-failed' ? res.locals.t('goals.states.buddy-failed') : ''
   });
 }, { redirectOn401: loginRedirect() }));
 

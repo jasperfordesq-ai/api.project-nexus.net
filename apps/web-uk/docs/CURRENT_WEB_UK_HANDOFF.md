@@ -4128,6 +4128,33 @@ current-source browser aggregate, and ASP.NET backend compatibility remain
 open; the latest uninterrupted full browser aggregate remains 62/62 at
 `e155375c`.
 
+Latest focused Goals-auxiliary localization slice: signed `/goals/templates`,
+`/goals/buddying`, and `/goals/discover` now use Laravel's exact request-locale
+catalogs for document titles, captions, template filters/targets/public
+controls, tenant caption, owner/progress labels, buddy status outcomes, and
+load-more actions. Template and goal-title fallbacks plus the anonymous-owner
+fallback are request-localized. Buddy nudge visibility now checks the normalized
+`goal.done` boolean instead of comparing a localized status label with English,
+and all optional-translator normalizers use explicit callbacks so `Array.map`
+indexes cannot be misinterpreted as translators.
+
+The first focused run timed out at the command's 120-second host budget without
+an assertion result. The five-minute rerun then exposed one test-fixture-only
+mistake: the expected tenant caption used `Test Community`, while the shared
+fixture's rendered tenant is `Project NEXUS Accessible`. After correcting that
+expectation, focused Arabic templates/discovery/buddying coverage passed `3/3`.
+The expanded live Arabic twelve-page Goals workflow passed HTTP 200, exact
+title markers, non-empty captions, no `undefined`, RTL, 320px reflow, and axe
+with no serious/critical violations (`1/1`, 5.2 minutes wall time; 2.1 minutes
+inside the Playwright test). Complete verification passed 45/45 Jest suites and
+1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit, and
+the route matrix at 608 Laravel routes, 608 matched, 0 missing, 0 extra, and 3
+ignored infrastructure routes. Exact visible-catalog wiring is now complete
+for all twelve currently rendered Goals pages. Goals feature gates, live
+mutation persistence, recorded manual parity, a fresh full current-source
+browser aggregate, and ASP.NET backend compatibility remain open; the latest
+uninterrupted full browser aggregate remains 62/62 at `e155375c`.
+
 ## Documents To Trust
 
 Read these in order:

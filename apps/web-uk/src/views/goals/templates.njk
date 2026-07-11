@@ -31,7 +31,7 @@
           <div class="govuk-form-group">
             <label class="govuk-label" for="category">{{ t("goals.templates_category_label") }}</label>
             <select class="govuk-select" id="category" name="category">
-              <option value="">All categories</option>
+              <option value="">{{ t("goals.templates_category_all") }}</option>
               {% for item in categories %}
                 <option value="{{ item }}"{% if category == item %} selected{% endif %}>{{ item }}</option>
               {% endfor %}
@@ -62,7 +62,7 @@
                 {% endif %}
 
                 {% if template.targetText %}
-                  <p class="govuk-body-s nexus-alpha-meta">Suggested target: {{ template.targetText }}</p>
+                  <p class="govuk-body-s nexus-alpha-meta">{{ t("goals.template_target", { target: template.targetText }) }}</p>
                 {% endif %}
 
                 <form method="post" action="{{ urlFor('/goals/templates/' + (template.id | string)) }}">
@@ -76,7 +76,7 @@
                   <div class="govuk-checkboxes govuk-checkboxes--small govuk-form-group" data-module="govuk-checkboxes">
                     <div class="govuk-checkboxes__item">
                       <input class="govuk-checkboxes__input" id="is_public-{{ template.id }}" name="is_public" type="checkbox" value="1" checked>
-                      <label class="govuk-label govuk-checkboxes__label" for="is_public-{{ template.id }}">{{ t("groups.visibility_public") }}</label>
+                      <label class="govuk-label govuk-checkboxes__label" for="is_public-{{ template.id }}">{{ t("goals.public_label") }}</label>
                     </div>
                   </div>
 
@@ -90,7 +90,7 @@
 
       {% if nextHref %}
         <p class="govuk-body govuk-!-margin-top-6">
-          <a class="govuk-link" href="{{ urlFor(nextHref) }}">Load more templates</a>
+          <a class="govuk-link" href="{{ urlFor(nextHref) }}">{{ t("actions.load_more") }}</a>
         </p>
       {% endif %}
     </div>
