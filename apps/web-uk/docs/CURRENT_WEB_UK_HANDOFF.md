@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
-  passed `76/76` cases in `1,547.0` seconds (`25.8` minutes), with `0` skipped,
-  `0` unexpected, and `0` flaky results, at checkpoint `cdc8674d` on 2026-07-11.
+  passed `80/80` cases in `1,610.1` seconds (`26.8` minutes), with `0` skipped,
+  `0` unexpected, and `0` flaky results, at checkpoint `ea1ed6d4` on 2026-07-11.
   The outer command wall time, including CSS compilation and runner
-  startup, was `1,569.5` seconds (`26.2` minutes).
+  startup, was `1,632.4` seconds (`27.2` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4626,9 +4626,14 @@ the new my/public collection cases `2/2` within a three-case 1.7-minute run
 new case retained one main/H1, reflowed without horizontal overflow, and had no
 serious/critical axe findings. Full verification remains `45/45` Jest suites
 and `1,430/1,430` tests with green lint, brand, locale/template audits, CSS,
-and 608/608 route parity. The next full browser aggregate now contains 80
-cases; the exact-current completed aggregate remains 76/76 until that expanded
-run finishes.
+and 608/608 route parity. The first expanded aggregate exposed two latent
+30-second ceilings on Arabic register and the two-page connections journey;
+the second exposed a 90-second ceiling on Arabic Profile settings after live
+Laravel latency consumed the budget. Each failing case passed focused with
+unchanged assertions after route-appropriate ceilings were committed. The
+third uninterrupted aggregate then passed all `80/80` cases in `1,610.1`
+seconds (`26.8` minutes), with `0` skipped, `0` unexpected, and `0` flaky;
+outer wall time was `1,632.4` seconds (`27.2` minutes).
 
 ## Documents To Trust
 
