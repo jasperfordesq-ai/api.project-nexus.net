@@ -71,10 +71,10 @@
       </div>
 
       {% if not searchQuery and meta.hasMore and meta.cursor %}
-        <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-bottom-4" aria-label="Older messages">
+        <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha_messages.conversation.older_pagination_label') }}">
           <div class="govuk-pagination__prev">
             <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/messages/groups/' + (conversation.id | string) + '?cursor=' + (meta.cursor | string)) }}" rel="prev">
-              <span class="govuk-pagination__link-title">{{ t("messages.show_older") }}</span>
+              <span class="govuk-pagination__link-title">{{ t("govuk_alpha_messages.conversation.show_older") }}</span>
             </a>
           </div>
         </nav>

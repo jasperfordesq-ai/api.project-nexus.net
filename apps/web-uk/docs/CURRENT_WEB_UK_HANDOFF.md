@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,430/1,430` tests passed.
+- Jest: `45/45` suites and `1,431/1,431` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -4634,6 +4634,16 @@ unchanged assertions after route-appropriate ceilings were committed. The
 third uninterrupted aggregate then passed all `80/80` cases in `1,610.1`
 seconds (`26.8` minutes), with `0` skipped, `0` unexpected, and `0` flaky;
 outer wall time was `1,632.4` seconds (`27.2` minutes).
+
+## 2026-07-11 Cursor Pagination Source Labels
+
+Exchanges, group-conversation history, volunteering my-organisations, and the
+four jobs browse/saved/applications/mine cursor blocks now use their exact
+Blade-owned landmark and continuation labels. Exchanges also restores Blade's
+next-arrow icon. Focused source proof passed `1/1`, seven Laravel-backed route
+renders passed, lint and the 292-template audit stayed green, and the full Jest
+gate passed `45/45` suites and `1,431/1,431` tests. No new locale-specific
+browser case was added; the exact-current browser baseline remains 80/80.
 
 ## Documents To Trust
 

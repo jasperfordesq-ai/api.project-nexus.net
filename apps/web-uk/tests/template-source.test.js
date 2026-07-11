@@ -1912,6 +1912,31 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).toContain("urlFor('/members')");
   });
 
+  it('uses Laravel catalog labels in cursor pagination blocks', () => {
+    const readTemplate = (...segments) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', ...segments),
+      'utf8'
+    );
+    const exchanges = readTemplate('exchanges', 'index.njk');
+    const groupConversation = readTemplate('messages', 'group-conversation.njk');
+    const myOrganisations = readTemplate('volunteering', 'my-organisations.njk');
+    const jobs = ['index.njk', 'saved.njk', 'applications.njk', 'mine.njk']
+      .map((name) => readTemplate('jobs', name));
+
+    expect(exchanges).toContain("t('exchanges.pagination_label')");
+    expect(exchanges).toContain('t("exchanges.more_results_label")');
+    expect(exchanges).not.toContain('aria-label="Exchange pagination"');
+    expect(groupConversation).toContain("t('govuk_alpha_messages.conversation.older_pagination_label')");
+    expect(groupConversation).toContain('t("govuk_alpha_messages.conversation.show_older")');
+    expect(myOrganisations).toContain("t('govuk_alpha_volunteering.my_orgs.pagination_label')");
+    expect(myOrganisations).toContain('t("govuk_alpha_volunteering.my_orgs.more_label")');
+    for (const template of jobs) {
+      expect(template).toContain("t('members.pagination_label')");
+      expect(template).toContain('t("members.more_results_label")');
+      expect(template).not.toContain('aria-label="Pagination"');
+    }
+  });
+
   it('keeps shared empty-state and breadcrumb partial links behind urlFor()', () => {
     const emptyState = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk'),

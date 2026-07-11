@@ -126,12 +126,12 @@
     </div>
 
     {% if jobsMeta.has_more and nextHref %}
-      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('members.pagination_label') }}">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
             <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
-            <span class="govuk-pagination__link-label">More results</span>
+            <span class="govuk-pagination__link-label">{{ t("members.more_results_label") }}</span>
           </a>
         </div>
       </nav>

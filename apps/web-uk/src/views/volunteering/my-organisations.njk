@@ -96,12 +96,12 @@
     </div>
 
     {% if nextHref %}
-      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="My organisations pagination">
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('govuk_alpha_volunteering.my_orgs.pagination_label') }}">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor(nextHref) }}" rel="next">
             <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
-            <span class="govuk-pagination__link-label">more organisations</span>
+            <span class="govuk-pagination__link-label">{{ t("govuk_alpha_volunteering.my_orgs.more_label") }}</span>
           </a>
         </div>
       </nav>
