@@ -42,7 +42,7 @@ missing, `0` extra parity routes, and `3` ignored infrastructure routes.
 
 The browser matrix includes signed Arabic dashboard, account, structurally
 rebuilt own-profile, contextually localized profile-settings, activity,
-notifications, messages, wallet overview/management, member discovery/nearby/insights, achievements,
+notifications, messages, wallet overview/management, the core member directory plus discovery/nearby/insights, achievements,
 leaderboard, and NEXUS-score pages at 320
 CSS pixels, with RTL/reflow and serious/critical
 axe assertions. Authenticated cases have a 90-second ceiling to accommodate the

@@ -9548,9 +9548,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Ada');
     expect(response.text).toContain('Grace');
     expect(response.text).toContain('Connected');
-    expect(response.text).toContain('Respond');
-    expect(response.text).toContain('href="/acme/accessible/connections/network?tab=pending_received"');
-    expect(response.text).toContain('href="/acme/accessible/members?page=3&search=repair&sort=joined&order=DESC"');
+    expect(response.text).toContain('Wants to connect');
+    expect(response.text).not.toContain('href="/acme/accessible/connections/network?tab=pending_received"');
+    expect(response.text).toContain('href="/acme/accessible/members?q=repair&amp;sort=joined&amp;order=DESC&amp;offset=40"');
     expect(response.text).not.toContain('No members found');
   });
 
@@ -9720,7 +9720,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('>Members</h1>');
     expect(response.text).toContain('No members found');
-    expect(response.text).toContain('Sorry, there is a problem loading members.');
+    expect(response.text).toContain('Members could not be loaded. Try again.');
     expect(response.text).not.toContain('Page not found');
   });
 
@@ -9734,7 +9734,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('No results found');
+    expect(response.text).toContain('No members match your search.');
     expect(response.text).toContain('href="/acme/accessible/members"');
     expect(response.text).not.toContain('href="/members"');
   });
@@ -9768,8 +9768,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(indexResponse.status).toBe(200);
     expect(indexResponse.text).toContain('>Members</h1>');
-    expect(indexResponse.text).toContain('action="/members/77/connection"');
-    expect(indexResponse.text).toContain('name="action" value="connect"');
+    expect(indexResponse.text).toContain('href="/members/77"');
+    expect(indexResponse.text).not.toContain('action="/members/77/connection"');
     expect(indexResponse.text).not.toContain('action="/members/77/connect"');
 
     expect(profileResponse.status).toBe(200);

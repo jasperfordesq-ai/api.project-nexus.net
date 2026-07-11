@@ -739,26 +739,43 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
       });
     } catch (error) {
       if (isAuthError(error)) throw error;
-      memberErrorMessage = 'Sorry, there is a problem loading members.';
+      memberErrorMessage = res.locals.t('members.error_detail');
     }
   }
 
-  const users = rowsFrom(usersResult);
+  const rawUsers = rowsFrom(usersResult);
   const directoryMeta = metaFrom(usersResult);
-  const total = boundedInteger(directoryMeta.total_items, users.length, 0, Number.MAX_SAFE_INTEGER);
+  const total = boundedInteger(directoryMeta.total_items, rawUsers.length, 0, Number.MAX_SAFE_INTEGER);
   const perPage = boundedInteger(directoryMeta.per_page, limit, 1, 100);
   const offset = boundedInteger(directoryMeta.offset, requestedOffset, 0, Number.MAX_SAFE_INTEGER);
   const page = Math.floor(offset / perPage) + 1;
   const totalPages = Math.ceil(total / perPage);
   const { connectionMap, failed: connectionStatusFailed } = token
-    ? await connectionMapForMembers(token, users)
+    ? await connectionMapForMembers(token, rawUsers)
     : { connectionMap: {}, failed: false };
   if (connectionStatusFailed && !memberErrorMessage) {
-    memberErrorMessage = 'Some connection statuses could not be loaded. You can still view member profiles.';
+    memberErrorMessage = res.locals.t('members.error_detail');
   }
+  const users = rawUsers.map((member) => {
+    const normalized = normalizeDiscoverMember(member, res.locals.t);
+    const connection = connectionMap[normalized.id];
+    if (!normalized.connectionLabel && connection) {
+      const state = connection.status === 'accepted'
+        ? 'connected'
+        : (connection.status === 'pending' ? (connection.is_requester ? 'pending_sent' : 'pending_received') : 'none');
+      normalized.connectionLabel = connectionLabel(state, res.locals.t);
+      normalized.connectionTagClass = connectionTagClass(state);
+    }
+    normalized.badges = (Array.isArray(member.badges) ? member.badges : []).slice(0, 5).map((badge) => ({
+      name: String(badge.name || badge.badge_name || '').trim(),
+      icon: String(badge.icon || '').trim()
+    })).filter((badge) => badge.name);
+    return normalized;
+  }).filter((member) => member.id > 0);
+  const hasFilters = !!searchQuery || sort !== 'name' || order !== 'ASC';
 
   res.render('members/index', {
-    title: 'Community members',
+    title: res.locals.t('members.title'),
     requiresAuth: !token,
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     users,
@@ -766,6 +783,11 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     searchQuery,
     sort,
     order,
+    hasFilters,
+    totalItemsLabel: res.locals.tc('members.result_count', total, { count: total }),
+    nextHref: directoryMeta.has_more
+      ? `/members?q=${encodeURIComponent(searchQuery)}&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}&offset=${offset + perPage}`
+      : '',
     pagination: {
       page,
       limit: perPage,

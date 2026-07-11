@@ -63,7 +63,7 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `544.8` seconds.
+  `772.2` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -99,6 +99,31 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Core Member Directory Structural And Localization Slice
+
+The signed `/members` page now matches Laravel's card-based accessible
+directory instead of the previous email-bearing table with inline connection
+mutations. It renders the exact quick-filter navigation, search/sort/order
+fieldset, plural result count, error and filtered-empty states, member cards,
+verification/level/connection badges, up to five earned badges, tagline,
+location and contribution metrics, profile actions, and offset-based load-more
+pagination. Blank identities, dynamic hours/ratings/levels, connection states,
+ARIA text, and all visible controls use Laravel's catalogs. The public shell
+remains data-private and does not call the protected directory API.
+
+Four focused directory/auth/shared-mount tests passed after stale table-era
+expectations were updated to Laravel's card contract. ESLint and the
+290-template/zero-match audit passed. The live authenticated Arabic member
+case now traverses the core directory, discovery, nearby, and insights at 320
+CSS pixels; its first run completed all page checks but hit the old 30-second
+test wrapper during teardown, and the unchanged assertions passed under the
+same explicit latency allowance used by other authenticated multi-page cases
+in `57.3` seconds. The complete Jest gate passed `45/45` suites and
+`1,401/1,401` tests, and the exact-current full Chromium/axe matrix passed
+`54/54` in `772.2` seconds. Directory connection mutations remain on their
+dedicated profile/network surfaces as in Blade. Manual assistive-technology
+evidence, deeper privacy variants, and ASP.NET switching remain open.
 
 ## 2026-07-10 Member Insights Localization And Semantics Slice
 

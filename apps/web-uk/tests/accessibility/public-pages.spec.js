@@ -778,12 +778,18 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic member directory variants preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
 
     try {
       for (const route of [
+        {
+          path: '/members?locale=ar',
+          heading: 'members.title',
+          description: 'members.description'
+        },
         {
           path: '/members/discover?locale=ar',
           heading: 'govuk_alpha_members.discover.heading',
