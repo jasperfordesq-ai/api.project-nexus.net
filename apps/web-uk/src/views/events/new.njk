@@ -12,7 +12,7 @@
 {% block beforeContent %}
   {{ super() }}
   {{ govukBackLink({
-    text: t("onboarding.back"),
+    text: t("actions.back_to_events"),
     href: urlFor("/events")
   }) }}
 {% endblock %}
@@ -28,7 +28,9 @@
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">{{ t("actions.create_event") }}</h1>
+      <span class="govuk-caption-l">{{ t("events.caption", { community: tenantName or serviceName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("events.create_title") }}</h1>
+      <p class="govuk-body-l">{{ t("events.create_description") }}</p>
 
       {% if setupErrorMessage %}
         <div class="govuk-inset-text">{{ setupErrorMessage }}</div>
@@ -37,17 +39,18 @@
       <form action="{{ urlFor('/events/new') }}" method="post" enctype="multipart/form-data" novalidate data-validate-form data-validation-error-title="{{ t('states.error_title') }}" data-validation-error-prefix="{{ t('states.error_prefix') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_details_title") }}</h2>
+          </legend>
+
         {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
         {{ govukInput({
           id: "title",
           name: "title",
           value: values.title if values else "",
           label: {
-            text: t("events.title_label"),
-            classes: "govuk-label--m"
-          },
-          hint: {
-            text: "Give your event a clear, descriptive title"
+            text: t("events.title_label")
           },
           errorMessage: { text: titleError.text } if titleError else undefined,
           attributes: {
@@ -62,17 +65,16 @@
           name: "description",
           value: values.description if values else "",
           label: {
-            text: "Description",
-            classes: "govuk-label--m"
+            text: t("events.description_label")
           },
           hint: {
-            text: "Tell people what the event is about, what to expect, and any important details"
+            text: t("events.description_hint")
           },
           rows: 6,
           errorMessage: { text: descriptionError.text } if descriptionError else undefined,
           attributes: {
             "data-validate": "required",
-            "data-label": "Description",
+            "data-label": t("events.description_label"),
             "required": "required"
           }
         }) }}
@@ -90,32 +92,74 @@
           id: "category_id",
           name: "category_id",
           label: {
-            text: "Category",
-            classes: "govuk-label--m"
+            text: t("events.category_label")
           },
           items: categoryItems
         }) }}
 
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="image">
-            Image
+          <label class="govuk-label" for="image">
+            {{ t("events.create_image_label") }}
           </label>
           <div id="image-hint" class="govuk-hint">
-            Upload an optional JPG, PNG, GIF or WebP cover image.
+            {{ t("events.create_image_hint") }}
           </div>
           <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
         </div>
+
+        </fieldset>
+
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_time_title") }}</h2>
+          </legend>
+
+        {% set startTimeError = errors | selectattr('href', 'equalto', '#start_time') | first if errors else undefined %}
+        {{ govukInput({
+          id: "start_time",
+          name: "start_time",
+          type: "datetime-local",
+          value: values.start_time if values else "",
+          label: {
+            text: t("events.start_time_label")
+          },
+          hint: { text: t("events.datetime_hint") },
+          classes: "govuk-!-width-one-half",
+          errorMessage: { text: startTimeError.text } if startTimeError else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": t("events.start_time_label"),
+            "required": "required"
+          }
+        }) }}
+
+        {% set endTimeError = errors | selectattr('href', 'equalto', '#end_time') | first if errors else undefined %}
+        {{ govukInput({
+          id: "end_time",
+          name: "end_time",
+          type: "datetime-local",
+          value: values.end_time if values else "",
+          label: {
+            text: t("events.end_time_label")
+          },
+          hint: { text: t("events.end_time_hint") },
+          classes: "govuk-!-width-one-half",
+          errorMessage: { text: endTimeError.text } if endTimeError else undefined
+        }) }}
+
+        </fieldset>
+
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_place_title") }}</h2>
+          </legend>
 
         {{ govukInput({
           id: "location",
           name: "location",
           value: values.location if values else "",
           label: {
-            text: "Location",
-            classes: "govuk-label--m"
-          },
-          hint: {
-            text: "Where will the event take place? Include address or online meeting details"
+            text: t("events.location_label")
           }
         }) }}
 
@@ -143,8 +187,8 @@
           <div class="govuk-checkboxes" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="allow_remote_attendance" name="allow_remote_attendance" type="checkbox" value="1" aria-describedby="allow-remote-hint" data-aria-controls="remote-attendance-conditional" {% if values and values.allow_remote_attendance %}checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">Allow people to attend remotely</label>
-              <div id="allow-remote-hint" class="govuk-hint govuk-checkboxes__hint">Use this when an in-person event also has a remote option.</div>
+              <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">{{ t("events.polish_events.allow_remote_label") }}</label>
+              <div id="allow-remote-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("events.polish_events.allow_remote_hint") }}</div>
             </div>
             <div class="govuk-checkboxes__conditional{% if not (values and values.allow_remote_attendance) %} govuk-checkboxes__conditional--hidden{% endif %}" id="remote-attendance-conditional">
               {{ govukInput({
@@ -153,69 +197,42 @@
                 type: "url",
                 value: values.video_url if values else "",
                 label: {
-                  text: "Video link"
+                  text: t("events.polish_events.video_url_label")
                 },
                 hint: {
-                  text: "Add the meeting or livestream URL."
+                  text: t("events.polish_events.video_url_hint")
                 }
               }) }}
             </div>
           </div>
         </div>
 
-        {% set startTimeError = errors | selectattr('href', 'equalto', '#start_time') | first if errors else undefined %}
-        {{ govukInput({
-          id: "start_time",
-          name: "start_time",
-          type: "datetime-local",
-          value: values.start_time if values else "",
-          label: {
-            text: t("events.start_time_label"),
-            classes: "govuk-label--m"
-          },
-          hint: { text: t("events.datetime_hint") },
-          classes: "govuk-!-width-one-half",
-          errorMessage: { text: startTimeError.text } if startTimeError else undefined,
-          attributes: {
-            "data-validate": "required",
-            "data-label": t("events.start_time_label"),
-            "required": "required"
-          }
-        }) }}
+        </fieldset>
 
-        {% set endTimeError = errors | selectattr('href', 'equalto', '#end_time') | first if errors else undefined %}
-        {{ govukInput({
-          id: "end_time",
-          name: "end_time",
-          type: "datetime-local",
-          value: values.end_time if values else "",
-          label: {
-            text: t("events.end_time_label"),
-            classes: "govuk-label--m"
-          },
-          hint: { text: t("events.end_time_hint") },
-          classes: "govuk-!-width-one-half",
-          errorMessage: { text: endTimeError.text } if endTimeError else undefined
-        }) }}
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">{{ t("events.create_capacity_title") }}</h2>
+          </legend>
 
         {{ govukInput({
           id: "max_attendees",
           name: "max_attendees",
           value: values.max_attendees if values else "",
           label: {
-            text: t("events.max_attendees_label"),
-            classes: "govuk-label--m"
+            text: t("events.max_attendees_label")
           },
           hint: {
-            text: "Optional - leave blank for unlimited capacity"
+            text: t("events.max_attendees_hint")
           },
-          classes: "govuk-input--width-4",
+          classes: "govuk-input--width-5",
           inputmode: "numeric",
           attributes: {
             "data-validate": "number min:1",
             "data-label": t("events.max_attendees_label")
           }
         }) }}
+
+        </fieldset>
 
         {% set isRecurring = values and values.is_recurring %}
         {% set recurrenceFrequency = (values.recurrence_frequency if values and values.recurrence_frequency else "weekly") %}
@@ -240,19 +257,19 @@
                     <div class="govuk-radios govuk-radios--small" data-module="govuk-radios" id="recurrence_frequency">
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="freq-daily" name="recurrence_frequency" type="radio" value="daily" data-recurrence-interval="1" {% if recurrenceFrequency == "daily" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="freq-daily">Daily</label>
+                        <label class="govuk-label govuk-radios__label" for="freq-daily">{{ t("events.polish_events.recurrence_freq_daily") }}</label>
                       </div>
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="freq-weekly" name="recurrence_frequency" type="radio" value="weekly" data-recurrence-interval="1" {% if recurrenceFrequency == "weekly" and recurrenceInterval != "2" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="freq-weekly">Weekly</label>
+                        <label class="govuk-label govuk-radios__label" for="freq-weekly">{{ t("events.polish_events.recurrence_freq_weekly") }}</label>
                       </div>
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="freq-biweekly" name="recurrence_frequency" type="radio" value="weekly" data-recurrence-interval="2" {% if recurrenceFrequency == "weekly" and recurrenceInterval == "2" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="freq-biweekly">Every two weeks</label>
+                        <label class="govuk-label govuk-radios__label" for="freq-biweekly">{{ t("events.polish_events.recurrence_freq_biweekly") }}</label>
                       </div>
                       <div class="govuk-radios__item">
                         <input class="govuk-radios__input" id="freq-monthly" name="recurrence_frequency" type="radio" value="monthly" data-recurrence-interval="1" {% if recurrenceFrequency == "monthly" %}checked{% endif %}>
-                        <label class="govuk-label govuk-radios__label" for="freq-monthly">Monthly</label>
+                        <label class="govuk-label govuk-radios__label" for="freq-monthly">{{ t("events.polish_events.recurrence_freq_monthly") }}</label>
                       </div>
                     </div>
                     <input type="hidden" id="recurrence_interval" name="recurrence_interval" value="{{ recurrenceInterval }}">
@@ -280,7 +297,7 @@
                       </div>
                       <div class="govuk-radios__conditional{% if recurrenceEndsType != "on_date" %} govuk-radios__conditional--hidden{% endif %}" id="rec-date-conditional">
                         <div class="govuk-form-group">
-                          <label class="govuk-label" for="recurrence_ends_on_date">End date</label>
+                          <label class="govuk-label" for="recurrence_ends_on_date">{{ t("events.polish_events.recurrence_end_date_label") }}</label>
                           <div id="rec-date-hint" class="govuk-hint">{{ t("events.polish_events.recurrence_end_date_hint") }}</div>
                           <input class="govuk-input govuk-!-width-one-half" id="recurrence_ends_on_date" name="recurrence_ends_on_date" type="date" value="{{ values.recurrence_ends_on_date if values else '' }}" aria-describedby="rec-date-hint">
                         </div>
@@ -293,35 +310,10 @@
           </div>
         </fieldset>
 
-        {% if myGroups and myGroups.length > 0 %}
-          {% set groupItems = [{value: "", text: "No group (public event)", selected: not selectedGroupId}] %}
-          {% for group in myGroups %}
-            {% set groupItems = (groupItems.push({
-              value: group.id | string,
-              text: group.name,
-              selected: selectedGroupId and (group.id | string) == (selectedGroupId | string)
-            }), groupItems) %}
-          {% endfor %}
-          {{ govukSelect({
-            id: "group_id",
-            name: "group_id",
-            label: {
-              text: "Associate with a group",
-              classes: "govuk-label--m"
-            },
-            hint: {
-              text: "Optional - link this event to one of your groups"
-            },
-            items: groupItems
-          }) }}
-        {% endif %}
-
-        <div class="govuk-button-group">
-          {{ govukButton({
-            text: "Create event"
-          }) }}
-          <a href="{{ urlFor('/events') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
-        </div>
+        {{ govukButton({
+          text: t("actions.create_event"),
+          classes: "govuk-!-margin-top-4"
+        }) }}
       </form>
 
     </div>

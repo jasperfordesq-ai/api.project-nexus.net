@@ -20490,7 +20490,6 @@ describe('shared accessible frontend shell', () => {
   it('renders the signed Laravel event create page when setup APIs are unavailable', async () => {
     const api = require('../src/lib/api');
 
-    api.getMyGroups.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
     api.getEventCategories.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
 
     const response = await request(app)
@@ -20498,7 +20497,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getMyGroups).toHaveBeenCalledWith('test-token');
+    expect(api.getMyGroups).not.toHaveBeenCalled();
     expect(api.getEventCategories).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('Create an event');
     expect(response.text).toContain('action="/events/new"');
@@ -20520,7 +20519,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers['set-cookie'].join('; ')).toContain('Expires=Thu, 01 Jan 1970');
   });
 
-  it('renders Laravel v2 group memberships in both event group selectors', async () => {
+  it('matches Blade event forms without invented group selectors', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
     api.getMyGroups.mockReset().mockResolvedValue({
@@ -20549,17 +20548,13 @@ describe('shared accessible frontend shell', () => {
     const csrfMatch = edit.text.match(/name="_csrf" value="([^"]+)"/);
 
     expect(create.status).toBe(200);
-    expect(create.text).toContain('id="group_id" name="group_id"');
-    expect(create.text).toContain('Repair members');
-    expect(create.text).toMatch(/value="7"[^>]*selected/);
+    expect(create.text).not.toContain('id="group_id" name="group_id"');
+    expect(create.text).not.toContain('Repair members');
     expect(edit.status).toBe(200);
-    expect(edit.text).toContain('id="group_id" name="group_id"');
-    expect(edit.text).toContain('Repair members');
-    expect(edit.text).toMatch(/value="7"[^>]*selected/);
+    expect(edit.text).not.toContain('id="group_id" name="group_id"');
+    expect(edit.text).not.toContain('Repair members');
     expect(csrfMatch).not.toBeNull();
-    expect(api.getMyGroups).toHaveBeenCalledTimes(2);
-    expect(api.getMyGroups).toHaveBeenNthCalledWith(1, 'test-token');
-    expect(api.getMyGroups).toHaveBeenNthCalledWith(2, 'test-token');
+    expect(api.getMyGroups).not.toHaveBeenCalled();
 
     const updated = await agent
       .post('/events/42/edit')
@@ -20946,7 +20941,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(page.status).toBe(200);
     expect(page.text).toContain('/uploads/events/garden.webp');
-    expect(page.text).toContain('Current image for Community garden day');
+    expect(page.text).toContain('Current cover image for Community garden day');
     expect(csrfMatch).not.toBeNull();
   });
 

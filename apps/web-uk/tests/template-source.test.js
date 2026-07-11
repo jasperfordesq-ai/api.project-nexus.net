@@ -62,6 +62,16 @@ describe('tenant-aware template helper conversion', () => {
     expect(formSource).toContain('name: "end_time"');
     expect(formSource).not.toMatch(/name(?:=|:)\s*"(?:starts_at|ends_at)_(?:date|time)"/);
     expect(formSource).toMatch(/id: "description"[\s\S]*?"required": "required"/);
+    expect(createTemplate).toContain('t("events.caption", { community: tenantName or serviceName })');
+    expect(createTemplate).toContain('t("events.create_description")');
+    expect(createTemplate).toContain('t("events.create_details_title")');
+    expect(createTemplate).toContain('t("events.create_time_title")');
+    expect(createTemplate).toContain('t("events.create_place_title")');
+    expect(createTemplate).toContain('t("events.create_capacity_title")');
+    expect(editTemplate).toContain('t("events.edit_title")');
+    expect(editTemplate).toContain('t("events.polish_events.edit_image_label")');
+    expect(formSource).not.toContain('name: "group_id"');
+    expect(formSource).not.toContain('polish_federation.transfer_cancel');
     expect(detailTemplate).toContain('event.start_time');
     expect(detailTemplate).toContain('event.end_time');
     expect(detailTemplate).toContain('name="reason"');

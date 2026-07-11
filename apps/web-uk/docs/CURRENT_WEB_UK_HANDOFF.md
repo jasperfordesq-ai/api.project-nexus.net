@@ -4799,6 +4799,17 @@ The terminal run passed `1/1` in `54.4` seconds and retained no fixture; direct
 Laravel cleanup remains the failure fallback. Full Jest passed `45/45` suites
 and `1,448/1,448` tests, with green lint.
 
+The default-English create/edit follow-up now matches Blade's community and
+event captions, page descriptions, section legends and ordering, catalog field
+copy, image treatment, recurrence labels, and single submit action. Invented
+group selectors and cancel links were removed from both forms. Focused Event
+render/source proof passed `46/46`; the exact-current create/edit/delete journey
+passed `1/1` in `1.3` minutes and retained no fixture; full Jest remained
+`45/45` suites and `1,448/1,448` tests with green lint. Blade's current-cover
+removal checkbox remains withheld because Laravel v2 exposes Event image upload
+but no equivalent image-removal endpoint; rendering a non-functional control
+would overstate workflow parity.
+
 ## Documents To Trust
 
 Read these in order:

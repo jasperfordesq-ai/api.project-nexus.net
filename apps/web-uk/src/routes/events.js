@@ -20,7 +20,6 @@ const {
   getEventCategories,
   uploadEventImage,
   callUgcTranslateApi,
-  getMyGroups,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
@@ -657,33 +656,20 @@ router.get('/', asyncRoute(async (req, res) => {
 
 // Create event form
 router.get('/new', requireAuth, asyncRoute(async (req, res) => {
-  const groupId = req.query.group_id || null;
   let setupErrorMessage = null;
 
-  const [myGroupsResult, categoriesResult] = await Promise.all([
-    getMyGroups(req.token).catch((error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        throw error;
-      }
-      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
-      return { data: [] };
-    }),
-    getEventCategories(req.token).catch((error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        throw error;
-      }
-      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
-      return { data: [] };
-    })
-  ]);
-  const myGroups = collectionFrom(myGroupsResult);
+  const categoriesResult = await getEventCategories(req.token).catch((error) => {
+    if (error instanceof ApiError && error.status === 401) {
+      throw error;
+    }
+    setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+    return { data: [] };
+  });
   const categories = collectionFrom(categoriesResult);
 
   res.render('events/new', {
     title: 'Create an event',
-    myGroups,
     categories,
-    selectedGroupId: groupId,
     setupErrorMessage,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -735,14 +721,9 @@ router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
     await removeUploadedFile(image);
-    let myGroups = [];
     let categories = [];
     try {
-      const [myGroupsResult, categoriesResult] = await Promise.all([
-        getMyGroups(req.token),
-        getEventCategories(req.token)
-      ]);
-      myGroups = collectionFrom(myGroupsResult);
+      const categoriesResult = await getEventCategories(req.token);
       categories = collectionFrom(categoriesResult);
     } catch (error) {
       if (isAuthError(error)) throw error;
@@ -753,9 +734,7 @@ router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res
       title: 'Create an event',
       errors: errorList,
       values,
-      myGroups,
       categories,
-      selectedGroupId: group_id,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   };
@@ -879,29 +858,18 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   }
 
   let setupErrorMessage = null;
-  const [myGroupsResult, categoriesResult] = await Promise.all([
-    getMyGroups(req.token).catch((error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        throw error;
-      }
-      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
-      return { data: [] };
-    }),
-    getEventCategories(req.token).catch((error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        throw error;
-      }
-      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
-      return { data: [] };
-    })
-  ]);
-  const myGroups = collectionFrom(myGroupsResult);
+  const categoriesResult = await getEventCategories(req.token).catch((error) => {
+    if (error instanceof ApiError && error.status === 401) {
+      throw error;
+    }
+    setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+    return { data: [] };
+  });
   const categories = collectionFrom(categoriesResult);
 
   res.render('events/edit', {
     title: `Edit ${event.title}`,
     event,
-    myGroups,
     categories,
     setupErrorMessage,
     startTime: dateTimeLocal(event.start_time ?? event.startTime),
@@ -944,14 +912,9 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
     await removeUploadedFile(image);
-    let myGroups = [];
     let categories = [];
     try {
-      const [myGroupsResult, categoriesResult] = await Promise.all([
-        getMyGroups(req.token),
-        getEventCategories(req.token)
-      ]);
-      myGroups = collectionFrom(myGroupsResult);
+      const categoriesResult = await getEventCategories(req.token);
       categories = collectionFrom(categoriesResult);
     } catch (error) {
       if (isAuthError(error)) throw error;
@@ -962,7 +925,6 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
       title: 'Edit event',
       event: { id, ...values },
       errors: errorList,
-      myGroups,
       categories,
       startTime: values.start_time,
       endTime: values.end_time,
