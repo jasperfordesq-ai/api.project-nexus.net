@@ -11,19 +11,6 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const router = express.Router();
 const MATCH_REASONS = new Set(['not_relevant', 'too_far', 'already_done', 'not_my_skills', 'not_interested', 'other']);
 const BOARD_SOURCES = new Set(['all', 'listing', 'group', 'volunteering', 'event']);
-const SOURCE_LABELS = {
-  all: 'All matches',
-  listing: 'Listings',
-  group: 'Groups',
-  volunteering: 'Volunteering',
-  event: 'Events'
-};
-const MODULE_LABELS = {
-  listing: 'Listing',
-  group: 'Group',
-  volunteering: 'Volunteering',
-  event: 'Event'
-};
 
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
@@ -90,7 +77,7 @@ function normalizeReasons(value) {
     : [];
 }
 
-function normalizeMatch(match = {}) {
+function normalizeMatch(match = {}, t, board = false) {
   const module = moduleKey(match.module || match.source_type || match.sourceType);
   const listingId = Number(match.listing_id || match.listingId || (module === 'listing' ? match.id : 0)) || 0;
   const groupId = Number(match.group_id || match.groupId || (module === 'group' ? match.id : 0)) || 0;
@@ -111,18 +98,25 @@ function normalizeMatch(match = {}) {
   return {
     id: match.id || listingId || groupId || eventId || organizationId,
     module,
-    moduleLabel: MODULE_LABELS[module] || 'Listing',
+    moduleLabel: t(board
+      ? `govuk_alpha_connections.matches.module_${module}`
+      : `polish_listings.matches_module_${module}`),
     listingId,
     groupId,
     eventId,
     organizationId,
     href,
-    title: trimmed(match.title, 'View match'),
+    title: trimmed(match.title, t(board ? 'govuk_alpha_connections.matches.view_match' : 'matches.view_listing')),
     description: trimmed(match.description),
     type: match.type === 'request' ? 'request' : 'offer',
-    typeLabel: match.type === 'request' ? 'Looking for' : 'Offering',
+    typeLabel: t(board
+      ? `govuk_alpha_connections.matches.type_${match.type === 'request' ? 'request' : 'offer'}`
+      : `matches.type_${match.type === 'request' ? 'request' : 'offer'}`),
     category: trimmed(match.category_name || match.categoryName || match.category),
-    userName: trimmed(match.user_name || match.userName || match.name, 'Unknown member'),
+    userName: trimmed(
+      match.user_name || match.userName || match.name,
+      t(board ? 'govuk_alpha_connections.common.unknown_member' : 'members.unknown_member')
+    ),
     pct,
     reasons: normalizeReasons(match.match_reasons || match.matchReasons || match.reasons),
     createdAt: match.created_at || match.createdAt || ''
@@ -160,16 +154,25 @@ function visibleMatches(matches, source) {
   return source === 'all' ? matches : matches.filter((match) => match.module === source);
 }
 
-function matchesStatusMessage(status) {
-  if (status === 'match-dismissed') return { type: 'success', text: 'This match has been hidden.' };
-  if (status === 'match-dismiss-failed') return { type: 'error', text: 'We could not hide this match. Please try again.' };
+function statusMessage(status, t) {
+  if (status === 'match-dismissed') {
+    return { type: 'success', text: t('govuk_alpha_connections.matches_states.dismissed') };
+  }
+  if (status === 'match-dismiss-failed') {
+    return { type: 'error', text: t('govuk_alpha_connections.matches_states.dismiss_failed') };
+  }
   return null;
 }
 
-function boardStatusMessage(status) {
-  if (status === 'match-dismissed') return { type: 'success', text: 'Match hidden. We will show you fewer like it.' };
-  if (status === 'match-dismiss-failed') return { type: 'error', text: 'Sorry, that match could not be hidden. Please try again.' };
-  return null;
+function sourceLabels(t, board = false) {
+  const prefix = board ? 'govuk_alpha_connections.matches.source_' : 'polish_listings.matches_source_';
+  return {
+    all: t(`${prefix}all`),
+    listing: t(`${prefix}listing`),
+    group: t(`${prefix}group`),
+    volunteering: t(`${prefix}volunteering`),
+    event: t(`${prefix}event`)
+  };
 }
 
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
@@ -180,7 +183,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
 
   try {
     const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(30)));
-    matches = visibleMatches(payload.matches.map(normalizeMatch), activeSource);
+    matches = visibleMatches(payload.matches.map((match) => normalizeMatch(match, res.locals.t)), activeSource);
     matchMeta = payload.meta;
   } catch (error) {
     if (isAuthError(error)) throw error;
@@ -190,13 +193,14 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
 
   res.render('matches/index', {
     title: 'Your matches',
+    titleKey: 'matches.title',
     activeSource,
-    sourceLabels: SOURCE_LABELS,
+    sourceLabels: sourceLabels(res.locals.t),
     matches,
     matchMeta,
     errorMessage,
     stats,
-    statusMessage: matchesStatusMessage(req.query.status),
+    statusMessage: statusMessage(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: '/login?status=auth-required' }));
@@ -209,7 +213,7 @@ router.get('/board', requireAuth, asyncRoute(async (req, res) => {
 
   try {
     const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(50)));
-    matches = payload.matches.map(normalizeMatch);
+    matches = payload.matches.map((match) => normalizeMatch(match, res.locals.t, true));
     matchMeta = payload.meta;
   } catch (error) {
     if (isAuthError(error)) throw error;
@@ -220,13 +224,14 @@ router.get('/board', requireAuth, asyncRoute(async (req, res) => {
 
   res.render('matches/board', {
     title: 'Your matches',
+    titleKey: 'govuk_alpha_connections.matches.title',
     activeSource,
-    sourceLabels: SOURCE_LABELS,
+    sourceLabels: sourceLabels(res.locals.t, true),
     matches: filteredMatches,
     matchMeta,
     errorMessage,
     stats,
-    statusMessage: boardStatusMessage(req.query.status),
+    statusMessage: statusMessage(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: '/login?status=auth-required' }));

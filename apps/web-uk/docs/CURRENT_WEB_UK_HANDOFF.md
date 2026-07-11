@@ -3913,6 +3913,28 @@ group-exchange journey is focused-green, while detail-page live proof awaits a
 safe existing exchange fixture and a fresh full aggregate remains unclaimed
 under the recorded Laravel latency.
 
+Latest focused matches localization slice: `/matches` now uses Laravel's
+request-locale `matches` plus `polish_listings` catalogs, while the richer
+`/matches/board` uses `govuk_alpha_connections` for its title/caption,
+description, four stats, counted source filters, module/type/member metadata,
+score and progress ARIA, reason overflow, dismiss warning/reasons/action,
+empty states, back link, and outcome banners. Dynamic recommendation content
+remains backend-authored, and Web UK-only location/paused/load-error guidance
+remains English because Laravel exposes no matching keys. The authoritative
+connections namespace is one of the 16 still wholly English-identical outside
+English, so Arabic mode intentionally renders those exact Laravel English
+values rather than invented translations. Focused English/Arabic render tests
+passed `3/3`; the non-mutating authenticated Arabic Laravel-backed index/board
+journey rendered live recommendations and passed exact headings/descriptions,
+non-empty captions, RTL, 320px reflow, and axe on both pages (`1/1`, 57.8
+seconds). Full verification passed 45/45 Jest suites and 1,420/1,420 tests,
+ESLint, the 290-template conservative audit with zero matches, and the refreshed
+route matrix at 608/608 matched with 0 missing, 0 extra, and 3 ignored
+infrastructure routes. The latest uninterrupted full browser aggregate remains
+62/62 at `e155375c`; the current-source matches journey is focused-green, while
+the documented event/dismiss API gaps, broader persistence proof, manual parity,
+and full aggregate remain open.
+
 ## Documents To Trust
 
 Read these in order:

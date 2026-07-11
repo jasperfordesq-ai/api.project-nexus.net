@@ -7215,7 +7215,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callMatchesApi).toHaveBeenCalledWith('test-token', 'GET', '/all?limit=30');
     expect(response.text).toContain('Your matches');
-    expect(response.text).toContain('This match has been hidden.');
+    expect(response.text).toContain('Match hidden. We will show you fewer like it.');
     expect(response.text).toContain('Open the matches board');
     expect(response.text).toContain('Total matches');
     expect(response.text).toContain('Average score');
@@ -7282,6 +7282,88 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/matches/board/77/dismiss"');
     expect(response.text).toContain('name="source" value="listing"');
     expect(response.text).not.toContain('Garden helpers');
+  });
+
+  it('renders the matches index and board from their exact Arabic Laravel catalogs', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const payload = {
+      data: {
+        matches: [{
+          id: 77,
+          listing_id: 77,
+          module: 'listing',
+          title: 'Repair a bicycle',
+          type: 'request',
+          user_name: 'Avery Morgan',
+          match_score: 0.87,
+          match_reasons: ['Shared repair skills', 'Nearby', 'Same town', 'Recently active']
+        }]
+      }
+    };
+    api.callMatchesApi.mockResolvedValueOnce(payload).mockResolvedValueOnce(payload);
+
+    const index = await request(app)
+      .get('/matches?source=listing&status=match-dismissed&locale=ar')
+      .set('Cookie', signedCookieHeader());
+    const board = await request(app)
+      .get('/matches/board?source=listing&status=match-dismissed&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    for (const response of [index, board]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('lang="ar"');
+      expect(response.text).toContain('dir="rtl"');
+      expect(response.text).not.toContain('>undefined<');
+      expect(response.text).toContain(t('govuk_alpha_connections.matches_states.dismissed'));
+    }
+    for (const key of [
+      'matches.title',
+      'matches.description',
+      'matches.caption',
+      'polish_listings.matches_total_label',
+      'polish_listings.matches_avg_score_label',
+      'polish_listings.matches_source_filter_legend',
+      'polish_listings.matches_source_listing',
+      'matches.type_request',
+      'matches.by_label',
+      'matches.match_label',
+      'polish_listings.matches_dismiss_label'
+    ]) {
+      const replacements = key === 'matches.caption'
+        ? { community: 'Project NEXUS' }
+        : key === 'matches.by_label'
+          ? { name: 'Avery Morgan' }
+          : key === 'matches.match_label'
+            ? { percent: 87 }
+            : {};
+      if (key !== 'matches.caption') expect(index.text).toContain(t(key, replacements));
+    }
+    for (const key of [
+      'govuk_alpha_connections.matches.title',
+      'govuk_alpha_connections.matches.description',
+      'govuk_alpha_connections.matches.stats_total',
+      'govuk_alpha_connections.matches.stats_avg_score',
+      'govuk_alpha_connections.matches.stats_hot',
+      'govuk_alpha_connections.matches.stats_source_types',
+      'govuk_alpha_connections.matches.source_legend',
+      'govuk_alpha_connections.matches.type_request',
+      'govuk_alpha_connections.matches.score_label',
+      'govuk_alpha_connections.matches.score_bar_label',
+      'govuk_alpha_connections.matches.reasons_more',
+      'govuk_alpha_connections.matches.dismiss_reason_label',
+      'govuk_alpha_connections.matches.reason_not_relevant',
+      'govuk_alpha_connections.matches.dismiss_button',
+      'govuk_alpha_connections.matches.back_to_matches'
+    ]) {
+      const replacements = key.endsWith('score_label') || key.endsWith('score_bar_label')
+        ? { percent: 87 }
+        : key.endsWith('reasons_more')
+          ? { count: 1 }
+          : {};
+      expect(board.text).toContain(t(key, replacements));
+    }
   });
 
   it('filters the canonical all-matches envelope locally so Laravel event recommendations remain available', async () => {
