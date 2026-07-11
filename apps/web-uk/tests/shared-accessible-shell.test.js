@@ -9459,6 +9459,26 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/acme/accessible/search?q=garden&amp;type=all&amp;cursor=opaque-next"');
   });
 
+  it('renders one Blade catalog inset for a type-filtered empty search', async () => {
+    const api = require('../src/lib/api');
+    api.searchV2.mockResolvedValueOnce({
+      data: [],
+      meta: {
+        search: { query: 'missing', total: 0, type: 'events' },
+        pagination: { cursor: null, per_page: 30, has_more: false }
+      }
+    });
+
+    const response = await request(app)
+      .get('/search?q=missing&type=events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text.split('No results found. Try a different search.')).toHaveLength(2);
+    expect(response.text).not.toContain('app-empty-state');
+    expect(response.text).not.toContain('href="/listings">Browse listings</a>');
+  });
+
   it('renders the Laravel-style advanced search page', async () => {
     const api = require('../src/lib/api');
     const t = createTranslator('ar');

@@ -232,35 +232,11 @@
           {% endif %}
         {% endif %}
 
-        {# No results for specific type #}
-        {% if type != 'all' %}
-          {% set typeResults = results[type] if results[type] else [] %}
-          {% if typeResults.length == 0 %}
-            {% set emptyState = {
-              icon: "🔍",
-              heading: t("govuk_alpha_search.states.empty_title"),
-              message: t("search.empty"),
-              action: {
-                text: t("search.type_all"),
-                href: urlFor("/search?q=" + (query | urlencode) + "&type=all")
-              }
-            } %}
-            {% include "partials/empty-state.njk" %}
-          {% endif %}
-        {% endif %}
-
-        {# No results at all #}
+        {# Blade renders one catalog empty state regardless of the selected type. #}
         {% if totalResults == 0 %}
-          {% set emptyState = {
-            icon: "🔍",
-            heading: t("govuk_alpha_search.states.empty_title"),
-            message: t("govuk_alpha_search.states.empty", { query: query }),
-            action: {
-              text: t("guide.browse_listings"),
-              href: urlFor("/listings")
-            }
-          } %}
-          {% include "partials/empty-state.njk" %}
+          <div class="govuk-inset-text">
+            <p class="govuk-body">{{ t("search.empty") }}</p>
+          </div>
         {% endif %}
 
         {# Pagination #}
