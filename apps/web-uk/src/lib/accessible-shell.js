@@ -15,6 +15,8 @@ const serviceName = 'Project NEXUS Accessible';
 const phaseText = 'Beta';
 const feedbackUrl = 'mailto:feedback@project-nexus.ie?subject=NEXUS%20Beta%20feedback';
 const sourceCodeUrl = 'https://github.com/jasperfordesq-ai/nexus-v1';
+const { URL } = require('node:url');
+const { getApiBaseUrl } = require('./backend-contract');
 const { createTranslator, isSupportedLocale } = require('./localization');
 
 const localeOptions = [
@@ -31,11 +33,9 @@ const localeOptions = [
   ['ar', 'العربية']
 ];
 
-// This legal/identity disclosure is specific to the Express shell. Laravel's
-// source catalogs do not contain it, while this app's non-government branding
-// rules require it to be visible in the header. Keep the local copy explicit
-// and complete for every offered locale rather than polluting generated
-// Laravel catalog parity with a Web UK-only key.
+// Web UK's branding guard requires this explicit non-government disclosure in
+// the shared header. Laravel Blade omits it, so this remains a deliberate local
+// compliance divergence rather than source-parity copy.
 const notAffiliatedByLocale = Object.freeze({
   en: 'Not affiliated with GOV.UK',
   ga: 'Níl sé cleamhnaithe le GOV.UK',
@@ -431,6 +431,23 @@ function buildLanguageQueryParams(query = {}) {
     }));
 }
 
+function resolveBackendAssetUrl(value) {
+  const asset = String(value || '').trim();
+  if (!asset) return '';
+
+  const apiBaseUrl = getApiBaseUrl();
+  try {
+    const resolved = new URL(asset, `${apiBaseUrl}/`);
+    return resolved.origin === new URL(apiBaseUrl).origin ? resolved.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function normalizeLogoShape(value) {
+  return ['wide', 'landscape', 'square'].includes(value) ? value : 'landscape';
+}
+
 function buildShellLocals(req, isAuthenticated) {
   const routedTenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
     ? req.accessibleRouting.tenant
@@ -447,12 +464,18 @@ function buildShellLocals(req, isAuthenticated) {
   const currentUrl = req.originalUrl || currentPath;
   const urlFor = (pathname) => prefixLocalPath(pathname, routePrefix);
   const tenantSlug = req.accessibleRouting?.tenantSlug || '';
+  const branding = routedTenant.branding && typeof routedTenant.branding === 'object'
+    ? routedTenant.branding
+    : {};
+  const tenantLogoUrl = resolveBackendAssetUrl(branding.logo_dark_url || branding.logo_url);
 
   return {
     serviceName: t('service_name'),
     phaseText: t('phase'),
     tenantName,
     tenantSlug,
+    tenantLogoUrl,
+    tenantLogoShape: normalizeLogoShape(branding.logo_shape),
     accessibleRoutePrefix: routePrefix,
     urlFor,
     htmlLang: currentLocale,
@@ -499,5 +522,6 @@ module.exports = {
   moduleDefaults,
   phaseText,
   prefixLocalPath,
+  resolveBackendAssetUrl,
   serviceName
 };

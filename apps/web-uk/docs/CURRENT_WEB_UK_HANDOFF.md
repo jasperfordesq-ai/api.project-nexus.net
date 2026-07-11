@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,431/1,431` tests passed.
+- Jest: `45/45` suites and `1,433/1,433` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -73,6 +73,13 @@ scores must not be reused as current results.
   description, deleted it, and verified it was absent from the final listing.
   All three POSTs returned `302`; the fixture was disposable and no collection
   was retained.
+- Default-English branded header proof: the real `timebanking-org` bootstrap
+  logo loaded at `392x105` intrinsic and `179x48` rendered size, with the exact
+  tenant name as alt text and no horizontal overflow. Web UK now follows
+  Blade's dark-logo preference and wide/landscape/square sizing. Web UK's
+  branding guard still requires the explicit non-government header disclosure,
+  an intentional local divergence from Blade. Per-tenant header colours remain
+  blocked by the public bootstrap contract.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
   and signed dashboard. The expanded gate now drives native Chromium Tab/Enter

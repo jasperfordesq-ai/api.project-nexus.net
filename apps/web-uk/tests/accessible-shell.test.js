@@ -4,7 +4,8 @@ const {
   featureDefaults,
   buildNavItems,
   buildShellLocals,
-  prefixLocalPath
+  prefixLocalPath,
+  resolveBackendAssetUrl
 } = require('../src/lib/accessible-shell');
 const { createTranslator } = require('../src/lib/localization');
 
@@ -73,12 +74,41 @@ describe('accessible shell tenant gating', () => {
       .toBe('/acme/accessible?locale=ar');
   });
 
+  it('resolves only configured-backend tenant logo assets', () => {
+    expect(resolveBackendAssetUrl('/uploads/tenants/acme/logo.png'))
+      .toBe('http://127.0.0.1:8088/uploads/tenants/acme/logo.png');
+    expect(resolveBackendAssetUrl('https://untrusted.example/logo.png')).toBe('');
+  });
+
   it('localizes the mandatory non-government header disclosure', () => {
     const english = buildShellLocals({ query: {}, locale: 'en', path: '/', originalUrl: '/' }, false);
     const arabic = buildShellLocals({ query: {}, locale: 'ar', path: '/', originalUrl: '/' }, false);
 
     expect(english.shellNotAffiliated).toBe('Not affiliated with GOV.UK');
     expect(arabic.shellNotAffiliated).toBe('غير تابع لـ GOV.UK');
+  });
+
+  it('exposes Laravel bootstrap logo variants and a safe shape to the shell', () => {
+    const locals = buildShellLocals({
+      query: {},
+      path: '/',
+      originalUrl: '/acme/accessible',
+      accessibleRouting: {
+        tenant: {
+          ...tenant,
+          branding: {
+            logo_url: '/uploads/tenants/acme/light.png',
+            logo_dark_url: '/uploads/tenants/acme/dark.png',
+            logo_shape: 'wide'
+          }
+        },
+        tenantSlug: 'acme',
+        prefix: '/acme/accessible'
+      }
+    }, false);
+
+    expect(locals.tenantLogoUrl).toBe('http://127.0.0.1:8088/uploads/tenants/acme/dark.png');
+    expect(locals.tenantLogoShape).toBe('wide');
   });
 
   it('matches Laravel Blade Explore card feature gates from tenant bootstrap', () => {

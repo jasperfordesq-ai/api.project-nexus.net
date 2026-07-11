@@ -15,6 +15,7 @@ const morgan = require('morgan');
 const { doubleCsrf } = require('csrf-csrf');
 const path = require('path');
 const { URL } = require('url');
+const { getApiBaseUrl } = require('./lib/backend-contract');
 
 const authRoutes = require('./routes/auth');
 const listingsRoutes = require('./routes/listings');
@@ -234,7 +235,7 @@ app.use(helmet({
       // challenges.cloudflare.com — Cloudflare Turnstile widget script.
       scriptSrc: ["'self'", "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='", "https://challenges.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
+      imgSrc: ["'self'", "data:", new URL(getApiBaseUrl()).origin],
       fontSrc: ["'self'"],
       // challenges.cloudflare.com — Turnstile siteverify (server-side) +
       // browser-side widget telemetry posts back to its own origin.

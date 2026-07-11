@@ -69,7 +69,11 @@
         <div class="govuk-width-container nexus-alpha-header__container">
           <div class="nexus-alpha-header__identity">
             <a class="nexus-alpha-header__brand govuk-!-font-size-24" href="{{ urlFor('/') }}">
-              {{ tenantName or serviceName }}
+              {% if tenantLogoUrl %}
+                <img class="nexus-alpha-header__logo nexus-alpha-header__logo--{{ tenantLogoShape }}" src="{{ tenantLogoUrl }}" alt="{{ tenantName or serviceName }}" decoding="async">
+              {% else %}
+                {{ tenantName or serviceName }}
+              {% endif %}
             </a>
             <p class="nexus-alpha-header__disclaimer">{{ shellNotAffiliated }}</p>
           </div>
