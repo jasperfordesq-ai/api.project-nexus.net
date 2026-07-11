@@ -4559,6 +4559,29 @@ the 292-template zero-match audit, and 608/608 route parity. The latest full
 browser aggregate remains checkpoint `d86d5e5a` at `75/75`; this focused shell
 slice does not claim a newer full aggregate.
 
+## 2026-07-11 Tenant-Scoped Footer Locals
+
+Shell-local navigation and footer construction now follows the controller's
+early return when no tenant slug is resolved. The community chooser no longer
+inherits default-enabled Platform, Support, or Legal columns, report-problem/
+cookie utilities, or a sign-out form. Tenant-mounted pages retain all localized
+columns and utilities. The underlying locals are empty as well as the rendered
+landmarks being absent, so downstream templates cannot accidentally expose the
+tenant-only links.
+
+This correction exposed four tests whose broad text assertions were passing on
+unrelated footer words. They now assert the actual page control or category
+option; the localized footer partial harness now supplies the tenant context its
+fixture represents. Focused shell/partial verification passed `638/638`.
+
+A new real-browser tenant-chooser case passed `1/1` in 17.3 seconds, proving one
+main/H1, no tenant-only service/footer navigation or report-problem link, no
+horizontal overflow, and no serious/critical axe findings. Complete Jest passed
+`45/45` suites and `1,430/1,430` tests with warning-free lint, branding, locale/
+template audits, CSS, and 608/608 route parity. The next full browser aggregate
+will contain 76 cases; the latest completed full aggregate remains checkpoint
+`d86d5e5a` at `75/75`.
+
 ## Documents To Trust
 
 Read these in order:

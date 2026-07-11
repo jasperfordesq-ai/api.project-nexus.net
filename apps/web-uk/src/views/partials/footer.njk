@@ -30,6 +30,7 @@
       <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
         <h2 class="govuk-visually-hidden">{{ t("footer.meta_label") }}</h2>
 
+        {% if tenantSlug %}
         <ul class="govuk-footer__inline-list">
           <li class="govuk-footer__inline-list-item">
             <a class="govuk-footer__link" href="{{ reportProblemUrl or urlFor('/report-a-problem') }}">{{ t("report_problem.footer_link") }}</a>
@@ -38,8 +39,9 @@
             <a class="govuk-footer__link" href="{{ cookieSettingsUrl or urlFor('/cookies') }}">{{ t("cookie_settings.title") }}</a>
           </li>
         </ul>
+        {% endif %}
 
-        {% if isAuthenticated %}
+        {% if isAuthenticated and tenantSlug %}
           <ul class="govuk-footer__inline-list">
             <li class="govuk-footer__inline-list-item">
               <form method="post" action="{{ urlFor('/logout') }}" class="nexus-alpha-linkform">

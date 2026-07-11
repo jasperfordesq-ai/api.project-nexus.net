@@ -446,12 +446,13 @@ function buildShellLocals(req, isAuthenticated) {
   const currentPath = visiblePath || '/';
   const currentUrl = req.originalUrl || currentPath;
   const urlFor = (pathname) => prefixLocalPath(pathname, routePrefix);
+  const tenantSlug = req.accessibleRouting?.tenantSlug || '';
 
   return {
     serviceName: t('service_name'),
     phaseText: t('phase'),
     tenantName,
-    tenantSlug: req.accessibleRouting?.tenantSlug || '',
+    tenantSlug,
     accessibleRoutePrefix: routePrefix,
     urlFor,
     htmlLang: currentLocale,
@@ -461,15 +462,15 @@ function buildShellLocals(req, isAuthenticated) {
     alphaLocaleOptions: localeOptions,
     alphaLanguageQueryParams: buildLanguageQueryParams(req.query),
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
-    alphaNavItems: prefixNavItems(
+    alphaNavItems: tenantSlug ? prefixNavItems(
       localizeNavItems(buildNavItems({ isAuthenticated, tenant: routedTenant }), t),
       routePrefix
-    ),
+    ) : [],
     alphaActiveNav: activeNavForPath(req.path),
-    alphaFooterColumns: prefixFooterColumns(
+    alphaFooterColumns: tenantSlug ? prefixFooterColumns(
       localizeFooterColumns(buildFooterColumns({ tenant: routedTenant }), t),
       routePrefix
-    ),
+    ) : [],
     alphaExploreLinks: prefixNavItems(buildExploreLinks({ tenant: routedTenant, t }), routePrefix),
     currentPath,
     currentUrl,

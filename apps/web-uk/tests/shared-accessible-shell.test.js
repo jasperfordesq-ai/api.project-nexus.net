@@ -751,22 +751,15 @@ describe('shared accessible frontend shell', () => {
     expect(mountedLogin.status).toBe(200);
     expect(mountedLogin.text).toContain('class="govuk-service-navigation"');
     expect(mountedLogin.text).toContain('aria-current="page"><strong class="govuk-service-navigation__active-fallback">Sign in</strong>');
+    expect(mountedLogin.text).toContain('class="govuk-footer__navigation"');
+    expect(mountedLogin.text).toContain('Report a problem with this page');
+    expect(mountedLogin.text).toContain('href="/acme/accessible/legal/cookies"');
     expect(response.text).toContain('Beta');
     expect(response.text).toContain('Give feedback');
-    expect(response.text).toContain('href="/volunteering"');
-    expect(response.text).toContain('class="govuk-footer__navigation"');
-    expect(response.text).toContain('Help centre');
-    expect(response.text).toContain('Knowledge base');
-    expect(response.text).toContain('Trust and safety');
-    expect(response.text).toContain('Terms of service');
-    expect(response.text).toContain('Privacy policy');
-    expect(response.text).toContain('Community guidelines');
-    expect(response.text).toContain('Acceptable use');
-    expect(response.text).toContain('Cookie policy');
-    expect(response.text).toContain('Accessibility statement');
-    expect(response.text).toContain('Report a problem with this page');
+    expect(response.text).not.toContain('href="/volunteering"');
+    expect(response.text).not.toContain('class="govuk-footer__navigation"');
+    expect(response.text).not.toContain('Report a problem with this page');
     expect(response.text).toContain('Supporting information and attribution');
-    expect(response.text).toContain('href="/cookies"');
     expect(response.text).toContain('Project NEXUS is free software licensed under AGPL-3.0-or-later.');
     expect(response.text).toContain('View the source code on GitHub');
     expect(response.text).toContain('https://github.com/jasperfordesq-ai/nexus-v1');
@@ -13429,7 +13422,7 @@ describe('shared accessible frontend shell', () => {
     expect(create.text).toContain('Create a poll');
     expect(create.text).toContain('Ranked choice');
     expect(create.text).toContain(createTranslator('en')('govuk_alpha_gamification.poll_create.states.poll-create-failed'));
-    expect(create.text).toContain('Community');
+    expect(create.text).toContain('<option value="community">community</option>');
 
     const manage = await request(app)
       .get('/polls/parity/manage?status=poll-deleted')

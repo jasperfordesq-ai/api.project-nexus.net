@@ -83,6 +83,31 @@ async function hideCookieBanner(page, baseURL) {
 }
 
 test.describe('representative public-page accessibility gate', () => {
+  test('tenant chooser omits tenant-only shell navigation', async ({ page }, testInfo) => {
+    const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    expect(response).not.toBeNull();
+    expect(response.status()).toBeLessThan(400);
+    await expect(page.locator('main')).toHaveCount(1);
+    await expect(page.locator('h1')).toHaveText('Choose a community');
+    await expect(page.locator('.govuk-service-navigation')).toHaveCount(0);
+    await expect(page.locator('.govuk-footer__navigation')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Report a problem with this page' })).toHaveCount(0);
+
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    await testInfo.attach('tenant-chooser-shell', {
+      body: Buffer.from(JSON.stringify({ overflow, violations: formatViolations(axeResults.violations) }, null, 2)),
+      contentType: 'application/json'
+    });
+    expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+  });
+
   for (const route of PUBLIC_ROUTES) {
     test(`${route.name} has a valid document structure and no high-impact axe violations`, async ({ page }, testInfo) => {
       test.setTimeout(90_000);

@@ -49,6 +49,7 @@ function renderFooter(locale) {
     }],
     csrfToken: 'test-csrf',
     isAuthenticated: true,
+    tenantSlug: 'acme',
     t,
     urlFor: (pathname) => `/acme/accessible${pathname}`
   });
