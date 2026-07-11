@@ -24,9 +24,9 @@
               <ul class="govuk-list govuk-error-summary__list">
                 <li>
                   {% if state == "missing" %}
-                    No verification link was provided. Use the link in your verification email.
+                    {{ t("auth.verify_email_missing") }}
                   {% else %}
-                    This verification link is invalid or has expired.
+                    {{ t("auth.verify_email_invalid") }}
                   {% endif %}
                 </li>
               </ul>
@@ -35,7 +35,7 @@
         </div>
         <p class="govuk-body">{{ t("auth.verify_email_resend_hint") }}</p>
         <p class="govuk-body">
-          <a class="govuk-link" href="{{ urlFor('/login') }}">Back to sign in</a>
+          <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("auth.verify_email_back_to_sign_in") }}</a>
         </p>
       {% endif %}
     </div>

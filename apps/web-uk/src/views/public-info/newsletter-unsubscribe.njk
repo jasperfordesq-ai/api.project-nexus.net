@@ -25,9 +25,9 @@
               <ul class="govuk-list govuk-error-summary__list">
                 <li>
                   {% if state == "missing" %}
-                    No unsubscribe link was provided. Use the link in the email you received.
+                    {{ t("auth.unsubscribe_missing") }}
                   {% else %}
-                    This unsubscribe link is invalid or has expired.
+                    {{ t("auth.unsubscribe_invalid") }}
                   {% endif %}
                 </li>
               </ul>

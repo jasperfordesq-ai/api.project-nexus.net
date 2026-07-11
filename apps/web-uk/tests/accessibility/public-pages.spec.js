@@ -307,6 +307,36 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     });
     expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
   });
+
+  test('Arabic cookie and email utility pages preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 320, height: 640 });
+    const routes = [
+      { path: `${mountPath}/cookies?locale=ar`, marker: translate('ar', 'cookie_settings.analytics_legend') },
+      { path: `${mountPath}/newsletter/unsubscribe?locale=ar`, marker: translate('ar', 'auth.unsubscribe_missing') },
+      { path: `${mountPath}/verify-email?locale=ar`, marker: translate('ar', 'auth.verify_email_missing') }
+    ];
+    const evidence = [];
+
+    for (const route of routes) {
+      const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+      expect(response).not.toBeNull();
+      expect(response.status()).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.getByText(route.marker, { exact: true }).first()).toBeVisible();
+      const overflow = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      evidence.push({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) });
+    }
+
+    await testInfo.attach('arabic-cookie-email-utilities', {
+      body: Buffer.from(JSON.stringify(evidence, null, 2)),
+      contentType: 'application/json'
+    });
+  });
 });
 
 test.describe('keyboard, focus, error, and forced-colour gate', () => {

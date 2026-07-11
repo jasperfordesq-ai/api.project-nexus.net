@@ -1707,6 +1707,28 @@ describe('shared accessible frontend shell', () => {
     expect(invalid.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('localizes cookie settings and missing email utility states from Laravel catalogs', async () => {
+    const { translate } = require('../src/lib/localization');
+    const [cookies, unsubscribe, verify] = await Promise.all([
+      request(app).get('/cookies?locale=ar'),
+      request(app).get('/newsletter/unsubscribe?locale=ar'),
+      request(app).get('/verify-email?locale=ar')
+    ]);
+
+    for (const response of [cookies, unsubscribe, verify]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('dir="rtl"');
+    }
+    expect(cookies.text).toContain(translate('ar', 'cookie_settings.caption', { service: 'Project NEXUS Accessible' }));
+    expect(cookies.text).toContain(translate('ar', 'cookie_settings.analytics_legend'));
+    expect(unsubscribe.text).toContain(translate('ar', 'auth.unsubscribe_title'));
+    expect(unsubscribe.text).toContain(translate('ar', 'auth.unsubscribe_missing'));
+    expect(verify.text).toContain(translate('ar', 'auth.verify_email_title'));
+    expect(verify.text).toContain(translate('ar', 'auth.verify_email_missing'));
+    expect(verify.text).toContain(translate('ar', 'auth.verify_email_back_to_sign_in'));
+  });
+
   it('renders the Laravel-style delete-account confirmation page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

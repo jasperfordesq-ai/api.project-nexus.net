@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,410/1,410` tests passed.
+- Jest: `45/45` suites and `1,411/1,411` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,8 +62,8 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `61/61` cases in
-  `565.9` seconds (`9.3` minutes).
+- Automated browser accessibility: Chromium/axe passed `62/62` cases in
+  `749.3` seconds (`12.3` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -74,7 +74,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/member-profile/knowledge-base/help/trust-and-safety/about/guide/features/faq/legal/accessibility/contact/report-problem/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/member-profile/knowledge-base/help/trust-and-safety/about/guide/features/faq/legal/accessibility/contact/report-problem/cookies/email-utilities/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -99,6 +99,27 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Cookie And Email Utility Localization Slice
+
+Public `/cookies`, `/newsletter/unsubscribe`, and `/verify-email` now resolve the
+cookie-settings caption plus missing/invalid email-token states, back action,
+and document titles through Laravel's exact request-locale catalog. Success and
+token-present behavior remains API-backed as before; live proof uses only
+missing-token GETs and therefore changes no consent, subscription, or account
+state. Middleware-less isolated route mounts retain explicit English title
+fallbacks.
+
+Focused English/Arabic utility coverage passed `4/4`; the complete Jest gate
+passed `45/45` suites and `1,411/1,411` tests. A real Laravel-backed Arabic
+three-page journey passed RTL, 320-pixel reflow, and axe in `11.7` seconds, and
+the expanded Chromium/axe matrix passed `62/62` in `749.3` seconds (`12.3`
+minutes). The first aggregate Jest attempt timed out after the isolated auth-
+authority mount called a missing translator; diagnostic proof identified it,
+an English fallback fixed it, focused authority/utility coverage passed `5/5`,
+and the normal aggregate rerun then closed green in `87.2` seconds. Remaining
+gaps are backend consent-audit persistence, safe live token success/invalid API
+effects, manual assistive-technology review, and ASP.NET backend compatibility.
 
 ## 2026-07-10 Report-A-Problem Contextual Localization Slice
 

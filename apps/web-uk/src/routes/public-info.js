@@ -20,6 +20,10 @@ function routedTenantSlug(req) {
   return String(req.accessibleRouting?.tenantSlug || '').trim();
 }
 
+function translatedTitle(res, key, fallback) {
+  return typeof res.locals.t === 'function' ? res.locals.t(key) : fallback;
+}
+
 function aboutContributorsByType() {
   return getContributors().reduce((groups, person) => {
     const type = person.type && Object.prototype.hasOwnProperty.call(groups, person.type)
@@ -108,7 +112,7 @@ router.get('/newsletter/unsubscribe', async (req, res) => {
   }
 
   res.render('public-info/newsletter-unsubscribe', {
-    title: 'Unsubscribe from emails',
+    title: translatedTitle(res, 'auth.unsubscribe_title', 'Unsubscribe from emails'),
     activeNav: '',
     state
   });
@@ -129,7 +133,7 @@ router.get('/verify-email', async (req, res) => {
   }
 
   res.render('public-info/email-verify', {
-    title: 'Verify your email address',
+    title: translatedTitle(res, 'auth.verify_email_title', 'Verify your email address'),
     activeNav: 'login',
     state
   });
