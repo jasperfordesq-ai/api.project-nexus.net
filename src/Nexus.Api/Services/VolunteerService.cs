@@ -23,6 +23,7 @@ public class VolunteerService
     private readonly ILogger<VolunteerService> _logger;
     private readonly AdminVolunteerApprovalService _approvalDecisions;
     private readonly VolunteerGuardianConsentService _guardianConsent;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private readonly PushNotificationService? _pushNotifications;
 
     public VolunteerService(
@@ -32,6 +33,7 @@ public class VolunteerService
         ILogger<VolunteerService> logger,
         AdminVolunteerApprovalService approvalDecisions,
         VolunteerGuardianConsentService guardianConsent,
+        VolunteerOrganisationService volunteerOrganisations,
         PushNotificationService? pushNotifications = null)
     {
         _db = db;
@@ -40,6 +42,7 @@ public class VolunteerService
         _logger = logger;
         _approvalDecisions = approvalDecisions;
         _guardianConsent = guardianConsent;
+        _volunteerOrganisations = volunteerOrganisations;
         _pushNotifications = pushNotifications;
     }
 
@@ -51,7 +54,8 @@ public class VolunteerService
     public async Task<(VolunteerOpportunity? Opportunity, string? Error)> CreateOpportunityAsync(
         int organizerId, string title, string? description, int? groupId, string? location,
         int? categoryId, int requiredVolunteers, bool isRecurring, DateTime? startsAt,
-        DateTime? endsAt, DateTime? applicationDeadline, string? skillsRequired, decimal? creditReward)
+        DateTime? endsAt, DateTime? applicationDeadline, string? skillsRequired, decimal? creditReward,
+        int? volunteerOrganisationId)
     {
         if (string.IsNullOrWhiteSpace(title))
             return (null, "Title is required");
@@ -61,6 +65,26 @@ public class VolunteerService
 
         if (startsAt.HasValue && endsAt.HasValue && endsAt <= startsAt)
             return (null, "End date must be after start date");
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (!volunteerOrganisationId.HasValue || volunteerOrganisationId.Value <= 0)
+            return (null, "Organisation is required");
+
+        var organisation = await _db.VolunteerOrganisations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(org => org.Id == volunteerOrganisationId.Value
+                && org.TenantId == tenantId);
+        if (organisation is null || organisation.Status is not ("approved" or "active"))
+            return (null, "Organization not found");
+
+        if (!await _volunteerOrganisations.CanManageOrganisationAsync(
+            organisation.Id,
+            organizerId,
+            tenantId))
+        {
+            return (null, "You do not have permission to manage this organisation");
+        }
 
         // Validate group exists if specified
         if (groupId.HasValue)
@@ -80,10 +104,11 @@ public class VolunteerService
 
         var opportunity = new VolunteerOpportunity
         {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            TenantId = tenantId,
             Title = title.Trim(),
             Description = description?.Trim(),
             OrganizerId = organizerId,
+            VolunteerOrganisationId = organisation.Id,
             GroupId = groupId,
             Location = location?.Trim(),
             CategoryId = categoryId,

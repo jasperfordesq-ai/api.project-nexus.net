@@ -1,6 +1,6 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-11
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -8,36 +8,50 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 ## Current Source Counts
 
 Static schema-table counts were generated with
-`scripts/compare-laravel-schema-parity.ps1` on 2026-07-09. The EF migration
-inventory was refreshed and runtime-verified on 2026-07-10.
+`scripts/compare-laravel-schema-parity.ps1` on 2026-07-11. The EF migration
+inventory was refreshed and runtime-verified on the same date.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
-| Laravel migrations | 323 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 107 | Release discovery verifies 78 runtime migrations and 29 explicitly quarantined classes. |
+| Laravel migrations | 326 | PHP migration files under `database/migrations`. |
+| ASP.NET EF migrations | 109 | Discovery verifies 80 runtime migrations and 29 explicitly quarantined classes. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 361 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 324 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
-| Exact matched tables | 131 | Static name matches only; `user_blocks` and `user_safeguarding_preferences` are now represented for Laravel React settings parity. |
-| Missing Laravel tables | 230 | Laravel source tables with no exact .NET table name. |
-| Extra ASP.NET tables | 193 | .NET table names with no exact Laravel table name. |
+| ASP.NET tables | 328 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
+| Exact matched tables | 134 | Static name matches only; canonical `vol_organizations`, `org_members`, and `vol_org_transactions` are now represented. |
+| Missing Laravel tables | 227 | Laravel source tables with no exact .NET table name. |
+| Extra ASP.NET tables | 194 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
-## 2026-07-10 Volunteering Migration And Discovery Status
+## 2026-07-11 Volunteering Migration And Discovery Status
 
-`20260710211122_RecurringShiftGenerationParity` is the current latest
-migration. It replaces the simple recurring-pattern tenant index with an
-active/end-date sweep index and adds a filtered unique
-`(TenantId, RecurringPatternId, StartsAt)` key to generated shifts. The upgrade
-explicitly fails if historical duplicates exist; it does not guess which shift
-to delete because any duplicate may already own check-ins, applications,
-reservations, or waitlist history.
+`20260711010201_VolunteerOrganisationRelationshipsParity` is the current latest
+migration. It creates canonical `vol_organizations`, `org_members`, and
+`vol_org_transactions` storage and adds nullable
+`volunteer_opportunities.organization_id`. Owner, membership, and opportunity
+foreign keys use tenant-composite principals; the opportunity link uses
+non-destructive `RESTRICT`. No organisations or opportunity links are
+backfilled. Nullable `vol_org_transactions.vol_log_id` remains a scalar because
+the discovered runtime chain does not create Laravel's `vol_logs` table. The
+ledger still has Laravel's unique `(tenant_id, vol_log_id, type)` payment guard,
+and its nullable user relationship is tenant-composite. API aggregate reads
+degrade to honest zero-hour results on a discovered-chain-only database.
+Historical NULL-linked opportunities require explicit tenant/operator mapping;
+`OrganizerId` is a user key and must never be treated as an organisation id.
+
+The preceding `20260710221715_RecurringShiftPatternCrudParity` corrects the
+recurring creator/capacity model. `20260710211122_RecurringShiftGenerationParity`
+replaces the simple recurring-pattern tenant index with an active/end-date
+sweep index and adds a filtered unique `(TenantId, RecurringPatternId,
+StartsAt)` key to generated shifts. The upgrade explicitly fails if historical
+duplicates exist; it does not guess which shift to delete because any duplicate
+may already own check-ins, applications, reservations, or waitlist history.
 
 The migration builds on `20260710192521_GuardianConsentLifecycle` and
 `20260710171315_AdminVolunteerApprovalWorkflow`, which added nullable
@@ -64,11 +78,11 @@ passes a clean 7/7 PostgreSQL-backed regression. Recurring-shift math,
 idempotence, concurrency, tenant sweep, and scheduled-run persistence pass a
 clean 13/13 PostgreSQL-backed regression.
 
-The verified inventory is 107 main migration classes: 78 discoverable by EF and
-29 explicitly quarantined legacy classes. The Release discovery gate passes,
-EF reports no pending model changes, and all 78 discovered migrations apply to
-a blank disposable PostgreSQL database through
-`20260710211122_RecurringShiftGenerationParity`.
+The verified inventory is 109 main migration classes: 80 discoverable by EF and
+29 explicitly quarantined legacy classes. The discovery gate passes, EF reports
+no pending model changes, and all 80 discovered migrations apply to a blank
+disposable PostgreSQL database through
+`20260711010201_VolunteerOrganisationRelationshipsParity`.
 
 Most quarantined classes contain non-idempotent DDL, so adding metadata blindly
 could replay tables or columns against existing databases. Treat those 29

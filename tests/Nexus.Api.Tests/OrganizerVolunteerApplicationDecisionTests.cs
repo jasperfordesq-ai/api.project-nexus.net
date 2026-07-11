@@ -103,6 +103,147 @@ public sealed class OrganizerVolunteerApplicationDecisionTests : IntegrationTest
     }
 
     [Fact]
+    public async Task CanonicalPut_UnmappedOpportunityIsNotFoundEvenForSiteAdmin()
+    {
+        int applicationId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var opportunity = NewOpportunity($"Unmapped decision {Guid.NewGuid():N}");
+            var applicant = NewUser("unmapped-decision-applicant");
+            db.AddRange(opportunity, applicant);
+            await db.SaveChangesAsync();
+            var application = NewApplication(opportunity, applicant.Id, shiftId: null);
+            db.VolunteerApplications.Add(application);
+            await db.SaveChangesAsync();
+            applicationId = application.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+        var response = await Client.PutAsJsonAsync(
+            $"/api/v2/volunteering/applications/{applicationId}",
+            new { action = "approve" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ReadJsonAsync(response)).GetProperty("errors")[0]
+            .GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task CanonicalPut_OpportunityCreatorWithoutOrganisationGrantIsForbidden()
+    {
+        int applicationId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var organisation = new VolunteerOrganisation
+            {
+                TenantId = TestData.Tenant1.Id,
+                OwnerUserId = TestData.AdminUser.Id,
+                Name = $"Creator Exclusion Hub {Guid.NewGuid():N}",
+                Slug = $"creator-exclusion-{Guid.NewGuid():N}",
+                Description = "Organisation decision creator exclusion fixture.",
+                ContactEmail = "creator-exclusion@example.test",
+                Status = "active",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.VolunteerOrganisations.Add(organisation);
+            await db.SaveChangesAsync();
+
+            var opportunity = NewOpportunity(
+                $"Creator-only decision {Guid.NewGuid():N}",
+                TestData.MemberUser.Id);
+            opportunity.VolunteerOrganisationId = organisation.Id;
+            var applicant = NewUser("creator-only-applicant");
+            db.AddRange(opportunity, applicant);
+            await db.SaveChangesAsync();
+            var application = NewApplication(opportunity, applicant.Id, shiftId: null);
+            db.VolunteerApplications.Add(application);
+            await db.SaveChangesAsync();
+            applicationId = application.Id;
+        }
+
+        await AuthenticateAsMemberAsync();
+        var response = await Client.PutAsJsonAsync(
+            $"/api/v2/volunteering/applications/{applicationId}",
+            new { action = "approve" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        using var verifyScope = Factory.Services.CreateScope();
+        (await verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>()
+            .VolunteerApplications.IgnoreQueryFilters()
+            .SingleAsync(row => row.Id == applicationId))
+            .Status.Should().Be(ApplicationStatus.Pending);
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("admin")]
+    public async Task CanonicalPut_AllowsActiveOrganisationOwnerOrAdminMembership(string role)
+    {
+        int applicationId;
+        string managerEmail;
+        int managerId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var manager = NewUser($"organisation-{role}");
+            var applicant = NewUser($"organisation-{role}-applicant");
+            db.Users.AddRange(manager, applicant);
+            await db.SaveChangesAsync();
+            managerEmail = manager.Email;
+            managerId = manager.Id;
+
+            var organisation = new VolunteerOrganisation
+            {
+                TenantId = TestData.Tenant1.Id,
+                OwnerUserId = TestData.AdminUser.Id,
+                Name = $"Membership Decision Hub {Guid.NewGuid():N}",
+                Slug = $"membership-decision-{Guid.NewGuid():N}",
+                Description = "Organisation membership decision fixture.",
+                ContactEmail = "membership-decision@example.test",
+                Status = "suspended",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.VolunteerOrganisations.Add(organisation);
+            await db.SaveChangesAsync();
+            db.VolunteerOrganisationMembers.Add(new VolunteerOrganisationMember
+            {
+                TenantId = TestData.Tenant1.Id,
+                VolunteerOrganisationId = organisation.Id,
+                UserId = manager.Id,
+                Role = role,
+                Status = "active",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            var opportunity = NewOpportunity(
+                $"Membership decision {Guid.NewGuid():N}",
+                TestData.AdminUser.Id);
+            opportunity.VolunteerOrganisationId = organisation.Id;
+            db.VolunteerOpportunities.Add(opportunity);
+            await db.SaveChangesAsync();
+            var application = NewApplication(opportunity, applicant.Id, shiftId: null);
+            db.VolunteerApplications.Add(application);
+            await db.SaveChangesAsync();
+            applicationId = application.Id;
+        }
+
+        SetAuthToken(await GetAccessTokenAsync(managerEmail, "test-tenant"));
+        var response = await Client.PutAsJsonAsync(
+            $"/api/v2/volunteering/applications/{applicationId}",
+            new { action = "approve" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var verifyScope = Factory.Services.CreateScope();
+        var stored = await verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>()
+            .VolunteerApplications.IgnoreQueryFilters()
+            .SingleAsync(row => row.Id == applicationId);
+        stored.Status.Should().Be(ApplicationStatus.Approved);
+        stored.ReviewedById.Should().Be(managerId);
+    }
+
+    [Fact]
     public async Task CanonicalPut_DeclineNoteDefaultsToOptionalWhenConfigIsAbsent()
     {
         var scenario = await CreateApplicationAsync();
@@ -326,7 +467,11 @@ public sealed class OrganizerVolunteerApplicationDecisionTests : IntegrationTest
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var organisation = NewOrganisation(TestData.AdminUser.Id, "Organizer final place");
+            db.VolunteerOrganisations.Add(organisation);
+            await db.SaveChangesAsync();
             var opportunity = NewOpportunity("Organizer final place");
+            opportunity.VolunteerOrganisationId = organisation.Id;
             var firstApplicant = NewUser("organizer-final-one");
             var secondApplicant = NewUser("organizer-final-two");
             db.AddRange(opportunity, firstApplicant, secondApplicant);
@@ -382,9 +527,16 @@ public sealed class OrganizerVolunteerApplicationDecisionTests : IntegrationTest
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var resolvedOrganizerId = organizerId ?? TestData.AdminUser.Id;
+        var organisation = NewOrganisation(
+            resolvedOrganizerId,
+            $"Organizer decision {Guid.NewGuid():N}");
+        db.VolunteerOrganisations.Add(organisation);
+        await db.SaveChangesAsync();
         var opportunity = NewOpportunity(
             $"Organizer decision {Guid.NewGuid():N}",
-            organizerId ?? TestData.AdminUser.Id);
+            resolvedOrganizerId);
+        opportunity.VolunteerOrganisationId = organisation.Id;
         db.VolunteerOpportunities.Add(opportunity);
 
         User? applicant = null;
@@ -423,6 +575,18 @@ public sealed class OrganizerVolunteerApplicationDecisionTests : IntegrationTest
         Description = "Organizer decision contract test",
         Status = OpportunityStatus.Published,
         RequiredVolunteers = 2,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    private VolunteerOrganisation NewOrganisation(int ownerId, string name) => new()
+    {
+        TenantId = TestData.Tenant1.Id,
+        OwnerUserId = ownerId,
+        Name = name,
+        Slug = $"organizer-decision-{Guid.NewGuid():N}",
+        Description = "Organizer decision contract organisation fixture.",
+        ContactEmail = "organizer-decision@example.test",
+        Status = "active",
         CreatedAt = DateTime.UtcNow
     };
 

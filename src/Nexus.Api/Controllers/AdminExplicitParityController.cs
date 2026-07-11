@@ -27,6 +27,7 @@ public class AdminExplicitParityController : ControllerBase
     private readonly IFederationWebhookSubscriptionService _webhookService;
     private readonly IConfiguration _configuration;
     private readonly FileUploadService _fileUploadService;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private const string BillingInvoicesKey = "admin_explicit.billing.invoices";
     private const string FederationTopicsKey = "admin_explicit.federation.topics";
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
@@ -201,12 +202,14 @@ public class AdminExplicitParityController : ControllerBase
         NexusDbContext db,
         IFederationWebhookSubscriptionService webhookService,
         IConfiguration configuration,
-        FileUploadService fileUploadService)
+        FileUploadService fileUploadService,
+        VolunteerOrganisationService volunteerOrganisations)
     {
         _db = db;
         _webhookService = webhookService;
         _configuration = configuration;
         _fileUploadService = fileUploadService;
+        _volunteerOrganisations = volunteerOrganisations;
     }
 
     [HttpDelete("/api/v2/admin/enterprise/config/secrets/{key}")]
@@ -646,6 +649,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             "/api/v2/admin/member-premium/tiers" => await CreateMemberPremiumAdminTier(),
             "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
+            "/api/v2/admin/volunteering/organizations" => await CreateVolunteeringOrganization(),
             "/api/v2/admin/users/bulk-approve" => await BulkApproveUsers(),
             "/api/v2/admin/users/bulk-suspend" => await BulkSuspendUsers(),
             "/api/v2/admin/feed/grant-announcer" => await GrantMunicipalityAnnouncer(),
@@ -1241,6 +1245,17 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
             "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
+            _ when TryGetIntBeforeSuffix(
+                path,
+                "/api/v2/admin/volunteering/organizations/",
+                "/status",
+                out var volunteerOrganisationStatusId) =>
+                    await UpdateVolunteeringOrganizationStatus(volunteerOrganisationStatusId),
+            _ when TryGetLastInt(
+                path,
+                "/api/v2/admin/volunteering/organizations/",
+                out var volunteerOrganisationId) =>
+                    await UpdateVolunteeringOrganization(volunteerOrganisationId),
             _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await UpdateMemberPremiumAdminTier(memberPremiumTierId),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
@@ -3309,95 +3324,211 @@ public class AdminExplicitParityController : ControllerBase
     private async Task<IActionResult> GetVolunteeringOrganizations()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, HttpContext.RequestAborted))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Service unavailable");
 
-        var organizations = await _db.Organisations
-            .AsNoTracking()
-            .Where(o => o.TenantId == tenantId)
-            .OrderBy(o => o.Name)
-            .Take(100)
-            .Select(o => new
-            {
-                o.Id,
-                o.Name,
-                o.Description,
-                o.Email,
-                o.WebsiteUrl,
-                o.Type,
-                o.Status,
-                o.CreatedAt
-            })
-            .ToListAsync();
-
-        var organizationIds = organizations.Select(o => o.Id).ToArray();
-        var memberStats = await _db.OrganisationMembers
-            .AsNoTracking()
-            .Where(m => m.TenantId == tenantId && organizationIds.Contains(m.OrganisationId))
-            .GroupBy(m => m.OrganisationId)
-            .Select(g => new
-            {
-                OrganizationId = g.Key,
-                MemberCount = g.Count(),
-                VolunteerCount = g.Count(m => m.Role == "volunteer")
-            })
-            .ToDictionaryAsync(g => g.OrganizationId);
-
-        var walletStats = await _db.OrgWallets
-            .AsNoTracking()
-            .Where(w => w.TenantId == tenantId && organizationIds.Contains(w.OrganisationId))
-            .Select(w => new
-            {
-                w.OrganisationId,
-                w.Balance,
-                w.TotalReceived,
-                w.TotalSpent
-            })
-            .ToDictionaryAsync(w => w.OrganisationId);
-
-        var hoursByOrganization = await _db.VolunteerLogs
-            .AsNoTracking()
-            .Where(l =>
-                l.TenantId == tenantId &&
-                l.OrganizationId.HasValue &&
-                organizationIds.Contains(l.OrganizationId.Value) &&
-                l.Status == "approved")
-            .GroupBy(l => l.OrganizationId!.Value)
-            .Select(g => new
-            {
-                OrganizationId = g.Key,
-                TotalHours = g.Sum(l => l.Hours)
-            })
-            .ToDictionaryAsync(g => g.OrganizationId, g => g.TotalHours);
-
-        var data = organizations.Select(o =>
+        var data = await _volunteerOrganisations.ListAdminAsync(tenantId, HttpContext.RequestAborted);
+        return Ok(new
         {
-            memberStats.TryGetValue(o.Id, out var members);
-            walletStats.TryGetValue(o.Id, out var wallet);
-            hoursByOrganization.TryGetValue(o.Id, out var totalHours);
-
-            return new
+            data,
+            meta = new
             {
-                id = o.Id,
-                org_id = o.Id,
-                name = o.Name,
-                org_name = o.Name,
-                description = o.Description,
-                contact_email = o.Email,
-                website = o.WebsiteUrl,
-                org_type = o.Type,
-                meeting_schedule = (string?)null,
-                status = o.Status,
-                created_at = o.CreatedAt,
-                balance = wallet?.Balance ?? 0m,
-                member_count = members?.MemberCount ?? 0,
-                volunteer_count = members?.VolunteerCount ?? 0,
-                opportunity_count = 0,
-                total_hours = totalHours,
-                total_in = wallet?.TotalReceived ?? 0m,
-                total_out = wallet?.TotalSpent ?? 0m
-            };
-        }).ToList();
+                base_url = await VolunteerOrganisationBaseUrlAsync(tenantId),
+                total = data.Count
+            }
+        });
+    }
 
-        return Ok(new { data, meta = new { total = data.Count } });
+    private async Task<IActionResult> CreateVolunteeringOrganization()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, HttpContext.RequestAborted))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Service unavailable");
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var adminUserId = GetCurrentAdminUserId();
+        if (!adminUserId.HasValue)
+            return VolunteerOrganisationError(401, "UNAUTHORIZED", "Authentication required");
+
+        var result = await _volunteerOrganisations.CreateAsync(
+            tenantId,
+            adminUserId.Value,
+            new VolunteerOrganisationCreateCommand(
+                JsonString(payload, "name"),
+                JsonString(payload, "description"),
+                JsonString(payload, "contact_email"),
+                JsonString(payload, "website"),
+                JsonString(payload, "org_type"),
+                JsonString(payload, "meeting_schedule")),
+            activate: true,
+            HttpContext.RequestAborted);
+        if (!result.Success)
+        {
+            var error = result.Error!;
+            var status = error.Code switch
+            {
+                "FORBIDDEN" => StatusCodes.Status403Forbidden,
+                _ => StatusCodes.Status422UnprocessableEntity
+            };
+            return VolunteerOrganisationError(status, error.Code, error.Message, error.Field);
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = result.Data,
+            meta = new { base_url = await VolunteerOrganisationBaseUrlAsync(tenantId) }
+        });
+    }
+
+    private async Task<IActionResult> UpdateVolunteeringOrganization(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, HttpContext.RequestAborted))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Service unavailable");
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var result = await _volunteerOrganisations.UpdateAsync(
+            id,
+            tenantId,
+            AdminVolunteerOrganisationUpdateCommand(payload),
+            adminSurface: true,
+            HttpContext.RequestAborted);
+        if (!result.Success)
+        {
+            var error = result.Error!;
+            var statusCode = error.Code switch
+            {
+                "NOT_FOUND" => StatusCodes.Status404NotFound,
+                "SERVER_ERROR" => StatusCodes.Status500InternalServerError,
+                _ when error.Message == "No fields to update" => StatusCodes.Status400BadRequest,
+                _ => StatusCodes.Status422UnprocessableEntity
+            };
+            return VolunteerOrganisationError(statusCode, error.Code, error.Message, error.Field);
+        }
+
+        return Ok(new
+        {
+            data = result.Data,
+            meta = new { base_url = await VolunteerOrganisationBaseUrlAsync(tenantId) }
+        });
+    }
+
+    private async Task<IActionResult> UpdateVolunteeringOrganizationStatus(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, HttpContext.RequestAborted))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Service unavailable");
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var status = TryGetPayloadProperty(payload, "status", out var statusValue)
+            && statusValue.ValueKind == JsonValueKind.String
+                ? statusValue.GetString()
+                : null;
+        var result = await _volunteerOrganisations.UpdateStatusAsync(
+            id,
+            tenantId,
+            status,
+            HttpContext.RequestAborted);
+        if (!result.Success)
+        {
+            var error = result.Error!;
+            var statusCode = error.Code == "NOT_FOUND"
+                ? StatusCodes.Status404NotFound
+                : error.Code == "SERVER_ERROR"
+                    ? StatusCodes.Status500InternalServerError
+                : StatusCodes.Status400BadRequest;
+            return VolunteerOrganisationError(statusCode, error.Code, error.Message, error.Field);
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                id,
+                status,
+                message = $"Organization status updated to {status}"
+            },
+            meta = new { base_url = await VolunteerOrganisationBaseUrlAsync(tenantId) }
+        });
+    }
+
+    private static VolunteerOrganisationUpdateCommand AdminVolunteerOrganisationUpdateCommand(
+        Dictionary<string, JsonElement> payload)
+    {
+        var (hasName, name) = OptionalPayloadString(payload, "name");
+        var (hasDescription, description) = OptionalPayloadString(payload, "description");
+        var (hasContactEmail, contactEmail) = OptionalPayloadString(payload, "contact_email");
+        var (hasWebsite, website) = OptionalPayloadString(payload, "website");
+        var (hasOrgType, orgType) = OptionalPayloadString(payload, "org_type");
+        var (hasMeetingSchedule, meetingSchedule) = OptionalPayloadString(payload, "meeting_schedule");
+        return new(
+            hasName,
+            name,
+            hasDescription,
+            description,
+            hasContactEmail,
+            contactEmail,
+            hasWebsite,
+            website,
+            hasOrgType,
+            orgType,
+            hasMeetingSchedule,
+            meetingSchedule);
+    }
+
+    private static (bool HasValue, string? Value) OptionalPayloadString(
+        Dictionary<string, JsonElement> payload,
+        string key)
+    {
+        if (!TryGetPayloadProperty(payload, key, out var value)
+            || value.ValueKind == JsonValueKind.Null)
+        {
+            return (false, null);
+        }
+
+        return (true, JsonElementToString(value));
+    }
+
+    private void SetVolunteerOrganisationHeaders(int tenantId)
+    {
+        Response.Headers["API-Version"] = "2.0";
+        Response.Headers["X-Tenant-ID"] = tenantId.ToString();
+    }
+
+    private async Task<string> VolunteerOrganisationBaseUrlAsync(int tenantId)
+    {
+        var domain = await _db.Tenants
+            .AsNoTracking()
+            .Where(tenant => tenant.Id == tenantId)
+            .Select(tenant => tenant.Domain)
+            .SingleOrDefaultAsync(HttpContext.RequestAborted);
+        return string.IsNullOrWhiteSpace(domain)
+            ? $"{Request.Scheme}://{Request.Host}".TrimEnd('/')
+            : domain.TrimEnd('/');
+    }
+
+    private ObjectResult VolunteerOrganisationError(
+        int statusCode,
+        string code,
+        string message,
+        string? field = null)
+    {
+        if (field is null)
+        {
+            return StatusCode(statusCode, new
+            {
+                errors = new[] { new { code, message } }
+            });
+        }
+
+        return StatusCode(statusCode, new
+        {
+            errors = new[] { new { code, message, field } }
+        });
     }
 
     private async Task<IActionResult> GetJobModerationQueue()

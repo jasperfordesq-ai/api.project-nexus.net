@@ -25,6 +25,10 @@ public class AuthConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("users");
             entity.HasKey(e => e.Id);
+            // Redundant with the global primary key, but required as the
+            // principal for tenant-aware relationships whose FK includes the
+            // isolation boundary as well as the user id.
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
             entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
             entity.Property(e => e.FirstName).HasMaxLength(100).IsRequired();

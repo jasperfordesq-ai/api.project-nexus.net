@@ -145,6 +145,47 @@ public sealed class RecurringShiftCrudTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task CanonicalCreate_AllowsDedicatedOrganisationOwnerIndependentOfPublicStatus()
+    {
+        int opportunityId;
+        using (var arrange = Factory.Services.CreateScope())
+        {
+            var db = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var organisation = new VolunteerOrganisation
+            {
+                TenantId = TestData.Tenant1.Id,
+                OwnerUserId = TestData.MemberUser.Id,
+                Name = $"Recurring Owner Hub {Guid.NewGuid():N}",
+                Slug = $"recurring-owner-{Guid.NewGuid():N}",
+                Description = "Suspended organisation management policy fixture.",
+                ContactEmail = "recurring-owner@example.test",
+                Status = "suspended",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.VolunteerOrganisations.Add(organisation);
+            await db.SaveChangesAsync();
+            var opportunity = await AddOpportunityAsync(
+                db,
+                TestData.Tenant1.Id,
+                TestData.AdminUser.Id,
+                "Organisation-owned recurring opportunity");
+            opportunity.VolunteerOrganisationId = organisation.Id;
+            await db.SaveChangesAsync();
+            opportunityId = opportunity.Id;
+        }
+
+        await AuthenticateAsMemberAsync();
+        using var response = await Client.PostAsJsonAsync(
+            string.Format(OpportunityPatternsPath, opportunityId),
+            ValidCreatePayload(title: "Organisation owner rota"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var data = (await ReadJsonAsync(response)).GetProperty("data");
+        data.GetProperty("opportunity_id").GetInt32().Should().Be(opportunityId);
+        data.GetProperty("created_by").GetInt32().Should().Be(TestData.MemberUser.Id);
+    }
+
+    [Fact]
     public async Task CanonicalCreate_PreservesExplicitZeroCapacityAndUsesLaravelSpotsDefault()
     {
         int opportunityId;

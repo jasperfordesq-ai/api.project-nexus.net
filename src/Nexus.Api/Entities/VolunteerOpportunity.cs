@@ -34,6 +34,12 @@ public class VolunteerOpportunity : ITenantEntity
     public int OrganizerId { get; set; }
 
     /// <summary>
+    /// Optional dedicated volunteer organisation. OrganizerId remains the
+    /// Laravel-equivalent created_by user and is not an organisation key.
+    /// </summary>
+    public int? VolunteerOrganisationId { get; set; }
+
+    /// <summary>
     /// Optional group context for this opportunity.
     /// </summary>
     public int? GroupId { get; set; }
@@ -95,6 +101,7 @@ public class VolunteerOpportunity : ITenantEntity
     // Navigation properties
     public Tenant? Tenant { get; set; }
     public User? Organizer { get; set; }
+    public VolunteerOrganisation? VolunteerOrganisation { get; set; }
     public Group? Group { get; set; }
     public Category? Category { get; set; }
     public ICollection<VolunteerShift> Shifts { get; set; } = new List<VolunteerShift>();

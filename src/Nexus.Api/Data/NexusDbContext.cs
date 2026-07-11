@@ -92,6 +92,9 @@ public class NexusDbContext : DbContext
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
 
     // Phase 18: Volunteering
+    public DbSet<VolunteerOrganisation> VolunteerOrganisations => Set<VolunteerOrganisation>();
+    public DbSet<VolunteerOrganisationMember> VolunteerOrganisationMembers => Set<VolunteerOrganisationMember>();
+    public DbSet<VolunteerOrganisationTransaction> VolunteerOrganisationTransactions => Set<VolunteerOrganisationTransaction>();
     public DbSet<VolunteerOpportunity> VolunteerOpportunities => Set<VolunteerOpportunity>();
     public DbSet<VolunteerShift> VolunteerShifts => Set<VolunteerShift>();
     public DbSet<VolunteerApplication> VolunteerApplications => Set<VolunteerApplication>();

@@ -28,17 +28,20 @@ public sealed class AdminVolunteerApprovalService
 
     private readonly NexusDbContext _db;
     private readonly ILogger<AdminVolunteerApprovalService> _logger;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private readonly PushNotificationService? _pushNotifications;
     private readonly EmailNotificationService? _emailNotifications;
 
     public AdminVolunteerApprovalService(
         NexusDbContext db,
         ILogger<AdminVolunteerApprovalService> logger,
+        VolunteerOrganisationService volunteerOrganisations,
         PushNotificationService? pushNotifications = null,
         EmailNotificationService? emailNotifications = null)
     {
         _db = db;
         _logger = logger;
+        _volunteerOrganisations = volunteerOrganisations;
         _pushNotifications = pushNotifications;
         _emailNotifications = emailNotifications;
     }
@@ -198,13 +201,24 @@ public sealed class AdminVolunteerApprovalService
                 application.Id,
                 application.UserId,
                 opportunity.Id,
-                opportunity.OrganizerId,
+                opportunity.VolunteerOrganisationId,
                 application.ShiftId,
                 application.Status,
                 opportunity.Title))
             .SingleOrDefaultAsync(ct);
 
         if (candidate is null)
+        {
+            return AdminVolunteerDecisionResult.NotFound();
+        }
+
+        if (surface == VolunteerDecisionSurface.Organizer
+            && (!candidate.VolunteerOrganisationId.HasValue
+                || !await _db.VolunteerOrganisations
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .AnyAsync(org => org.Id == candidate.VolunteerOrganisationId.Value
+                        && org.TenantId == tenantId, ct)))
         {
             return AdminVolunteerDecisionResult.NotFound();
         }
@@ -526,39 +540,13 @@ public sealed class AdminVolunteerApprovalService
         int tenantId,
         CancellationToken ct)
     {
-        if (application.OpportunityOrganizerId == reviewerId)
-        {
-            return true;
-        }
-
-        var reviewer = await _db.Users
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(user => user.Id == reviewerId && user.TenantId == tenantId && user.IsActive)
-            .Select(user => new
-            {
-                user.Role,
-                user.IsAdmin,
-                user.IsSuperAdmin,
-                user.IsTenantSuperAdmin,
-                user.IsGod
-            })
-            .SingleOrDefaultAsync(ct);
-
-        if (reviewer is null)
-        {
-            return false;
-        }
-
-        // The ASP.NET volunteer schema currently has no volunteer-organisation
-        // ownership/membership relation. Tenant/site admins are therefore the
-        // only canonical manager grants available beyond the opportunity creator;
-        // organisation owner/admin parity remains an explicit schema residual.
-        return reviewer.IsAdmin
-            || reviewer.IsSuperAdmin
-            || reviewer.IsTenantSuperAdmin
-            || reviewer.IsGod
-            || reviewer.Role is "admin" or "tenant_admin" or "tenant_super_admin" or "super_admin";
+        var access = await _volunteerOrganisations.EvaluateOpportunityAccessAsync(
+            application.OpportunityId,
+            reviewerId,
+            tenantId,
+            includeCreator: false,
+            ct);
+        return access.Allowed;
     }
 
     private async Task<bool> IsConfigEnabledAsync(
@@ -599,7 +587,7 @@ public sealed class AdminVolunteerApprovalService
         int Id,
         int UserId,
         int OpportunityId,
-        int OpportunityOrganizerId,
+        int? VolunteerOrganisationId,
         int? ShiftId,
         ApplicationStatus Status,
         string OpportunityTitle);

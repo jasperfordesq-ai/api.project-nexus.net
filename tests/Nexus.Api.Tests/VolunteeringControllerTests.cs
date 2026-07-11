@@ -10,6 +10,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -21,6 +22,8 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class VolunteeringControllerTests : IntegrationTestBase
 {
+    private int? _volunteerOrganisationId;
+
     public VolunteeringControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     #region Helpers
@@ -36,8 +39,10 @@ public class VolunteeringControllerTests : IntegrationTestBase
         int requiredVolunteers = 5,
         decimal? creditReward = null)
     {
+        var organisationId = await EnsureVolunteerOrganisationAsync();
         var response = await Client.PostAsJsonAsync("/api/volunteering/opportunities", new
         {
+            organization_id = organisationId,
             title,
             description,
             location,
@@ -51,6 +56,30 @@ public class VolunteeringControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         return content.GetProperty("id").GetInt32();
+    }
+
+    private async Task<int> EnsureVolunteerOrganisationAsync()
+    {
+        if (_volunteerOrganisationId.HasValue)
+            return _volunteerOrganisationId.Value;
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var organisation = new VolunteerOrganisation
+        {
+            TenantId = TestData.Tenant1.Id,
+            OwnerUserId = TestData.AdminUser.Id,
+            Name = $"Controller Test Volunteer Hub {Guid.NewGuid():N}",
+            Slug = $"controller-test-volunteer-hub-{Guid.NewGuid():N}",
+            Description = "Approved volunteer organisation used by controller tests.",
+            ContactEmail = "controller-volunteer@example.test",
+            Status = "active",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.VolunteerOrganisations.Add(organisation);
+        await db.SaveChangesAsync();
+        _volunteerOrganisationId = organisation.Id;
+        return organisation.Id;
     }
 
     /// <summary>
@@ -115,10 +144,12 @@ public class VolunteeringControllerTests : IntegrationTestBase
     {
         // Arrange
         await AuthenticateAsAdminAsync();
+        var organisationId = await EnsureVolunteerOrganisationAsync();
 
         // Act
         var response = await Client.PostAsJsonAsync("/api/volunteering/opportunities", new
         {
+            organization_id = organisationId,
             title = "Community Garden Cleanup",
             description = "Help us clean up the community garden",
             location = "Community Garden",
@@ -135,8 +166,15 @@ public class VolunteeringControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        content.GetProperty("organization_id").GetInt32().Should().Be(organisationId);
         content.GetProperty("title").GetString().Should().Be("Community Garden Cleanup");
         content.GetProperty("status").GetString().Should().Be("draft");
+
+        using var verify = Factory.Services.CreateScope();
+        (await verify.ServiceProvider.GetRequiredService<NexusDbContext>()
+            .VolunteerOpportunities.IgnoreQueryFilters()
+            .SingleAsync(opportunity => opportunity.Id == content.GetProperty("id").GetInt32()))
+            .VolunteerOrganisationId.Should().Be(organisationId);
     }
 
     [Fact]

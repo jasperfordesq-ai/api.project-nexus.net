@@ -19,6 +19,139 @@ public class VolunteerConfiguration : TenantScopedConfiguration
 
     public override void Configure(ModelBuilder modelBuilder)
     {
+        // Dedicated volunteer organisations. Do not map these onto the generic
+        // Organisation model: Laravel treats the two lifecycles independently.
+        modelBuilder.Entity<VolunteerOrganisation>(entity =>
+        {
+            entity.ToTable("vol_organizations", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_VolunteerOrganisations_Status",
+                    "\"status\" IN ('pending', 'approved', 'active', 'declined', 'suspended')");
+            });
+            entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.OwnerUserId).HasColumnName("user_id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Slug).HasColumnName("slug").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.ContactEmail).HasColumnName("contact_email").HasMaxLength(255);
+            entity.Property(e => e.Website).HasColumnName("website").HasMaxLength(500);
+            entity.Property(e => e.LogoUrl).HasColumnName("logo_url").HasMaxLength(500);
+            entity.Property(e => e.Location).HasColumnName("location").HasMaxLength(500);
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("pending").IsRequired();
+            entity.Property(e => e.OrgType).HasColumnName("org_type").HasMaxLength(50).HasDefaultValue("organisation");
+            entity.Property(e => e.MeetingSchedule).HasColumnName("meeting_schedule").HasMaxLength(255);
+            entity.Property(e => e.AutoPayEnabled).HasColumnName("auto_pay_enabled").HasDefaultValue(false);
+            entity.Property(e => e.Balance).HasColumnName("balance").HasPrecision(10, 2).HasDefaultValue(0m);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.OrgType, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.OwnerUserId });
+            entity.HasIndex(e => new { e.TenantId, e.Balance });
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.OwnerUser)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OwnerUserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerOrganisationMember>(entity =>
+        {
+            entity.ToTable("org_members", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_VolunteerOrganisationMembers_Role",
+                    "\"role\" IN ('owner', 'admin', 'member')");
+                table.HasCheckConstraint(
+                    "CK_VolunteerOrganisationMembers_Status",
+                    "\"status\" IN ('active', 'pending', 'invited', 'removed')");
+                table.HasCheckConstraint(
+                    "CK_VolunteerOrganisationMembers_OrgType",
+                    "\"org_type\" = 'volunteer'");
+            });
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.VolunteerOrganisationId).HasColumnName("organization_id");
+            entity.Property(e => e.OrgType).HasColumnName("org_type").HasMaxLength(20).HasDefaultValue("volunteer").IsRequired();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Role).HasColumnName("role").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(e => new { e.TenantId, e.OrgType, e.VolunteerOrganisationId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerOrganisationId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.Status });
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.VolunteerOrganisation)
+                .WithMany(e => e.Members)
+                .HasForeignKey(e => new { e.TenantId, e.VolunteerOrganisationId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.UserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerOrganisationTransaction>(entity =>
+        {
+            entity.ToTable("vol_org_transactions", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_VolunteerOrganisationTransactions_Type",
+                    "\"type\" IN ('deposit', 'withdrawal', 'volunteer_payment', 'admin_adjustment')");
+            });
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.VolunteerOrganisationId).HasColumnName("vol_organization_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.VolunteerLogId).HasColumnName("vol_log_id");
+            entity.Property(e => e.Type).HasColumnName("type").HasMaxLength(30).IsRequired();
+            entity.Property(e => e.Amount).HasColumnName("amount").HasPrecision(10, 2);
+            entity.Property(e => e.BalanceAfter).HasColumnName("balance_after").HasPrecision(10, 2);
+            entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerOrganisationId });
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasIndex(e => e.VolunteerLogId);
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerLogId, e.Type })
+                .IsUnique()
+                .HasFilter("\"vol_log_id\" IS NOT NULL");
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.VolunteerOrganisation)
+                .WithMany(e => e.Transactions)
+                .HasForeignKey(e => new { e.TenantId, e.VolunteerOrganisationId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.UserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // VolunteerOpportunity
         modelBuilder.Entity<VolunteerOpportunity>(entity =>
         {
@@ -30,12 +163,21 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.Property(e => e.SkillsRequired).HasColumnType("text");
             entity.Property(e => e.CreditReward).HasPrecision(10, 2);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.VolunteerOrganisationId).HasColumnName("organization_id");
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.OrganizerId);
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerOrganisationId });
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartsAt);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Organizer).WithMany().HasForeignKey(e => e.OrganizerId).OnDelete(DeleteBehavior.Restrict);
+            // Nullable and deliberately not backfilled from OrganizerId: that
+            // column is a user/created_by key, not an organisation identifier.
+            entity.HasOne(e => e.VolunteerOrganisation)
+                .WithMany(e => e.Opportunities)
+                .HasForeignKey(e => new { e.TenantId, e.VolunteerOrganisationId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);

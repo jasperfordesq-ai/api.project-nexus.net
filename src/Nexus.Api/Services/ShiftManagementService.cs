@@ -105,6 +105,7 @@ public class ShiftManagementService
     private readonly TenantContext _tenant;
     private readonly ILogger<ShiftManagementService> _logger;
     private readonly VolunteerGuardianConsentService _guardianConsent;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private readonly PushNotificationService? _pushNotifications;
     private readonly EmailNotificationService? _emailNotifications;
 
@@ -113,6 +114,7 @@ public class ShiftManagementService
         TenantContext tenant,
         ILogger<ShiftManagementService> logger,
         VolunteerGuardianConsentService guardianConsent,
+        VolunteerOrganisationService volunteerOrganisations,
         PushNotificationService? pushNotifications = null,
         EmailNotificationService? emailNotifications = null)
     {
@@ -120,6 +122,7 @@ public class ShiftManagementService
         _tenant = tenant;
         _logger = logger;
         _guardianConsent = guardianConsent;
+        _volunteerOrganisations = volunteerOrganisations;
         _pushNotifications = pushNotifications;
         _emailNotifications = emailNotifications;
     }
@@ -571,16 +574,13 @@ public class ShiftManagementService
         string? notFoundMessage,
         CancellationToken ct)
     {
-        var opportunity = await _db.VolunteerOpportunities
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(candidate =>
-                candidate.Id == opportunityId
-                && candidate.TenantId == tenantId)
-            .Select(candidate => new { candidate.Id, candidate.OrganizerId })
-            .SingleOrDefaultAsync(ct);
-
-        if (opportunity is null)
+        var access = await _volunteerOrganisations.EvaluateOpportunityAccessAsync(
+            opportunityId,
+            userId,
+            tenantId,
+            includeCreator: true,
+            ct);
+        if (!access.Exists)
         {
             if (notFoundMessage is not null)
             {
@@ -590,19 +590,7 @@ public class ShiftManagementService
             throw new RecurringPatternContractException("FORBIDDEN", "Forbidden");
         }
 
-        if (opportunity.OrganizerId == userId)
-        {
-            return;
-        }
-
-        var actor = await _db.Users
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .SingleOrDefaultAsync(candidate =>
-                candidate.Id == userId
-                && candidate.TenantId == tenantId,
-                ct);
-        if (actor?.Role is not ("super_admin" or "admin" or "tenant_admin"))
+        if (!access.Allowed)
         {
             throw new RecurringPatternContractException("FORBIDDEN", "Forbidden");
         }

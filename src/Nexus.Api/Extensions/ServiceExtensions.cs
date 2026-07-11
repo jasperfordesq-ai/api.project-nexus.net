@@ -38,6 +38,7 @@ public static class ServiceExtensions
         services.AddScoped<ExchangeService>();
         services.AddScoped<MatchingService>();
         services.AddScoped<VolunteerGuardianConsentService>();
+        services.AddScoped<VolunteerOrganisationService>();
         services.AddScoped<VolunteerService>();
         services.AddScoped<AdminVolunteerApprovalService>();
         services.AddScoped<ShiftManagementService>();

@@ -655,7 +655,14 @@ public class ReactIdentityProviderCompatibilityUnitTests
                 .Build(),
             NullLogger<ProviderConfigEncryption>.Instance);
 
-        return new ReactFrontendCompatibilityController(db, tenantContext, encryption);
+        var volunteerOrganisations = new VolunteerOrganisationService(
+            db,
+            NullLogger<VolunteerOrganisationService>.Instance);
+        return new ReactFrontendCompatibilityController(
+            db,
+            tenantContext,
+            encryption,
+            volunteerOrganisations);
     }
 
     private static TenantContext CreateTenantContext(int tenantId)

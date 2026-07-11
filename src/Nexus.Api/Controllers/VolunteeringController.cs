@@ -202,7 +202,8 @@ public class VolunteeringController : ControllerBase
         var (opportunity, error) = await _volunteerService.CreateOpportunityAsync(
             userId.Value, request.Title, request.Description, request.GroupId, request.Location,
             request.CategoryId, request.RequiredVolunteers, request.IsRecurring, request.StartsAt,
-            request.EndsAt, request.ApplicationDeadline, request.SkillsRequired, request.CreditReward);
+            request.EndsAt, request.ApplicationDeadline, request.SkillsRequired, request.CreditReward,
+            request.OrganizationId);
 
         if (error != null)
             return BadRequest(new { error });
@@ -210,6 +211,7 @@ public class VolunteeringController : ControllerBase
         return CreatedAtAction(nameof(GetOpportunity), new { id = opportunity!.Id }, new
         {
             id = opportunity.Id,
+            organization_id = opportunity.VolunteerOrganisationId,
             title = opportunity.Title,
             status = opportunity.Status.ToString().ToLowerInvariant(),
             created_at = opportunity.CreatedAt
@@ -703,6 +705,9 @@ public class VolunteeringController : ControllerBase
 
 public class CreateOpportunityRequest
 {
+    [JsonPropertyName("organization_id")]
+    public int? OrganizationId { get; set; }
+
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
 

@@ -6,6 +6,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ public class CompatibilityController : ControllerBase
     private readonly NexusScoreService _nexusScoreService;
     private readonly GdprService _gdprService;
     private readonly IdeationService _ideationService;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private readonly ILogger<CompatibilityController> _logger;
 
     public CompatibilityController(
@@ -42,6 +44,7 @@ public class CompatibilityController : ControllerBase
         NexusScoreService nexusScoreService,
         GdprService gdprService,
         IdeationService ideationService,
+        VolunteerOrganisationService volunteerOrganisations,
         ILogger<CompatibilityController> logger)
     {
         _db = db;
@@ -51,6 +54,7 @@ public class CompatibilityController : ControllerBase
         _nexusScoreService = nexusScoreService;
         _gdprService = gdprService;
         _ideationService = ideationService;
+        _volunteerOrganisations = volunteerOrganisations;
         _logger = logger;
     }
 
@@ -1010,53 +1014,111 @@ public class CompatibilityController : ControllerBase
     /// GET /api/volunteering/organisations - List organisations (alias).
     /// </summary>
     [HttpGet("api/volunteering/organisations")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetVolunteeringOrganisations(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
         [FromQuery] string? type = null,
         [FromQuery] string? q = null)
     {
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 1;
-        if (limit > 100) limit = 100;
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { errors = new[] { new { code = "TENANT_CONTEXT_REQUIRED", message = "Tenant context required" } } });
+        SetVolunteerOrganisationHeaders(tenantId.Value);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId.Value, HttpContext.RequestAborted))
+            return StatusCode(403, new { errors = new[] { new { code = "FEATURE_DISABLED", message = "Volunteering module is not enabled for this community" } } });
 
-        var query = _db.Organisations.AsNoTracking().Where(o => o.IsPublic);
-
+        limit = Math.Clamp(
+            int.TryParse(Request.Query["per_page"].FirstOrDefault(), out var perPage) ? perPage : limit,
+            1,
+            50);
+        var search = Request.Query["search"].FirstOrDefault() ?? q;
+        var cursor = DecodeCursor(Request.Query["cursor"].FirstOrDefault());
+        var query = _db.VolunteerOrganisations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(org => org.TenantId == tenantId.Value
+                && (org.Status == "approved" || org.Status == "active"));
         if (!string.IsNullOrWhiteSpace(type))
-            query = query.Where(o => o.Type == type);
-
-        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(org => org.OrgType == type);
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = q.Trim().ToLower();
-            query = query.Where(o => o.Name.ToLower().Contains(term));
+            var term = search.Trim().ToLower();
+            query = query.Where(org => org.Name.ToLower().Contains(term)
+                || (org.Description != null && org.Description.ToLower().Contains(term)));
         }
+        if (cursor.HasValue)
+            query = query.Where(org => org.Id < cursor.Value);
 
-        var total = await query.CountAsync();
-        var orgs = await query
-            .OrderBy(o => o.Name)
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .Select(o => new
+        var organizations = await query
+            .OrderByDescending(org => org.Id)
+            .Take(limit + 1)
+            .Select(org => new
             {
-                id = o.Id,
-                name = o.Name,
-                slug = o.Slug,
-                description = o.Description,
-                logo_url = o.LogoUrl,
-                type = o.Type,
-                industry = o.Industry,
-                status = o.Status,
-                address = o.Address,
-                created_at = o.CreatedAt
+                org.Id,
+                org.Name,
+                org.Slug,
+                org.Description,
+                org.LogoUrl,
+                org.Website,
+                org.ContactEmail,
+                org.Location,
+                org.Status,
+                org.OrgType,
+                org.CreatedAt,
+                org.UpdatedAt,
+                OwnerName = org.OwnerUser == null
+                    ? null
+                    : (org.OwnerUser.FirstName + " " + org.OwnerUser.LastName).Trim(),
+                OwnerAvatarUrl = org.OwnerUser == null ? null : org.OwnerUser.AvatarUrl
             })
-            .ToListAsync();
-
-        var totalPages = (int)Math.Ceiling(total / (double)limit);
+            .ToListAsync(HttpContext.RequestAborted);
+        var hasMore = organizations.Count > limit;
+        if (hasMore) organizations.RemoveAt(organizations.Count - 1);
+        var data = new List<object>(organizations.Count);
+        foreach (var org in organizations)
+        {
+            var stats = await _volunteerOrganisations.GetAsync(
+                org.Id,
+                tenantId.Value,
+                includeNonPublic: false,
+                HttpContext.RequestAborted);
+            data.Add(new
+            {
+                id = org.Id,
+                name = org.Name,
+                slug = org.Slug,
+                description = org.Description,
+                logo_url = org.LogoUrl,
+                website = org.Website,
+                contact_email = org.ContactEmail,
+                location = org.Location,
+                status = org.Status,
+                org_type = org.OrgType ?? "organisation",
+                created_at = org.CreatedAt,
+                updated_at = org.UpdatedAt,
+                owner = new { display_name = org.OwnerName, avatar_url = org.OwnerAvatarUrl },
+                opportunity_count = stats?.OpportunityCount ?? 0,
+                volunteer_count = stats?.VolunteerCount ?? 0,
+                total_hours = stats?.TotalHours ?? 0m,
+                review_count = stats?.ReviewCount ?? 0,
+                average_rating = stats?.AverageRating ?? 0m
+            });
+        }
+        var nextCursor = hasMore && organizations.Count > 0
+            ? EncodeCursor(organizations[^1].Id)
+            : null;
 
         return Ok(new
         {
-            data = orgs,
-            pagination = new { page, limit, total, pages = totalPages }
+            data,
+            meta = new
+            {
+                base_url = await VolunteerOrganisationBaseUrlAsync(tenantId.Value),
+                cursor = nextCursor,
+                per_page = limit,
+                has_more = hasMore
+            }
         });
     }
 
@@ -1064,33 +1126,77 @@ public class CompatibilityController : ControllerBase
     /// GET /api/volunteering/organisations/{id} - Get organisation by ID (alias).
     /// </summary>
     [HttpGet("api/volunteering/organisations/{id:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetVolunteeringOrganisation(int id)
     {
-        var org = await _db.Organisations
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { errors = new[] { new { code = "TENANT_CONTEXT_REQUIRED", message = "Tenant context required" } } });
+        SetVolunteerOrganisationHeaders(tenantId.Value);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId.Value, HttpContext.RequestAborted))
+            return StatusCode(403, new { errors = new[] { new { code = "FEATURE_DISABLED", message = "Volunteering module is not enabled for this community" } } });
+
+        var org = await _db.VolunteerOrganisations
+            .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(o => o.Id == id && o.IsPublic)
-            .Select(o => new
+            .Where(row => row.Id == id
+                && row.TenantId == tenantId.Value
+                && (row.Status == "approved" || row.Status == "active"))
+            .Select(row => new
             {
-                id = o.Id,
-                name = o.Name,
-                slug = o.Slug,
-                description = o.Description,
-                logo_url = o.LogoUrl,
-                website_url = o.WebsiteUrl,
-                email = o.Email,
-                phone = o.Phone,
-                address = o.Address,
-                type = o.Type,
-                industry = o.Industry,
-                status = o.Status,
-                created_at = o.CreatedAt,
-                verified_at = o.VerifiedAt
+                row.Id,
+                row.Name,
+                row.Slug,
+                row.Description,
+                row.LogoUrl,
+                row.Website,
+                row.ContactEmail,
+                row.Location,
+                row.Status,
+                row.OrgType,
+                row.CreatedAt,
+                row.UpdatedAt,
+                OwnerName = row.OwnerUser == null
+                    ? null
+                    : (row.OwnerUser.FirstName + " " + row.OwnerUser.LastName).Trim(),
+                OwnerAvatarUrl = row.OwnerUser == null ? null : row.OwnerUser.AvatarUrl
             })
-            .FirstOrDefaultAsync();
+            .SingleOrDefaultAsync(HttpContext.RequestAborted);
+        if (org is null)
+            return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Organization not found" } } });
 
-        if (org == null) return NotFound(new { error = "Organisation not found" });
-
-        return Ok(new { data = org });
+        var stats = await _volunteerOrganisations.GetAsync(
+            id,
+            tenantId.Value,
+            includeNonPublic: false,
+            HttpContext.RequestAborted);
+        return Ok(new
+        {
+            data = new
+            {
+                id = org.Id,
+                name = org.Name,
+                slug = org.Slug,
+                description = org.Description,
+                logo_url = org.LogoUrl,
+                website = org.Website,
+                contact_email = org.ContactEmail,
+                location = org.Location,
+                status = org.Status,
+                org_type = org.OrgType ?? "organisation",
+                created_at = org.CreatedAt,
+                updated_at = org.UpdatedAt,
+                owner = new { display_name = org.OwnerName, avatar_url = org.OwnerAvatarUrl },
+                opportunity_count = stats?.OpportunityCount ?? 0,
+                opportunities_count = stats?.OpportunityCount ?? 0,
+                volunteer_count = stats?.VolunteerCount ?? 0,
+                total_volunteers = stats?.VolunteerCount ?? 0,
+                total_hours = stats?.TotalHours ?? 0m,
+                review_count = stats?.ReviewCount ?? 0,
+                average_rating = stats?.AverageRating ?? 0m
+            },
+            meta = new { base_url = await VolunteerOrganisationBaseUrlAsync(tenantId.Value) }
+        });
     }
 
     // ──────────────────────────────────────────────
@@ -2214,6 +2320,41 @@ public class CompatibilityController : ControllerBase
         }
 
         return null;
+    }
+
+    private static int? DecodeCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor)) return null;
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static string EncodeCursor(int id) =>
+        Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
+
+    private void SetVolunteerOrganisationHeaders(int tenantId)
+    {
+        Response.Headers["API-Version"] = "2.0";
+        Response.Headers["X-Tenant-ID"] = tenantId.ToString();
+    }
+
+    private async Task<string> VolunteerOrganisationBaseUrlAsync(int tenantId)
+    {
+        var domain = await _db.Tenants
+            .AsNoTracking()
+            .Where(tenant => tenant.Id == tenantId)
+            .Select(tenant => tenant.Domain)
+            .SingleOrDefaultAsync(HttpContext.RequestAborted);
+        return string.IsNullOrWhiteSpace(domain)
+            ? $"{Request.Scheme}://{Request.Host}".TrimEnd('/')
+            : domain.TrimEnd('/');
     }
 }
 

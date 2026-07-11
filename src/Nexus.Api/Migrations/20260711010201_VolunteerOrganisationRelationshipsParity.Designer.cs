@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexus.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     [DbContext(typeof(NexusDbContext))]
-    partial class NexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260711010201_VolunteerOrganisationRelationshipsParity")]
+    partial class VolunteerOrganisationRelationshipsParity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -17502,11 +17505,11 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("TenantId", "UserId");
 
-                    b.HasIndex("TenantId", "VolunteerOrganisationId");
-
                     b.HasIndex("TenantId", "VolunteerLogId", "Type")
                         .IsUnique()
                         .HasFilter("\"vol_log_id\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "VolunteerOrganisationId");
 
                     b.ToTable("vol_org_transactions", null, t =>
                         {

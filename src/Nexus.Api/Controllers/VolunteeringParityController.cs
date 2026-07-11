@@ -6,6 +6,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Data;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -31,6 +32,7 @@ public class VolunteeringParityController : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly ILogger<VolunteeringParityController> _logger;
     private readonly VolunteerGuardianConsentService _guardianConsent;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
     private readonly ShiftManagementService? _shiftManagement;
     private readonly PushNotificationService? _pushNotifications;
 
@@ -39,6 +41,7 @@ public class VolunteeringParityController : ControllerBase
         TenantContext tenantContext,
         ILogger<VolunteeringParityController> logger,
         VolunteerGuardianConsentService guardianConsent,
+        VolunteerOrganisationService volunteerOrganisations,
         ShiftManagementService? shiftManagement = null,
         PushNotificationService? pushNotifications = null)
     {
@@ -46,6 +49,7 @@ public class VolunteeringParityController : ControllerBase
         _tenantContext = tenantContext;
         _logger = logger;
         _guardianConsent = guardianConsent;
+        _volunteerOrganisations = volunteerOrganisations;
         _shiftManagement = shiftManagement;
         _pushNotifications = pushNotifications;
     }
@@ -621,25 +625,341 @@ public class VolunteeringParityController : ControllerBase
     }
 
     [HttpPost("organisations")]
-    public IActionResult CreateOrganisation([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(Str(body, "name"), TenantId())), name = Str(body, "name") ?? "Volunteer organisation" } });
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerOrganisationCreatePolicy)]
+    public async Task<IActionResult> CreateOrganisation(
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+        {
+            return VolunteerOrganisationError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
+
+        var requestValidation = ValidateOrganisationCreateRequest(body);
+        if (requestValidation.Count > 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "validation_failed",
+                        message = "Validation failed",
+                        details = requestValidation
+                    }
+                },
+                success = false
+            });
+        }
+
+        var result = await _volunteerOrganisations.CreateAsync(
+            tenantId,
+            UserId(),
+            new VolunteerOrganisationCreateCommand(
+                Str(body, "name"),
+                Str(body, "description"),
+                Str(body, "contact_email"),
+                Str(body, "website")),
+            activate: false,
+            cancellationToken);
+        if (!result.Success)
+        {
+            var error = result.Error!;
+            var statusCode = error.Code switch
+            {
+                "ALREADY_EXISTS" => StatusCodes.Status409Conflict,
+                "FORBIDDEN" => StatusCodes.Status403Forbidden,
+                "SERVER_ERROR" => StatusCodes.Status400BadRequest,
+                _ => StatusCodes.Status400BadRequest
+            };
+            return VolunteerOrganisationError(statusCode, error.Code, error.Message, error.Field);
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = result.Data,
+            meta = new { base_url = await BaseUrlAsync(tenantId, cancellationToken) }
+        });
+    }
 
     [HttpPut("organisations/{organisationId:int}")]
-    public IActionResult UpdateOrganisation(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { id = organisationId, name = Str(body, "name") ?? "Volunteer organisation" } });
+    public async Task<IActionResult> UpdateOrganisation(
+        int organisationId,
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Volunteering module is not enabled for this community");
+        if (!await _volunteerOrganisations.CanManageDashboardAsync(
+            organisationId, UserId(), tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FORBIDDEN", "Access denied");
+
+        var result = await _volunteerOrganisations.UpdateAsync(
+            organisationId,
+            tenantId,
+            UpdateCommand(body, includeAdminFields: false),
+            adminSurface: false,
+            cancellationToken);
+        if (!result.Success)
+        {
+            var error = result.Error!;
+            var statusCode = error.Code switch
+            {
+                "NOT_FOUND" => StatusCodes.Status404NotFound,
+                "SERVER_ERROR" => StatusCodes.Status500InternalServerError,
+                _ when error.Message == "No fields to update" => StatusCodes.Status400BadRequest,
+                _ => StatusCodes.Status422UnprocessableEntity
+            };
+            return VolunteerOrganisationError(statusCode, error.Code, error.Message, error.Field);
+        }
+
+        return Ok(new
+        {
+            data = result.Data,
+            meta = new { base_url = await BaseUrlAsync(tenantId, cancellationToken) }
+        });
+    }
 
     [HttpGet("organisations/{organisationId:int}/applications")]
-    public async Task<IActionResult> OrganisationApplications(int organisationId) => Ok(new { data = await _db.VolunteerApplications.Include(a => a.Opportunity).Where(a => a.Opportunity != null && a.Opportunity.OrganizerId == organisationId).ToListAsync() });
+    public async Task<IActionResult> OrganisationApplications(
+        int organisationId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Volunteering module is not enabled for this community");
+        if (!await _volunteerOrganisations.CanManageDashboardAsync(
+            organisationId, UserId(), tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FORBIDDEN", "Access denied");
+
+        var limit = Math.Clamp(IntQuery("per_page", 20), 1, 50);
+        var cursor = IntQuery("cursor", 0);
+        var status = Request.Query["status"].FirstOrDefault();
+        ApplicationStatus? statusFilter = status?.ToLowerInvariant() switch
+        {
+            "pending" => ApplicationStatus.Pending,
+            "approved" => ApplicationStatus.Approved,
+            "declined" => ApplicationStatus.Declined,
+            _ => null
+        };
+
+        var query =
+            from application in _db.VolunteerApplications.IgnoreQueryFilters().AsNoTracking()
+            join opportunity in _db.VolunteerOpportunities.IgnoreQueryFilters().AsNoTracking()
+                on new { application.OpportunityId, application.TenantId }
+                equals new { OpportunityId = opportunity.Id, opportunity.TenantId }
+            join user in _db.Users.IgnoreQueryFilters().AsNoTracking()
+                on new { application.UserId, application.TenantId }
+                equals new { UserId = user.Id, user.TenantId }
+            join shift in _db.VolunteerShifts.IgnoreQueryFilters().AsNoTracking()
+                on new { ShiftId = application.ShiftId, application.TenantId }
+                equals new { ShiftId = (int?)shift.Id, shift.TenantId } into shifts
+            from shift in shifts.DefaultIfEmpty()
+            where application.TenantId == tenantId
+                && opportunity.VolunteerOrganisationId == organisationId
+                && (!statusFilter.HasValue || application.Status == statusFilter.Value)
+                && (cursor <= 0 || application.Id < cursor)
+            orderby application.Id descending
+            select new
+            {
+                application.Id,
+                application.Status,
+                application.Message,
+                application.OrgNote,
+                application.CreatedAt,
+                application.ShiftId,
+                UserId = user.Id,
+                UserName = (user.FirstName + " " + user.LastName).Trim(),
+                user.AvatarUrl,
+                user.Email,
+                OpportunityId = opportunity.Id,
+                OpportunityTitle = opportunity.Title,
+                ShiftStartsAt = shift == null ? (DateTime?)null : shift.StartsAt,
+                ShiftEndsAt = shift == null ? (DateTime?)null : shift.EndsAt
+            };
+        var rows = await query.Take(limit + 1).ToListAsync(cancellationToken);
+        var hasMore = rows.Count > limit;
+        if (hasMore) rows.RemoveAt(rows.Count - 1);
+        var data = rows.Select(row => new
+        {
+            id = row.Id,
+            status = row.Status.ToString().ToLowerInvariant(),
+            message = row.Message,
+            org_note = row.OrgNote,
+            created_at = row.CreatedAt,
+            user = new
+            {
+                id = row.UserId,
+                name = row.UserName,
+                avatar_url = row.AvatarUrl,
+                email = row.Email
+            },
+            opportunity = new { id = row.OpportunityId, title = row.OpportunityTitle },
+            shift = row.ShiftId.HasValue
+                ? new { start_time = row.ShiftStartsAt, end_time = row.ShiftEndsAt }
+                : null
+        }).ToList();
+
+        return Ok(new
+        {
+            data,
+            meta = new
+            {
+                base_url = await BaseUrlAsync(tenantId, cancellationToken),
+                cursor = hasMore && data.Count > 0 ? data[^1].id.ToString() : null,
+                per_page = limit,
+                has_more = hasMore
+            }
+        });
+    }
 
     [HttpGet("organisations/{organisationId:int}/hours/pending")]
     public IActionResult PendingHours(int organisationId) => Ok(new { data = Array.Empty<object>() });
 
     [HttpGet("organisations/{organisationId:int}/stats")]
-    public async Task<IActionResult> OrganisationStats(int organisationId) => Ok(new { data = new { organisation_id = organisationId, opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.OrganizerId == organisationId) } });
+    public async Task<IActionResult> OrganisationStats(
+        int organisationId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Volunteering module is not enabled for this community");
+        if (!await _volunteerOrganisations.CanManageDashboardAsync(
+            organisationId, UserId(), tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FORBIDDEN", "Access denied");
+
+        var organisation = await _db.VolunteerOrganisations.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(org => org.Id == organisationId && org.TenantId == tenantId, cancellationToken);
+        if (organisation is null)
+            return VolunteerOrganisationError(403, "FORBIDDEN", "Access denied");
+        var opportunityIds = _db.VolunteerOpportunities.IgnoreQueryFilters()
+            .Where(opportunity => opportunity.TenantId == tenantId
+                && opportunity.VolunteerOrganisationId == organisationId)
+            .Select(opportunity => opportunity.Id);
+        var totalVolunteers = await _db.VolunteerApplications.IgnoreQueryFilters()
+            .Where(application => application.TenantId == tenantId
+                && opportunityIds.Contains(application.OpportunityId)
+                && application.Status == ApplicationStatus.Approved)
+            .Select(application => application.UserId)
+            .Distinct()
+            .CountAsync(cancellationToken);
+        var pendingApplications = await _db.VolunteerApplications.IgnoreQueryFilters()
+            .CountAsync(application => application.TenantId == tenantId
+                && opportunityIds.Contains(application.OpportunityId)
+                && application.Status == ApplicationStatus.Pending, cancellationToken);
+        var hoursSummary = await _volunteerOrganisations.GetHoursSummaryAsync(
+            tenantId,
+            organisationId,
+            cancellationToken);
+        var activeOpportunities = await _db.VolunteerOpportunities.IgnoreQueryFilters()
+            .CountAsync(opportunity => opportunity.TenantId == tenantId
+                && opportunity.VolunteerOrganisationId == organisationId
+                && opportunity.Status == OpportunityStatus.Published, cancellationToken);
+
+        return Ok(new
+        {
+            data = new
+            {
+                total_volunteers = totalVolunteers,
+                pending_applications = pendingApplications,
+                pending_hours = hoursSummary.PendingCount,
+                total_approved_hours = hoursSummary.ApprovedTotal,
+                active_opportunities = activeOpportunities,
+                wallet_balance = organisation.Balance,
+                auto_pay_enabled = organisation.AutoPayEnabled,
+                org_name = organisation.Name
+            },
+            meta = new { base_url = await BaseUrlAsync(tenantId, cancellationToken) }
+        });
+    }
 
     [HttpGet("organisations/{organisationId:int}/volunteers")]
-    public async Task<IActionResult> OrganisationVolunteers(int organisationId)
+    public async Task<IActionResult> OrganisationVolunteers(
+        int organisationId,
+        CancellationToken cancellationToken = default)
     {
-        var users = await _db.VolunteerApplications.Include(a => a.User).Include(a => a.Opportunity).Where(a => a.Opportunity != null && a.Opportunity.OrganizerId == organisationId).Select(a => a.User).Distinct().ToListAsync();
-        return Ok(new { data = users });
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Volunteering module is not enabled for this community");
+        if (!await _volunteerOrganisations.CanManageDashboardAsync(
+            organisationId, UserId(), tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FORBIDDEN", "Access denied");
+
+        var limit = Math.Clamp(IntQuery("per_page", 20), 1, 50);
+        var cursor = IntQuery("cursor", 0);
+        var volunteers = await (
+            from application in _db.VolunteerApplications.IgnoreQueryFilters().AsNoTracking()
+            join opportunity in _db.VolunteerOpportunities.IgnoreQueryFilters().AsNoTracking()
+                on new { application.OpportunityId, application.TenantId }
+                equals new { OpportunityId = opportunity.Id, opportunity.TenantId }
+            join user in _db.Users.IgnoreQueryFilters().AsNoTracking()
+                on new { application.UserId, application.TenantId }
+                equals new { UserId = user.Id, user.TenantId }
+            where application.TenantId == tenantId
+                && opportunity.VolunteerOrganisationId == organisationId
+                && application.Status == ApplicationStatus.Approved
+                && (cursor <= 0 || user.Id < cursor)
+            group application by new
+            {
+                user.Id,
+                user.FirstName,
+                user.LastName,
+                user.AvatarUrl,
+                user.Email
+            } into applications
+            orderby applications.Key.Id descending
+            select new
+            {
+                applications.Key.Id,
+                Name = (applications.Key.FirstName + " " + applications.Key.LastName).Trim(),
+                applications.Key.AvatarUrl,
+                applications.Key.Email,
+                AppliedAt = applications.Max(application => application.CreatedAt),
+                ApplicationsCount = applications.Count()
+            })
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+        var hasMore = volunteers.Count > limit;
+        if (hasMore) volunteers.RemoveAt(volunteers.Count - 1);
+        var userIds = volunteers.Select(volunteer => volunteer.Id).ToArray();
+        var hours = await _volunteerOrganisations.GetApprovedHoursByUserAsync(
+            tenantId,
+            organisationId,
+            userIds,
+            cancellationToken);
+        var data = volunteers.Select(volunteer => new
+        {
+            id = volunteer.Id,
+            name = volunteer.Name,
+            avatar_url = volunteer.AvatarUrl,
+            email = volunteer.Email,
+            total_hours = hours.GetValueOrDefault(volunteer.Id),
+            applications_count = volunteer.ApplicationsCount,
+            applied_at = volunteer.AppliedAt
+        }).ToList();
+
+        return Ok(new
+        {
+            data,
+            meta = new
+            {
+                base_url = await BaseUrlAsync(tenantId, cancellationToken),
+                cursor = hasMore && data.Count > 0 ? data[^1].id.ToString() : null,
+                per_page = limit,
+                has_more = hasMore
+            }
+        });
     }
 
     [HttpGet("organisations/{organisationId:int}/wallet")]
@@ -685,12 +1005,43 @@ public class VolunteeringParityController : ControllerBase
     public IActionResult Reviews(string revieweeType, int revieweeId) => Ok(new { data = Array.Empty<object>(), reviewee_type = revieweeType, reviewee_id = revieweeId });
 
     [HttpDelete("opportunities/{id:int}")]
-    public async Task<IActionResult> DeleteOpportunity(int id)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerOpportunityDeletePolicy)]
+    public async Task<IActionResult> DeleteOpportunity(
+        int id,
+        CancellationToken cancellationToken = default)
     {
-        var opportunity = await _db.VolunteerOpportunities.FirstOrDefaultAsync(o => o.Id == id);
-        if (opportunity == null) return NotFound(new { error = "Opportunity not found" });
+        var tenantId = TenantId();
+        SetVolunteerOrganisationHeaders(tenantId);
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+            return VolunteerOrganisationError(403, "FEATURE_DISABLED", "Volunteering module is not enabled for this community");
+
+        var opportunity = await _db.VolunteerOpportunities
+            .IgnoreQueryFilters()
+            .Where(row => row.Id == id
+                && row.TenantId == tenantId
+                && row.VolunteerOrganisationId.HasValue
+                && _db.VolunteerOrganisations
+                    .IgnoreQueryFilters()
+                    .Any(org => org.Id == row.VolunteerOrganisationId.Value
+                        && org.TenantId == tenantId))
+            .SingleOrDefaultAsync(cancellationToken);
+        if (opportunity is null)
+            return VolunteerOrganisationError(404, "NOT_FOUND", "Opportunity not found");
+
+        var access = await _volunteerOrganisations.EvaluateOpportunityAccessAsync(
+            id,
+            UserId(),
+            tenantId,
+            includeCreator: false,
+            cancellationToken);
+        if (!access.Exists)
+            return VolunteerOrganisationError(404, "NOT_FOUND", "Opportunity not found");
+        if (!access.Allowed)
+            return VolunteerOrganisationError(403, "FORBIDDEN", "You do not have permission to manage this opportunity");
+
         opportunity.Status = OpportunityStatus.Cancelled;
-        await _db.SaveChangesAsync();
+        opportunity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
@@ -918,6 +1269,26 @@ public class VolunteeringParityController : ControllerBase
         });
     }
 
+    private ObjectResult VolunteerOrganisationError(
+        int statusCode,
+        string code,
+        string message,
+        string? field = null)
+    {
+        if (field is null)
+        {
+            return StatusCode(statusCode, new
+            {
+                errors = new[] { new { code, message } }
+            });
+        }
+
+        return StatusCode(statusCode, new
+        {
+            errors = new[] { new { code, message, field } }
+        });
+    }
+
     private static object MapGuardianConsent(GuardianConsentView consent) => new
     {
         consent.Id,
@@ -935,6 +1306,98 @@ public class VolunteeringParityController : ControllerBase
     };
 
     private sealed record ApprovedApplicationLock(int Id, int? ShiftId);
+
+    private static VolunteerOrganisationUpdateCommand UpdateCommand(
+        JsonElement body,
+        bool includeAdminFields)
+    {
+        var (hasName, name) = OptionalString(body, "name");
+        var (hasDescription, description) = OptionalString(body, "description");
+        var (hasContactEmail, contactEmail) = OptionalString(body, "contact_email");
+        var (hasWebsite, website) = OptionalString(body, "website");
+        var (hasOrgType, orgType) = includeAdminFields
+            ? OptionalString(body, "org_type")
+            : (false, null);
+        var (hasMeetingSchedule, meetingSchedule) = includeAdminFields
+            ? OptionalString(body, "meeting_schedule")
+            : (false, null);
+        return new(
+            hasName,
+            name,
+            hasDescription,
+            description,
+            hasContactEmail,
+            contactEmail,
+            hasWebsite,
+            website,
+            hasOrgType,
+            orgType,
+            hasMeetingSchedule,
+            meetingSchedule);
+    }
+
+    private static Dictionary<string, string[]> ValidateOrganisationCreateRequest(JsonElement body)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var name = Str(body, "name")?.Trim();
+        var description = Str(body, "description")?.Trim();
+        var email = Str(body, "contact_email")?.Trim();
+        var website = Str(body, "website")?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            errors["name"] = ["The name field is required."];
+        else if (name.Length > 255)
+            errors["name"] = ["The name field must not be greater than 255 characters."];
+        if (string.IsNullOrWhiteSpace(description))
+            errors["description"] = ["The description field is required."];
+        else if (description.Length > 5000)
+            errors["description"] = ["The description field must not be greater than 5000 characters."];
+        if (string.IsNullOrWhiteSpace(email))
+            errors["contact_email"] = ["The contact email field is required."];
+        else if (email.Length > 255 || !new EmailAddressAttribute().IsValid(email))
+            errors["contact_email"] = ["The contact email field must be a valid email address."];
+        if (!string.IsNullOrWhiteSpace(website)
+            && (website.Length > 500
+                || !Uri.TryCreate(website, UriKind.Absolute, out var uri)
+                || uri.Scheme is not ("http" or "https")))
+        {
+            errors["website"] = ["The website field must be a valid URL."];
+        }
+
+        return errors;
+    }
+
+    private static (bool HasValue, string? Value) OptionalString(JsonElement body, string name)
+    {
+        if (body.ValueKind != JsonValueKind.Object
+            || !body.TryGetProperty(name, out var value)
+            || value.ValueKind == JsonValueKind.Null)
+        {
+            return (false, null);
+        }
+
+        return (true, value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString());
+    }
+
+    private int IntQuery(string name, int fallback) =>
+        int.TryParse(Request.Query[name].FirstOrDefault(), out var value) ? value : fallback;
+
+    private void SetVolunteerOrganisationHeaders(int tenantId)
+    {
+        Response.Headers["API-Version"] = "2.0";
+        Response.Headers["X-Tenant-ID"] = tenantId.ToString();
+    }
+
+    private async Task<string> BaseUrlAsync(int tenantId, CancellationToken cancellationToken)
+    {
+        var domain = await _db.Tenants
+            .AsNoTracking()
+            .Where(tenant => tenant.Id == tenantId)
+            .Select(tenant => tenant.Domain)
+            .SingleOrDefaultAsync(cancellationToken);
+        return string.IsNullOrWhiteSpace(domain)
+            ? BaseUrl().TrimEnd('/')
+            : domain.TrimEnd('/');
+    }
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");

@@ -466,9 +466,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Laravel authenticates and runs module/feature gates before action-specific
-// throttles. Preserve that order for recurring patterns so 401/403 responses
-// neither consume nor become a 429 from those endpoint buckets.
+// throttles. Preserve that order for recurring patterns and volunteer-
+// organisation registration so 401/403 responses neither consume nor become
+// a 429 from those endpoint buckets.
 app.UseMiddleware<RecurringPatternFeatureGateMiddleware>();
+app.UseMiddleware<VolunteerOrganisationFeatureGateMiddleware>();
 
 // Rate limiting follows authentication/authorization so authenticated
 // endpoint policies partition by user while protected anonymous requests

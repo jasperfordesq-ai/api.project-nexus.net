@@ -5,12 +5,15 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 using Nexus.Api.Services.Registration;
 
@@ -29,15 +32,18 @@ public class ReactFrontendCompatibilityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ProviderConfigEncryption _encryption;
+    private readonly VolunteerOrganisationService _volunteerOrganisations;
 
     public ReactFrontendCompatibilityController(
         NexusDbContext db,
         TenantContext tenantContext,
-        ProviderConfigEncryption encryption)
+        ProviderConfigEncryption encryption,
+        VolunteerOrganisationService volunteerOrganisations)
     {
         _db = db;
         _tenantContext = tenantContext;
         _encryption = encryption;
+        _volunteerOrganisations = volunteerOrganisations;
     }
 
     private static int DailyRewardMilestoneBonus(int streakDay) => streakDay switch
@@ -606,26 +612,89 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
     [HttpGet("api/volunteering/my-organisations")]
     [Authorize]
-    public async Task<IActionResult> MyVolunteerOrganisations()
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerOrganisationListPolicy)]
+    public async Task<IActionResult> MyVolunteerOrganisations(
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var organisations = await _db.Organisations
-            .Where(o => o.OwnerId == userId.Value || o.Members.Any(m => m.UserId == userId.Value))
-            .OrderBy(o => o.Name)
-            .Select(o => new
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        Response.Headers["API-Version"] = "2.0";
+        Response.Headers["X-Tenant-ID"] = tenantId.ToString();
+        if (!await _volunteerOrganisations.IsFeatureEnabledAsync(tenantId, cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
             {
-                id = o.Id,
-                name = o.Name,
-                description = o.Description,
-                status = o.Status,
-                verified = o.Status == "verified",
-                created_at = o.CreatedAt
-            })
-            .ToListAsync();
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "FEATURE_DISABLED",
+                        message = "Volunteering module is not enabled for this community"
+                    }
+                }
+            });
+        }
 
-        return Ok(new { data = organisations, organisations });
+        var limit = int.TryParse(Request.Query["per_page"].FirstOrDefault(), out var requestedLimit)
+            ? Math.Clamp(requestedLimit, 1, 50)
+            : 20;
+        var cursor = DecodeVolunteerOrganisationCursor(
+            Request.Query["cursor"].FirstOrDefault());
+        var organisations = await _db.VolunteerOrganisations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(org => org.TenantId == tenantId
+                && (org.OwnerUserId == userId.Value
+                    || org.Members.Any(member => member.TenantId == tenantId
+                        && member.OrgType == "volunteer"
+                        && member.UserId == userId.Value
+                        && member.Status == "active")))
+            .Where(org => !cursor.HasValue || org.Id < cursor.Value)
+            .OrderByDescending(org => org.Id)
+            .Select(org => new
+            {
+                id = org.Id,
+                name = org.Name,
+                description = org.Description,
+                status = org.Status,
+                member_role = org.OwnerUserId == userId.Value
+                    ? "owner"
+                    : org.Members
+                        .Where(member => member.TenantId == tenantId
+                            && member.OrgType == "volunteer"
+                            && member.UserId == userId.Value
+                            && member.Status == "active")
+                        .Select(member => member.Role)
+                        .FirstOrDefault() ?? "member",
+                logo_url = org.LogoUrl,
+                contact_email = org.ContactEmail,
+                website = org.Website,
+                created_at = org.CreatedAt
+            })
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+        var hasMore = organisations.Count > limit;
+        if (hasMore)
+        {
+            organisations.RemoveAt(organisations.Count - 1);
+        }
+        var nextCursor = hasMore && organisations.Count > 0
+            ? Convert.ToBase64String(Encoding.UTF8.GetBytes(organisations[^1].id.ToString()))
+            : null;
+
+        return Ok(new
+        {
+            data = organisations,
+            meta = new
+            {
+                base_url = await VolunteerOrganisationBaseUrlAsync(tenantId, cancellationToken),
+                per_page = limit,
+                has_more = hasMore,
+                cursor = nextCursor
+            }
+        });
     }
 
     [HttpGet("api/volunteering/recommended-shifts")]
@@ -5135,6 +5204,39 @@ public class ReactFrontendCompatibilityController : ControllerBase
         if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(propertyName, out var property))
             return null;
         return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+    }
+
+    private async Task<string> VolunteerOrganisationBaseUrlAsync(
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var domain = await _db.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(tenant => tenant.Id == tenantId)
+            .Select(tenant => tenant.Domain)
+            .SingleOrDefaultAsync(cancellationToken);
+        return string.IsNullOrWhiteSpace(domain)
+            ? $"{Request.Scheme}://{Request.Host}".TrimEnd('/')
+            : domain.TrimEnd('/');
+    }
+
+    private static int? DecodeVolunteerOrganisationCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+        {
+            return null;
+        }
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) && id > 0 ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     private static List<int> ReadIntList(JsonElement body, params string[] propertyNames)

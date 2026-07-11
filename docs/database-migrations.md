@@ -1,6 +1,6 @@
 # Database Migration Workflow
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-11
 
 ## Overview
 
@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Discovery Quarantine
 
-The repository currently contains 107 main `Migration` classes. EF Release
-discovery verifies 78 while the known legacy quarantine remains 29 classes.
+The repository currently contains 109 main `Migration` classes. EF discovery
+verifies 80 while the known legacy quarantine remains 29 classes.
 Two designer-less migrations are
 valid because they carry inline `[Migration]` and `[DbContext]` metadata; a
 `.Designer.cs` file is not itself the contract.
@@ -23,12 +23,28 @@ metadata blindly. First inventory the source class, intended migration id,
 schema effects, and each supported environment's history/schema state. No
 production inspection or change is implied by the source audit.
 
-`20260710211122_RecurringShiftGenerationParity` is the current latest
-migration. It replaces the recurring-pattern tenant index with a
-tenant/active/end-date sweep index and adds a filtered unique generated-shift
-key on tenant, pattern, and exact start time. The migration fails before index
-creation if duplicate historical occurrences exist; it never chooses a shift
-to delete because linked operational history may already depend on either row.
+`20260711010201_VolunteerOrganisationRelationshipsParity` is the current
+latest migration. It creates the canonical `vol_organizations`, `org_members`,
+and `vol_org_transactions` tables, adds a nullable
+`volunteer_opportunities.organization_id`, and enforces tenant-composite owner,
+membership, and opportunity relationships. It performs no organisation
+backfill. The opportunity foreign key uses non-destructive `RESTRICT`; the
+nullable transaction `vol_log_id` remains a scalar because the discovered
+runtime chain does not create the referenced Laravel `vol_logs` table. A
+filtered unique `(tenant_id, vol_log_id, type)` index still prevents duplicate
+payments, and the nullable transaction user relationship is tenant-composite.
+Discovered-chain-only installs expose zero-hour aggregates until the quarantined
+`vol_logs` history is reconciled. Existing NULL-linked opportunities require an
+explicit operator mapping; never backfill from the user-valued `OrganizerId`.
+
+The preceding `20260710221715_RecurringShiftPatternCrudParity` migration makes
+the canonical recurring-pattern creator and unsigned capacity fields explicit.
+`20260710211122_RecurringShiftGenerationParity` replaces the recurring-pattern
+tenant index with a tenant/active/end-date sweep index and adds a filtered
+unique generated-shift key on tenant, pattern, and exact start time. The latter
+fails before index creation if duplicate historical occurrences exist; it never
+chooses a shift to delete because linked operational history may already depend
+on either row.
 
 The preceding `20260710192521_GuardianConsentLifecycle` migration adds guardian
 phone, consent IP, a unique nullable SHA-256 token hash, required
@@ -38,11 +54,11 @@ active rows and removes orphan minor rows before enforcing the new constraint.
 The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
 application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
 and the indexes and `SET NULL` foreign keys used by transactional volunteering
-capacity checks. The API and test projects build cleanly; the prior focused
-transactional suite passes 61/61, guardian lifecycle 7/7, and recurring-shift
-generation 13/13. Final discovery reports
-`source=107, discovered=78, quarantined=29`, EF reports no pending model
-changes, and all 78 discovered migrations apply to a blank disposable
+capacity checks. The API and test projects build cleanly. The
+volunteer-organisation relationship suite passes 13/13 and its wider affected
+regression passes 180/180. Final discovery reports
+`source=109, discovered=80, quarantined=29`, EF reports no pending model
+changes, and all 80 discovered migrations apply to a blank disposable
 PostgreSQL database through the latest migration id.
 
 Before applying `RecurringShiftGenerationParity`, inventory duplicate rows by
@@ -71,7 +87,7 @@ neither discovered by EF nor listed in the explicit 29-entry legacy quarantine,
 if a quarantined class becomes discoverable without review, or if an intended
 migration id no longer matches its type. Commit `bcc317e3` introduced the gate
 and corrected the EF drift step so its zero exit code is treated as a clean
-model. The verified inventory is `source=107, discovered=78, quarantined=29`.
+model. The verified inventory is `source=109, discovered=80, quarantined=29`.
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -160,7 +176,7 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The reflection/quarantine gate is expected to cover all 107 compiled migration
+The reflection/quarantine gate is expected to cover all 109 compiled migration
 subclasses, including the 29 classes that EF cannot currently discover. It
 prevents a new class from becoming silently invisible, but it does not prove
 that the quarantined DDL is safe to replay. A successful `database update`

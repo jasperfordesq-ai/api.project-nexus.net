@@ -1,6 +1,6 @@
 # Full Laravel Parity Remediation Runbook
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-11
 
 This is the maintained execution map for completing both parity workstreams:
 
@@ -42,6 +42,48 @@ Before any production deployment or production-container action, stop and read
 `.claude/production-containers.md`. This runbook does not authorize production
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
+
+## 2026-07-11 ASP.NET Volunteer-Organisation Checkpoint
+
+The volunteer-organisation relationship and lifecycle slice is implemented in
+the ASP.NET backend without modifying either frontend or the Laravel source.
+Dedicated canonical storage now backs `vol_organizations`, `org_members`, and
+`vol_org_transactions`; the existing generic organisation domain remains
+unchanged. Opportunities carry a nullable tenant-scoped organisation
+relationship, while opportunity creation requires and persists a
+valid active/approved organisation managed by the caller.
+
+Member create/update, admin create/update/status/list, public active/approved
+directory, `my-organisations`, and organisation applications/statistics/
+volunteers now use the dedicated model. Dashboard projections no longer expose
+full `User` entities. Authorization distinguishes recurring-pattern creator
+access from application-decision/delete organisation-manager access, uses exact
+`super_admin`/`admin`/`tenant_admin` site roles, and fails closed for inactive
+or cross-tenant users.
+
+Current evidence:
+
+- API/test builds: 0 errors; the clean test build emitted only four pre-existing
+  `xUnit1031` warnings and the final incremental build emitted none;
+- focused relationship/lifecycle integration: 13/13;
+- wider affected controller/auth/route/migration regression: 180/180;
+- migration inventory: 109 source = 80 EF-discovered + 29 quarantined;
+- EF model drift: none;
+- blank disposable PostgreSQL: all 80 discovered migrations applied through
+  `20260711010201_VolunteerOrganisationRelationshipsParity`; catalog inspection
+  proved the canonical tables, nullable opportunity link, tenant-composite
+  keys, filtered unique payment guard, checks, and indexes. It also confirmed
+  `vol_logs` is absent; the API's zero-hour degraded path is covered. The
+  container was removed;
+- API route comparator: 2,436/2,436 matched, 0 missing;
+- schema name comparator: 134/361 matched, 227 missing, 194 ASP.NET-only.
+
+This closes the previously missing opportunity-to-volunteer-organisation
+relationship. P0 next is replacing the member/admin wallet and hour routes that
+still return false success or recorded-only results. Opportunity list/create/
+update/application-list contracts, admin members/DLP, public reviews, explicit
+legacy NULL-link reconciliation, provider/localization behavior,
+frontend-on-ASP.NET runtime proof, and the global schema gate remain open.
 
 ## 2026-07-10 Current Web UK Checkpoint
 
@@ -112,14 +154,14 @@ route coverage is not a completion score.
 | Laravel source operations | 2,436 |
 | Static method/path matches | 2,436 matched, 0 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
-| Schema inventory | 361 Laravel tables, 131 exact matches, 230 missing names, 193 ASP.NET-only names |
+| Schema inventory | 361 Laravel tables, 134 exact matches, 227 missing names, 194 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test Release builds | Current builds passed with no compile errors |
-| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; combined workflow/guardian/ownership run 67/68 with the sole PostgreSQL fixture-clear timeout occurring before its test body, then that exact case passed 1/1 in isolation; guardian ownership/migration focus 97/97; refreshed cron/discovery 2/2; pre-guardian wider baseline 180/180 |
-| Migration runtime chain | 108 source classes = 79 EF-discovered + 29 quarantined; no model drift; all 79 discovered migrations applied to blank disposable PostgreSQL through `20260710221715_RecurringShiftPatternCrudParity` |
+| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; current affected controller/auth/route/migration regression 180/180 |
+| Migration runtime chain | 109 source classes = 80 EF-discovered + 29 quarantined; no model drift; all 80 discovered migrations applied to blank disposable PostgreSQL through `20260711010201_VolunteerOrganisationRelationshipsParity` |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -173,12 +215,17 @@ that implementation movement and the lower amount of current green evidence.
   anchors are `src\Nexus.Api\Controllers\ShiftManagementController.cs`,
   `src\Nexus.Api\Migrations\20260710221715_RecurringShiftPatternCrudParity.cs`,
   `tests\Nexus.Api.Tests\RecurringShiftCrudTests.cs`, and
-  `tests\Nexus.Api.Tests\RecurringShiftRouteOwnershipTests.cs`. Focused proof
-  is the prior 61/61 core, clean 7/7 guardian lifecycle, clean 13/13 recurring
-  CRUD plus 1/1 route ownership, and clean 13/13 recurring
-  generation/scheduler. Migration discovery is 108/79/29 with
-  no model drift and a green 79-migration
-  disposable fresh chain. The pre-guardian wider contract baseline is 180/180.
+  `tests\Nexus.Api.Tests\RecurringShiftRouteOwnershipTests.cs`.
+  Volunteer-organisation anchors are
+  `src\Nexus.Api\Entities\VolunteerOrganisation.cs`,
+  `src\Nexus.Api\Services\VolunteerOrganisationService.cs`,
+  `src\Nexus.Api\Migrations\20260711010201_VolunteerOrganisationRelationshipsParity.cs`,
+  and `tests\Nexus.Api.Tests\VolunteerOrganisationRelationshipTests.cs`.
+  Focused proof is the prior 61/61 core, clean 7/7 guardian lifecycle, clean
+  13/13 recurring CRUD plus 1/1 route ownership, clean 13/13 recurring
+  generation/scheduler, and clean 13/13 organisation relationships/lifecycle.
+  The current wider affected set is 180/180. Migration discovery is 109/80/29
+  with no model drift and a green 80-migration disposable fresh chain.
 
 ### Web UK localization/RTL progress after the audit baseline
 
@@ -380,7 +427,7 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > unsupported. P0
 > item 5 now has explicit user privilege columns, DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
-> targets, and focused role regression coverage. The 79-migration discovered
+> targets, and focused role regression coverage. The 80-migration discovered
 > chain is fresh-database certified; full application runtime remains open. P0
 > item 3 now includes real canonical federation
 > partnership list/approve/reject behavior: receiver-only pending transitions,
@@ -420,11 +467,16 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > day arrays, and authorization/feature gates before action throttles. The
 > creator shadow FK is replaced by tenant-preflighted `CreatedBy`; capacity,
 > spots, occurrence maximums, and generated counts enforce Laravel's unsigned
-> semantics while explicit zero remains valid. The latest source migration is
-> `20260710221715_RecurringShiftPatternCrudParity`; discovery is 108/79/29,
-> EF reports no model drift, and all 79 discovered migrations apply to blank
-> PostgreSQL.
-> The 180/180 wider contract result is the pre-guardian baseline.
+> semantics while explicit zero remains valid. Dedicated canonical
+> volunteer-organisation storage now backs member/admin/public lifecycle,
+> opportunity creation, dashboard projections, transaction aggregates, and
+> exact manager authorization without reusing the generic organisation domain.
+> Recurring-pattern access permits the creator; application decisions require a
+> mapped organisation manager. The focused relationship set is 13/13 and the
+> current wider affected set is 180/180. The latest source migration is
+> `20260711010201_VolunteerOrganisationRelationshipsParity`; discovery is
+> 109/80/29, EF reports no model drift, and all 80 discovered migrations apply
+> to blank PostgreSQL.
 > Unchanged-frontend runtime smoke remains open. The volunteering migrations
 > handle unsafe histories explicitly: the former unique application index
 > cannot be restored after legitimate reapplication history, and hashed
@@ -435,11 +487,10 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > cross-tenant creator ownership and restores the shadow FK deterministically
 > on downgrade. `CreatedBy` deliberately uses non-destructive `RESTRICT`
 > instead of Laravel's user-delete cascade until ownership deletion effects are
-> explicitly proven. Exact volunteer-organisation owner/admin authorization remains
-> unrepresentable until opportunities have a real organisation relationship.
-> Volunteer-organisation status/membership ownership, localized built-in
-> guardian delivery copy and the full tenant-link fallback chain, live provider
-> proof, and unrelated long-tail volunteering scaffolds also remain. This
+> explicitly proven. Volunteer-organisation wallet/hour-approval mutations,
+> localized built-in guardian delivery copy and the full tenant-link fallback
+> chain, live provider proof, and unrelated long-tail volunteering scaffolds
+> remain. This
 > progress does not close the catch-all
 > inventory, wider scheduled/provider backlog, or the backend 1000/1000 gate.
 

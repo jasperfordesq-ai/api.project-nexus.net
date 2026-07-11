@@ -1242,43 +1242,55 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var now = DateTime.UtcNow;
-            var seededOrganisation = new Organisation
+            var seededOrganisation = new VolunteerOrganisation
             {
                 TenantId = TestData.Tenant1.Id,
                 Name = "Parity Volunteer Hub",
                 Slug = "parity-volunteer-hub-" + Guid.NewGuid().ToString("N"),
                 Description = "Volunteer hub exposed through the Laravel React admin API.",
-                WebsiteUrl = "https://volunteer.example.test",
-                Email = "volunteer-hub@example.test",
-                Type = "charity",
-                Status = "verified",
-                OwnerId = TestData.AdminUser.Id,
+                Website = "https://volunteer.example.test",
+                ContactEmail = "volunteer-hub@example.test",
+                OrgType = "charity",
+                Status = "active",
+                OwnerUserId = TestData.AdminUser.Id,
+                Balance = 42.5m,
                 CreatedAt = now.AddDays(-4),
-                UpdatedAt = now.AddDays(-1),
-                VerifiedAt = now.AddDays(-2)
+                UpdatedAt = now.AddDays(-1)
             };
-            db.Organisations.Add(seededOrganisation);
+            db.VolunteerOrganisations.Add(seededOrganisation);
             await db.SaveChangesAsync();
 
             organisationId = seededOrganisation.Id;
-            db.OrganisationMembers.Add(new OrganisationMember
+            db.VolunteerOrganisationMembers.Add(new VolunteerOrganisationMember
             {
                 TenantId = TestData.Tenant1.Id,
-                OrganisationId = organisationId,
+                VolunteerOrganisationId = organisationId,
                 UserId = TestData.MemberUser.Id,
-                Role = "volunteer",
-                JoinedAt = now.AddDays(-3)
+                Role = "member",
+                Status = "active",
+                CreatedAt = now.AddDays(-3)
             });
-            db.OrgWallets.Add(new OrgWallet
-            {
-                TenantId = TestData.Tenant1.Id,
-                OrganisationId = organisationId,
-                Balance = 42.5m,
-                TotalReceived = 55m,
-                TotalSpent = 12.5m,
-                CreatedAt = now.AddDays(-3),
-                UpdatedAt = now.AddDays(-1)
-            });
+            db.VolunteerOrganisationTransactions.AddRange(
+                new VolunteerOrganisationTransaction
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    VolunteerOrganisationId = organisationId,
+                    UserId = TestData.AdminUser.Id,
+                    Type = "deposit",
+                    Amount = 55m,
+                    BalanceAfter = 55m,
+                    CreatedAt = now.AddDays(-2)
+                },
+                new VolunteerOrganisationTransaction
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    VolunteerOrganisationId = organisationId,
+                    UserId = TestData.AdminUser.Id,
+                    Type = "withdrawal",
+                    Amount = -12.5m,
+                    BalanceAfter = 42.5m,
+                    CreatedAt = now.AddDays(-1)
+                });
             await db.SaveChangesAsync();
         }
 
@@ -1298,12 +1310,14 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         organisation.GetProperty("contact_email").GetString().Should().Be("volunteer-hub@example.test");
         organisation.GetProperty("website").GetString().Should().Be("https://volunteer.example.test");
         organisation.GetProperty("org_type").GetString().Should().Be("charity");
-        organisation.GetProperty("status").GetString().Should().Be("verified");
+        organisation.GetProperty("status").GetString().Should().Be("active");
         organisation.GetProperty("balance").GetDecimal().Should().Be(42.5m);
         organisation.GetProperty("member_count").GetInt32().Should().Be(1);
         organisation.GetProperty("volunteer_count").GetInt32().Should().Be(1);
         organisation.GetProperty("opportunity_count").GetInt32().Should().Be(0);
         organisation.GetProperty("total_hours").GetDecimal().Should().Be(0m);
+        organisation.GetProperty("total_in").GetDecimal().Should().Be(55m);
+        organisation.GetProperty("total_out").GetDecimal().Should().Be(12.5m);
         json.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
     }
 

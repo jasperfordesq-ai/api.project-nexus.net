@@ -29,6 +29,9 @@ public static class RateLimitingExtensions
     public const string RecurringPatternCreatePolicy = "volunteering-recurring-pattern-create";
     public const string RecurringPatternUpdatePolicy = "volunteering-recurring-pattern-update";
     public const string RecurringPatternDeletePolicy = "volunteering-recurring-pattern-delete";
+    public const string VolunteerOrganisationCreatePolicy = "volunteering-organisation-create";
+    public const string VolunteerOrganisationListPolicy = "volunteering-organisation-list";
+    public const string VolunteerOpportunityDeletePolicy = "volunteering-opportunity-delete";
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -193,6 +196,27 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:RecurringPattern:DeletePermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:RecurringPattern:DeleteWindowSeconds", 60)))));
 
+            options.AddPolicy(VolunteerOrganisationCreatePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisation:CreateWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerOrganisationListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOrganisation:ListPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisation:ListWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerOpportunityDeletePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOpportunity:DeletePermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOpportunity:DeleteWindowSeconds", 60)))));
+
             // Custom rejection response
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -212,7 +236,31 @@ public static class RateLimitingExtensions
                 var isRecurringPatternPath =
                     path.Value?.Contains("/volunteering/", StringComparison.OrdinalIgnoreCase) == true
                     && path.Value.Contains("/recurring-patterns", StringComparison.OrdinalIgnoreCase);
-                var canonicalLimit = isRecurringPatternPath
+                var isVolunteerOrganisationCreatePath =
+                    context.HttpContext.Request.Method == "POST"
+                    && (string.Equals(
+                            path.Value?.TrimEnd('/'),
+                            "/api/v2/volunteering/organisations",
+                            StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(
+                            path.Value?.TrimEnd('/'),
+                            "/api/volunteering/organisations",
+                            StringComparison.OrdinalIgnoreCase));
+                var isVolunteerOrganisationListPath =
+                    context.HttpContext.Request.Method == "GET"
+                    && (string.Equals(
+                            path.Value?.TrimEnd('/'),
+                            "/api/v2/volunteering/my-organisations",
+                            StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(
+                            path.Value?.TrimEnd('/'),
+                            "/api/volunteering/my-organisations",
+                            StringComparison.OrdinalIgnoreCase));
+                var canonicalLimit = isVolunteerOrganisationCreatePath
+                    ? config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5)
+                    : isVolunteerOrganisationListPath
+                    ? config.GetValue("RateLimiting:VolunteerOrganisation:ListPermitLimit", 60)
+                    : isRecurringPatternPath
                     ? context.HttpContext.Request.Method switch
                     {
                         "GET" => config.GetValue("RateLimiting:RecurringPattern:ListPermitLimit", 60),
