@@ -9,9 +9,9 @@
     <div class="govuk-grid-column-two-thirds">
       <a class="govuk-back-link" href="{{ urlFor('/legal') }}">{{ t("legal.back_to_hub") }}</a>
 
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("accessibility.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("accessibility.title") if t else title }}</h1>
-      <p class="govuk-body-l">This statement applies to the accessible version of {{ communityName }}. We want as many people as possible to be able to use this service.</p>
+      <p class="govuk-body-l">{{ t("accessibility.intro", { name: communityName }) }}</p>
 
       <h2 class="govuk-heading-m">{{ t("accessibility.commitment_title") }}</h2>
       <p class="govuk-body">{{ t("accessibility.commitment_body") }}</p>
@@ -22,26 +22,25 @@
       <dl class="govuk-summary-list">
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">{{ t("accessibility.standard_label") }}</dt>
-          <dd class="govuk-summary-list__value">WCAG 2.2 Level AA</dd>
+          <dd class="govuk-summary-list__value">{{ t("accessibility.standard_value") }}</dd>
         </div>
       </dl>
 
-      <h2 class="govuk-heading-m">Accessibility design goals</h2>
-      <p class="govuk-body">We design the service towards the outcomes below. They are goals for the whole service, not a claim that every page and journey has already been manually verified.</p>
+      <h2 class="govuk-heading-m">{{ t("accessibility.features_title") }}</h2>
       {% for feature in features %}
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Goal: {{ feature.title }}</h3>
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ feature.title }}</h3>
         <p class="govuk-body">{{ feature.description }}</p>
       {% endfor %}
 
       <h2 class="govuk-heading-m">{{ t("accessibility.limitations_title") }}</h2>
-      <p class="govuk-body">We are continually improving this service. Automated testing currently covers a representative set of public pages rather than every page and signed-in journey. Some content provided by community members, or features that are still in beta, may not yet fully meet WCAG 2.2 AA. If you find a problem, please tell us using the details below.</p>
+      <p class="govuk-body">{{ t("accessibility.limitations_body") }}</p>
 
       <h2 class="govuk-heading-m">{{ t("accessibility.feedback_title") }}</h2>
       <p class="govuk-body">{{ t("accessibility.feedback_body") }}</p>
       <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("accessibility.feedback_cta") }}</a></p>
 
       <h2 class="govuk-heading-m">{{ t("accessibility.testing_title") }}</h2>
-      <p class="govuk-body">A representative set of public pages is checked automatically for document structure and serious or critical accessibility issues. Automated checks find only some problems and do not prove full WCAG conformance. Manual keyboard, zoom, contrast and screen-reader testing is still required, and coverage will be expanded as new journeys are added.</p>
+      <p class="govuk-body">{{ t("accessibility.testing_body") }}</p>
     </div>
   </div>
 {% endblock %}

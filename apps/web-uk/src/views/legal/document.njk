@@ -9,21 +9,21 @@
     <div class="govuk-grid-column-two-thirds">
       <a class="govuk-back-link" href="{{ urlFor('/legal') }}">{{ t("legal.back_to_hub") }}</a>
 
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("legal.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{% if document %}{{ document.title }}{% else %}{{ config.title }}{% endif %}</h1>
 
       {% if document %}
-        {% if document.updatedLabel or document.versionNumber %}
+        {% if document.updatedAt or document.versionNumber %}
           <p class="govuk-body-s nexus-alpha-meta">
-            {% if document.updatedLabel %}Last updated: {{ document.updatedLabel }}{% endif %}
-            {% if document.versionNumber %}{% if document.updatedLabel %} &middot; {% endif %}Version {{ document.versionNumber }}{% endif %}
+            {% if document.updatedAt %}{{ t("legal.updated_label") }}: {{ document.updatedAt | formatDate }}{% endif %}
+            {% if document.versionNumber %}{% if document.updatedAt %} &middot; {% endif %}{{ t("legal.version_label") }} {{ document.versionNumber }}{% endif %}
           </p>
         {% endif %}
         <div class="legal-content govuk-body">
           {{ document.content | safe }}
         </div>
       {% else %}
-        <div class="govuk-inset-text">A tailored version of this document has not been published for {{ communityName }} yet. The general policy below applies.</div>
+        <div class="govuk-inset-text">{{ t("legal.no_document_notice", { community: communityName }) }}</div>
 
         <p class="govuk-body">{{ config.fallbackIntro }}</p>
 
@@ -51,7 +51,7 @@
 
         <p class="govuk-body">
           {{ t("legal.fallback.contact_prompt_before") }}
-          <a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("legal.fallback.contact_link") }}</a>.
+          <a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("legal.fallback.contact_link") }}</a>{{ t("legal.fallback.contact_prompt_after") }}
         </p>
       {% endif %}
     </div>

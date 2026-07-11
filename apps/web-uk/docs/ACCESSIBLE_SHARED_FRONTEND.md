@@ -34,9 +34,9 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,407/1,407` tests),
-ESLint, the brand-policy gate, CSS compilation, the `58/58` Chromium/axe gate
-in `569.9` seconds (`9.3` minutes),
+The current checkout has passed `45/45` Jest suites (`1,408/1,408` tests),
+ESLint, the brand-policy gate, CSS compilation, the `59/59` Chromium/axe gate
+in `734.5` seconds (`12.1` minutes),
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
 missing, `0` extra parity routes, and `3` ignored infrastructure routes.
@@ -45,7 +45,7 @@ The browser matrix includes signed Arabic dashboard, account, structurally
 rebuilt own-profile, contextually localized profile-settings, activity,
 Reviews summary/list, notifications, messages, wallet overview/management, the
 core member directory plus discovery/nearby/insights, achievements, leaderboard,
-Knowledge Base index/detail, Help Centre/Trust and Safety, About/Guide/Features/FAQ,
+Knowledge Base index/detail, Help Centre/Trust and Safety, About/Guide/Features/FAQ, Legal/accessibility,
 and NEXUS-score pages at 320
 CSS pixels, with RTL/reflow and serious/critical
 axe assertions. Authenticated cases have a 90-second ceiling to accommodate the
@@ -1441,16 +1441,20 @@ translation governance, tenant-domain/feature-gate depth, deeper FAQ runtime,
 manual assistive-technology review, and ASP.NET backend compatibility are not
 certified; `/help` is covered by the default Laravel runtime smoke.
 
-The public legal footer destinations now replace the static legal and
-accessibility placeholders. `/legal` renders the Blade-style legal document card
-hub, `/accessibility` renders the Blade accessibility statement, and
+The public legal footer destinations replace the static legal and accessibility
+placeholders. `/legal` renders the Blade-style legal document card hub,
+`/accessibility` renders the Blade accessibility statement, and
 `/legal/terms`, `/legal/privacy`, `/legal/cookies`,
 `/legal/community-guidelines`, and `/legal/acceptable-use` read tenant-managed
 documents from Laravel `/api/v2/legal/{type}`. When Laravel has no published
 document, the pages render the same GOV.UK-structured fallback copy as the
-Laravel Blade views. This remains partial: tenant-domain routing, localization,
-legal acceptance prompts, version history/compare links, live runtime behavior,
-and ASP.NET backend compatibility are not certified.
+Laravel Blade views. Hub/fallback/accessibility shell copy and metadata labels
+now use exact request-locale Laravel catalogs, keyed PHP section arrays survive
+JSON generation, and managed-document dates use locale formatting. A real
+Arabic hub/privacy/accessibility RTL/reflow/axe journey and the 59/59 aggregate
+gate passed. This remains partial: legal acceptance prompts, version
+history/compare links, broader live managed/fallback permutations, manual
+assistive-technology review, and ASP.NET backend compatibility are not certified.
 
 The signed reviews pages now replace the generated review GET preparation
 fallbacks. `/reviews` reads Laravel-compatible received, given, pending, and

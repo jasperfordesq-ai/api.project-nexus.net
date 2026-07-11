@@ -1521,7 +1521,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(terms.status).toBe(200);
     expect(terms.text).toContain('Community Terms');
-    expect(terms.text).toContain('Last updated: 2026-07-01');
+    expect(terms.text).toContain('Last updated:');
+    expect(terms.text).not.toContain('Last updated: 2026-07-01');
     expect(terms.text).toContain('Version 2.1');
     expect(terms.text).toContain('<p>Use time credits fairly.</p>');
     expect(api.getLegalDocument).toHaveBeenNthCalledWith(1, 'terms');
@@ -1537,6 +1538,31 @@ describe('shared accessible frontend shell', () => {
     expect(legacyTerms.text).toContain('Page not found');
     expect(legacyPrivacy.status).toBe(404);
     expect(legacyPrivacy.text).toContain('Page not found');
+  });
+
+  it('localizes the legal hub, fallback policy, and accessibility statement from Laravel catalogs', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getLegalDocument.mockResolvedValue({ data: null });
+
+    const [hub, privacy, accessibility] = await Promise.all([
+      request(app).get('/legal?locale=ar'),
+      request(app).get('/legal/privacy?locale=ar'),
+      request(app).get('/accessibility?locale=ar')
+    ]);
+
+    for (const response of [hub, privacy, accessibility]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('dir="rtl"');
+    }
+    expect(hub.text).toContain(translate('ar', 'legal.hub_intro', { name: 'Project NEXUS Accessible' }));
+    expect(hub.text).toContain(translate('ar', 'legal.documents.privacy.summary'));
+    expect(privacy.text).toContain(translate('ar', 'legal.no_document_notice', { community: 'Project NEXUS Accessible' }));
+    expect(privacy.text).toContain(translate('ar', 'legal.fallback.privacy_points.0'));
+    expect(accessibility.text).toContain(translate('ar', 'accessibility.intro', { name: 'Project NEXUS Accessible' }));
+    expect(accessibility.text).toContain(translate('ar', 'accessibility.features.keyboard.title'));
+    expect(accessibility.text).toContain(translate('ar', 'accessibility.testing_body'));
   });
 
   it('renders the Laravel-style guide and features pages', async () => {

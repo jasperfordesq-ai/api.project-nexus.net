@@ -7,9 +7,9 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("legal.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("legal.hub_title") if t else title }}</h1>
-      <p class="govuk-body-l">The policies and terms that apply when you use {{ communityName }}. These documents explain your rights, your responsibilities, and how we look after your data.</p>
+      <p class="govuk-body-l">{{ t("legal.hub_intro", { name: communityName }) }}</p>
 
       <div class="nexus-alpha-card-list" aria-label="{{ t("polish_federation.legal_hub_list_label") }}">
         {% for document in documents %}
