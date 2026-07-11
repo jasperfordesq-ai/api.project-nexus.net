@@ -144,6 +144,8 @@
                 "source": "Féach ar an gcód foinse ar GitHub"
             },
             "actions": {
+                "back": "Ar ais",
+                "cancel": "Cealaigh",
                 "download_data": "Iarr ar do shonraí",
                 "delete_account": "Scrios do chuntas",
                 "apply_filters": "Cuir scagairí i bhfeidhm",
@@ -2835,6 +2837,8 @@
                     "empty_accepted": "Níl ceangail chónasctha agat fós.",
                     "empty_received": "Níl iarratais cheangail isteach agat.",
                     "empty_sent": "Níl iarratais cheangail amach agat.",
+                    "pagination_previous": "Ar ais",
+                    "pagination_next": "Ar aghaidh",
                     "community_label": "Pobal",
                     "view_profile": "Féach ar an bpróifíl",
                     "message": "Send a message",
@@ -3251,8 +3255,6 @@
                         "requires_vetted_interaction": "Ní féidir ach le comhaltaí fíoraithe idirghníomhú leat"
                     }
                 },
-                "privacy_contact_label": "Ceadaigh do chomhaltaí eile teagmháil dhíreach a dhéanamh liom",
-                "privacy_contact_hint": "Is féidir le comhaltaí teachtaireacht a chur chugat fiú mura bhfuil tú nasctha leo.",
                 "skills": {
                     "title": "Do chuid scileanna",
                     "description": "Liostaigh na scileanna is féidir leat a thairiscint nó a bhfuil tú ag lorg. Feictear ar do phróifíl phoiblí iad agus cabhraíonn siad le meaitseáil.",
@@ -4247,6 +4249,35 @@
                 "groups_load_error": "We could not load groups. Please try again.",
                 "groups_try_again": "Try again",
                 "legal_hub_list_label": "Cáipéisí dlíthiúla"
+            },
+            "error_pages": {
+                "home_link": "Téigh chuig an leathanach baile",
+                "403_title": "Níl cead agat an leathanach seo a fheiceáil",
+                "403_body": "Níl an leathanach seo ar fáil do do chuntas. Má cheapann tú go bhfuil sé seo mícheart, déan teagmháil le heagraithe do phobail.",
+                "404_title": "Níor aimsíodh an leathanach",
+                "404_body": "Má chlóscríobh tú an seoladh gréasáin, seiceáil go bhfuil sé ceart. Má ghreamaigh tú é, seiceáil gur chóipeáil tú an seoladh iomlán.",
+                "419_title": "Tá an leathanach seo imithe in éag",
+                "419_body": "Chuaigh do sheisiún foirme in éag. Téigh ar ais, athlódáil an leathanach agus bain triail eile as.",
+                "429_title": "An iomarca iarratas",
+                "429_body": "Rinne tú an iomarca iarratas i dtréimhse ghearr. Fan nóiméad agus bain triail eile as.",
+                "503_title": "Ár leithscéal, níl an tseirbhís ar fáil",
+                "503_body": "Bain triail eile as ar ball.",
+                "generic_title": "Ár leithscéal, tá fadhb ann",
+                "generic_body": "Bain triail eile as ar ball."
+            },
+            "ux": {
+                "confirm_irreversible": "Tá an gníomh seo buan agus ní féidir é a chealú.",
+                "confirm_delete_button": "Scrios, cinnte",
+                "transfer_confirm_label": "Tuigim go n-aistrítear na creidmheasanna láithreach agus nach féidir é seo a chealú.",
+                "device_web": "Brabhsálaí gréasáin",
+                "device_mobile": "Aip mhóibíleach",
+                "device_pwa": "Aip suiteáilte",
+                "device_unknown": "Gléas anaithnid",
+                "project_status_approved": "Ceadaithe",
+                "project_status_active": "Gníomhach",
+                "project_status_completed": "Críochnaithe",
+                "rating_choose": "Roghnaigh rátáil",
+                "rating_out_of": ":rating as 5"
             }
         },
         "govuk_alpha_activity": {
@@ -6646,7 +6677,7 @@
             "pipeline": {
                 "title": "Application pipeline",
                 "caption": "Move candidates through your hiring stages",
-                "description": "Candidates are grouped by stage. Change a candidate&rsquo;s stage to move them through your pipeline.",
+                "description": "Candidates are grouped by stage. Change a candidate’s stage to move them through your pipeline.",
                 "column_applied": "Applied",
                 "column_screening": "Screening",
                 "column_interview": "Interview",

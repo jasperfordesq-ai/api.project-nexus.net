@@ -165,6 +165,39 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     });
   }
 
+  test('Arabic 404 uses the exact Laravel error catalog with RTL reflow', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const path = `${mountPath}/nonexistent-page?locale=ar`;
+    const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+
+    expect(response).not.toBeNull();
+    expect(response.status()).toBe(404);
+    expect(response.headers()['content-language']).toBe('ar');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('h1')).toHaveText(translate('ar', 'error_pages.404_title'));
+    await expect(page.locator('main')).toContainText(translate('ar', 'error_pages.404_body'));
+    await expect(page.locator('main a')).toContainText(translate('ar', 'error_pages.home_link'));
+
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    await testInfo.attach('arabic-404-evidence', {
+      body: Buffer.from(JSON.stringify({
+        url: page.url(),
+        status: response.status(),
+        overflow,
+        violations: formatViolations(axeResults.violations)
+      }, null, 2)),
+      contentType: 'application/json'
+    });
+    expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+  });
+
   test('Arabic Help Centre and Trust and Safety preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 320, height: 640 });

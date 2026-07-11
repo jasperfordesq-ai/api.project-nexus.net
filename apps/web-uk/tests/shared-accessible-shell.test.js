@@ -7705,6 +7705,47 @@ describe('shared accessible frontend shell', () => {
     expect(api.getSkillMembers).toHaveBeenCalledWith('test-token', 'gardening', { limit: 40 });
   });
 
+  it('renders shared Laravel error pages from the exact Arabic catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      api.getGoals.mockReset()
+        .mockRejectedValueOnce(new api.ApiError('Forbidden', 403))
+        .mockRejectedValueOnce(new api.ApiError('Too many requests', 429))
+        .mockRejectedValueOnce(new api.ApiOfflineError())
+        .mockRejectedValueOnce(new Error('Unexpected failure'));
+
+      const forbidden = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
+      const missing = await request(app).get('/nonexistent-page?locale=ar');
+      const limited = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
+      const unavailable = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
+      const failed = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
+
+      expect(forbidden.status).toBe(403);
+      expect(forbidden.text).toContain(t('error_pages.403_title'));
+      expect(missing.status).toBe(404);
+      expect(missing.text).toContain(t('error_pages.404_title'));
+      expect(missing.text).toContain(t('error_pages.404_body'));
+      expect(limited.status).toBe(429);
+      expect(limited.text).toContain(t('error_pages.429_title'));
+      expect(limited.text).toContain(t('error_pages.429_body'));
+      expect(unavailable.status).toBe(503);
+      expect(unavailable.text).toContain(t('error_pages.503_title'));
+      expect(unavailable.text).toContain(t('error_pages.503_body'));
+      expect(failed.status).toBe(500);
+      expect(failed.text).toContain(t('error_pages.generic_title'));
+      expect(failed.text).toContain(t('error_pages.generic_body'));
+      for (const response of [forbidden, missing, limited, unavailable, failed]) {
+        expect(response.text).toContain(t('error_pages.home_link'));
+        expect(response.text).not.toContain('error_pages.');
+      }
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('redirects signed-out visitors away from the Laravel goals index before calling Laravel', async () => {
     const api = require('../src/lib/api');
 

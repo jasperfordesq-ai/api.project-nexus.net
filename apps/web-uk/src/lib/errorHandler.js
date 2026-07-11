@@ -155,6 +155,10 @@ function finalErrorHandler(err, req, res, next) {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
 
+  if (status === 429) {
+    return res.status(429).render('errors/429', { title: 'Too many requests' });
+  }
+
   if (status === 503 || err instanceof ApiOfflineError) {
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }

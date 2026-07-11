@@ -144,6 +144,8 @@
                 "source": "Ver el c?digo fuente en GitHub"
             },
             "actions": {
+                "back": "Volver",
+                "cancel": "Cancelar",
                 "download_data": "Solicita tus datos",
                 "delete_account": "Elimina tu cuenta",
                 "apply_filters": "Aplicar filtros",
@@ -2835,6 +2837,8 @@
                     "empty_accepted": "Todavía no tiene conexiones federadas.",
                     "empty_received": "No tiene solicitudes de conexión entrantes.",
                     "empty_sent": "No tiene solicitudes de conexión salientes.",
+                    "pagination_previous": "Anterior",
+                    "pagination_next": "Siguiente",
                     "community_label": "Comunidad",
                     "view_profile": "Ver perfil",
                     "message": "Send a message",
@@ -3251,8 +3255,6 @@
                         "requires_vetted_interaction": "Solo los miembros verificados pueden interactuar con usted"
                     }
                 },
-                "privacy_contact_label": "Permitir que otros miembros me contacten directamente",
-                "privacy_contact_hint": "Los miembros pueden enviarle un mensaje aunque no estén conectados con usted.",
                 "skills": {
                     "title": "Sus habilidades",
                     "description": "Indique las habilidades que puede ofrecer o que está buscando. Aparecen en su perfil público y ayudan con los emparejamientos.",
@@ -4247,6 +4249,35 @@
                 "groups_load_error": "We could not load groups. Please try again.",
                 "groups_try_again": "Try again",
                 "legal_hub_list_label": "Documentos legales"
+            },
+            "error_pages": {
+                "home_link": "Ir a la página de inicio",
+                "403_title": "No tienes permiso para ver esta página",
+                "403_body": "Esta página no está disponible para tu cuenta. Si crees que es un error, contacta con los organizadores de tu comunidad.",
+                "404_title": "Página no encontrada",
+                "404_body": "Si escribiste la dirección web, comprueba que sea correcta. Si la pegaste, comprueba que copiaste la dirección completa.",
+                "419_title": "Esta página ha caducado",
+                "419_body": "Tu sesión del formulario ha caducado. Vuelve atrás, recarga la página e inténtalo de nuevo.",
+                "429_title": "Demasiadas solicitudes",
+                "429_body": "Has hecho demasiadas solicitudes en poco tiempo. Espera un minuto e inténtalo de nuevo.",
+                "503_title": "Lo sentimos, el servicio no está disponible",
+                "503_body": "Inténtalo de nuevo más tarde.",
+                "generic_title": "Lo sentimos, hay un problema",
+                "generic_body": "Inténtalo de nuevo más tarde."
+            },
+            "ux": {
+                "confirm_irreversible": "Esta acción es permanente y no se puede deshacer.",
+                "confirm_delete_button": "Sí, eliminar",
+                "transfer_confirm_label": "Entiendo que los créditos se mueven de inmediato y esto no se puede deshacer.",
+                "device_web": "Navegador web",
+                "device_mobile": "Aplicación móvil",
+                "device_pwa": "Aplicación instalada",
+                "device_unknown": "Dispositivo desconocido",
+                "project_status_approved": "Aprobado",
+                "project_status_active": "Activo",
+                "project_status_completed": "Completado",
+                "rating_choose": "Elige una valoración",
+                "rating_out_of": ":rating de 5"
             }
         },
         "govuk_alpha_activity": {
@@ -6646,7 +6677,7 @@
             "pipeline": {
                 "title": "Application pipeline",
                 "caption": "Move candidates through your hiring stages",
-                "description": "Candidates are grouped by stage. Change a candidate&rsquo;s stage to move them through your pipeline.",
+                "description": "Candidates are grouped by stage. Change a candidate’s stage to move them through your pipeline.",
                 "column_applied": "Applied",
                 "column_screening": "Screening",
                 "column_interview": "Interview",

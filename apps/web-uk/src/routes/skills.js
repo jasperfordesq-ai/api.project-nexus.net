@@ -134,7 +134,7 @@ router.get('/', asyncRoute(async (req, res) => {
     }
   } catch (error) {
     if (isAuthError(error)) throw error;
-    apiError = `${res.locals.t('errors.503_title')} ${res.locals.t('errors.503_body')}`;
+    apiError = `${res.locals.t('error_pages.503_title')} ${res.locals.t('error_pages.503_body')}`;
   }
 
   return res.render('skills/index', {

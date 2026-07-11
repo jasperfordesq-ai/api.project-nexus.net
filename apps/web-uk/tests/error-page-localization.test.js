@@ -29,6 +29,7 @@ const errorTemplates = [
   'errors/503.njk',
   'error.njk'
 ];
+const catalogErrorTemplates = errorTemplates.filter((name) => name !== 'error.njk');
 
 function templateSource(name) {
   return fs.readFileSync(path.join(viewsDirectory, name), 'utf8');
@@ -51,22 +52,32 @@ function renderErrorTemplate(name, locale, overrides = {}) {
 }
 
 describe('Laravel-first error-page localization', () => {
-  it('delegates the generic home action to the authoritative Laravel key', () => {
-    for (const templateName of errorTemplates) {
+  it('delegates shared status-page actions to the authoritative Laravel error catalog', () => {
+    for (const templateName of catalogErrorTemplates) {
       const source = templateSource(templateName);
-      expect(source).toContain('t("nav.home")');
+      expect(source).toContain('t("error_pages.home_link")');
       expect(source).not.toContain('>Go to the home page</a>');
     }
+    expect(templateSource('error.njk')).toContain('t("nav.home")');
   });
 
-  it('has a direct nav.home catalog value in all 11 Laravel locales', () => {
-      const translationKey = 'nav.home';
+  it('has direct shared error-page catalog values in all 11 Laravel locales', () => {
+      const translationKeys = [
+        'error_pages.home_link',
+        'error_pages.403_title',
+        'error_pages.404_title',
+        'error_pages.429_title',
+        'error_pages.503_title',
+        'error_pages.generic_title'
+      ];
       expect(SUPPORTED_LOCALES).toHaveLength(11);
       for (const locale of SUPPORTED_LOCALES) {
-        const directValue = valueInCatalog(catalogFor(locale), translationKey);
-        expect(typeof directValue).toBe('string');
-        expect(directValue).not.toBe('');
-        expect(translate(locale, translationKey)).toBe(directValue);
+        for (const translationKey of translationKeys) {
+          const directValue = valueInCatalog(catalogFor(locale), translationKey);
+          expect(typeof directValue).toBe('string');
+          expect(directValue).not.toBe('');
+          expect(translate(locale, translationKey)).toBe(directValue);
+        }
       }
   });
 
@@ -74,18 +85,23 @@ describe('Laravel-first error-page localization', () => {
     'renders the mapped Laravel copy for %s without changing error semantics',
     (locale) => {
       const t = createTranslator(locale);
-      for (const templateName of errorTemplates) {
+      for (const templateName of catalogErrorTemplates) {
         const html = renderErrorTemplate(templateName, locale);
 
         expect(html).toContain(`<html lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}"`);
-        expect(html).toContain(`>${t('nav.home')}</a>`);
+        expect(html).toContain(`>${t('error_pages.home_link')}</a>`);
         expect((html.match(/<main\b/g) || [])).toHaveLength(1);
         expect((html.match(/id="main-content"/g) || [])).toHaveLength(1);
       }
 
+      const genericHtml = renderErrorTemplate('error.njk', locale);
+      expect(genericHtml).toContain(`>${t('nav.home')}</a>`);
+      expect((genericHtml.match(/<main\b/g) || [])).toHaveLength(1);
+      expect((genericHtml.match(/id="main-content"/g) || [])).toHaveLength(1);
+
       const serverErrorHtml = renderErrorTemplate('errors/500.njk', locale);
-      expect(serverErrorHtml).toContain('<h1 class="govuk-heading-xl">Sorry, there is a problem with the service</h1>');
-      expect(serverErrorHtml).toContain('Try again later.');
+      expect(serverErrorHtml).toContain(`<h1 class="govuk-heading-xl">${t('error_pages.generic_title')}</h1>`);
+      expect(serverErrorHtml).toContain(t('error_pages.generic_body'));
     }
   );
 

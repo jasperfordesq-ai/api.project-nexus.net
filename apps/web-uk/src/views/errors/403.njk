@@ -3,10 +3,10 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h1 class="govuk-heading-xl">Forbidden</h1>
-      <p class="govuk-body">{{ message or "You do not have permission to access this page." }}</p>
+      <h1 class="govuk-heading-xl">{{ t("error_pages.403_title") }}</h1>
+      <p class="govuk-body">{{ message or t("error_pages.403_body") }}</p>
       <p class="govuk-body">
-        <a href="{{ urlFor('/') }}" class="govuk-link">{{ t("nav.home") }}</a>
+        <a href="{{ urlFor('/') }}" class="govuk-link">{{ t("error_pages.home_link") }}</a>
       </p>
     </div>
   </div>

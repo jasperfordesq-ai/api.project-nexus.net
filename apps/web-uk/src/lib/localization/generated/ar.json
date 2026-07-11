@@ -144,6 +144,8 @@
                 "source": "عرض الشفرة المصدرية على GitHub"
             },
             "actions": {
+                "back": "رجوع",
+                "cancel": "إلغاء",
                 "download_data": "اطلب بياناتك",
                 "delete_account": "احذف حسابك",
                 "apply_filters": "تطبيق المرشحات",
@@ -2835,6 +2837,8 @@
                     "empty_accepted": "ليس لديك أي اتصالات موحدة حتى الآن.",
                     "empty_received": "ليس لديك أي طلبات اتصال واردة.",
                     "empty_sent": "ليس لديك أي طلبات اتصال صادرة.",
+                    "pagination_previous": "السابق",
+                    "pagination_next": "التالي",
                     "community_label": "المجتمع",
                     "view_profile": "عرض الملف الشخصي",
                     "message": "Send a message",
@@ -3251,8 +3255,6 @@
                         "requires_vetted_interaction": "لا يمكن للأعضاء غير المدققين التفاعل معك إلا إذا خضعوا للتحقق"
                     }
                 },
-                "privacy_contact_label": "السماح للأعضاء الآخرين بالتواصل معي مباشرةً",
-                "privacy_contact_hint": "يمكن للأعضاء إرسال رسالة إليك حتى لو لم تكونوا في قائمة جهات اتصالك.",
                 "skills": {
                     "title": "مهاراتك",
                     "description": "أدرج المهارات التي يمكنك تقديمها أو التي تبحث عنها. تظهر في ملفك الشخصي العام وتساعد في المطابقة.",
@@ -4247,6 +4249,35 @@
                 "groups_load_error": "We could not load groups. Please try again.",
                 "groups_try_again": "Try again",
                 "legal_hub_list_label": "الوثائق القانونية"
+            },
+            "error_pages": {
+                "home_link": "الانتقال إلى الصفحة الرئيسية",
+                "403_title": "ليس لديك إذن لعرض هذه الصفحة",
+                "403_body": "هذه الصفحة غير متاحة لحسابك. إذا كنت تعتقد أن هذا خطأ، فتواصل مع منظمي مجتمعك.",
+                "404_title": "الصفحة غير موجودة",
+                "404_body": "إذا كتبت عنوان الويب، فتأكد من صحته. وإذا لصقته، فتأكد من نسخ العنوان كاملاً.",
+                "419_title": "انتهت صلاحية هذه الصفحة",
+                "419_body": "انتهت صلاحية جلسة النموذج. ارجع وأعد تحميل الصفحة وحاول مرة أخرى.",
+                "429_title": "طلبات كثيرة جداً",
+                "429_body": "لقد أرسلت طلبات كثيرة في وقت قصير. انتظر دقيقة وحاول مرة أخرى.",
+                "503_title": "عذراً، الخدمة غير متاحة",
+                "503_body": "حاول مرة أخرى لاحقاً.",
+                "generic_title": "عذراً، حدثت مشكلة",
+                "generic_body": "حاول مرة أخرى لاحقاً."
+            },
+            "ux": {
+                "confirm_irreversible": "هذا الإجراء نهائي ولا يمكن التراجع عنه.",
+                "confirm_delete_button": "نعم، احذف",
+                "transfer_confirm_label": "أفهم أن الأرصدة تُنقل فوراً وأنه لا يمكن التراجع عن ذلك.",
+                "device_web": "متصفح الويب",
+                "device_mobile": "تطبيق الجوال",
+                "device_pwa": "تطبيق مثبّت",
+                "device_unknown": "جهاز غير معروف",
+                "project_status_approved": "معتمد",
+                "project_status_active": "نشط",
+                "project_status_completed": "مكتمل",
+                "rating_choose": "اختر تقييماً",
+                "rating_out_of": ":rating من 5"
             }
         },
         "govuk_alpha_activity": {
@@ -6646,7 +6677,7 @@
             "pipeline": {
                 "title": "Application pipeline",
                 "caption": "Move candidates through your hiring stages",
-                "description": "Candidates are grouped by stage. Change a candidate&rsquo;s stage to move them through your pipeline.",
+                "description": "Candidates are grouped by stage. Change a candidate’s stage to move them through your pipeline.",
                 "column_applied": "Applied",
                 "column_screening": "Screening",
                 "column_interview": "Interview",

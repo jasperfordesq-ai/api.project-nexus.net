@@ -4258,6 +4258,34 @@ infrastructure routes. Feature-gate depth, live saved-search mutations,
 recorded manual parity, broader runtime behavior, and ASP.NET backend
 compatibility remain open.
 
+Latest shared error-page and generated-locale refresh slice: Laravel's current
+`lang/{locale}/govuk_alpha*.php` source had advanced beyond Web UK's generated
+snapshots. `npm run locales:sync` refreshed all 11 generated locale files to 24
+namespaces and 7,364 string keys per locale with zero missing or extra keys.
+The newly imported exact `error_pages.*` catalog now drives the shared
+403/404/429/500/503 title, body, and home-link copy; safe route-supplied 403 and
+404 messages remain supported. The Skills API failure inset was also corrected
+from the nonexistent `errors.503_*` path to `error_pages.503_*`.
+
+The first focused integration run exposed a real middleware defect: an
+`ApiError` carrying HTTP 429 retained status 429 but rendered the generic 500
+page. The final error handler now selects `errors/429`. The first complete Jest
+run then exposed four stale assertions that still required `nav.home` and fixed
+English 500 copy; those tests now verify every shared status page against the
+exact Laravel error catalog while retaining the generic dynamic error-page
+contract. Focused verification passed 8/8 selected tests. Complete verification
+passed 45/45 Jest suites and 1,425/1,425 tests, warning-free ESLint, the
+290-template zero-match audit, and the route matrix at 608 Laravel routes, 608
+matched, 0 missing, 0 extra, and 3 ignored infrastructure routes. A fresh
+ephemeral Chromium run passed the Arabic mounted 404 at HTTP 404 with exact
+title/body/home markers, `Content-Language: ar`, RTL, 320px reflow, and no
+serious/critical axe violations (`1/1`, 14.5 seconds inside Playwright). Two
+initial wrapper invocations reported no tests because a space-containing grep
+was split into an extra file filter; `--grep=Arabic.404` selected and ran the
+intended test. The latest uninterrupted full browser aggregate remains 62/62
+at `e155375c`; this focused current-source result does not relabel that older
+aggregate.
+
 ## Documents To Trust
 
 Read these in order:

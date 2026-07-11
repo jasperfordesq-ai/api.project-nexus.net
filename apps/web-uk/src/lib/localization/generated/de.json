@@ -144,6 +144,8 @@
                 "source": "Quellcode auf GitHub ansehen"
             },
             "actions": {
+                "back": "Zurück",
+                "cancel": "Abbrechen",
                 "download_data": "Fordern Sie Ihre Daten an",
                 "delete_account": "Löschen Sie Ihr Konto",
                 "apply_filters": "Wenden Sie Filter an",
@@ -2835,6 +2837,8 @@
                     "empty_accepted": "Sie haben noch keine verbundenen Kontakte.",
                     "empty_received": "Sie haben keine eingehenden Kontaktanfragen.",
                     "empty_sent": "Sie haben keine ausgehenden Kontaktanfragen.",
+                    "pagination_previous": "Zurück",
+                    "pagination_next": "Weiter",
                     "community_label": "Gemeinschaft",
                     "view_profile": "Profil anzeigen",
                     "message": "Send a message",
@@ -3251,8 +3255,6 @@
                         "requires_vetted_interaction": "Nur geprüfte Mitglieder können mit Ihnen interagieren"
                     }
                 },
-                "privacy_contact_label": "Anderen Mitgliedern erlauben, mich direkt zu kontaktieren",
-                "privacy_contact_hint": "Mitglieder können Ihnen eine Nachricht senden, auch wenn Sie nicht verbunden sind.",
                 "skills": {
                     "title": "Ihre Fähigkeiten",
                     "description": "Tragen Sie die Fähigkeiten ein, die Sie anbieten oder suchen. Sie erscheinen in Ihrem öffentlichen Profil und helfen bei der Vermittlung.",
@@ -4247,6 +4249,35 @@
                 "groups_load_error": "We could not load groups. Please try again.",
                 "groups_try_again": "Try again",
                 "legal_hub_list_label": "Rechtliche Dokumente"
+            },
+            "error_pages": {
+                "home_link": "Zur Startseite",
+                "403_title": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+                "403_body": "Diese Seite ist für Ihr Konto nicht verfügbar. Wenn Sie das für einen Fehler halten, wenden Sie sich an die Organisatoren Ihrer Community.",
+                "404_title": "Seite nicht gefunden",
+                "404_body": "Wenn Sie die Webadresse eingetippt haben, prüfen Sie, ob sie korrekt ist. Wenn Sie die Adresse eingefügt haben, prüfen Sie, ob Sie sie vollständig kopiert haben.",
+                "419_title": "Diese Seite ist abgelaufen",
+                "419_body": "Ihre Formularsitzung ist abgelaufen. Gehen Sie zurück, laden Sie die Seite neu und versuchen Sie es erneut.",
+                "429_title": "Zu viele Anfragen",
+                "429_body": "Sie haben in kurzer Zeit zu viele Anfragen gestellt. Warten Sie eine Minute und versuchen Sie es erneut.",
+                "503_title": "Der Dienst ist leider nicht verfügbar",
+                "503_body": "Versuchen Sie es später erneut.",
+                "generic_title": "Es ist leider ein Problem aufgetreten",
+                "generic_body": "Versuchen Sie es später erneut."
+            },
+            "ux": {
+                "confirm_irreversible": "Diese Aktion ist dauerhaft und kann nicht rückgängig gemacht werden.",
+                "confirm_delete_button": "Ja, löschen",
+                "transfer_confirm_label": "Ich verstehe, dass die Stunden sofort übertragen werden und dies nicht rückgängig gemacht werden kann.",
+                "device_web": "Webbrowser",
+                "device_mobile": "Mobile App",
+                "device_pwa": "Installierte App",
+                "device_unknown": "Unbekanntes Gerät",
+                "project_status_approved": "Genehmigt",
+                "project_status_active": "Aktiv",
+                "project_status_completed": "Abgeschlossen",
+                "rating_choose": "Bewertung auswählen",
+                "rating_out_of": ":rating von 5"
             }
         },
         "govuk_alpha_activity": {
@@ -6646,7 +6677,7 @@
             "pipeline": {
                 "title": "Application pipeline",
                 "caption": "Move candidates through your hiring stages",
-                "description": "Candidates are grouped by stage. Change a candidate&rsquo;s stage to move them through your pipeline.",
+                "description": "Candidates are grouped by stage. Change a candidate’s stage to move them through your pipeline.",
                 "column_applied": "Applied",
                 "column_screening": "Screening",
                 "column_interview": "Interview",
