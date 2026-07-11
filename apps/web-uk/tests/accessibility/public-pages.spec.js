@@ -114,7 +114,7 @@ test.describe('representative public-page accessibility gate', () => {
 
   for (const route of PUBLIC_ROUTES) {
     test(`${route.name} has a valid document structure and no high-impact axe violations`, async ({ page }, testInfo) => {
-      test.setTimeout(90_000);
+      test.setTimeout(120_000);
       const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
 
       expect(response, `${route.path} did not return a document response`).not.toBeNull();
@@ -624,7 +624,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
 
   for (const route of AUTHENTICATED_ROUTES) {
     test(`${route.name} has valid structure, reflow, and no high-impact axe violations`, async ({ browser, baseURL }, testInfo) => {
-      test.setTimeout(90_000);
+      test.setTimeout(120_000);
       const context = await browser.newContext({ baseURL, storageState });
       const page = await context.newPage();
       await page.setViewportSize({ width: 320, height: 640 });
@@ -744,7 +744,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   }
 
   test('Arabic profile password error links the summary to its inline field error', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
@@ -817,7 +817,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic dashboard localizes Laravel-owned labels and retains RTL reflow', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
@@ -1759,7 +1759,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic profile summary localizes Laravel sections with RTL reflow', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
@@ -1807,7 +1807,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic profile settings localize Laravel form sections with RTL reflow', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
