@@ -62,10 +62,10 @@ scores must not be reused as current results.
 - Conservative template audit: `292` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Latest uninterrupted automated browser accessibility pass: Chromium/axe
+- Latest uninterrupted full automated browser accessibility pass: Chromium/axe
   passed `75/75` cases in `1,538.9` seconds (`25.6` minutes), with `0` skipped,
-  `0` unexpected, and `0` flaky results, against the exact current source on
-  2026-07-11. The outer command wall time, including CSS compilation and runner
+  `0` unexpected, and `0` flaky results, at checkpoint `c6c20df6` on 2026-07-11.
+  The outer command wall time, including CSS compilation and runner
   startup, was `1,557.7` seconds (`26.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
@@ -4496,6 +4496,26 @@ wall time). The final uninterrupted exact-current Chromium/axe aggregate then
 passed `75/75` in `1,538.9` seconds (`25.6` minutes), with `0` skipped, `0`
 unexpected, and `0` flaky results; outer wall time was `1,557.7` seconds (`26.0`
 minutes). Only the pre-existing GOV.UK Sass palette deprecation warnings remain.
+
+## 2026-07-11 Profile Settings Remaining Section Structure
+
+The language, notification, match, personalisation, safeguarding, and data/
+privacy sections now finish the direct structural comparison with
+`profile-settings.blade.php`. The language form uses the source profile label;
+notification groups use heading-bearing legends, small checkboxes, exact
+`notif_*` IDs, and a described digest select; match controls use the source
+compact checkbox treatment. Safeguarding preferences now use the source card,
+metadata, and warning-button structure. Data/privacy uses the source section and
+heading IDs, extra-large divider, export anchor, and localized delete heading.
+
+Focused rendering passed `622/622`; warning-free lint and the 292-template
+zero-match audit passed. The current Laravel-backed normal and Arabic
+Profile-settings journeys passed `2/2` in 2.0 minutes, including RTL, 320px
+reflow, and axe. Complete Jest passed `45/45` suites and `1,429/1,429` tests;
+branding, 11-locale/24-namespace/7,364-key structure, CSS compilation, and
+608/608 route parity remain green. The latest uninterrupted full browser
+aggregate remains the immediately preceding `c6c20df6` checkpoint at `75/75`;
+this slice does not claim a newer full aggregate.
 
 ## Documents To Trust
 

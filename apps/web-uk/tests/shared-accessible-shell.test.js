@@ -2255,12 +2255,17 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Gaeilge');
     expect(signed.text).toContain('Email and notifications');
     expect(signed.text).toContain('Activity digest emails');
+    expect(signed.text).toContain('class="govuk-checkboxes govuk-checkboxes--small"');
+    expect(signed.text).toContain('id="notif_email_messages" name="email_messages"');
+    expect(signed.text).toContain('id="digest_frequency" name="digest_frequency" aria-describedby="digest-frequency-hint"');
     expect(signed.text).toContain('Match notifications');
     expect(signed.text).toContain('Every week');
     expect(signed.text).toContain('Personalisation and translation');
     expect(signed.text).toContain('Safeguarding');
     expect(signed.text).toContain('Broker approval');
     expect(signed.text).toContain('Exchanges need broker approval');
+    expect(signed.text).toContain('class="govuk-body-s nexus-alpha-meta"');
+    expect(signed.text).toContain('govuk-button--warning govuk-!-margin-bottom-0');
     expect(signed.text).toContain('id="location" name="location" type="text" value="London" autocomplete="address-level2"');
     expect(signed.text).toContain('id="skill_name" name="skill_name" type="text" maxlength="100"');
     expect(signed.text).toContain('name="device_name" type="text" value="Work laptop" maxlength="100"');
@@ -2276,6 +2281,8 @@ describe('shared accessible frontend shell', () => {
     expect(passwordError.text).toContain('id="new_password_confirmation-error" class="govuk-error-message"');
     expect(passwordError.text).toContain('id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password" spellcheck="false" aria-describedby="new_password_confirmation-error"');
     expect(signed.text).toContain('Your data and privacy');
+    expect(signed.text).toContain('id="data-privacy-heading"');
+    expect(signed.text).toContain('id="data-export"');
     expect(signed.text).toContain('Get a copy of your data');
     expect(signed.text).toContain('Request your data');
     expect(signed.text).toContain('Delete your account');
