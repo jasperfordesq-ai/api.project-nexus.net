@@ -4764,6 +4764,15 @@ UK and returning 404; Listing edit now resolves same-origin Laravel assets
 through the existing safe backend URL helper. Full verification passed `45/45`
 Jest suites and `1,445/1,445` tests with green lint.
 
+The default-English create/edit form follow-up replaces Web UK-authored form
+chrome with Blade's exact request-localized captions, headings, descriptions,
+intent labels, field labels/hints, delivery-mode values, image treatment,
+skill copy, and publish/save labels. Default tenant copy is exact; only tenants
+that override minimum lengths or upload size receive an appended configured
+constraint so client guidance remains truthful. Focused source/render proof
+passed `3/3`; full Jest passed `45/45` suites and `1,446/1,446` tests with green
+lint.
+
 ## Documents To Trust
 
 Read these in order:

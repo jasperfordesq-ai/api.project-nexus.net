@@ -47,10 +47,10 @@
   {% set listingFormAction = "/listings/" + (listing.id | string) + "/edit" if listing and listing.id else "/listings/new" %}
   {% set typeItems = [] %}
   {% if config.allowOffers %}
-    {% set typeItems = (typeItems.push({ value: "offer", text: "Offer", checked: currentType == "offer" }), typeItems) %}
+    {% set typeItems = (typeItems.push({ value: "offer", text: t("listings.offer"), checked: currentType == "offer" }), typeItems) %}
   {% endif %}
   {% if config.allowRequests %}
-    {% set typeItems = (typeItems.push({ value: "request", text: "Request", checked: currentType == "request" }), typeItems) %}
+    {% set typeItems = (typeItems.push({ value: "request", text: t("listings.request"), checked: currentType == "request" }), typeItems) %}
   {% endif %}
   {% set categoryItems = [{ value: "", text: t("listings.create.category_none"), selected: not currentCategoryId }] %}
   {% for category in categories %}
@@ -82,8 +82,9 @@
         </div>
       {% endif %}
 
-      <h1 class="govuk-heading-xl">{% if listing %}Edit listing{% else %}Create listing{% endif %}</h1>
-      <p class="govuk-body-l">Share an offer or request with your community.</p>
+      <span class="govuk-caption-l">{{ t("listings.edit.caption" if listing else "listings.create.caption", { community: tenantName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("listings.edit.title" if listing else "listings.create.title") }}</h1>
+      <p class="govuk-body-l">{{ t("listings.edit.description") if listing else t("listings.create.description", { community: tenantName }) }}</p>
 
       <form method="post" action="{{ urlFor(listingFormAction) }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -96,21 +97,21 @@
           name: "type",
           fieldset: {
             legend: {
-              text: "What are you listing?",
+              text: t("listings.create.intent_legend"),
               classes: "govuk-fieldset__legend--m"
             }
           },
-          hint: { text: "Choose whether you are offering help or asking for help." },
+          hint: { text: t("listings.create.intent_hint") },
           items: typeItems,
           errorMessage: { text: fieldErrors.type } if fieldErrors.type else undefined
         }) }}
 
         {{ govukInput({
           label: {
-            text: t("group_exchanges.form_title_label"),
+            text: t("listings.create.title_label"),
             classes: "govuk-label--m"
           },
-          hint: { text: "Use a short, clear title. At least " + (config.minTitleLength | string) + " characters." },
+          hint: { text: t("listings.create.title_hint") + (" At least " + (config.minTitleLength | string) + " characters." if config.minTitleLength != 5 else "") },
           id: "title",
           name: "title",
           value: currentTitle,
@@ -120,10 +121,10 @@
 
         {{ govukTextarea({
           label: {
-            text: "Description",
+            text: t("listings.create.description_label"),
             classes: "govuk-label--m"
           },
-          hint: { text: "Explain what is offered or needed. At least " + (config.minDescriptionLength | string) + " characters." },
+          hint: { text: t("listings.create.description_hint") + (" At least " + (config.minDescriptionLength | string) + " characters." if config.minDescriptionLength != 20 else "") },
           id: "description",
           name: "description",
           rows: 6,
@@ -136,20 +137,20 @@
           id: "category_id",
           name: "category_id",
           label: {
-            text: "Category" + ("" if config.requireCategory else " (optional)"),
+            text: t("listings.create.category_label") + ("" if config.requireCategory else " (" + t("listings.create.optional") + ")"),
             classes: "govuk-label--m"
           },
-          hint: { text: "Choose the closest category for this listing." },
+          hint: { text: t("listings.create.category_hint") },
           items: categoryItems,
           errorMessage: { text: fieldErrors.category_id } if fieldErrors.category_id else undefined
         }) }}
 
         {{ govukInput({
           label: {
-            text: "Estimated hours" + ("" if config.requireHours else " (optional)"),
+            text: t("listings.create.hours_label") + ("" if config.requireHours else " (" + t("listings.create.optional") + ")"),
             classes: "govuk-label--m"
           },
-          hint: { text: "Enter an estimate between 0.5 and 2,000 hours." },
+          hint: { text: t("listings.create.hours_hint") },
           id: "hours_estimate",
           name: "hours_estimate",
           type: "number",
@@ -166,15 +167,15 @@
             classes: "govuk-radios--small",
             fieldset: {
               legend: {
-                text: "How can the service be delivered?",
+                text: t("listings.create.service_type_legend"),
                 classes: "govuk-fieldset__legend--m"
               }
             },
             items: [
-              { value: "physical_only", text: "In person only", checked: currentServiceType == "physical_only" },
-              { value: "remote_only", text: t("jobs_t2.remote_label"), checked: currentServiceType == "remote_only" },
-              { value: "hybrid", text: "In person or remote", checked: currentServiceType == "hybrid" },
-              { value: "location_dependent", text: "Depends on the service", checked: currentServiceType == "location_dependent" }
+              { value: "physical_only", text: t("listings.service_types.physical_only"), checked: currentServiceType == "physical_only" },
+              { value: "remote_only", text: t("listings.service_types.remote_only"), checked: currentServiceType == "remote_only" },
+              { value: "hybrid", text: t("listings.service_types.hybrid"), checked: currentServiceType == "hybrid" },
+              { value: "location_dependent", text: t("listings.service_types.location_dependent"), checked: currentServiceType == "location_dependent" }
             ],
             errorMessage: { text: fieldErrors.service_type } if fieldErrors.service_type else undefined
           }) }}
@@ -184,10 +185,10 @@
 
         {{ govukInput({
           label: {
-            text: "Location" + ("" if config.requireLocation else " (optional)"),
+            text: t("listings.create.location_label") + ("" if config.requireLocation else " (" + t("listings.create.optional") + ")"),
             classes: "govuk-label--m"
           },
-          hint: { text: "For example, a town, neighbourhood or meeting place." },
+          hint: { text: t("listings.create.location_hint") },
           id: "location",
           name: "location",
           value: currentLocation,
@@ -196,12 +197,12 @@
         }) }}
 
         <div class="govuk-form-group{% if fieldErrors.image %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="image">Image{% if not config.requireImage %} (optional){% endif %}</label>
+          <label class="govuk-label" for="image">{{ t("listings.edit.image_label" if listing else "listings.create.image_label") }}</label>
           {% if listingImageUrl %}
-            <p class="govuk-body-s govuk-!-margin-bottom-1">Current image</p>
-            <img src="{{ listingImageUrl }}" alt="{{ currentTitle }}" width="160" height="120" loading="lazy" decoding="async" class="govuk-!-margin-bottom-2">
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("listings.edit.current_image") }}</p>
+            <img src="{{ listingImageUrl }}" alt="{{ currentTitle }}" width="120" height="90" loading="lazy" decoding="async" class="nexus-alpha-card-thumb govuk-!-margin-bottom-2">
           {% endif %}
-          <div id="image-hint" class="govuk-hint">JPEG, PNG, GIF or WebP, up to {{ config.maxImageSizeMb }} MB. If the upload fails after saving, the listing itself is kept and you will be told.</div>
+          <div id="image-hint" class="govuk-hint">{% if config.maxImageSizeMb != 8 %}JPEG, PNG, GIF or WebP, up to {{ config.maxImageSizeMb }} MB.{% else %}{{ t("listings.edit.image_hint" if listing else "listings.create.image_hint") }}{% endif %}</div>
           {% if fieldErrors.image %}
             <p id="image-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ fieldErrors.image }}</p>
           {% endif %}
@@ -211,10 +212,10 @@
         {% if config.enableSkillTags %}
           {{ govukInput({
             label: {
-              text: "Skill tags (optional)",
+              text: t("govuk_alpha_listings.create.skill_tags_label"),
               classes: "govuk-label--m"
             },
-            hint: { text: "Enter up to 10 skills separated by commas. Skill tags are saved separately after the listing." },
+            hint: { text: t("govuk_alpha_listings.create.skill_tags_hint") },
             id: "skill_tags",
             name: "skill_tags",
             value: currentSkillTags,
@@ -223,10 +224,7 @@
           }) }}
         {% endif %}
 
-        <div class="govuk-button-group">
-          {{ govukButton({ text: t("polish_listings.save_listing") }) }}
-          <a href="{{ urlFor('/listings') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
-        </div>
+        {{ govukButton({ text: t("listings.edit.submit" if listing else "listings.create.submit") }) }}
       </form>
     </div>
   </div>

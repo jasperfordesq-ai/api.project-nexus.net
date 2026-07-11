@@ -2012,6 +2012,31 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
+  it('uses the exact Blade catalog for listing create and edit form chrome', () => {
+    const form = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'listings', 'form.njk'),
+      'utf8'
+    );
+    const keys = [
+      'listings.create.caption', 'listings.create.title', 'listings.create.description',
+      'listings.create.intent_legend', 'listings.create.intent_hint',
+      'listings.create.title_label', 'listings.create.title_hint',
+      'listings.create.description_label', 'listings.create.description_hint',
+      'listings.create.category_label', 'listings.create.category_hint',
+      'listings.create.hours_label', 'listings.create.hours_hint',
+      'listings.create.service_type_legend', 'listings.create.location_label',
+      'listings.create.location_hint', 'listings.create.image_label',
+      'listings.edit.caption', 'listings.edit.title', 'listings.edit.description',
+      'listings.edit.image_label', 'listings.edit.image_hint',
+      'listings.create.submit', 'listings.edit.submit'
+    ];
+
+    for (const key of keys) expect(form).toContain(key);
+    expect(form).not.toContain('What are you listing?');
+    expect(form).not.toContain('Share an offer or request with your community.');
+    expect(form).not.toContain('polish_listings.save_listing');
+  });
+
   it('avoids duplicate navigation on direct conversations', () => {
     const directConversation = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'messages', 'direct-conversation.njk'),
