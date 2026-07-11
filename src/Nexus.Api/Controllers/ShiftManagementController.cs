@@ -5,10 +5,12 @@
 
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Nexus.Api.Extensions;
+using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
@@ -145,41 +147,91 @@ public class ShiftManagementController : ControllerBase
     // ── Shift Swaps ───────────────────────────────────────────────────────────
 
     [HttpGet("api/volunteering/swaps")]
-    public async Task<IActionResult> GetSwaps()
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapListPolicy)]
+    public async Task<IActionResult> GetSwaps(
+        [FromQuery] string direction = "all",
+        CancellationToken ct = default)
     {
+        SetSwapHeaders();
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var swaps = await _svc.GetSwapRequestsAsync(userId.Value);
-        return Ok(swaps);
+        if (userId == null) return AuthError();
+        if (await FeatureDisabledAsync(ct) is { } featureError) return featureError;
+        var swaps = await _svc.GetSwapRequestsAsync(userId.Value, direction);
+        if (!IsCanonicalV2) return Ok(swaps);
+        return Ok(new
+        {
+            data = swaps.Select(swap => SwapPayload(swap, userId.Value, includeDirection: true)),
+            meta = Meta(swaps.Count)
+        });
     }
 
     [HttpPost("api/volunteering/swaps")]
-    public async Task<IActionResult> RequestSwap([FromBody] SwapRequest req)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapRequestPolicy)]
+    public async Task<IActionResult> RequestSwap(
+        [FromBody] SwapRequest req,
+        CancellationToken ct = default)
     {
+        SetSwapHeaders();
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (userId == null) return AuthError();
+        if (await FeatureDisabledAsync(ct) is { } featureError) return featureError;
         var (swap, error) = await _svc.RequestSwapAsync(userId.Value, req);
-        if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetSwaps), swap);
+        if (error != null) return SwapWorkflowError(error);
+        if (!IsCanonicalV2) return CreatedAtAction(nameof(GetSwaps), swap);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                id = swap!.Id,
+                message = "Shift swap request sent"
+            },
+            meta = Meta()
+        });
     }
 
     [HttpPut("api/volunteering/swaps/{swapId:int}")]
-    public async Task<IActionResult> RespondToSwap(int swapId, [FromBody] RespondSwapDto dto)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapRespondPolicy)]
+    public async Task<IActionResult> RespondToSwap(
+        int swapId,
+        [FromBody] RespondSwapDto dto,
+        CancellationToken ct = default)
     {
+        SetSwapHeaders();
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (swap, error) = await _svc.RespondToSwapAsync(swapId, userId.Value, dto.Accept);
-        if (error != null) return BadRequest(new { error });
-        return Ok(swap);
+        if (userId == null) return AuthError();
+        if (await FeatureDisabledAsync(ct) is { } featureError) return featureError;
+        var decision = dto.Decision;
+        if (!decision.HasValue)
+            return SwapActionError("Action must be accept or reject");
+        var (swap, error) = await _svc.RespondToSwapAsync(swapId, userId.Value, decision.Value);
+        if (error != null) return SwapWorkflowError(error);
+        if (!IsCanonicalV2) return Ok(swap);
+        return Ok(new
+        {
+            data = new
+            {
+                id = swap!.Id,
+                status = swap.Status,
+                message = swap.Status == "admin_pending"
+                    ? "Shift swap accepted and awaiting administrator approval"
+                    : null
+            },
+            meta = Meta()
+        });
     }
 
     [HttpDelete("api/volunteering/swaps/{swapId:int}")]
-    public async Task<IActionResult> CancelSwap(int swapId)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapCancelPolicy)]
+    public async Task<IActionResult> CancelSwap(
+        int swapId,
+        CancellationToken ct = default)
     {
+        SetSwapHeaders();
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (userId == null) return AuthError();
+        if (await FeatureDisabledAsync(ct) is { } featureError) return featureError;
         var error = await _svc.CancelSwapAsync(swapId, userId.Value);
-        if (error != null) return BadRequest(new { error });
+        if (error != null) return SwapWorkflowError(error);
         return NoContent();
     }
 
@@ -443,6 +495,8 @@ public class ShiftManagementController : ControllerBase
         }
     }
 
+    private void SetSwapHeaders() => SetRecurringHeaders();
+
     private async Task<IActionResult?> RecurringFeatureDisabledAsync(CancellationToken ct)
     {
         if (!IsCanonicalV2)
@@ -551,6 +605,44 @@ public class ShiftManagementController : ControllerBase
         });
     }
 
+    private IActionResult SwapActionError(string message) => IsCanonicalV2
+        ? StatusCode(StatusCodes.Status400BadRequest, new
+        {
+            errors = new[]
+            {
+                new { code = "VALIDATION_ERROR", message, field = "action" }
+            }
+        })
+        : BadRequest(new { error = message });
+
+    private IActionResult SwapWorkflowError(string message)
+    {
+        if (!IsCanonicalV2)
+        {
+            return BadRequest(new { error = message });
+        }
+
+        var (statusCode, code) = message switch
+        {
+            "Swap request not found" or
+            "Swap request not found or already processed" or
+            "Swap request not found or not cancellable" or
+            "Shift not found" => (StatusCodes.Status404NotFound, "NOT_FOUND"),
+            "Not authorized" or
+            "You are not assigned to this shift" =>
+                (StatusCodes.Status403Forbidden, "FORBIDDEN"),
+            "A matching swap request is already pending" =>
+                (StatusCodes.Status409Conflict, "ALREADY_EXISTS"),
+            _ when message.StartsWith("Failed to ", StringComparison.Ordinal) =>
+                (StatusCodes.Status500InternalServerError, "SERVER_ERROR"),
+            _ => (StatusCodes.Status400BadRequest, "VALIDATION_ERROR")
+        };
+        return StatusCode(statusCode, new
+        {
+            errors = new[] { new { code, message } }
+        });
+    }
+
     private static (string Code, int StatusCode, string? Field) ClassifyError(string message)
     {
         if (message == VolunteerGuardianConsentService.RequiredMessage)
@@ -567,7 +659,10 @@ public class ShiftManagementController : ControllerBase
             or "You are not on the waitlist for this shift"
             or "Group not found"
             or "Reservation not found"
-            or "Member not found in this reservation")
+            or "Member not found in this reservation"
+            or "Swap request not found"
+            or "Swap request not found or already processed"
+            or "Swap request not found or not cancellable")
         {
             return ("NOT_FOUND", StatusCodes.Status404NotFound, null);
         }
@@ -575,7 +670,9 @@ public class ShiftManagementController : ControllerBase
         if (message is "You must have an approved application to sign up for shifts"
             or "Only group leaders/admins can reserve slots for this group"
             or "Only group leaders/admins can manage this reservation"
-            or "Only group leaders/admins can cancel this reservation")
+            or "Only group leaders/admins can cancel this reservation"
+            or "You are not assigned to this shift"
+            or "Not authorized")
         {
             return ("FORBIDDEN", StatusCodes.Status403Forbidden, null);
         }
@@ -583,7 +680,8 @@ public class ShiftManagementController : ControllerBase
         if (message is "You are already on the waitlist for this shift"
             or "You are already signed up for this shift"
             or "This group already has a reservation for this shift"
-            or "User is already in this group reservation")
+            or "User is already in this group reservation"
+            or "A matching swap request is already pending")
         {
             return ("ALREADY_EXISTS", StatusCodes.Status409Conflict, null);
         }
@@ -611,6 +709,72 @@ public class ShiftManagementController : ControllerBase
         base_url = $"{Request.Scheme}://{Request.Host}",
         total
     };
+
+    internal static object SwapPayload(
+        ShiftSwapRequest swap,
+        int viewerUserId,
+        bool includeDirection)
+    {
+        var fromShift = swap.FromShift!;
+        var toShift = swap.ToShift!;
+        var payload = new Dictionary<string, object?>
+        {
+            ["id"] = swap.Id,
+            ["status"] = swap.Status,
+            ["message"] = swap.Message,
+            ["requires_admin_approval"] = swap.RequiresAdminApproval,
+            ["requester"] = new
+            {
+                id = swap.FromUserId,
+                name = UserName(swap.FromUser),
+                avatar_url = swap.FromUser?.AvatarUrl
+            },
+            ["recipient"] = new
+            {
+                id = swap.ToUserId,
+                name = UserName(swap.ToUser),
+                avatar_url = swap.ToUser?.AvatarUrl
+            },
+            ["original_shift"] = new
+            {
+                id = fromShift.Id,
+                start_time = fromShift.StartsAt,
+                end_time = fromShift.EndsAt,
+                opportunity_title = fromShift.Opportunity?.Title,
+                organization_name = fromShift.Opportunity?.VolunteerOrganisation?.Name
+            },
+            ["proposed_shift"] = new
+            {
+                id = toShift.Id,
+                start_time = toShift.StartsAt,
+                end_time = toShift.EndsAt,
+                opportunity_title = toShift.Opportunity?.Title,
+                organization_name = toShift.Opportunity?.VolunteerOrganisation?.Name
+            },
+            ["created_at"] = swap.CreatedAt
+        };
+        if (includeDirection)
+        {
+            payload["direction"] = swap.FromUserId == viewerUserId ? "sent" : "received";
+        }
+
+        return payload;
+    }
+
+    private static string UserName(User? user) => user is null
+        ? string.Empty
+        : (user.FirstName + " " + user.LastName).Trim();
 }
 
-public record RespondSwapDto(bool Accept);
+public sealed record RespondSwapDto(
+    [property: JsonPropertyName("action")] string? Action,
+    [property: JsonPropertyName("accept")] bool? Accept)
+{
+    public bool? Decision => Action?.Trim().ToLowerInvariant() switch
+    {
+        "accept" => true,
+        "reject" => false,
+        null when Accept.HasValue => Accept.Value,
+        _ => null
+    };
+}

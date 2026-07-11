@@ -184,7 +184,8 @@ public class FrontendApiParityController : ControllerBase
     {
         var userId = UserId();
         var hours = await _db.VolunteerCheckIns
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == userId
+                && (c.HoursLogged.HasValue || c.TransactionId.HasValue))
             .OrderByDescending(c => c.CheckedInAt)
             .Take(100)
             .Select(c => new { c.Id, c.ShiftId, checked_in_at = c.CheckedInAt, checked_out_at = c.CheckedOutAt, hours = c.HoursLogged })

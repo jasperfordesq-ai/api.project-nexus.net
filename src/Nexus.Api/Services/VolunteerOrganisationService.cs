@@ -297,10 +297,11 @@ public sealed partial class VolunteerOrganisationService
                 new("VALIDATION_ERROR", "Status must be active or suspended", "status"));
         }
 
-        await using var transaction = _db.Database.IsRelational()
+        var isRelational = _db.Database.IsRelational();
+        await using var ownedTransaction = isRelational && _db.Database.CurrentTransaction is null
             ? await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
             : null;
-        if (transaction is not null)
+        if (isRelational)
         {
             await _db.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_xact_lock({tenantId}, {-id})",
@@ -318,13 +319,13 @@ public sealed partial class VolunteerOrganisationService
 
         try
         {
-              organisation.Status = status;
-              organisation.UpdatedAt = DateTime.UtcNow;
-              await _db.SaveChangesAsync(ct);
-              if (transaction is not null)
-              {
-                  await transaction.CommitAsync(ct);
-              }
+            organisation.Status = status;
+            organisation.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.CommitAsync(ct);
+            }
             return VolunteerOrganisationMutationResult.Succeeded(
                 MapView(organisation, opportunityCount: 0, volunteerCount: 0, totalHours: 0m));
         }

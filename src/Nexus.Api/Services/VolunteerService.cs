@@ -955,13 +955,13 @@ public class VolunteerService
 
         // Check if already checked in (without checkout)
         var existingCheckIn = shift.CheckIns
-            .FirstOrDefault(c => c.UserId == userId && c.CheckedOutAt == null);
+            .FirstOrDefault(c => c.UserId == userId && c.Status == "checked_in");
 
         if (existingCheckIn != null)
             return (null, "You are already checked in to this shift");
 
         // Check if shift is full
-        var activeCheckIns = shift.CheckIns.Count(c => c.CheckedOutAt == null);
+        var activeCheckIns = shift.CheckIns.Count(c => c.Status == "checked_in");
         if (activeCheckIns >= shift.MaxVolunteers)
             return (null, "This shift is full");
 
@@ -971,7 +971,9 @@ public class VolunteerService
             ShiftId = shiftId,
             UserId = userId,
             CheckedInAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            Status = "checked_in",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _db.VolunteerCheckIns.Add(checkIn);
@@ -1002,12 +1004,17 @@ public class VolunteerService
             return (null, "Shift not found");
 
         var checkIn = await _db.VolunteerCheckIns
-            .FirstOrDefaultAsync(c => c.ShiftId == shiftId && c.UserId == userId && c.CheckedOutAt == null);
+            .FirstOrDefaultAsync(c =>
+                c.ShiftId == shiftId
+                && c.UserId == userId
+                && c.Status == "checked_in");
 
         if (checkIn == null)
             return (null, "No active check-in found for this shift");
 
         checkIn.CheckedOutAt = DateTime.UtcNow;
+        checkIn.Status = "checked_out";
+        checkIn.UpdatedAt = DateTime.UtcNow;
 
         // Calculate hours: use provided value, or calculate from check-in/check-out times
         if (hoursLogged.HasValue && hoursLogged.Value > 0)
@@ -1016,7 +1023,8 @@ public class VolunteerService
         }
         else
         {
-            var duration = checkIn.CheckedOutAt.Value - checkIn.CheckedInAt;
+            var duration = checkIn.CheckedOutAt.Value
+                - (checkIn.CheckedInAt ?? checkIn.CreatedAt);
             checkIn.HoursLogged = Math.Round((decimal)duration.TotalHours, 2);
         }
 
@@ -1157,7 +1165,7 @@ public class VolunteerService
             .CountAsync();
 
         var activeCheckIns = await _db.VolunteerCheckIns
-            .CountAsync(c => c.UserId == userId && c.CheckedOutAt == null);
+            .CountAsync(c => c.UserId == userId && c.Status == "checked_in");
 
         var creditsEarned = await _db.VolunteerCheckIns
             .Where(c => c.UserId == userId && c.TransactionId != null)

@@ -48,6 +48,11 @@ public sealed class NexusAuthorizationResultHandler : IAuthorizationMiddlewareRe
             ? StatusCodes.Status401Unauthorized
             : StatusCodes.Status403Forbidden;
         context.Response.Headers["API-Version"] = "2.0";
+        var tenantId = context.User.FindFirst("tenant_id")?.Value;
+        if (!string.IsNullOrWhiteSpace(tenantId))
+        {
+            context.Response.Headers["X-Tenant-ID"] = tenantId;
+        }
         await context.Response.WriteAsJsonAsync(new
         {
             errors = new[]

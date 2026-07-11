@@ -35,6 +35,16 @@ public static class RateLimitingExtensions
     public const string VolunteerOrganisationWalletReadPolicy = "volunteering-organisation-wallet-read";
     public const string VolunteerOrganisationWalletDepositPolicy = "volunteering-organisation-wallet-deposit";
     public const string VolunteerOrganisationWalletAdminAdjustPolicy = "volunteering-organisation-wallet-admin-adjust";
+    public const string VolunteerAttendanceTokenPolicy = "volunteering-attendance-token";
+    public const string VolunteerAttendanceVerifyPolicy = "volunteering-attendance-verify";
+    public const string VolunteerAttendanceCheckoutPolicy = "volunteering-attendance-checkout";
+    public const string VolunteerAttendanceRosterPolicy = "volunteering-attendance-roster";
+    public const string VolunteerSwapListPolicy = "volunteering-swap-list";
+    public const string VolunteerSwapRequestPolicy = "volunteering-swap-request";
+    public const string VolunteerSwapRespondPolicy = "volunteering-swap-respond";
+    public const string VolunteerSwapCancelPolicy = "volunteering-swap-cancel";
+    public const string VolunteerSwapAdminListPolicy = "volunteering-swap-admin-list";
+    public const string VolunteerSwapAdminDecidePolicy = "volunteering-swap-admin-decide";
     public const string PersonalWalletTransferPolicy = "personal-wallet-transfer";
     public const string PersonalWalletUserSearchPolicy = "personal-wallet-user-search";
 
@@ -243,6 +253,76 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:VolunteerOrganisationWallet:AdminAdjustPermitLimit", 20),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisationWallet:AdminAdjustWindowSeconds", 60)))));
 
+            options.AddPolicy(VolunteerAttendanceTokenPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerAttendance:TokenPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerAttendance:TokenWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerAttendanceVerifyPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerAttendance:VerifyPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerAttendance:VerifyWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerAttendanceCheckoutPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerAttendance:CheckoutPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerAttendance:CheckoutWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerAttendanceRosterPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerAttendance:RosterPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerAttendance:RosterWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:ListPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:ListWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapRequestPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:RequestPermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:RequestWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapRespondPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:RespondPermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:RespondWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapCancelPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:CancelPermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:CancelWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapAdminListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:AdminListPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:AdminListWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerSwapAdminDecidePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerSwap:AdminDecidePermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerSwap:AdminDecideWindowSeconds", 60)))));
+
             options.AddPolicy(PersonalWalletTransferPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
@@ -315,6 +395,30 @@ public static class RateLimitingExtensions
                         path.Value?.TrimEnd('/'),
                         "/api/v2/wallet/transfer",
                         StringComparison.OrdinalIgnoreCase);
+                var isVolunteerAttendancePath =
+                    path.Value?.Contains("/volunteering/", StringComparison.OrdinalIgnoreCase) == true
+                    && (path.Value.Contains("/checkin/verify/", StringComparison.OrdinalIgnoreCase)
+                        || path.Value.Contains("/checkin/checkout/", StringComparison.OrdinalIgnoreCase)
+                        || (path.Value.Contains("/volunteering/shifts/", StringComparison.OrdinalIgnoreCase)
+                            && (path.Value.EndsWith("/checkin", StringComparison.OrdinalIgnoreCase)
+                                || path.Value.EndsWith("/checkins", StringComparison.OrdinalIgnoreCase))));
+                var normalizedPath = path.Value?.TrimEnd('/');
+                var isVolunteerSwapAdminPath =
+                    normalizedPath?.StartsWith(
+                        "/api/v2/volunteering/admin/swaps",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || normalizedPath?.StartsWith(
+                        "/api/volunteering/admin/swaps",
+                        StringComparison.OrdinalIgnoreCase) == true;
+                var isVolunteerSwapMemberPath =
+                    normalizedPath?.StartsWith(
+                        "/api/v2/volunteering/swaps",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || normalizedPath?.StartsWith(
+                        "/api/volunteering/swaps",
+                        StringComparison.OrdinalIgnoreCase) == true;
+                var isVolunteerSwapPath =
+                    isVolunteerSwapAdminPath || isVolunteerSwapMemberPath;
                 var canonicalLimit = isVolunteerOrganisationCreatePath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5)
                     : isVolunteerOrganisationListPath
@@ -327,6 +431,27 @@ public static class RateLimitingExtensions
                     ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadPermitLimit", 60)
                     : isPersonalWalletTransferPath
                     ? config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10)
+                    : isVolunteerSwapPath
+                    ? isVolunteerSwapAdminPath
+                        ? HttpMethods.IsGet(context.HttpContext.Request.Method)
+                            ? config.GetValue("RateLimiting:VolunteerSwap:AdminListPermitLimit", 60)
+                            : config.GetValue("RateLimiting:VolunteerSwap:AdminDecidePermitLimit", 20)
+                        : context.HttpContext.Request.Method switch
+                        {
+                            "GET" => config.GetValue("RateLimiting:VolunteerSwap:ListPermitLimit", 60),
+                            "POST" => config.GetValue("RateLimiting:VolunteerSwap:RequestPermitLimit", 10),
+                            "PUT" => config.GetValue("RateLimiting:VolunteerSwap:RespondPermitLimit", 20),
+                            "DELETE" => config.GetValue("RateLimiting:VolunteerSwap:CancelPermitLimit", 20),
+                            _ => 20
+                        }
+                    : isVolunteerAttendancePath
+                    ? path.Value?.Contains("/checkin/verify/", StringComparison.OrdinalIgnoreCase) == true
+                        ? config.GetValue("RateLimiting:VolunteerAttendance:VerifyPermitLimit", 30)
+                        : path.Value?.Contains("/checkin/checkout/", StringComparison.OrdinalIgnoreCase) == true
+                            ? config.GetValue("RateLimiting:VolunteerAttendance:CheckoutPermitLimit", 30)
+                            : path.Value?.EndsWith("/checkins", StringComparison.OrdinalIgnoreCase) == true
+                                ? config.GetValue("RateLimiting:VolunteerAttendance:RosterPermitLimit", 60)
+                                : config.GetValue("RateLimiting:VolunteerAttendance:TokenPermitLimit", 60)
                     : isRecurringPatternPath
                     ? context.HttpContext.Request.Method switch
                     {

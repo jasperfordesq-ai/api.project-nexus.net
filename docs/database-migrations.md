@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Runtime Chain And Replay Evidence
 
-EF currently discovers 109 migration IDs. The latest is
-`20260711100817_LoyaltyEstateOrganisationEvidence`. The runtime inventory was
+EF currently discovers 110 migration IDs. The latest is
+`20260711143546_VolunteerQrAttendanceParity`. The runtime inventory was
 repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
 essential designer-less migrations, including
 `20260303120000_AddAiMessageTenantId`. A `.Designer.cs` file is not itself the
@@ -29,25 +29,37 @@ Current non-production evidence is:
 
 - `dotnet ef migrations has-pending-model-changes --no-build` reports no model
   changes since the latest migration;
-- a clean recreated database applies all 109 discovered IDs from
+- a clean recreated database applies all 110 discovered IDs from
   `20260202085043_InitialCreate` through
-  `20260711100817_LoyaltyEstateOrganisationEvidence`. Migration history has 109
+  `20260711143546_VolunteerQrAttendanceParity`. Migration history has 110
   rows; `ai_messages.TenantId` is non-nullable and its tenant index and foreign
   key each exist;
-- a populated database stopped at
-  `20260711083852_WalletLedgerFederationPartnerParity` upgrades successfully;
-  its users, organisation, membership, wallet, wallet-transaction, loyalty, and
-  estate rows remain present, and known organisation-role casing is normalized
-  to lowercase;
-- a cloned database containing a deliberately cross-tenant organisation-wallet
-  transaction fails the latest migration's preflight. The migration history
-  remains at `20260711083852_WalletLedgerFederationPartnerParity`, and the new
-  schema additions are absent. The migration does not partially apply or guess
-  a repair;
+- a populated database stopped at the preceding 109-ID migration upgrades to
+  110 successfully. Historical checked-out and checked-in rows receive the
+  deterministic status/`UpdatedAt = CreatedAt` backfill; historical QR tokens
+  and coordinator IDs remain null; `HoursLogged` and `TransactionId` evidence
+  remains untouched;
+- separate clones containing duplicate tenant/shift/user attendance or
+  cross-tenant relationship evidence fail the latest migration preflight. Each
+  history remains at 109 and none of the latest DDL is installed. The migration
+  does not merge evidence, partially apply, or guess a repair;
 - all disposable databases and the uniquely named PostgreSQL container used for
   this proof were removed. No production database or container was touched.
 
-`20260711100817_LoyaltyEstateOrganisationEvidence` adds authoritative,
+`20260711143546_VolunteerQrAttendanceParity` adds nullable 64-character QR
+tokens and coordinator identities, required attendance status/updated evidence,
+a global filtered unique QR-token index, and a unique tenant/shift/user
+attendance index. It backfills `checked_out`, then `checked_in`, then `pending`
+from existing timestamps and copies `CreatedAt` to `UpdatedAt`, while preserving
+null historical tokens/coordinators and legacy `HoursLogged`/`TransactionId`.
+Tenant-composite attendance relationships and the application
+tenant/opportunity/shift foreign key reject cross-tenant or cross-opportunity
+assignments. The volunteer-organisation membership role constraint now accepts
+`owner`, `admin`, `manager`, `coordinator`, or `member`. Duplicate attendance
+and orphan/cross-tenant relationship preflights abort before DDL because legacy
+hours/transaction evidence cannot be merged safely.
+
+The preceding `20260711100817_LoyaltyEstateOrganisationEvidence` adds authoritative,
 tenant-composite ledger links for Caring loyalty redemption/reversal and hour
 estate settlement evidence. It also replaces generic organisation, membership,
 wallet, and wallet-transaction relationships with tenant-composite keys,
@@ -98,15 +110,15 @@ active rows and removes orphan minor rows before enforcing the new constraint.
 The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
 application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
 and the indexes and `SET NULL` foreign keys used by transactional volunteering
-capacity checks. The API and test projects build cleanly. The latest
-test-project build has zero errors and four pre-existing `xUnit1031` warnings.
-The high-risk regression command initially passed 103/106; after two assertion
-corrections and an isolated retry of a fixture-startup timeout, the three
-affected tests passed 3/3. The separate fail-closed contract suite passes
-119/119. Post-audit organisation/federation regressions pass 24/24, and the
-final migration-discovery, partner-consent, cancellation, route-owner, and
-rounded-zero set passes 30/30. These focused sets do not replace a clean
-full-suite run.
+capacity checks. The latest test-project build has zero errors and four
+pre-existing `xUnit1031` warnings. Migration discovery, the 32/32 QR attendance
+suite, 1/1 persistence-failure regression, 12/12 shift-swap suite, 5/5
+route/auth subset, 90/90 affected-module gate, and the ambient-transaction
+regression are green. These focused sets do not replace a clean full-suite run.
+Descendant CI run `29154079189` was later cancelled after its completed
+Integration Tests job reported 51 failures out of 2,888 tests; only its nested-transaction
+failure was a direct regression from the preceding `bfeafb2e` slice, and that
+case is fixed and green locally. Do not report CI green from this evidence.
 
 Before applying `RecurringShiftGenerationParity`, inventory duplicate rows by
 `("TenantId", "RecurringPatternId", "StartsAt")` where the pattern id is not
@@ -132,14 +144,14 @@ recorded the migration are not changed or replayed.
 Migration discovery must continue to fail closed if a new source migration is
 invisible to EF, a deliberately excluded overlapping migration becomes
 discoverable, or an intended migration ID no longer matches its type. A green
-blank replay certifies all 109 IDs that EF discovers. Discovery does not
+blank replay certifies all 110 IDs that EF discovers. Discovery does not
 authorize replaying either intentionally excluded duplicate.
 
 ## Read-Only Legacy Financial Audit
 
 The following PostgreSQL report is deliberately read-only and is intended for
 an operator working on a database already upgraded through
-`20260711100817_LoyaltyEstateOrganisationEvidence`. It identifies candidates;
+`20260711143546_VolunteerQrAttendanceParity`. It identifies candidates;
 it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
 recreate any returned row. Each row needs a documented manual disposition that
 states the intended business event, the existing sender/receiver balance
@@ -462,7 +474,7 @@ The PR Quality Gate workflow automatically:
 The discovery gate must cover every compiled migration subclass and keep any
 reviewed overlapping source explicitly outside the runtime chain. It prevents a
 new class from becoming silently invisible, but it does not make duplicate DDL
-safe. The successful blank `database update` certifies all 109 discovered IDs,
+safe. The successful blank `database update` certifies all 110 discovered IDs,
 not every migration-shaped source file or either intentionally excluded
 duplicate.
 
@@ -560,6 +572,13 @@ pre-migration backup instead.
 its `Down()` throws before changing schema because rollback would discard
 hashed guardian credentials and restore unsafe legacy status and verification
 semantics. Use a tested forward remediation or restore the pre-migration backup.
+
+`20260711143546_VolunteerQrAttendanceParity` is intentionally forward-only.
+Its `Down()` throws before changing schema because a downgrade would discard QR
+token, attendance-status, and coordinator evidence and would make pending
+attendance timestamps non-nullable. Restore a tested pre-migration backup or
+apply a reviewed forward remediation; do not force the `Down()` path or
+manually drop its evidence-preserving columns and constraints.
 
 `20260710211122_RecurringShiftGenerationParity` has a data-preserving `Down()`:
 it removes the filtered occurrence and active-pattern indexes and restores the

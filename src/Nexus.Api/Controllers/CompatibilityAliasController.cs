@@ -2339,34 +2339,21 @@ public class CompatibilityAliasController : ControllerBase
     /// POST /api/volunteering/hours — Log volunteering hours.
     /// </summary>
     [HttpPost("api/volunteering/hours")]
-    public async Task<IActionResult> LogVolunteeringHours([FromBody] LogVolunteeringHoursAliasRequest? request)
+    public IActionResult LogVolunteeringHours([FromBody] LogVolunteeringHoursAliasRequest? request)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        if (request?.ShiftId is not > 0) return BadRequest(new { error = "shift_id is required to persist volunteer hours" });
-        if (request.Hours is not > 0) return BadRequest(new { error = "hours must be greater than zero" });
-        var shiftId = request.ShiftId.Value;
-        var hours = request.Hours.Value;
 
-        var shift = await _db.VolunteerShifts.FirstOrDefaultAsync(s => s.Id == shiftId);
-        if (shift == null) return NotFound(new { error = "Shift not found" });
-
-        var checkIn = new VolunteerCheckIn
-        {
-            TenantId = _tenantContext.GetTenantIdOrThrow(),
-            ShiftId = shift.Id,
-            UserId = userId.Value,
-            CheckedInAt = request.StartedAt ?? DateTime.UtcNow.AddHours(-(double)hours),
-            CheckedOutAt = request.EndedAt ?? DateTime.UtcNow,
-            HoursLogged = hours,
-            Notes = request.Notes?.Trim(),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.VolunteerCheckIns.Add(checkIn);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { success = true, message = "Hours logged", id = checkIn.Id, hours = checkIn.HoursLogged });
+        // Laravel persists submitted hours in the separately reviewed vol_logs
+        // ledger. volunteer_check_ins is QR attendance evidence and cannot safely
+        // stand in for that ledger: doing so bypasses review and collides with the
+        // canonical one-row-per-shift/user attendance key. Fail closed until the
+        // volunteer-hours ledger is implemented rather than returning false
+        // success or mutating a pending QR record.
+        return VolunteerApplicationError(
+            StatusCodes.Status503ServiceUnavailable,
+            "VOLUNTEER_HOURS_UNAVAILABLE",
+            "Volunteer hour submission is unavailable until the reviewed hours ledger is implemented.");
     }
 
     /// <summary>
@@ -2583,7 +2570,9 @@ public class CompatibilityAliasController : ControllerBase
         var checkIn = await _db.VolunteerCheckIns
             .Include(c => c.Shift)
             .ThenInclude(s => s!.Opportunity)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .FirstOrDefaultAsync(c =>
+                c.Id == id
+                && (c.HoursLogged.HasValue || c.TransactionId.HasValue));
         if (checkIn == null) return NotFound(new { error = "Hours record not found" });
 
         if (checkIn.Shift?.Opportunity?.OrganizerId != userId.Value)

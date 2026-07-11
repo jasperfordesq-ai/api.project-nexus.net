@@ -200,7 +200,7 @@ public class CompatibilityAliasControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CommunityProjectAndHoursAliases_PersistVolunteerState()
+    public async Task CommunityProjectPersistsButHoursAliasFailsClosedWithoutAttendanceMutation()
     {
         await AuthenticateAsMemberAsync();
 
@@ -243,12 +243,19 @@ public class CompatibilityAliasControllerTests : IntegrationTestBase
             notes = "alias hours"
         });
 
-        hoursResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        hoursResponse.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        var hoursJson = await hoursResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var errors = hoursJson.GetProperty("errors").EnumerateArray().ToArray();
+        errors.Should().ContainSingle();
+        errors[0].GetProperty("code").GetString().Should().Be("VOLUNTEER_HOURS_UNAVAILABLE");
+        errors[0].GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
 
         using var verifyScope = Factory.Services.CreateScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         verifyDb.VolunteerOpportunities.Any(o => o.Id == projectId && o.Title == "Compatibility volunteer project").Should().BeTrue();
-        verifyDb.VolunteerCheckIns.Any(c => c.ShiftId == shiftId && c.UserId == TestData.MemberUser.Id && c.HoursLogged == 1.5m).Should().BeTrue();
+        verifyDb.VolunteerCheckIns.Any(c =>
+            c.ShiftId == shiftId
+            && c.UserId == TestData.MemberUser.Id).Should().BeFalse();
     }
 
     [Fact]

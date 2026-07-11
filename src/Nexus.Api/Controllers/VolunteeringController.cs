@@ -181,7 +181,7 @@ public class VolunteeringController : ControllerBase
                     starts_at = s.StartsAt,
                     ends_at = s.EndsAt,
                     max_volunteers = s.MaxVolunteers,
-                    checked_in_count = s.CheckIns != null ? s.CheckIns.Count(c => c.CheckedOutAt == null) : 0,
+                    checked_in_count = s.CheckIns != null ? s.CheckIns.Count(c => c.Status == "checked_in") : 0,
                     location = s.Location,
                     status = s.Status.ToString().ToLowerInvariant()
                 }),
@@ -488,7 +488,7 @@ public class VolunteeringController : ControllerBase
                 starts_at = s.StartsAt,
                 ends_at = s.EndsAt,
                 max_volunteers = s.MaxVolunteers,
-                checked_in_count = s.CheckIns.Count(c => c.CheckedOutAt == null),
+                checked_in_count = s.CheckIns.Count(c => c.Status == "checked_in"),
                 total_check_ins = s.CheckIns.Count,
                 location = s.Location,
                 notes = s.Notes,
@@ -634,7 +634,7 @@ public class VolunteeringController : ControllerBase
 
         // Active check-ins
         var activeCheckIns = await _db.VolunteerCheckIns
-            .Where(c => c.UserId == userId.Value && c.CheckedOutAt == null)
+            .Where(c => c.UserId == userId.Value && c.Status == "checked_in")
             .Include(c => c.Shift)
                 .ThenInclude(s => s!.Opportunity)
             .Select(c => new

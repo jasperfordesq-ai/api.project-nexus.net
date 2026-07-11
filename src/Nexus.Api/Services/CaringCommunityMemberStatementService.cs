@@ -204,13 +204,16 @@ public sealed class CaringCommunityMemberStatementService
             .IgnoreQueryFilters()
             .Include(c => c.Shift)
             .ThenInclude(s => s!.Opportunity)
-            .Where(c => c.TenantId == tenantId && c.UserId == userId)
+            .Where(c => c.TenantId == tenantId
+                && c.UserId == userId
+                && (c.HoursLogged.HasValue || c.TransactionId.HasValue))
             .ToListAsync(ct);
 
         return rows
             .Select(c =>
             {
-                var logDate = DateOnly.FromDateTime((c.CheckedOutAt ?? c.CheckedInAt).Date);
+                var logDate = DateOnly.FromDateTime(
+                    (c.CheckedOutAt ?? c.CheckedInAt ?? c.CreatedAt).Date);
                 var status = c.CheckedOutAt.HasValue ? "approved" : "pending";
                 var organisationName = c.Shift?.Title;
                 if (string.IsNullOrWhiteSpace(organisationName))

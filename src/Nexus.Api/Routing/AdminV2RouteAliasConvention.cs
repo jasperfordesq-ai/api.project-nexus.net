@@ -816,25 +816,26 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
     private static void AddVolunteeringControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
-        var aliases = controller.Selectors
-            .Select(selector => selector.AttributeRouteModel?.Template)
-            .Where(template => template is not null)
-            .Select(template => Normalize(template))
-            .Where(template =>
-                template.Equals("api/volunteering", StringComparison.OrdinalIgnoreCase)
-                || template.StartsWith("api/volunteering/", StringComparison.OrdinalIgnoreCase))
-            .Select(template => "api/v2/volunteering" + template["api/volunteering".Length..])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        foreach (var alias in aliases)
+        // Clone each source selector rather than creating a route-only selector.
+        // Controller-level metadata such as [Authorize] lives on that selector;
+        // dropping it made every convention-generated v2 volunteering alias
+        // anonymously reachable until tenant resolution returned a misleading 400.
+        foreach (var sourceSelector in controller.Selectors.ToArray())
         {
+            var template = Normalize(sourceSelector.AttributeRouteModel?.Template);
+            if (!template.Equals("api/volunteering", StringComparison.OrdinalIgnoreCase)
+                && !template.StartsWith("api/volunteering/", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var alias = "api/v2/volunteering" + template["api/volunteering".Length..];
             if (HasRoute(controller.Selectors, alias))
             {
                 continue;
             }
 
-            controller.Selectors.Add(new SelectorModel
+            controller.Selectors.Add(new SelectorModel(sourceSelector)
             {
                 AttributeRouteModel = new AttributeRouteModel
                 {

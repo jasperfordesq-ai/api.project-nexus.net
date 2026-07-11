@@ -71,7 +71,7 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             {
                 table.HasCheckConstraint(
                     "CK_VolunteerOrganisationMembers_Role",
-                    "\"role\" IN ('owner', 'admin', 'member')");
+                    "\"role\" IN ('owner', 'admin', 'manager', 'coordinator', 'member')");
                 table.HasCheckConstraint(
                     "CK_VolunteerOrganisationMembers_Status",
                     "\"status\" IN ('active', 'pending', 'invited', 'removed')");
@@ -157,6 +157,7 @@ public class VolunteerConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("volunteer_opportunities");
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.Location).HasMaxLength(500);
@@ -170,7 +171,11 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartsAt);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Organizer).WithMany().HasForeignKey(e => e.OrganizerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Organizer)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OrganizerId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             // Nullable and deliberately not backfilled from OrganizerId: that
             // column is a user/created_by key, not an organisation identifier.
             entity.HasOne(e => e.VolunteerOrganisation)
@@ -188,6 +193,8 @@ public class VolunteerConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("volunteer_shifts");
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
+            entity.HasAlternateKey(e => new { e.TenantId, e.OpportunityId, e.Id });
             entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.Location).HasMaxLength(500);
             entity.Property(e => e.Notes).HasMaxLength(2000);
@@ -199,7 +206,11 @@ public class VolunteerConfiguration : TenantScopedConfiguration
                 .IsUnique()
                 .HasFilter("\"RecurringPatternId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Opportunity).WithMany(o => o.Shifts).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Opportunity)
+                .WithMany(o => o.Shifts)
+                .HasForeignKey(e => new { e.TenantId, e.OpportunityId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
@@ -247,15 +258,32 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.ShiftId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.TenantId, e.ShiftId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.OpportunityId, e.ShiftId });
             // Historical declined/withdrawn applications are retained and a
             // volunteer may reapply. Active duplicate prevention is serialized
             // by VolunteerService rather than a natural-key unique constraint.
             entity.HasIndex(e => new { e.TenantId, e.OpportunityId, e.UserId });
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Opportunity).WithMany(o => o.Applications).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Shift).WithMany().HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Opportunity)
+                .WithMany(o => o.Applications)
+                .HasForeignKey(e => new { e.TenantId, e.OpportunityId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Shift)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OpportunityId, e.ShiftId })
+                .HasPrincipalKey(e => new { e.TenantId, e.OpportunityId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.UserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.ReviewedById })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
@@ -268,17 +296,50 @@ public class VolunteerConfiguration : TenantScopedConfiguration
         // VolunteerCheckIn
         modelBuilder.Entity<VolunteerCheckIn>(entity =>
         {
-            entity.ToTable("volunteer_check_ins");
+            entity.ToTable("volunteer_check_ins", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_VolunteerCheckIns_Status",
+                    "\"Status\" IN ('pending', 'checked_in', 'checked_out', 'no_show')");
+            });
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.QrToken).HasMaxLength(64);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("pending").IsRequired();
             entity.Property(e => e.HoursLogged).HasPrecision(10, 2);
             entity.Property(e => e.Notes).HasMaxLength(2000);
-            entity.HasIndex(e => e.TenantId);
-            entity.HasIndex(e => e.ShiftId);
-            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => new { e.TenantId, e.ShiftId });
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.ShiftId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.QrToken)
+                .IsUnique()
+                .HasFilter("\"QrToken\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Shift).WithMany(s => s.CheckIns).HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Transaction).WithMany().HasForeignKey(e => e.TransactionId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Shift)
+                .WithMany(s => s.CheckIns)
+                .HasForeignKey(e => new { e.TenantId, e.ShiftId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.UserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CheckedInBy)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.CheckedInById })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CheckedOutBy)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.CheckedOutById })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Transaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.TransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 

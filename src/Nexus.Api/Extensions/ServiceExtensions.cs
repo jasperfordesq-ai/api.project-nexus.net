@@ -42,6 +42,7 @@ public static class ServiceExtensions
         services.AddScoped<VolunteerOrganisationService>();
         services.AddScoped<VolunteerOrganisationWalletService>();
         services.AddScoped<PersonalWalletLedgerService>();
+        services.AddScoped<VolunteerAttendanceService>();
         services.AddScoped<VolunteerService>();
         services.AddScoped<AdminVolunteerApprovalService>();
         services.AddScoped<ShiftManagementService>();

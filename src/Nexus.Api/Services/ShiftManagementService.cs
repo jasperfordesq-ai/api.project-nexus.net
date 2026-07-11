@@ -45,9 +45,13 @@ public sealed class RecurringPatternContractException : Exception
 }
 
 public record SwapRequest(
+    [property: JsonPropertyName("from_shift_id")]
     int FromShiftId,
+    [property: JsonPropertyName("to_shift_id")]
     int? ToShiftId,
+    [property: JsonPropertyName("to_user_id")]
     int? ToUserId,
+    [property: JsonPropertyName("message")]
     string? Message);
 
 public record GroupReservationRequest(
@@ -97,6 +101,7 @@ public sealed record RecurringShiftGenerationResult(int Processed, int Generated
 public class ShiftManagementService
 {
     public const string RecurringShiftsEnabledConfigKey = "volunteering.enable_recurring_shifts";
+    public const string SwapRequiresAdminConfigKey = "volunteering.swap_requires_admin";
     private const string VolunteeringModuleConfigKey = "admin_explicit.module_config.volunteering";
     private static readonly HashSet<string> ValidRecurringFrequencies =
         new(StringComparer.Ordinal) { "daily", "weekly", "biweekly", "monthly" };
@@ -1093,90 +1098,523 @@ public class ShiftManagementService
 
     // ── Shift Swaps ───────────────────────────────────────────────────────────
 
-    public async Task<List<ShiftSwapRequest>> GetSwapRequestsAsync(int userId)
+    public async Task<List<ShiftSwapRequest>> GetSwapRequestsAsync(
+        int userId,
+        string direction = "all")
     {
-        return await _db.ShiftSwapRequests
-            .Include(s => s.FromShift)
-            .Include(s => s.ToShift)
-            .Include(s => s.ToUser)
-            .Where(s => s.FromUserId == userId || s.ToUserId == userId)
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var query = SwapDetailsQuery()
+            .Where(s => s.TenantId == tenantId);
+        query = direction switch
+        {
+            "incoming" => query.Where(swap => swap.ToUserId == userId),
+            "outgoing" => query.Where(swap => swap.FromUserId == userId),
+            _ => query.Where(swap => swap.FromUserId == userId || swap.ToUserId == userId)
+        };
+
+        return await query
             .OrderByDescending(s => s.CreatedAt)
+            .Take(50)
             .ToListAsync();
     }
+
+    public Task<List<ShiftSwapRequest>> GetAdminPendingSwapsAsync() =>
+        SwapDetailsQuery()
+            .Where(swap =>
+                swap.TenantId == _tenant.GetTenantIdOrThrow()
+                && swap.Status == "admin_pending")
+            .OrderByDescending(swap => swap.CreatedAt)
+            .Take(100)
+            .ToListAsync();
+
+    private IQueryable<ShiftSwapRequest> SwapDetailsQuery() =>
+        _db.ShiftSwapRequests
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            // Laravel's member/admin list queries use inner joins for both
+            // volunteers and shifts. Historical rows whose optional target was
+            // cleared during shift deletion are therefore omitted, not rendered.
+            .Where(swap => swap.ToUserId.HasValue && swap.ToShiftId.HasValue)
+            .Include(swap => swap.FromUser)
+            .Include(swap => swap.ToUser)
+            .Include(swap => swap.FromShift)
+                .ThenInclude(shift => shift!.Opportunity)
+                    .ThenInclude(opportunity => opportunity!.VolunteerOrganisation)
+            .Include(swap => swap.ToShift)
+                .ThenInclude(shift => shift!.Opportunity)
+                    .ThenInclude(opportunity => opportunity!.VolunteerOrganisation);
 
     public async Task<(ShiftSwapRequest? Swap, string? Error)> RequestSwapAsync(
         int userId, SwapRequest req)
     {
-        var exists = await _db.VolunteerShifts.AnyAsync(s => s.Id == req.FromShiftId);
-        if (!exists) return (null, "Shift not found");
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (req.FromShiftId <= 0
+            || !req.ToShiftId.HasValue
+            || req.ToShiftId.Value <= 0
+            || !req.ToUserId.HasValue
+            || req.ToUserId.Value <= 0)
+            return (null, "Both shifts and the target volunteer are required");
+        if (req.ToUserId.Value == userId)
+            return (null, "You cannot swap a shift with yourself");
+        var normalizedMessage = req.Message?.Trim();
+        if (normalizedMessage?.Length > 1000)
+            return (null, "Message must not exceed 1000 characters");
 
-        var ownsShift = await _db.VolunteerCheckIns
-            .AnyAsync(c => c.ShiftId == req.FromShiftId && c.UserId == userId);
-        if (!ownsShift) return (null, "You are not assigned to this shift");
-
-        var swap = new ShiftSwapRequest
+        var ownsTransaction = _db.Database.IsRelational()
+            && _db.Database.CurrentTransaction is null;
+        IDbContextTransaction? transaction = _db.Database.CurrentTransaction;
+        if (ownsTransaction)
         {
-            TenantId = _tenant.GetTenantIdOrThrow(),
-            FromUserId = userId,
-            ToUserId = req.ToUserId,
-            FromShiftId = req.FromShiftId,
-            ToShiftId = req.ToShiftId,
-            Message = req.Message,
-            Status = "pending"
-        };
+            transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        }
 
-        _db.ShiftSwapRequests.Add(swap);
-        await _db.SaveChangesAsync();
-        return (swap, null);
+        try
+        {
+            var shiftIds = new[] { req.FromShiftId, req.ToShiftId.Value }
+                .Distinct()
+                .OrderBy(id => id)
+                .ToArray();
+            if (_db.Database.IsRelational())
+            {
+                // The stable lock order serializes identical requests and every
+                // other request/decision involving either shift.
+                foreach (var shiftId in shiftIds)
+                {
+                    if (!await LockShiftAsync(shiftId, tenantId))
+                        return (null, "Shift not found");
+                }
+            }
+
+            var shifts = await _db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(shift => shift.TenantId == tenantId && shiftIds.Contains(shift.Id))
+                .ToDictionaryAsync(shift => shift.Id);
+            if (!shifts.TryGetValue(req.FromShiftId, out var fromShift)
+                || !shifts.TryGetValue(req.ToShiftId.Value, out var toShift))
+            {
+                return (null, "Shift not found");
+            }
+
+            if (fromShift.OpportunityId != toShift.OpportunityId)
+                return (null, "Shifts must belong to the same opportunity");
+
+            var now = DateTime.UtcNow;
+            if (fromShift.StartsAt < now || toShift.StartsAt < now)
+                return (null, "A shift has already started");
+
+            var ownsShift = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(application =>
+                    application.TenantId == tenantId
+                    && application.UserId == userId
+                    && application.ShiftId == req.FromShiftId
+                    && application.Status == ApplicationStatus.Approved);
+            if (!ownsShift) return (null, "You are not assigned to this shift");
+
+            var targetOwnsShift = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(application =>
+                    application.TenantId == tenantId
+                    && application.UserId == req.ToUserId.Value
+                    && application.ShiftId == req.ToShiftId.Value
+                    && application.Status == ApplicationStatus.Approved);
+            if (!targetOwnsShift)
+                return (null, "The target volunteer is not assigned to that shift");
+
+            var duplicate = await _db.ShiftSwapRequests
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(swap =>
+                    swap.TenantId == tenantId
+                    && swap.FromUserId == userId
+                    && swap.ToUserId == req.ToUserId.Value
+                    && swap.FromShiftId == req.FromShiftId
+                    && swap.ToShiftId == req.ToShiftId.Value
+                    && (swap.Status == "pending" || swap.Status == "admin_pending"));
+            if (duplicate) return (null, "A matching swap request is already pending");
+
+            var swap = new ShiftSwapRequest
+            {
+                TenantId = tenantId,
+                FromUserId = userId,
+                ToUserId = req.ToUserId.Value,
+                FromShiftId = req.FromShiftId,
+                ToShiftId = req.ToShiftId.Value,
+                Message = normalizedMessage,
+                Status = "pending",
+                RequiresAdminApproval = await SwapRequiresAdminApprovalAsync(tenantId)
+            };
+
+            _db.ShiftSwapRequests.Add(swap);
+            await _db.SaveChangesAsync();
+            if (ownsTransaction) await transaction!.CommitAsync();
+            return (swap, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
+
+            _logger.LogError(
+                exception,
+                "Failed to request shift swap for user {UserId}, tenant {TenantId}",
+                userId,
+                tenantId);
+            return (null, "Failed to create the shift swap request");
+        }
+        finally
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
     }
 
-    public async Task<(ShiftSwapRequest? Swap, string? Error)> RespondToSwapAsync(
-        int swapId, int userId, bool accept)
+    public Task<(ShiftSwapRequest? Swap, string? Error)> RespondToSwapAsync(
+        int swapId,
+        int userId,
+        bool accept) =>
+        DecideSwapAsync(swapId, userId, accept, adminDecision: false);
+
+    public Task<(ShiftSwapRequest? Swap, string? Error)> AdminDecideSwapAsync(
+        int swapId,
+        int adminId,
+        bool approve) =>
+        DecideSwapAsync(swapId, adminId, approve, adminDecision: true);
+
+    private async Task<(ShiftSwapRequest? Swap, string? Error)> DecideSwapAsync(
+        int swapId,
+        int actorUserId,
+        bool accept,
+        bool adminDecision)
     {
-        var swap = await _db.ShiftSwapRequests
-            .FirstOrDefaultAsync(s => s.Id == swapId);
-        if (swap == null) return (null, "Swap request not found");
-        if (swap.ToUserId != userId) return (null, "Not authorized");
-        if (swap.Status != "pending") return (null, "Swap already resolved");
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var ownsTransaction = _db.Database.IsRelational()
+            && _db.Database.CurrentTransaction is null;
+        IDbContextTransaction? transaction = _db.Database.CurrentTransaction;
+        if (ownsTransaction)
+        {
+            transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        }
 
-        swap.Status = accept ? "accepted" : "declined";
-        swap.UpdatedAt = DateTime.UtcNow;
+        try
+        {
+            if (_db.Database.IsRelational()
+                && !await LockSwapRequestAsync(swapId, tenantId))
+            {
+                return (null, "Swap request not found");
+            }
 
-        if (accept && !swap.RequiresAdminApproval)
-            await ExecuteSwapInternalAsync(swap);
+            var swap = await _db.ShiftSwapRequests
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(candidate =>
+                    candidate.Id == swapId && candidate.TenantId == tenantId);
+            if (swap == null) return (null, "Swap request not found");
+            if (!adminDecision && swap.ToUserId != actorUserId)
+                return (null, "Not authorized");
+            var expectedStatus = adminDecision ? "admin_pending" : "pending";
+            if (swap.Status != expectedStatus)
+                return (null, "Swap request not found or already processed");
 
-        await _db.SaveChangesAsync();
-        return (swap, null);
+            if (!accept)
+            {
+                swap.Status = adminDecision ? "admin_rejected" : "rejected";
+                if (adminDecision) swap.AdminId = actorUserId;
+                swap.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                if (ownsTransaction) await transaction!.CommitAsync();
+                return (swap, null);
+            }
+
+            if (!adminDecision && swap.RequiresAdminApproval)
+            {
+                swap.Status = "admin_pending";
+                swap.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                if (ownsTransaction) await transaction!.CommitAsync();
+                return (swap, null);
+            }
+
+            if (!swap.ToUserId.HasValue || !swap.ToShiftId.HasValue)
+                return (null, "Swap assignments are incomplete");
+
+            var shiftIds = new[] { swap.FromShiftId, swap.ToShiftId.Value }
+                .Distinct()
+                .OrderBy(id => id)
+                .ToArray();
+            if (_db.Database.IsRelational())
+            {
+                foreach (var shiftId in shiftIds)
+                {
+                    if (!await LockShiftAsync(shiftId, tenantId))
+                        return (null, "Shift not found");
+                }
+            }
+
+            var shifts = await _db.VolunteerShifts
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(shift => shift.TenantId == tenantId && shiftIds.Contains(shift.Id))
+                .ToDictionaryAsync(shift => shift.Id);
+            if (!shifts.TryGetValue(swap.FromShiftId, out var fromShift)
+                || !shifts.TryGetValue(swap.ToShiftId.Value, out var toShift))
+            {
+                return (null, "Shift not found");
+            }
+
+            if (fromShift.OpportunityId != toShift.OpportunityId)
+                return (null, "Shifts must belong to the same opportunity");
+            if (fromShift.StartsAt < DateTime.UtcNow || toShift.StartsAt < DateTime.UtcNow)
+                return (null, "A shift has already started");
+
+            var fromApplicationId = await LockApprovedSwapApplicationAsync(
+                tenantId,
+                swap.FromUserId,
+                swap.FromShiftId);
+            var toApplicationId = await LockApprovedSwapApplicationAsync(
+                tenantId,
+                swap.ToUserId.Value,
+                swap.ToShiftId.Value);
+            if (!fromApplicationId.HasValue || !toApplicationId.HasValue)
+                return (null, "Both volunteers must still be assigned to their shifts");
+
+            if (await HasOverlappingApprovedShiftAsync(
+                    tenantId,
+                    swap.FromUserId,
+                    toShift,
+                    swap.FromShiftId)
+                || await HasOverlappingApprovedShiftAsync(
+                    tenantId,
+                    swap.ToUserId.Value,
+                    fromShift,
+                    swap.ToShiftId.Value))
+            {
+                return (null, "The swap would create an overlapping shift assignment");
+            }
+
+            var applications = await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .Where(application =>
+                    application.Id == fromApplicationId.Value
+                    || application.Id == toApplicationId.Value)
+                .ToDictionaryAsync(application => application.Id);
+            if (!applications.TryGetValue(fromApplicationId.Value, out var fromApplication)
+                || !applications.TryGetValue(toApplicationId.Value, out var toApplication))
+            {
+                return (null, "Both volunteers must still be assigned to their shifts");
+            }
+
+            // Laravel swaps the approved assignments only. QR rows are durable
+            // attendance evidence and remain attached to their original shifts.
+            fromApplication.ShiftId = swap.ToShiftId.Value;
+            fromApplication.UpdatedAt = DateTime.UtcNow;
+            toApplication.ShiftId = swap.FromShiftId;
+            toApplication.UpdatedAt = DateTime.UtcNow;
+            swap.Status = adminDecision ? "admin_approved" : "accepted";
+            if (adminDecision) swap.AdminId = actorUserId;
+            swap.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            if (ownsTransaction) await transaction!.CommitAsync();
+            return (swap, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
+
+            _logger.LogError(
+                exception,
+                "Failed to decide shift swap {SwapId} for tenant {TenantId}",
+                swapId,
+                tenantId);
+            return (null, "Failed to update the shift swap");
+        }
+        finally
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
     }
 
     public async Task<string?> CancelSwapAsync(int swapId, int userId)
     {
-        var swap = await _db.ShiftSwapRequests
-            .FirstOrDefaultAsync(s => s.Id == swapId);
-        if (swap == null) return "Swap request not found";
-        if (swap.FromUserId != userId) return "Not authorized";
-
-        swap.Status = "cancelled";
-        swap.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return null;
-    }
-
-    private async Task ExecuteSwapInternalAsync(ShiftSwapRequest swap)
-    {
-        var fromCheckin = await _db.VolunteerCheckIns
-            .FirstOrDefaultAsync(c => c.ShiftId == swap.FromShiftId && c.UserId == swap.FromUserId);
-        if (fromCheckin != null && swap.ToShiftId.HasValue)
-            fromCheckin.ShiftId = swap.ToShiftId.Value;
-
-        if (swap.ToUserId.HasValue && swap.ToShiftId.HasValue)
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var ownsTransaction = _db.Database.IsRelational()
+            && _db.Database.CurrentTransaction is null;
+        IDbContextTransaction? transaction = _db.Database.CurrentTransaction;
+        if (ownsTransaction)
         {
-            var toCheckin = await _db.VolunteerCheckIns
-                .FirstOrDefaultAsync(c => c.ShiftId == swap.ToShiftId && c.UserId == swap.ToUserId);
-            if (toCheckin != null)
-                toCheckin.ShiftId = swap.FromShiftId;
+            transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        }
+
+        try
+        {
+            if (_db.Database.IsRelational()
+                && !await LockSwapRequestAsync(swapId, tenantId))
+            {
+                return "Swap request not found or not cancellable";
+            }
+
+            var swap = await _db.ShiftSwapRequests
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s =>
+                    s.Id == swapId
+                    && s.TenantId == tenantId
+                    && s.FromUserId == userId
+                    && (s.Status == "pending" || s.Status == "admin_pending"));
+            if (swap == null) return "Swap request not found or not cancellable";
+
+            swap.Status = "cancelled";
+            swap.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            if (ownsTransaction) await transaction!.CommitAsync();
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
+
+            _logger.LogError(
+                exception,
+                "Failed to cancel shift swap {SwapId} for tenant {TenantId}",
+                swapId,
+                tenantId);
+            return "Failed to cancel the shift swap";
+        }
+        finally
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
         }
     }
+
+    private async Task<bool> LockSwapRequestAsync(
+        int swapId,
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText =
+            "SELECT \"Id\" FROM \"ShiftSwapRequests\" "
+            + "WHERE \"Id\" = @swap_id AND \"TenantId\" = @tenant_id FOR UPDATE";
+
+        var swapParameter = command.CreateParameter();
+        swapParameter.ParameterName = "swap_id";
+        swapParameter.Value = swapId;
+        command.Parameters.Add(swapParameter);
+
+        var tenantParameter = command.CreateParameter();
+        tenantParameter.ParameterName = "tenant_id";
+        tenantParameter.Value = tenantId;
+        command.Parameters.Add(tenantParameter);
+
+        return await command.ExecuteScalarAsync(ct) is not null;
+    }
+
+    private async Task<int?> LockApprovedSwapApplicationAsync(
+        int tenantId,
+        int userId,
+        int shiftId,
+        CancellationToken ct = default)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            return await _db.VolunteerApplications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(application =>
+                    application.TenantId == tenantId
+                    && application.UserId == userId
+                    && application.ShiftId == shiftId
+                    && application.Status == ApplicationStatus.Approved)
+                .Select(application => (int?)application.Id)
+                .SingleOrDefaultAsync(ct);
+        }
+
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText =
+            "SELECT \"Id\" FROM volunteer_applications "
+            + "WHERE \"TenantId\" = @tenant_id AND \"UserId\" = @user_id "
+            + "AND \"ShiftId\" = @shift_id AND \"Status\" = @status "
+            + "ORDER BY \"Id\" FOR UPDATE";
+
+        var tenantParameter = command.CreateParameter();
+        tenantParameter.ParameterName = "tenant_id";
+        tenantParameter.Value = tenantId;
+        command.Parameters.Add(tenantParameter);
+
+        var userParameter = command.CreateParameter();
+        userParameter.ParameterName = "user_id";
+        userParameter.Value = userId;
+        command.Parameters.Add(userParameter);
+
+        var shiftParameter = command.CreateParameter();
+        shiftParameter.ParameterName = "shift_id";
+        shiftParameter.Value = shiftId;
+        command.Parameters.Add(shiftParameter);
+
+        var statusParameter = command.CreateParameter();
+        statusParameter.ParameterName = "status";
+        statusParameter.Value = ApplicationStatus.Approved.ToString();
+        command.Parameters.Add(statusParameter);
+
+        var result = await command.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : Convert.ToInt32(result, CultureInfo.InvariantCulture);
+    }
+
+    private Task<bool> HasOverlappingApprovedShiftAsync(
+        int tenantId,
+        int userId,
+        VolunteerShift targetShift,
+        int excludedShiftId,
+        CancellationToken ct = default) =>
+        (
+            from application in _db.VolunteerApplications.IgnoreQueryFilters().AsNoTracking()
+            join shift in _db.VolunteerShifts.IgnoreQueryFilters().AsNoTracking()
+                on new { application.TenantId, ShiftId = application.ShiftId!.Value }
+                equals new { shift.TenantId, ShiftId = shift.Id }
+            where application.TenantId == tenantId
+                && application.UserId == userId
+                && application.Status == ApplicationStatus.Approved
+                && application.ShiftId.HasValue
+                && application.ShiftId.Value != excludedShiftId
+                && application.ShiftId.Value != targetShift.Id
+                && shift.StartsAt < targetShift.EndsAt
+                && shift.EndsAt > targetShift.StartsAt
+            select application.Id
+        ).AnyAsync(ct);
 
     // ── Waitlist ──────────────────────────────────────────────────────────────
 
@@ -2062,6 +2500,47 @@ public class ShiftManagementService
 
     public Task<bool> IsRecurringShiftsEnabledAsync(CancellationToken ct = default) =>
         IsRecurringShiftsEnabledAsync(_tenant.GetTenantIdOrThrow(), ct);
+
+    public async Task<bool> SwapRequiresAdminApprovalAsync(
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        var values = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config =>
+                config.TenantId == tenantId
+                && (config.Key == SwapRequiresAdminConfigKey
+                    || config.Key == VolunteeringModuleConfigKey))
+            .Select(config => new { config.Key, config.Value })
+            .ToListAsync(ct);
+
+        var direct = values.FirstOrDefault(config =>
+            config.Key == SwapRequiresAdminConfigKey);
+        if (direct is not null)
+        {
+            return ConfigValueIsEnabled(direct.Value, defaultValue: false);
+        }
+
+        var module = values.FirstOrDefault(config =>
+            config.Key == VolunteeringModuleConfigKey);
+        if (module is null || string.IsNullOrWhiteSpace(module.Value))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(module.Value);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty(SwapRequiresAdminConfigKey, out var configured)
+                && JsonValueIsEnabled(configured, defaultValue: false);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 
     public async Task<bool> IsRecurringShiftsEnabledAsync(
         int tenantId,

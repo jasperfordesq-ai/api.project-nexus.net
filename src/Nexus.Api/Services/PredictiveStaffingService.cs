@@ -44,7 +44,7 @@ public class PredictiveStaffingService
         var sixMonthsAgo = today.AddMonths(-6);
         var checkInsQuery = _db.VolunteerCheckIns
             .AsNoTracking()
-            .Where(c => c.CheckedInAt >= sixMonthsAgo);
+            .Where(c => c.CheckedInAt.HasValue && c.CheckedInAt.Value >= sixMonthsAgo);
 
         if (opportunityId.HasValue)
         {
@@ -55,10 +55,10 @@ public class PredictiveStaffingService
         var checkIns = await checkInsQuery
             .Select(c => new
             {
-                c.CheckedInAt,
+                CheckedInAt = c.CheckedInAt!.Value,
                 c.CheckedOutAt,
-                DayOfWeek = c.CheckedInAt.DayOfWeek,
-                Month = c.CheckedInAt.Month
+                DayOfWeek = c.CheckedInAt.Value.DayOfWeek,
+                Month = c.CheckedInAt.Value.Month
             })
             .ToListAsync();
 
@@ -350,16 +350,16 @@ public class PredictiveStaffingService
 
         var checkIns = await _db.VolunteerCheckIns
             .AsNoTracking()
-            .Where(c => c.CheckedInAt >= since)
+            .Where(c => c.CheckedInAt.HasValue && c.CheckedInAt.Value >= since)
             .Select(c => new
             {
                 c.UserId,
-                c.CheckedInAt,
+                CheckedInAt = c.CheckedInAt!.Value,
                 c.CheckedOutAt,
                 c.HoursLogged,
-                DayOfWeek = c.CheckedInAt.DayOfWeek,
-                Month = c.CheckedInAt.Month,
-                Year = c.CheckedInAt.Year
+                DayOfWeek = c.CheckedInAt.Value.DayOfWeek,
+                Month = c.CheckedInAt.Value.Month,
+                Year = c.CheckedInAt.Value.Year
             })
             .ToListAsync();
 

@@ -926,7 +926,7 @@ public static class DemoShowcaseSeedData
                 Title = "Repair cafe team hours",
                 Description = "Team credit allocation for the Saturday repair cafe.",
                 TotalHours = 6,
-                Status = "approved",
+                Status = "pending_confirmation",
                 CreatedById = coordinatorId,
                 ApprovedById = adminId,
                 ApprovedAt = now.AddDays(-1),
@@ -1465,9 +1465,11 @@ public static class DemoShowcaseSeedData
                 UserId = volunteerId,
                 CheckedInAt = now.AddDays(-1).AddHours(-3),
                 CheckedOutAt = now.AddDays(-1),
+                Status = "checked_out",
                 HoursLogged = 3,
                 Notes = "Demo check-in record for completed prep shift.",
-                CreatedAt = now.AddDays(-1)
+                CreatedAt = now.AddDays(-1),
+                UpdatedAt = now.AddDays(-1)
             });
 
         var reservation = await EnsureAsync(
@@ -1625,7 +1627,7 @@ public static class DemoShowcaseSeedData
                 CreatedAt = now.AddDays(-60)
             });
 
-        foreach (var (userId, role) in new[] { (orgOwnerId, "owner"), (coordinatorId, "manager"), (adminId, "admin") })
+        foreach (var (userId, role) in new[] { (orgOwnerId, "owner"), (coordinatorId, "member"), (adminId, "admin") })
         {
             await EnsureAsync(db, m => m.OrganisationId == organisation.Id && m.UserId == userId, () => new OrganisationMember { TenantId = tenantId, OrganisationId = organisation.Id, UserId = userId, Role = role, JobTitle = role == "owner" ? "Community Hub Lead" : "Demo Coordinator", JoinedAt = now.AddDays(-50) });
         }

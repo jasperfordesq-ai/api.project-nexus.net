@@ -6,6 +6,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Data;
+using System.Globalization;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,8 @@ public class VolunteeringParityController : ControllerBase
     private readonly ILogger<VolunteeringParityController> _logger;
     private readonly VolunteerGuardianConsentService _guardianConsent;
     private readonly VolunteerOrganisationService _volunteerOrganisations;
+    private readonly VolunteerAttendanceService _attendance;
+    private readonly IConfiguration _configuration;
     private readonly ShiftManagementService? _shiftManagement;
     private readonly PushNotificationService? _pushNotifications;
 
@@ -42,6 +45,8 @@ public class VolunteeringParityController : ControllerBase
         ILogger<VolunteeringParityController> logger,
         VolunteerGuardianConsentService guardianConsent,
         VolunteerOrganisationService volunteerOrganisations,
+        VolunteerAttendanceService attendance,
+        IConfiguration configuration,
         ShiftManagementService? shiftManagement = null,
         PushNotificationService? pushNotifications = null)
     {
@@ -50,6 +55,8 @@ public class VolunteeringParityController : ControllerBase
         _logger = logger;
         _guardianConsent = guardianConsent;
         _volunteerOrganisations = volunteerOrganisations;
+        _attendance = attendance;
+        _configuration = configuration;
         _shiftManagement = shiftManagement;
         _pushNotifications = pushNotifications;
     }
@@ -364,34 +371,140 @@ public class VolunteeringParityController : ControllerBase
     }
 
     [HttpGet("shifts/{shiftId:int}/checkin")]
-    public async Task<IActionResult> MyCheckin(int shiftId)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerAttendanceTokenPolicy)]
+    public async Task<IActionResult> MyCheckin(
+        int shiftId,
+        CancellationToken cancellationToken = default)
     {
-        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.ShiftId == shiftId && c.UserId == UserId());
-        return Ok(new { data = checkin });
+        var result = await _attendance.GetOrCreatePersonalTokenAsync(
+            TenantId(),
+            UserId(),
+            shiftId,
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return AttendanceError(result.Error!);
+        }
+
+        var row = result.Value!;
+        var qrUrl = await BuildAttendanceQrUrlAsync(
+            TenantId(),
+            row.QrToken,
+            cancellationToken);
+        return Ok(new
+        {
+            data = new
+            {
+                id = row.Id,
+                qr_token = row.QrToken,
+                qr_url = qrUrl,
+                status = row.Status,
+                checked_in_at = AttendanceDate(row.CheckedInAt),
+                checked_out_at = AttendanceDate(row.CheckedOutAt)
+            },
+            meta = AttendanceMeta()
+        });
     }
 
     [HttpGet("shifts/{shiftId:int}/checkins")]
-    public async Task<IActionResult> ShiftCheckins(int shiftId) => Ok(new { data = await _db.VolunteerCheckIns.Where(c => c.ShiftId == shiftId).Include(c => c.User).ToListAsync() });
-
-    [HttpPost("checkin/verify/{checkinId:int}")]
-    public async Task<IActionResult> VerifyCheckin(int checkinId)
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerAttendanceRosterPolicy)]
+    public async Task<IActionResult> ShiftCheckins(
+        int shiftId,
+        CancellationToken cancellationToken = default)
     {
-        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.Id == checkinId);
-        if (checkin == null) return NotFound(new { error = "Check-in not found" });
-        checkin.Notes = Append(checkin.Notes, "verified");
-        await _db.SaveChangesAsync();
-        return Ok(new { data = checkin });
+        var result = await _attendance.GetRosterAsync(
+            TenantId(),
+            UserId(),
+            shiftId,
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return AttendanceError(result.Error!);
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                checkins = result.Value!.Select(row => new
+                {
+                    id = row.Id,
+                    user = new
+                    {
+                        id = row.User.Id,
+                        name = row.User.Name,
+                        avatar_url = row.User.AvatarUrl
+                    },
+                    status = row.Status,
+                    checked_in_at = AttendanceDate(row.CheckedInAt),
+                    checked_out_at = AttendanceDate(row.CheckedOutAt)
+                })
+            },
+            meta = AttendanceMeta()
+        });
     }
 
-    [HttpPost("checkin/checkout/{checkinId:int}")]
-    public async Task<IActionResult> Checkout(int checkinId, [FromBody] JsonElement body)
+    [HttpPost("checkin/verify/{token}")]
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerAttendanceVerifyPolicy)]
+    public async Task<IActionResult> VerifyCheckin(
+        string token,
+        CancellationToken cancellationToken = default)
     {
-        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.Id == checkinId);
-        if (checkin == null) return NotFound(new { error = "Check-in not found" });
-        checkin.CheckedOutAt = DateTime.UtcNow;
-        checkin.HoursLogged = Decimal(body, "hours") ?? (decimal)Math.Max(0, (DateTime.UtcNow - checkin.CheckedInAt).TotalHours);
-        await _db.SaveChangesAsync();
-        return Ok(new { data = checkin });
+        var result = await _attendance.VerifyAsync(
+            TenantId(),
+            UserId(),
+            token,
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return AttendanceError(result.Error!);
+        }
+
+        var row = result.Value!;
+        return Ok(new
+        {
+            data = new
+            {
+                status = row.Status,
+                checked_in_at = AttendanceDate(row.CheckedInAt),
+                user = new
+                {
+                    id = row.User.Id,
+                    name = row.User.Name,
+                    avatar_url = row.User.AvatarUrl
+                },
+                shift = new
+                {
+                    id = row.Shift.Id,
+                    start_time = AttendanceDate(row.Shift.StartsAt),
+                    end_time = AttendanceDate(row.Shift.EndsAt)
+                }
+            },
+            meta = AttendanceMeta()
+        });
+    }
+
+    [HttpPost("checkin/checkout/{token}")]
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerAttendanceCheckoutPolicy)]
+    public async Task<IActionResult> Checkout(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _attendance.CheckOutAsync(
+            TenantId(),
+            UserId(),
+            token,
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return AttendanceError(result.Error!);
+        }
+
+        return Ok(new
+        {
+            data = new { message = result.Value!.Message },
+            meta = AttendanceMeta()
+        });
     }
 
     [HttpGet("hours")]
@@ -963,10 +1076,82 @@ public class VolunteeringParityController : ControllerBase
     }
 
     [HttpGet("admin/swaps")]
-    public IActionResult AdminSwaps() => Ok(new { data = Array.Empty<object>() });
+    [Authorize(Policy = "AdminOnly")]
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapAdminListPolicy)]
+    public async Task<IActionResult> AdminSwaps(CancellationToken cancellationToken = default)
+    {
+        SetSwapHeaders();
+        if (_shiftManagement is null)
+            return SwapWorkflowError("Shift swap service is unavailable");
+        if (!await _shiftManagement.IsVolunteeringEnabledAsync(cancellationToken))
+            return ShiftSignupError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+
+        var swaps = await _shiftManagement.GetAdminPendingSwapsAsync();
+        return Ok(new
+        {
+            data = swaps.Select(swap =>
+                ShiftManagementController.SwapPayload(
+                    swap,
+                    UserId(),
+                    includeDirection: false)),
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}",
+                total = swaps.Count
+            }
+        });
+    }
 
     [HttpPut("admin/swaps/{swapId:int}")]
-    public IActionResult UpdateSwap(int swapId, [FromBody] JsonElement body) => Ok(new { data = new { id = swapId, status = Str(body, "status") ?? "approved" } });
+    [Authorize(Policy = "AdminOnly")]
+    [EnableRateLimiting(RateLimitingExtensions.VolunteerSwapAdminDecidePolicy)]
+    public async Task<IActionResult> UpdateSwap(
+        int swapId,
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
+    {
+        SetSwapHeaders();
+        if (_shiftManagement is null)
+            return SwapWorkflowError("Shift swap service is unavailable");
+        if (!await _shiftManagement.IsVolunteeringEnabledAsync(cancellationToken))
+            return ShiftSignupError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+
+        var action = Str(body, "action")?.Trim().ToLowerInvariant();
+        if (action is not ("approve" or "reject"))
+        {
+            return StatusCode(StatusCodes.Status400BadRequest, new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "Action must be approve or reject",
+                        field = "action"
+                    }
+                }
+            });
+        }
+
+        var (swap, error) = await _shiftManagement.AdminDecideSwapAsync(
+            swapId,
+            UserId(),
+            approve: action == "approve");
+        if (error is not null)
+            return SwapWorkflowError(error);
+
+        return Ok(new
+        {
+            data = new { id = swap!.Id, status = swap.Status },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
+    }
 
     [HttpGet("incidents")]
     public IActionResult Incidents() => Ok(new { data = Array.Empty<object>() });
@@ -1231,6 +1416,30 @@ public class VolunteeringParityController : ControllerBase
             }
         });
 
+    private ObjectResult SwapWorkflowError(string message)
+    {
+        var (statusCode, code) = message switch
+        {
+            "Shift swap service is unavailable" =>
+                (StatusCodes.Status503ServiceUnavailable, "SERVICE_UNAVAILABLE"),
+            "Swap request not found" or
+            "Swap request not found or already processed" or
+            "Swap request not found or not cancellable" =>
+                (StatusCodes.Status404NotFound, "NOT_FOUND"),
+            "Not authorized" or "You are not assigned to this shift" =>
+                (StatusCodes.Status403Forbidden, "FORBIDDEN"),
+            "A matching swap request is already pending" =>
+                (StatusCodes.Status409Conflict, "ALREADY_EXISTS"),
+            _ when message.StartsWith("Failed to ", StringComparison.Ordinal) =>
+                (StatusCodes.Status500InternalServerError, "SERVER_ERROR"),
+            _ => (StatusCodes.Status400BadRequest, "VALIDATION_ERROR")
+        };
+        return StatusCode(statusCode, new
+        {
+            errors = new[] { new { code, message } }
+        });
+    }
+
     private ObjectResult GuardianConsentError(
         int statusCode,
         string code,
@@ -1276,6 +1485,87 @@ public class VolunteeringParityController : ControllerBase
             errors = new[] { new { code, message, field } }
         });
     }
+
+    private ObjectResult AttendanceError(VolunteerAttendanceError error)
+    {
+        if (error.Field is null)
+        {
+            return StatusCode(error.StatusCode, new
+            {
+                errors = new[]
+                {
+                    new { code = error.Code, message = error.Message }
+                }
+            });
+        }
+
+        return StatusCode(error.StatusCode, new
+        {
+            errors = new[]
+            {
+                new { code = error.Code, message = error.Message, field = error.Field }
+            }
+        });
+    }
+
+    private void SetSwapHeaders()
+    {
+        Response.Headers["API-Version"] = "2.0";
+        var tenantId = User.FindFirst("tenant_id")?.Value;
+        if (!string.IsNullOrWhiteSpace(tenantId))
+        {
+            Response.Headers["X-Tenant-ID"] = tenantId;
+        }
+    }
+
+    private object AttendanceMeta() => new
+    {
+        base_url = $"{Request.Scheme}://{Request.Host}"
+    };
+
+    private async Task<string> BuildAttendanceQrUrlAsync(
+        int tenantId,
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var tenant = await _db.Tenants
+            .AsNoTracking()
+            .Where(candidate => candidate.Id == tenantId)
+            .Select(candidate => new { candidate.Id, candidate.Slug, candidate.Domain })
+            .SingleAsync(cancellationToken);
+
+        string origin;
+        string tenantPrefix;
+        if (tenant.Id > 1 && !string.IsNullOrWhiteSpace(tenant.Domain))
+        {
+            origin = NormalizeAttendanceOrigin(tenant.Domain!);
+            tenantPrefix = string.Empty;
+        }
+        else
+        {
+            origin = (_configuration["App:FrontendUrl"]
+                ?? $"{Request.Scheme}://{Request.Host}").TrimEnd('/');
+            tenantPrefix = string.IsNullOrWhiteSpace(tenant.Slug)
+                ? string.Empty
+                : "/" + Uri.EscapeDataString(tenant.Slug);
+        }
+
+        return $"{origin}{tenantPrefix}/volunteering/checkin/{Uri.EscapeDataString(token)}";
+    }
+
+    private static string NormalizeAttendanceOrigin(string domain)
+    {
+        var trimmed = domain.Trim().TrimEnd('/');
+        return Uri.TryCreate(trimmed, UriKind.Absolute, out var absolute)
+            && absolute.Scheme is "http" or "https"
+                ? absolute.ToString().TrimEnd('/')
+                : $"https://{trimmed}";
+    }
+
+    private static string? AttendanceDate(DateTime? value) =>
+        value?.ToUniversalTime().ToString(
+            "yyyy-MM-dd HH:mm:ss",
+            CultureInfo.InvariantCulture);
 
     private static object MapGuardianConsent(GuardianConsentView consent) => new
     {
@@ -1394,5 +1684,4 @@ public class VolunteeringParityController : ControllerBase
     private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
-    private static string? Append(string? value, string suffix) => string.IsNullOrWhiteSpace(value) ? suffix : value + "; " + suffix;
 }
