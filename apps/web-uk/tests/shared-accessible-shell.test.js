@@ -1741,6 +1741,36 @@ describe('shared accessible frontend shell', () => {
     expect(faq.text).toContain(translate('ar', 'faq.a5'));
   });
 
+  it('keeps the public information family slugless on a resolved custom domain', async () => {
+    const api = require('../src/lib/api');
+    api.getPlatformStats.mockClear().mockResolvedValue({ data: {} });
+    api.getTenantBootstrap.mockImplementation(async (options = {}) => (
+      options.host === 'acme-accessible.test'
+        ? tenantBootstrap('acme', { accessible_domain: 'acme-accessible.test' })
+        : tenantBootstrap(options.slug || 'acme')
+    ));
+
+    const host = 'acme-accessible.test';
+    const [about, guide, features, faq] = await Promise.all([
+      request(app).get('/about').set('Host', host),
+      request(app).get('/guide').set('Host', host),
+      request(app).get('/features').set('Host', host),
+      request(app).get('/faq').set('Host', host)
+    ]);
+
+    for (const response of [about, guide, features, faq]) {
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('acme Timebank');
+      expect(response.text).not.toContain('/acme/accessible');
+    }
+    expect(about.text).toContain('href="/register"');
+    expect(about.text).toContain('href="/contact"');
+    expect(guide.text).toContain('href="/register"');
+    expect(guide.text).toContain('href="/listings"');
+    expect(features.text).toContain('href="/guide"');
+    expect(api.getPlatformStats).toHaveBeenCalledWith({ host });
+  });
+
   it('renders the Laravel-style newsletter unsubscribe states', async () => {
     const api = require('../src/lib/api');
     api.callNewsletterApi.mockResolvedValueOnce({ data: { success: true } });

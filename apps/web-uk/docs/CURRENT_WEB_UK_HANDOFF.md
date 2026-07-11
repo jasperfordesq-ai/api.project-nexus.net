@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,413/1,413` tests passed.
+- Jest: `45/45` suites and `1,414/1,414` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -158,7 +158,21 @@ preceding `e155375c` checkpoint.
 A live Laravel tenant fixture with listings and/or wallet disabled is still
 unavailable, so that disabled-state runtime proof remains open alongside a
 current aggregate browser rerun under normal fixture latency, tenant-domain
-depth, manual assistive-technology review, and ASP.NET backend compatibility.
+browser proof, manual assistive-technology review, and ASP.NET backend
+compatibility.
+
+## 2026-07-10 Public Information Custom-Domain Slice
+
+Focused custom-domain traversal now covers About, Guide, Features, and FAQ
+through the real host-resolution middleware. All four pages resolve the tenant
+name from host authority and keep local actions slugless; About sends Host
+authority to `/api/v2/platform/stats`; Guide preserves its module-aware guest
+actions; and Features links to the slugless Guide route. The focused traversal
+passed `1/1`, and the aggregate Jest gate passed `45/45` suites and
+`1,414/1,414` tests in `135.7` seconds. No production code changed in this
+certification slice. A live custom-domain browser fixture, the latency-blocked
+current aggregate browser rerun, manual assistive-technology review, and
+ASP.NET backend compatibility remain open.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 
