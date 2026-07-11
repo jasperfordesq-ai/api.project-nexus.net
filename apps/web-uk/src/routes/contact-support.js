@@ -16,12 +16,6 @@ const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
 
 const SUPPORT_IMPACTS = ['blocked', 'major', 'minor', 'cosmetic'];
 
-const SUPPORT_VALIDATION_ERRORS = {
-  summary: 'Enter a summary between 3 and 180 characters',
-  description: 'Enter details between 10 and 5000 characters',
-  impact: 'Select how this affects you'
-};
-
 function asString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -83,6 +77,14 @@ function contactStatusMessages(t) {
     'contact-failed': t('contact.error_fallback'),
     'contact-rate-limited': t('contact.rate_limited'),
     'contact-turnstile-failed': t('contact.turnstile_failed')
+  };
+}
+
+function supportValidationErrors(t) {
+  return {
+    summary: t('report_problem.errors.summary'),
+    description: t('report_problem.errors.description'),
+    impact: t('report_problem.errors.impact')
   };
 }
 
@@ -163,7 +165,7 @@ router.get('/report-a-problem', (req, res) => {
   const status = asString(req.query.status);
 
   return res.render('report-problem', {
-    title: 'Report a problem with this page',
+    title: res.locals.t('report_problem.title'),
     activeNav: '',
     pageUrl,
     impacts: SUPPORT_IMPACTS,
@@ -171,7 +173,7 @@ router.get('/report-a-problem', (req, res) => {
     reference: asString(req.query.ref),
     values: stored.values || {},
     errors: status === 'invalid'
-      ? { ...SUPPORT_VALIDATION_ERRORS, ...(stored.errors || {}) }
+      ? { ...supportValidationErrors(res.locals.t), ...(stored.errors || {}) }
       : (stored.errors || {})
   });
 });
@@ -190,14 +192,15 @@ router.post('/report-a-problem', asyncRoute(async (req, res) => {
   };
 
   const errors = {};
+  const validationErrors = supportValidationErrors(res.locals.t);
   if (values.summary.length < 3 || values.summary.length > 180) {
-    errors.summary = SUPPORT_VALIDATION_ERRORS.summary;
+    errors.summary = validationErrors.summary;
   }
   if (values.description.length < 10 || values.description.length > 5000) {
-    errors.description = SUPPORT_VALIDATION_ERRORS.description;
+    errors.description = validationErrors.description;
   }
   if (!SUPPORT_IMPACTS.includes(values.impact)) {
-    errors.impact = SUPPORT_VALIDATION_ERRORS.impact;
+    errors.impact = validationErrors.impact;
   }
 
   if (Object.keys(errors).length > 0) {

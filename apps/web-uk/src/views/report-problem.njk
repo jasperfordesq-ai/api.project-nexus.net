@@ -9,14 +9,14 @@
   {% set hasErrors = errors and (errors.summary or errors.description or errors.impact) %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ tenantName }}</span>
-      <h1 class="govuk-heading-xl">{{ t("report_problem.footer_link") }}</h1>
+      <span class="govuk-caption-l">{{ t("report_problem.caption", { service: tenantName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("report_problem.title") }}</h1>
 
       {% if status == 'sent' %}
         <div class="govuk-panel govuk-panel--confirmation">
-          <h2 class="govuk-panel__title">Problem report sent</h2>
+          <h2 class="govuk-panel__title">{{ t("report_problem.success_title") }}</h2>
           {% if reference %}
-            <div class="govuk-panel__body">Your reference is {{ reference }}</div>
+            <div class="govuk-panel__body">{{ t("report_problem.success_body", { ref: reference }) }}</div>
           {% endif %}
         </div>
         <p class="govuk-body govuk-!-margin-top-6">
@@ -39,10 +39,10 @@
         {% elif status == 'failed' %}
           <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="report-error-title">
             <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title" id="report-error-title">Error</h2>
+              <h2 class="govuk-notification-banner__title" id="report-error-title">{{ t("states.error_title") }}</h2>
             </div>
             <div class="govuk-notification-banner__content">
-              <p class="govuk-notification-banner__heading">We could not send your report. Please try again.</p>
+              <p class="govuk-notification-banner__heading">{{ t("contact.error_fallback") }}</p>
             </div>
           </div>
         {% endif %}
@@ -54,7 +54,7 @@
           <input type="hidden" name="page_url" value="{{ pageUrl }}">
 
           <p class="govuk-body">
-            Page you are reporting:
+            {{ t("report_problem.page_label") }}:
             <span class="govuk-!-font-weight-bold">{{ pageUrl }}</span>
           </p>
 
@@ -87,7 +87,7 @@
                   <div class="govuk-radios__item">
                     <input class="govuk-radios__input" id="impact-{{ impact }}" name="impact" type="radio" value="{{ impact }}" {% if values.impact == impact %}checked{% endif %}>
                     <label class="govuk-label govuk-radios__label" for="impact-{{ impact }}">
-                      {% if impact == 'blocked' %}I could not complete what I was doing{% elif impact == 'major' %}It caused a major problem{% elif impact == 'minor' %}It caused a minor problem{% else %}It looked wrong but I could continue{% endif %}
+                      {{ t("report_problem.impacts." + impact) }}
                     </label>
                   </div>
                 {% endfor %}
@@ -95,7 +95,7 @@
             </fieldset>
           </div>
 
-          <button class="govuk-button" data-module="govuk-button" type="submit">Send report</button>
+          <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("report_problem.submit") }}</button>
         </form>
       {% endif %}
     </div>

@@ -5556,9 +5556,40 @@ describe('shared accessible frontend shell', () => {
       .get('/report-a-problem?return=/explore&status=invalid')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     expect(follow.text).toContain('There is a problem');
-    expect(follow.text).toContain('Enter a summary between 3 and 180 characters');
-    expect(follow.text).toContain('Enter details between 10 and 5000 characters');
-    expect(follow.text).toContain('Select how this affects you');
+    expect(follow.text).toContain('Enter a short summary of the problem (3 to 180 characters)');
+    expect(follow.text).toContain('Describe what happened (10 to 5000 characters)');
+    expect(follow.text).toContain('Select how much this affected you');
+  });
+
+  it('localizes the signed report-problem validation round trip from Laravel catalogs', async () => {
+    const cookieSignature = require('cookie-signature');
+    const { translate } = require('../src/lib/localization');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/report-a-problem?return=/explore&locale=ar')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(first.status).toBe(200);
+    expect(first.headers['content-language']).toBe('ar');
+    expect(first.text).toContain(translate('ar', 'report_problem.caption', { service: 'Project NEXUS Accessible' }));
+    expect(first.text).toContain(translate('ar', 'report_problem.impacts.blocked'));
+    expect(first.text).toContain(translate('ar', 'report_problem.submit'));
+
+    const response = await agent
+      .post('/report-a-problem')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], page_url: '/explore', summary: 'No', description: 'Short', impact: 'unknown' });
+    expect(response.status).toBe(302);
+    const follow = await agent
+      .get(response.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(follow.headers['content-language']).toBe('ar');
+    expect(follow.text).toContain(translate('ar', 'report_problem.errors.summary'));
+    expect(follow.text).toContain(translate('ar', 'report_problem.errors.description'));
+    expect(follow.text).toContain(translate('ar', 'report_problem.errors.impact'));
   });
 
   it('serves the Laravel forgot-password alias with a matching form action', async () => {

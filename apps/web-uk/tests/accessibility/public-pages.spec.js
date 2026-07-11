@@ -506,6 +506,39 @@ test.describe('representative authenticated-page accessibility gate', () => {
     });
   }
 
+  test('Arabic report-problem form preserves Laravel validation output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+    try {
+      const response = await page.goto(`${authenticatedMountPath}/report-a-problem?return=/explore&locale=ar`, { waitUntil: 'domcontentloaded' });
+      expect(response).not.toBeNull();
+      expect(response.status()).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'report_problem.title'));
+      await expect(page.getByText(translate('ar', 'report_problem.impacts.blocked'), { exact: true })).toBeVisible();
+
+      await page.locator('#summary').fill('No');
+      await page.locator('#description').fill('Short');
+      await Promise.all([
+        page.waitForURL(/status=invalid/),
+        page.locator('form:has(#summary) button[type="submit"]').click()
+      ]);
+      await expect(page.locator('#summary-error')).toContainText(translate('ar', 'report_problem.errors.summary'));
+      await expect(page.locator('#description-error')).toContainText(translate('ar', 'report_problem.errors.description'));
+      await expect(page.locator('#impact-error')).toContainText(translate('ar', 'report_problem.errors.impact'));
+      const overflow = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-report-problem', { body: Buffer.from(JSON.stringify({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) }, null, 2)), contentType: 'application/json' });
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic dashboard localizes Laravel-owned labels and retains RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
