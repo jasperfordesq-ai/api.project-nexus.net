@@ -14,18 +14,6 @@ const CONTACT_PATH = '/contact';
 const REPORT_PROBLEM_PATH = '/report-a-problem';
 const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
 
-const CONTACT_VALIDATION_ERRORS = {
-  name: 'Enter your name',
-  email: 'Enter a valid email address',
-  message: 'Enter a message'
-};
-
-const CONTACT_STATUS_MESSAGES = {
-  'contact-failed': 'Failed to send message. Please try again.',
-  'contact-rate-limited': 'Too many contact form attempts. Please wait and try again.',
-  'contact-turnstile-failed': 'The security check failed. Refresh the page and try again.'
-};
-
 const SUPPORT_IMPACTS = ['blocked', 'major', 'minor', 'cosmetic'];
 
 const SUPPORT_VALIDATION_ERRORS = {
@@ -82,6 +70,22 @@ function contactStatusFromError(error) {
   return 'contact-failed';
 }
 
+function contactValidationErrors(t) {
+  return {
+    name: t('contact.errors.name_required'),
+    email: t('contact.errors.email_required'),
+    message: t('contact.errors.message_required')
+  };
+}
+
+function contactStatusMessages(t) {
+  return {
+    'contact-failed': t('contact.error_fallback'),
+    'contact-rate-limited': t('contact.rate_limited'),
+    'contact-turnstile-failed': t('contact.turnstile_failed')
+  };
+}
+
 router.get('/contact', (req, res) => {
   const stored = consumeSessionValue(req, 'contactForm');
   const problemUrl = validateReturnUrl(req.query.problem_url, '');
@@ -90,20 +94,20 @@ router.get('/contact', (req, res) => {
     name: '',
     email: '',
     subject: problemUrl ? 'technical' : '',
-    message: problemUrl ? `I found a problem on this page: ${problemUrl}\n\n` : '',
+    message: problemUrl ? `${res.locals.t('report_problem.contact_prefill', { url: problemUrl })}\n\n` : '',
     ...(stored.values || {})
   };
 
   res.render('contact', {
-    title: 'Contact Us',
+    title: res.locals.t('contact.title'),
     titleKey: 'contact.title',
     activeNav: 'contact',
     status,
     values,
     errors: status === 'contact-validation'
-      ? { ...CONTACT_VALIDATION_ERRORS, ...(stored.errors || {}) }
+      ? { ...contactValidationErrors(res.locals.t), ...(stored.errors || {}) }
       : (stored.errors || {}),
-    statusMessage: CONTACT_STATUS_MESSAGES[status] || ''
+    statusMessage: contactStatusMessages(res.locals.t)[status] || ''
   });
 });
 
@@ -116,14 +120,15 @@ router.post('/contact', asyncRoute(async (req, res) => {
   };
 
   const errors = {};
+  const validationErrors = contactValidationErrors(res.locals.t);
   if (!values.name) {
-    errors.name = CONTACT_VALIDATION_ERRORS.name;
+    errors.name = validationErrors.name;
   }
   if (!values.email || !validEmail(values.email)) {
-    errors.email = CONTACT_VALIDATION_ERRORS.email;
+    errors.email = validationErrors.email;
   }
   if (!values.message) {
-    errors.message = CONTACT_VALIDATION_ERRORS.message;
+    errors.message = validationErrors.message;
   }
 
   if (Object.keys(errors).length > 0) {

@@ -9,9 +9,9 @@
   {% set hasErrors = errors and (errors.name or errors.email or errors.message) %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <span class="govuk-caption-l">{{ t("contact.caption", { community: tenantName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("contact.title") if t else title }}</h1>
-      <p class="govuk-body-l">Have a question about {{ tenantName }}? We'd love to hear from you.</p>
+      <p class="govuk-body-l">{{ t("contact.subtitle", { name: tenantName }) }}</p>
 
       {% if status == 'contact-sent' %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="contact-success-title">
@@ -43,7 +43,7 @@
         {% elif statusMessage %}
           <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="contact-error-title">
             <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title" id="contact-error-title">Error</h2>
+              <h2 class="govuk-notification-banner__title" id="contact-error-title">{{ t("states.error_title") }}</h2>
             </div>
             <div class="govuk-notification-banner__content">
               <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -58,7 +58,7 @@
             <legend class="govuk-fieldset__legend govuk-visually-hidden">{{ t("contact.form.fieldset_legend") }}</legend>
 
             <div class="govuk-form-group{% if errors.name %} govuk-form-group--error{% endif %}">
-              <label class="govuk-label" for="name">Name</label>
+              <label class="govuk-label" for="name">{{ t("contact.form.name_label") }}</label>
               {% if errors.name %}
                 <p id="name-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ errors.name }}</p>
               {% endif %}
@@ -66,7 +66,7 @@
             </div>
 
             <div class="govuk-form-group{% if errors.email %} govuk-form-group--error{% endif %}">
-              <label class="govuk-label" for="email">Email address</label>
+              <label class="govuk-label" for="email">{{ t("contact.form.email_label") }}</label>
               {% if errors.email %}
                 <p id="email-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ errors.email }}</p>
               {% endif %}
@@ -81,12 +81,12 @@
                 <option value="account" {% if values.subject == 'account' %}selected{% endif %}>{{ t("contact.form.subjects.account") }}</option>
                 <option value="technical" {% if values.subject == 'technical' %}selected{% endif %}>{{ t("contact.form.subjects.technical") }}</option>
                 <option value="feedback" {% if values.subject == 'feedback' %}selected{% endif %}>{{ t("contact.form.subjects.feedback") }}</option>
-                <option value="other" {% if values.subject == 'other' %}selected{% endif %}>Other</option>
+                <option value="other" {% if values.subject == 'other' %}selected{% endif %}>{{ t("contact.form.subjects.other") }}</option>
               </select>
             </div>
 
             <div class="govuk-form-group{% if errors.message %} govuk-form-group--error{% endif %}">
-              <label class="govuk-label" for="message">Message</label>
+              <label class="govuk-label" for="message">{{ t("contact.form.message_label") }}</label>
               {% if errors.message %}
                 <p id="message-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ errors.message }}</p>
               {% endif %}

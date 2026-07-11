@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,408/1,408` tests passed.
+- Jest: `45/45` suites and `1,409/1,409` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,8 +62,8 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `59/59` cases in
-  `734.5` seconds (`12.1` minutes).
+- Automated browser accessibility: Chromium/axe passed `60/60` cases in
+  `727.6` seconds (`12.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -74,7 +74,7 @@ scores must not be reused as current results.
   colours. Live current-source inspection independently confirmed the summary
   is the active `role="alert"` element and the forced-colour select/footer pairs
   resolve to white on black without overflow. The new authenticated Arabic
-  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/member-profile/knowledge-base/help/trust-and-safety/about/guide/features/faq/legal/accessibility/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
+  dashboard/account/profile/profile-settings/activity/notifications/messages/connections/wallet/member-directory/member-profile/knowledge-base/help/trust-and-safety/about/guide/features/faq/legal/accessibility/contact/achievements/leaderboard/NEXUS-score cases prove their Laravel-owned headings, actions,
   labels, plural/number formatting, and structural sections. The dashboard's
   welcome, CTA, statistics,
   progress, quick links, feed/listing labels, image alternatives, and numeric
@@ -99,6 +99,24 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Contact Contextual Localization And Validation Slice
+
+Public GET/POST `/contact` now resolves its title, caption, subtitle, field and
+subject labels, report-page prefill, validation errors, failure/rate-limit/
+Turnstile statuses, and banner semantics through Laravel's exact request-locale
+catalog. The no-JS validation round trip stores localized field errors and
+preserves the chosen locale through the tenant-safe redirect. The focused live
+browser path deliberately stops at validation, so it creates no contact record.
+
+Focused Contact form/submission/validation coverage passed `5/5`; the complete
+Jest gate passed `45/45` suites and `1,409/1,409` tests. A real Laravel-backed
+Arabic invalid-submission journey passed localized error rendering, RTL,
+320-pixel reflow, and axe in `16.3` seconds, and the expanded Chromium/axe
+matrix passed `60/60` in `727.6` seconds (`12.0` minutes). Remaining gaps are a
+safe live successful submission, production Turnstile/rate-limit outcomes,
+notification side effects, manual assistive-technology review, and ASP.NET
+backend compatibility.
 
 ## 2026-07-10 Legal And Accessibility Contextual Localization Slice
 

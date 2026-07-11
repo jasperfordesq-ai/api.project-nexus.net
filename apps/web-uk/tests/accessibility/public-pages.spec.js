@@ -272,6 +272,41 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
       contentType: 'application/json'
     });
   });
+
+  test('Arabic contact form preserves Laravel validation output with RTL reflow', async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 320, height: 640 });
+    const response = await page.goto(`${mountPath}/contact?problem_url=/explore&locale=ar`, { waitUntil: 'domcontentloaded' });
+    expect(response).not.toBeNull();
+    expect(response.status()).toBeLessThan(400);
+    expect(response.headers()['content-language']).toBe('ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('h1')).toHaveText(translate('ar', 'contact.title'));
+    await expect(page.locator('#message')).toContainText(translate('ar', 'report_problem.contact_prefill', { url: '/explore' }));
+
+    await page.locator('#message').fill('');
+    await page.locator('#email').fill('invalid');
+    await Promise.all([
+      page.waitForURL(/status=contact-validation/),
+      page.locator('form:has(#name) button[type="submit"]').click()
+    ]);
+    await expect(page.locator('.govuk-error-summary')).toContainText(translate('ar', 'states.error_title'));
+    await expect(page.locator('#name-error')).toContainText(translate('ar', 'contact.errors.name_required'));
+    await expect(page.locator('#email-error')).toContainText(translate('ar', 'contact.errors.email_required'));
+    await expect(page.locator('#message-error')).toContainText(translate('ar', 'contact.errors.message_required'));
+
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    await testInfo.attach('arabic-contact-validation', {
+      body: Buffer.from(JSON.stringify({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) }, null, 2)),
+      contentType: 'application/json'
+    });
+    expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+  });
 });
 
 test.describe('keyboard, focus, error, and forced-colour gate', () => {

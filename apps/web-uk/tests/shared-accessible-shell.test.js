@@ -5338,7 +5338,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('<h1 class="govuk-heading-xl">Contact Us</h1>');
-    expect(response.text).toContain("Have a question about Project NEXUS Accessible? We'd love to hear from you.");
+    expect(response.text).toContain('Have a question about Project NEXUS Accessible? We&#39;d love to hear from you.');
     expect(response.text).toContain('method="post" action="/contact"');
     expect(response.text).toContain('name="_csrf"');
     expect(response.text).toContain('id="name" name="name"');
@@ -5404,6 +5404,33 @@ describe('shared accessible frontend shell', () => {
     expect(follow.text).toContain('Enter your name');
     expect(follow.text).toContain('Enter a valid email address');
     expect(follow.text).toContain('Enter a message');
+  });
+
+  it('localizes the contact form and no-JS validation round trip from Laravel catalogs', async () => {
+    const { translate } = require('../src/lib/localization');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact?problem_url=/explore&locale=ar');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(first.status).toBe(200);
+    expect(first.headers['content-language']).toBe('ar');
+    expect(first.text).toContain('dir="rtl"');
+    expect(first.text).toContain(translate('ar', 'contact.subtitle', { name: 'Project NEXUS Accessible' }));
+    expect(first.text).toContain(translate('ar', 'contact.form.name_label'));
+    expect(first.text).toContain(translate('ar', 'contact.form.subjects.other'));
+    expect(first.text).toContain(translate('ar', 'report_problem.contact_prefill', { url: '/explore' }));
+
+    const response = await agent
+      .post('/contact')
+      .type('form')
+      .send({ _csrf: csrfMatch[1], name: '', email: 'invalid', message: '' });
+    expect(response.status).toBe(302);
+    const follow = await agent.get(response.headers.location);
+    expect(follow.headers['content-language']).toBe('ar');
+    expect(follow.text).toContain(translate('ar', 'states.error_title'));
+    expect(follow.text).toContain(translate('ar', 'contact.errors.name_required'));
+    expect(follow.text).toContain(translate('ar', 'contact.errors.email_required'));
+    expect(follow.text).toContain(translate('ar', 'contact.errors.message_required'));
   });
 
   it('keeps contact validation redirects inside the shared accessible mount', async () => {
