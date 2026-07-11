@@ -13011,7 +13011,7 @@ describe('shared accessible frontend shell', () => {
     expect(create.status).toBe(200);
     expect(create.text).toContain('Create a poll');
     expect(create.text).toContain('Ranked choice');
-    expect(create.text).toContain('We could not create your poll.');
+    expect(create.text).toContain('Could not create the poll. Check your entries and try again.');
     expect(create.text).toContain('Community');
 
     const manage = await request(app)
@@ -13024,7 +13024,7 @@ describe('shared accessible frontend shell', () => {
       per_page: 30
     });
     expect(manage.text).toContain('Manage my polls');
-    expect(manage.text).toContain('The poll has been deleted.');
+    expect(manage.text).toContain('Poll deleted.');
     expect(manage.text).toContain('Export results');
     expect(manage.text).toContain('Delete poll');
 
@@ -13036,6 +13036,73 @@ describe('shared accessible frontend shell', () => {
     expect(api.getPollExport).toHaveBeenCalledWith('test-token', 42);
     expect(exported.headers['content-type']).toContain('text/csv');
     expect(exported.text).toContain('Community garden,3');
+  });
+
+  it('renders the poll listing from the exact Arabic Laravel catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    api.getPolls.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          question: 'Which project should happen next?',
+          status: 'open',
+          creator: { name: 'Ada Lovelace' },
+          expires_at: '2026-08-01T00:00:00Z',
+          options: [
+            { id: 7, text: 'Community garden' },
+            { id: 8, text: 'Tool library' }
+          ]
+        },
+        {
+          id: 44,
+          question: 'Which workshop did people prefer?',
+          status: 'closed',
+          creator: { name: 'Alan Turing' },
+          total_votes: 10,
+          results_visible: true,
+          voted_option_id: 13,
+          options: [
+            { id: 13, text: 'Bike repair', vote_count: 7, percentage: 70 },
+            { id: 14, text: 'Bread making', vote_count: 3, percentage: 30 }
+          ]
+        }
+      ]
+    });
+    api.getPollCategories.mockResolvedValue({ data: ['community'] });
+
+    const response = await request(app)
+      .get('/polls?mine=1&category=community&status=voted&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('lang="ar"');
+    expect(response.text).toContain('dir="rtl"');
+    expect(response.text).not.toContain('>undefined<');
+    for (const key of [
+      'polls.title',
+      'polls.description',
+      'polls.states.voted',
+      'polls.how_it_works',
+      'polls.category_label',
+      'polls.all_categories',
+      'polls.my_polls_label',
+      'actions.search',
+      'polls.open_section_title',
+      'polls.open_tag',
+      'polls.choose_label',
+      'polls.vote_button',
+      'polls.closed_section_title',
+      'polls.closed_tag',
+      'polls.your_choice'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).toContain(t('polls.by_label', { name: 'Ada Lovelace' }));
+    expect(response.text).toContain(t('polls.votes_count', { count: 10 }));
+    expect(response.text).toContain(t('polls.per_option_votes', { count: 7 }));
+    expect(response.text).not.toContain('This community');
   });
 
   it('preselects ranked poll options in their natural order before voting', async () => {

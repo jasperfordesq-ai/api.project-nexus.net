@@ -91,7 +91,7 @@ function normalizeOption(option) {
   };
 }
 
-function normalizePoll(rawPoll) {
+function normalizePoll(rawPoll, t = null) {
   const poll = asObject(rawPoll);
   const creator = asObject(poll.creator || poll.user);
   const isOpen = poll.status
@@ -107,7 +107,8 @@ function normalizePoll(rawPoll) {
     category: trimmed(poll.category),
     creator: {
       id: positiveInteger(creator.id || poll.user_id),
-      name: trimmed(creator.name || poll.creator_name || [creator.first_name, creator.last_name].filter(Boolean).join(' ')) || 'Community member'
+      name: trimmed(creator.name || poll.creator_name || [creator.first_name, creator.last_name].filter(Boolean).join(' '))
+        || (t ? t('members.unknown_member') : 'Community member')
     },
     createdAt: trimmed(poll.created_at || poll.createdAt),
     expiresAt: trimmed(poll.expires_at || poll.end_date || poll.expiresAt),
@@ -148,11 +149,11 @@ function categoriesFrom(result) {
     .filter(Boolean);
 }
 
-function rankedResultRows(result) {
+function rankedResultRows(result, t) {
   const payload = asObject(dataFrom(result));
   const rankedResults = asObject(payload.ranked_results || payload.rankedResults);
   return {
-    poll: normalizePoll(payload.poll),
+    poll: normalizePoll(payload.poll, t),
     rankedResults: {
       totalVoters: positiveInteger(rankedResults.total_voters || rankedResults.totalVoters) || 0,
       rows: asList(rankedResults.results).map((row) => {
@@ -177,14 +178,14 @@ function requirePollAuth(req, res) {
   return token;
 }
 
-function pollStatusBanner(status) {
+function pollStatusBanner(status, t) {
   const banners = {
-    voted: { type: 'success', message: 'Thank you - your vote has been recorded.' },
-    'vote-failed': { type: 'error', message: 'We could not record your vote. You may have already voted, or the poll has closed.' },
-    'poll-created': { type: 'success', message: 'Your poll has been created.' },
-    'poll-create-failed': { type: 'error', message: 'We could not create your poll. Add a question and at least 2 options.' },
-    'poll-deleted': { type: 'success', message: 'The poll has been deleted.' },
-    'poll-delete-failed': { type: 'error', message: 'We could not delete that poll. It may not exist or may not be yours.' },
+    voted: { type: 'success', message: t('polls.states.voted') },
+    'vote-failed': { type: 'error', message: t('polls.states.vote-failed') },
+    'poll-created': { type: 'success', message: t('polish_discovery.polls_create_success') },
+    'poll-create-failed': { type: 'error', message: t('polish_discovery.polls_create_failed') },
+    'poll-deleted': { type: 'success', message: t('polls.states.deleted') },
+    'poll-delete-failed': { type: 'error', message: t('polls.states.delete-failed') },
     ranked: { type: 'success', message: 'Your ranking has been recorded.' },
     'rank-failed': { type: 'error', message: 'We could not record your ranking. You may have already ranked this poll.' },
     'poll-liked': { type: 'success', message: 'You liked this poll.' },
@@ -331,7 +332,7 @@ router.get('/parity/create', asyncRoute(async (req, res) => {
     title: 'Create a poll',
     activeNav: 'explore',
     categories,
-    statusBanner: pollStatusBanner(req.query && req.query.status)
+    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 
@@ -340,12 +341,12 @@ router.get('/parity/manage', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   const result = await getPolls(token, { mine: true, per_page: 30 });
-  const polls = asList(dataFrom(result)).map(normalizePoll);
+  const polls = asList(dataFrom(result)).map((poll) => normalizePoll(poll, res.locals.t));
   return res.render('polls/manage', {
     title: 'Manage my polls',
     activeNav: 'explore',
     polls,
-    statusBanner: pollStatusBanner(req.query && req.query.status)
+    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 
@@ -354,14 +355,14 @@ router.get('/:id(\\d+)/rank', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   const id = Number(req.params.id);
-  const ranked = rankedResultRows(await getPollRankedResults(token, id));
+  const ranked = rankedResultRows(await getPollRankedResults(token, id), res.locals.t);
   return res.render('polls/rank', {
     title: ranked.poll.question || 'Ranked-choice poll',
     activeNav: 'explore',
     poll: ranked.poll,
     rankedResults: ranked.rankedResults,
     myRankings: ranked.myRankings,
-    statusBanner: pollStatusBanner(req.query && req.query.status)
+    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }, { notFoundTitle: 'Poll not found' }));
 
@@ -384,7 +385,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   const id = Number(req.params.id);
-  const poll = normalizePoll(dataFrom(await getPoll(token, id)));
+  const poll = normalizePoll(dataFrom(await getPoll(token, id)), res.locals.t);
   let comments = [];
   let commentsTotal = 0;
   if (poll.id !== null) {
@@ -400,7 +401,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     poll,
     comments,
     commentsTotal,
-    statusBanner: pollStatusBanner(req.query && req.query.status)
+    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }, { notFoundTitle: 'Poll not found' }));
 
@@ -418,17 +419,18 @@ router.get('/', asyncRoute(async (req, res) => {
     getPolls(token, params),
     getPollCategories(token)
   ]);
-  const polls = asList(dataFrom(pollsResult)).map(normalizePoll);
+  const polls = asList(dataFrom(pollsResult)).map((poll) => normalizePoll(poll, res.locals.t));
   const categories = categoriesFrom(categoriesResult);
 
   return res.render('polls/index', {
     title: 'Polls',
+    titleKey: 'polls.title',
     activeNav: 'explore',
     polls,
     categories,
     pollsMine: mine,
     pollsCategory: category,
-    statusBanner: pollStatusBanner(req.query && req.query.status)
+    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 

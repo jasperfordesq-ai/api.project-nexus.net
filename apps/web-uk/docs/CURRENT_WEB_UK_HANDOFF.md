@@ -3935,6 +3935,26 @@ infrastructure routes. The latest uninterrupted full browser aggregate remains
 the documented event/dismiss API gaps, broader persistence proof, manual parity,
 and full aggregate remain open.
 
+Latest focused poll-list localization slice: signed `/polls` now uses Laravel's
+request-locale `polls`, `polish_discovery`, and gamification navigation catalogs
+for the document/page title, tenant caption, description, status banners,
+how-it-works text, category/mine filters, actions, inline-create labels,
+open/closed/ranked tags, creator/date/vote metadata, choice/vote/result labels,
+rank/detail links, and closed result rows. Shared poll normalization now uses
+the localized unknown-member fallback; existing vote/create/delete banner
+callers now receive Laravel's exact status strings. The authoritative Arabic
+`polls.my_polls_label` remains English-identical, so Web UK preserves it.
+Focused English/Arabic list coverage passed `2/2`; the authenticated Arabic
+Laravel-backed listing passed exact markers, a non-empty caption, RTL, 320px
+reflow, and axe (`1/1`, 30.7 seconds). Full verification passed 45/45 Jest
+suites and 1,421/1,421 tests, ESLint, the 290-template conservative audit with
+zero matches, and the refreshed route matrix at 608/608 matched with 0 missing,
+0 extra, and 3 ignored infrastructure routes. The slice is intentionally
+list-only: detail, rank, dedicated create, and manage still contain catalog
+gaps and remain explicitly open. The latest uninterrupted full browser
+aggregate remains 62/62 at `e155375c`; this current-source route is
+focused-green, not a replacement full aggregate.
+
 ## Documents To Trust
 
 Read these in order:
