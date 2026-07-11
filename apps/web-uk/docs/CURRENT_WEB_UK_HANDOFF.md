@@ -4698,6 +4698,16 @@ renders passed, lint and the 292-template audit stayed green, and the full Jest
 gate passed `45/45` suites and `1,431/1,431` tests. No new locale-specific
 browser case was added; the exact-current browser baseline remains 80/80.
 
+## 2026-07-11 Default-English Empty-State Certification
+
+Events, Listings, Groups, and type-filtered Search empty results now follow
+their default-English Laravel Blade content and action rules instead of Web
+UK-only create/sign-in actions or duplicate result cards. The focused signed
+Search empty-state browser gate passed `1/1` in `33.1` seconds, proving one
+main/H1, unique IDs, 320px reflow, and no serious/critical axe violations.
+This is a focused 81st case; the latest uninterrupted full aggregate remains
+checkpoint `ea1ed6d4` at `80/80`, and no newer aggregate is claimed.
+
 ## Documents To Trust
 
 Read these in order:
