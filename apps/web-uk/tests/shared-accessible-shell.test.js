@@ -13162,8 +13162,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Polls at this community');
   });
 
-  it('preselects ranked poll options in their natural order before voting', async () => {
+  it('renders the Laravel-ranked catalog and preselects options in natural order', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
 
     api.getPollRankedResults.mockResolvedValue({
       data: {
@@ -13183,12 +13184,54 @@ describe('shared accessible frontend shell', () => {
     });
 
     const ranked = await request(app)
-      .get('/polls/43/rank')
+      .get('/polls/43/rank?locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(ranked.status).toBe(200);
+    expect(ranked.headers['content-language']).toBe('ar');
+    for (const key of [
+      'govuk_alpha_gamification.common.back_to_polls',
+      'govuk_alpha_gamification.ranked.badge',
+      'govuk_alpha_gamification.ranked.how_it_works',
+      'govuk_alpha_gamification.ranked.legend',
+      'govuk_alpha_gamification.ranked.submit_button'
+    ]) {
+      expect(ranked.text).toContain(t(key));
+    }
     expect(ranked.text).toMatch(/id="rank-11"[\s\S]*?<option value="1" selected>Position 1<\/option>[\s\S]*?<option value="2">Position 2<\/option>/);
     expect(ranked.text).toMatch(/id="rank-12"[\s\S]*?<option value="1">Position 1<\/option>[\s\S]*?<option value="2" selected>Position 2<\/option>/);
+  });
+
+  it('renders tied ranked results with exact Laravel plurals and winner semantics', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
+    api.getPollRankedResults.mockResolvedValue({
+      data: {
+        poll: { id: 44, question: '', status: 'closed', poll_type: 'ranked', options: [{ id: 1, text: 'A' }] },
+        ranked_results: {
+          total_voters: 4,
+          results: [
+            { option_id: 1, text: 'Garden', votes: 2 },
+            { option_id: 2, text: 'Library', votes: 2 },
+            { option_id: 3, text: '', votes: 0 }
+          ]
+        },
+        my_rankings: [{ option_id: 1, rank: 1 }]
+      }
+    });
+
+    const ranked = await request(app)
+      .get('/polls/44/rank?status=ranked&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(ranked.status).toBe(200);
+    expect(ranked.text).toContain(t('govuk_alpha_gamification.ranked.title'));
+    expect(ranked.text).toContain(t('govuk_alpha_gamification.ranked.states.ranked'));
+    expect(ranked.text).toContain(tc('govuk_alpha_gamification.ranked.total_voters', 4, { count: 4 }));
+    expect(ranked.text).toContain(tc('govuk_alpha_gamification.ranked.first_choice_votes', 2, { count: 2 }));
+    expect(ranked.text).toContain(t('govuk_alpha_gamification.common.unknown_member'));
+    expect((ranked.text.match(/govuk-tag--green/g) || [])).toHaveLength(2);
   });
 
   it('submits the Laravel poll store route through the v2 polls API helper', async () => {

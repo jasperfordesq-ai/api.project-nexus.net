@@ -152,18 +152,20 @@ function categoriesFrom(result) {
 function rankedResultRows(result, t) {
   const payload = asObject(dataFrom(result));
   const rankedResults = asObject(payload.ranked_results || payload.rankedResults);
+  const rows = asList(rankedResults.results).map((row) => {
+    const item = asObject(row);
+    return {
+      optionId: positiveInteger(item.option_id || item.optionId || item.id),
+      text: trimmed(item.text || item.label || item.title) || t('govuk_alpha_gamification.common.unknown_member'),
+      votes: positiveInteger(item.votes || item.vote_count || item.voteCount) || 0
+    };
+  });
   return {
     poll: normalizePoll(payload.poll, t),
     rankedResults: {
       totalVoters: positiveInteger(rankedResults.total_voters || rankedResults.totalVoters) || 0,
-      rows: asList(rankedResults.results).map((row) => {
-        const item = asObject(row);
-        return {
-          optionId: positiveInteger(item.option_id || item.optionId || item.id),
-          text: trimmed(item.text || item.label || item.title),
-          votes: positiveInteger(item.votes || item.vote_count || item.voteCount) || 0
-        };
-      }).filter((row) => row.text)
+      rows,
+      maxVotes: rows.reduce((maximum, row) => Math.max(maximum, row.votes), 0)
     },
     myRankings: asList(payload.my_rankings || payload.myRankings)
   };
@@ -186,8 +188,8 @@ function pollStatusBanner(status, t) {
     'poll-create-failed': { type: 'error', message: t('polish_discovery.polls_create_failed') },
     'poll-deleted': { type: 'success', message: t('polls.states.deleted') },
     'poll-delete-failed': { type: 'error', message: t('polls.states.delete-failed') },
-    ranked: { type: 'success', message: 'Your ranking has been recorded.' },
-    'rank-failed': { type: 'error', message: 'We could not record your ranking. You may have already ranked this poll.' },
+    ranked: { type: 'success', message: t('govuk_alpha_gamification.ranked.states.ranked') },
+    'rank-failed': { type: 'error', message: t('govuk_alpha_gamification.ranked.states.rank-failed') },
     'poll-liked': { type: 'success', message: t('govuk_alpha_gamification.poll_detail.states.poll-liked') },
     'poll-unliked': { type: 'success', message: t('govuk_alpha_gamification.poll_detail.states.poll-unliked') },
     'poll-like-failed': { type: 'error', message: t('govuk_alpha_gamification.poll_detail.states.poll-like-failed') },
@@ -357,7 +359,7 @@ router.get('/:id(\\d+)/rank', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const ranked = rankedResultRows(await getPollRankedResults(token, id), res.locals.t);
   return res.render('polls/rank', {
-    title: ranked.poll.question || 'Ranked-choice poll',
+    title: ranked.poll.question || res.locals.t('govuk_alpha_gamification.ranked.title'),
     activeNav: 'explore',
     poll: ranked.poll,
     rankedResults: ranked.rankedResults,

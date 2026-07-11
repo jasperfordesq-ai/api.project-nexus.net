@@ -833,7 +833,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic poll listing and detail use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic poll listing detail and rank use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -908,6 +908,37 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(detailAxeResults.violations))).toEqual([]);
+
+      const rankPath = `${detailHref.replace(/\?.*$/, '')}/rank?locale=ar`;
+      const rankResponse = await page.goto(rankPath, { waitUntil: 'domcontentloaded' });
+      expect(rankResponse, `${rankPath} did not return a document response`).not.toBeNull();
+      expect(rankResponse.status(), `${rankPath} returned HTTP ${rankResponse.status()}`).toBeLessThan(400);
+      expect(rankResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+      await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+      await expect(page.locator('h1')).not.toBeEmpty();
+      await expect(page.locator('.govuk-tag--purple')).toHaveText(translate('ar', 'govuk_alpha_gamification.ranked.badge'));
+
+      const rankOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(rankOverflow.scrollWidth, `${rankPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(rankOverflow.clientWidth + 1);
+      const rankAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-poll-rank', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: rankOverflow,
+          violations: formatViolations(rankAxeResults.violations),
+          incomplete: formatViolations(rankAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(rankAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

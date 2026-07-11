@@ -3976,6 +3976,24 @@ is focused-green, not a replacement full aggregate. The browser process handle
 was lost once during task compaction and the journey was rerun from scratch;
 the completed rerun above is the evidence used.
 
+Latest focused ranked-poll localization slice: signed `/polls/{id}/rank` now
+uses Laravel's exact `govuk_alpha_gamification.ranked` catalog for its fallback
+document/page title, community caption, badge, outcome states, empty and
+already-ranked states, results heading, plural voter and first-choice counts,
+ranking explanation, legend, position labels, and submit action. Empty API
+result labels use Laravel's unknown-member fallback. The result semantics also
+now match Blade: every tied nonzero maximum receives the winner tag, rather
+than Web UK marking the first API row unconditionally. Focused Arabic form and
+tied-result coverage passed `2/2`; the authenticated Arabic Laravel-backed
+list-to-detail-to-rank journey passed HTTP 200, exact catalog markers, non-empty
+captions, RTL, 320px reflow, and axe (`1/1`, 55.5 seconds). Full verification
+passed 45/45 Jest suites and 1,423/1,423 tests, ESLint, the 290-template
+conservative audit with zero matches, and the refreshed route matrix at 608/608
+matched with 0 missing, 0 extra, and 3 ignored infrastructure routes. Dedicated
+create and manage catalog conversion remain open. The latest uninterrupted full
+browser aggregate remains 62/62 at `e155375c`; the three-page current-source
+journey is focused-green, not a replacement full aggregate.
+
 ## Documents To Trust
 
 Read these in order:
