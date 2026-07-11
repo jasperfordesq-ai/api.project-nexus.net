@@ -85,11 +85,11 @@ scores must not be reused as current results.
   byte-for-byte equality, deleted it through the rendered warning action, and
   proved final Laravel listing absence. The disposable row and file were not
   retained.
-- Live tenant module-gate smoke: `1/1` passed in `21.6` seconds against the
+- Live tenant module-gate smoke: `1/1` passed in `22.4` seconds against the
   default-English `timebanking-org` bootstrap. Home returned `200`; disabled
-  Marketplace, Courses, Podcasts, and Premium each returned `403`; enabled
-  Resources returned the tenant-mounted auth-required `302`. No tenant state
-  was changed.
+  Marketplace, Courses, Podcasts, and Premium links were absent and each route
+  returned `403`; enabled Resources returned the tenant-mounted auth-required
+  `302`. No tenant state was changed.
 - Default-English branded header proof: the real `timebanking-org` bootstrap
   logo loaded at `392x105` intrinsic and `179x48` rendered size, with the exact
   tenant name as alt text and no horizontal overflow. Web UK now follows

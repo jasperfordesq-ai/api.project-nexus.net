@@ -21,7 +21,11 @@ test('honours a real tenant disabled-module bootstrap at route level', async ({ 
 
   const home = await request.get(mountPath, { maxRedirects: 0, timeout: 180_000 });
   expect(home.status()).toBe(200);
-  expect(await home.text()).toContain('timebanking.org');
+  const homeHtml = await home.text();
+  expect(homeHtml).toContain('timebanking.org');
+  for (const path of ['/marketplace', '/courses', '/podcasts', '/premium']) {
+    expect(homeHtml).not.toContain(`href="${mountPath}${path}"`);
+  }
 
   for (const path of ['/marketplace', '/courses', '/podcasts', '/premium']) {
     const response = await request.get(`${mountPath}${path}`, {
