@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
+const { createTranslator } = require('../src/lib/localization');
 
 jest.mock('../src/lib/api', () => ({
   ApiError: class ApiError extends Error {
@@ -8602,7 +8603,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('AI assistant');
-    expect(response.text).toContain('Conversations');
+    expect(response.text).toContain('Your conversations');
     expect(response.text).toContain('Gardening help');
     expect(response.text).toContain('Transport question');
     expect(response.text).toContain('Can anyone help with seedlings?');
@@ -8613,6 +8614,40 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getAiConversations).toHaveBeenCalledWith('test-token', { limit: 20 });
     expect(api.getAiConversation).toHaveBeenCalledWith('test-token', 123);
+  });
+
+  it('renders the AI chat page from the exact Arabic Laravel catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    api.getAiConversations.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/chat?locale=ar&status=empty')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('lang="ar"');
+    expect(response.text).toContain('dir="rtl"');
+    for (const key of [
+      'govuk_alpha_aichat.title',
+      'govuk_alpha_aichat.caption',
+      'govuk_alpha_aichat.description',
+      'govuk_alpha_aichat.ai_notice',
+      'govuk_alpha_aichat.conversations_title',
+      'govuk_alpha_aichat.new_conversation',
+      'govuk_alpha_aichat.no_conversations',
+      'govuk_alpha_aichat.thread_title',
+      'govuk_alpha_aichat.empty_thread',
+      'govuk_alpha_aichat.message_label',
+      'govuk_alpha_aichat.message_hint',
+      'govuk_alpha_aichat.send',
+      'govuk_alpha_aichat.status_empty'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).not.toContain('Ask questions about your community');
+    expect(response.text).not.toContain('Enter a message before sending.');
   });
 
   it('submits the Laravel AI chat route through the chat API helper', async () => {

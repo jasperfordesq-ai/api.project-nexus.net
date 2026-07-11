@@ -648,6 +648,61 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic AI assistant uses the Laravel catalog with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      const path = `${authenticatedMountPath}/chat?locale=ar&status=empty`;
+      const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+      expect(response, `${path} did not return a document response`).not.toBeNull();
+      expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'govuk_alpha_aichat.title'));
+      await expect(page.locator('.govuk-warning-text__text')).toContainText(translate('ar', 'govuk_alpha_aichat.ai_notice'));
+      await expect(page.getByText(translate('ar', 'govuk_alpha_aichat.status_empty'), { exact: true })).toBeVisible();
+      await expect(page.locator('label[for="message"]')).toHaveText(translate('ar', 'govuk_alpha_aichat.message_label'));
+      await expect(page.locator('button[type="submit"]').filter({ hasText: translate('ar', 'govuk_alpha_aichat.send') })).toHaveCount(1);
+
+      const visibleText = await page.locator('body').innerText();
+      for (const englishLabel of [
+        'AI assistant',
+        'Community help',
+        'Your conversations',
+        'Start a new conversation',
+        'Your message'
+      ]) {
+        expect(visibleText).not.toContain(englishLabel);
+      }
+
+      const overflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-ai-chat', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow,
+          violations: formatViolations(axeResults.violations),
+          incomplete: formatViolations(axeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic account hub localizes its Laravel-owned actions with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();

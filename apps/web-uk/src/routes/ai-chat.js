@@ -52,7 +52,7 @@ function normalizeConversation(item) {
   const id = normaliseConversationId(raw.id);
   return {
     id,
-    title: String(raw.title || raw.first_message || 'AI conversation').trim() || 'AI conversation',
+    title: String(raw.title || raw.first_message || '').trim(),
     updated_at: raw.updated_at || raw.updatedAt || raw.created_at || raw.createdAt || ''
   };
 }
@@ -104,11 +104,12 @@ router.get('/', asyncRoute(async (req, res) => {
     }
   } catch (error) {
     if (isAuthError(error)) throw error;
-    apiError = 'The AI assistant is temporarily unavailable. You can still start a new message and try again.';
+    apiError = true;
   }
 
   return res.render('ai-chat/index', {
     title: 'AI assistant',
+    titleKey: 'govuk_alpha_aichat.title',
     activeNav: 'explore',
     conversations,
     messages,

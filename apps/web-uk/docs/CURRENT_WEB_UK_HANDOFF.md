@@ -3866,6 +3866,29 @@ long-batch `/jobs/talent-search/77` false negative without forcing a full login
 before every gated route. Expected Laravel `403` gated routes may still emit
 application error logs while the JSON smoke result remains green.
 
+Latest focused AI-assistant localization slice: signed `/chat` now renders the
+Laravel `govuk_alpha_aichat` catalog for the document/page title, caption,
+description, AI warning, empty/error states, conversation navigation, speaker
+labels, field label/hint, send action, and safe fallback conversation title.
+The Web UK-only sent banner was removed because the Blade page does not render
+one, while API/provider failures retain a localized accessible banner. The
+existing tenant `ai_chat` gate and every `urlFor()` mount-safe link/form remain
+in place. Focused English/Arabic Jest passed `2/2`; the real authenticated
+Arabic Laravel-backed `/hour-timebank/accessible/chat?locale=ar&status=empty`
+journey passed exact catalog markers, RTL, 320px reflow, and axe with no
+serious/critical violations (`1/1`, 34.7 seconds). Full verification passed
+45/45 Jest suites and 1,418/1,418 tests, ESLint, 11-locale/24-namespace catalog
+structure, the 290-template conservative audit (`0` matches), and the route
+matrix at 608/608 matched with 0 missing, 0 extra, and 3 ignored infrastructure
+routes. The first browser invocation found no tests because the PowerShell grep
+argument was split; the corrected `--grep=Arabic.*AI.*assistant` run exercised
+the route. Its first assertion run exposed only an overly exact locator whose
+strong element also contained Laravel's visually hidden Warning prefix; the
+semantic `toContainText` assertion passed without a product-code change. The
+latest uninterrupted full browser aggregate remains 62/62 at `e155375c`; this
+new current-source authenticated journey is focused-green, but a fresh full
+aggregate is still not claimed under the recorded Laravel fixture latency.
+
 ## Documents To Trust
 
 Read these in order:
