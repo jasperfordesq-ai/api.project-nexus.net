@@ -34,9 +34,9 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,405/1,405` tests),
-ESLint, the brand-policy gate, CSS compilation, the `56/56` Chromium/axe gate
-in `584.2` seconds (`9.5` minutes),
+The current checkout has passed `45/45` Jest suites (`1,406/1,406` tests),
+ESLint, the brand-policy gate, CSS compilation, the `57/57` Chromium/axe gate
+in `524` seconds (`8.5` minutes),
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
 missing, `0` extra parity routes, and `3` ignored infrastructure routes.
@@ -45,7 +45,7 @@ The browser matrix includes signed Arabic dashboard, account, structurally
 rebuilt own-profile, contextually localized profile-settings, activity,
 Reviews summary/list, notifications, messages, wallet overview/management, the
 core member directory plus discovery/nearby/insights, achievements, leaderboard,
-Knowledge Base index/detail, and NEXUS-score pages at 320
+Knowledge Base index/detail, Help Centre/Trust and Safety, and NEXUS-score pages at 320
 CSS pixels, with RTL/reflow and serious/critical
 axe assertions. Authenticated cases have a 90-second ceiling to accommodate the
 observed local Laravel API latency; the accessibility assertions are unchanged.
@@ -1427,15 +1427,18 @@ confirmation depth, localization, deeper organisation workflow runtime smoke,
 and ASP.NET backend compatibility are not certified; `/organisations` and
 `/organisations/browse` are covered by the default Laravel runtime smoke.
 
-The public support pages now replace the static Help centre and Trust and safety
+The public support pages replace the static Help Centre and Trust and Safety
 placeholders. `/help` is backed by Laravel `/api/v2/help/faqs`, preserving the
 Blade FAQ search query, grouped GOV.UK accordion structure, empty/no-result
 states, and contact CTA. `/trust-and-safety` ports the Laravel Blade safety
 warning, exchange flow, platform responsibility, vetting, insurance, dispute,
-member responsibility, rights, contact CTA, and community-guidelines link. This
-remains partial: tenant-domain routing, localization, deeper FAQ behavior, and
-ASP.NET backend compatibility are not certified; `/help` is covered by the
-default Laravel runtime smoke.
+member responsibility, rights, contact CTA, and community-guidelines link.
+Both pages now use exact request-locale Laravel catalog copy, including all nine
+safety-section arrays; a real Arabic two-page RTL/reflow/axe journey and the
+57/57 aggregate browser gate passed. This remains partial: backend-authored FAQ
+translation governance, tenant-domain/feature-gate depth, deeper FAQ runtime,
+manual assistive-technology review, and ASP.NET backend compatibility are not
+certified; `/help` is covered by the default Laravel runtime smoke.
 
 The public legal footer destinations now replace the static legal and
 accessibility placeholders. `/legal` renders the Blade-style legal document card

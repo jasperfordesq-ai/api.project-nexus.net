@@ -1453,6 +1453,31 @@ describe('shared accessible frontend shell', () => {
     expect(trust.text).not.toContain('Trust and safety content will follow');
   });
 
+  it('localizes the Help Centre and Trust and Safety family from Laravel catalogs', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getHelpFaqs.mockResolvedValue({ data: [] });
+
+    const help = await request(app).get('/help?q=missing&locale=ar');
+    const trust = await request(app).get('/trust-and-safety?locale=ar');
+
+    expect(help.status).toBe(200);
+    expect(help.headers['content-language']).toBe('ar');
+    expect(help.text).toContain('dir="rtl"');
+    expect(help.text).toContain(translate('ar', 'help.title'));
+    expect(help.text).toContain(translate('ar', 'help.subtitle', { name: 'Project NEXUS Accessible' }));
+    expect(help.text).toContain(translate('ar', 'help.search_button'));
+    expect(help.text).toContain(translate('ar', 'help.no_results'));
+
+    expect(trust.status).toBe(200);
+    expect(trust.headers['content-language']).toBe('ar');
+    expect(trust.text).toContain('dir="rtl"');
+    expect(trust.text).toContain(translate('ar', 'trust_safety.title'));
+    expect(trust.text).toContain(translate('ar', 'trust_safety.safeguarding_title'));
+    expect(trust.text).toContain(translate('ar', 'trust_safety.sections.how_exchanges.heading'));
+    expect(trust.text).toContain(translate('ar', 'trust_safety.contact_cta_button'));
+  });
+
   it('renders Laravel-style legal and accessibility pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');

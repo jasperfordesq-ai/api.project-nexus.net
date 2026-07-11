@@ -7,15 +7,15 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("trust_safety.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("trust_safety.title") }}</h1>
-      <p class="govuk-body-l">{{ communityName }} connects neighbours so they can share skills using time credits. This page explains how that works in practice - what the platform does, what it does not, and how you can stay safe.</p>
+      <p class="govuk-body-l">{{ t("trust_safety.subtitle", { name: communityName }) }}</p>
 
       <div class="govuk-warning-text">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
           <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
-          <span class="govuk-!-font-weight-bold">Report a safeguarding concern.</span>
+          <span class="govuk-!-font-weight-bold">{{ t("trust_safety.safeguarding_title") }}.</span>
           {{ t("trust_safety.safeguarding_body") }}
         </strong>
       </div>
@@ -37,7 +37,7 @@
       <h2 class="govuk-heading-m">{{ t("trust_safety.contact_cta_title") }}</h2>
       <p class="govuk-body">{{ t("trust_safety.contact_cta_body") }}</p>
       <div class="govuk-button-group">
-        <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/contact') }}">{{ t("help.contact_cta_button") }}</a>
+        <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/contact') }}">{{ t("trust_safety.contact_cta_button") }}</a>
         <a class="govuk-link" href="{{ urlFor('/legal/community-guidelines') }}">{{ t("trust_safety.community_guidelines_link") }}</a>
       </div>
     </div>

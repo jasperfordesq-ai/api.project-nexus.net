@@ -7,9 +7,9 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("help.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("help.title") }}</h1>
-      <p class="govuk-body-l">Find answers to common questions about {{ communityName }}. If you cannot find what you need, contact us.</p>
+      <p class="govuk-body-l">{{ t("help.subtitle", { name: communityName }) }}</p>
 
       <form method="get" action="{{ urlFor('/help') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
@@ -17,12 +17,12 @@
           <div id="q-hint" class="govuk-hint">{{ t("help.search_hint") }}</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
         </div>
-        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">{{ t("help.search_button") }}</button>
       </form>
 
       {% if faqGroups.length == 0 %}
         <div class="govuk-inset-text">
-          {% if searchQuery %}No help topics match your search. Try a different word, or contact us.{% else %}No help topics are available yet.{% endif %}
+          {{ t("help.no_results") if searchQuery else t("help.empty") }}
         </div>
       {% else %}
         {% for group in faqGroups %}
