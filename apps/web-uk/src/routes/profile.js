@@ -464,15 +464,6 @@ function formatProfileDate(value, includeTime = false) {
   return date.toLocaleString(getRequestIntlLocale(), options);
 }
 
-function humanizeProfileLabel(value, fallback = 'Not specified') {
-  const text = trimmed(value);
-  if (text === '') return fallback;
-  return text
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function translateStatusMessage(req, key, fallbackMessage = '') {
   if (!key) return fallbackMessage;
 
@@ -673,23 +664,36 @@ function optionalOwnProfileResult(promise, fallback) {
   });
 }
 
-function normalizePasskeys(payload) {
+function normalizePasskeys(payload, req) {
   return arrayFromPayload(payload, ['credentials', 'passkeys', 'items']).map((passkey) => ({
     credential_id: passkey.credential_id || passkey.id || '',
-    device_name: passkey.device_name || passkey.name || 'Passkey',
-    authenticator_type: humanizeProfileLabel(passkey.authenticator_type || passkey.type || ''),
+    device_name: passkey.device_name || passkey.name || translateStatusMessage(
+      req,
+      'profile_settings.passkeys.unnamed',
+      'Unnamed passkey'
+    ),
+    authenticator_type: String(passkey.authenticator_type || passkey.type || '').toLowerCase() === 'platform'
+      ? translateStatusMessage(req, 'profile_settings.passkeys.type_platform', 'This device')
+      : translateStatusMessage(req, 'profile_settings.passkeys.type_cross_platform', 'Security key or another device'),
     created_label: formatProfileDate(passkey.created_at || passkey.createdAt),
     last_used_label: formatProfileDate(passkey.last_used_at || passkey.lastUsedAt)
   }));
 }
 
-function normalizeSessions(payload) {
-  return arrayFromPayload(payload, ['sessions', 'items']).map((session) => ({
-    id: session.id || '',
-    device_label: humanizeProfileLabel(session.device_type || session.device || session.user_agent, 'Unknown device'),
-    ip_address: session.ip_address || session.ip || '',
-    last_active_label: formatProfileDate(session.last_active || session.last_active_at || session.updated_at, true)
-  }));
+function normalizeSessions(payload, req) {
+  return arrayFromPayload(payload, ['sessions', 'items']).map((session) => {
+    const deviceType = String(session.device_type || session.device || '').trim().toLowerCase();
+    const deviceKey = ['web', 'mobile', 'pwa'].includes(deviceType) ? deviceType : 'unknown';
+    return {
+      id: session.id || '',
+      device_label: translateStatusMessage(req, `ux.device_${deviceKey}`, 'Unknown device'),
+      ip_address: session.ip_address || session.ip || '—',
+      last_active_label: formatProfileDate(
+        session.last_active || session.last_activity || session.last_active_at || session.updated_at,
+        true
+      ) || '—'
+    };
+  });
 }
 
 function normalizeSafeguarding(payload) {
@@ -1050,13 +1054,13 @@ router.get('/settings', asyncRoute(async (req, res) => {
   }
 
   try {
-    data.passkeys = normalizePasskeys(payloadFrom(await callWebAuthn(token, 'GET', '/credentials')));
+    data.passkeys = normalizePasskeys(payloadFrom(await callWebAuthn(token, 'GET', '/credentials')), req);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
 
   try {
-    data.sessions = normalizeSessions(payloadFrom(await callProfile(token, 'GET', '/users/me/sessions')));
+    data.sessions = normalizeSessions(payloadFrom(await callProfile(token, 'GET', '/users/me/sessions')), req);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }

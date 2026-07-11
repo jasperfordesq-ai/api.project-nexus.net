@@ -2149,7 +2149,7 @@ describe('shared accessible frontend shell', () => {
         return {
           data: [
             {
-              device_type: 'desktop',
+              device_type: 'web',
               ip_address: '127.0.0.1',
               last_active: '2026-03-27T10:00:00Z'
             }
@@ -2244,8 +2244,13 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Two-step verification');
     expect(signed.text).toContain('Passkeys');
     expect(signed.text).toContain('Work laptop');
+    expect(signed.text).toContain('This device');
+    expect(signed.text).toContain('Added');
+    expect(signed.text).toContain('Last used');
+    expect(signed.text).toContain('This action is permanent and cannot be undone.');
+    expect(signed.text).toContain('Add a new passkey');
     expect(signed.text).toContain('Where you are signed in');
-    expect(signed.text).toContain('Desktop');
+    expect(signed.text).toContain('Web browser');
     expect(signed.text).toContain('Language');
     expect(signed.text).toContain('Gaeilge');
     expect(signed.text).toContain('Email and notifications');

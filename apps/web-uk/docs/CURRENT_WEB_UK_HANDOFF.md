@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted automated browser accessibility pass: Chromium/axe
-  passed `75/75` cases in `1,148.5` seconds (`19.1` minutes), with `0` skipped,
+  passed `75/75` cases in `1,538.9` seconds (`25.6` minutes), with `0` skipped,
   `0` unexpected, and `0` flaky results, against the exact current source on
   2026-07-11. The outer command wall time, including CSS compilation and runner
-  startup, was `1,163.7` seconds (`19.4` minutes).
+  startup, was `1,557.7` seconds (`26.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4470,6 +4470,32 @@ passed `644/644`; complete verification passed `45/45` Jest suites and
 passed `75/75` in `1,148.5` seconds with `0` skipped, `0` unexpected, and `0`
 flaky results; outer wall time was `1,163.7` seconds. Only the pre-existing
 GOV.UK Sass palette deprecation warnings remain.
+
+## 2026-07-11 Profile Settings Repeated Content Parity
+
+The remaining repeated Profile-settings content now follows Blade's source
+structure. Skills use the source offering/requesting tag colours and localized
+endorsement counts, preserve the compact checkbox layout, and render the source
+empty-state inset. Passkey cards expose localized type, added, and last-used
+metadata, exact rename controls, add-new-passkey guidance, and removal inside a
+warning details panel that identifies the irreversible action. Session rows map
+Laravel's web, mobile, PWA, and unknown device types through the request locale,
+and use source-shaped em-dash fallbacks for missing IP and activity metadata.
+
+Focused shared rendering passed `622/622`, and the normal plus Arabic-error
+Profile-settings browser journeys passed `2/2`. Complete verification passed
+`45/45` Jest suites and `1,429/1,429` tests, warning-free lint, branding guard,
+CSS compilation, the 11-locale/24-namespace/7,364-key audit, the 292-template
+zero-match audit, and 608/608 route parity.
+
+The first aggregate reached the end of the Arabic Goals workflow but exceeded
+its old 240-second ceiling during trace/context teardown at 245.7 seconds. The
+assertions were unchanged and the ceiling was raised to 300 seconds for measured
+live Laravel latency. Its focused rerun passed in 2.8 minutes (4.4 minutes outer
+wall time). The final uninterrupted exact-current Chromium/axe aggregate then
+passed `75/75` in `1,538.9` seconds (`25.6` minutes), with `0` skipped, `0`
+unexpected, and `0` flaky results; outer wall time was `1,557.7` seconds (`26.0`
+minutes). Only the pre-existing GOV.UK Sass palette deprecation warnings remain.
 
 ## Documents To Trust
 

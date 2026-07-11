@@ -1151,7 +1151,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic goals workflow uses exact Laravel catalogs across all pages', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(240_000);
+    test.setTimeout(300_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
