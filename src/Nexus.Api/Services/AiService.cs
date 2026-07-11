@@ -994,6 +994,7 @@ Generate 3 bio options of different lengths. Respond with JSON only:
             .CountAsync(ct);
 
         var recentTransactions = await _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.SenderId == userId || t.ReceiverId == userId)
             .Where(t => t.CreatedAt > DateTime.UtcNow.AddDays(-30))
             .CountAsync(ct);

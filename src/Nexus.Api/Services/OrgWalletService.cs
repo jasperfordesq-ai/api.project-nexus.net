@@ -17,12 +17,18 @@ public class OrgWalletService
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<OrgWalletService> _logger;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
-    public OrgWalletService(NexusDbContext db, TenantContext tenantContext, ILogger<OrgWalletService> logger)
+    public OrgWalletService(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        ILogger<OrgWalletService> logger,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
+        _personalWallet = personalWallet;
     }
 
     public async Task<OrgWallet?> GetWalletAsync(int organisationId)
@@ -71,21 +77,32 @@ public class OrgWalletService
         if (amount <= 0) return (null, "Amount must be positive");
         if (amount > 100) return (null, "Maximum donation is 100 credits per transaction");
 
-        // Use serializable transaction with advisory lock to prevent race conditions
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        // READ COMMITTED is safe here because every personal-wallet spender
+        // takes the same transaction-scoped advisory lock before its balance read.
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         try
         {
             // Lock on sender to serialize concurrent donations from same user
-            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", fromUserId);
+            await _personalWallet.AcquireSpendLockAsync(fromUserId);
+            await OrganisationLifecycleLock.AcquireAsync(_db, organisationId);
+
+            var org = await _db.Set<Organisation>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == organisationId);
+            if (org == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation not found");
+            }
+            if (!string.Equals(org.Status, "verified", StringComparison.Ordinal))
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation is not active");
+            }
 
             // Check user has sufficient balance (now protected by lock)
-            var received = await _db.Transactions
-                .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-            var sent = await _db.Transactions
-                .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-            var userBalance = received - sent;
+            var tenantId = _tenantContext.GetTenantIdOrThrow();
+            var userBalance = await _personalWallet.GetBalanceAsync(tenantId, fromUserId);
             if (userBalance < amount)
             {
                 await dbTransaction.RollbackAsync();
@@ -93,25 +110,16 @@ public class OrgWalletService
             }
 
             var wallet = await EnsureWalletAsync(organisationId);
-
-            var org = await _db.Set<Organisation>()
-                .FirstOrDefaultAsync(o => o.Id == organisationId);
-            if (org == null)
-            {
-                await dbTransaction.RollbackAsync();
-                return (null, "Organisation not found");
-            }
-
-            // Debit donor's personal wallet. ReceiverId is set to the sender so the
-            // org owner's personal balance is not inflated — the OrgWallet.Balance is
-            // the authoritative tracking mechanism for org funds.
+            // One-sided personal debit: the organisation wallet is the
+            // counter-ledger, so no synthetic user receiver is required.
             var debitTx = new Transaction
             {
-                TenantId = _tenantContext.GetTenantIdOrThrow(),
+                TenantId = tenantId,
                 SenderId = fromUserId,
-                ReceiverId = fromUserId,
+                ReceiverId = null,
                 Amount = amount,
                 Description = description ?? $"Donation to organisation #{organisationId}",
+                TransactionType = "organisation_donation",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow
             };
@@ -154,21 +162,55 @@ public class OrgWalletService
     {
         if (amount <= 0) return (null, "Amount must be positive");
 
-        // Check initiator is org admin/owner (before transaction — read-only check)
-        var member = await _db.Set<OrganisationMember>()
-            .FirstOrDefaultAsync(m => m.OrganisationId == organisationId && m.UserId == initiatedById);
-        if (member == null || (member.Role != "owner" && member.Role != "admin"))
-            return (null, "Not authorized to transfer from this wallet");
-
-        var targetUser = await _db.Set<User>().FirstOrDefaultAsync(u => u.Id == toUserId);
-        if (targetUser == null) return (null, "Target user not found");
-
-        // Use serializable transaction with advisory lock to prevent race conditions
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        // READ COMMITTED is intentional: a transfer may wait behind a status or
+        // membership writer on the organisation lock and must then see that
+        // writer's committed state rather than a pre-wait transaction snapshot.
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         try
         {
             // Lock on org ID to serialize concurrent transfers from same wallet
-            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", organisationId + int.MaxValue / 2);
+            await OrganisationLifecycleLock.AcquireAsync(_db, organisationId);
+
+            var org = await _db.Set<Organisation>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == organisationId);
+            if (org == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation not found");
+            }
+            if (!string.Equals(org.Status, "verified", StringComparison.Ordinal))
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation is not active");
+            }
+
+            var member = await _db.Set<OrganisationMember>()
+                .FirstOrDefaultAsync(m => m.OrganisationId == organisationId
+                    && m.UserId == initiatedById);
+            var isCanonicalOwner = org.OwnerId == initiatedById;
+            var isOrganisationAdmin = string.Equals(
+                member?.Role,
+                "admin",
+                StringComparison.OrdinalIgnoreCase);
+            if (!isCanonicalOwner && !isOrganisationAdmin)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Not authorized to transfer from this wallet");
+            }
+
+            var tenantId = _tenantContext.GetTenantIdOrThrow();
+            var targetUser = await _db.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(user => user.Id == toUserId
+                    && user.TenantId == tenantId
+                    && user.IsActive
+                    && user.SuspendedAt == null);
+            if (targetUser == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Target user not found");
+            }
 
             var wallet = await _db.Set<OrgWallet>()
                 .FirstOrDefaultAsync(w => w.OrganisationId == organisationId);
@@ -188,17 +230,16 @@ public class OrgWalletService
             wallet.TotalSpent += amount;
             wallet.UpdatedAt = DateTime.UtcNow;
 
-            // Credit target user's personal wallet by creating a Transaction.
-            // SenderId is set to the receiver (self-referential) so the org owner's
-            // personal balance is not debited — the OrgWallet.Balance is the authoritative
-            // tracking mechanism for org funds, same pattern as DonateAsync.
+            // Credit the target from the organisation's external wallet. A
+            // self-transfer would have zero derived-balance effect.
             var creditTx = new Transaction
             {
-                TenantId = _tenantContext.GetTenantIdOrThrow(),
-                SenderId = toUserId,
+                TenantId = tenantId,
+                SenderId = null,
                 ReceiverId = toUserId,
                 Amount = amount,
                 Description = description ?? $"Transfer from organisation #{organisationId}",
+                TransactionType = "organisation_transfer",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow
             };
@@ -236,8 +277,26 @@ public class OrgWalletService
     {
         if (amount <= 0) return (null, "Amount must be positive");
 
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         try
         {
+            await OrganisationLifecycleLock.AcquireAsync(_db, organisationId);
+            var tenantId = _tenantContext.GetTenantIdOrThrow();
+            var organisation = await _db.Organisations
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(candidate => candidate.Id == organisationId
+                    && candidate.TenantId == tenantId);
+            if (organisation == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation not found");
+            }
+            if (!string.Equals(organisation.Status, "verified", StringComparison.Ordinal))
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation is not active");
+            }
             var wallet = await EnsureWalletAsync(organisationId);
 
             wallet.Balance += amount;
@@ -256,12 +315,14 @@ public class OrgWalletService
 
             _db.Set<OrgWalletTransaction>().Add(tx);
             await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
 
             _logger.LogInformation("Admin granted {Amount} to org {OrgId}", amount, organisationId);
             return (tx, null);
         }
         catch (DbUpdateException ex)
         {
+            await dbTransaction.RollbackAsync();
             _logger.LogError(ex, "Database error during admin grant to org {OrgId}", organisationId);
             return (null, "Grant failed due to a database error. Please try again.");
         }

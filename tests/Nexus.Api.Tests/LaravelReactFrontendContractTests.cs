@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -1938,6 +1939,13 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         aggregateData.GetProperty("active_listings_bucket").GetInt32().Should().Be(0);
         aggregateData.GetProperty("generated_at").GetString().Should().NotBeNullOrWhiteSpace();
 
+        decimal memberBalanceBefore;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var wallet = scope.ServiceProvider.GetRequiredService<PersonalWalletLedgerService>();
+            memberBalanceBefore = await wallet.GetBalanceAsync(TestData.Tenant1.Id, TestData.MemberUser.Id);
+        }
+
         var credit = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
         {
             user_id = TestData.MemberUser.Id,
@@ -1954,13 +1962,157 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         creditData.GetProperty("reference").GetString().Should().Be("settlement-001");
         creditData.GetProperty("replayed").GetBoolean().Should().BeFalse();
 
+        var replay = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 1.25m,
+            reference = "settlement-001",
+            note = "A changed note does not change the financial request"
+        });
+        replay.StatusCode.Should().Be(HttpStatusCode.OK);
+        var replayData = (await replay.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        replayData.GetProperty("transaction_id").GetInt32()
+            .Should().Be(creditData.GetProperty("transaction_id").GetInt32());
+        replayData.GetProperty("replayed").GetBoolean().Should().BeTrue();
+
+        var caseInsensitiveReplay = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 1.25m,
+            reference = "SETTLEMENT-001"
+        });
+        caseInsensitiveReplay.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await caseInsensitiveReplay.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("replayed")
+            .GetBoolean()
+            .Should().BeTrue();
+
+        var conflict = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 2m,
+            reference = "settlement-001"
+        });
+        conflict.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await conflict.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("errors")[0]
+            .GetProperty("code")
+            .GetString()
+            .Should().Be("idempotency_conflict");
+
+        var oversized = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 24.001m,
+            reference = "settlement-too-precise"
+        });
+        oversized.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var overMaximum = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 24.01m,
+            reference = "settlement-over-maximum"
+        });
+        overMaximum.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var tooPrecise = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 1.001m,
+            reference = "settlement-too-precise-only"
+        });
+        tooPrecise.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var exactMaximum = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 24m,
+            reference = "settlement-exact-maximum"
+        });
+        exactMaximum.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var concurrentCredits = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ =>
+            Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+            {
+                user_id = TestData.MemberUser.Id,
+                hours = 0.75m,
+                reference = "settlement-concurrent"
+            })));
+        concurrentCredits.Count(response => response.StatusCode == HttpStatusCode.Created).Should().Be(1);
+        concurrentCredits.Count(response => response.StatusCode == HttpStatusCode.OK).Should().Be(9);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var evidence = await db.ApiPartnerWalletCredits
+                .IgnoreQueryFilters()
+                .SingleAsync(row => row.Reference == "settlement-001");
+            evidence.Status.Should().Be("completed");
+            evidence.Hours.Should().Be(1.25m);
+            evidence.TransactionId.Should().Be(creditData.GetProperty("transaction_id").GetInt32());
+
+            var ledger = await db.Transactions
+                .IgnoreQueryFilters()
+                .SingleAsync(row => row.Id == evidence.TransactionId);
+            ledger.SenderId.Should().BeNull();
+            ledger.ReceiverId.Should().Be(TestData.MemberUser.Id);
+            ledger.TransactionType.Should().Be("other");
+            (await db.Transactions
+                .IgnoreQueryFilters()
+                .CountAsync(row => row.TenantId == TestData.Tenant1.Id
+                    && row.ReceiverId == TestData.MemberUser.Id
+                    && row.Description != null
+                    && row.Description.Contains("(settlement-001)")))
+                .Should().Be(1);
+
+            var concurrentEvidence = await db.ApiPartnerWalletCredits
+                .IgnoreQueryFilters()
+                .SingleAsync(row => row.Reference == "settlement-concurrent");
+            (await db.Transactions.IgnoreQueryFilters()
+                .CountAsync(row => row.TenantId == TestData.Tenant1.Id
+                    && row.ReceiverId == TestData.MemberUser.Id
+                    && row.Description != null
+                    && row.Description.Contains("(settlement-concurrent)")))
+                .Should().Be(1);
+            concurrentEvidence.TransactionId.Should().NotBeNull();
+        }
+
         var balance = await Client.GetAsync($"/api/partner/v1/wallet/balance/{TestData.MemberUser.Id}");
 
         balance.StatusCode.Should().Be(HttpStatusCode.OK);
         var balanceData = (await balance.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         balanceData.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
-        balanceData.GetProperty("balance_hours").GetDecimal().Should().BeGreaterThan(0m);
+        balanceData.GetProperty("balance_hours").GetDecimal().Should().Be(memberBalanceBefore + 26m);
         balanceData.GetProperty("currency").GetString().Should().Be("time_credits");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var consent = await db.FederationUserSettings
+                .IgnoreQueryFilters()
+                .SingleAsync(row => row.TenantId == TestData.Tenant1.Id
+                    && row.UserId == TestData.MemberUser.Id);
+            consent.TransactionsEnabled = false;
+            await db.SaveChangesAsync();
+        }
+
+        var consentBlocked = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 1m,
+            reference = "settlement-without-consent"
+        });
+        consentBlocked.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.ApiPartnerWalletCredits
+                .IgnoreQueryFilters()
+                .AnyAsync(row => row.Reference == "settlement-without-consent"))
+                .Should().BeFalse();
+        }
 
         var webhook = await Client.PostAsJsonAsync("/api/partner/v1/webhooks/subscriptions", new
         {
@@ -1968,12 +2120,20 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             target_url = "https://partner.example.test/hooks/nexus"
         });
 
-        webhook.StatusCode.Should().Be(HttpStatusCode.Created);
-        var webhookData = (await webhook.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("subscription");
-        webhookData.GetProperty("event_types").EnumerateArray().Select(x => x.GetString())
-            .Should().BeEquivalentTo(["wallet.credited"]);
-        webhookData.GetProperty("target_url").GetString().Should().Be("https://partner.example.test/hooks/nexus");
-        webhookData.GetProperty("secret").GetString().Should().StartWith("whsec_");
+        webhook.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await webhook.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("errors")[0]
+            .GetProperty("code")
+            .GetString()
+            .Should().Be("webhook_subscriptions_unavailable");
+
+        var webhookList = await Client.GetAsync("/api/partner/v1/webhooks/subscriptions");
+        webhookList.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await webhookList.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("errors")[0]
+            .GetProperty("code")
+            .GetString()
+            .Should().Be("webhook_subscriptions_unavailable");
     }
 
     [Fact]
@@ -6350,15 +6510,19 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             contact_email = "partner-contract@example.test",
             description = "Laravel React frontend contract test partner",
             scopes,
+            is_sandbox = false,
             rate_limit_per_minute = 120
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var id = json.GetProperty("id").GetGuid().ToString();
+        json.GetProperty("partner").GetProperty("status").GetString().Should().Be("pending");
+        var partnerId = json.GetProperty("id").GetGuid();
         var secret = json.GetProperty("api_key").GetString();
         secret.Should().NotBeNullOrWhiteSpace();
-        return (id, secret!);
+        var activate = await Client.PostAsync($"/api/admin/api-partners/{partnerId}/activate", null);
+        activate.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (partnerId.ToString(), secret!);
     }
 
     private static bool HasLaravelBackgroundJobShape(JsonElement job)

@@ -130,7 +130,13 @@ public class FederationGatewayService
     /// Update user federation settings.
     /// </summary>
     public async Task<FederationUserSetting> UpdateUserSettingsAsync(
-        int tenantId, int userId, bool optIn, bool profileVisible, bool listingsVisible, string? blockedTenants)
+        int tenantId,
+        int userId,
+        bool optIn,
+        bool profileVisible,
+        bool listingsVisible,
+        bool? transactionsEnabled,
+        string? blockedTenants)
     {
         var settings = await _db.Set<FederationUserSetting>()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.UserId == userId);
@@ -144,6 +150,7 @@ public class FederationGatewayService
                 FederationOptIn = optIn,
                 ProfileVisible = profileVisible,
                 ListingsVisible = listingsVisible,
+                TransactionsEnabled = transactionsEnabled ?? false,
                 BlockedPartnerTenants = blockedTenants,
                 CreatedAt = DateTime.UtcNow
             };
@@ -154,6 +161,8 @@ public class FederationGatewayService
             settings.FederationOptIn = optIn;
             settings.ProfileVisible = profileVisible;
             settings.ListingsVisible = listingsVisible;
+            if (transactionsEnabled.HasValue)
+                settings.TransactionsEnabled = transactionsEnabled.Value;
             settings.BlockedPartnerTenants = blockedTenants;
             settings.UpdatedAt = DateTime.UtcNow;
         }

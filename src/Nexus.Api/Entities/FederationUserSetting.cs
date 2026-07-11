@@ -26,6 +26,9 @@ public class FederationUserSetting : ITenantEntity
     /// <summary>Whether the user's listings are visible to federated tenants.</summary>
     public bool ListingsVisible { get; set; } = true;
 
+    /// <summary>Whether the user accepts federated wallet transactions.</summary>
+    public bool TransactionsEnabled { get; set; }
+
     /// <summary>Comma-separated list of partner tenant IDs the user blocks.</summary>
     [MaxLength(500)]
     public string? BlockedPartnerTenants { get; set; }

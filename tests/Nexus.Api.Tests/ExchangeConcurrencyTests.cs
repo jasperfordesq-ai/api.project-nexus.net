@@ -4,19 +4,10 @@
 // See NOTICE file for attribution and acknowledgements.
 
 /*
- * Item 15 (deferred from earlier session) — exchange state-machine concurrency.
- *
- * The production CompleteExchangeAsync uses:
- *   - BeginTransactionAsync(IsolationLevel.Serializable)
- *   - pg_advisory_xact_lock on the receiver's user id
- *   - Balance check inside the transaction
- *
- * We verify two production-critical contracts under contention:
- *   1. Two parallel completions of the same exchange produce exactly one
- *      Transaction row (no double-spend), and exactly one call returns
- *      "Exchange completed" — the other returns the state-machine error.
- *   2. Insufficient balance is detected even when racing — the loser does
- *      not silently overdraw.
+ * Exchange completion is deliberately fail-closed until the model can bind
+ * both participants' confirmation to one immutable settlement. These tests
+ * keep that boundary explicit under parallel and repeated requests and prove
+ * that the disabled endpoint cannot move state or write wallet ledger rows.
  */
 
 using FluentAssertions;
@@ -32,13 +23,16 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class ExchangeConcurrencyTests : IntegrationTestBase
 {
+    private const string CompletionUnavailable =
+        "Exchange completion requires matching confirmation from both participants and is not available on this endpoint.";
+
     public ExchangeConcurrencyTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     /// <summary>
     /// Seed: a Listing owned by admin (provider) + an InProgress Exchange
     /// where member (receiver) is paying admin (provider) AgreedHours hours.
-    /// Member is pre-credited with enough hours via a synthetic completed
-    /// Transaction so the balance-check inside CompleteExchangeAsync passes.
+    /// Member is pre-credited so the fail-closed result cannot be mistaken for
+    /// an insufficient-balance rejection.
     /// </summary>
     private async Task<int> SeedReadyExchangeAsync(decimal agreedHours, decimal startingBalance)
     {
@@ -95,9 +89,11 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task ConcurrentCompletion_OnlyOneSucceeds_NoDoubleSpend()
+    public async Task ConcurrentCompletion_WhenConfirmationWorkflowIsUnavailable_AllCallsFailWithoutMutation()
     {
         var exchangeId = await SeedReadyExchangeAsync(agreedHours: 2.0m, startingBalance: 10m);
+        var memberBalanceBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        var adminBalanceBefore = await GetBalanceAsync(TestData.AdminUser.Id);
 
         // Fire two parallel completions on independent scopes (mimicking two
         // simultaneous HTTP requests landing on different worker threads).
@@ -113,30 +109,33 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
         var task2 = Task.Run(Complete);
         var results = await Task.WhenAll(task1, task2);
 
-        // Exactly one success, exactly one state-machine rejection.
-        var successes = results.Count(r => r.Err == null && r.Ex != null);
-        var failures = results.Count(r => r.Err != null);
-        successes.Should().Be(1, "only one of two parallel completions can win");
-        failures.Should().Be(1, "the loser must report a state-machine error");
+        results.Should().OnlyContain(result =>
+            result.Ex == null && result.Err == CompletionUnavailable);
 
-        // The DB should reflect: Status=Completed, exactly ONE new Transaction
-        // row (Description starts with "Exchange #") for this exchange.
+        // Neither request may advance state or create a settlement row.
         using var assertScope = Factory.Services.CreateScope();
         assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
         var db = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var refreshed = await db.Exchanges.FirstAsync(e => e.Id == exchangeId);
-        refreshed.Status.Should().Be(ExchangeStatus.Completed);
+        refreshed.Status.Should().Be(ExchangeStatus.InProgress);
+        refreshed.ActualHours.Should().BeNull();
+        refreshed.CompletedAt.Should().BeNull();
+        refreshed.TransactionId.Should().BeNull();
 
         var transactionCount = await db.Transactions
             .CountAsync(t => t.Description != null
                 && t.Description.StartsWith($"Exchange #{exchangeId}:"));
-        transactionCount.Should().Be(1, "exactly one credit transaction must be created — no double-spend");
+        transactionCount.Should().Be(0);
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBalanceBefore);
+        (await GetBalanceAsync(TestData.AdminUser.Id)).Should().Be(adminBalanceBefore);
     }
 
     [Fact]
-    public async Task InsufficientBalance_RejectsCompletion_NoTransactionCreated()
+    public async Task Completion_WhenBalanceIsInsufficient_StillFailsAtConfirmationBoundaryWithoutMutation()
     {
         var exchangeId = await SeedReadyExchangeAsync(agreedHours: 100m, startingBalance: 5m);
+        var memberBalanceBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        var adminBalanceBefore = await GetBalanceAsync(TestData.AdminUser.Id);
 
         using var scope = Factory.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
@@ -144,7 +143,7 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
         var (ex, err) = await svc.CompleteExchangeAsync(exchangeId, TestData.MemberUser.Id, actualHours: null);
 
         ex.Should().BeNull();
-        err.Should().NotBeNull().And.StartWith("Insufficient balance");
+        err.Should().Be(CompletionUnavailable);
 
         using var assertScope = Factory.Services.CreateScope();
         assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
@@ -156,23 +155,49 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
             .CountAsync(t => t.Description != null
                 && t.Description.StartsWith($"Exchange #{exchangeId}:"));
         txCount.Should().Be(0);
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBalanceBefore);
+        (await GetBalanceAsync(TestData.AdminUser.Id)).Should().Be(adminBalanceBefore);
     }
 
     [Fact]
-    public async Task SequentialCompletion_SecondCallRejected()
+    public async Task SequentialCompletionAttempts_RemainUnavailableAndIdempotentlyMutationFree()
     {
-        // Even without parallelism, a second completion attempt after success
-        // must be rejected by the state machine (Completed → Completed not allowed).
         var exchangeId = await SeedReadyExchangeAsync(agreedHours: 1m, startingBalance: 5m);
+        var memberBalanceBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        var adminBalanceBefore = await GetBalanceAsync(TestData.AdminUser.Id);
 
         using var scope = Factory.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
         var svc = scope.ServiceProvider.GetRequiredService<ExchangeService>();
         var first = await svc.CompleteExchangeAsync(exchangeId, TestData.MemberUser.Id, null);
-        first.Error.Should().BeNull();
-
         var second = await svc.CompleteExchangeAsync(exchangeId, TestData.MemberUser.Id, null);
+
+        first.Exchange.Should().BeNull();
+        first.Error.Should().Be(CompletionUnavailable);
         second.Exchange.Should().BeNull();
-        second.Error.Should().NotBeNull().And.Contain("transition");
+        second.Error.Should().Be(CompletionUnavailable);
+
+        using var assertScope = Factory.Services.CreateScope();
+        assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var db = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var refreshed = await db.Exchanges.IgnoreQueryFilters().SingleAsync(e => e.Id == exchangeId);
+        refreshed.Status.Should().Be(ExchangeStatus.InProgress);
+        refreshed.ActualHours.Should().BeNull();
+        refreshed.CompletedAt.Should().BeNull();
+        refreshed.TransactionId.Should().BeNull();
+        (await db.Transactions.IgnoreQueryFilters()
+            .CountAsync(t => t.Description != null &&
+                             t.Description.StartsWith($"Exchange #{exchangeId}:")))
+            .Should().Be(0);
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBalanceBefore);
+        (await GetBalanceAsync(TestData.AdminUser.Id)).Should().Be(adminBalanceBefore);
+    }
+
+    private async Task<decimal> GetBalanceAsync(int userId)
+    {
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var wallet = scope.ServiceProvider.GetRequiredService<PersonalWalletLedgerService>();
+        return await wallet.GetBalanceAsync(TestData.Tenant1.Id, userId);
     }
 }

@@ -124,6 +124,7 @@ public class AdminCompatibilityControllerUnitTests
             new TokenService(config),
             new NoopEmailService(),
             new GamificationService(db, NullLogger<GamificationService>.Instance),
+            new PersonalWalletLedgerService(db, NullLogger<PersonalWalletLedgerService>.Instance),
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<AdminCompatibilityController>.Instance);
     }

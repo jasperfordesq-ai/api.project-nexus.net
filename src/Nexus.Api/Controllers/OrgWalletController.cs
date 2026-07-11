@@ -6,8 +6,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
@@ -23,12 +21,14 @@ namespace Nexus.Api.Controllers;
 public class OrgWalletController : ControllerBase
 {
     private readonly OrgWalletService _walletService;
-    private readonly NexusDbContext _db;
+    private readonly OrganisationService _organisationService;
 
-    public OrgWalletController(OrgWalletService walletService, NexusDbContext db)
+    public OrgWalletController(
+        OrgWalletService walletService,
+        OrganisationService organisationService)
     {
         _walletService = walletService;
-        _db = db;
+        _organisationService = organisationService;
     }
 
     /// <summary>
@@ -40,15 +40,9 @@ public class OrgWalletController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var orgExists = await _db.Set<Organisation>()
-            .AsNoTracking()
-            .AnyAsync(o => o.Id == orgId);
-        if (!orgExists) return NotFound(new { error = "Organisation not found" });
-
-        // Verify user is a member of this organisation
-        var isMember = await _db.Set<OrganisationMember>()
-            .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId.Value);
-        if (!isMember && !User.IsAdmin())
+        var access = await _organisationService.GetWalletAccessAsync(orgId, userId.Value);
+        if (!access.Exists) return NotFound(new { error = "Organisation not found" });
+        if (!access.Allowed)
             return StatusCode(403, new { error = "You must be a member of this organisation" });
 
         var wallet = await _walletService.GetWalletAsync(orgId);
@@ -80,15 +74,9 @@ public class OrgWalletController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var orgExists = await _db.Set<Organisation>()
-            .AsNoTracking()
-            .AnyAsync(o => o.Id == orgId);
-        if (!orgExists) return NotFound(new { error = "Organisation not found" });
-
-        // Verify user is a member of this organisation
-        var isMember = await _db.Set<OrganisationMember>()
-            .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId.Value);
-        if (!isMember && !User.IsAdmin())
+        var access = await _organisationService.GetWalletAccessAsync(orgId, userId.Value);
+        if (!access.Exists) return NotFound(new { error = "Organisation not found" });
+        if (!access.Allowed)
             return StatusCode(403, new { error = "You must be a member of this organisation" });
 
         var txs = await _walletService.GetTransactionsAsync(orgId, page, limit);

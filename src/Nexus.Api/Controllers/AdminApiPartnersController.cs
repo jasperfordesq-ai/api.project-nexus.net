@@ -92,6 +92,7 @@ public class AdminApiPartnersController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
     }
 
+    [HttpPost("{id:guid}/activate")]
     [HttpPost("{id:guid}/reactivate")]
     public async Task<IActionResult> Reactivate(Guid id, CancellationToken ct)
     {
@@ -117,6 +118,10 @@ public class AdminApiPartnersController : ControllerBase
         api_key_prefix = p.ApiKeyPrefix,
         scopes = p.Scopes,
         rate_limit_per_minute = p.RateLimitPerMinute,
+        is_sandbox = p.IsSandbox,
+        allowed_ip_cidrs = string.IsNullOrWhiteSpace(p.AllowedIpCidrs)
+            ? Array.Empty<string>()
+            : System.Text.Json.JsonSerializer.Deserialize<string[]>(p.AllowedIpCidrs) ?? Array.Empty<string>(),
         status = p.Status.ToString().ToLowerInvariant(),
         last_used_at = p.LastUsedAt,
         requests_last_24h = p.RequestsLast24h,

@@ -7,10 +7,8 @@
  * Federation hardening — concurrency tests for CommitAndSettleAsync.
  *
  * Modelled on ExchangeConcurrencyTests. The production
- * HourTransferReconciliationService.CommitAndSettleAsync now wraps the
- * Transactions ledger write in a Serializable transaction with a
- * pg_advisory_xact_lock on the affected local user — matching the
- * exchange completion safety contract.
+ * HourTransferReconciliationService.CommitAndSettleAsync now uses the shared
+ * personal-wallet advisory lock and a nullable remote ledger leg.
  *
  * Both tests drive the public ReconcileTenantAsync entrypoint with
  * transfers pre-seeded in the Acknowledged state, using Protocol="native"
@@ -22,6 +20,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Services.Federation;
 using Nexus.Api.Tests.Fixtures;
 
@@ -41,7 +40,8 @@ public class FederationHourTransferConcurrencyTests : IntegrationTestBase
     /// </summary>
     private async Task<(int TransferId, int PartnerId)> SeedAcknowledgedTransferAsync(
         decimal amount,
-        decimal startingBalance)
+        decimal startingBalance,
+        FederatedTransferDirection direction = FederatedTransferDirection.Outbound)
     {
         using var scope = Factory.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
@@ -86,7 +86,7 @@ public class FederationHourTransferConcurrencyTests : IntegrationTestBase
         {
             TenantId = TestData.Tenant1.Id,
             PartnerId = partner.Id,
-            Direction = FederatedTransferDirection.Outbound,
+            Direction = direction,
             LocalUserId = TestData.MemberUser.Id,
             RemoteUserExternalId = "remote-test-user",
             RemoteUserDisplayName = "Remote Partner User",
@@ -104,73 +104,48 @@ public class FederationHourTransferConcurrencyTests : IntegrationTestBase
         return (transfer.Id, partner.Id);
     }
 
-    [Fact]
-    public async Task ConcurrentCommitAndSettle_ExactlyOneTransactionWritten()
+    private async Task<decimal> GetBalanceAsync(int userId)
     {
-        var (transferId, _) = await SeedAcknowledgedTransferAsync(amount: 2.0m, startingBalance: 10m);
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var wallet = scope.ServiceProvider.GetRequiredService<PersonalWalletLedgerService>();
+        return await wallet.GetBalanceAsync(TestData.Tenant1.Id, userId);
+    }
 
-        async Task ReconcileOnce()
+    [Fact]
+    public async Task ReconcileTenant_WhileDurableSagaIsUnavailable_IsAnExplicitNoOp()
+    {
+        var memberBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        var (transferId, _) = await SeedAcknowledgedTransferAsync(amount: 2m, startingBalance: 10m);
+
+        async Task<ReconcileBatchResult> ReconcileOnce()
         {
             using var scope = Factory.Services.CreateScope();
             scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
-            var svc = scope.ServiceProvider.GetRequiredService<HourTransferReconciliationService>();
-            await svc.ReconcileTenantAsync(TestData.Tenant1.Id, batchSize: 50, ct: default);
+            var service = scope.ServiceProvider.GetRequiredService<HourTransferReconciliationService>();
+            return await service.ReconcileTenantAsync(TestData.Tenant1.Id, batchSize: 50, ct: default);
         }
 
-        // Two parallel ticks, mimicking cron tick + manual admin trigger.
-        var t1 = Task.Run(ReconcileOnce);
-        var t2 = Task.Run(ReconcileOnce);
-        await Task.WhenAll(t1, t2);
+        var results = await Task.WhenAll(Task.Run(ReconcileOnce), Task.Run(ReconcileOnce));
+        results.Should().OnlyContain(result =>
+            result.Advanced == 0 && result.Failed == 0 && result.GivenUp == 0);
 
         using var assertScope = Factory.Services.CreateScope();
         assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
         var db = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-
-        var refreshed = await db.FederatedHourTransfers
+        var transfer = await db.FederatedHourTransfers
             .IgnoreQueryFilters()
-            .FirstAsync(t => t.Id == transferId);
+            .SingleAsync(row => row.Id == transferId);
 
-        refreshed.Status.Should().Be(FederatedTransferStatus.Reconciled,
-            "the locked path must drive the transfer to terminal Reconciled exactly once");
-        refreshed.LocalTransactionId.Should().NotBeNull();
-
-        var txCount = await db.Transactions
-            .IgnoreQueryFilters()
-            .CountAsync(x => x.Description != null
-                && x.Description.Contains($"transfer #{transferId}:"));
-        txCount.Should().Be(1,
-            "exactly one credit transaction must be written — no double-spend under contention");
+        transfer.Status.Should().Be(FederatedTransferStatus.Acknowledged);
+        transfer.LocalTransactionId.Should().BeNull();
+        transfer.RetryCount.Should().Be(0);
+        transfer.LastReconcileAttemptAt.Should().BeNull();
+        (await db.Transactions.IgnoreQueryFilters()
+            .CountAsync(row => row.Description != null &&
+                               row.Description.Contains($"transfer #{transferId}:")))
+            .Should().Be(0);
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBefore + 10m);
     }
 
-    [Fact]
-    public async Task InsufficientBalance_OutboundTransfer_NoTransactionCreated()
-    {
-        // Member balance: 1 hour. Transfer demands 100. Settlement must abort
-        // inside the locked section without writing a Transaction row.
-        var (transferId, _) = await SeedAcknowledgedTransferAsync(amount: 100m, startingBalance: 1m);
-
-        using var scope = Factory.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
-        var svc = scope.ServiceProvider.GetRequiredService<HourTransferReconciliationService>();
-        await svc.ReconcileTenantAsync(TestData.Tenant1.Id, batchSize: 50, ct: default);
-
-        using var assertScope = Factory.Services.CreateScope();
-        assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
-        var db = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-
-        var refreshed = await db.FederatedHourTransfers
-            .IgnoreQueryFilters()
-            .FirstAsync(t => t.Id == transferId);
-
-        refreshed.Status.Should().NotBe(FederatedTransferStatus.Reconciled,
-            "an under-funded outbound transfer must not be marked settled");
-        refreshed.LocalTransactionId.Should().BeNull();
-        refreshed.FailureReason.Should().NotBeNull().And.Contain("insufficient_balance");
-
-        var txCount = await db.Transactions
-            .IgnoreQueryFilters()
-            .CountAsync(x => x.Description != null
-                && x.Description.Contains($"transfer #{transferId}:"));
-        txCount.Should().Be(0, "no ledger row should exist for an aborted settlement");
-    }
 }

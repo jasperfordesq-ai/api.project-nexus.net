@@ -635,6 +635,7 @@ public class CaringHourEstate : ITenantEntity
     public string Status { get; set; } = "nominated";
     public decimal? ReportedBalanceHours { get; set; }
     public decimal? SettledHours { get; set; }
+    public int? SettlementTransactionId { get; set; }
     public string? PolicyDocumentReference { get; set; }
     public string? MemberNotes { get; set; }
     public string? CoordinatorNotes { get; set; }
@@ -649,6 +650,7 @@ public class CaringHourEstate : ITenantEntity
     public Tenant? Tenant { get; set; }
     public User? MemberUser { get; set; }
     public User? BeneficiaryUser { get; set; }
+    public Transaction? SettlementTransaction { get; set; }
 }
 
 /// <summary>
@@ -693,6 +695,8 @@ public class CaringHourGift : ITenantEntity
     public int TenantId { get; set; }
     public int SenderUserId { get; set; }
     public int RecipientUserId { get; set; }
+    public int? ReservationTransactionId { get; set; }
+    public int? SettlementTransactionId { get; set; }
     public decimal Hours { get; set; }
     public string? Message { get; set; }
     public string Status { get; set; } = "pending";
@@ -706,6 +710,8 @@ public class CaringHourGift : ITenantEntity
     public Tenant? Tenant { get; set; }
     public User? SenderUser { get; set; }
     public User? RecipientUser { get; set; }
+    public Transaction? ReservationTransaction { get; set; }
+    public Transaction? SettlementTransaction { get; set; }
 }
 
 /// <summary>

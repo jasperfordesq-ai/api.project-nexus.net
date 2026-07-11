@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -117,6 +118,7 @@ public class AdminCompatibilityController : ControllerBase
     private readonly TokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly GamificationService _gamification;
+    private readonly PersonalWalletLedgerService _personalWallet;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AdminCompatibilityController> _logger;
 
@@ -127,6 +129,7 @@ public class AdminCompatibilityController : ControllerBase
         TokenService tokenService,
         IEmailService emailService,
         GamificationService gamification,
+        PersonalWalletLedgerService personalWallet,
         IMemoryCache cache,
         ILogger<AdminCompatibilityController> logger)
     {
@@ -136,6 +139,7 @@ public class AdminCompatibilityController : ControllerBase
         _tokenService = tokenService;
         _emailService = emailService;
         _gamification = gamification;
+        _personalWallet = personalWallet;
         _cache = cache;
         _logger = logger;
     }
@@ -1715,8 +1719,9 @@ public class AdminCompatibilityController : ControllerBase
     [HttpGet("timebanking/stats")]
     public async Task<IActionResult> GetTimebankingStats()
     {
-        var totalTransactions = await _db.Transactions.CountAsync();
-        var totalHours = await _db.Transactions.SumAsync(t => t.Amount);
+        var visibleTransactions = _db.Transactions.ExcludeInternalWalletAdapters();
+        var totalTransactions = await visibleTransactions.CountAsync();
+        var totalHours = await visibleTransactions.SumAsync(t => t.Amount);
         var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
 
         return Ok(new
@@ -1776,35 +1781,103 @@ public class AdminCompatibilityController : ControllerBase
     }
 
     [HttpPost("timebanking/adjust-balance")]
-    public async Task<IActionResult> AdjustBalance([FromBody] AdminAdjustBalanceRequest request)
+    public async Task<IActionResult> AdjustBalance(
+        [FromBody] AdminAdjustBalanceRequest request,
+        CancellationToken cancellationToken)
     {
         if (request.UserId <= 0)
-            return BadRequest(new { error = "user_id is required" });
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "user_id is required", field = "user_id" } }
+            });
+        if (request.Amount == 0m)
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "amount must be nonzero", field = "amount" } }
+            });
+        if (request.Amount is > 100000m or < -100000m)
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "amount is out of range", field = "amount" } }
+            });
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "reason is required", field = "reason" } }
+            });
+
+        var tenantId = _tenant.TenantId;
+        if (!tenantId.HasValue)
+            return Unauthorized(new { errors = new[] { new { code = "AUTH_REQUIRED", message = "Invalid token" } } });
+
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == request.UserId && u.TenantId == tenantId.Value, cancellationToken);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
         var adminId = GetCurrentUserId();
         if (adminId == null)
-            return Unauthorized(new { error = "Invalid token" });
+            return Unauthorized(new { errors = new[] { new { code = "AUTH_REQUIRED", message = "Invalid token" } } });
+
+        var actor = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == adminId.Value && u.TenantId == tenantId.Value, cancellationToken);
+        if (actor == null)
+            return Unauthorized(new { errors = new[] { new { code = "AUTH_REQUIRED", message = "Invalid token" } } });
+        if (request.UserId == adminId.Value && !NexusUserAccessEvaluator.HasAdminAccess(actor))
+            return LaravelError(
+                "AUTH_INSUFFICIENT_PERMISSIONS",
+                "Brokers cannot adjust their own balance",
+                StatusCodes.Status403Forbidden);
+
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
+        if (databaseTransaction is not null)
+            await _personalWallet.AcquireSpendLockAsync(request.UserId, cancellationToken);
+
+        var previousBalance = await _personalWallet.GetBalanceAsync(
+            tenantId.Value,
+            request.UserId,
+            cancellationToken);
+        var newBalance = previousBalance + request.Amount;
+        if (newBalance < 0m)
+            return LaravelError(
+                "INSUFFICIENT_BALANCE",
+                "Balance adjustment would result in a negative balance",
+                StatusCodes.Status400BadRequest);
+
+        var amount = Math.Abs(request.Amount);
 
         var transaction = new Transaction
         {
-            TenantId = _tenant.TenantId ?? 0,
-            SenderId = adminId.Value,
-            ReceiverId = request.UserId,
-            Amount = request.Amount,
-            Description = request.Reason ?? "Admin balance adjustment",
+            TenantId = tenantId.Value,
+            SenderId = request.Amount < 0m ? request.UserId : null,
+            ReceiverId = request.Amount > 0m ? request.UserId : null,
+            Amount = amount,
+            Description = $"[Admin Adjustment] {reason}",
+            TransactionType = "admin_adjustment",
+            Status = TransactionStatus.Completed,
             CreatedAt = DateTime.UtcNow
         };
 
         _db.Transactions.Add(transaction);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
+        if (databaseTransaction is not null)
+            await databaseTransaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation("Admin {AdminId} adjusted balance for user {UserId} by {Amount}", adminId, request.UserId, request.Amount);
 
-        return Ok(new { success = true, transaction_id = transaction.Id });
+        return LaravelData(new
+        {
+            user_id = request.UserId,
+            user_name = ($"{user.FirstName} {user.LastName}").Trim(),
+            previous_balance = previousBalance,
+            adjustment = request.Amount,
+            new_balance = newBalance
+        });
     }
 
     [HttpGet("timebanking/org-wallets")]
@@ -1832,37 +1905,74 @@ public class AdminCompatibilityController : ControllerBase
     }
 
     [HttpPost("wallet/grant")]
-    public async Task<IActionResult> GrantCredits([FromBody] AdminGrantCreditsRequest request)
+    public async Task<IActionResult> GrantCredits(
+        [FromBody] AdminGrantCreditsRequest request,
+        CancellationToken cancellationToken)
     {
         if (request.UserId <= 0)
-            return BadRequest(new { error = "user_id is required" });
+            return LaravelValidationError("user_id must be a positive integer", "user_id");
         if (request.Amount <= 0)
-            return BadRequest(new { error = "amount must be positive" });
+            return LaravelValidationError("amount must be greater than zero", "amount");
+        if (request.Amount > 10000m)
+            return LaravelValidationError("grant amount cannot exceed 10000", "amount");
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+        var tenantId = _tenant.TenantId;
+        if (!tenantId.HasValue)
+            return Unauthorized(new { errors = new[] { new { code = "AUTH_REQUIRED", message = "Invalid token" } } });
+
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == request.UserId && u.TenantId == tenantId.Value, cancellationToken);
         if (user == null)
-            return NotFound(new { error = "User not found" });
+            return NotFound(new
+            {
+                errors = new[] { new { code = "USER_NOT_FOUND", message = "User not found in tenant", field = "user_id" } }
+            });
 
         var adminId = GetCurrentUserId();
         if (adminId == null)
-            return Unauthorized(new { error = "Invalid token" });
+            return Unauthorized(new { errors = new[] { new { code = "AUTH_REQUIRED", message = "Invalid token" } } });
+
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
+        if (databaseTransaction is not null)
+            await _personalWallet.AcquireSpendLockAsync(request.UserId, cancellationToken);
+
+        var reason = request.Reason ?? "Admin credit grant";
 
         var transaction = new Transaction
         {
-            TenantId = _tenant.TenantId ?? 0,
-            SenderId = adminId.Value,
+            TenantId = tenantId.Value,
+            SenderId = null,
             ReceiverId = request.UserId,
             Amount = request.Amount,
-            Description = request.Reason ?? "Admin grant",
+            Description = reason,
+            TransactionType = "admin_grant",
+            Status = TransactionStatus.Completed,
             CreatedAt = DateTime.UtcNow
         };
 
         _db.Transactions.Add(transaction);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
+        if (databaseTransaction is not null)
+            await databaseTransaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation("Admin {AdminId} granted {Amount} credits to user {UserId}", adminId, request.Amount, request.UserId);
 
-        return Ok(new { success = true, transaction_id = transaction.Id });
+        return LaravelData(new
+        {
+            grant = new
+            {
+                id = transaction.Id,
+                user_id = request.UserId,
+                user_name = ($"{user.FirstName} {user.LastName}").Trim(),
+                amount = Math.Round(request.Amount, 2),
+                reason,
+                admin_id = adminId.Value,
+                status = "completed"
+            },
+            message = "Credits granted successfully"
+        });
     }
 
     // ──────────────────────────────────────────────
@@ -2460,7 +2570,9 @@ public class AdminCompatibilityController : ControllerBase
         var twelveMonthsAgo = now.AddMonths(-12);
         var twelveWeeksAgo = now.AddDays(-7 * 12);
 
-        var completedTx = _db.Transactions.Where(t => t.Status == TransactionStatus.Completed);
+        var completedTx = _db.Transactions
+            .ExcludeInternalWalletAdapters()
+            .Where(t => t.Status == TransactionStatus.Completed);
         var completedTx30d = completedTx.Where(t => t.CreatedAt >= thirtyDaysAgo);
 
         var totalCreditsCirculation = await completedTx.SumAsync(t => (decimal?)t.Amount) ?? 0m;
@@ -2676,6 +2788,7 @@ public class AdminCompatibilityController : ControllerBase
         var now = DateTime.UtcNow;
         var twelveMonthsAgo = now.AddMonths(-12);
         var completedTx = _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.Status == TransactionStatus.Completed && t.CreatedAt >= twelveMonthsAgo);
 
         var monthlyRaw = await completedTx
@@ -2736,6 +2849,7 @@ public class AdminCompatibilityController : ControllerBase
         var months = Math.Clamp(ReadIntQuery("months", 12), 1, 60);
         var since = DateTime.UtcNow.AddMonths(-months);
         var completedTransactions = _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.CreatedAt >= since && t.Status == TransactionStatus.Completed)
             .AsNoTracking();
         var totalHours = await completedTransactions.SumAsync(t => (decimal?)t.Amount) ?? 0;

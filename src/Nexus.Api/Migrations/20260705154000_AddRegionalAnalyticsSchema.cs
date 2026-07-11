@@ -12,6 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     /// <inheritdoc />
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260705154000_AddRegionalAnalyticsSchema")]
     public partial class AddRegionalAnalyticsSchema : Migration
     {
         /// <inheritdoc />
@@ -37,7 +39,7 @@ namespace Nexus.Api.Migrations
                         name: "FK_regional_analytics_cache_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -75,7 +77,7 @@ namespace Nexus.Api.Migrations
                         name: "FK_regional_analytics_subscriptions_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -105,7 +107,7 @@ namespace Nexus.Api.Migrations
                         name: "FK_regional_analytics_access_log_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -142,7 +144,7 @@ namespace Nexus.Api.Migrations
                         name: "FK_regional_analytics_reports_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
-                        principalColumn: "id",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 

@@ -26,6 +26,7 @@ public class FederationConfiguration : TenantScopedConfiguration
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.CreditExchangeRate).HasPrecision(10, 4);
+            entity.Property(e => e.TransactionsEnabled).HasDefaultValue(false);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => new { e.TenantId, e.PartnerTenantId }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
@@ -64,10 +65,21 @@ public class FederationConfiguration : TenantScopedConfiguration
             entity.Property(e => e.CreditExchangeRate).HasPrecision(10, 4);
             entity.Property(e => e.Notes).HasColumnType("text");
             entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.LocalTransactionId)
+                .IsUnique()
+                .HasFilter("\"LocalTransactionId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.PartnerTenant).WithMany().HasForeignKey(e => e.PartnerTenantId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.LocalUser).WithMany().HasForeignKey(e => e.LocalUserId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.LocalTransaction).WithMany().HasForeignKey(e => e.LocalTransactionId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.LocalUser)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.LocalUserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.LocalTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.LocalTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
@@ -118,6 +130,7 @@ public class FederationConfiguration : TenantScopedConfiguration
             entity.ToTable("federation_user_settings");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.BlockedPartnerTenants).HasMaxLength(500);
+            entity.Property(e => e.TransactionsEnabled).HasDefaultValue(false);
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);

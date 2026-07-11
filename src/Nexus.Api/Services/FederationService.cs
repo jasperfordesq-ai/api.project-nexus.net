@@ -34,7 +34,10 @@ public class FederationService
     /// </summary>
     public async Task<(FederationPartner? Partner, string? Error)> RequestPartnershipAsync(
         int localTenantId, int partnerTenantId, int adminId,
-        bool sharedListings = true, bool sharedEvents = false, bool sharedMembers = false)
+        bool sharedListings = true,
+        bool sharedEvents = false,
+        bool sharedMembers = false,
+        bool transactionsEnabled = false)
     {
         if (localTenantId == partnerTenantId)
             return (null, "Cannot create a partnership with your own tenant");
@@ -65,6 +68,7 @@ public class FederationService
             SharedListings = sharedListings,
             SharedEvents = sharedEvents,
             SharedMembers = sharedMembers,
+            TransactionsEnabled = transactionsEnabled,
             RequestedById = adminId,
             CreatedAt = DateTime.UtcNow
         };
@@ -647,7 +651,9 @@ public class FederationService
     }
 
     /// <summary>
-    /// Complete a federated exchange and create a local credit transaction.
+    /// Fail closed until a federated exchange has durable, authenticated remote
+    /// settlement evidence. The member route must never mint external credits
+    /// from caller-supplied hours or a locally mutable social status.
     /// </summary>
     public async Task<(FederatedExchange? Exchange, string? Error)> CompleteFederatedExchangeAsync(
         int exchangeId, int userId, decimal? actualHours)
@@ -662,86 +668,11 @@ public class FederationService
         if (exchange.LocalUserId != userId)
             return (null, "You are not a participant in this exchange");
 
-        if (exchange.Status != ExchangeStatus.Requested &&
-            exchange.Status != ExchangeStatus.Accepted &&
-            exchange.Status != ExchangeStatus.InProgress)
-            return (null, $"Exchange cannot be completed from status '{exchange.Status}'");
-
-        var hours = actualHours ?? exchange.AgreedHours;
-        if (hours <= 0)
-            return (null, "Hours must be greater than zero");
-
-        // Apply the exchange rate
-        var adjustedHours = hours * exchange.CreditExchangeRate;
-
-        // Use a SERIALIZABLE transaction for atomic balance check + credit creation
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-        try
-        {
-            // Acquire advisory lock on the user to serialize credit operations
-            await _db.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock({0})",
-                userId);
-
-            // Create a local credit transaction.
-            // The local user receives credits for providing a service to the remote user.
-            // SenderId is set to the receiver (self-referential) to represent credits
-            // originating from the federated network — the same pattern used in DonateAsync.
-            var transaction = new Transaction
-            {
-                TenantId = exchange.TenantId,
-                SenderId = userId, // Self-referential: federation credits originate externally
-                ReceiverId = userId,
-                Amount = adjustedHours,
-                Description = $"Federated exchange with {exchange.RemoteUserDisplayName} (Tenant {exchange.PartnerTenantId})",
-                Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Transactions.Add(transaction);
-            await _db.SaveChangesAsync();
-
-            // Update the exchange
-            exchange.Status = ExchangeStatus.Completed;
-            exchange.ActualHours = hours;
-            exchange.LocalTransactionId = transaction.Id;
-            exchange.CompletedAt = DateTime.UtcNow;
-            exchange.UpdatedAt = DateTime.UtcNow;
-
-            // Create audit log
-            _db.Set<FederationAuditLog>().Add(new FederationAuditLog
-            {
-                TenantId = exchange.TenantId,
-                PartnerTenantId = exchange.PartnerTenantId,
-                Action = "exchange.completed",
-                EntityType = "FederatedExchange",
-                EntityId = exchange.Id,
-                Details = JsonSerializer.Serialize(new
-                {
-                    local_user_id = userId,
-                    actual_hours = hours,
-                    adjusted_hours = adjustedHours,
-                    exchange_rate = exchange.CreditExchangeRate,
-                    transaction_id = transaction.Id
-                }),
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync();
-            await dbTransaction.CommitAsync();
-
-            _logger.LogInformation(
-                "Federated exchange {ExchangeId} completed: {Hours}h (adjusted: {AdjustedHours}h at rate {Rate})",
-                exchangeId, hours, adjustedHours, exchange.CreditExchangeRate);
-
-            return (exchange, null);
-        }
-        catch (Exception ex) when (ex is Microsoft.EntityFrameworkCore.DbUpdateException or Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException or InvalidOperationException or OperationCanceledException)
-        {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Failed to complete federated exchange {ExchangeId}", exchangeId);
-            return (null, "Failed to complete exchange due to a database error. Please try again.");
-        }
+        _logger.LogWarning(
+            "Blocked member completion for federated exchange {ExchangeId}: authenticated remote settlement evidence is unavailable",
+            exchangeId);
+        return (null,
+            "Federated exchange completion is unavailable until authenticated remote settlement evidence has been recorded.");
     }
 
     /// <summary>

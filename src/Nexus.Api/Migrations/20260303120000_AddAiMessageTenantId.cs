@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Nexus.Api.Migrations
 {
     /// <inheritdoc />
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
     [Migration("20260303120000_AddAiMessageTenantId")]
     public partial class AddAiMessageTenantId : Migration
     {
@@ -32,7 +33,10 @@ namespace Nexus.Api.Migrations
                 table: "ai_messages",
                 type: "integer",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: 0,
+                oldClrType: typeof(int),
+                oldType: "integer",
+                oldNullable: true);
 
             // Add index on TenantId
             migrationBuilder.CreateIndex(

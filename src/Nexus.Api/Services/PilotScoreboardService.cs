@@ -352,13 +352,19 @@ public sealed class PilotScoreboardService
             .AsNoTracking()
             .Where(row => row.TenantId == tenantId
                 && row.Status == TransactionStatus.Completed
+                && row.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
                 && row.CreatedAt >= windowStart)
             .Select(row => new { row.SenderId, row.ReceiverId })
             .ToListAsync(ct);
         foreach (var transaction in transactions)
         {
-            ids.Add(transaction.SenderId);
-            ids.Add(transaction.ReceiverId);
+            if (transaction.SenderId.HasValue)
+                ids.Add(transaction.SenderId.Value);
+            if (transaction.ReceiverId.HasValue)
+                ids.Add(transaction.ReceiverId.Value);
         }
 
         return ids.Count;
@@ -508,13 +514,20 @@ public sealed class PilotScoreboardService
         var transactions = await _db.Transactions
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(row => row.TenantId == tenantId && row.CreatedAt >= windowStart)
+            .Where(row => row.TenantId == tenantId
+                && row.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && row.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+                && row.CreatedAt >= windowStart)
             .Select(row => new { row.SenderId, row.ReceiverId })
             .ToListAsync(ct);
         foreach (var transaction in transactions)
         {
-            engaged.Add(transaction.SenderId);
-            engaged.Add(transaction.ReceiverId);
+            if (transaction.SenderId.HasValue)
+                engaged.Add(transaction.SenderId.Value);
+            if (transaction.ReceiverId.HasValue)
+                engaged.Add(transaction.ReceiverId.Value);
         }
 
         if (await HasColumnsAsync("vol_logs", ["tenant_id", "created_at", "user_id"], ct))

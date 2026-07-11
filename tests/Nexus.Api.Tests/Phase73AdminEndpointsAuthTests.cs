@@ -11,7 +11,7 @@
  * Coverage strategy: for each new admin endpoint, verify it returns
  *   - 401 when unauthenticated
  *   - 403 when authenticated as a member
- *   - 200/2xx when authenticated as an admin
+ *   - the endpoint's post-auth contract when authenticated as an admin
  *
  * Plus one cross-tenant probe: an admin from tenant1 must not see tenant2's
  * data leaking through any of these endpoints.
@@ -30,7 +30,7 @@ public class Phase73AdminEndpointsAuthTests : IntegrationTestBase
     public Phase73AdminEndpointsAuthTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     // Every (method, path) pair for the new admin endpoints. We hit each
-    // three times: anonymous → 401, member → 403, admin → 2xx.
+    // three times: anonymous → 401, member → 403, admin → post-auth contract.
     public static IEnumerable<object[]> AdminEndpoints() => new[]
     {
         new object[] { HttpMethod.Get,  "/api/admin/scheduled/jobs" },
@@ -69,13 +69,21 @@ public class Phase73AdminEndpointsAuthTests : IntegrationTestBase
 
     [Theory]
     [MemberData(nameof(AdminEndpoints))]
-    public async Task AdminEndpoint_Admin_Returns2xx(HttpMethod method, string path)
+    public async Task AdminEndpoint_Admin_PassesAuthAndHonoursEndpointContract(HttpMethod method, string path)
     {
         var token = await GetAccessTokenAsync("admin@test.com", "test-tenant");
         SetAuthToken(token);
         using var req = new HttpRequestMessage(method, path);
         if (method == HttpMethod.Post) req.Content = JsonContent.Create(new { });
         var resp = await Client.SendAsync(req);
+        if (path == "/api/admin/federation/protocols/transfers/reconcile")
+        {
+            resp.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+            (await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>())!["error"]
+                .Should().Be("federation_settlement_unavailable");
+            return;
+        }
+
         // Some POSTs that need a body may return 400 instead of 2xx — that
         // still proves auth passed (the auth pipeline runs before model
         // binding/validation). We just want to assert that auth doesn't

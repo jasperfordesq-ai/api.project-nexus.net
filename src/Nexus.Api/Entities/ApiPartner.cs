@@ -9,7 +9,10 @@ public enum ApiPartnerStatus
 {
     Active = 0,
     Suspended = 1,
-    Revoked = 2
+    Revoked = 2,
+    // Preserve the existing persisted enum values above. New partners begin
+    // pending and require an explicit admin activation before API access.
+    Pending = 3
 }
 
 /// <summary>
@@ -32,8 +35,10 @@ public class ApiPartner : ITenantEntity
 
     public string Scopes { get; set; } = "read";
     public int RateLimitPerMinute { get; set; } = 60;
+    public bool IsSandbox { get; set; } = true;
+    public string? AllowedIpCidrs { get; set; }
 
-    public ApiPartnerStatus Status { get; set; } = ApiPartnerStatus.Active;
+    public ApiPartnerStatus Status { get; set; } = ApiPartnerStatus.Pending;
 
     public DateTime? LastUsedAt { get; set; }
     public int RequestsLast24h { get; set; }
@@ -45,4 +50,45 @@ public class ApiPartner : ITenantEntity
     public string? RevokedReason { get; set; }
 
     public Tenant? Tenant { get; set; }
+}
+
+/// <summary>Persisted hash/state for a short-lived partner OAuth token.</summary>
+public class ApiPartnerAccessToken : ITenantEntity
+{
+    public long Id { get; set; }
+    public Guid PartnerId { get; set; }
+    public int TenantId { get; set; }
+    public string AccessTokenHash { get; set; } = string.Empty;
+    public string Scopes { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public ApiPartner? Partner { get; set; }
+    public Tenant? Tenant { get; set; }
+}
+
+/// <summary>
+/// Durable partner/reference idempotency evidence for inbound wallet credits.
+/// A completed row points at the single ledger mint created for the request.
+/// </summary>
+public class ApiPartnerWalletCredit : ITenantEntity
+{
+    public long Id { get; set; }
+    public Guid PartnerId { get; set; }
+    public int TenantId { get; set; }
+    public int UserId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string ReferenceNormalized { get; set; } = string.Empty;
+    public int? TransactionId { get; set; }
+    public decimal Hours { get; set; }
+    public string Status { get; set; } = "processing";
+    public DateTime? CompletedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public ApiPartner? Partner { get; set; }
+    public Tenant? Tenant { get; set; }
+    public User? User { get; set; }
+    public Transaction? Transaction { get; set; }
 }

@@ -1145,8 +1145,8 @@ public class V15SocialCompatibilityController : ControllerBase
             total_listings = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId),
             offers = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId && l.Type == ListingType.Offer),
             requests = await _db.Listings.AsNoTracking().CountAsync(l => l.TenantId == tenantId && l.UserId == userId && l.Type == ListingType.Request),
-            hours_given = await _db.Transactions.AsNoTracking().Where(t => t.TenantId == tenantId && t.SenderId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m,
-            hours_received = await _db.Transactions.AsNoTracking().Where(t => t.TenantId == tenantId && t.ReceiverId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m
+            hours_given = await _db.Transactions.AsNoTracking().ExcludeInternalWalletAdapters().Where(t => t.TenantId == tenantId && t.SenderId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m,
+            hours_received = await _db.Transactions.AsNoTracking().ExcludeInternalWalletAdapters().Where(t => t.TenantId == tenantId && t.ReceiverId == userId).SumAsync(t => (decimal?)t.Amount) ?? 0m
         };
 
         var trending = await _db.Hashtags

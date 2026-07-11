@@ -32,6 +32,11 @@ public static class RateLimitingExtensions
     public const string VolunteerOrganisationCreatePolicy = "volunteering-organisation-create";
     public const string VolunteerOrganisationListPolicy = "volunteering-organisation-list";
     public const string VolunteerOpportunityDeletePolicy = "volunteering-opportunity-delete";
+    public const string VolunteerOrganisationWalletReadPolicy = "volunteering-organisation-wallet-read";
+    public const string VolunteerOrganisationWalletDepositPolicy = "volunteering-organisation-wallet-deposit";
+    public const string VolunteerOrganisationWalletAdminAdjustPolicy = "volunteering-organisation-wallet-admin-adjust";
+    public const string PersonalWalletTransferPolicy = "personal-wallet-transfer";
+    public const string PersonalWalletUserSearchPolicy = "personal-wallet-user-search";
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -217,6 +222,41 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:VolunteerOpportunity:DeletePermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOpportunity:DeleteWindowSeconds", 60)))));
 
+            options.AddPolicy(VolunteerOrganisationWalletReadPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerOrganisationWalletDepositPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOrganisationWallet:DepositPermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisationWallet:DepositWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerOrganisationWalletAdminAdjustPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerOrganisationWallet:AdminAdjustPermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerOrganisationWallet:AdminAdjustWindowSeconds", 60)))));
+
+            options.AddPolicy(PersonalWalletTransferPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:PersonalWallet:TransferWindowSeconds", 60)))));
+
+            options.AddPolicy(PersonalWalletUserSearchPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:PersonalWallet:UserSearchPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:PersonalWallet:UserSearchWindowSeconds", 60)))));
+
             // Custom rejection response
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -256,10 +296,37 @@ public static class RateLimitingExtensions
                             path.Value?.TrimEnd('/'),
                             "/api/volunteering/my-organisations",
                             StringComparison.OrdinalIgnoreCase));
+                var isVolunteerOrganisationWalletPath =
+                    path.Value?.Contains("/volunteering/organisations/", StringComparison.OrdinalIgnoreCase) == true
+                    && path.Value.EndsWith("/wallet", StringComparison.OrdinalIgnoreCase);
+                var isVolunteerOrganisationWalletTransactionsPath =
+                    path.Value?.Contains("/volunteering/organisations/", StringComparison.OrdinalIgnoreCase) == true
+                    && path.Value.EndsWith("/wallet/transactions", StringComparison.OrdinalIgnoreCase);
+                var isVolunteerOrganisationWalletDepositPath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && path.Value?.Contains("/volunteering/organisations/", StringComparison.OrdinalIgnoreCase) == true
+                    && path.Value.EndsWith("/wallet/deposit", StringComparison.OrdinalIgnoreCase);
+                var isVolunteerOrganisationWalletAdminAdjustPath =
+                    HttpMethods.IsPut(context.HttpContext.Request.Method)
+                    && path.Value?.Contains("/admin/volunteering/organizations/", StringComparison.OrdinalIgnoreCase) == true
+                    && path.Value.EndsWith("/wallet/adjust", StringComparison.OrdinalIgnoreCase);
+                var isPersonalWalletTransferPath = HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && string.Equals(
+                        path.Value?.TrimEnd('/'),
+                        "/api/v2/wallet/transfer",
+                        StringComparison.OrdinalIgnoreCase);
                 var canonicalLimit = isVolunteerOrganisationCreatePath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5)
                     : isVolunteerOrganisationListPath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:ListPermitLimit", 60)
+                    : isVolunteerOrganisationWalletDepositPath
+                    ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:DepositPermitLimit", 10)
+                    : isVolunteerOrganisationWalletAdminAdjustPath
+                    ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:AdminAdjustPermitLimit", 20)
+                    : isVolunteerOrganisationWalletPath || isVolunteerOrganisationWalletTransactionsPath
+                    ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadPermitLimit", 60)
+                    : isPersonalWalletTransferPath
+                    ? config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10)
                     : isRecurringPatternPath
                     ? context.HttpContext.Request.Method switch
                     {

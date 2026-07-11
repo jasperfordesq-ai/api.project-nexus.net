@@ -44,6 +44,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Services.Federation;
 
@@ -429,9 +430,11 @@ public class NativeIngestService
 
 public class HourTransferReconciliationService
 {
+    private static readonly bool DurableFederationTransferSagaAvailable = false;
     private readonly NexusDbContext _db;
     private readonly CreditCommonsClient _cc;
     private readonly KomunitinClient _komunitin;
+    private readonly PersonalWalletLedgerService _personalWallet;
     private readonly IConfiguration _config;
     private readonly ILogger<HourTransferReconciliationService> _logger;
 
@@ -441,12 +444,14 @@ public class HourTransferReconciliationService
         NexusDbContext db,
         CreditCommonsClient cc,
         KomunitinClient komunitin,
+        PersonalWalletLedgerService personalWallet,
         IConfiguration config,
         ILogger<HourTransferReconciliationService> logger)
     {
         _db = db;
         _cc = cc;
         _komunitin = komunitin;
+        _personalWallet = personalWallet;
         _config = config;
         _logger = logger;
     }
@@ -457,6 +462,14 @@ public class HourTransferReconciliationService
     /// </summary>
     public async Task<ReconcileBatchResult> ReconcileTenantAsync(int tenantId, int batchSize, CancellationToken ct)
     {
+        if (!DurableFederationTransferSagaAvailable)
+        {
+            _logger.LogWarning(
+                "Skipped federation transfer reconciliation for tenant {TenantId}: durable settlement saga is unavailable",
+                tenantId);
+            return new ReconcileBatchResult();
+        }
+
         var rateLimit = TimeSpan.FromMinutes(2);
         var rateCutoff = DateTime.UtcNow - rateLimit;
 
@@ -711,53 +724,23 @@ public class HourTransferReconciliationService
     {
         if (string.IsNullOrWhiteSpace(t.ExternalReference)) return;
 
-        if (t.Protocol == "credit-commons")
-        {
-            var commit = await _cc.CommitTransferAsync(endpoint, apiKey ?? string.Empty, t.ExternalReference, ct);
-            if (!commit.Success) { t.FailureReason = commit.Error; return; }
-        }
-        // Komunitin v2 settles on partner-side accept; nothing to commit.
-
-        // Mirror to local Transactions ledger.
-        var sender = t.Direction == FederatedTransferDirection.Outbound ? t.LocalUserId : 0;
-        var receiver = t.Direction == FederatedTransferDirection.Outbound ? 0 : t.LocalUserId;
-        // Use admin user 0 sentinel for the remote side. Tenants who want
-        // accurate cross-tenant ledgers should configure a per-partner "broker"
-        // user account; that scope-creep lands in a follow-up.
-        if (sender == 0 || receiver == 0)
-        {
-            // Find or fall back to admin user — we must satisfy the FK.
-            var admin = await _db.Users.FirstOrDefaultAsync(u => u.TenantId == t.TenantId && u.Role == "admin", ct);
-            if (admin == null)
-            {
-                t.FailureReason = "no_admin_user_for_local_settle";
-                return;
-            }
-            if (sender == 0) sender = admin.Id;
-            if (receiver == 0) receiver = admin.Id;
-        }
-
-        // Real money crossing tenants — mirror the ExchangeService.CompleteExchangeAsync
-        // safety contract: Serializable transaction + pg_advisory_xact_lock on the
-        // affected local user(s) so concurrent reconciliation ticks (or admin
-        // manual triggers running alongside the cron) cannot double-spend.
+        var sender = t.Direction == FederatedTransferDirection.Outbound
+            ? t.LocalUserId
+            : (int?)null;
+        var receiver = t.Direction == FederatedTransferDirection.Inbound
+            ? t.LocalUserId
+            : (int?)null;
+        // The remote side is deliberately null. Routing it through an admin or
+        // broker account would silently mutate that person's personal wallet.
+        // Use the shared personal-wallet lock so federation settlement serializes
+        // with every other path that can spend the local member's balance.
         var hasOuterTx = _db.Database.CurrentTransaction != null;
         IDbContextTransaction? localTx = null;
         if (!hasOuterTx)
             localTx = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         try
         {
-            // Take the advisory lock(s). When both sides are local users, lock
-            // the lower id first to avoid deadlocks against another path that
-            // happens to take them in the opposite order.
-            var lockKeys = new List<int>();
-            if (sender == receiver) lockKeys.Add(sender);
-            else { lockKeys.Add(Math.Min(sender, receiver)); lockKeys.Add(Math.Max(sender, receiver)); }
-            foreach (var key in lockKeys)
-            {
-                await _db.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock({0})", new object[] { key }, ct);
-            }
+            await _personalWallet.AcquireSpendLockAsync(t.LocalUserId, ct);
 
             // Double-checked locking under READ COMMITTED. We hold the advisory
             // lock, so a concurrent reconciliation tick has either not entered its
@@ -784,17 +767,27 @@ public class HourTransferReconciliationService
                 return;
             }
 
+            var localUserExists = await _db.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(user => user.Id == t.LocalUserId
+                    && user.TenantId == t.TenantId
+                    && user.IsActive
+                    && user.SuspendedAt == null, ct);
+            if (!localUserExists)
+            {
+                if (localTx != null) await localTx.RollbackAsync(ct);
+                t.FailureReason = "local_user_not_active_in_transfer_tenant";
+                return;
+            }
+
             // For Outbound, the local user is spending credits — verify they
             // have the balance before writing the ledger row.
             if (t.Direction == FederatedTransferDirection.Outbound)
             {
-                var received = await _db.Transactions
-                    .Where(x => x.ReceiverId == t.LocalUserId && x.Status == TransactionStatus.Completed)
-                    .SumAsync(x => x.Amount, ct);
-                var sent = await _db.Transactions
-                    .Where(x => x.SenderId == t.LocalUserId && x.Status == TransactionStatus.Completed)
-                    .SumAsync(x => x.Amount, ct);
-                var balance = received - sent;
+                var balance = await _personalWallet.GetBalanceAsync(
+                    t.TenantId,
+                    t.LocalUserId,
+                    ct);
                 if (balance < t.Amount)
                 {
                     if (localTx != null) await localTx.RollbackAsync(ct);
@@ -803,6 +796,25 @@ public class HourTransferReconciliationService
                 }
             }
 
+            // Credit Commons has an explicit final commit. Do it only after the
+            // local payer is locked and funded, so a remote success cannot be
+            // followed by a predictable local insufficient-balance failure.
+            if (t.Protocol == "credit-commons")
+            {
+                var commit = await _cc.CommitTransferAsync(
+                    endpoint,
+                    apiKey ?? string.Empty,
+                    t.ExternalReference,
+                    ct);
+                if (!commit.Success)
+                {
+                    if (localTx != null) await localTx.RollbackAsync(ct);
+                    t.FailureReason = commit.Error;
+                    return;
+                }
+            }
+            // Komunitin v2 settles on partner-side accept; there is no commit verb.
+
             var tx = new Transaction
             {
                 TenantId = t.TenantId,
@@ -810,6 +822,7 @@ public class HourTransferReconciliationService
                 ReceiverId = receiver,
                 Amount = t.Amount,
                 Status = TransactionStatus.Completed,
+                TransactionType = PersonalWalletLedgerService.TransferTransactionType,
                 Description = $"Federated {t.Protocol} transfer #{t.Id}: {t.Description}",
                 CreatedAt = DateTime.UtcNow
             };

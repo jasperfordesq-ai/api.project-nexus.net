@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
-using Nexus.Api.Extensions;
 
 namespace Nexus.Api.Controllers;
 
@@ -18,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/federation")]
-[Authorize]
+[Authorize(Policy = "AdminOnly")]
 public class FederationParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
@@ -80,23 +79,22 @@ public class FederationParityController : ControllerBase
     }
 
     [HttpPost("messages")]
-    public IActionResult SendFederatedMessage([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "queued" } });
+    public IActionResult SendFederatedMessage([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("messages/{messageId:int}/translate")]
-    public IActionResult TranslateMessage(int messageId, [FromBody] JsonElement body) => Ok(new { data = new { id = messageId, translated_text = Str(body, "text") ?? Str(body, "message") ?? string.Empty, locale = Str(body, "locale") ?? "en" } });
+    public IActionResult TranslateMessage(int messageId, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("messages/mark-read-batch")]
-    public IActionResult MarkReadBatch([FromBody] JsonElement body) => Ok(new { data = new { marked_read = body.ValueKind == JsonValueKind.Array ? body.GetArrayLength() : 0 } });
+    public IActionResult MarkReadBatch([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("transactions")]
-    public IActionResult FederationTransaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "posted", amount = Decimal(body, "amount") ?? 0 } });
+    public IActionResult FederationTransaction([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("hour-transfer/inbound")]
-    public IActionResult InboundHourTransfer([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "accepted" } });
+    public IActionResult InboundHourTransfer([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("external/webhooks/receive")]
-    [AllowAnonymous]
-    public IActionResult ReceiveWebhook([FromBody] JsonElement body) => Ok(new { data = new { received = true, event_id = StableId(body) } });
+    public IActionResult ReceiveWebhook([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("ingest/connections")]
     public IActionResult IngestConnections([FromBody] JsonElement body) => Ingest("connections", body);
@@ -127,100 +125,100 @@ public class FederationParityController : ControllerBase
     public IActionResult CreditCommonsForms() => Ok(new { data = new[] { new { id = "transfer", fields = new[] { "payer", "payee", "amount", "description" } } } });
 
     [HttpGet("cc/accounts")]
-    public async Task<IActionResult> CreditCommonsAccounts() => Ok(new { data = await _db.Users.Where(u => u.TenantId == TenantId()).Select(u => new { id = u.Id, name = u.FirstName + " " + u.LastName, balance = 0 }).ToListAsync() });
+    public IActionResult CreditCommonsAccounts() => FederationWorkflowUnavailable();
 
     [HttpGet("cc/account")]
-    public IActionResult MyCreditCommonsAccount() => Ok(new { data = new { id = User.GetUserId(), balance = 0, tenant_id = TenantId() } });
+    public IActionResult MyCreditCommonsAccount() => FederationWorkflowUnavailable();
 
     [HttpGet("cc/account/history")]
     public async Task<IActionResult> MyCreditCommonsHistory() => Ok(new { data = await _db.Transactions.Where(t => t.TenantId == TenantId()).Take(50).ToListAsync() });
 
     [HttpGet("cc/account/{accountId}")]
-    public IActionResult CreditCommonsAccount(string accountId) => Ok(new { data = new { id = accountId, balance = 0 } });
+    public IActionResult CreditCommonsAccount(string accountId) => FederationWorkflowUnavailable();
 
     [HttpGet("cc/account/history/{accountId}")]
-    public IActionResult CreditCommonsAccountHistory(string accountId) => Ok(new { data = Array.Empty<object>(), account_id = accountId });
+    public IActionResult CreditCommonsAccountHistory(string accountId) => FederationWorkflowUnavailable();
 
     [HttpGet("cc/entries")]
     public async Task<IActionResult> CreditCommonsEntries() => Ok(new { data = await _db.Transactions.Where(t => t.TenantId == TenantId()).Take(100).ToListAsync() });
 
     [HttpGet("cc/entries/{entryId}")]
-    public IActionResult CreditCommonsEntry(string entryId) => Ok(new { data = new { id = entryId, status = "posted" } });
+    public IActionResult CreditCommonsEntry(string entryId) => FederationWorkflowUnavailable();
 
     [HttpGet("cc/transactions")]
-    public IActionResult CreditCommonsTransactions() => Ok(new { data = Array.Empty<object>() });
+    public IActionResult CreditCommonsTransactions() => FederationWorkflowUnavailable();
 
     [HttpGet("cc/transaction/{transactionId}")]
-    public IActionResult CreditCommonsTransaction(string transactionId) => Ok(new { data = new { id = transactionId, status = "pending" } });
+    public IActionResult CreditCommonsTransaction(string transactionId) => FederationWorkflowUnavailable();
 
     [HttpPost("cc/transaction")]
-    public IActionResult CreateCreditCommonsTransaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "created" } });
+    public IActionResult CreateCreditCommonsTransaction([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("cc/transaction/relay")]
-    public IActionResult RelayCreditCommonsTransaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "relayed" } });
+    public IActionResult RelayCreditCommonsTransaction([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPatch("cc/transaction/{transactionId}/{verb}")]
-    public IActionResult PatchCreditCommonsTransaction(string transactionId, string verb) => Ok(new { data = new { id = transactionId, action = verb, status = "updated" } });
+    public IActionResult PatchCreditCommonsTransaction(string transactionId, string verb) => FederationWorkflowUnavailable();
 
     [HttpPost("cc/transactions/propose")]
-    public IActionResult ProposeCreditCommonsTransaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "proposed" } });
+    public IActionResult ProposeCreditCommonsTransaction([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpPost("cc/transactions/{transactionId}/validate")]
-    public IActionResult ValidateCreditCommonsTransaction(string transactionId) => Ok(new { data = new { id = transactionId, valid = true } });
+    public IActionResult ValidateCreditCommonsTransaction(string transactionId) => FederationWorkflowUnavailable();
 
     [HttpPost("cc/transactions/{transactionId}/commit")]
-    public IActionResult CommitCreditCommonsTransaction(string transactionId) => Ok(new { data = new { id = transactionId, status = "committed" } });
+    public IActionResult CommitCreditCommonsTransaction(string transactionId) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/currencies")]
-    public IActionResult KomunitinCurrencies() => Ok(new { data = new[] { new { code = $"NEXUS-{TenantId()}", name = "NEXUS Time Credits" } } });
+    public IActionResult KomunitinCurrencies() => FederationWorkflowUnavailable();
 
     [HttpPost("komunitin/currencies")]
-    public IActionResult CreateKomunitinCurrency([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), code = Str(body, "code") ?? $"NEXUS-{TenantId()}" } });
+    public IActionResult CreateKomunitinCurrency([FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/currency")]
-    public IActionResult KomunitinCurrency(string system) => Ok(new { data = new { system, code = system.ToUpperInvariant(), decimals = 2 } });
+    public IActionResult KomunitinCurrency(string system) => FederationWorkflowUnavailable();
 
     [HttpPatch("komunitin/{system}/currency")]
-    public IActionResult UpdateKomunitinCurrency(string system, [FromBody] JsonElement body) => Ok(new { data = new { system, code = Str(body, "code") ?? system.ToUpperInvariant() } });
+    public IActionResult UpdateKomunitinCurrency(string system, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpDelete("komunitin/{system}/currency")]
-    public IActionResult DeleteKomunitinCurrency(string system) => NoContent();
+    public IActionResult DeleteKomunitinCurrency(string system) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/currency/settings")]
-    public IActionResult KomunitinCurrencySettings(string system) => Ok(new { data = new { system, min = 0, max = 10000, overdraft_limit = 0 } });
+    public IActionResult KomunitinCurrencySettings(string system) => FederationWorkflowUnavailable();
 
     [HttpPatch("komunitin/{system}/currency/settings")]
-    public IActionResult UpdateKomunitinCurrencySettings(string system, [FromBody] JsonElement body) => Ok(new { data = new { system, updated = true } });
+    public IActionResult UpdateKomunitinCurrencySettings(string system, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/accounts")]
     public async Task<IActionResult> KomunitinAccounts(string system) => Ok(new { data = await _db.Users.Where(u => u.TenantId == TenantId()).Select(u => new { id = u.Id, system, name = u.FirstName + " " + u.LastName }).ToListAsync() });
 
     [HttpPost("komunitin/{system}/accounts")]
-    public IActionResult CreateKomunitinAccount(string system, [FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), system, name = Str(body, "name") } });
+    public IActionResult CreateKomunitinAccount(string system, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/accounts/{accountId}")]
-    public IActionResult KomunitinAccount(string system, string accountId) => Ok(new { data = new { id = accountId, system, balance = 0 } });
+    public IActionResult KomunitinAccount(string system, string accountId) => FederationWorkflowUnavailable();
 
     [HttpPatch("komunitin/{system}/accounts/{accountId}")]
-    public IActionResult UpdateKomunitinAccount(string system, string accountId, [FromBody] JsonElement body) => Ok(new { data = new { id = accountId, system, updated = true } });
+    public IActionResult UpdateKomunitinAccount(string system, string accountId, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpDelete("komunitin/{system}/accounts/{accountId}")]
-    public IActionResult DeleteKomunitinAccount(string system, string accountId) => NoContent();
+    public IActionResult DeleteKomunitinAccount(string system, string accountId) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/transfers")]
-    public IActionResult KomunitinTransfers(string system) => Ok(new { data = Array.Empty<object>(), system });
+    public IActionResult KomunitinTransfers(string system) => FederationWorkflowUnavailable();
 
     [HttpPost("komunitin/{system}/transfers")]
-    public IActionResult CreateKomunitinTransfer(string system, [FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), system, status = "created" } });
+    public IActionResult CreateKomunitinTransfer(string system, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpGet("komunitin/{system}/transfers/{transferId}")]
-    public IActionResult KomunitinTransfer(string system, string transferId) => Ok(new { data = new { id = transferId, system, status = "posted" } });
+    public IActionResult KomunitinTransfer(string system, string transferId) => FederationWorkflowUnavailable();
 
     [HttpPatch("komunitin/{system}/transfers/{transferId}")]
-    public IActionResult UpdateKomunitinTransfer(string system, string transferId, [FromBody] JsonElement body) => Ok(new { data = new { id = transferId, system, status = Str(body, "status") ?? "updated" } });
+    public IActionResult UpdateKomunitinTransfer(string system, string transferId, [FromBody] JsonElement body) => FederationWorkflowUnavailable();
 
     [HttpDelete("komunitin/{system}/transfers/{transferId}")]
-    public IActionResult DeleteKomunitinTransfer(string system, string transferId) => NoContent();
+    public IActionResult DeleteKomunitinTransfer(string system, string transferId) => FederationWorkflowUnavailable();
 
     private async Task<IActionResult> UpdatePartner(int id, string status)
     {
@@ -232,11 +230,14 @@ public class FederationParityController : ControllerBase
         return Ok(new { data = partner });
     }
 
-    private IActionResult Ingest(string resource, JsonElement body) => Ok(new { data = new { resource, accepted = Count(body), ingest_id = StableId(body) } });
+    private IActionResult Ingest(string resource, JsonElement body) => FederationWorkflowUnavailable();
+
+    private ObjectResult FederationWorkflowUnavailable() => StatusCode(StatusCodes.Status503ServiceUnavailable, new
+    {
+        success = false,
+        error = "Federation protocol workflows are unavailable until durable authenticated persistence is implemented.",
+        code = "FEDERATION_WORKFLOW_UNAVAILABLE"
+    });
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
-    private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
-    private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
-    private static int Count(JsonElement body) => body.ValueKind == JsonValueKind.Array ? body.GetArrayLength() : body.ValueKind == JsonValueKind.Object && body.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array ? data.GetArrayLength() : 1;
-    private static int StableId(JsonElement body) => Math.Abs(HashCode.Combine(body.GetRawText()));
 }

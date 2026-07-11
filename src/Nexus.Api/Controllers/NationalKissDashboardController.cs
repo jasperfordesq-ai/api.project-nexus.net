@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -248,6 +249,10 @@ public sealed class NationalKissDashboardController : ControllerBase
             .IgnoreQueryFilters()
             .Where(t => t.TenantId == tenantId &&
                         t.Status == TransactionStatus.Completed &&
+                        t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType &&
                         t.CreatedAt >= fromDateTime &&
                         t.CreatedAt < toExclusive)
             .SumAsync(t => (decimal?)t.Amount, ct) ?? 0m;
@@ -275,14 +280,20 @@ public sealed class NationalKissDashboardController : ControllerBase
             .IgnoreQueryFilters()
             .Where(t => t.TenantId == tenantId &&
                         t.Status == TransactionStatus.Completed &&
+                        t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType &&
                         t.CreatedAt >= fromDateTime &&
                         t.CreatedAt < toExclusive)
             .Select(t => new { t.SenderId, t.ReceiverId })
             .ToListAsync(ct);
         foreach (var tx in transactionIds)
         {
-            ids.Add(tx.SenderId);
-            ids.Add(tx.ReceiverId);
+            if (tx.SenderId.HasValue)
+                ids.Add(tx.SenderId.Value);
+            if (tx.ReceiverId.HasValue)
+                ids.Add(tx.ReceiverId.Value);
         }
 
         return ids;
@@ -309,9 +320,14 @@ public sealed class NationalKissDashboardController : ControllerBase
             .IgnoreQueryFilters()
             .Where(t => t.TenantId == tenantId &&
                         t.Status == TransactionStatus.Completed &&
+                        t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType &&
                         t.CreatedAt >= fromDateTime &&
                         t.CreatedAt < toExclusive)
-            .Select(t => t.ReceiverId)
+            .Where(t => t.ReceiverId.HasValue)
+            .Select(t => t.ReceiverId!.Value)
             .ToListAsync(ct);
         ids.UnionWith(transactionRecipients);
 
@@ -345,6 +361,10 @@ public sealed class NationalKissDashboardController : ControllerBase
             .IgnoreQueryFilters()
             .Where(t => t.TenantId == tenantId &&
                         t.Status == TransactionStatus.Completed &&
+                        t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType &&
+                        t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType &&
                         t.CreatedAt >= fromDateTime &&
                         t.CreatedAt < toExclusive)
             .Select(t => new { t.SenderId, t.ReceiverId })

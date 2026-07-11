@@ -158,16 +158,31 @@ public class CaringCommunityHourEstateControllerUnitTests
         settled.GetProperty("settled_hours").GetDecimal().Should().Be(5.5m);
         settled.GetProperty("coordinator_notes").GetString().Should().Be("Transferred to nominated beneficiary.");
 
-        db.Transactions.Should().ContainSingle(t =>
+        var settlement = db.Transactions.Should().ContainSingle(t =>
             t.TenantId == 42
             && t.SenderId == 10
             && t.ReceiverId == 11
             && t.Amount == 5.5m
             && t.Description == "Legacy hour estate settlement"
-            && t.Status == TransactionStatus.Completed);
+            && t.TransactionType == PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+            && t.Status == TransactionStatus.Completed).Which;
+        var settledEstate = await db.CaringHourEstates.IgnoreQueryFilters()
+            .SingleAsync(row => row.Id == 100);
+        settledEstate.SettlementTransactionId.Should().Be(settlement.Id);
 
         AssertSingleError(
             await controller.ReportDeceased(100, new HourEstateAdminNotesRequest(), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "ESTATE_FAILED");
+        AssertSingleError(
+            await controller.Settle(100, new HourEstateAdminNotesRequest(), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "ESTATE_FAILED");
+        AssertSingleError(
+            await CreateMemberController(db, tenant, userId: 10).Nominate(new HourEstateNominateRequest
+            {
+                PolicyAction = "donate_to_solidarity"
+            }, CancellationToken.None),
             StatusCodes.Status422UnprocessableEntity,
             "ESTATE_FAILED");
     }

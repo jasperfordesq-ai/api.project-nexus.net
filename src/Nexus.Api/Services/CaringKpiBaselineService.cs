@@ -208,14 +208,22 @@ public sealed class CaringKpiBaselineService
         var transactions = await _db.Transactions
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(t => t.TenantId == tenantId && t.Status == TransactionStatus.Completed && t.CreatedAt >= rangeStart)
+            .Where(t => t.TenantId == tenantId
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+                && t.CreatedAt >= rangeStart)
             .Select(t => new { t.SenderId, t.ReceiverId })
             .ToListAsync(ct);
 
         foreach (var transaction in transactions)
         {
-            ids.Add(transaction.SenderId);
-            ids.Add(transaction.ReceiverId);
+            if (transaction.SenderId.HasValue)
+                ids.Add(transaction.SenderId.Value);
+            if (transaction.ReceiverId.HasValue)
+                ids.Add(transaction.ReceiverId.Value);
         }
 
         if (await HasColumnsAsync("vol_logs", ["tenant_id", "status", "date_logged", "user_id"], ct))

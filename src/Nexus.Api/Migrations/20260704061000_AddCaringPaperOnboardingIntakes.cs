@@ -12,6 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     /// <inheritdoc />
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260704061000_AddCaringPaperOnboardingIntakes")]
     public partial class AddCaringPaperOnboardingIntakes : Migration
     {
         /// <inheritdoc />

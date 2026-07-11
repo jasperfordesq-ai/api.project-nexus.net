@@ -105,9 +105,32 @@ public static class AuthExtensions
                         var tokenRole = principal.FindFirst("role")?.Value
                             ?? principal.FindFirst(ClaimTypes.Role)?.Value;
 
-                        if (!int.TryParse(sub, out var userId)
-                            || !int.TryParse(tokenTenant, out var tokenTenantId)
+                        if (!int.TryParse(tokenTenant, out var tokenTenantId)
                             || string.IsNullOrWhiteSpace(tokenRole))
+                        {
+                            context.Fail("invalid_identity_claims");
+                            return;
+                        }
+
+                        // Partner client-credential JWTs share the signing key
+                        // but are not member identities. Their persisted token,
+                        // scope, IP, sandbox and rate controls are enforced by
+                        // the partner API guard; never try to rehydrate sub=0 as
+                        // a user. A global route boundary confines this identity
+                        // to /api/partner/v1/**.
+                        if (string.Equals(tokenRole, "partner", StringComparison.Ordinal))
+                        {
+                            var partnerId = principal.FindFirst("partner_id")?.Value;
+                            if (!string.Equals(sub, "0", StringComparison.Ordinal)
+                                || tokenTenantId <= 0
+                                || !Guid.TryParse(partnerId, out _))
+                            {
+                                context.Fail("invalid_partner_identity_claims");
+                            }
+                            return;
+                        }
+
+                        if (!int.TryParse(sub, out var userId))
                         {
                             context.Fail("invalid_identity_claims");
                             return;

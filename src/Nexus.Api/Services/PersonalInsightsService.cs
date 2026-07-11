@@ -154,12 +154,14 @@ public class PersonalInsightsService
 
         // hours_given: sum of transaction amounts where user is sender
         var hoursGiven = await _db.Set<Transaction>()
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed && t.CreatedAt >= since)
             .SumAsync(t => (decimal?)t.Amount) ?? 0m;
         insights.Add(CreateInsight(tenantId, userId, "hours_given", hoursGiven.ToString("F1"), "Hours Given", period));
 
         // hours_received: sum of transaction amounts where user is receiver
         var hoursReceived = await _db.Set<Transaction>()
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.ReceiverId == userId && t.Status == TransactionStatus.Completed && t.CreatedAt >= since)
             .SumAsync(t => (decimal?)t.Amount) ?? 0m;
         insights.Add(CreateInsight(tenantId, userId, "hours_received", hoursReceived.ToString("F1"), "Hours Received", period));

@@ -3,9 +3,11 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -16,10 +18,23 @@ public sealed class CaringLoyaltyService
     private const decimal MaxCreditsPerRedemption = 1000m;
 
     private readonly NexusDbContext _db;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
-    public CaringLoyaltyService(NexusDbContext db)
+    public CaringLoyaltyService(
+        NexusDbContext db,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
+        _personalWallet = personalWallet;
+    }
+
+    public CaringLoyaltyService(NexusDbContext db)
+        : this(
+            db,
+            new PersonalWalletLedgerService(
+                db,
+                NullLogger<PersonalWalletLedgerService>.Instance))
+    {
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -125,6 +140,7 @@ public sealed class CaringLoyaltyService
 
         var settings = await _db.MarketplaceSellerLoyaltySettings
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SellerUserId == request.SellerId, ct);
 
         if (settings is null || !settings.AcceptsTimeCredits)
@@ -144,9 +160,41 @@ public sealed class CaringLoyaltyService
             return Failure("EXCEEDS_MAX_DISCOUNT", "exceeds max discount");
         }
 
-        var balance = await BalanceAsync(tenantId, memberId, ct);
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireSellerSettingsLockAsync(tenantId, request.SellerId, ct);
+            await _personalWallet.AcquireSpendLockAsync(memberId, ct);
+        }
+
+        settings = await _db.MarketplaceSellerLoyaltySettings
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SellerUserId == request.SellerId, ct);
+        if (settings is null || !settings.AcceptsTimeCredits)
+        {
+            return Failure("MERCHANT_DISABLED", "merchant disabled");
+        }
+        if (settings.LoyaltyChfPerHour <= 0 || settings.LoyaltyMaxDiscountPct <= 0)
+        {
+            return Failure("REDEMPTION_FAILED", "merchant misconfigured");
+        }
+        discountChf = Math.Round(request.CreditsToUse * settings.LoyaltyChfPerHour, 2);
+        maxDiscountChf = Math.Round(request.OrderTotalChf * settings.LoyaltyMaxDiscountPct / 100m, 2);
+        if (discountChf > maxDiscountChf + 0.005m)
+        {
+            return Failure("EXCEEDS_MAX_DISCOUNT", "exceeds max discount");
+        }
+
+        var balance = await _personalWallet.GetBalanceAsync(tenantId, memberId, ct);
         if (balance <= 0 || balance < request.CreditsToUse)
         {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
             return Failure("INSUFFICIENT_CREDITS", "insufficient credits");
         }
 
@@ -167,18 +215,25 @@ public sealed class CaringLoyaltyService
             UpdatedAt = now
         };
 
-        _db.CaringLoyaltyRedemptions.Add(redemption);
-        _db.Transactions.Add(new Transaction
+        var debit = new Transaction
         {
             TenantId = tenantId,
             SenderId = memberId,
-            ReceiverId = 0,
+            ReceiverId = null,
             Amount = redemption.CreditsUsed,
             Description = $"[loyalty_redemption] seller:{request.SellerId} listing:{request.ListingId}",
+            TransactionType = PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType,
             Status = TransactionStatus.Completed,
             CreatedAt = now
-        });
+        };
+        redemption.RedemptionTransaction = debit;
+        _db.CaringLoyaltyRedemptions.Add(redemption);
+        _db.Transactions.Add(debit);
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
 
         return new CaringLoyaltyMutationResult(new
         {
@@ -277,6 +332,14 @@ public sealed class CaringLoyaltyService
             return Validation("invalid max discount percent");
         }
 
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireSellerSettingsLockAsync(tenantId, request.SellerUserId, ct);
+        }
+
         var now = DateTime.UtcNow;
         var row = await _db.MarketplaceSellerLoyaltySettings
             .IgnoreQueryFilters()
@@ -298,6 +361,10 @@ public sealed class CaringLoyaltyService
         row.LoyaltyMaxDiscountPct = request.LoyaltyMaxDiscountPct;
         row.UpdatedAt = now;
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
 
         return new CaringLoyaltyMutationResult(
             await GetSellerSettingsAsync(tenantId, request.SellerUserId, ct));
@@ -316,23 +383,76 @@ public sealed class CaringLoyaltyService
             return Validation("reversal reason too long");
         }
 
-        var row = await _db.CaringLoyaltyRedemptions
+        var target = await _db.CaringLoyaltyRedemptions
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Id == redemptionId, ct);
+            .AsNoTracking()
+            .Where(r => r.TenantId == tenantId && r.Id == redemptionId)
+            .Select(r => new { r.MemberUserId })
+            .FirstOrDefaultAsync(ct);
 
-        if (row is null)
+        if (target is null)
         {
             return new CaringLoyaltyMutationResult(null,
                 [new LaravelErrorRow("NOT_FOUND", "redemption not found")],
                 StatusCodes.Status404NotFound);
         }
 
-        if (row.Status != "applied")
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
         {
+            await _personalWallet.AcquireSpendLockAsync(target.MemberUserId, ct);
+        }
+
+        var row = await _db.CaringLoyaltyRedemptions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Id == redemptionId, ct);
+
+        if (row is null)
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
+            return new CaringLoyaltyMutationResult(null,
+                [new LaravelErrorRow("NOT_FOUND", "redemption not found")],
+                StatusCodes.Status404NotFound);
+        }
+
+        if (row.Status != "applied" || row.ReversalTransactionId is not null)
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
             return Failure("REVERSAL_FAILED", "redemption not reversible");
         }
 
-        var balance = await BalanceAsync(tenantId, row.MemberUserId, ct);
+        if (row.RedemptionTransactionId is not int redemptionTransactionId)
+        {
+            return Failure(
+                "REVERSAL_FAILED",
+                "redemption has no authoritative wallet debit evidence and requires manual reconciliation");
+        }
+
+        var debitIsValid = await _db.Transactions
+            .IgnoreQueryFilters()
+            .AnyAsync(transaction => transaction.TenantId == tenantId
+                && transaction.Id == redemptionTransactionId
+                && transaction.SenderId == row.MemberUserId
+                && transaction.ReceiverId == null
+                && transaction.Amount == row.CreditsUsed
+                && transaction.TransactionType == PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && transaction.Status == TransactionStatus.Completed, ct);
+        if (!debitIsValid)
+        {
+            return Failure(
+                "REVERSAL_FAILED",
+                "redemption wallet debit evidence is invalid and requires manual reconciliation");
+        }
+
+        var balance = await _personalWallet.GetBalanceAsync(tenantId, row.MemberUserId, ct);
         var now = DateTime.UtcNow;
         row.Status = "reversed";
         row.ReversedAt = now;
@@ -340,18 +460,25 @@ public sealed class CaringLoyaltyService
         row.ReversalReason = reasonClean;
         row.UpdatedAt = now;
 
-        _db.Transactions.Add(new Transaction
+        var refund = new Transaction
         {
             TenantId = tenantId,
-            SenderId = 0,
+            SenderId = null,
             ReceiverId = row.MemberUserId,
             Amount = row.CreditsUsed,
             Description = $"[loyalty_reversal] redemption:{row.Id}",
+            TransactionType = PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType,
             Status = TransactionStatus.Completed,
             CreatedAt = now
-        });
+        };
+        row.ReversalTransaction = refund;
+        _db.Transactions.Add(refund);
 
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
 
         return new CaringLoyaltyMutationResult(new
         {
@@ -453,6 +580,23 @@ public sealed class CaringLoyaltyService
             .SumAsync(t => t.Amount, ct);
 
         return received - sent;
+    }
+
+    private async Task AcquireSellerSettingsLockAsync(
+        int tenantId,
+        int sellerUserId,
+        CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            return;
+        }
+
+        var lockKey = unchecked((tenantId * 397) ^ sellerUserId);
+        await _db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, {1})",
+            [-17005, lockKey],
+            ct);
     }
 
     private static CaringLoyaltyMutationResult Validation(string message)

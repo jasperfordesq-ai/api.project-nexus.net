@@ -257,7 +257,12 @@ public sealed class CaringCommunityMemberStatementService
 
         var rows = await _db.Transactions
             .IgnoreQueryFilters()
-            .Where(t => t.TenantId == tenantId && (t.SenderId == userId || t.ReceiverId == userId))
+            .Where(t => t.TenantId == tenantId
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+                && (t.SenderId == userId || t.ReceiverId == userId))
             .ToListAsync(ct);
 
         return rows
@@ -279,7 +284,9 @@ public sealed class CaringCommunityMemberStatementService
                     transaction.Id,
                     row.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     earned ? "earned" : "spent",
-                    userIds.GetValueOrDefault(counterpartyId, string.Empty),
+                    counterpartyId.HasValue
+                        ? userIds.GetValueOrDefault(counterpartyId.Value, string.Empty)
+                        : "Volunteer organisation",
                     amount,
                     earned ? amount : -amount,
                     transaction.Description ?? string.Empty,

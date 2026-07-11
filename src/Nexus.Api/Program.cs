@@ -83,8 +83,11 @@ if (!isRunningInDocker && !isTestEnvironment && builder.Environment.IsDevelopmen
 // =============================================================================
 // In Production, Serilog reads config from appsettings.Production.json
 // Features: structured JSON logging, file rotation, enrichers
-// In Development, uses default console logging for simplicity
-if (!builder.Environment.IsDevelopment())
+// In Development and Testing, use the default console provider so integration
+// failures retain their exception details. Production/staging keep structured
+// Serilog sinks from environment configuration.
+if (!builder.Environment.IsDevelopment()
+    && !builder.Environment.IsEnvironment("Testing"))
 {
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -263,7 +266,8 @@ builder.Services.AddCors(options =>
                 // - X-Tenant-ID: Tenant context for unauthenticated requests
                 // - X-Requested-With: Required by SignalR client
                 // - X-SignalR-User-Agent: SignalR connection metadata
-                .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Tenant-ID", "X-Requested-With", "X-SignalR-User-Agent")
+                // - Idempotency-Key: Canonical wallet transfer replay protection
+                .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Tenant-ID", "X-Requested-With", "X-SignalR-User-Agent", "Idempotency-Key")
                 // The React frontend uses fetch with credentials: 'include' for some
                 // public endpoints (bootstrap, tenant chooser, menus) so the browser
                 // will attach session cookies if present. Spec-compliant because we
@@ -462,6 +466,10 @@ app.UseCors("Default");
 // Authentication - populates HttpContext.User from JWT
 app.UseAuthentication();
 
+// Partner client-credential JWTs are not member tokens. Constrain them to the
+// dedicated partner surface before ordinary [Authorize] policies run.
+app.UseMiddleware<PartnerTokenBoundaryMiddleware>();
+
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();
 
@@ -471,6 +479,7 @@ app.UseAuthorization();
 // a 429 from those endpoint buckets.
 app.UseMiddleware<RecurringPatternFeatureGateMiddleware>();
 app.UseMiddleware<VolunteerOrganisationFeatureGateMiddleware>();
+app.UseMiddleware<OnboardingRequiredMiddleware>();
 
 // Rate limiting follows authentication/authorization so authenticated
 // endpoint policies partition by user while protected anonymous requests

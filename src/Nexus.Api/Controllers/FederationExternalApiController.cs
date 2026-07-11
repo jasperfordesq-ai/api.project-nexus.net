@@ -3,6 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,10 +24,15 @@ namespace Nexus.Api.Controllers;
 [Route("api/v1/federation")]
 public class FederationExternalApiController : ControllerBase
 {
+    // Financial federation remains hard-disabled until a durable correlated
+    // debit/credit saga, bilateral agreement and replay-safe settlement path
+    // exist. This is deliberately not configuration-controlled.
+    private static readonly bool DurableFederationTransactionSagaAvailable = false;
     private readonly NexusDbContext _db;
     private readonly FederationService _federationService;
     private readonly FederationJwtService _jwtService;
     private readonly FederationApiKeyService _apiKeyService;
+    private readonly PersonalWalletLedgerService _personalWallet;
     private readonly ILogger<FederationExternalApiController> _logger;
 
     public FederationExternalApiController(
@@ -32,12 +40,14 @@ public class FederationExternalApiController : ControllerBase
         FederationService federationService,
         FederationJwtService jwtService,
         FederationApiKeyService apiKeyService,
+        PersonalWalletLedgerService personalWallet,
         ILogger<FederationExternalApiController> logger)
     {
         _db = db;
         _federationService = federationService;
         _jwtService = jwtService;
         _apiKeyService = apiKeyService;
+        _personalWallet = personalWallet;
         _logger = logger;
     }
 
@@ -238,14 +248,22 @@ public class FederationExternalApiController : ControllerBase
             .Where(fp => fp.Status == PartnerStatus.Active && fp.SharedListings &&
                 (fp.TenantId == tenantId.Value || fp.PartnerTenantId == tenantId.Value))
             .Select(fp => fp.TenantId == tenantId.Value ? fp.PartnerTenantId : fp.TenantId)
-            .ToListAsync();
+            .Distinct()
+            .ToArrayAsync();
 
-        if (partnerTenantIds.Count == 0)
+        if (partnerTenantIds.Length == 0)
             return Ok(new { data = Array.Empty<object>(), pagination = new { page, limit, total = 0, pages = 0 } });
 
+        var eligibleOwners = EligibleFederatedUsers(
+            partnerTenantIds,
+            tenantId.Value,
+            requireProfileVisibility: true,
+            requireListingsVisibility: true);
         var query = _db.Listings
             .IgnoreQueryFilters()
-            .Where(l => partnerTenantIds.Contains(l.TenantId) && l.Status == ListingStatus.Active)
+            .Where(l => partnerTenantIds.Contains(l.TenantId)
+                && l.Status == ListingStatus.Active
+                && eligibleOwners.Any(owner => owner.Id == l.UserId && owner.TenantId == l.TenantId))
             .Include(l => l.User)
             .AsNoTracking();
 
@@ -309,14 +327,24 @@ public class FederationExternalApiController : ControllerBase
             .Where(fp => fp.Status == PartnerStatus.Active && fp.SharedListings &&
                 (fp.TenantId == tenantId.Value || fp.PartnerTenantId == tenantId.Value))
             .Select(fp => fp.TenantId == tenantId.Value ? fp.PartnerTenantId : fp.TenantId)
-            .ToListAsync();
+            .Distinct()
+            .ToArrayAsync();
+
+        var eligibleOwners = EligibleFederatedUsers(
+            partnerTenantIds,
+            tenantId.Value,
+            requireProfileVisibility: true,
+            requireListingsVisibility: true);
 
         var listing = await _db.Listings
             .IgnoreQueryFilters()
             .Include(l => l.User)
             .Include(l => l.Category)
             .AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Id == id && partnerTenantIds.Contains(l.TenantId) && l.Status == ListingStatus.Active);
+            .FirstOrDefaultAsync(l => l.Id == id
+                && partnerTenantIds.Contains(l.TenantId)
+                && l.Status == ListingStatus.Active
+                && eligibleOwners.Any(owner => owner.Id == l.UserId && owner.TenantId == l.TenantId));
 
         if (listing == null)
             return NotFound(new { error = "Listing not found or not accessible" });
@@ -364,22 +392,17 @@ public class FederationExternalApiController : ControllerBase
             .Where(fp => fp.Status == PartnerStatus.Active && fp.SharedMembers &&
                 (fp.TenantId == tenantId.Value || fp.PartnerTenantId == tenantId.Value))
             .Select(fp => fp.TenantId == tenantId.Value ? fp.PartnerTenantId : fp.TenantId)
-            .ToListAsync();
+            .Distinct()
+            .ToArrayAsync();
 
-        if (partnerTenantIds.Count == 0)
+        if (partnerTenantIds.Length == 0)
             return Ok(new { data = Array.Empty<object>(), pagination = new { page, limit, total = 0, pages = 0 } });
 
-        // Also check user-level opt-in
-        var optedInUserIds = await _db.Set<FederationUserSetting>()
-            .IgnoreQueryFilters()
-            .Where(s => partnerTenantIds.Contains(s.TenantId) && s.FederationOptIn && s.ProfileVisible)
-            .Select(s => s.UserId)
-            .ToListAsync();
-
-        var query = _db.Users
-            .IgnoreQueryFilters()
-            .Where(u => partnerTenantIds.Contains(u.TenantId) && u.IsActive && optedInUserIds.Contains(u.Id))
-            .AsNoTracking();
+        var query = EligibleFederatedUsers(
+            partnerTenantIds,
+            tenantId.Value,
+            requireProfileVisibility: true,
+            requireListingsVisibility: false);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -431,20 +454,15 @@ public class FederationExternalApiController : ControllerBase
             .Where(fp => fp.Status == PartnerStatus.Active && fp.SharedMembers &&
                 (fp.TenantId == tenantId.Value || fp.PartnerTenantId == tenantId.Value))
             .Select(fp => fp.TenantId == tenantId.Value ? fp.PartnerTenantId : fp.TenantId)
-            .ToListAsync();
+            .Distinct()
+            .ToArrayAsync();
 
-        // Check user opt-in
-        var isOptedIn = await _db.Set<FederationUserSetting>()
-            .IgnoreQueryFilters()
-            .AnyAsync(s => s.UserId == id && s.FederationOptIn && s.ProfileVisible);
-
-        if (!isOptedIn)
-            return NotFound(new { error = "Member not found or not visible" });
-
-        var user = await _db.Users
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id && partnerTenantIds.Contains(u.TenantId) && u.IsActive);
+        var user = await EligibleFederatedUsers(
+                partnerTenantIds,
+                tenantId.Value,
+                requireProfileVisibility: true,
+                requireListingsVisibility: false)
+            .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null)
             return NotFound(new { error = "Member not found or not accessible" });
@@ -535,7 +553,7 @@ public class FederationExternalApiController : ControllerBase
     /// POST /api/v1/federation/messages - V1.5-compatible message creation.
     /// </summary>
     [HttpPost("messages")]
-    public async Task<IActionResult> SendMessage([FromBody] FederatedMessageRequest request)
+    public IActionResult SendMessage([FromBody] FederatedMessageRequest request)
     {
         var tenantId = GetFederationTenantId();
         if (tenantId == null)
@@ -544,57 +562,14 @@ public class FederationExternalApiController : ControllerBase
         if (!HasScope("messages:write") && !HasScope("messages"))
             return Forbid();
 
-        if (request.RecipientId <= 0 || request.SenderId <= 0 || string.IsNullOrWhiteSpace(request.Body))
-            return BadRequest(new { error = "recipient_id, sender_id and body are required" });
-
-        var recipient = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.RecipientId && u.IsActive);
-        if (recipient == null)
-            return NotFound(new { error = "Recipient not found or not accessible" });
-
-        var sender = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.SenderId && u.IsActive);
-        if (sender == null)
-            return NotFound(new { error = "Sender not found or not accessible" });
-
-        var hasPartnership = await HasActivePartnershipAsync(tenantId.Value, recipient.TenantId);
-        if (!hasPartnership && tenantId.Value != recipient.TenantId)
-            return Forbid();
-
-        var conversation = await _db.Conversations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.TenantId == recipient.TenantId &&
-                ((c.Participant1Id == request.SenderId && c.Participant2Id == request.RecipientId) ||
-                 (c.Participant1Id == request.RecipientId && c.Participant2Id == request.SenderId)));
-
-        if (conversation == null)
+        // Federation API keys identify a tenant, not a stable remote user. Until
+        // bilateral identity provenance is implemented, accepting sender_id
+        // would let a partner impersonate any local or remote member.
+        return StatusCode(StatusCodes.Status503ServiceUnavailable, new
         {
-            conversation = new Conversation
-            {
-                TenantId = recipient.TenantId,
-                Participant1Id = request.SenderId,
-                Participant2Id = request.RecipientId,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.Conversations.Add(conversation);
-        }
-
-        conversation.UpdatedAt = DateTime.UtcNow;
-        var content = string.IsNullOrWhiteSpace(request.Subject)
-            ? request.Body.Trim()
-            : $"{request.Subject.Trim()}\n\n{request.Body.Trim()}";
-
-        var message = new Message
-        {
-            TenantId = recipient.TenantId,
-            Conversation = conversation,
-            SenderId = request.SenderId,
-            Content = content.Length > 10000 ? content[..10000] : content,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Messages.Add(message);
-        await _db.SaveChangesAsync();
-
-        return Created($"/api/v1/federation/messages/{message.Id}", new { message_id = message.Id, status = "sent" });
+            error = "Federated message writes are unavailable until remote user identity provenance is enabled.",
+            code = "FEDERATION_IDENTITY_UNAVAILABLE"
+        });
     }
 
     /// <summary>
@@ -657,7 +632,7 @@ public class FederationExternalApiController : ControllerBase
     /// POST /api/v1/federation/reviews - V1.5-compatible review creation.
     /// </summary>
     [HttpPost("reviews")]
-    public async Task<IActionResult> CreateReview([FromBody] FederatedReviewRequest request)
+    public IActionResult CreateReview([FromBody] FederatedReviewRequest request)
     {
         var tenantId = GetFederationTenantId();
         if (tenantId == null)
@@ -666,52 +641,25 @@ public class FederationExternalApiController : ControllerBase
         if (!HasScope("reviews:write") && !HasScope("reviews"))
             return Forbid();
 
-        if (request.ReviewerId <= 0 || request.RevieweeId <= 0)
-            return BadRequest(new { error = "reviewer_id and reviewee_id are required" });
-        if (request.ReviewerId == request.RevieweeId)
-            return BadRequest(new { error = "Cannot review yourself" });
-        if (request.Rating is < 1 or > 5)
-            return BadRequest(new { error = "Rating must be between 1 and 5" });
-
-        var reviewee = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.RevieweeId && u.IsActive);
-        var reviewer = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.ReviewerId && u.IsActive);
-
-        if (reviewee == null || reviewer == null)
-            return NotFound(new { error = "Reviewer or reviewee not found" });
-
-        var hasPartnership = await HasActivePartnershipAsync(tenantId.Value, reviewee.TenantId);
-        if (!hasPartnership && tenantId.Value != reviewee.TenantId)
-            return Forbid();
-
-        var review = new Review
+        // As with messages, reviewer_id is caller-controlled while the key only
+        // authenticates a tenant. Fail closed rather than fabricating a review
+        // whose human author cannot be proven.
+        return StatusCode(StatusCodes.Status503ServiceUnavailable, new
         {
-            TenantId = reviewee.TenantId,
-            ReviewerId = request.ReviewerId,
-            TargetUserId = request.RevieweeId,
-            Rating = request.Rating,
-            Comment = request.Comment,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Reviews.Add(review);
-        await _db.SaveChangesAsync();
-
-        return Created($"/api/v1/federation/reviews/{review.Id}", new
-        {
-            review_id = review.Id,
-            rating = review.Rating,
-            review_type = "federated",
-            status = "approved",
-            created_at = review.CreatedAt
+            error = "Federated review writes are unavailable until remote user identity provenance is enabled.",
+            code = "FEDERATION_IDENTITY_UNAVAILABLE"
         });
     }
 
     /// <summary>
-    /// POST /api/v1/federation/transactions - V1.5-compatible federated credit transfer.
+    /// POST /api/v1/federation/transactions - federated credit transfer.
+    /// Until API keys carry Laravel's platform identity, this endpoint accepts
+    /// only the provable internal-caller shape (sender in the key's tenant).
     /// </summary>
     [HttpPost("transactions")]
-    public async Task<IActionResult> CreateTransaction([FromBody] FederatedTransactionRequest request)
+    public async Task<IActionResult> CreateTransaction(
+        [FromBody] FederatedTransactionRequest request,
+        CancellationToken ct)
     {
         var tenantId = GetFederationTenantId();
         if (tenantId == null)
@@ -720,44 +668,261 @@ public class FederationExternalApiController : ControllerBase
         if (!HasScope("transactions:write") && !HasScope("transactions"))
             return Forbid();
 
-        if (request.SenderId <= 0 || request.RecipientId <= 0 || request.Amount <= 0)
-            return BadRequest(new { error = "sender_id, recipient_id and amount are required" });
+        if (!DurableFederationTransactionSagaAvailable)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "Federated financial writes are unavailable until durable settlement reconciliation is enabled.",
+                code = "FEDERATION_SETTLEMENT_UNAVAILABLE"
+            });
+        }
+
+        var description = request.Description?.Trim();
+        if (request.SenderId <= 0 || request.RecipientId <= 0 || request.Amount <= 0 ||
+            string.IsNullOrWhiteSpace(description))
+            return BadRequest(new
+            {
+                error = "sender_id, recipient_id, amount and description are required",
+                code = "VALIDATION_ERROR"
+            });
         if (request.SenderId == request.RecipientId)
-            return BadRequest(new { error = "Cannot send a transaction to yourself" });
+            return BadRequest(new { error = "Cannot send a transaction to yourself", code = "SELF_TRANSACTION" });
         if (request.Amount > 100 || decimal.Truncate(request.Amount) != request.Amount)
-            return BadRequest(new { error = "Amount must be between 1 and 100 whole hours" });
+            return BadRequest(new { error = "Amount must be between 1 and 100 whole hours", code = "INVALID_AMOUNT" });
 
         var sender = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.SenderId && u.IsActive);
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == request.SenderId
+                && u.TenantId == tenantId.Value
+                && u.IsActive
+                && u.SuspendedAt == null, ct);
         var recipient = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Id == request.RecipientId && u.IsActive);
-        if (sender == null || recipient == null)
-            return NotFound(new { error = "Sender or recipient not found" });
-
-        var hasPartnership = await HasActivePartnershipAsync(tenantId.Value, recipient.TenantId);
-        if (!hasPartnership && tenantId.Value != recipient.TenantId)
-            return Forbid();
-
-        var transaction = new Transaction
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == request.RecipientId
+                && u.IsActive
+                && u.SuspendedAt == null, ct);
+        if (sender == null)
         {
-            TenantId = recipient.TenantId,
-            SenderId = request.SenderId,
-            ReceiverId = request.RecipientId,
-            Amount = request.Amount,
-            Description = request.Description,
-            Status = TransactionStatus.Completed,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Transactions.Add(transaction);
-        await _db.SaveChangesAsync();
-
-        return Created($"/api/v1/federation/transactions/{transaction.Id}", new
+            // Laravel distinguishes internal tenant callers from external
+            // platforms via federation_api_keys.platform_id. The .NET key model
+            // cannot represent that distinction yet, so accept only the provable
+            // internal class: a sender in the authenticated tenant. Remote-sender
+            // shaped requests fail closed instead of minting unbacked credits.
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Sender not found in the authenticated tenant or is not active",
+                code = "SENDER_NOT_ELIGIBLE"
+            });
+        }
+        if (recipient == null)
+            return NotFound(new { error = "Recipient not found or not accessible", code = "RECIPIENT_NOT_FOUND" });
+        if (recipient.TenantId == tenantId.Value)
         {
-            transaction_id = transaction.Id,
-            status = transaction.Status.ToString().ToLowerInvariant(),
-            amount = transaction.Amount,
-            note = "Transaction completed successfully"
-        });
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Federation transactions require a partner tenant recipient",
+                code = "TRANSACTIONS_NOT_ALLOWED"
+            });
+        }
+
+        var hasPartnership = await HasTransactionPartnershipAsync(tenantId.Value, recipient.TenantId, ct);
+        if (!hasPartnership)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Partnership does not allow transactions",
+                code = "TRANSACTIONS_NOT_ALLOWED"
+            });
+        }
+        if (!await HasActiveCreditAgreementAsync(tenantId.Value, recipient.TenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "No active credit agreement between tenants",
+                code = "NO_CREDIT_AGREEMENT"
+            });
+        }
+
+        var optedInUserIds = await _db.FederationUserSettings
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(setting => setting.FederationOptIn
+                && setting.TransactionsEnabled
+                && (setting.UserId == sender.Id || setting.UserId == recipient.Id))
+            .Select(setting => setting.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (!optedInUserIds.Contains(sender.Id))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Sender has not opted into federation",
+                code = "SENDER_NOT_ELIGIBLE"
+            });
+        }
+        if (!optedInUserIds.Contains(recipient.Id))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Recipient does not accept federated transactions",
+                code = "TRANSACTIONS_DISABLED"
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        var senderId = sender.Id;
+        var recipientId = recipient.Id;
+        var recipientTenantId = recipient.TenantId;
+        var hasExplicitIdempotencyKey = !string.IsNullOrWhiteSpace(request.IdempotencyKey);
+        var rawIdempotencyKey = hasExplicitIdempotencyKey
+            ? request.IdempotencyKey!.Trim()
+            : FormattableString.Invariant(
+                $"{tenantId.Value}|{senderId}|{recipientId}|{request.Amount}|{description}");
+        var idempotencyDigest = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(rawIdempotencyKey)))
+            .ToLowerInvariant();
+        var noncePlatform = $"tenant:{tenantId.Value}:transactions";
+        var nonce = $"tx:{idempotencyDigest}";
+        var nonceExpiry = now.AddSeconds(hasExplicitIdempotencyKey ? 86400 : 120);
+
+        await using var databaseTransaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted,
+            ct);
+        try
+        {
+            await _personalWallet.AcquireSpendLocksAsync([senderId, recipientId], ct);
+
+            // Rehydrate every financial precondition after acquiring the shared
+            // wallet lock. This closes the validation-to-write window and keeps
+            // concurrent federation/personal spends in one serialization domain.
+            sender = await _db.Users.IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(user => user.Id == senderId
+                    && user.TenantId == tenantId.Value
+                    && user.IsActive
+                    && user.SuspendedAt == null, ct);
+            recipient = await _db.Users.IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(user => user.Id == recipientId
+                    && user.TenantId == recipientTenantId
+                    && user.IsActive
+                    && user.SuspendedAt == null, ct);
+            if (sender == null || recipient == null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    error = "Sender or recipient is no longer eligible",
+                    code = "TRANSACTION_PARTICIPANT_INELIGIBLE"
+                });
+            }
+
+            var currentOptInCount = await _db.FederationUserSettings
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(setting => setting.FederationOptIn
+                    && setting.TransactionsEnabled
+                    && (setting.UserId == senderId || setting.UserId == recipientId))
+                .Select(setting => setting.UserId)
+                .Distinct()
+                .CountAsync(ct);
+            if (currentOptInCount < 2 ||
+                !await HasTransactionPartnershipAsync(tenantId.Value, recipient.TenantId, ct) ||
+                !await HasActiveCreditAgreementAsync(tenantId.Value, recipient.TenantId, ct))
+            {
+                await databaseTransaction.RollbackAsync(ct);
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    error = "Federation consent or partnership is no longer active",
+                    code = "TRANSACTIONS_NOT_ALLOWED"
+                });
+            }
+
+            var balance = await _personalWallet.GetBalanceAsync(tenantId.Value, senderId, ct);
+            if (balance < request.Amount)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+                return BadRequest(new { error = "Insufficient balance", code = "INSUFFICIENT_BALANCE" });
+            }
+
+            // The existing nonce table already provides an atomic unique
+            // (principal, key) claim. Expired short-window content claims may be
+            // reclaimed; explicit keys remain protected for 24 hours.
+            await _db.FederationWebhookNonces
+                .Where(existing => existing.PlatformId == noncePlatform
+                    && existing.Nonce == nonce
+                    && existing.ExpiresAt <= now)
+                .ExecuteDeleteAsync(ct);
+            var claimed = await _db.Database.ExecuteSqlInterpolatedAsync(
+                $@"INSERT INTO federation_webhook_nonces
+                   (""PlatformId"", ""Nonce"", ""ExpiresAt"", ""CreatedAt"")
+                   VALUES ({noncePlatform}, {nonce}, {nonceExpiry}, {now})
+                   ON CONFLICT (""PlatformId"", ""Nonce"") DO NOTHING",
+                ct);
+            if (claimed == 0)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+                return Conflict(new
+                {
+                    error = "Duplicate transaction (idempotency replay)",
+                    code = "DUPLICATE_REQUEST"
+                });
+            }
+
+            // A single cross-tenant row cannot affect both tenant-scoped ASP.NET
+            // wallets: it is visible in only one TenantId partition. Keep the
+            // canonical destination row for lookup/recipient history and pair it
+            // atomically with a one-sided source-tenant debit.
+            var sourceDebit = new Transaction
+            {
+                TenantId = tenantId.Value,
+                SenderId = senderId,
+                ReceiverId = null,
+                Amount = request.Amount,
+                Description = description,
+                TransactionType = PersonalWalletLedgerService.TransferTransactionType,
+                Status = TransactionStatus.Completed,
+                CreatedAt = now
+            };
+            var destinationCredit = new Transaction
+            {
+                TenantId = recipient.TenantId,
+                SenderId = senderId,
+                ReceiverId = recipientId,
+                Amount = request.Amount,
+                Description = description,
+                TransactionType = PersonalWalletLedgerService.TransferTransactionType,
+                Status = TransactionStatus.Pending,
+                CreatedAt = now
+            };
+            _db.Transactions.AddRange(sourceDebit, destinationCredit);
+            await _db.SaveChangesAsync(ct);
+            await databaseTransaction.CommitAsync(ct);
+
+            return Created($"/api/v1/federation/transactions/{destinationCredit.Id}", new
+            {
+                success = true,
+                timestamp = now,
+                transaction_id = destinationCredit.Id,
+                status = "pending",
+                amount = destinationCredit.Amount,
+                note = "Transaction created successfully"
+            });
+        }
+        catch (Exception exception) when (exception is DbUpdateException or InvalidOperationException)
+        {
+            await databaseTransaction.RollbackAsync(CancellationToken.None);
+            _logger.LogWarning(exception,
+                "Federation transaction failed for tenant {TenantId}, sender {SenderId}, recipient {RecipientId}",
+                tenantId.Value,
+                request.SenderId,
+                request.RecipientId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                error = "Transaction creation failed",
+                code = "TRANSACTION_ERROR"
+            });
+        }
     }
 
     /// <summary>
@@ -959,6 +1124,38 @@ public class FederationExternalApiController : ControllerBase
             .Replace("_", "\\_");
     }
 
+    /// <summary>
+    /// Applies the user-owned federation privacy boundary to partner reads.
+    /// The composite join is intentional: a consent row from one tenant must
+    /// never authorize a user record belonging to another tenant.
+    /// </summary>
+    private IQueryable<User> EligibleFederatedUsers(
+        int[] partnerTenantIds,
+        int requestingTenantId,
+        bool requireProfileVisibility,
+        bool requireListingsVisibility)
+    {
+        var blockedTenantToken = $",{requestingTenantId},";
+
+        var query =
+            from user in _db.Users.IgnoreQueryFilters()
+            join setting in _db.FederationUserSettings.IgnoreQueryFilters()
+                on new { user.TenantId, UserId = user.Id }
+                equals new { setting.TenantId, setting.UserId }
+            where partnerTenantIds.Contains(user.TenantId)
+                && user.IsActive
+                && user.SuspendedAt == null
+                && setting.FederationOptIn
+                && (!requireProfileVisibility || setting.ProfileVisible)
+                && (!requireListingsVisibility || setting.ListingsVisible)
+                && (setting.BlockedPartnerTenants == null
+                    || !("," + setting.BlockedPartnerTenants.Replace(" ", string.Empty) + ",")
+                        .Contains(blockedTenantToken))
+            select user;
+
+        return query.AsNoTracking();
+    }
+
     private async Task<bool> HasActivePartnershipAsync(int tenantId, int partnerTenantId)
     {
         return await _db.Set<FederationPartner>()
@@ -967,6 +1164,82 @@ public class FederationExternalApiController : ControllerBase
                 ((fp.TenantId == tenantId && fp.PartnerTenantId == partnerTenantId) ||
                  (fp.TenantId == partnerTenantId && fp.PartnerTenantId == tenantId)));
     }
+
+    private async Task<bool> HasTransactionPartnershipAsync(
+        int tenantId,
+        int partnerTenantId,
+        CancellationToken ct)
+    {
+        return await _db.Set<FederationPartner>()
+            .IgnoreQueryFilters()
+            .AnyAsync(partnership => partnership.Status == PartnerStatus.Active
+                && partnership.TransactionsEnabled
+                && ((partnership.TenantId == tenantId && partnership.PartnerTenantId == partnerTenantId)
+                    || (partnership.TenantId == partnerTenantId && partnership.PartnerTenantId == tenantId)), ct);
+    }
+
+    private async Task<bool> HasActiveCreditAgreementAsync(
+        int tenantId,
+        int partnerTenantId,
+        CancellationToken ct)
+    {
+        const string key = "admin_explicit.federation.credit_agreements";
+        var documents = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config => config.Key == key
+                && (config.TenantId == tenantId || config.TenantId == partnerTenantId))
+            .Select(config => config.Value)
+            .ToListAsync(ct);
+
+        foreach (var raw in documents)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(raw);
+                if (document.RootElement.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var agreement in document.RootElement.EnumerateArray())
+                {
+                    var fromTenantId = AgreementInt(agreement, "fromTenantId", "from_tenant_id");
+                    var toTenantId = AgreementInt(agreement, "toTenantId", "to_tenant_id");
+                    var status = AgreementString(agreement, "status");
+                    if (string.Equals(status, "active", StringComparison.OrdinalIgnoreCase)
+                        && ((fromTenantId == tenantId && toTenantId == partnerTenantId)
+                            || (fromTenantId == partnerTenantId && toTenantId == tenantId)))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Malformed financial permission state fails closed.
+            }
+        }
+
+        return false;
+    }
+
+    private static int AgreementInt(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (element.TryGetProperty(name, out var value)
+                && value.ValueKind == JsonValueKind.Number
+                && value.TryGetInt32(out var parsed))
+            {
+                return parsed;
+            }
+        }
+        return 0;
+    }
+
+    private static string? AgreementString(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 }
 
 #region External API Request DTOs
@@ -1041,6 +1314,9 @@ public class FederatedTransactionRequest
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    [JsonPropertyName("idempotency_key")]
+    public string? IdempotencyKey { get; set; }
 }
 
 #endregion

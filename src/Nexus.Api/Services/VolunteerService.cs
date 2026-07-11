@@ -17,6 +17,7 @@ namespace Nexus.Api.Services;
 /// </summary>
 public class VolunteerService
 {
+    private static readonly bool CoordinatorAttendanceWorkflowAvailable = false;
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly GamificationService _gamification;
@@ -917,6 +918,12 @@ public class VolunteerService
     public async Task<(VolunteerCheckIn? CheckIn, string? Error)> CheckInAsync(
         int shiftId, int userId)
     {
+        if (!CoordinatorAttendanceWorkflowAvailable)
+        {
+            return (null,
+                "Volunteer attendance must be recorded through the coordinator-approved workflow, which is not available on this endpoint.");
+        }
+
         var shift = await _db.VolunteerShifts
             .Include(s => s.Opportunity)
             .Include(s => s.CheckIns)
@@ -981,6 +988,12 @@ public class VolunteerService
     public async Task<(VolunteerCheckIn? CheckIn, string? Error)> CheckOutAsync(
         int shiftId, int userId, decimal? hoursLogged)
     {
+        if (!CoordinatorAttendanceWorkflowAvailable)
+        {
+            return (null,
+                "Volunteer checkout and rewards require coordinator-approved attendance evidence, which is not available on this endpoint.");
+        }
+
         var shift = await _db.VolunteerShifts
             .Include(s => s.Opportunity)
             .FirstOrDefaultAsync(s => s.Id == shiftId);
@@ -1010,7 +1023,7 @@ public class VolunteerService
         // Award credits if the opportunity has a CreditReward set
         if (shift.Opportunity?.CreditReward.HasValue == true && shift.Opportunity.CreditReward.Value > 0)
         {
-            await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
             try
             {
                 // Advisory lock on the organizer (who pays credits)
@@ -1036,6 +1049,7 @@ public class VolunteerService
                         ReceiverId = userId,
                         Amount = shift.Opportunity.CreditReward.Value,
                         Description = $"Volunteer shift: {shift.Title ?? shift.Opportunity.Title}",
+                        TransactionType = "volunteer_shift_reward",
                         Status = TransactionStatus.Completed,
                         CreatedAt = DateTime.UtcNow
                     };

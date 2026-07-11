@@ -35,10 +35,13 @@ public static class ServiceExtensions
         services.AddDataProtection();
         services.AddSingleton<CacheService>();
         services.AddScoped<GamificationService>();
+        services.AddScoped<PersonalWalletTransferEffectsService>();
         services.AddScoped<ExchangeService>();
         services.AddScoped<MatchingService>();
         services.AddScoped<VolunteerGuardianConsentService>();
         services.AddScoped<VolunteerOrganisationService>();
+        services.AddScoped<VolunteerOrganisationWalletService>();
+        services.AddScoped<PersonalWalletLedgerService>();
         services.AddScoped<VolunteerService>();
         services.AddScoped<AdminVolunteerApprovalService>();
         services.AddScoped<ShiftManagementService>();

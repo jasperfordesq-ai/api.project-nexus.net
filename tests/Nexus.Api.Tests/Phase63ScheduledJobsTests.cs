@@ -383,7 +383,7 @@ public class Phase63ScheduledJobsTests : IntegrationTestBase
     // ─── 9. ReconcileFederatedHourTransfersJob ─────────────────────────────
 
     [Fact]
-    public async Task ReconcileFederatedHourTransfers_PartnerWithoutEndpoint_SetsFailureReason()
+    public async Task ReconcileFederatedHourTransfers_WhenSagaDisabled_LeavesTransferUntouched()
     {
         using var arrange = Factory.Services.CreateScope();
         var arrangeDb = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -422,7 +422,8 @@ public class Phase63ScheduledJobsTests : IntegrationTestBase
         var assertDb = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var refreshed = await assertDb.FederatedHourTransfers.IgnoreQueryFilters().FirstAsync(t => t.Id == transfer.Id);
         refreshed.Status.Should().Be(FederatedTransferStatus.Pending);
-        refreshed.FailureReason.Should().Be("partner_endpoint_not_configured");
-        refreshed.RetryCount.Should().Be(1);
+        refreshed.FailureReason.Should().BeNull();
+        refreshed.RetryCount.Should().Be(0);
+        refreshed.LastReconcileAttemptAt.Should().BeNull();
     }
 }

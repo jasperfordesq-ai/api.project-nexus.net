@@ -20,6 +20,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Services.Ai;
 
@@ -81,6 +82,7 @@ public class ActivitySummariserAgent : BaseAgent
             .Select(l => new { l.Title, l.CreatedAt }).ToListAsync(ct);
 
         var transactions = await _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => (t.SenderId == userId || t.ReceiverId == userId) && t.CreatedAt >= since)
             .OrderByDescending(t => t.CreatedAt).Take(5)
             .Select(t => new { t.Amount, t.CreatedAt, role = t.SenderId == userId ? "spent" : "earned" }).ToListAsync(ct);

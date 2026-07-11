@@ -29,8 +29,21 @@ public class FederationProtocolsConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => new { e.Status, e.LastReconcileAttemptAt });
             entity.HasIndex(e => e.ExternalReference);
+            entity.HasIndex(e => e.LocalTransactionId)
+                .IsUnique()
+                .HasFilter("\"LocalTransactionId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Partner).WithMany().HasForeignKey(e => e.PartnerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.LocalUserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Transaction>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.LocalTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
     }

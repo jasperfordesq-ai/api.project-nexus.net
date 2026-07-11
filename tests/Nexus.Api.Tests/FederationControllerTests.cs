@@ -321,6 +321,54 @@ public class FederationControllerTests : IntegrationTestBase
         content.TryGetProperty("error", out _).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task CompleteExchange_WithoutRemoteSettlementEvidence_FailsWithoutMintingCredits()
+    {
+        int exchangeId;
+        int transactionCountBefore;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var exchange = new FederatedExchange
+            {
+                TenantId = TestData.Tenant1.Id,
+                PartnerTenantId = TestData.Tenant2.Id,
+                LocalUserId = TestData.MemberUser.Id,
+                RemoteUserDisplayName = "Unverified remote member",
+                SourceListingId = 987654,
+                Status = ExchangeStatus.Requested,
+                AgreedHours = 1m,
+                CreditExchangeRate = 1m,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.FederatedExchanges.Add(exchange);
+            await db.SaveChangesAsync();
+            exchangeId = exchange.Id;
+            transactionCountBefore = await db.Transactions.IgnoreQueryFilters().CountAsync();
+        }
+
+        await AuthenticateAsMemberAsync();
+        var response = await Client.PutAsJsonAsync($"/api/federation/exchanges/{exchangeId}/complete", new
+        {
+            actual_hours = 1000000m
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("error")
+            .GetString()
+            .Should().Contain("authenticated remote settlement evidence");
+
+        using var assertScope = Factory.Services.CreateScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var stored = await assertDb.FederatedExchanges
+            .IgnoreQueryFilters()
+            .SingleAsync(row => row.Id == exchangeId);
+        stored.Status.Should().Be(ExchangeStatus.Requested);
+        stored.LocalTransactionId.Should().BeNull();
+        (await assertDb.Transactions.IgnoreQueryFilters().CountAsync()).Should().Be(transactionCountBefore);
+    }
+
     #endregion
 
     #region Full Partnership Lifecycle Test

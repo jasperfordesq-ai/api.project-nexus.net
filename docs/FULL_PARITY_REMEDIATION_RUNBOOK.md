@@ -43,47 +43,90 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
-## 2026-07-11 ASP.NET Volunteer-Organisation Checkpoint
+## 2026-07-11 ASP.NET Financial Safety And Evidence Checkpoint
 
-The volunteer-organisation relationship and lifecycle slice is implemented in
-the ASP.NET backend without modifying either frontend or the Laravel source.
-Dedicated canonical storage now backs `vol_organizations`, `org_members`, and
-`vol_org_transactions`; the existing generic organisation domain remains
-unchanged. Opportunities carry a nullable tenant-scoped organisation
-relationship, while opportunity creation requires and persists a
-valid active/approved organisation managed by the caller.
+The current backend slice hardens personal, volunteer-organisation, and generic
+organisation wallets; completes the group-exchange settlement state machine;
+replaces V15 wallet false-success reads with persisted values; adds Caring
+loyalty/estate transaction evidence; and makes unsafe incomplete financial
+paths fail closed. Neither frontend nor the read-only Laravel source was
+modified.
 
-Member create/update, admin create/update/status/list, public active/approved
-directory, `my-organisations`, and organisation applications/statistics/
-volunteers now use the dedicated model. Dashboard projections no longer expose
-full `User` entities. Authorization distinguishes recurring-pattern creator
-access from application-decision/delete organisation-manager access, uses exact
-`super_admin`/`admin`/`tenant_admin` site roles, and fails closed for inactive
-or cross-tenant users.
+Generic organisation public/private visibility, membership authorization, and
+wallet writes now use canonical owner/status/tenant rules. Verified-only
+donate/transfer/admin-grant paths share lifecycle/advisory locks. Deletion takes
+the same lifecycle lock and refuses any organisation whose wallet has a
+balance, counters, or transaction history; a concurrency regression proves an
+in-flight wallet write wins and its evidence remains. Tenant-composite keys and
+role checks backstop the application policy. User search is active same-tenant,
+name-only, excludes self/suspended users and email, and is limited to 30/minute.
+
+Group exchange has server-owned draft/start/confirm/complete/cancel transitions,
+positive immutable splits, distinct provider/receiver roles, all-party
+confirmation, shared wallet locks, and real `group_exchange` ledger rows. V15
+community-fund summary/history, pending count, and starting balance use
+persisted tenant data; starting-balance configuration is admin-only. Unsafe
+donation/deposit/withdraw aliases are HTTP 503 with no write.
+
+Federation external reads now enforce owner opt-in, active state, tenant match,
+visibility, and blocked-partner boundaries. Caller-supplied message/review
+identity, partner webhook list/create, V2 ingest, cancellation after pristine
+`Pending`, and unsupported financial settlement return stable HTTP 503 without
+mutation. These are safety contracts pending real authenticated workflows.
+
+Caring loyalty debit/refund and positive hour-estate settlement rows now carry
+authoritative tenant-composite transaction IDs. Concurrent loyalty reversal has
+one winner. A legacy applied redemption without a valid debit link fails manual
+reconciliation rather than minting a refund; legacy null links are retained for
+operator review. Repeat estate report/settle and post-settlement nomination are
+rejected.
 
 Current evidence:
 
-- API/test builds: 0 errors; the clean test build emitted only four pre-existing
-  `xUnit1031` warnings and the final incremental build emitted none;
-- focused relationship/lifecycle integration: 13/13;
-- wider affected controller/auth/route/migration regression: 180/180;
-- migration inventory: 109 source = 80 EF-discovered + 29 quarantined;
-- EF model drift: none;
-- blank disposable PostgreSQL: all 80 discovered migrations applied through
-  `20260711010201_VolunteerOrganisationRelationshipsParity`; catalog inspection
-  proved the canonical tables, nullable opportunity link, tenant-composite
-  keys, filtered unique payment guard, checks, and indexes. It also confirmed
-  `vol_logs` is absent; the API's zero-hour degraded path is covered. The
-  container was removed;
-- API route comparator: 2,436/2,436 matched, 0 missing;
-- schema name comparator: 134/361 matched, 227 missing, 194 ASP.NET-only.
+- test-project build: 0 errors and 4 pre-existing `xUnit1031` warnings;
+- high-risk regression: initial command 103/106; two corrected assertions and
+  the isolated fixture-startup retry then passed 3/3;
+- fail-closed contract suite: 119/119 with explicit unavailable/no-write/no-
+  balance-mutation assertions;
+- post-audit organisation/federation regressions: 24/24;
+- final migration-discovery, partner-consent, cancellation, route-owner, and
+  rounded-zero regressions: 30/30;
+- latest migration:
+  `20260711100817_LoyaltyEstateOrganisationEvidence`;
+- EF model drift: none; EF discovers 109 migrations after restoring
+  `AddAiMessageTenantId` metadata;
+- blank disposable PostgreSQL: all 109 IDs applied from
+  `20260202085043_InitialCreate` through the latest migration; history contains
+  109 rows and the non-null `ai_messages.TenantId` column, tenant index, and
+  foreign key were inspected directly;
+- discovery repair now includes the essential designer-less
+  `20260303120000_AddAiMessageTenantId`; obsolete
+  `20260305120000_AddTenantUpdatedAt` remains intentionally excluded because
+  `InitialCreate` already creates `tenants.UpdatedAt`;
+- populated database at the preceding migration: valid upgrade green with
+  legacy rows retained and known organisation-role casing normalized;
+- deliberately invalid cross-tenant organisation-wallet transaction: latest
+  preflight aborted and left the preceding migration history/schema intact;
+- API route comparator remains 2,436/2,436 matched, 0 missing; this is still
+  route-shape evidence only;
+- schema name comparator is 135/362 matched, 227 missing, 195 ASP.NET-only;
+- all disposable databases/container were removed; no production database or
+  container was touched.
 
-This closes the previously missing opportunity-to-volunteer-organisation
-relationship. P0 next is replacing the member/admin wallet and hour routes that
-still return false success or recorded-only results. Opportunity list/create/
-update/application-list contracts, admin members/DLP, public reviews, explicit
-legacy NULL-link reconciliation, provider/localization behavior,
-frontend-on-ASP.NET runtime proof, and the global schema gate remain open.
+The copy-ready `BEGIN TRANSACTION READ ONLY` report in
+`docs/database-migrations.md` inventories ambiguous legacy self-transfers,
+admin grants, starting-balance configuration/grants, loyalty, estate, Caring
+hour transfer, and federated-hour-transfer candidates. It reports balance
+effects but never fixes or links rows. Every candidate needs a documented manual
+disposition before a reviewed forward remediation.
+
+This focused slice was not converted into a new global score. The previous
+`690/1000` implementation and `500/1000` certification estimates are historical
+baselines, not current values. The backend 1000/1000 gate remains red: legacy
+one-to-one exchange, sub-account pooling, coordinator attendance/rewards,
+community-fund writes, federation settlement, volunteer hours, provider/
+localization depth, full regression, and unchanged-frontend runtime proof are
+not complete.
 
 ## 2026-07-10 Current Web UK Checkpoint
 
@@ -150,18 +193,18 @@ route coverage is not a completion score.
 
 | Check | 2026-07-10 result |
 | --- | --- |
-| ASP.NET static operations | 4,322 |
+| ASP.NET static operations | 4,321 |
 | Laravel source operations | 2,436 |
 | Static method/path matches | 2,436 matched, 0 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
-| Schema inventory | 361 Laravel tables, 134 exact matches, 227 missing names, 194 ASP.NET-only names |
+| Schema inventory | Historical audit result: 361 Laravel tables, 134 exact matches, 227 missing names, 194 ASP.NET-only names; the current checkpoint above supersedes it |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test Release builds | Current builds passed with no compile errors |
-| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; current affected controller/auth/route/migration regression 180/180 |
-| Migration runtime chain | 109 source classes = 80 EF-discovered + 29 quarantined; no model drift; all 80 discovered migrations applied to blank disposable PostgreSQL through `20260711010201_VolunteerOrganisationRelationshipsParity` |
+| Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; wallet integration 6/6; current disjoint wallet-affected groups 213/213 |
+| Migration runtime chain | Current checkpoint supersedes this audit row: no model drift; all 109 EF-discovered/applicable migrations replayed on blank PostgreSQL through `20260711100817_LoyaltyEstateOrganisationEvidence`; valid populated upgrade and invalid-preflight-abort proofs are also green |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -221,11 +264,29 @@ that implementation movement and the lower amount of current green evidence.
   `src\Nexus.Api\Services\VolunteerOrganisationService.cs`,
   `src\Nexus.Api\Migrations\20260711010201_VolunteerOrganisationRelationshipsParity.cs`,
   and `tests\Nexus.Api.Tests\VolunteerOrganisationRelationshipTests.cs`.
-  Focused proof is the prior 61/61 core, clean 7/7 guardian lifecycle, clean
+  Wallet anchors are
+  `src\Nexus.Api\Services\VolunteerOrganisationWalletService.cs`,
+  `src\Nexus.Api\Controllers\VolunteerOrganisationWalletController.cs`,
+  `src\Nexus.Api\Controllers\AdminVolunteerOrganisationWalletController.cs`,
+  `src\Nexus.Api\Migrations\20260711083852_WalletLedgerFederationPartnerParity.cs`,
+  and `tests\Nexus.Api.Tests\VolunteerOrganisationWalletTests.cs`.
+  Current generic-organisation/group/financial-evidence anchors are
+  `src\Nexus.Api\Services\OrganisationLifecycleLock.cs`,
+  `src\Nexus.Api\Services\OrgWalletService.cs`,
+  `src\Nexus.Api\Services\GroupExchangeService.cs`,
+  `src\Nexus.Api\Services\CaringLoyaltyService.cs`,
+  `src\Nexus.Api\Services\CaringHourEstateService.cs`,
+  `src\Nexus.Api\Migrations\20260711100817_LoyaltyEstateOrganisationEvidence.cs`,
+  `tests\Nexus.Api.Tests\GenericOrganisationSecurityTests.cs`,
+  `tests\Nexus.Api.Tests\GroupExchangeControllerTests.cs`, and
+  `tests\Nexus.Api.Tests\CaringLoyaltyLedgerConcurrencyTests.cs`.
+  Historical focused proof is the prior 61/61 core, clean 7/7 guardian lifecycle, clean
   13/13 recurring CRUD plus 1/1 route ownership, clean 13/13 recurring
-  generation/scheduler, and clean 13/13 organisation relationships/lifecycle.
-  The current wider affected set is 180/180. Migration discovery is 109/80/29
-  with no model drift and a green 80-migration disposable fresh chain.
+  generation/scheduler, clean 13/13 organisation relationships/lifecycle, and
+  clean 6/6 transactional wallets. Current proof is the initial 103/106
+  high-risk run plus corrected/retried 3/3, the 119/119 fail-closed suite, no
+  model drift, the green 109-migration blank replay, and the green populated/
+  invalid upgrade scenarios.
 
 ### Web UK localization/RTL progress after the audit baseline
 
@@ -392,31 +453,36 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 
 ### P0: close current contract and safety regressions
 
-1. Implement and test the three currently missing operations:
-   - `GET /api/v2/admin/volunteering/wellbeing/alerts`;
-   - `PUT /api/v2/admin/volunteering/wellbeing/alerts/{id}`;
-   - `POST /api/v2/group-exchanges/{id}/start`.
-2. Complete the entire group-exchange contract: filters, pagination, response
-   fields, participants, split calculations, pending-confirmation state,
-   completion wallet mutations, transaction IDs, credit conservation, and
-   notifications.
-3. Inventory every canonical React-used route that reaches a generic catch-all,
+1. Finish the residual group-exchange contract around notification fidelity,
+   list/detail pagination/shape audit, and unchanged-frontend runtime smoke. The
+   start/confirm/complete ledger workflow itself is now real and must not be
+   conflated with the separate legacy one-to-one `Exchange` service.
+2. Implement each financial workflow that currently fails closed: two-party
+   legacy exchange confirmation, managed-user sub-account approval, coordinator
+   attendance/reward evidence, canonical community-fund donation/deposit/
+   withdrawal, and durable authenticated federation settlement. Preserve the
+   explicit HTTP 503/no-write contract until each replacement is complete.
+3. Run the read-only legacy financial candidate report, document manual
+   disposition and current/proposed balance impact, and implement only reviewed
+   forward remediations. Never infer evidence by amount or timestamp proximity.
+4. Inventory every canonical React-used route that reaches a generic catch-all,
    recorded-only write, unconditional empty response, mock secret, or fabricated
    success. Replace each with a real workflow or an explicit honest unsupported
    result while implementing the remaining workflow. Never return a success
    envelope for an operation that did not happen.
-4. Correct scheduled-job `run now`: execute the compatible operation and record
+5. Correct scheduled-job `run now`: execute the compatible operation and record
    its real outcome, or fail explicitly. Do not record success without running
    the job.
-5. Match current role semantics: supported roles, tenant-super-admin flag,
+6. Match current role semantics: supported roles, tenant-super-admin flag,
    authorization policies, validation, response values, and migrations.
-6. Match Laravel's AI-provider test authorization and throttling.
-7. Add the `features.explore` bootstrap contract.
-8. Port regression tests for Laravel's recent cross-tenant read and route-auth
+7. Match Laravel's AI-provider test authorization and throttling.
+8. Add the `features.explore` bootstrap contract.
+9. Port regression tests for Laravel's recent cross-tenant read and route-auth
    fixes. Prove tenant isolation with negative tests, not only happy paths.
 
-> **2026-07-10 backend progress:** P0 items 1 and 2 now have real wellbeing and
-> group-exchange workflows with focused tests. P0 item 4 now fails closed: the
+> **2026-07-10 backend progress, extended 2026-07-11:** The previously missing
+> wellbeing and group-exchange routes now have real workflows with focused
+> tests. Scheduled `run now` also fails closed: the
 > manual-run endpoint executes real `ListingExpiry` and `JobVacancyExpiry`
 > jobs, persists their outcomes, prevents overlapping scheduled/manual
 > execution, excludes inactive tenants, and returns explicit unsupported,
@@ -424,13 +490,13 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > the real global guardian-consent expiry job, while `recurring-shifts` now
 > maps to a 06:00 UTC all-active-tenant 14-day sweep. Four of the 42 Laravel
 > cron definitions are executable and the other 38 are reported disabled/
-> unsupported. P0
-> item 5 now has explicit user privilege columns, DB-backed policies,
+> unsupported. Role semantics now have explicit user privilege columns,
+> DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
-> targets, and focused role regression coverage. The 80-migration discovered
-> chain is fresh-database certified; full application runtime remains open. P0
-> item 3 now includes real canonical federation
-> partnership list/approve/reject behavior: receiver-only pending transitions,
+> targets, and focused role regression coverage. The current chain discovers
+> 109 migrations, and all 109 replay on a recreated blank database. Full
+> application runtime remains open. Canonical federation partnership list/approve/reject now has
+> real receiver-only pending transitions,
 > atomic audit, post-commit in-app notifications, Laravel error envelopes, and
 > one-winner concurrency tests. It does not yet include Laravel federation-level
 > permission fields, durable rejection metadata, localized push, initial-sync
@@ -471,12 +537,22 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > volunteer-organisation storage now backs member/admin/public lifecycle,
 > opportunity creation, dashboard projections, transaction aggregates, and
 > exact manager authorization without reusing the generic organisation domain.
-> Recurring-pattern access permits the creator; application decisions require a
-> mapped organisation manager. The focused relationship set is 13/13 and the
-> current wider affected set is 180/180. The latest source migration is
-> `20260711010201_VolunteerOrganisationRelationshipsParity`; discovery is
-> 109/80/29, EF reports no model drift, and all 80 discovered migrations apply
-> to blank PostgreSQL.
+> Member wallet summary/history/deposit and admin history/adjustment now have
+> singular focused owners and real atomic storage. Advisory locks, tenant
+> predicates, signed-balance validation, and a nullable-leg personal-ledger
+> adapter make deposits/adjustments race-safe without fabricating counterpart
+> users. The earlier focused wallet set was 6/6 and its disjoint affected groups
+> were 213/213. The 2026-07-11 extension adds locked generic-organisation
+> lifecycle/wallet rules, wallet-evidence-preserving delete refusal, the full
+> group-exchange state machine, persisted V15 community-fund/starting-balance
+> reads, privacy-safe wallet search, and linked loyalty/estate evidence. The
+> latest migration is `20260711100817_LoyaltyEstateOrganisationEvidence`; EF
+> reports no model drift, discovers 109 migrations, and replays all 109 on blank
+> PostgreSQL. A valid
+> populated upgrade preserves legacy rows and normalizes known role casing; an
+> invalid cross-tenant wallet-transaction upgrade aborts before changing history
+> or schema. The initial high-risk run was 103/106, the corrected/retried cases
+> passed 3/3, and the fail-closed contract suite passes 119/119.
 > Unchanged-frontend runtime smoke remains open. The volunteering migrations
 > handle unsafe histories explicitly: the former unique application index
 > cannot be restored after legitimate reapplication history, and hashed
@@ -487,8 +563,9 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > cross-tenant creator ownership and restores the shadow FK deterministically
 > on downgrade. `CreatedBy` deliberately uses non-destructive `RESTRICT`
 > instead of Laravel's user-delete cascade until ownership deletion effects are
-> explicitly proven. Volunteer-organisation wallet/hour-approval mutations,
-> localized built-in guardian delivery copy and the full tenant-link fallback
+> explicitly proven. Volunteer-hour reads/approval mutations and the admin
+> timebank organisation-wallet overview remain; localized built-in guardian
+> delivery copy and the full tenant-link fallback
 > chain, live provider proof, and unrelated long-tail volunteering scaffolds
 > remain. This
 > progress does not close the catch-all
@@ -537,6 +614,9 @@ Do not claim completion until all of the following are true:
 - the full ASP.NET build and test suites pass from a clean checkout;
 - a fresh current-source image/runtime has the complete migration history and
   no missing-table errors;
+- supported populated histories upgrade without row loss, while deliberately
+  invalid tenant/financial histories fail preflight without partial schema or
+  migration-history changes;
 - the unchanged canonical Laravel React frontend passes representative and then
   exhaustive workflow smoke against ASP.NET;
 - the unchanged certified Web UK frontend passes its same smoke buckets against

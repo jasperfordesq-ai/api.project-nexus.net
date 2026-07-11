@@ -118,14 +118,17 @@ public class CaringCommunityLoyaltyControllerUnitTests
         redemption.CreditsUsed.Should().Be(1.5m);
         redemption.DiscountChf.Should().Be(37.5m);
         redemption.Status.Should().Be("applied");
+        redemption.RedemptionTransactionId.Should().NotBeNull();
 
         var ledger = await db.Transactions.IgnoreQueryFilters().ToListAsync();
-        ledger.Should().ContainSingle(t =>
+        var redemptionDebit = ledger.Should().ContainSingle(t =>
             t.TenantId == 42
             && t.SenderId == 10
-            && t.ReceiverId == 0
+            && t.ReceiverId == null
             && t.Amount == 1.5m
-            && t.Description!.StartsWith("[loyalty_redemption]"));
+            && t.TransactionType == PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+            && t.Description!.StartsWith("[loyalty_redemption]")).Which;
+        redemption.RedemptionTransactionId.Should().Be(redemptionDebit.Id);
 
         var history = ReadData(await controller.MyHistory(CancellationToken.None))
             .GetProperty("items")
@@ -154,8 +157,32 @@ public class CaringCommunityLoyaltyControllerUnitTests
             LoyaltyChfPerHour = 30m,
             LoyaltyMaxDiscountPct = 40
         });
+        var appliedDebit = new Transaction
+        {
+            TenantId = 42,
+            SenderId = 10,
+            ReceiverId = null,
+            Amount = 2m,
+            Description = "[loyalty_redemption] redemption:101",
+            TransactionType = PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType,
+            Status = TransactionStatus.Completed,
+            CreatedAt = new DateTime(2026, 7, 4, 10, 0, 0, DateTimeKind.Utc)
+        };
+        var appliedRedemption = Redemption(
+            101,
+            42,
+            10,
+            20,
+            "applied",
+            2m,
+            30m,
+            60m,
+            200m,
+            new DateTime(2026, 7, 4, 10, 0, 0, DateTimeKind.Utc));
+        appliedRedemption.RedemptionTransaction = appliedDebit;
+        db.Transactions.Add(appliedDebit);
         db.CaringLoyaltyRedemptions.AddRange(
-            Redemption(101, 42, 10, 20, "applied", 2m, 30m, 60m, 200m, new DateTime(2026, 7, 4, 10, 0, 0, DateTimeKind.Utc)),
+            appliedRedemption,
             Redemption(102, 42, 10, 20, "reversed", 1m, 30m, 30m, 100m, new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc)),
             Redemption(201, 7, 70, 80, "applied", 99m, 99m, 99m, 99m, new DateTime(2026, 7, 5, 10, 0, 0, DateTimeKind.Utc)));
         await db.SaveChangesAsync();
@@ -221,21 +248,25 @@ public class CaringCommunityLoyaltyControllerUnitTests
         }, CancellationToken.None));
         reversed.GetProperty("redemption_id").GetInt32().Should().Be(101);
         reversed.GetProperty("credits_restored").GetDecimal().Should().Be(2m);
-        reversed.GetProperty("member_new_balance").GetDecimal().Should().Be(12m);
+        reversed.GetProperty("member_new_balance").GetDecimal().Should().Be(10m);
 
         var row = await db.CaringLoyaltyRedemptions.IgnoreQueryFilters().SingleAsync(r => r.Id == 101);
         row.Status.Should().Be("reversed");
         row.ReversedBy.Should().Be(9001);
         row.ReversalReason.Should().Be("Customer refund");
         row.ReversedAt.Should().NotBeNull();
+        row.RedemptionTransactionId.Should().Be(appliedDebit.Id);
+        row.ReversalTransactionId.Should().NotBeNull();
 
         var ledger = await db.Transactions.IgnoreQueryFilters().ToListAsync();
-        ledger.Should().ContainSingle(t =>
+        var reversal = ledger.Should().ContainSingle(t =>
             t.TenantId == 42
-            && t.SenderId == 0
+            && t.SenderId == null
             && t.ReceiverId == 10
             && t.Amount == 2m
-            && t.Description!.StartsWith("[loyalty_reversal]"));
+            && t.TransactionType == PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+            && t.Description!.StartsWith("[loyalty_reversal]")).Which;
+        row.ReversalTransactionId.Should().Be(reversal.Id);
 
         AssertSingleError(
             await controller.ReverseRedemption(101, new CaringLoyaltyReverseRequest(), CancellationToken.None),

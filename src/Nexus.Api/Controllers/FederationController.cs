@@ -72,6 +72,7 @@ public class FederationController : ControllerBase
             shared_listings = p.SharedListings,
             shared_events = p.SharedEvents,
             shared_members = p.SharedMembers,
+            transactions_enabled = p.TransactionsEnabled,
             credit_exchange_rate = p.CreditExchangeRate,
             requested_by = p.RequestedBy != null ? new
             {
@@ -113,7 +114,8 @@ public class FederationController : ControllerBase
             userId.Value,
             request.SharedListings,
             request.SharedEvents,
-            request.SharedMembers);
+            request.SharedMembers,
+            request.TransactionsEnabled);
 
         if (error != null)
             return BadRequest(new { error });
@@ -132,6 +134,7 @@ public class FederationController : ControllerBase
             shared_listings = partner.SharedListings,
             shared_events = partner.SharedEvents,
             shared_members = partner.SharedMembers,
+            transactions_enabled = partner.TransactionsEnabled,
             credit_exchange_rate = partner.CreditExchangeRate,
             created_at = partner.CreatedAt
         });
@@ -568,6 +571,7 @@ public class FederationController : ControllerBase
                 federation_opt_in = false,
                 profile_visible = false,
                 listings_visible = true,
+                transactions_enabled_federated = false,
                 blocked_partner_tenants = (string?)null
             });
 
@@ -576,6 +580,7 @@ public class FederationController : ControllerBase
             federation_opt_in = settings.FederationOptIn,
             profile_visible = settings.ProfileVisible,
             listings_visible = settings.ListingsVisible,
+            transactions_enabled_federated = settings.TransactionsEnabled,
             blocked_partner_tenants = settings.BlockedPartnerTenants
         });
     }
@@ -596,13 +601,15 @@ public class FederationController : ControllerBase
         var settings = await _gatewayService.UpdateUserSettingsAsync(
             tenantId.Value, userId.Value,
             request.FederationOptIn, request.ProfileVisible,
-            request.ListingsVisible, request.BlockedPartnerTenants);
+            request.ListingsVisible, request.TransactionsEnabledFederated,
+            request.BlockedPartnerTenants);
 
         return Ok(new
         {
             federation_opt_in = settings.FederationOptIn,
             profile_visible = settings.ProfileVisible,
             listings_visible = settings.ListingsVisible,
+            transactions_enabled_federated = settings.TransactionsEnabled,
             blocked_partner_tenants = settings.BlockedPartnerTenants,
             message = "Federation settings updated"
         });
@@ -629,6 +636,9 @@ public class RequestPartnershipRequest
 
     [JsonPropertyName("shared_members")]
     public bool SharedMembers { get; set; } = false;
+
+    [JsonPropertyName("transactions_enabled")]
+    public bool TransactionsEnabled { get; set; }
 }
 
 /// <summary>
@@ -707,6 +717,9 @@ public class UpdateFederationSettingsRequest
 
     [JsonPropertyName("listings_visible")]
     public bool ListingsVisible { get; set; } = true;
+
+    [JsonPropertyName("transactions_enabled_federated")]
+    public bool? TransactionsEnabledFederated { get; set; }
 
     [JsonPropertyName("blocked_partner_tenants")]
     public string? BlockedPartnerTenants { get; set; }

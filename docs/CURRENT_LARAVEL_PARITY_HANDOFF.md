@@ -54,26 +54,46 @@ containers from this repo.
 
 ## Latest Verified Backend Slice — 2026-07-11
 
-The current backend slice completes the missing volunteer-organisation
-relationship and dedicated lifecycle storage without modifying the read-only
-Laravel source, canonical React frontend, frozen legacy React copy, or the
-concurrent `apps/web-uk` workstream. It follows the already-published
-transactional volunteering, guardian lifecycle, recurring generation, and
-recurring CRUD slices.
+The current backend slice hardens personal, volunteer-organisation, and generic
+organisation wallets; completes the group-exchange settlement state machine;
+replaces V15 wallet false-success reads with persisted values; adds Caring
+loyalty/estate financial evidence; and makes unsafe incomplete financial paths
+fail closed. It does not modify the read-only Laravel source, canonical React
+frontend, frozen legacy React copy, or concurrent `apps/web-uk` workstream.
 
-Canonical `vol_organizations`, `org_members`, and `vol_org_transactions`
-entities now back member/admin/public organisation surfaces. Opportunities have
-a tenant-scoped organisation relationship, and current opportunity creation
-persists a valid active/approved organisation managed by the caller. Recurring-pattern
-access permits the creator; application decisions require an organisation
-owner/admin or exact current site-admin role. Dashboard responses use safe
-projections rather than serializing full users.
+Generic organisation visibility is now status/tenant/member aware. Wallet
+writes require verified organisations, canonical owners/managers/admins, and
+shared lifecycle/advisory locks. Organisation deletion takes the same lifecycle
+lock and refuses deletion when balance, counters, or wallet history exists; a
+concurrency regression proves an in-flight wallet write wins and evidence is
+retained. Membership writes prevent cross-tenant relationships and owner/admin
+escalation. Wallet user search is same-tenant, active-user, name-only, excludes
+the caller and suspended users, hides email, and is limited to 30/minute.
+
+Group exchange now has server-owned draft/start/confirm/complete/cancel
+transitions, immutable positive splits, role separation, all-party
+confirmation, shared personal-wallet locks, and real `group_exchange` ledger
+evidence. V15 community-fund summary/history, pending count, and starting
+balance read persisted tenant data; starting-balance configuration is
+admin-only. Compatibility donation/deposit/withdraw aliases remain explicit
+HTTP 503 because no certified canonical writer exists.
+
+Caring loyalty debits/refunds and positive hour-estate settlements now carry
+authoritative tenant-composite transaction links. Legacy applied loyalty rows
+without valid debit evidence cannot be reversed, preventing an unproven refund.
+Legacy null links remain for manual reconciliation; they are not guessed from
+amount or timestamp similarity.
 
 The latest migration is
-`20260711010201_VolunteerOrganisationRelationshipsParity`; discovery is
-109/80/29, EF reports no model drift, and all 80 discovered migrations apply to
-a blank disposable PostgreSQL database. Focused relationship/lifecycle tests
-pass 13/13 and the current wider affected regression passes 180/180.
+`20260711100817_LoyaltyEstateOrganisationEvidence`. EF discovers 109
+migrations and reports no pending model changes. Blank 109-ID replay, populated
+valid upgrade, and deliberately invalid preflight-abort scenarios are green. The
+test-project build has zero errors and four pre-existing `xUnit1031` warnings.
+The high-risk run initially passed 103/106; its two corrected assertions and
+isolated fixture retry then passed 3/3. The separate fail-closed contract suite
+passes 119/119. Post-audit organisation/federation regressions pass 24/24, and
+the final migration-discovery, partner-consent, cancellation, route-owner, and
+rounded-zero set passes 30/30.
 
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
@@ -83,10 +103,47 @@ pass 13/13 and the current wider affected regression passes 180/180.
 | Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; per-tenant jobs exclude inactive tenants and aggregate tenant failures, while guardian-consent expiry intentionally remains a global all-tenant sweep. V2 manual execution requires platform-super access. `listing-expiry`, `job-expiry`, `volunteer-expire-consents`, and `recurring-shifts` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports these four mappings active and the other 38 disabled with `execution_supported:false`. | 38 of 42 catalog jobs remain unmapped; cross-replica exactly-one execution still relies on data-level idempotence rather than a distributed job lock. |
 | Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
 | Federation partnership decisions | Canonical `/api[/v2]/admin/federation/partnerships` lists incoming and outgoing rows without changing the legacy outgoing-only route. Approve/reject require the receiving tenant, conditionally transition only `pending`, atomically persist one receiver-to-requester audit row, return Laravel status/error envelopes, and notify initiating-tenant admins only after commit. Same-action and approve-versus-reject races produce one winner and one side-effect set. | Laravel federation-level permission initialization, durable rejection actor/time/reason columns, localized link/push notifications, durable initial-sync scheduling, and canonical audit-log read visibility remain open. This is core decision-state parity, not complete federation parity. |
-| Transactional volunteering core | Selected-shift applications, decisions, direct signup/cancellation, group reservations/roster changes, waitlists/re-offers/expiry, guardian consent, recurring generation, and recurring CRUD use tenant-scoped transactional storage and canonical gates. Dedicated `vol_organizations`, `org_members`, and `vol_org_transactions` storage backs member/admin/public lifecycle, admin transaction aggregates, cursor-paginated `my-organisations`, real review aggregates when `vol_reviews` exists, and zero-hour degraded reads when quarantined `vol_logs` is absent. Opportunity creation persists a valid managed active/approved organisation. Recurring access permits the creator; application decisions and delete require a mapped organisation manager or exact site-admin role. Dashboard projections do not serialize full users. | P0 next: member/admin wallet and hour routes still contain false-success or recorded-only handlers. Opportunity list/create/update/application-list contracts, admin members/DLP, public review listing, legacy NULL-organisation reconciliation, provider/localization behavior, and unchanged-frontend runtime smoke remain open. |
+| Generic organisations and wallets | Public reads expose only verified/public organisations; private/pending/suspended reads require canonical tenant owner/member/admin access. Membership roles and tenant relationships are validated. Verified-only donate/transfer/admin-grant writes and deletion share lifecycle/advisory locks; deletion refuses any wallet balance, counters, or history, including an in-flight write. | Notification/audit fidelity and unchanged-frontend runtime smoke remain open. Legacy ambiguous organisation-wallet rows need the read-only operator audit and manual disposition. |
+| Group exchange | Draft edits, start, confirmation, cancellation, and completion use server-owned transitions. Positive immutable splits, distinct provider/receiver roles, all-party confirmation, shared wallet locks, credit conservation, and nonempty ledger evidence are enforced. | Notification fidelity and frontend runtime smoke remain. Legacy one-to-one `Exchange` completion is a separate fail-closed gap. |
+| V15 wallet reads and privacy | Community fund/history, pending count, and starting balance use persisted tenant data; starting-balance writes are admin-only. User search is active same-tenant name-only, excludes self/suspended users and email, and is 30/minute. | Community-fund donation/deposit/withdraw and `/api/wallet/donate` remain HTTP 503 until a canonical writer exists. Username search remains unavailable because the .NET user schema has no Laravel username column. |
+| Caring loyalty and estate evidence | New loyalty debit/refund and positive estate settlement rows persist unique tenant-composite transaction links. Concurrent reversal has one winner; unlinked legacy loyalty cannot mint a refund; repeat estate lifecycle mutations are rejected. | Legacy null links require manual reconciliation. Same-platform Caring hour transfers still lack authoritative transaction-id columns; remote transfers remain a federation-saga gap. |
+| Federation external boundary | Listing/member reads enforce opt-in, active state, visibility, tenant match, and blocked-partner rules. Caller-supplied message/review identity, partner webhook list/create, V2 ingest, non-pristine transfer cancellation, and unsupported financial settlement return stable 503 with no mutation. | Durable authenticated remote identity, webhook/ingest processing, cancellation protocol, and settlement saga remain incomplete; fail-closed behavior is not parity completion. |
+| Transactional volunteering core | Selected-shift applications, decisions, direct signup/cancellation, group reservations/roster changes, waitlists/re-offers/expiry, guardian consent, recurring generation/CRUD, canonical organisation lifecycle, and member/admin wallet workflows use tenant-scoped transactional storage and canonical gates. Dedicated `vol_organizations`, `org_members`, and `vol_org_transactions` storage backs lifecycle, wallet audit, admin aggregates, cursor-paginated `my-organisations`, real review aggregates when `vol_reviews` exists, and honest zero-hour degradation when legacy `vol_logs` is absent. Wallet mutations use advisory locks plus a nullable-leg personal-ledger adapter and are concurrency-tested. | P0 next: replace member/admin volunteer-hour read/verification false-success handlers with a dual-mode service that reads real `vol_logs` when present and returns exact empty/not-found behavior when the discovered chain lacks the table. The recorded-only admin timebank organisation-wallet overview, opportunity/application contracts, admin members/DLP, public reviews, legacy NULL reconciliation, provider/localization behavior, and unchanged-frontend runtime smoke remain open. |
 | Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
 
 Verification evidence for this slice:
+
+- test-project build: 0 errors and 4 pre-existing `xUnit1031` warnings;
+- high-risk wallet/federation/organisation/group/loyalty/estate run: 103/106 on
+  the initial command; after correcting two test assertions and isolating one
+  fixture-startup timeout, all three affected tests passed 3/3;
+- fail-closed contract suite: 119/119 passed, proving explicit unavailable
+  results and no ledger/balance mutation across the scoped legacy exchange,
+  sub-account, volunteer-attendance, wallet-alias, and federation paths;
+- latest migration:
+  `20260711100817_LoyaltyEstateOrganisationEvidence`; EF reports no pending
+  model changes and discovers 109 migrations;
+- blank disposable PostgreSQL: all 109 IDs applied from
+  `20260202085043_InitialCreate` through the latest ID after restoring
+  `AddAiMessageTenantId` discovery metadata; history has 109 rows and the
+  non-null `ai_messages.TenantId` column, tenant index, and foreign key were
+  inspected directly;
+- populated disposable PostgreSQL at the preceding migration: latest upgrade
+  passed with legacy users/organisation/member/wallet/wallet-transaction/
+  loyalty/estate rows retained and known membership-role casing normalized;
+- deliberately invalid cross-tenant wallet-transaction clone: latest upgrade
+  aborted in preflight, migration history stayed at
+  `20260711083852_WalletLedgerFederationPartnerParity`, and latest schema
+  additions were absent;
+- all disposable databases and the uniquely named container were removed; no
+  production database or container was touched;
+- current schema comparator: 135/362 Laravel table names matched, 227 missing,
+  and 195 ASP.NET-only;
+- copy-ready, read-only financial candidate SQL is maintained in
+  `docs/database-migrations.md`. It reports balance impact and requires manual
+  disposition; it never auto-fixes or auto-links evidence.
+
+Earlier published slice evidence retained for context:
 
 - historical pre-volunteering combined Release build: success, 4 pre-existing
   `xUnit1031` warnings, 0 errors;
@@ -129,24 +186,27 @@ Verification evidence for this slice:
   `my-organisations`, and feature-before-rate ordering;
 - current wider affected controller/auth/route/migration regression: 180/180
   passed; direct compatibility-controller factory regression: 7/7;
-- current API build: 0 warnings, 0 errors; a clean test-project build had 4
+- volunteer-organisation wallet integration: 6/6 passed, including atomic
+  personal debit/organisation credit, validation and authorization guards,
+  signed admin adjustments, feature-before-rate ordering, plain-cursor history,
+  and five-way overspend concurrency with exactly three winners;
+- combined affected route-ownership sets: 95/95 passed; exact volunteering
+  runtime aliases: 6/6 passed. The much broader all-alias runtime class exceeded
+  ten minutes without a diagnostic and is not counted as green;
+- earlier disjoint wallet-affected groups: 213/213 passed across ownership,
+  wallet integration, downstream ledger analytics, existing wallet contracts,
+  exact aliases, relationship regression, and migration discovery;
+- earlier API build: 0 warnings, 0 errors; a clean test-project build had 4
   pre-existing `xUnit1031` warnings and 0 errors, while the final incremental
   build completed with 0 warnings and 0 errors;
-- latest volunteering migration source:
-  `20260711010201_VolunteerOrganisationRelationshipsParity`;
-- final migration discovery: 109 source classes, 80 EF-discovered, 29 explicitly
-  quarantined; EF reports no pending model changes;
-- blank disposable PostgreSQL: all 80 discovered migrations applied, latest
-  history id `20260711010201_VolunteerOrganisationRelationshipsParity`;
-  canonical organisation/member/transaction tables, nullable opportunity link,
-  tenant-composite relationships, checks, and indexes were inspected directly.
-  `vol_logs` is absent, the transaction user FK is tenant-composite, and the
-  filtered `(tenant_id, vol_log_id, type)` payment key is unique. Zero
-  organisation rows were backfilled and the container was removed;
+- earlier volunteering-chain proof reached
+  `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
+  is recorded above;
 - API route comparator: 2,436/2,436 Laravel/supplemental operations matched,
   0 route-shape gaps;
-- schema name comparator: 134/361 Laravel tables matched, 227 missing, 194
-  ASP.NET-only; this remains a global red gate.
+- historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
+  ASP.NET-only; the current result above supersedes it and remains a global red
+  gate.
 
 The two preceding volunteering migrations deliberately reject unsafe downgrade
 paths.
@@ -171,21 +231,32 @@ are explicitly reconciled and tested.
 organisation/member/opportunity relationships use tenant-composite keys; the
 opportunity relationship uses non-destructive `RESTRICT`. Transaction
 `vol_log_id` is intentionally a nullable scalar without a foreign key because
-the 80-migration discovered chain does not create Laravel's `vol_logs` table.
+the 109-migration discovered chain does not create Laravel's `vol_logs` table.
 The API therefore returns honest zero hour aggregates on a discovered-chain-only
-database while still reading real hours when that quarantined table exists. The
+database while still reading real hours when that legacy table exists. The
 ledger retains Laravel's unique `(tenant_id, vol_log_id, type)` payment guard,
 and transaction users are tenant-composite. Historical opportunities remain
 NULL-linked by design; operators must map them to a tenant organisation before
 organisation-manager decisions can work. Never infer an organisation id from
-`OrganizerId`, which is a user key.
+`OrganizerId`, which is a user key. The following nullable-ledger-leg migration
+supports one-sided member debits/credits without fabricating counterpart users
+and adds participant-specific history-hide flags. Its downgrade is intentionally
+unsupported because the former required-leg model cannot preserve one-sided
+balance effects without losing or silently changing financial history.
 
-Migration discovery now fails closed in CI, but schema reconciliation remains a
-red gate: 29 legacy classes are explicitly quarantined because they are
-not discoverable by EF. Because most contain non-idempotent DDL, do not restore
-their metadata until supported database histories and schemas are reconciled.
-The gate prevents silent inventory drift; the disposable proof certifies the 80
-discovered migrations, not replay safety for those 29 classes. No production
+Migration metadata was restored only after auditing the formerly invisible
+manual classes. Discovery now includes the essential designer-less
+`AddAiMessageTenantId`, bringing the runtime inventory to 109; all 109 replay
+cleanly on a recreated blank database. The
+overlapping `FederationCoreExpansion` class remains intentionally outside the
+runtime chain because its later superset already creates the same schema. The
+obsolete `AddTenantUpdatedAt` class also remains outside because `InitialCreate`
+already creates `tenants.UpdatedAt`. The gate must prevent silent inventory
+drift without making duplicate DDL
+discoverable. `WalletLedgerFederationPartnerParity` and
+`LoyaltyEstateOrganisationEvidence` are intentionally irreversible. Use the
+read-only candidate report in `docs/database-migrations.md` and record a manual
+disposition and balance impact before any forward remediation. No production
 database or container was touched.
 
 ## Historical Snapshot (2026-07-07)
@@ -275,26 +346,35 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Replace volunteer-organisation member/admin wallet and hour false-success or
-   recorded-only handlers with locked canonical ledger/hour workflows. Add
-   non-admin endpoint-table ownership coverage before wiring aliases.
-2. Complete opportunity list/create/update/application-list contracts, admin
+1. Replace volunteer-organisation member/admin hour false-success or
+   recorded-only handlers with locked canonical hour/payment workflows. The
+   discovered chain lacks `vol_logs`, so add explicit table-presence degradation
+   and non-admin endpoint-table ownership coverage before wiring aliases. Audit
+   the recorded-only admin timebank organisation-wallet overview separately.
+2. Implement the workflows that currently fail closed: two-party legacy
+   exchange confirmation, managed-user sub-account approval, coordinator-backed
+   volunteer attendance/reward evidence, a canonical community-fund donation/
+   deposit/withdraw writer, and the durable authenticated federation settlement
+   saga. Preserve explicit HTTP 503/no-write behavior until each is real.
+3. Complete opportunity list/create/update/application-list contracts, admin
    organisation members/DLP, public review listing, and explicit reconciliation
    for historical NULL organisation links.
-3. Reconcile supported database histories and schemas for the explicit
-   29-entry migration quarantine before restoring any missing metadata.
-4. Replace the remaining 38 unmapped cron definitions with real jobs or keep
+4. Run the read-only legacy financial audit, assign a documented manual
+   disposition and balance impact to every ambiguous self-transfer/admin grant/
+   starting-balance/loyalty/estate/hour-transfer candidate, and implement only
+   reviewed forward remediations. Never auto-link or auto-fix by similarity.
+5. Replace the remaining 38 unmapped cron definitions with real jobs or keep
    them explicitly disabled/unsupported until equivalent work executes.
-5. Finish federation permission/rejection schema, initial-sync/outbox,
+6. Finish federation permission/rejection schema, initial-sync/outbox,
    localized notification, and canonical audit-read parity before broker
    archive reads.
-6. Complete multi-node challenge storage, trusted devices, auth security
+7. Complete multi-node challenge storage, trusted devices, auth security
    notifications, TOTP key separation, and WebAuthn sign-counter concurrency.
-7. Close or explicitly alias schema gaps, especially renamed-table families.
-8. Close localization gaps for backend, admin, email, API, and accessible copy.
-9. Convert static API matches into runtime-proven Laravel React workflows and
+8. Close or explicitly alias schema gaps, especially renamed-table families.
+9. Close localization gaps for backend, admin, email, API, and accessible copy.
+10. Convert static API matches into runtime-proven Laravel React workflows and
    add browser smoke for the highest-risk auth/admin/provider paths.
-10. Update `docs/PARITY_BACKLOG.md` after each completed workflow batch.
+11. Update `docs/PARITY_BACKLOG.md` after each completed workflow batch.
 
 ## Scoring Guide
 
@@ -309,14 +389,12 @@ criteria.
 | `800-950` | Runtime-proven workflows dominate, remaining gaps are narrow and documented |
 | `950-1000` | No known route/API/schema/localization gaps; full regression and smoke suites pass |
 
-Current evidence-based working estimates:
-
-- implementation parity: `675/1000` — route shape is closed and several
-  volunteering workflows are now real, but 227 exact-name schema gaps and many
-  compatibility/provider/localization workflows remain;
-- certification confidence: `480/1000` — focused regressions, model drift, and
-  the full discovered migration chain are green, but no current full-suite or
-  unchanged-frontend-on-ASP.NET runtime certification exists.
+The current slice was not converted into a new numeric score because the full
+API/schema/localization inventories, full ASP.NET suite, and unchanged-frontend
+runtime smoke were not rerun together. The previous `690/1000` implementation
+and `500/1000` certification estimates therefore remain historical baselines,
+not current scores. The 1000/1000 gate is still red despite the green focused
+financial, migration, and fail-closed evidence above.
 
 ## Final Handoff Checklist
 

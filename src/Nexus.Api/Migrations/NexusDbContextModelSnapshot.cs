@@ -314,6 +314,9 @@ namespace Nexus.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AllowedIpCidrs")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("ApiKeyHash")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -338,6 +341,11 @@ namespace Nexus.Api.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsSandbox")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTime?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone");
@@ -382,6 +390,123 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId", "Status");
 
                     b.ToTable("api_partners", (string)null);
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.ApiPartnerAccessToken", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AccessTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccessTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("PartnerId", "ExpiresAt");
+
+                    b.HasIndex("TenantId", "PartnerId");
+
+                    b.ToTable("api_partner_access_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.ApiPartnerWalletCredit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Hours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(191)
+                        .HasColumnType("character varying(191)");
+
+                    b.Property<string>("ReferenceNormalized")
+                        .IsRequired()
+                        .HasMaxLength(191)
+                        .HasColumnType("character varying(191)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("processing");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TransactionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_partner_wallet_credit_transaction")
+                        .HasFilter("\"TransactionId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "TransactionId");
+
+                    b.HasIndex("TenantId", "PartnerId", "ReferenceNormalized")
+                        .IsUnique()
+                        .HasDatabaseName("uk_partner_wallet_credit_reference");
+
+                    b.HasIndex("TenantId", "UserId", "CompletedAt")
+                        .HasDatabaseName("idx_partner_wallet_credit_user");
+
+                    b.ToTable("api_partner_wallet_credits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_api_partner_wallet_credits_completion", "\"Status\" <> 'completed' OR (\"TransactionId\" IS NOT NULL AND \"CompletedAt\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.AuditLog", b =>
@@ -1648,6 +1773,10 @@ namespace Nexus.Api.Migrations
                         .HasColumnType("numeric(8,2)")
                         .HasColumnName("settled_hours");
 
+                    b.Property<int?>("SettlementTransactionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("settlement_transaction_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1673,6 +1802,10 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId", "MemberUserId")
                         .IsUnique()
                         .HasDatabaseName("caring_hour_estates_tenant_member_unique");
+
+                    b.HasIndex("TenantId", "SettlementTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"settlement_transaction_id\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "Status");
 
@@ -1717,6 +1850,10 @@ namespace Nexus.Api.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("recipient_user_id");
 
+                    b.Property<int?>("ReservationTransactionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("reservation_transaction_id");
+
                     b.Property<DateTime?>("RevertedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reverted_at");
@@ -1724,6 +1861,10 @@ namespace Nexus.Api.Migrations
                     b.Property<int>("SenderUserId")
                         .HasColumnType("integer")
                         .HasColumnName("sender_user_id");
+
+                    b.Property<int?>("SettlementTransactionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("settlement_transaction_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1750,8 +1891,16 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId", "RecipientUserId")
                         .HasDatabaseName("caring_hour_gifts_tenant_recipient_idx");
 
+                    b.HasIndex("TenantId", "ReservationTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"reservation_transaction_id\" IS NOT NULL");
+
                     b.HasIndex("TenantId", "SenderUserId")
                         .HasDatabaseName("caring_hour_gifts_tenant_sender_idx");
+
+                    b.HasIndex("TenantId", "SettlementTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"settlement_transaction_id\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "Status")
                         .HasDatabaseName("caring_hour_gifts_tenant_status_idx");
@@ -2136,8 +2285,14 @@ namespace Nexus.Api.Migrations
                     b.Property<DateTime>("RedeemedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("RedemptionTransactionId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ReversalReason")
                         .HasColumnType("text");
+
+                    b.Property<int?>("ReversalTransactionId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("ReversedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2164,6 +2319,14 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId", "MerchantUserId");
 
                     b.HasIndex("TenantId", "RedeemedAt");
+
+                    b.HasIndex("TenantId", "RedemptionTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"RedemptionTransactionId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "ReversalTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"ReversalTransactionId\" IS NOT NULL");
 
                     b.ToTable("caring_loyalty_redemptions", (string)null);
                 });
@@ -5354,13 +5517,17 @@ namespace Nexus.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LocalTransactionId");
-
-                    b.HasIndex("LocalUserId");
+                    b.HasIndex("LocalTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"LocalTransactionId\" IS NOT NULL");
 
                     b.HasIndex("PartnerTenantId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "LocalTransactionId");
+
+                    b.HasIndex("TenantId", "LocalUserId");
 
                     b.ToTable("federated_exchanges", (string)null);
                 });
@@ -5443,6 +5610,10 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("ExternalReference");
 
+                    b.HasIndex("LocalTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"LocalTransactionId\" IS NOT NULL");
+
                     b.HasIndex("PartnerId");
 
                     b.HasIndex("Status");
@@ -5450,6 +5621,10 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("Status", "LastReconcileAttemptAt");
+
+                    b.HasIndex("TenantId", "LocalTransactionId");
+
+                    b.HasIndex("TenantId", "LocalUserId");
 
                     b.ToTable("federated_hour_transfers", (string)null);
                 });
@@ -5999,6 +6174,11 @@ namespace Nexus.Api.Migrations
                     b.Property<int>("TenantId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("TransactionsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -6139,6 +6319,11 @@ namespace Nexus.Api.Migrations
 
                     b.Property<int>("TenantId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("TransactionsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -11600,8 +11785,6 @@ namespace Nexus.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrganisationId");
-
                     b.HasIndex("TenantId", "OrganisationId")
                         .IsUnique();
 
@@ -11656,15 +11839,13 @@ namespace Nexus.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FromUserId");
+                    b.HasIndex("TenantId", "FromUserId");
 
-                    b.HasIndex("InitiatedById");
+                    b.HasIndex("TenantId", "InitiatedById");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "ToUserId");
 
-                    b.HasIndex("ToUserId");
-
-                    b.HasIndex("OrgWalletId", "CreatedAt");
+                    b.HasIndex("TenantId", "OrgWalletId", "CreatedAt");
 
                     b.ToTable("org_wallet_transactions", (string)null);
                 });
@@ -11751,7 +11932,7 @@ namespace Nexus.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OwnerId");
+                    b.HasIndex("TenantId", "OwnerId");
 
                     b.HasIndex("TenantId", "Slug")
                         .IsUnique();
@@ -11790,14 +11971,15 @@ namespace Nexus.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "UserId");
 
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("OrganisationId", "UserId")
+                    b.HasIndex("TenantId", "OrganisationId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("organisation_members", (string)null);
+                    b.ToTable("organisation_members", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_organisation_members_Role", "\"Role\" IN ('owner', 'admin', 'member', 'volunteer')");
+                        });
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.Page", b =>
@@ -15163,14 +15345,23 @@ namespace Nexus.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("DeletedForReceiver")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("DeletedForSender")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<int?>("ListingId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ReceiverId")
+                    b.Property<int?>("ReceiverId")
                         .HasColumnType("integer");
 
                     b.Property<byte[]>("RowVersion")
@@ -15178,7 +15369,7 @@ namespace Nexus.Api.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
-                    b.Property<int>("SenderId")
+                    b.Property<int?>("SenderId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")
@@ -15188,6 +15379,13 @@ namespace Nexus.Api.Migrations
 
                     b.Property<int>("TenantId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("transfer");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -18135,6 +18333,63 @@ namespace Nexus.Api.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Nexus.Api.Entities.ApiPartnerAccessToken", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.ApiPartner", "Partner")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PartnerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.ApiPartnerWalletCredit", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.ApiPartner", "Partner")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PartnerId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Transaction");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Nexus.Api.Entities.AuditLog", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
@@ -18582,9 +18837,17 @@ namespace Nexus.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Nexus.Api.Entities.Transaction", "SettlementTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SettlementTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("BeneficiaryUser");
 
                     b.Navigation("MemberUser");
+
+                    b.Navigation("SettlementTransaction");
 
                     b.Navigation("Tenant");
                 });
@@ -18609,9 +18872,25 @@ namespace Nexus.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Nexus.Api.Entities.Transaction", "ReservationTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReservationTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.Transaction", "SettlementTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SettlementTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("RecipientUser");
 
+                    b.Navigation("ReservationTransaction");
+
                     b.Navigation("SenderUser");
+
+                    b.Navigation("SettlementTransaction");
 
                     b.Navigation("Tenant");
                 });
@@ -18688,6 +18967,25 @@ namespace Nexus.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.CaringLoyaltyRedemption", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Transaction", "RedemptionTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RedemptionTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.Transaction", "ReversalTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReversalTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("RedemptionTransaction");
+
+                    b.Navigation("ReversalTransaction");
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.CaringMunicipalityFeedback", b =>
@@ -19801,17 +20099,6 @@ namespace Nexus.Api.Migrations
 
             modelBuilder.Entity("Nexus.Api.Entities.FederatedExchange", b =>
                 {
-                    b.HasOne("Nexus.Api.Entities.Transaction", "LocalTransaction")
-                        .WithMany()
-                        .HasForeignKey("LocalTransactionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Nexus.Api.Entities.User", "LocalUser")
-                        .WithMany()
-                        .HasForeignKey("LocalUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Nexus.Api.Entities.Tenant", "PartnerTenant")
                         .WithMany()
                         .HasForeignKey("PartnerTenantId")
@@ -19821,6 +20108,19 @@ namespace Nexus.Api.Migrations
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.Transaction", "LocalTransaction")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LocalTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.User", "LocalUser")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LocalUserId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -19844,6 +20144,19 @@ namespace Nexus.Api.Migrations
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LocalTransactionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LocalUserId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -21499,16 +21812,17 @@ namespace Nexus.Api.Migrations
 
             modelBuilder.Entity("Nexus.Api.Entities.OrgWallet", b =>
                 {
-                    b.HasOne("Nexus.Api.Entities.Organisation", "Organisation")
-                        .WithMany()
-                        .HasForeignKey("OrganisationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.Organisation", "Organisation")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "OrganisationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Organisation");
@@ -21518,32 +21832,36 @@ namespace Nexus.Api.Migrations
 
             modelBuilder.Entity("Nexus.Api.Entities.OrgWalletTransaction", b =>
                 {
-                    b.HasOne("Nexus.Api.Entities.User", "FromUser")
-                        .WithMany()
-                        .HasForeignKey("FromUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Nexus.Api.Entities.User", "InitiatedBy")
-                        .WithMany()
-                        .HasForeignKey("InitiatedById")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Nexus.Api.Entities.OrgWallet", "OrgWallet")
-                        .WithMany()
-                        .HasForeignKey("OrgWalletId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Nexus.Api.Entities.User", "FromUser")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "FromUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.User", "InitiatedBy")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "InitiatedById")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexus.Api.Entities.OrgWallet", "OrgWallet")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "OrgWalletId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Nexus.Api.Entities.User", "ToUser")
                         .WithMany()
-                        .HasForeignKey("ToUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("TenantId", "ToUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("FromUser");
 
@@ -21558,15 +21876,16 @@ namespace Nexus.Api.Migrations
 
             modelBuilder.Entity("Nexus.Api.Entities.Organisation", b =>
                 {
-                    b.HasOne("Nexus.Api.Entities.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "OwnerId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -21577,22 +21896,24 @@ namespace Nexus.Api.Migrations
 
             modelBuilder.Entity("Nexus.Api.Entities.OrganisationMember", b =>
                 {
-                    b.HasOne("Nexus.Api.Entities.Organisation", "Organisation")
-                        .WithMany("Members")
-                        .HasForeignKey("OrganisationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Nexus.Api.Entities.Organisation", "Organisation")
+                        .WithMany("Members")
+                        .HasForeignKey("TenantId", "OrganisationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Nexus.Api.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Organisation");
@@ -22752,14 +23073,12 @@ namespace Nexus.Api.Migrations
                     b.HasOne("Nexus.Api.Entities.User", "Receiver")
                         .WithMany()
                         .HasForeignKey("ReceiverId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Nexus.Api.Entities.User", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
                         .WithMany()

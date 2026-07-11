@@ -221,7 +221,7 @@ public class Phase64To69ServiceTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task HourTransferReconciliation_RetryCountIncrementsOnFailedAdvance()
+    public async Task HourTransferReconciliation_WhenSagaDisabled_DoesNotClaimOrMutatePendingTransfer()
     {
         using var scope = Factory.Services.CreateScope();
         var tenant = scope.ServiceProvider.GetRequiredService<TenantContext>();
@@ -257,12 +257,15 @@ public class Phase64To69ServiceTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         var svc = scope.ServiceProvider.GetRequiredService<HourTransferReconciliationService>();
-        await svc.ReconcileTenantAsync(TestData.Tenant1.Id, batchSize: 10, ct: default);
+        var result = await svc.ReconcileTenantAsync(TestData.Tenant1.Id, batchSize: 10, ct: default);
 
         var refreshed = await db.FederatedHourTransfers.IgnoreQueryFilters().FirstAsync(t => t.Id == transfer.Id);
-        refreshed.RetryCount.Should().Be(1);
-        refreshed.LastReconcileAttemptAt.Should().NotBeNull();
-        refreshed.FailureReason.Should().Be("partner_endpoint_not_configured");
+        result.Advanced.Should().Be(0);
+        result.Failed.Should().Be(0);
+        result.GivenUp.Should().Be(0);
+        refreshed.RetryCount.Should().Be(0);
+        refreshed.LastReconcileAttemptAt.Should().BeNull();
+        refreshed.FailureReason.Should().BeNull();
     }
 
     // ─── AiProviderFactory (Phase 69) ──────────────────────────────────────

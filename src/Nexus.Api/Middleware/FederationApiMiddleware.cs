@@ -6,6 +6,8 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Middleware;
@@ -71,6 +73,28 @@ public class FederationApiMiddleware
                 sw.Stop();
                 await LogAndReject(context, apiKeyService, sw.Elapsed, "Invalid or expired API key");
                 return;
+            }
+
+            if (HasHmacHeaders(context))
+            {
+                var nonceClaim = await ClaimHmacNonceAsync(context, apiKey.Id);
+                if (nonceClaim == NonceClaimResult.Duplicate)
+                {
+                    sw.Stop();
+                    await LogAndReject(context, apiKeyService, sw.Elapsed, "Federation request nonce has already been used");
+                    return;
+                }
+                if (nonceClaim == NonceClaimResult.StoreUnavailable)
+                {
+                    sw.Stop();
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "Federation replay-protection store is unavailable"
+                    });
+                    return;
+                }
             }
 
             // Store the authenticated tenant info in HttpContext
@@ -179,6 +203,61 @@ public class FederationApiMiddleware
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expected),
             Encoding.UTF8.GetBytes(signature.ToLowerInvariant()));
+    }
+
+    private static async Task<NonceClaimResult> ClaimHmacNonceAsync(HttpContext context, int apiKeyId)
+    {
+        var nonce = context.Request.Headers["X-Federation-Nonce"].ToString();
+        var timestamp = context.Request.Headers["X-Federation-Timestamp"].ToString();
+        if (!TryParseTimestamp(timestamp, out var parsedTimestamp) || string.IsNullOrWhiteSpace(nonce))
+        {
+            return NonceClaimResult.Duplicate;
+        }
+
+        var db = context.RequestServices.GetRequiredService<NexusDbContext>();
+        var platformId = $"federation-api-key:{apiKeyId}";
+        var createdAt = DateTime.UtcNow;
+        var expiresAt = parsedTimestamp.ToUniversalTime().AddSeconds(300).UtcDateTime;
+        try
+        {
+            var claimed = await db.Database.ExecuteSqlInterpolatedAsync(
+                $@"INSERT INTO federation_webhook_nonces
+                   (""PlatformId"", ""Nonce"", ""ExpiresAt"", ""CreatedAt"")
+                   VALUES ({platformId}, {nonce}, {expiresAt}, {createdAt})
+                   ON CONFLICT (""PlatformId"", ""Nonce"") DO NOTHING",
+                context.RequestAborted);
+            return claimed == 1 ? NonceClaimResult.Claimed : NonceClaimResult.Duplicate;
+        }
+        catch (Exception exception) when (exception is DbUpdateException
+            or InvalidOperationException
+            or System.Data.Common.DbException)
+        {
+            return NonceClaimResult.StoreUnavailable;
+        }
+    }
+
+    private static bool TryParseTimestamp(string timestamp, out DateTimeOffset parsedTimestamp)
+    {
+        if (DateTimeOffset.TryParse(timestamp, out parsedTimestamp))
+        {
+            return true;
+        }
+
+        if (long.TryParse(timestamp, out var unixTimestamp))
+        {
+            parsedTimestamp = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp);
+            return true;
+        }
+
+        parsedTimestamp = default;
+        return false;
+    }
+
+    private enum NonceClaimResult
+    {
+        Claimed,
+        Duplicate,
+        StoreUnavailable
     }
 
     private async Task LogAndReject(HttpContext context, FederationApiKeyService apiKeyService,

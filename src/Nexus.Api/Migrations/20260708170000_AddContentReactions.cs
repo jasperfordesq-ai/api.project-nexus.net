@@ -11,7 +11,9 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Nexus.Api.Migrations;
 
-public partial class AddContentReactions : Migration
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260708170000_AddContentReactions")]
+    public partial class AddContentReactions : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {

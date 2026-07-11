@@ -233,6 +233,7 @@ public static class TestDataSeeder
                 SharedListings = true,
                 SharedEvents = true,
                 SharedMembers = true,
+                TransactionsEnabled = true,
                 CreditExchangeRate = 1.0m,
                 RequestedById = adminUser.Id,
                 ApprovedById = adminUser.Id,
@@ -247,6 +248,7 @@ public static class TestDataSeeder
                 SharedListings = true,
                 SharedEvents = true,
                 SharedMembers = true,
+                TransactionsEnabled = true,
                 CreditExchangeRate = 1.0m,
                 RequestedById = otherTenantUser.Id,
                 ApprovedById = adminUser.Id,
@@ -255,9 +257,17 @@ public static class TestDataSeeder
             });
 
         db.Set<FederationUserSetting>().AddRange(
-            new FederationUserSetting { TenantId = tenant1.Id, UserId = adminUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
-            new FederationUserSetting { TenantId = tenant1.Id, UserId = memberUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
-            new FederationUserSetting { TenantId = tenant2.Id, UserId = otherTenantUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true });
+            new FederationUserSetting { TenantId = tenant1.Id, UserId = adminUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true },
+            new FederationUserSetting { TenantId = tenant1.Id, UserId = memberUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true },
+            new FederationUserSetting { TenantId = tenant2.Id, UserId = otherTenantUser.Id, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true });
+
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenant1.Id,
+            Key = "admin_explicit.federation.credit_agreements",
+            Value = $"[{{\"id\":1,\"fromTenantId\":{tenant1.Id},\"toTenantId\":{tenant2.Id},\"exchangeRate\":1.0,\"maxMonthlyCredits\":10000,\"status\":\"active\"}}]",
+            CreatedAt = DateTime.UtcNow
+        });
 
         const string scopes = "*,listings,members,messages,messages:read,messages:write,transactions,transactions:read,transactions:write,reviews,reviews:read,reviews:write,exchanges";
         db.Set<FederationApiKey>().AddRange(
@@ -292,7 +302,14 @@ public static class TestDataSeeder
         // Use raw SQL to truncate all tables and reset sequences in the correct order
         // This is faster and avoids FK constraint issues.
         // Uses DO block to skip tables that may not exist yet (e.g. pending migrations).
-        await db.Database.ExecuteSqlRawAsync(@"
+        // Scheduled-job integration hosts keep their real IHostedService
+        // registrations. Give an in-flight job a bounded window to release its
+        // table lock instead of failing at the provider's 30-second default.
+        var previousCommandTimeout = db.Database.GetCommandTimeout();
+        db.Database.SetCommandTimeout(TimeSpan.FromMinutes(2));
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
             DO $$
             DECLARE
                 tbl TEXT;
@@ -339,6 +356,8 @@ public static class TestDataSeeder
             TRUNCATE TABLE
                 -- Audit follow-up tables
                 provisioning_requests,
+                api_partner_wallet_credits,
+                api_partner_access_tokens,
                 api_partners,
                 -- Phase 16-37 tables (scaffolded)
                 file_uploads,
@@ -441,7 +460,12 @@ public static class TestDataSeeder
                 users,
                 tenants
             RESTART IDENTITY CASCADE;
-        ");
+            ");
+        }
+        finally
+        {
+            db.Database.SetCommandTimeout(previousCommandTimeout);
+        }
     }
 
     private static string Sha256(string value)

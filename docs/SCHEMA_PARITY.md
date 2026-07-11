@@ -13,27 +13,54 @@ inventory was refreshed and runtime-verified on the same date.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
-| Laravel migrations | 326 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 109 | Discovery verifies 80 runtime migrations and 29 explicitly quarantined classes. |
+| Laravel migrations | 330 | PHP migration files under `database/migrations`. |
+| ASP.NET migration source files | 111 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 109 | EF-discovered/applicable IDs through `20260711100817_LoyaltyEstateOrganisationEvidence`; all replay on blank PostgreSQL. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
-| Laravel touched tables | 103 | Unique `Schema::table(...)` table names. |
+| Laravel touched tables | 104 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
-| Laravel source tables | 361 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 328 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
-| Exact matched tables | 134 | Static name matches only; canonical `vol_organizations`, `org_members`, and `vol_org_transactions` are now represented. |
+| Laravel source tables | 362 | Union of migration-created, migration-touched, and explicit model tables. |
+| ASP.NET tables | 330 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
+| Exact matched tables | 135 | Static name matches only; canonical `vol_organizations`, `org_members`, and `vol_org_transactions` are now represented. |
 | Missing Laravel tables | 227 | Laravel source tables with no exact .NET table name. |
-| Extra ASP.NET tables | 194 | .NET table names with no exact Laravel table name. |
+| Extra ASP.NET tables | 195 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
-## 2026-07-11 Volunteering Migration And Discovery Status
+## 2026-07-11 Runtime Migration And Financial Evidence Status
 
-`20260711010201_VolunteerOrganisationRelationshipsParity` is the current latest
-migration. It creates canonical `vol_organizations`, `org_members`, and
-`vol_org_transactions` storage and adds nullable
+`20260711100817_LoyaltyEstateOrganisationEvidence` is the current latest
+migration. It adds tenant-composite, unique transaction evidence for Caring
+loyalty debits/refunds and positive hour-estate settlements. Applied legacy
+loyalty and settled estate rows are retained with null evidence links for
+manual reconciliation; the migration does not guess a transaction from amount
+or timestamp proximity. The services now refuse a loyalty reversal when its
+authoritative debit link is absent or invalid.
+
+The same migration hardens the generic organisation domain. Organisation
+owners, memberships, wallets, and wallet transactions now use tenant-composite
+foreign keys; membership is unique by tenant/organisation/user; and the only
+accepted roles are `owner`, `admin`, `member`, and `volunteer`. Upgrade preflight
+aborts before schema changes on cross-tenant relationships or unknown roles.
+Known role values are lowercased and trimmed. The migration is intentionally
+irreversible because removing ledger evidence or tenant constraints cannot be
+done without weakening financial and isolation guarantees.
+
+The preceding `20260711083852_WalletLedgerFederationPartnerParity` makes the
+main .NET `transactions` sender and receiver relationships nullable so
+one-sided debits and credits do not require a fabricated user. It adds explicit
+transaction types and participant-specific history-hide flags, hardens
+federated transaction provenance, persists partner access tokens, and adds
+reservation/settlement evidence links for Caring hour gifts. This is an
+explicit ledger adapter for Laravel's direct `users.balance` storage, not a
+claim of identical internal persistence.
+
+The preceding `20260711010201_VolunteerOrganisationRelationshipsParity` creates
+canonical `vol_organizations`, `org_members`, and `vol_org_transactions` storage
+and adds nullable
 `volunteer_opportunities.organization_id`. Owner, membership, and opportunity
 foreign keys use tenant-composite principals; the opportunity link uses
 non-destructive `RESTRICT`. No organisations or opportunity links are
@@ -78,24 +105,52 @@ passes a clean 7/7 PostgreSQL-backed regression. Recurring-shift math,
 idempotence, concurrency, tenant sweep, and scheduled-run persistence pass a
 clean 13/13 PostgreSQL-backed regression.
 
-The verified inventory is 109 main migration classes: 80 discoverable by EF and
-29 explicitly quarantined legacy classes. The discovery gate passes, EF reports
-no pending model changes, and all 80 discovered migrations apply to a blank
-disposable PostgreSQL database through
-`20260711010201_VolunteerOrganisationRelationshipsParity`.
+The verified runtime inventory is 109 EF-discovered/applicable migrations. EF
+reports no pending model changes. A clean recreated database applied all 109
+after restoring `AddAiMessageTenantId` discovery metadata. Migration history
+contains 109 rows through the latest ID; `ai_messages.TenantId` is non-nullable
+and its tenant index and foreign key are present. Both populated upgrade
+scenarios are also green.
+The chain runs through
+`20260711100817_LoyaltyEstateOrganisationEvidence`. This slice restores
+explicit discovery metadata to 27 essential designer-less migrations,
+including `20260303120000_AddAiMessageTenantId`. The overlapping
+`20260307181700_FederationCoreExpansion` class remains intentionally outside
+the runtime chain because the later `Phase38to40_JobsKBLegal` migration is its
+full schema superset. `20260305120000_AddTenantUpdatedAt` also remains outside:
+`InitialCreate` already creates `tenants.UpdatedAt`, so discovering it would
+duplicate the column.
 
-Most quarantined classes contain non-idempotent DDL, so adding metadata blindly
-could replay tables or columns against existing databases. Treat those 29
-classes as quarantined until migration history and schema state are reconciled
-across supported environments. Commit `bcc317e3` keeps the
-`MigrationDiscoveryParityTests` gate fail-closed for unclassified classes,
-abstract migrations, stale quarantine entries, and migration-id mismatches.
+The current test-project build has zero errors and four pre-existing
+`xUnit1031` warnings. The high-risk regression command initially passed
+103/106; after two assertion corrections and an isolated retry of a disposable
+fixture startup timeout, the three affected tests passed 3/3. The separate
+fail-closed contract suite passes 119/119. These focused results validate the
+current schema consumers. The post-audit organisation/federation set also passes
+24/24, and the final migration-discovery, partner-consent, cancellation,
+route-owner, and rounded-zero set passes 30/30. These focused results do not
+replace the full-suite and frontend-runtime gates.
 
-The historical `20260706120000_AddTenantInviteCodes` migration now references
-the quoted PostgreSQL principal column `Id` for tenant and user foreign keys
-instead of lowercase `id`. This repairs future fresh-chain execution only; it
-does not reapply or mutate databases that already recorded that migration. No
-production database was inspected or modified for this audit.
+A populated disposable database at the preceding migration upgraded cleanly:
+legacy users, organisation, membership, wallet, wallet-transaction, loyalty,
+and estate rows remained, and known membership-role casing normalized to the
+new constraint. A cloned invalid database with a cross-tenant organisation
+wallet transaction aborted in preflight; history remained at
+`20260711083852_WalletLedgerFederationPartnerParity`, and the latest schema was
+not partially installed. The blank replay also verifies the repaired regional
+analytics tenant principal and the missing `user_blocks` user indexes. No
+production database or container was inspected or changed.
+
+Do not auto-link null legacy loyalty/estate evidence or rewrite ambiguous
+self-transfers, admin grants, starting-balance grants, or hour transfers. The
+copy-ready `BEGIN TRANSACTION READ ONLY` candidate report in
+`docs/database-migrations.md` exposes current and expected balance effects for
+manual disposition without making changes.
+
+Schema presence is not workflow parity. Legacy one-to-one exchange,
+sub-account pooling, volunteer attendance/rewards, community-fund writes, and
+federation settlement remain explicit HTTP 503 or equivalent fail-closed
+workflows until their missing approval/evidence/saga models are implemented.
 
 `AdminVolunteerApprovalWorkflow.Down()` is intentionally irreversible. Restoring
 the former unique application index after valid reapplication history could
@@ -132,7 +187,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
-| `vol_*` | 19 | `vol_logs` is represented for Caring recipient-circle and KPI inputs. The renamed .NET volunteering schema now has migration-backed `ShiftId`/`OrgNote` application state, shared application/group-reservation capacity indexes, canonical notification links, opportunity-scoped or tenant-wide guardian consent with hashed credentials/canonical lifecycle statuses, and race-safe recurring occurrence/active-pattern indexes. The prior transactional core passes 61/61, guardian lifecycle 7/7, and recurring generation 13/13. Recurring-pattern creator/`CreatedBy` FK fidelity, exact Laravel `vol_*` name aliases, organisation ownership/status, and the remaining volunteering schema families still require reconciliation. |
+| `vol_*` | 19 | The .NET model contains `VolunteerLog` consumers, but the 109-migration runtime chain does not create Laravel's `vol_logs` table; hour aggregates therefore degrade honestly and hour verification remains open. The renamed volunteering schema has migration-backed application state, shared capacity indexes, canonical notification links, scoped hashed guardian consent, race-safe recurrence, canonical creator ownership, and dedicated volunteer-organisation/member/wallet storage. Exact Laravel `vol_*` aliases, legacy NULL organisation mapping, hour/payment evidence, and the remaining volunteering schema families still require reconciliation. |
 | `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |

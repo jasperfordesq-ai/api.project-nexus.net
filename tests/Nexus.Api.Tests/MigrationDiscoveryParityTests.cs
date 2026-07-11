@@ -29,34 +29,7 @@ public sealed class MigrationDiscoveryParityTests
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["FederationCoreExpansion"] = "20260307181700_FederationCoreExpansion",
-            ["AddAiMessageTenantId"] = "20260303120000_AddAiMessageTenantId",
-            ["AddTenantUpdatedAt"] = "20260305120000_AddTenantUpdatedAt",
-            ["AddCaringSmartNudges"] = "20260704053000_AddCaringSmartNudges",
-            ["AddCaringPaperOnboardingIntakes"] = "20260704061000_AddCaringPaperOnboardingIntakes",
-            ["AddCaringRecipientCircleParity"] = "20260704070500_AddCaringRecipientCircleParity",
-            ["AddCaringRegionalPoints"] = "20260704073500_AddCaringRegionalPoints",
-            ["AddCaringResearchPartnerships"] = "20260704075201_AddCaringResearchPartnerships",
-            ["AddSafeguardingReportActions"] = "20260704093000_AddSafeguardingReportActions",
-            ["AddMunicipalitySurveys"] = "20260704113000_AddMunicipalitySurveys",
-            ["AddCaringTrustTierConfig"] = "20260704124500_AddCaringTrustTierConfig",
-            ["AddCaringTandemSuggestionLog"] = "20260704151500_AddCaringTandemSuggestionLog",
-            ["AddCaringCoverRequests"] = "20260704165000_AddCaringCoverRequests",
-            ["AddCaringHourGifts"] = "20260704174500_AddCaringHourGifts",
-            ["AddCaringKissTreffen"] = "20260704183000_AddCaringKissTreffen",
-            ["AddMarktListingGeoFields"] = "20260704190000_AddMarktListingGeoFields",
-            ["AddVereinFederationConsents"] = "20260704220000_AddVereinFederationConsents",
-            ["AddUserNotificationPreferences"] = "20260705123000_AddUserNotificationPreferences",
-            ["AddCaringSupportCategories"] = "20260705133000_AddCaringSupportCategories",
-            ["AddMunicipalReportingSchema"] = "20260705142000_AddMunicipalReportingSchema",
-            ["AddRegionalAnalyticsSchema"] = "20260705154000_AddRegionalAnalyticsSchema",
-            ["AddMarketplaceOrderTrackingUrl"] = "20260707203500_AddMarketplaceOrderTrackingUrl",
-            ["AddMarketplaceShippingOptionParityFields"] = "20260707215000_AddMarketplaceShippingOptionParityFields",
-            ["AddMarketplaceRatingParityFields"] = "20260707220500_AddMarketplaceRatingParityFields",
-            ["AddPostSharePolymorphicFields"] = "20260708153000_AddPostSharePolymorphicFields",
-            ["AddCommentReactions"] = "20260708164000_AddCommentReactions",
-            ["AddContentReactions"] = "20260708170000_AddContentReactions",
-            ["AddContentLikes"] = "20260708193000_AddContentLikes",
-            ["AddUserBlocks"] = "20260709202500_AddUserBlocks"
+            ["AddTenantUpdatedAt"] = "20260305120000_AddTenantUpdatedAt"
         };
 
     private readonly ITestOutputHelper _output;

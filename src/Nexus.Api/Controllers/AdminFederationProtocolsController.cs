@@ -24,6 +24,7 @@ namespace Nexus.Api.Controllers;
 [Authorize(Policy = "AdminOnly")]
 public class AdminFederationProtocolsController : ControllerBase
 {
+    private static readonly bool DurableFederationTransferSagaAvailable = false;
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenant;
     private readonly CreditCommonsClient _cc;
@@ -72,6 +73,14 @@ public class AdminFederationProtocolsController : ControllerBase
     [HttpPost("transfers")]
     public async Task<IActionResult> CreateTransfer([FromBody] CreateTransferRequest req, CancellationToken ct)
     {
+        if (!DurableFederationTransferSagaAvailable)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "federation_settlement_unavailable"
+            });
+        }
+
         if (req.LocalUserId <= 0) return BadRequest(new { error = "local_user_id_required" });
         if (req.PartnerId <= 0) return BadRequest(new { error = "partner_id_required" });
         if (req.Amount <= 0) return BadRequest(new { error = "amount_must_be_positive" });
@@ -136,7 +145,7 @@ public class AdminFederationProtocolsController : ControllerBase
         return entity == null ? NotFound() : Ok(new { data = MapTransfer(entity) });
     }
 
-    /// <summary>POST .../transfers/{id}/cancel — abort a non-terminal transfer.</summary>
+    /// <summary>POST .../transfers/{id}/cancel — abort a pristine local pending transfer.</summary>
     [HttpPost("transfers/{id:int}/cancel")]
     public async Task<IActionResult> CancelTransfer(int id, CancellationToken ct)
     {
@@ -147,14 +156,23 @@ public class AdminFederationProtocolsController : ControllerBase
             or FederatedTransferStatus.Rejected)
             return BadRequest(new { error = "transfer_already_terminal" });
 
-        // Best-effort partner-side cancel for credit-commons. Komunitin v2 has no cancel verb.
-        if (entity.Protocol == "credit-commons" && !string.IsNullOrWhiteSpace(entity.ExternalReference))
+        // Only a transfer that has never left the local pending state can be
+        // cancelled without compensating the remote system. Once a send may
+        // have occurred, a best-effort remote call is not enough evidence to
+        // mark the local row cancelled.
+        if (entity.Status != FederatedTransferStatus.Pending
+            || !string.IsNullOrWhiteSpace(entity.ExternalReference)
+            || entity.LocalTransactionId.HasValue
+            || entity.LastReconcileAttemptAt.HasValue
+            || entity.ReconciledAt.HasValue
+            || entity.RetryCount > 0)
         {
-            var endpoint = await ResolvePartnerSettingAsync(entity.PartnerId, "endpoint", ct);
-            var apiKey = await ResolvePartnerSettingAsync(entity.PartnerId, "api_key", ct);
-            if (!string.IsNullOrWhiteSpace(endpoint))
-                await _cc.CancelTransferAsync(endpoint, apiKey ?? string.Empty, entity.ExternalReference, ct);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "federation_cancellation_unavailable"
+            });
         }
+
         entity.Status = FederatedTransferStatus.Cancelled;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -165,6 +183,14 @@ public class AdminFederationProtocolsController : ControllerBase
     [HttpPost("transfers/reconcile")]
     public async Task<IActionResult> ReconcileNow([FromQuery] int batchSize = 25, CancellationToken ct = default)
     {
+        if (!DurableFederationTransferSagaAvailable)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "federation_settlement_unavailable"
+            });
+        }
+
         var tenantId = _tenant.GetTenantIdOrThrow();
         var result = await _reconcile.ReconcileTenantAsync(tenantId, Math.Clamp(batchSize, 1, 200), ct);
         return Ok(new { data = result });

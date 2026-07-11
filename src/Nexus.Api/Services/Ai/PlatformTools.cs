@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Services.Ai;
 
@@ -20,12 +21,18 @@ public class PlatformTools
 {
     private readonly NexusDbContext _db;
     private readonly AiKnowledgeService _knowledge;
+    private readonly PersonalWalletLedgerService _personalWallet;
     private readonly ILogger<PlatformTools> _logger;
 
-    public PlatformTools(NexusDbContext db, AiKnowledgeService knowledge, ILogger<PlatformTools> logger)
+    public PlatformTools(
+        NexusDbContext db,
+        AiKnowledgeService knowledge,
+        PersonalWalletLedgerService personalWallet,
+        ILogger<PlatformTools> logger)
     {
         _db = db;
         _knowledge = knowledge;
+        _personalWallet = personalWallet;
         _logger = logger;
     }
 
@@ -248,7 +255,10 @@ public class PlatformTools
         var groups = await _db.Groups.IgnoreQueryFilters().CountAsync(g => g.TenantId == tenantId, ct);
         var upcomingEvents = await _db.Events.IgnoreQueryFilters().CountAsync(e => e.TenantId == tenantId && !e.IsCancelled && e.StartsAt >= now, ct);
         var since = now.AddDays(-30);
-        var txns30 = await _db.Transactions.IgnoreQueryFilters().CountAsync(t => t.TenantId == tenantId && t.CreatedAt >= since, ct);
+        var txns30 = await _db.Transactions
+            .IgnoreQueryFilters()
+            .ExcludeInternalWalletAdapters()
+            .CountAsync(t => t.TenantId == tenantId && t.CreatedAt >= since, ct);
 
         return Json(new
         {
@@ -262,19 +272,25 @@ public class PlatformTools
 
     private async Task<string> GetMyBalance(int callingUserId, int tenantId, CancellationToken ct)
     {
+        var balance = await _personalWallet.GetBalanceAsync(tenantId, callingUserId, ct);
         var txns = await _db.Transactions.IgnoreQueryFilters()
-            .Where(t => t.TenantId == tenantId && (t.SenderId == callingUserId || t.ReceiverId == callingUserId))
+            .ExcludeInternalWalletAdapters()
+            .Where(t => t.TenantId == tenantId
+                && t.Status == TransactionStatus.Completed
+                && ((t.SenderId == callingUserId && !t.DeletedForSender)
+                    || (t.ReceiverId == callingUserId && !t.DeletedForReceiver)))
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(5)
             .Select(t => new { t.Id, t.SenderId, t.ReceiverId, t.Amount, t.Description, t.CreatedAt })
             .ToListAsync(ct);
 
-        var balance = txns.Sum(t => t.ReceiverId == callingUserId ? t.Amount : -t.Amount);
         var recent = txns
-            .OrderByDescending(t => t.CreatedAt)
-            .Take(5)
             .Select(t => new
             {
                 t.Id,
-                direction = t.ReceiverId == callingUserId ? "credit" : "debit",
+                direction = t.SenderId == callingUserId && t.ReceiverId == callingUserId
+                    ? "legacy_neutral"
+                    : t.ReceiverId == callingUserId ? "credit" : "debit",
                 t.Amount,
                 t.Description,
                 t.CreatedAt

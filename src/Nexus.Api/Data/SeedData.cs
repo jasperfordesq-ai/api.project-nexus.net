@@ -391,9 +391,9 @@ public static class SeedData
             });
 
         db.FederationUserSettings.AddRange(
-            new FederationUserSetting { Id = 1, TenantId = 1, UserId = 1, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
-            new FederationUserSetting { Id = 2, TenantId = 1, UserId = 3, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
-            new FederationUserSetting { Id = 3, TenantId = 2, UserId = 2, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true });
+            new FederationUserSetting { Id = 1, TenantId = 1, UserId = 1, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true },
+            new FederationUserSetting { Id = 2, TenantId = 1, UserId = 3, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true },
+            new FederationUserSetting { Id = 3, TenantId = 2, UserId = 2, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true, TransactionsEnabled = true });
 
         db.FederationApiKeys.AddRange(
             new FederationApiKey

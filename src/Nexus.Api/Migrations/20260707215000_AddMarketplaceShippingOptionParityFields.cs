@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Nexus.Api.Migrations
 {
     /// <inheritdoc />
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260707215000_AddMarketplaceShippingOptionParityFields")]
     public partial class AddMarketplaceShippingOptionParityFields : Migration
     {
         /// <inheritdoc />

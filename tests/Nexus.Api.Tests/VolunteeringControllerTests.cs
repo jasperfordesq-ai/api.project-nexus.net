@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -22,11 +23,46 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class VolunteeringControllerTests : IntegrationTestBase
 {
+    private const string CheckInUnavailable =
+        "Volunteer attendance must be recorded through the coordinator-approved workflow, which is not available on this endpoint.";
+
+    private const string CheckOutUnavailable =
+        "Volunteer checkout and rewards require coordinator-approved attendance evidence, which is not available on this endpoint.";
+
     private int? _volunteerOrganisationId;
 
     public VolunteeringControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     #region Helpers
+
+    private sealed record AttendanceSnapshot(
+        ShiftStatus ShiftStatus,
+        int CheckInCount,
+        int TransactionCount,
+        decimal MemberBalance);
+
+    private async Task<AttendanceSnapshot> CaptureAttendanceSnapshotAsync(int shiftId)
+    {
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var wallet = scope.ServiceProvider.GetRequiredService<PersonalWalletLedgerService>();
+        return new AttendanceSnapshot(
+            await db.VolunteerShifts.IgnoreQueryFilters()
+                .Where(row => row.Id == shiftId)
+                .Select(row => row.Status)
+                .SingleAsync(),
+            await db.VolunteerCheckIns.IgnoreQueryFilters()
+                .CountAsync(row => row.ShiftId == shiftId && row.UserId == TestData.MemberUser.Id),
+            await db.Transactions.IgnoreQueryFilters().CountAsync(),
+            await wallet.GetBalanceAsync(TestData.Tenant1.Id, TestData.MemberUser.Id));
+    }
+
+    private async Task AssertAttendanceSnapshotUnchangedAsync(int shiftId, AttendanceSnapshot before)
+    {
+        var after = await CaptureAttendanceSnapshotAsync(shiftId);
+        after.Should().Be(before);
+    }
 
     /// <summary>
     /// Create a volunteer opportunity as the currently authenticated user and return its ID.
@@ -645,7 +681,7 @@ public class VolunteeringControllerTests : IntegrationTestBase
     #region Check-in and Check-out
 
     [Fact]
-    public async Task CheckIn_ApprovedVolunteer_ReturnsOk()
+    public async Task CheckIn_ApprovedVolunteer_WithoutCoordinatorWorkflow_FailsClosedWithoutMutation()
     {
         // Arrange - Full workflow: create, publish, apply, approve, create shift, check in
         await AuthenticateAsAdminAsync();
@@ -664,22 +700,18 @@ public class VolunteeringControllerTests : IntegrationTestBase
         });
         reviewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Member checks in
+        var before = await CaptureAttendanceSnapshotAsync(shiftId);
         await AuthenticateAsMemberAsync();
-
-        // Act
         var response = await Client.PostAsync($"/api/volunteering/shifts/{shiftId}/check-in", null);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
-        content.GetProperty("shift_id").GetInt32().Should().Be(shiftId);
+        content.GetProperty("error").GetString().Should().Be(CheckInUnavailable);
+        await AssertAttendanceSnapshotUnchangedAsync(shiftId, before);
     }
 
     [Fact]
-    public async Task CheckIn_WithoutApprovedApplication_ReturnsBadRequest()
+    public async Task CheckIn_WithoutApprovedApplication_ReturnsWorkflowUnavailableWithoutMutation()
     {
         // Arrange
         await AuthenticateAsAdminAsync();
@@ -687,6 +719,7 @@ public class VolunteeringControllerTests : IntegrationTestBase
         var shiftId = await CreateShiftAsync(opportunityId);
 
         // Member tries to check in without applying
+        var before = await CaptureAttendanceSnapshotAsync(shiftId);
         await AuthenticateAsMemberAsync();
 
         // Act
@@ -696,11 +729,12 @@ public class VolunteeringControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("error").GetString().Should().Contain("approved application");
+        content.GetProperty("error").GetString().Should().Be(CheckInUnavailable);
+        await AssertAttendanceSnapshotUnchangedAsync(shiftId, before);
     }
 
     [Fact]
-    public async Task CheckOut_AfterCheckIn_ReturnsOk()
+    public async Task CheckOut_WithActiveCheckIn_WithoutCoordinatorEvidence_FailsClosedWithoutMutation()
     {
         // Arrange - Full workflow
         await AuthenticateAsAdminAsync();
@@ -713,32 +747,54 @@ public class VolunteeringControllerTests : IntegrationTestBase
         await AuthenticateAsAdminAsync();
         await Client.PutAsJsonAsync($"/api/volunteering/applications/{applicationId}/review", new { approved = true });
 
-        await AuthenticateAsMemberAsync();
-        var checkInResponse = await Client.PostAsync($"/api/volunteering/shifts/{shiftId}/check-in", null);
-        checkInResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        int checkInId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var checkIn = new VolunteerCheckIn
+            {
+                TenantId = TestData.Tenant1.Id,
+                ShiftId = shiftId,
+                UserId = TestData.MemberUser.Id,
+                CheckedInAt = DateTime.UtcNow.AddHours(-2),
+                CreatedAt = DateTime.UtcNow.AddHours(-2)
+            };
+            db.VolunteerCheckIns.Add(checkIn);
+            await db.SaveChangesAsync();
+            checkInId = checkIn.Id;
+        }
 
-        // Act
+        var before = await CaptureAttendanceSnapshotAsync(shiftId);
+        await AuthenticateAsMemberAsync();
         var response = await Client.PutAsJsonAsync($"/api/volunteering/shifts/{shiftId}/check-out", new
         {
             hours_logged = 3.5m
         });
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("shift_id").GetInt32().Should().Be(shiftId);
-        content.GetProperty("hours_logged").GetDecimal().Should().Be(3.5m);
+        content.GetProperty("error").GetString().Should().Be(CheckOutUnavailable);
+        await AssertAttendanceSnapshotUnchangedAsync(shiftId, before);
+
+        using var assertScope = Factory.Services.CreateScope();
+        assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var persisted = await assertScope.ServiceProvider.GetRequiredService<NexusDbContext>()
+            .VolunteerCheckIns.IgnoreQueryFilters().SingleAsync(row => row.Id == checkInId);
+        persisted.CheckedOutAt.Should().BeNull();
+        persisted.HoursLogged.Should().BeNull();
+        persisted.TransactionId.Should().BeNull();
     }
 
     [Fact]
-    public async Task CheckOut_WithoutCheckIn_ReturnsBadRequest()
+    public async Task CheckOut_WithoutCheckIn_ReturnsWorkflowUnavailableWithoutMutation()
     {
         // Arrange
         await AuthenticateAsAdminAsync();
         var opportunityId = await CreateAndPublishOpportunityAsync("No Check-in Checkout Test");
         var shiftId = await CreateShiftAsync(opportunityId);
 
+        var before = await CaptureAttendanceSnapshotAsync(shiftId);
         await AuthenticateAsMemberAsync();
 
         // Act - Try to check out without checking in
@@ -751,11 +807,12 @@ public class VolunteeringControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("error").GetString().Should().Contain("No active check-in");
+        content.GetProperty("error").GetString().Should().Be(CheckOutUnavailable);
+        await AssertAttendanceSnapshotUnchangedAsync(shiftId, before);
     }
 
     [Fact]
-    public async Task CheckIn_AlreadyCheckedIn_ReturnsBadRequest()
+    public async Task RepeatedCheckInAttempts_RemainUnavailableAndMutationFree()
     {
         // Arrange - Full workflow: check in once
         await AuthenticateAsAdminAsync();
@@ -768,9 +825,12 @@ public class VolunteeringControllerTests : IntegrationTestBase
         await AuthenticateAsAdminAsync();
         await Client.PutAsJsonAsync($"/api/volunteering/applications/{applicationId}/review", new { approved = true });
 
+        var before = await CaptureAttendanceSnapshotAsync(shiftId);
         await AuthenticateAsMemberAsync();
         var firstCheckIn = await Client.PostAsync($"/api/volunteering/shifts/{shiftId}/check-in", null);
-        firstCheckIn.StatusCode.Should().Be(HttpStatusCode.OK);
+        firstCheckIn.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await firstCheckIn.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("error").GetString().Should().Be(CheckInUnavailable);
 
         // Act - Try to check in again
         var response = await Client.PostAsync($"/api/volunteering/shifts/{shiftId}/check-in", null);
@@ -779,7 +839,8 @@ public class VolunteeringControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("error").GetString().Should().Contain("already checked in");
+        content.GetProperty("error").GetString().Should().Be(CheckInUnavailable);
+        await AssertAttendanceSnapshotUnchangedAsync(shiftId, before);
     }
 
     #endregion

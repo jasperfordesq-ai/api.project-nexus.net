@@ -420,7 +420,7 @@ public class CompatibilityAliasControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task SubAccountAndSkillAliases_PersistState()
+    public async Task SubAccountAndSkillAliases_RequireChildApprovalAndPersistState()
     {
         int skillId;
         using (var scope = Factory.Services.CreateScope())
@@ -448,8 +448,23 @@ public class CompatibilityAliasControllerTests : IntegrationTestBase
         });
         subAccountResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var subAccountJson = await subAccountResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var subAccountId = subAccountJson.GetProperty("id").GetInt32();
+        var pendingRelationship = subAccountJson.GetProperty("data").EnumerateArray().Single();
+        pendingRelationship.GetProperty("status").GetString().Should().Be("pending");
+        var subAccountId = pendingRelationship.GetProperty("relationship_id").GetInt32();
 
+        var prematurePermissionUpdate = await Client.PutAsJsonAsync($"/api/users/me/sub-accounts/{subAccountId}/permissions", new
+        {
+            can_transact = false,
+            can_message = true,
+            can_join_groups = false
+        });
+        prematurePermissionUpdate.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        await AuthenticateAsAdminAsync();
+        (await Client.PutAsync($"/api/users/me/sub-accounts/{subAccountId}/approve", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await AuthenticateAsMemberAsync();
         (await Client.PutAsJsonAsync($"/api/users/me/sub-accounts/{subAccountId}/permissions", new
         {
             can_transact = false,

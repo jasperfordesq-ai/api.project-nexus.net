@@ -8,23 +8,67 @@ All database schema changes go through a single canonical workflow. This prevent
 
 **Golden Rule: Never modify the production database directly. All changes flow through migrations committed to git.**
 
-## Current Discovery Quarantine
+## Current Runtime Chain And Replay Evidence
 
-The repository currently contains 109 main `Migration` classes. EF discovery
-verifies 80 while the known legacy quarantine remains 29 classes.
-Two designer-less migrations are
-valid because they carry inline `[Migration]` and `[DbContext]` metadata; a
-`.Designer.cs` file is not itself the contract.
+EF currently discovers 109 migration IDs. The latest is
+`20260711100817_LoyaltyEstateOrganisationEvidence`. The runtime inventory was
+repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
+essential designer-less migrations, including
+`20260303120000_AddAiMessageTenantId`. A `.Designer.cs` file is not itself the
+discovery contract. Do not add metadata to another legacy class merely to make
+a count move: first prove that its DDL is not duplicated elsewhere and that
+every supported database history can accept it. In particular,
+`20260307181700_FederationCoreExpansion` remains outside the runtime chain
+because `20260307195033_Phase38to40_JobsKBLegal` is its full schema superset;
+discovering both would attempt duplicate table creation.
+`20260305120000_AddTenantUpdatedAt` also remains outside the runtime chain
+because `InitialCreate` already creates `tenants.UpdatedAt`; discovering it
+would attempt to add the same column again.
 
-Most quarantined classes contain non-idempotent DDL. Adding missing attributes
-or designers without reconciling every supported database's migration history
-could replay tables or columns that already exist. Do not restore discovery
-metadata blindly. First inventory the source class, intended migration id,
-schema effects, and each supported environment's history/schema state. No
-production inspection or change is implied by the source audit.
+Current non-production evidence is:
 
-`20260711010201_VolunteerOrganisationRelationshipsParity` is the current
-latest migration. It creates the canonical `vol_organizations`, `org_members`,
+- `dotnet ef migrations has-pending-model-changes --no-build` reports no model
+  changes since the latest migration;
+- a clean recreated database applies all 109 discovered IDs from
+  `20260202085043_InitialCreate` through
+  `20260711100817_LoyaltyEstateOrganisationEvidence`. Migration history has 109
+  rows; `ai_messages.TenantId` is non-nullable and its tenant index and foreign
+  key each exist;
+- a populated database stopped at
+  `20260711083852_WalletLedgerFederationPartnerParity` upgrades successfully;
+  its users, organisation, membership, wallet, wallet-transaction, loyalty, and
+  estate rows remain present, and known organisation-role casing is normalized
+  to lowercase;
+- a cloned database containing a deliberately cross-tenant organisation-wallet
+  transaction fails the latest migration's preflight. The migration history
+  remains at `20260711083852_WalletLedgerFederationPartnerParity`, and the new
+  schema additions are absent. The migration does not partially apply or guess
+  a repair;
+- all disposable databases and the uniquely named PostgreSQL container used for
+  this proof were removed. No production database or container was touched.
+
+`20260711100817_LoyaltyEstateOrganisationEvidence` adds authoritative,
+tenant-composite ledger links for Caring loyalty redemption/reversal and hour
+estate settlement evidence. It also replaces generic organisation, membership,
+wallet, and wallet-transaction relationships with tenant-composite keys,
+enforces one membership per tenant/organisation/user, and restricts membership
+roles to `owner`, `admin`, `member`, or `volunteer`. Its preflight aborts on
+cross-tenant owners, members, wallets, wallet transactions, transaction users,
+or unknown roles. It only normalizes casing/whitespace for known role values.
+The migration is intentionally irreversible because silently removing financial
+evidence or tenant constraints would be unsafe.
+
+The preceding `20260711083852_WalletLedgerFederationPartnerParity` makes both
+relationships in the main .NET `transactions` ledger nullable so canonical
+one-sided debits and credits do not require fabricated users. It adds explicit
+transaction types and participant-specific history-hide flags, hardens
+federation transaction provenance, stores durable partner access-token state,
+and adds reservation/settlement evidence for Caring hour gifts. Its data
+conversion fails closed on ambiguous federation links or invalid pending gift
+provenance.
+
+The preceding `20260711010201_VolunteerOrganisationRelationshipsParity` creates
+the canonical `vol_organizations`, `org_members`,
 and `vol_org_transactions` tables, adds a nullable
 `volunteer_opportunities.organization_id`, and enforces tenant-composite owner,
 membership, and opportunity relationships. It performs no organisation
@@ -33,7 +77,7 @@ nullable transaction `vol_log_id` remains a scalar because the discovered
 runtime chain does not create the referenced Laravel `vol_logs` table. A
 filtered unique `(tenant_id, vol_log_id, type)` index still prevents duplicate
 payments, and the nullable transaction user relationship is tenant-composite.
-Discovered-chain-only installs expose zero-hour aggregates until the quarantined
+Discovered-chain-only installs expose zero-hour aggregates until the legacy
 `vol_logs` history is reconciled. Existing NULL-linked opportunities require an
 explicit operator mapping; never backfill from the user-valued `OrganizerId`.
 
@@ -54,12 +98,15 @@ active rows and removes orphan minor rows before enforcing the new constraint.
 The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
 application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
 and the indexes and `SET NULL` foreign keys used by transactional volunteering
-capacity checks. The API and test projects build cleanly. The
-volunteer-organisation relationship suite passes 13/13 and its wider affected
-regression passes 180/180. Final discovery reports
-`source=109, discovered=80, quarantined=29`, EF reports no pending model
-changes, and all 80 discovered migrations apply to a blank disposable
-PostgreSQL database through the latest migration id.
+capacity checks. The API and test projects build cleanly. The latest
+test-project build has zero errors and four pre-existing `xUnit1031` warnings.
+The high-risk regression command initially passed 103/106; after two assertion
+corrections and an isolated retry of a fixture-startup timeout, the three
+affected tests passed 3/3. The separate fail-closed contract suite passes
+119/119. Post-audit organisation/federation regressions pass 24/24, and the
+final migration-discovery, partner-consent, cancellation, route-owner, and
+rounded-zero set passes 30/30. These focused sets do not replace a clean
+full-suite run.
 
 Before applying `RecurringShiftGenerationParity`, inventory duplicate rows by
 `("TenantId", "RecurringPatternId", "StartsAt")` where the pattern id is not
@@ -82,12 +129,248 @@ quoted PostgreSQL principal column `Id`, not lowercase `id`, for its tenant and
 user foreign keys. This repairs future fresh installs; databases that already
 recorded the migration are not changed or replayed.
 
-`MigrationDiscoveryParityTests` fails closed if any `Migration` subclass is
-neither discovered by EF nor listed in the explicit 29-entry legacy quarantine,
-if a quarantined class becomes discoverable without review, or if an intended
-migration id no longer matches its type. Commit `bcc317e3` introduced the gate
-and corrected the EF drift step so its zero exit code is treated as a clean
-model. The verified inventory is `source=109, discovered=80, quarantined=29`.
+Migration discovery must continue to fail closed if a new source migration is
+invisible to EF, a deliberately excluded overlapping migration becomes
+discoverable, or an intended migration ID no longer matches its type. A green
+blank replay certifies all 109 IDs that EF discovers. Discovery does not
+authorize replaying either intentionally excluded duplicate.
+
+## Read-Only Legacy Financial Audit
+
+The following PostgreSQL report is deliberately read-only and is intended for
+an operator working on a database already upgraded through
+`20260711100817_LoyaltyEstateOrganisationEvidence`. It identifies candidates;
+it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
+recreate any returned row. Each row needs a documented manual disposition that
+states the intended business event, the existing sender/receiver balance
+impact, the proposed balance impact (if any), and the evidence used to justify
+that decision. Take the normal backup before any later approved remediation.
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+
+-- 1. Legacy self-transfers, admin grants, and starting-balance grants.
+--    The delta columns show how the present ledger affects balances.
+SELECT
+    t."TenantId" AS tenant_id,
+    t."Id" AS transaction_id,
+    CASE
+        WHEN t."SenderId" IS NOT NULL AND t."SenderId" = t."ReceiverId" THEN 'self_transfer'
+        WHEN t."TransactionType" = 'starting_balance'
+          OR t."Description" IN ('Starting balance', 'Starting balance credit')
+          OR t."Description" LIKE '[Welcome Bonus]%' THEN 'starting_balance'
+        ELSE 'possible_admin_grant'
+    END AS candidate_kind,
+    t."SenderId" AS sender_id,
+    t."ReceiverId" AS receiver_id,
+    t."Amount" AS amount,
+    CASE WHEN t."Status" = 'Completed' AND t."SenderId" IS NOT NULL THEN -t."Amount" ELSE 0 END AS current_sender_delta,
+    CASE WHEN t."Status" = 'Completed' AND t."ReceiverId" IS NOT NULL THEN t."Amount" ELSE 0 END AS current_receiver_delta,
+    t."TransactionType" AS transaction_type,
+    t."Status" AS status,
+    t."Description" AS description,
+    t."CreatedAt" AS created_at,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_FIX' AS disposition
+FROM transactions AS t
+WHERE t."SenderId" = t."ReceiverId"
+   OR t."TransactionType" IN ('admin_grant', 'starting_balance')
+   OR t."Description" IN ('Admin grant', 'Starting balance', 'Starting balance credit')
+   OR t."Description" ILIKE '%admin%grant%'
+   OR t."Description" LIKE '[Welcome Bonus]%'
+ORDER BY t."TenantId", t."CreatedAt", t."Id";
+
+-- 1b. Organisation-wallet admin grants. Review the initiating actor and the
+--     recorded running balance; do not assume Category alone proves authority.
+SELECT
+    tx."TenantId" AS tenant_id,
+    wallet."OrganisationId" AS organisation_id,
+    tx."Id" AS org_wallet_transaction_id,
+    tx."InitiatedById" AS initiated_by_user_id,
+    tx."Amount" AS amount,
+    tx."BalanceAfter" AS recorded_balance_after,
+    wallet."Balance" AS current_wallet_balance,
+    tx."Amount" AS expected_org_wallet_delta,
+    tx."Description" AS description,
+    tx."CreatedAt" AS created_at,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_FIX' AS disposition
+FROM org_wallet_transactions AS tx
+JOIN org_wallets AS wallet
+  ON wallet."TenantId" = tx."TenantId"
+ AND wallet."Id" = tx."OrgWalletId"
+WHERE tx."Category" = 'admin_grant'
+ORDER BY tx."TenantId", wallet."OrganisationId", tx."CreatedAt", tx."Id";
+
+-- 2. Starting-balance configuration precedence. The API uses
+--    wallet.starting_balance first, then general.welcome_credits, then 5.
+WITH settings AS (
+    SELECT
+        tenant."Id" AS tenant_id,
+        MAX(config."Value") FILTER (WHERE config."Key" = 'wallet.starting_balance') AS primary_value,
+        MAX(config."Value") FILTER (WHERE config."Key" = 'general.welcome_credits') AS legacy_value
+    FROM tenants AS tenant
+    LEFT JOIN tenant_configs AS config
+      ON config."TenantId" = tenant."Id"
+     AND config."Key" IN ('wallet.starting_balance', 'general.welcome_credits')
+    GROUP BY tenant."Id"
+)
+SELECT
+    tenant_id,
+    primary_value,
+    legacy_value,
+    COALESCE(primary_value, legacy_value, '5') AS selected_raw_value,
+    CASE
+        WHEN primary_value IS NOT NULL AND legacy_value IS NOT NULL
+             AND primary_value IS DISTINCT FROM legacy_value THEN 'conflicting_values'
+        WHEN COALESCE(primary_value, legacy_value) IS NULL THEN 'default_5_applies'
+        WHEN COALESCE(primary_value, legacy_value) ~ '^\s*-' THEN 'negative_value_clamps_to_0'
+        WHEN COALESCE(primary_value, legacy_value) !~ '^\s*[+]?[0-9]+([.][0-9]+)?\s*$' THEN 'noncanonical_value_requires_runtime_parse_review'
+        ELSE 'review_current_value'
+    END AS candidate_reason,
+    'CONFIG_ONLY_NO_BALANCE_CHANGE_UNTIL_A_GRANT_IS_WRITTEN' AS balance_impact,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_FIX' AS disposition
+FROM settings
+ORDER BY tenant_id;
+
+-- 3. Loyalty rows without valid authoritative debit/refund links.
+SELECT
+    r."TenantId" AS tenant_id,
+    r."Id" AS redemption_id,
+    r."Status" AS redemption_status,
+    r."MemberUserId" AS member_user_id,
+    r."CreditsUsed" AS credits_used,
+    r."RedemptionTransactionId" AS debit_transaction_id,
+    debit."Id" AS valid_debit_id,
+    r."ReversalTransactionId" AS refund_transaction_id,
+    refund."Id" AS valid_refund_id,
+    -r."CreditsUsed" AS expected_applied_member_delta,
+    CASE WHEN r."Status" = 'reversed' THEN 0 ELSE -r."CreditsUsed" END AS expected_net_member_delta,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_LINK_OR_BALANCE_CHANGE' AS disposition
+FROM caring_loyalty_redemptions AS r
+LEFT JOIN transactions AS debit
+  ON debit."TenantId" = r."TenantId"
+ AND debit."Id" = r."RedemptionTransactionId"
+ AND debit."SenderId" = r."MemberUserId"
+ AND debit."ReceiverId" IS NULL
+ AND debit."Amount" = r."CreditsUsed"
+ AND debit."TransactionType" = 'caring_loyalty_adapter'
+ AND debit."Status" = 'Completed'
+LEFT JOIN transactions AS refund
+  ON refund."TenantId" = r."TenantId"
+ AND refund."Id" = r."ReversalTransactionId"
+ AND refund."SenderId" IS NULL
+ AND refund."ReceiverId" = r."MemberUserId"
+ AND refund."Amount" = r."CreditsUsed"
+ AND refund."TransactionType" = 'caring_loyalty_adapter'
+ AND refund."Status" = 'Completed'
+WHERE r."RedemptionTransactionId" IS NULL
+   OR debit."Id" IS NULL
+   OR (r."Status" = 'reversed' AND (r."ReversalTransactionId" IS NULL OR refund."Id" IS NULL))
+ORDER BY r."TenantId", r."Id";
+
+-- 4. Settled hour estates that lack valid settlement evidence.
+SELECT
+    e.tenant_id,
+    e.id AS estate_id,
+    e.member_user_id,
+    e.beneficiary_user_id,
+    e.policy_action,
+    e.settled_hours,
+    e.settlement_transaction_id,
+    ledger."Id" AS valid_settlement_transaction_id,
+    -e.settled_hours AS expected_member_delta,
+    CASE WHEN e.policy_action = 'transfer_to_beneficiary' THEN e.settled_hours ELSE 0 END AS expected_beneficiary_delta,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_LINK_OR_BALANCE_CHANGE' AS disposition
+FROM caring_hour_estates AS e
+LEFT JOIN transactions AS ledger
+  ON ledger."TenantId" = e.tenant_id
+ AND ledger."Id" = e.settlement_transaction_id
+ AND ledger."SenderId" = e.member_user_id
+ AND ledger."ReceiverId" IS NOT DISTINCT FROM
+     (CASE WHEN e.policy_action = 'transfer_to_beneficiary' THEN e.beneficiary_user_id ELSE NULL END)
+ AND ledger."Amount" = e.settled_hours
+ AND ledger."TransactionType" = 'caring_hour_estate_adapter'
+ AND ledger."Status" = 'Completed'
+WHERE e.status = 'settled'
+  AND COALESCE(e.settled_hours, 0) > 0
+  AND (e.settlement_transaction_id IS NULL OR ledger."Id" IS NULL)
+ORDER BY e.tenant_id, e.id;
+
+-- 5. Same-platform Caring hour transfers have reciprocal tracking rows but no
+--    authoritative transaction-id columns. Never choose a match solely by
+--    amount or timestamp proximity.
+SELECT
+    source.tenant_id AS source_tenant_id,
+    source.id AS source_transfer_id,
+    source.member_user_id AS source_member_id,
+    source.hours_transferred,
+    destination.tenant_id AS destination_tenant_id,
+    destination.id AS destination_transfer_id,
+    destination.member_user_id AS destination_member_id,
+    source_matches.match_count AS source_ledger_candidate_count,
+    source_matches.transaction_ids AS source_ledger_candidate_ids,
+    destination_matches.match_count AS destination_ledger_candidate_count,
+    destination_matches.transaction_ids AS destination_ledger_candidate_ids,
+    -source.hours_transferred AS expected_source_member_delta,
+    source.hours_transferred AS expected_destination_member_delta,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_LINK_OR_BALANCE_CHANGE' AS disposition
+FROM caring_hour_transfers AS source
+LEFT JOIN caring_hour_transfers AS destination
+  ON destination.id = source.linked_transfer_id
+ AND destination.linked_transfer_id = source.id
+ AND destination.role = 'destination'
+LEFT JOIN LATERAL (
+    SELECT COUNT(*)::integer AS match_count,
+           ARRAY_AGG(t."Id" ORDER BY t."CreatedAt", t."Id") AS transaction_ids
+    FROM transactions AS t
+    WHERE t."TenantId" = source.tenant_id
+      AND t."SenderId" = source.member_user_id
+      AND t."ReceiverId" IS NULL
+      AND t."Amount" = source.hours_transferred
+      AND t."Status" = 'Completed'
+      AND t."Description" LIKE '[hour_transfer_out]%'
+) AS source_matches ON TRUE
+LEFT JOIN LATERAL (
+    SELECT COUNT(*)::integer AS match_count,
+           ARRAY_AGG(t."Id" ORDER BY t."CreatedAt", t."Id") AS transaction_ids
+    FROM transactions AS t
+    WHERE destination.id IS NOT NULL
+      AND t."TenantId" = destination.tenant_id
+      AND t."SenderId" IS NULL
+      AND t."ReceiverId" = destination.member_user_id
+      AND t."Amount" = destination.hours_transferred
+      AND t."Status" = 'Completed'
+      AND t."Description" LIKE '[hour_transfer_in]%'
+) AS destination_matches ON TRUE
+WHERE source.role = 'source'
+  AND source.status = 'completed'
+ORDER BY source.tenant_id, source.id;
+
+-- 6. Federated hour transfers whose recorded link is absent or no longer has
+--    the exact tenant/user/amount/direction shape required by the migration.
+SELECT
+    f."TenantId" AS tenant_id,
+    f."Id" AS federated_transfer_id,
+    f."Direction" AS direction,
+    f."LocalUserId" AS local_user_id,
+    f."Amount" AS amount,
+    f."LocalTransactionId" AS recorded_transaction_id,
+    ledger."Id" AS valid_transaction_id,
+    CASE WHEN f."Direction" = 'Outbound' THEN -f."Amount" ELSE f."Amount" END AS expected_local_user_delta,
+    'MANUAL_DISPOSITION_REQUIRED_NO_AUTO_LINK_OR_BALANCE_CHANGE' AS disposition
+FROM federated_hour_transfers AS f
+LEFT JOIN transactions AS ledger
+  ON ledger."TenantId" = f."TenantId"
+ AND ledger."Id" = f."LocalTransactionId"
+ AND ledger."Amount" = f."Amount"
+ AND ledger."Status" = 'Completed'
+ AND ((f."Direction" = 'Outbound' AND ledger."SenderId" = f."LocalUserId" AND ledger."ReceiverId" IS NULL)
+   OR (f."Direction" = 'Inbound' AND ledger."ReceiverId" = f."LocalUserId" AND ledger."SenderId" IS NULL))
+WHERE f."Status" = 'Reconciled'
+  AND (f."LocalTransactionId" IS NULL OR ledger."Id" IS NULL)
+ORDER BY f."TenantId", f."Id";
+
+ROLLBACK;
+```
 
 ```
 Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
@@ -176,12 +459,12 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The reflection/quarantine gate is expected to cover all 109 compiled migration
-subclasses, including the 29 classes that EF cannot currently discover. It
-prevents a new class from becoming silently invisible, but it does not prove
-that the quarantined DDL is safe to replay. A successful `database update`
-certifies only the discovered runtime chain that was actually applied, not the
-quarantined source classes.
+The discovery gate must cover every compiled migration subclass and keep any
+reviewed overlapping source explicitly outside the runtime chain. It prevents a
+new class from becoming silently invisible, but it does not make duplicate DDL
+safe. The successful blank `database update` certifies all 109 discovered IDs,
+not every migration-shaped source file or either intentionally excluded
+duplicate.
 
 ### 7. Deploy to Production
 
@@ -281,6 +564,14 @@ semantics. Use a tested forward remediation or restore the pre-migration backup.
 `20260710211122_RecurringShiftGenerationParity` has a data-preserving `Down()`:
 it removes the filtered occurrence and active-pattern indexes and restores the
 former simple recurring-pattern tenant index.
+
+`20260711083852_WalletLedgerFederationPartnerParity` and
+`20260711100817_LoyaltyEstateOrganisationEvidence` are also intentionally
+irreversible. Their one-sided ledger semantics, financial evidence links,
+partner-token storage, and tenant-composite organisation constraints cannot be
+removed without changing balances, dropping provenance, or weakening tenant
+isolation. Use a reviewed forward remediation or restore the pre-migration
+backup; do not improvise a down migration.
 
 ### Connection Strings
 

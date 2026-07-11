@@ -279,6 +279,7 @@ public class GdprService
         // Transactions
         var transactions = await _db.Transactions
             .AsNoTracking()
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.SenderId == userId || t.ReceiverId == userId)
             .Select(t => new
             {

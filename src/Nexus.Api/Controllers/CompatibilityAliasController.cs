@@ -1654,12 +1654,15 @@ public class CompatibilityAliasController : ControllerBase
     }
 
     /// <summary>
-    /// POST /api/wallet/donate — Alias for wallet transfer (donation).
+    /// POST /api/wallet/donate — Legacy alias without a certified donation writer.
     /// </summary>
     [HttpPost("api/wallet/donate")]
     public IActionResult WalletDonate([FromBody] object? request = null)
     {
-        return Ok(new { success = true, message = "Use POST /api/wallet/transfer with recipient_type=donation" });
+        return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+        {
+            error = "This compatibility route cannot safely record a wallet donation. Use the canonical wallet donation endpoint."
+        });
     }
 
     // ──────────────────────────────────────────────

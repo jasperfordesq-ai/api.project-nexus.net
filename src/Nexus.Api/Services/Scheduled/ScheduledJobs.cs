@@ -451,6 +451,7 @@ public class GenerateMonthlyReportsJob : ScheduledHostedService
         var monthEnd = monthStart.AddMonths(1);
 
         var transactions = db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.TenantId == tenantId && t.Status == TransactionStatus.Completed)
             .Where(t => t.CreatedAt >= monthStart && t.CreatedAt < monthEnd);
         var totalHours = await transactions.SumAsync(t => (decimal?)t.Amount, ct) ?? 0m;

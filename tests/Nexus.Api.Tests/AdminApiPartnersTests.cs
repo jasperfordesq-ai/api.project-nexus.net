@@ -24,6 +24,7 @@ public class AdminApiPartnersTests : IntegrationTestBase
         contact_email = "ops@acmepartner.test",
         description = "Test partner",
         scopes = "read,write",
+        is_sandbox = true,
         rate_limit_per_minute = 120
     };
 
@@ -64,6 +65,7 @@ public class AdminApiPartnersTests : IntegrationTestBase
         plaintext.Should().NotBeNullOrEmpty();
         plaintext!.Should().StartWith("nxp_");
         var id = body.GetProperty("id").GetGuid();
+        body.GetProperty("partner").GetProperty("status").GetString().Should().Be("pending");
 
         // Subsequent GET should not include api_key
         var getResp = await Client.GetAsync($"{Path}/{id}");
@@ -72,6 +74,55 @@ public class AdminApiPartnersTests : IntegrationTestBase
         getBody.TryGetProperty("api_key", out _).Should().BeFalse();
         // Prefix should be present for display
         getBody.GetProperty("api_key_prefix").GetString().Should().NotBeNullOrEmpty();
+        getBody.GetProperty("status").GetString().Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task PendingPartner_CannotIssueToken_UntilAdminActivates()
+    {
+        await AuthenticateAsAdminAsync();
+        var registration = await Client.PostAsJsonAsync(Path, SampleRegister("PendingActivationTest"));
+        registration.StatusCode.Should().Be(HttpStatusCode.Created);
+        var registered = await registration.Content.ReadFromJsonAsync<JsonElement>();
+        var id = registered.GetProperty("id").GetGuid();
+        var secret = registered.GetProperty("api_key").GetString()!;
+
+        ClearAuthToken();
+        var denied = await Client.PostAsJsonAsync("/api/partner/v1/oauth/token", new
+        {
+            grant_type = "client_credentials",
+            client_id = id,
+            client_secret = secret,
+            scope = "read"
+        });
+        denied.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await denied.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("errors")[0]
+            .GetProperty("code")
+            .GetString()
+            .Should().Be("invalid_client");
+
+        await AuthenticateAsAdminAsync();
+        var activate = await Client.PostAsync($"{Path}/{id}/activate", null);
+        activate.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await activate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("status")
+            .GetString()
+            .Should().Be("active");
+
+        ClearAuthToken();
+        var issued = await Client.PostAsJsonAsync("/api/partner/v1/oauth/token", new
+        {
+            grant_type = "client_credentials",
+            client_id = id,
+            client_secret = secret,
+            scope = "read"
+        });
+        issued.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await issued.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("access_token")
+            .GetString()
+            .Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

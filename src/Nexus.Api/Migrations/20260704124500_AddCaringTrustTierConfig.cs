@@ -11,6 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Nexus.Api.Migrations
 {
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260704124500_AddCaringTrustTierConfig")]
     public partial class AddCaringTrustTierConfig : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

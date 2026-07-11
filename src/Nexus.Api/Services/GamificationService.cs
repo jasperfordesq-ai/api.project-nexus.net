@@ -257,7 +257,12 @@ public class GamificationService
     private async Task CheckTransactionBadges(int userId)
     {
         var txCount = await _db.Transactions
-            .CountAsync(t => (t.SenderId == userId || t.ReceiverId == userId) && t.Status == TransactionStatus.Completed);
+            .CountAsync(t => (t.SenderId == userId || t.ReceiverId == userId)
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType);
 
         if (txCount >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstTransaction);
         if (txCount >= 10)
@@ -268,6 +273,7 @@ public class GamificationService
         if (txCount >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Transaction50);
 
         var earned = await _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.ReceiverId == userId && t.Status == TransactionStatus.Completed)
             .SumAsync(t => t.Amount);
 
@@ -277,14 +283,24 @@ public class GamificationService
         if (earned >= 250) await AwardBadgeAsync(userId, Badge.Slugs.Earn250);
 
         var spent = await _db.Transactions
-            .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed)
+            .Where(t => t.SenderId == userId
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
             .SumAsync(t => t.Amount);
 
         if (spent >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Spend10);
         if (spent >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Spend50);
 
         var uniquePeople = await _db.Transactions
-            .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed)
+            .Where(t => t.SenderId == userId
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
             .Select(t => t.ReceiverId)
             .Distinct()
             .CountAsync();

@@ -5,6 +5,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -75,7 +76,9 @@ public class ApiPartnerService
             ApiKeyPrefix = prefix,
             Scopes = NormalizeScopes(dto.Scopes),
             RateLimitPerMinute = dto.RateLimitPerMinute is > 0 ? dto.RateLimitPerMinute.Value : 60,
-            Status = ApiPartnerStatus.Active,
+            IsSandbox = dto.IsSandbox ?? true,
+            AllowedIpCidrs = SerializeCidrs(dto.AllowedIpCidrs),
+            Status = ApiPartnerStatus.Pending,
             CreatedBy = createdByUserId
         };
 
@@ -89,11 +92,25 @@ public class ApiPartnerService
     {
         var partner = await RequireAsync(id, ct);
         var (raw, hash, prefix) = GenerateKey();
+        var now = DateTime.UtcNow;
         partner.ApiKeyHash = hash;
         partner.ApiKeyPrefix = prefix;
-        partner.UpdatedAt = DateTime.UtcNow;
+        partner.UpdatedAt = now;
+        var activeTokens = await _db.ApiPartnerAccessTokens
+            .IgnoreQueryFilters()
+            .Where(token => token.TenantId == partner.TenantId
+                && token.PartnerId == partner.Id
+                && token.RevokedAt == null)
+            .ToListAsync(ct);
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+        }
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("ApiPartner key rotated: {Id}", id);
+        _logger.LogInformation(
+            "ApiPartner key rotated and {TokenCount} active OAuth tokens revoked: {Id}",
+            activeTokens.Count,
+            id);
         return (partner, raw);
     }
 
@@ -138,6 +155,8 @@ public class ApiPartnerService
         if (dto.Description != null) partner.Description = dto.Description.Trim();
         if (!string.IsNullOrWhiteSpace(dto.Scopes)) partner.Scopes = NormalizeScopes(dto.Scopes);
         if (dto.RateLimitPerMinute is > 0) partner.RateLimitPerMinute = dto.RateLimitPerMinute.Value;
+        if (dto.IsSandbox.HasValue) partner.IsSandbox = dto.IsSandbox.Value;
+        if (dto.AllowedIpCidrs is not null) partner.AllowedIpCidrs = SerializeCidrs(dto.AllowedIpCidrs);
         partner.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return partner;
@@ -186,6 +205,19 @@ public class ApiPartnerService
             .ToArray();
         return parts.Length == 0 ? "read" : string.Join(",", parts);
     }
+
+    private static string? SerializeCidrs(IReadOnlyCollection<string>? cidrs)
+    {
+        if (cidrs is null)
+            return null;
+
+        var normalized = cidrs
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return normalized.Length == 0 ? null : JsonSerializer.Serialize(normalized);
+    }
 }
 
 public class RegisterApiPartnerDto
@@ -195,6 +227,8 @@ public class RegisterApiPartnerDto
     [JsonPropertyName("description")] public string? Description { get; set; }
     [JsonPropertyName("scopes")] public string? Scopes { get; set; }
     [JsonPropertyName("rate_limit_per_minute")] public int? RateLimitPerMinute { get; set; }
+    [JsonPropertyName("is_sandbox")] public bool? IsSandbox { get; set; }
+    [JsonPropertyName("allowed_ip_cidrs")] public string[]? AllowedIpCidrs { get; set; }
 }
 
 public class UpdateApiPartnerDto
@@ -204,4 +238,6 @@ public class UpdateApiPartnerDto
     [JsonPropertyName("description")] public string? Description { get; set; }
     [JsonPropertyName("scopes")] public string? Scopes { get; set; }
     [JsonPropertyName("rate_limit_per_minute")] public int? RateLimitPerMinute { get; set; }
+    [JsonPropertyName("is_sandbox")] public bool? IsSandbox { get; set; }
+    [JsonPropertyName("allowed_ip_cidrs")] public string[]? AllowedIpCidrs { get; set; }
 }

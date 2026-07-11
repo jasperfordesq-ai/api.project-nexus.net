@@ -3,18 +3,26 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Collections.Concurrent;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -33,12 +41,31 @@ public class V15MemberParityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly IConfiguration _config;
+    private readonly IMemoryCache _cache;
+    private readonly PersonalWalletLedgerService _personalWallet;
+    private readonly PersonalWalletTransferEffectsService _transferEffects;
+    private readonly OrganisationService _organisationService;
+    private readonly OrgWalletService _orgWalletService;
+    private static readonly ConcurrentDictionary<Guid, object> PartnerRateLocks = new();
 
-    public V15MemberParityController(NexusDbContext db, TenantContext tenantContext, IConfiguration config)
+    public V15MemberParityController(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        IConfiguration config,
+        IMemoryCache cache,
+        PersonalWalletLedgerService personalWallet,
+        PersonalWalletTransferEffectsService transferEffects,
+        OrganisationService organisationService,
+        OrgWalletService orgWalletService)
     {
         _db = db;
         _tenantContext = tenantContext;
         _config = config;
+        _cache = cache;
+        _personalWallet = personalWallet;
+        _transferEffects = transferEffects;
+        _organisationService = organisationService;
+        _orgWalletService = orgWalletService;
     }
 
     [HttpGet("api/v2/events")]
@@ -400,7 +427,7 @@ public class V15MemberParityController : ControllerBase
             return partnerResult!;
         }
 
-        if (!await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == TenantId()))
+        if (!await IsPartnerWalletUserAsync(TenantId(), userId))
         {
             return PartnerError("USER_NOT_FOUND", "User not found.", 404);
         }
@@ -419,7 +446,23 @@ public class V15MemberParityController : ControllerBase
     {
         var received = await _db.Transactions.Where(t => t.ReceiverId == targetUserId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
         var sent = await _db.Transactions.Where(t => t.SenderId == targetUserId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
-        return Ok(new { balance = received - sent, currency = "hours", received_total = received, sent_total = sent });
+        var visibleReceived = await _db.Transactions
+            .Where(t => t.ReceiverId == targetUserId
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
+            .SumAsync(t => t.Amount);
+        var visibleSent = await _db.Transactions
+            .Where(t => t.SenderId == targetUserId
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
+            .SumAsync(t => t.Amount);
+        return Ok(new { balance = received - sent, currency = "hours", received_total = visibleReceived, sent_total = visibleSent });
     }
 
     [HttpGet("api/v2/wallet/transactions")]
@@ -427,7 +470,16 @@ public class V15MemberParityController : ControllerBase
     public async Task<IActionResult> V2WalletTransactions([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
         var userId = CurrentUserId();
-        var query = _db.Transactions.AsNoTracking().Where(t => t.SenderId == userId || t.ReceiverId == userId);
+        if (!userId.HasValue) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = TenantId();
+        var query = _db.Transactions.AsNoTracking().Where(t =>
+            t.TenantId == tenantId
+            && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+            && ((t.SenderId == userId.Value && !t.DeletedForSender)
+                || (t.ReceiverId == userId.Value && !t.DeletedForReceiver)));
         var total = await query.CountAsync();
         var data = await query.OrderByDescending(t => t.CreatedAt).Skip(Skip(page, limit)).Take(Limit(limit)).Select(t => new
         {
@@ -444,41 +496,122 @@ public class V15MemberParityController : ControllerBase
     [HttpGet("api/v2/wallet/transactions/{id:int}")]
     public async Task<IActionResult> V2WalletTransaction(int id)
     {
-        var tx = await _db.Transactions.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
+        var userId = CurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = TenantId();
+        var tx = await _db.Transactions.AsNoTracking().FirstOrDefaultAsync(t =>
+            t.Id == id
+            && t.TenantId == tenantId
+            && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+            && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+            && ((t.SenderId == userId.Value && !t.DeletedForSender)
+                || (t.ReceiverId == userId.Value && !t.DeletedForReceiver)));
         return tx == null ? NotFound(new { error = "Transaction not found" }) : Ok(new { data = tx });
     }
 
     [HttpDelete("api/v2/wallet/transactions/{id:int}")]
     public async Task<IActionResult> V2DeleteWalletTransaction(int id)
     {
-        var tx = await _db.Transactions.FirstOrDefaultAsync(t => t.Id == id);
+        var userId = CurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = TenantId();
+        var tx = await _db.Transactions.FirstOrDefaultAsync(t =>
+            t.Id == id
+            && t.TenantId == tenantId
+            && (t.SenderId == userId.Value || t.ReceiverId == userId.Value));
         if (tx == null) return NotFound(new { error = "Transaction not found" });
-        tx.Status = TransactionStatus.Cancelled;
+
+        if (tx.SenderId == userId.Value)
+            tx.DeletedForSender = true;
+        if (tx.ReceiverId == userId.Value)
+            tx.DeletedForReceiver = true;
         tx.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { success = true });
+        return NoContent();
     }
 
     [HttpPost("api/v2/wallet/transfer")]
-    public async Task<IActionResult> V2WalletTransfer([FromBody] JsonElement body)
+    [EnableRateLimiting(RateLimitingExtensions.PersonalWalletTransferPolicy)]
+    public async Task<IActionResult> V2WalletTransfer(
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
     {
         var senderId = CurrentUserId();
-        var receiverId = GetInt(body, "receiver_id") ?? GetInt(body, "recipient_id") ?? GetInt(body, "user_id");
-        var amount = GetDecimal(body, "amount") ?? 0;
-        if (senderId == null || receiverId == null || amount <= 0) return BadRequest(new { error = "receiver_id and positive amount are required" });
-
-        var tx = new Transaction
+        if (!senderId.HasValue) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = TenantId();
+        Response.Headers[ApiVersionHeader] = ApiVersion;
+        Response.Headers["X-Tenant-ID"] = tenantId.ToString();
+        var recipient = GetString(body, "recipient")
+            ?? GetString(body, "recipient_id")
+            ?? GetString(body, "user_id")
+            ?? GetString(body, "username")
+            ?? GetString(body, "email")
+            ?? GetString(body, "receiver_id");
+        var bodyIdempotencyKey = GetString(body, "idempotency_key")?.Trim();
+        var idempotencyKey = string.IsNullOrWhiteSpace(bodyIdempotencyKey)
+            ? Request.Headers["Idempotency-Key"].FirstOrDefault()
+            : bodyIdempotencyKey;
+        var result = await _personalWallet.TransferAsync(
+            tenantId,
+            senderId.Value,
+            recipient,
+            GetDecimal(body, "amount") ?? 0m,
+            GetString(body, "description") ?? GetString(body, "message"),
+            idempotencyKey,
+            cancellationToken);
+        if (!result.Success)
         {
-            TenantId = TenantId(),
-            SenderId = senderId.Value,
-            ReceiverId = receiverId.Value,
-            Amount = amount,
-            Description = GetString(body, "description") ?? GetString(body, "message"),
-            Status = TransactionStatus.Completed
-        };
-        _db.Transactions.Add(tx);
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, data = new { tx.Id, tx.Amount, tx.ReceiverId } });
+            var status = result.ErrorCode switch
+            {
+                "NOT_FOUND" => StatusCodes.Status404NotFound,
+                "INSUFFICIENT_FUNDS" or "VALIDATION_ERROR" => StatusCodes.Status400BadRequest,
+                "DUPLICATE_TRANSACTION" => StatusCodes.Status409Conflict,
+                "SERVER_ERROR" => StatusCodes.Status500InternalServerError,
+                _ => StatusCodes.Status422UnprocessableEntity
+            };
+            return StatusCode(status, new
+            {
+                errors = new[] { new { code = result.ErrorCode, message = result.ErrorMessage } }
+            });
+        }
+
+        await _transferEffects.RunAsync(tenantId, result);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                id = result.TransactionId,
+                type = "debit",
+                status = "completed",
+                amount = result.Amount,
+                description = result.Description,
+                transaction_type = "transfer",
+                sender = new
+                {
+                    id = result.SenderId,
+                    name = $"{result.SenderFirstName} {result.SenderLastName}".Trim(),
+                    avatar = result.SenderAvatarUrl
+                },
+                receiver = new
+                {
+                    id = result.ReceiverId,
+                    name = $"{result.ReceiverFirstName} {result.ReceiverLastName}".Trim(),
+                    avatar = result.ReceiverAvatarUrl
+                },
+                other_user = new
+                {
+                    id = result.ReceiverId,
+                    name = $"{result.ReceiverFirstName} {result.ReceiverLastName}".Trim(),
+                    avatar = result.ReceiverAvatarUrl
+                },
+                balance_after = (decimal?)null,
+                created_at = result.CreatedAt
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     [HttpPost("api/partner/v1/wallet/credit")]
@@ -499,22 +632,106 @@ public class V15MemberParityController : ControllerBase
             return PartnerError("invalid_request", "user_id, hours and reference are required.", 422);
         }
 
-        if (!await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == TenantId()))
+        if (hours > 24m || decimal.Round(hours, 2) != hours || reference.Length > 191)
+        {
+            return PartnerError("invalid_request", "The supplied amount or reference is invalid.", 422);
+        }
+
+        var tenantId = TenantId();
+        var referenceNormalized = reference.ToUpperInvariant();
+        if (referenceNormalized.Length > 191)
+        {
+            return PartnerError("invalid_request", "The supplied reference is invalid.", 422);
+        }
+        if (partner is null || partner.TenantId != tenantId)
+        {
+            return PartnerError("invalid_partner", "Partner authentication is invalid.", 403);
+        }
+
+        if (!await IsPartnerWalletUserAsync(tenantId, userId))
         {
             return PartnerError("USER_NOT_FOUND", "User not found.", 404);
         }
 
-        var senderId = await _db.Users
-            .Where(u => u.TenantId == TenantId() && u.Id != userId && u.IsActive)
-            .OrderByDescending(u => u.Role == "admin")
-            .Select(u => u.Id)
-            .FirstOrDefaultAsync();
-        if (senderId == 0)
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted)
+            : null;
+        if (databaseTransaction is not null)
         {
-            return PartnerError("invalid_partner", "No tenant ledger source user is available.", 403);
+            var lockHash = SHA256.HashData(Encoding.UTF8.GetBytes($"{partner.Id:N}|{referenceNormalized}"));
+            var lockKey = BitConverter.ToInt32(lockHash, 0);
+            await _db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0}, {1})",
+                -17001,
+                lockKey);
         }
 
-        var description = $"Partner wallet credit from {partner?.Name ?? "partner"} ({reference})";
+        var credit = await _db.ApiPartnerWalletCredits
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId
+                && row.PartnerId == partner.Id
+                && row.ReferenceNormalized == referenceNormalized);
+        if (credit is not null
+            && (credit.UserId != userId || credit.Hours != hours))
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync();
+            }
+            return PartnerError(
+                "idempotency_conflict",
+                "This partner reference was already used for a different wallet credit.",
+                409);
+        }
+
+        if (credit?.TransactionId is int replayTransactionId)
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync();
+            }
+            return PartnerData(new
+            {
+                transaction_id = replayTransactionId,
+                user_id = userId,
+                hours,
+                reference,
+                replayed = true
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        if (credit is null)
+        {
+            credit = new ApiPartnerWalletCredit
+            {
+                TenantId = tenantId,
+                PartnerId = partner.Id,
+                UserId = userId,
+                Reference = reference,
+                ReferenceNormalized = referenceNormalized,
+                Hours = hours,
+                Status = "processing",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _db.ApiPartnerWalletCredits.Add(credit);
+        }
+
+        if (databaseTransaction is not null)
+        {
+            await _personalWallet.AcquireSpendLockAsync(userId);
+        }
+        if (!await IsPartnerWalletUserAsync(tenantId, userId))
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync();
+            }
+            return PartnerError("USER_NOT_FOUND", "User not found.", 404);
+        }
+
+        var description = $"Partner wallet credit from {partner.Name} ({reference})";
         if (!string.IsNullOrWhiteSpace(note))
         {
             description += $": {note}";
@@ -522,15 +739,26 @@ public class V15MemberParityController : ControllerBase
 
         var tx = new Transaction
         {
-            TenantId = TenantId(),
-            SenderId = senderId,
+            TenantId = tenantId,
+            SenderId = null,
             ReceiverId = userId,
-            Amount = Math.Round(hours, 2),
+            Amount = hours,
             Description = description,
-            Status = TransactionStatus.Completed
+            TransactionType = "other",
+            Status = TransactionStatus.Completed,
+            CreatedAt = now
         };
         _db.Transactions.Add(tx);
         await _db.SaveChangesAsync();
+        credit.TransactionId = tx.Id;
+        credit.Status = "completed";
+        credit.CompletedAt = now;
+        credit.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync();
+        }
 
         return PartnerData(new
         {
@@ -546,6 +774,7 @@ public class V15MemberParityController : ControllerBase
     public async Task<IActionResult> V2WalletCategories() => Ok(new { data = await _db.TransactionCategories.AsNoTracking().ToListAsync() });
 
     [HttpPost("api/v2/wallet/categories")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> V2CreateWalletCategory([FromBody] JsonElement body)
     {
         var category = new TransactionCategory { TenantId = TenantId(), Name = GetString(body, "name") ?? "General", Description = GetString(body, "description"), Color = GetString(body, "color"), Icon = GetString(body, "icon") };
@@ -555,6 +784,7 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpPut("api/v2/wallet/categories/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> V2UpdateWalletCategory(int id, [FromBody] JsonElement body)
     {
         var category = await _db.TransactionCategories.FirstOrDefaultAsync(c => c.Id == id);
@@ -568,6 +798,7 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpDelete("api/v2/wallet/categories/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> V2DeleteWalletCategory(int id)
     {
         var category = await _db.TransactionCategories.FirstOrDefaultAsync(c => c.Id == id);
@@ -583,56 +814,278 @@ public class V15MemberParityController : ControllerBase
     [HttpPost("api/v2/wallet/community-fund/donate")]
     [HttpPost("api/v2/wallet/community-fund/deposit")]
     [HttpPost("api/v2/wallet/community-fund/withdraw")]
-    public IActionResult V2WalletDonation() => Ok(new { success = true, data = new { status = "recorded" } });
+    public IActionResult V2WalletDonation() => StatusCode(StatusCodes.Status503ServiceUnavailable, new
+    {
+        error = "This compatibility route cannot safely record a wallet donation. Use the canonical wallet donation endpoint."
+    });
 
     [HttpGet("api/v2/wallet/donations")]
-    public async Task<IActionResult> V2WalletDonations() => Ok(new { data = await _db.CreditDonations.AsNoTracking().OrderByDescending(d => d.CreatedAt).Take(50).ToListAsync() });
+    public async Task<IActionResult> V2WalletDonations()
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized(new { error = "Invalid token" });
+        return Ok(new
+        {
+            data = await _db.CreditDonations
+                .AsNoTracking()
+                .Where(d => d.DonorId == userId.Value || d.RecipientId == userId.Value)
+                .OrderByDescending(d => d.CreatedAt)
+                .Take(50)
+                .ToListAsync()
+        });
+    }
 
     [HttpGet("api/v2/wallet/community-fund")]
-    [HttpGet("api/v2/wallet/community-fund/transactions")]
-    [HttpGet("api/v2/wallet/pending-count")]
-    [HttpGet("api/v2/wallet/starting-balance")]
-    [HttpPut("api/v2/wallet/starting-balance")]
-    [HttpGet("api/v2/wallet/user-search")]
-    [HttpPost("api/wallet/user-search")]
-    public async Task<IActionResult> V2WalletLightweight([FromQuery] string? q = null)
+    public async Task<IActionResult> V2CommunityFund()
     {
-        if (Request.Path.Value?.Contains("user-search", StringComparison.OrdinalIgnoreCase) == true)
+        var donations = _db.CreditDonations
+            .AsNoTracking()
+            .Where(donation => donation.RecipientId == null);
+        var totalDonated = await donations.SumAsync(donation => (decimal?)donation.Amount) ?? 0m;
+
+        return Ok(new
         {
-            var users = await _db.Users.AsNoTracking().Where(u => q == null || u.Email.ToLower().Contains(q.ToLower()) || u.FirstName.ToLower().Contains(q.ToLower()) || u.LastName.ToLower().Contains(q.ToLower()))
-                .Take(20).Select(u => new { id = u.Id, email = u.Email, name = (u.FirstName + " " + u.LastName).Trim() }).ToListAsync();
-            return Ok(new { data = users });
+            data = new
+            {
+                id = (int?)null,
+                balance = totalDonated,
+                total_deposited = 0m,
+                total_withdrawn = 0m,
+                total_donated = totalDonated,
+                description = "Community time credit fund"
+            }
+        });
+    }
+
+    [HttpGet("api/v2/wallet/community-fund/transactions")]
+    public async Task<IActionResult> V2CommunityFundTransactions(
+        [FromQuery] int limit = 20,
+        [FromQuery] int offset = 0)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        offset = Math.Max(offset, 0);
+        var rows = await _db.CreditDonations
+            .AsNoTracking()
+            .Include(donation => donation.Donor)
+            .Where(donation => donation.RecipientId == null)
+            .OrderBy(donation => donation.CreatedAt)
+            .ThenBy(donation => donation.Id)
+            .ToListAsync();
+
+        var running = 0m;
+        var projected = rows.Select(donation =>
+        {
+            running += donation.Amount;
+            return new
+            {
+                donation.Id,
+                type = "donation",
+                donation.Amount,
+                balance_after = running,
+                description = donation.Message ?? string.Empty,
+                user_id = donation.IsAnonymous ? null : (int?)donation.DonorId,
+                user_name = donation.IsAnonymous || donation.Donor == null
+                    ? string.Empty
+                    : (donation.Donor.FirstName + " " + donation.Donor.LastName).Trim(),
+                user_avatar = donation.IsAnonymous ? string.Empty : donation.Donor?.AvatarUrl ?? string.Empty,
+                admin_id = (int?)null,
+                admin_name = string.Empty,
+                created_at = donation.CreatedAt
+            };
+        }).Reverse().Skip(offset).Take(limit).ToArray();
+
+        return Ok(new { data = projected, meta = new { total = rows.Count } });
+    }
+
+    [HttpGet("api/v2/wallet/pending-count")]
+    public async Task<IActionResult> V2WalletPendingCount()
+    {
+        var userId = CurrentUserId();
+        if (userId is null) return Unauthorized(new { error = "Invalid token" });
+        var count = await _db.Transactions.CountAsync(transaction =>
+            (transaction.SenderId == userId.Value || transaction.ReceiverId == userId.Value) &&
+            transaction.Status == TransactionStatus.Pending);
+        return Ok(new { count });
+    }
+
+    [HttpGet("api/v2/wallet/starting-balance")]
+    public async Task<IActionResult> V2GetStartingBalance()
+    {
+        const string primaryKey = "wallet.starting_balance";
+        const string legacyKey = "general.welcome_credits";
+        var values = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(config => config.Key == primaryKey || config.Key == legacyKey)
+            .ToDictionaryAsync(config => config.Key, config => config.Value);
+        var raw = values.GetValueOrDefault(primaryKey) ?? values.GetValueOrDefault(legacyKey) ?? "5";
+        var amount = decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? Math.Max(0m, parsed)
+            : 5m;
+        return Ok(new { data = new { starting_balance = amount } });
+    }
+
+    [HttpPut("api/v2/wallet/starting-balance")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> V2SetStartingBalance([FromBody] JsonElement body)
+    {
+        var requested = GetDecimal(body, "amount");
+        if (!requested.HasValue)
+        {
+            return BadRequest(new { error = "amount is required" });
         }
 
-        return Ok(new { success = true, data = Array.Empty<object>(), balance = 0, pending_count = 0, starting_balance = 0 });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var amount = Math.Max(0m, requested.Value);
+        var row = await _db.TenantConfigs
+            .FirstOrDefaultAsync(config => config.Key == "wallet.starting_balance");
+        if (row == null)
+        {
+            row = new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = "wallet.starting_balance",
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.TenantConfigs.Add(row);
+        }
+
+        row.Value = amount.ToString(CultureInfo.InvariantCulture);
+        row.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                starting_balance = amount,
+                message = "Starting balance updated"
+            }
+        });
     }
 
-    [HttpGet("api/v2/volunteering/organisations/{id:int}/wallet")]
+    [HttpGet("api/v2/wallet/user-search")]
+    [HttpPost("api/wallet/user-search")]
+    [EnableRateLimiting(RateLimitingExtensions.PersonalWalletUserSearchPolicy)]
+    public async Task<IActionResult> V2WalletUserSearch([FromQuery] string? q = null)
+    {
+        var userId = CurrentUserId();
+        var term = q?.Trim();
+        if (userId is null) return Unauthorized(new { error = "Invalid token" });
+        if (string.IsNullOrWhiteSpace(term)) return Ok(new { data = new { users = Array.Empty<object>() } });
+
+        var normalized = term.ToLowerInvariant();
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id != userId.Value
+                && u.IsActive
+                && u.SuspendedAt == null
+                && (u.FirstName.ToLower().Contains(normalized)
+                    || u.LastName.ToLower().Contains(normalized)
+                    || (u.FirstName + " " + u.LastName).ToLower().Contains(normalized)))
+            .Take(20)
+            .Select(u => new
+            {
+                id = u.Id,
+                username = (string?)null,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                first_name = u.FirstName,
+                last_name = u.LastName,
+                avatar = u.AvatarUrl
+            })
+            .ToListAsync();
+        return Ok(new { data = new { users } });
+    }
+
     [HttpGet("api/organizations/{id:int}/wallet/balance")]
+    [HttpGet("api/organisations/{id:int}/wallet/balance")]
     public async Task<IActionResult> V2OrganisationWallet(int id)
     {
-        var wallet = await _db.OrgWallets.AsNoTracking().FirstOrDefaultAsync(w => w.OrganisationId == id);
-        return Ok(new { data = wallet ?? new OrgWallet { TenantId = TenantId(), OrganisationId = id }, balance = wallet?.Balance ?? 0 });
+        var userId = CurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var access = await _organisationService.GetWalletAccessAsync(id, userId.Value);
+        if (!access.Exists) return NotFound(new { error = "Organisation not found" });
+        if (!access.Allowed)
+            return StatusCode(403, new { error = "You must be a member of this organisation" });
+
+        var wallet = await _orgWalletService.GetWalletAsync(id);
+        if (wallet == null) return NotFound(new { error = "Wallet not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                wallet.Id,
+                organisation_id = wallet.OrganisationId,
+                wallet.Balance,
+                total_received = wallet.TotalReceived,
+                total_spent = wallet.TotalSpent,
+                created_at = wallet.CreatedAt
+            },
+            balance = wallet.Balance
+        });
     }
 
-    [HttpGet("api/v2/volunteering/organisations/{id:int}/wallet/transactions")]
+    [HttpGet("api/organizations/{id:int}/wallet/transactions")]
     public async Task<IActionResult> V2OrganisationWalletTransactions(int id)
     {
-        var wallet = await _db.OrgWallets.AsNoTracking().FirstOrDefaultAsync(w => w.OrganisationId == id);
-        var data = wallet == null ? Array.Empty<object>() : await _db.OrgWalletTransactions.AsNoTracking().Where(t => t.OrgWalletId == wallet.Id).OrderByDescending(t => t.CreatedAt).Cast<object>().ToArrayAsync();
-        return Ok(new { data });
-    }
+        var userId = CurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-    [HttpPost("api/v2/volunteering/organisations/{id:int}/wallet/deposit")]
-    [HttpPut("api/v2/volunteering/organisations/{id:int}/wallet/auto-pay")]
-    public IActionResult V2OrganisationWalletMutate(int id) => Ok(new { success = true, organisation_id = id });
+        var access = await _organisationService.GetWalletAccessAsync(id, userId.Value);
+        if (!access.Exists) return NotFound(new { error = "Organisation not found" });
+        if (!access.Allowed)
+            return StatusCode(403, new { error = "You must be a member of this organisation" });
+
+        var wallet = await _orgWalletService.GetWalletAsync(id);
+        if (wallet == null) return NotFound(new { error = "Wallet not found" });
+
+        var transactions = await _orgWalletService.GetTransactionsAsync(id, page: 1, limit: 100);
+        return Ok(new
+        {
+            data = transactions.Select(transaction => new
+            {
+                transaction.Id,
+                transaction.Type,
+                transaction.Amount,
+                balance_after = transaction.BalanceAfter,
+                transaction.Category,
+                transaction.Description,
+                created_at = transaction.CreatedAt,
+                initiated_by = transaction.InitiatedBy != null
+                    ? new { transaction.InitiatedBy.Id, transaction.InitiatedBy.FirstName, transaction.InitiatedBy.LastName }
+                    : null,
+                from_user = transaction.FromUser != null
+                    ? new { transaction.FromUser.Id, transaction.FromUser.FirstName, transaction.FromUser.LastName }
+                    : null,
+                to_user = transaction.ToUser != null
+                    ? new { transaction.ToUser.Id, transaction.ToUser.FirstName, transaction.ToUser.LastName }
+                    : null
+            })
+        });
+    }
 
     [HttpGet("api/organizations/{id:int}/members")]
     public async Task<IActionResult> V2OrganisationMembers(int id)
     {
-        var data = await _db.OrganisationMembers.AsNoTracking().Where(m => m.OrganisationId == id)
-            .Select(m => new { id = m.Id, user_id = m.UserId, role = m.Role, joined_at = m.JoinedAt }).ToListAsync();
-        return Ok(new { data });
+        var userId = CurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var members = await _organisationService.GetMembersAsync(id, userId.Value);
+        if (members == null) return NotFound(new { error = "Organisation not found" });
+
+        return Ok(new
+        {
+            data = members.Select(member => new
+            {
+                id = member.Id,
+                user_id = member.UserId,
+                role = member.Role,
+                joined_at = member.JoinedAt,
+                user = member.User != null
+                    ? new { member.User.Id, member.User.FirstName, member.User.LastName }
+                    : null
+            })
+        });
     }
 
     [HttpGet("api/v2/conversations/{id:int}/messages")]
@@ -781,7 +1234,20 @@ public class V15MemberParityController : ControllerBase
         perPage = Math.Clamp(perPage, 1, 100);
         var tenantId = TenantId();
         var query = _db.Listings.AsNoTracking()
-            .Where(l => l.TenantId == tenantId && l.Status == ListingStatus.Active && l.DeletedAt == null);
+            .Where(l => l.TenantId == tenantId
+                && l.Status == ListingStatus.Active
+                && l.DeletedAt == null
+                && _db.Users.IgnoreQueryFilters().Any(owner =>
+                    owner.TenantId == tenantId
+                    && owner.Id == l.UserId
+                    && owner.IsActive
+                    && owner.SuspendedAt == null)
+                && _db.FederationUserSettings.IgnoreQueryFilters().Any(settings =>
+                    settings.TenantId == tenantId
+                    && settings.UserId == l.UserId
+                    && settings.FederationOptIn
+                    && settings.ProfileVisible
+                    && settings.ListingsVisible));
         var total = await query.CountAsync();
         var data = await query
             .OrderByDescending(l => l.Id)
@@ -813,7 +1279,14 @@ public class V15MemberParityController : ControllerBase
         perPage = Math.Clamp(perPage, 1, 100);
         var tenantId = TenantId();
         var includePii = PartnerScopes().Contains("users.pii", StringComparer.OrdinalIgnoreCase);
-        var query = _db.Users.AsNoTracking().Where(u => u.TenantId == tenantId && u.IsActive);
+        var query = _db.Users.AsNoTracking().Where(u => u.TenantId == tenantId
+            && u.IsActive
+            && u.SuspendedAt == null
+            && _db.FederationUserSettings.IgnoreQueryFilters().Any(settings =>
+                settings.TenantId == tenantId
+                && settings.UserId == u.Id
+                && settings.FederationOptIn
+                && settings.ProfileVisible));
         var total = await query.CountAsync();
         var data = await query
             .OrderBy(u => u.Id)
@@ -823,7 +1296,7 @@ public class V15MemberParityController : ControllerBase
             {
                 id = u.Id,
                 name = (u.FirstName + " " + u.LastName).Trim(),
-                username = u.Email,
+                username = (string?)null,
                 created_at = u.CreatedAt,
                 status = u.IsActive ? "active" : "inactive",
                 email = includePii ? u.Email : null
@@ -843,15 +1316,24 @@ public class V15MemberParityController : ControllerBase
         }
 
         var includePii = PartnerScopes().Contains("users.pii", StringComparer.OrdinalIgnoreCase);
+        var tenantId = TenantId();
         var user = await _db.Users.AsNoTracking()
-            .Where(u => u.TenantId == TenantId() && u.Id == id)
+            .Where(u => u.TenantId == tenantId
+                && u.Id == id
+                && u.IsActive
+                && u.SuspendedAt == null
+                && _db.FederationUserSettings.IgnoreQueryFilters().Any(settings =>
+                    settings.TenantId == tenantId
+                    && settings.UserId == u.Id
+                    && settings.FederationOptIn
+                    && settings.ProfileVisible))
             .Select(u => new
             {
                 user = new
                 {
                     id = u.Id,
                     name = (u.FirstName + " " + u.LastName).Trim(),
-                    username = u.Email,
+                    username = (string?)null,
                     created_at = u.CreatedAt,
                     status = u.IsActive ? "active" : "inactive",
                     email = includePii ? u.Email : null
@@ -892,9 +1374,22 @@ public class V15MemberParityController : ControllerBase
             ? allowedScopes
             : requestedScopes.Where(scope => allowedScopes.Contains(scope, StringComparer.OrdinalIgnoreCase)).ToArray();
 
+        var accessToken = GeneratePartnerAccessToken(partner, grantedScopes);
+        var expiresAt = DateTime.UtcNow.AddSeconds(PartnerTokenTtlSeconds);
+        _db.ApiPartnerAccessTokens.Add(new ApiPartnerAccessToken
+        {
+            PartnerId = partner.Id,
+            TenantId = partner.TenantId,
+            AccessTokenHash = Sha256Hex(accessToken),
+            Scopes = string.Join(' ', grantedScopes),
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
         return PartnerJson(new
         {
-            access_token = GeneratePartnerAccessToken(partner, grantedScopes),
+            access_token = accessToken,
             token_type = "bearer",
             expires_in = PartnerTokenTtlSeconds,
             scope = string.Join(' ', grantedScopes)
@@ -918,6 +1413,22 @@ public class V15MemberParityController : ControllerBase
             return PartnerError("invalid_client", "Client authentication failed.", 401);
         }
 
+        var token = GetString(body, "token")?.Trim();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            var tokenHash = Sha256Hex(token);
+            var row = await _db.ApiPartnerAccessTokens
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(candidate => candidate.PartnerId == partner.Id
+                    && candidate.TenantId == partner.TenantId
+                    && candidate.AccessTokenHash == tokenHash);
+            if (row is not null && row.RevokedAt is null)
+            {
+                row.RevokedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
+
         return PartnerJson(new { revoked = true });
     }
 
@@ -930,51 +1441,26 @@ public class V15MemberParityController : ControllerBase
             return partnerResult!;
         }
 
-        return PartnerData(new { subscriptions = Array.Empty<object>() });
+        return PartnerError(
+            "webhook_subscriptions_unavailable",
+            "Webhook subscriptions are unavailable until durable storage is configured.",
+            StatusCodes.Status503ServiceUnavailable);
     }
 
     [HttpPost("api/partner/v1/webhooks/subscriptions")]
     [AllowAnonymous]
-    public IActionResult PartnerWebhookSubscriptionCreate([FromBody] JsonElement body)
+    public IActionResult PartnerWebhookSubscriptionCreate()
     {
-        if (!TryRequirePartnerScope("webhooks.manage", out var partnerResult, out var partner))
+        if (!TryRequirePartnerScope("webhooks.manage", out var partnerResult, out _))
         {
             return partnerResult!;
         }
 
-        var events = ReadStringArray(body, "event_types");
-        var targetUrl = GetString(body, "target_url")?.Trim() ?? string.Empty;
-        if (events.Length == 0 || string.IsNullOrWhiteSpace(targetUrl))
-        {
-            return PartnerError("invalid_request", "event_types (array) and target_url are required.", 422);
-        }
-
-        if (!Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri) || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return PartnerError("invalid_url", "target_url must be a valid https:// URL.", 422);
-        }
-
-        return PartnerData(new
-        {
-            subscription = new
-            {
-                id = Guid.NewGuid().ToString("N"),
-                partner_id = partner?.Id,
-                event_types = events,
-                target_url = targetUrl,
-                secret = "whsec_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
-                created_at = DateTime.UtcNow
-            }
-        }, 201);
+        return PartnerError(
+            "webhook_subscriptions_unavailable",
+            "Webhook subscriptions are unavailable until durable storage is configured.",
+            StatusCodes.Status503ServiceUnavailable);
     }
-
-    [HttpGet("api/v2/federation/events")]
-    [HttpGet("api/v2/federation/partners")]
-    [HttpGet("api/v2/federation/partners/{id:int}")]
-    [HttpPost("api/v2/federation/ingest/events")]
-    [HttpPost("api/v2/federation/ingest/listings")]
-    [HttpGet("api/v2/vereine/{organizationId:int}/shared-events")]
-    public IActionResult V2PartnerLightweight() => Ok(new { success = true, data = Array.Empty<object>() });
 
     [HttpPost("api/webhooks/sendgrid/events")]
     [AllowAnonymous]
@@ -1050,14 +1536,176 @@ public class V15MemberParityController : ControllerBase
 
         partner = _db.ApiPartners.IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefault(p => p.Id == partnerId && p.Status == ApiPartnerStatus.Active);
+            .FirstOrDefault(p => p.Id == partnerId
+                && p.TenantId == TenantId()
+                && p.Status == ApiPartnerStatus.Active);
         if (partner == null)
         {
             result = PartnerError("AUTH_REQUIRED", "Partner bearer token required.", 401);
             return false;
         }
 
+        var bearerToken = PartnerBearerToken();
+        if (string.IsNullOrWhiteSpace(bearerToken))
+        {
+            result = PartnerError("invalid_token", "The access token is invalid or expired.", 401);
+            return false;
+        }
+
+        var tokenHash = Sha256Hex(bearerToken);
+        var authorizedPartnerId = partner.Id;
+        var authorizedTenantId = partner.TenantId;
+        var tokenActive = _db.ApiPartnerAccessTokens
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Any(token => token.PartnerId == authorizedPartnerId
+                && token.TenantId == authorizedTenantId
+                && token.AccessTokenHash == tokenHash
+                && token.RevokedAt == null
+                && token.ExpiresAt > DateTime.UtcNow);
+        if (!tokenActive)
+        {
+            result = PartnerError("invalid_token", "The access token is invalid or expired.", 401);
+            return false;
+        }
+
+        if (!PartnerIpAllowed(partner, HttpContext.Connection.RemoteIpAddress))
+        {
+            result = PartnerError("ip_not_allowed", "Caller IP is not in the partner allowlist.", 403);
+            return false;
+        }
+
+        if (partner.IsSandbox && !HttpMethods.IsGet(Request.Method) && !HttpMethods.IsHead(Request.Method))
+        {
+            result = PartnerError("sandbox_write_disabled", "Sandbox partners may only call read-only endpoints.", 403);
+            return false;
+        }
+
+        if (!TryConsumePartnerRateLimit(partner, out var retryAfter))
+        {
+            Response.Headers["Retry-After"] = retryAfter.ToString();
+            result = PartnerError("rate_limited", "Rate limit exceeded.", 429);
+            return false;
+        }
+
         return true;
+    }
+
+    private string? PartnerBearerToken()
+    {
+        var authorization = Request.Headers.Authorization.ToString();
+        return authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? authorization["Bearer ".Length..].Trim()
+            : null;
+    }
+
+    private bool TryConsumePartnerRateLimit(ApiPartner partner, out int retryAfter)
+    {
+        var limit = Math.Max(1, partner.RateLimitPerMinute);
+        var now = DateTimeOffset.UtcNow;
+        var minute = now.ToUnixTimeSeconds() / 60;
+        retryAfter = Math.Max(1, 60 - now.Second);
+        var cacheKey = $"partner-api-rate:{partner.Id:N}";
+        var sync = PartnerRateLocks.GetOrAdd(partner.Id, static _ => new object());
+        lock (sync)
+        {
+            _cache.TryGetValue(cacheKey, out PartnerRateWindow? window);
+            var count = window is not null && window.Minute == minute ? window.Count : 0;
+            Response.Headers["X-RateLimit-Limit"] = limit.ToString();
+            if (count >= limit)
+            {
+                Response.Headers["X-RateLimit-Remaining"] = "0";
+                return false;
+            }
+
+            count++;
+            _cache.Set(
+                cacheKey,
+                new PartnerRateWindow(minute, count),
+                TimeSpan.FromMinutes(2));
+            Response.Headers["X-RateLimit-Remaining"] = Math.Max(0, limit - count).ToString();
+            return true;
+        }
+    }
+
+    private static bool PartnerIpAllowed(ApiPartner partner, IPAddress? remoteIp)
+    {
+        if (string.IsNullOrWhiteSpace(partner.AllowedIpCidrs))
+            return true;
+        if (remoteIp is null)
+            return false;
+
+        string[] cidrs;
+        try
+        {
+            cidrs = JsonSerializer.Deserialize<string[]>(partner.AllowedIpCidrs) ?? [];
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        if (cidrs.Length == 0)
+            return true;
+
+        return cidrs.Any(cidr => IpInCidr(remoteIp, cidr));
+    }
+
+    private static bool IpInCidr(IPAddress address, string rawCidr)
+    {
+        var parts = rawCidr.Trim().Split('/', 2, StringSplitOptions.TrimEntries);
+        if (!IPAddress.TryParse(parts[0], out var network))
+            return false;
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        if (network.IsIPv4MappedToIPv6)
+            network = network.MapToIPv4();
+        if (address.AddressFamily != network.AddressFamily)
+            return false;
+        if (parts.Length == 1)
+            return address.Equals(network);
+        if (!int.TryParse(parts[1], out var prefixLength))
+            return false;
+
+        var addressBytes = address.GetAddressBytes();
+        var networkBytes = network.GetAddressBytes();
+        if (prefixLength < 0 || prefixLength > addressBytes.Length * 8)
+            return false;
+        var fullBytes = prefixLength / 8;
+        var remainingBits = prefixLength % 8;
+        for (var index = 0; index < fullBytes; index++)
+        {
+            if (addressBytes[index] != networkBytes[index])
+                return false;
+        }
+        if (remainingBits == 0)
+            return true;
+
+        var mask = (byte)(0xFF << (8 - remainingBits));
+        return (addressBytes[fullBytes] & mask) == (networkBytes[fullBytes] & mask);
+    }
+
+    private sealed record PartnerRateWindow(long Minute, int Count);
+
+    private async Task<bool> IsPartnerWalletUserAsync(int tenantId, int userId)
+    {
+        var userEligible = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(user => user.Id == userId
+                && user.TenantId == tenantId
+                && user.IsActive
+                && user.SuspendedAt == null);
+        if (!userEligible)
+        {
+            return false;
+        }
+
+        return await _db.FederationUserSettings
+            .IgnoreQueryFilters()
+            .AnyAsync(settings => settings.TenantId == tenantId
+                && settings.UserId == userId
+                && settings.FederationOptIn
+                && settings.ProfileVisible
+                && settings.TransactionsEnabled);
     }
 
     private string[] PartnerScopes()
@@ -1094,6 +1742,7 @@ public class V15MemberParityController : ControllerBase
             new Claim("partner_id", partner.Id.ToString()),
             new Claim("partner_scopes", scopeText),
             new Claim("scope", scopeText),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
 

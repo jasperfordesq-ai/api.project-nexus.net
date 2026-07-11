@@ -217,6 +217,12 @@ public static class NexusRouteAccessResolver
     {
         var path = (rawPath ?? string.Empty).TrimEnd('/').ToLowerInvariant();
 
+        if (path is "/api/admin/timebanking/adjust-balance"
+            or "/api/v2/admin/timebanking/adjust-balance")
+        {
+            return NexusAccessLevel.BrokerOrAdmin;
+        }
+
         if (IsGodOnlyPath(path))
         {
             return NexusAccessLevel.God;

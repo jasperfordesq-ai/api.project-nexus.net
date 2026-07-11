@@ -199,15 +199,17 @@ public class CaringCommunityHourTransferControllerUnitTests
         allTransactions.Should().ContainSingle(t =>
             t.TenantId == 42
             && t.SenderId == 10
-            && t.ReceiverId == 0
+            && t.ReceiverId == null
             && t.Amount == 2.5m
+            && t.TransactionType == "other"
             && t.Description!.StartsWith("[hour_transfer_out]"));
 
         allTransactions.Should().ContainSingle(t =>
             t.TenantId == 7
-            && t.SenderId == 10
+            && t.SenderId == null
             && t.ReceiverId == 70
             && t.Amount == 2.5m
+            && t.TransactionType == "other"
             && t.Description!.StartsWith("[hour_transfer_in]"));
 
         AssertSingleError(

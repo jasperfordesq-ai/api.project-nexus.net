@@ -968,14 +968,6 @@ public class MiscParityController : ControllerBase
     [Authorize]
     public IActionResult SaveSafeguarding([FromBody] JsonElement body) => Ok(new { data = new { saved = true } });
 
-    [HttpGet("organizations/{id:int}/members")]
-    [Authorize]
-    public IActionResult OrganizationMembers(int id) => Ok(new { data = Array.Empty<object>() });
-
-    [HttpGet("organizations/{id:int}/wallet/balance")]
-    [Authorize]
-    public IActionResult OrganizationWalletBalance(int id) => Ok(new { data = new { organisation_id = id, balance = 0 } });
-
     [HttpPost("pilot-inquiry")]
     [AllowAnonymous]
     public IActionResult PilotInquiry([FromBody] JsonElement body) => Ok(new { data = new { received = true } });

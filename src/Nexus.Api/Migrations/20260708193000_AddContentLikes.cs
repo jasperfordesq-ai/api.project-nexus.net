@@ -11,7 +11,9 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Nexus.Api.Migrations;
 
-public partial class AddContentLikes : Migration
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260708193000_AddContentLikes")]
+    public partial class AddContentLikes : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {

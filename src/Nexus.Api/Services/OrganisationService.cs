@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -67,12 +68,25 @@ public class OrganisationService
         return await query.CountAsync();
     }
 
-    public async Task<Organisation?> GetByIdAsync(int id)
+    public async Task<Organisation?> GetByIdAsync(int id, int viewerId)
     {
-        return await _db.Set<Organisation>()
+        var viewer = await FindActiveTenantUserAsync(viewerId);
+        if (viewer == null) return null;
+
+        var organisation = await _db.Set<Organisation>()
             .Include(o => o.Owner)
             .Include(o => o.Members).ThenInclude(m => m.User)
             .FirstOrDefaultAsync(o => o.Id == id);
+        if (organisation == null) return null;
+
+        var mayView = organisation.IsPublic
+            && string.Equals(organisation.Status, "verified", StringComparison.Ordinal);
+        mayView = mayView
+            || organisation.OwnerId == viewerId
+            || NexusUserAccessEvaluator.HasAdminAccess(viewer)
+            || organisation.Members.Any(member => member.UserId == viewerId);
+
+        return mayView ? organisation : null;
     }
 
     public async Task<Organisation?> GetBySlugAsync(string slug)
@@ -151,10 +165,16 @@ public class OrganisationService
         var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
         if (org == null) return (null, "Organisation not found");
 
-        // Only owner or org admin can update
+        // Only the canonical owner or an organisation admin can update. A
+        // historical membership row labelled "owner" must not confer ownership.
         var member = await _db.Set<OrganisationMember>()
             .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == userId);
-        if (member == null || (member.Role != "owner" && member.Role != "admin"))
+        var isCanonicalOwner = org.OwnerId == userId;
+        var isOrganisationAdmin = string.Equals(
+            member?.Role,
+            "admin",
+            StringComparison.OrdinalIgnoreCase);
+        if (!isCanonicalOwner && !isOrganisationAdmin)
             return (null, "Not authorized to update this organisation");
 
         if (name != null)
@@ -185,89 +205,249 @@ public class OrganisationService
 
     public async Task<string?> DeleteAsync(int orgId, int userId)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
         var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
-        if (org == null) return "Organisation not found";
-        if (org.OwnerId != userId) return "Only the owner can delete this organisation";
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return "Organisation not found";
+        }
+        if (org.OwnerId != userId)
+        {
+            await transaction.RollbackAsync();
+            return "Only the owner can delete this organisation";
+        }
+
+        // Organisation wallets are durable financial evidence. Deleting a
+        // funded wallet (or one with history) would erase the receiving side
+        // while personal-wallet debits remain. Require an explicit, audited
+        // close-out workflow instead of cascading that evidence away.
+        var wallet = await _db.Set<OrgWallet>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.OrganisationId == orgId);
+        if (wallet != null)
+        {
+            var hasTransactionHistory = await _db.Set<OrgWalletTransaction>()
+                .AsNoTracking()
+                .AnyAsync(entry => entry.OrgWalletId == wallet.Id);
+            if (wallet.Balance != 0m
+                || wallet.TotalReceived != 0m
+                || wallet.TotalSpent != 0m
+                || hasTransactionHistory)
+            {
+                await transaction.RollbackAsync();
+                return "Organisation wallet must be empty and have no transaction history before deletion";
+            }
+        }
 
         var members = await _db.Set<OrganisationMember>()
             .Where(m => m.OrganisationId == orgId).ToListAsync();
         _db.Set<OrganisationMember>().RemoveRange(members);
         _db.Set<Organisation>().Remove(org);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return null;
     }
 
     // ── Members ─────────────────────────────────────────────
 
-    public async Task<List<OrganisationMember>> GetMembersAsync(int orgId)
+    public async Task<List<OrganisationMember>?> GetMembersAsync(int orgId, int viewerId)
     {
-        return await _db.Set<OrganisationMember>()
-            .Where(m => m.OrganisationId == orgId)
-            .Include(m => m.User)
+        var organisation = await GetByIdAsync(orgId, viewerId);
+        if (organisation == null) return null;
+
+        return organisation.Members
+            .Where(member => member.User is { IsActive: true, SuspendedAt: null })
             .OrderBy(m => m.Role)
             .ThenBy(m => m.JoinedAt)
-            .ToListAsync();
+            .ToList();
+    }
+
+    /// <summary>
+    /// Wallets are private to an organisation's owner/members and current,
+    /// database-backed tenant administrators. The existence bit lets callers
+    /// preserve the canonical 404-versus-403 contract.
+    /// </summary>
+    public async Task<(bool Exists, bool Allowed)> GetWalletAccessAsync(int orgId, int viewerId)
+    {
+        var organisation = await _db.Set<Organisation>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.Id == orgId);
+        if (organisation == null) return (false, false);
+
+        var viewer = await FindActiveTenantUserAsync(viewerId);
+        if (viewer == null) return (true, false);
+
+        if (organisation.OwnerId == viewerId || NexusUserAccessEvaluator.HasAdminAccess(viewer))
+            return (true, true);
+
+        var isMember = await _db.Set<OrganisationMember>()
+            .AsNoTracking()
+            .AnyAsync(member => member.OrganisationId == orgId
+                && member.UserId == viewerId);
+        return (true, isMember);
     }
 
     public async Task<(OrganisationMember? Member, string? Error)> AddMemberAsync(
         int orgId, int userId, int requesterId, string role = "member", string? jobTitle = null)
     {
-        // Check requester is owner/admin
+        var normalizedRole = NormalizeAssignableRole(role);
+        if (normalizedRole == null || normalizedRole == "owner")
+            return (null, "Role must be admin, member, or volunteer");
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(candidate => candidate.Id == orgId);
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Organisation not found");
+        }
+
+        var requesterIsOwner = org.OwnerId == requesterId;
         var requester = await _db.Set<OrganisationMember>()
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == requesterId);
-        if (requester == null || (requester.Role != "owner" && requester.Role != "admin"))
+        var requesterIsAdmin = string.Equals(requester?.Role, "admin", StringComparison.OrdinalIgnoreCase);
+        if (!requesterIsOwner && !requesterIsAdmin)
+        {
+            await transaction.RollbackAsync();
             return (null, "Not authorized to add members");
+        }
+        if (!requesterIsOwner && normalizedRole == "admin")
+        {
+            await transaction.RollbackAsync();
+            return (null, "Only the owner can grant an elevated role");
+        }
+
+        var target = await FindActiveTenantUserAsync(userId);
+        if (target == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "User not found");
+        }
 
         var existing = await _db.Set<OrganisationMember>()
             .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId);
-        if (existing) return (null, "User is already a member");
+        if (existing)
+        {
+            await transaction.RollbackAsync();
+            return (null, "User is already a member");
+        }
 
         var member = new OrganisationMember
         {
             TenantId = _tenantContext.GetTenantIdOrThrow(),
             OrganisationId = orgId,
             UserId = userId,
-            Role = role,
+            Role = normalizedRole,
             JobTitle = jobTitle
         };
 
         _db.Set<OrganisationMember>().Add(member);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return (member, null);
     }
 
     public async Task<string?> RemoveMemberAsync(int orgId, int userId, int requesterId)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(candidate => candidate.Id == orgId);
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return "Organisation not found";
+        }
+
+        var requesterIsOwner = org.OwnerId == requesterId;
         var requester = await _db.Set<OrganisationMember>()
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == requesterId);
-        if (requester == null || (requester.Role != "owner" && requester.Role != "admin"))
+        var requesterIsAdmin = string.Equals(requester?.Role, "admin", StringComparison.OrdinalIgnoreCase);
+        if (!requesterIsOwner && !requesterIsAdmin)
+        {
+            await transaction.RollbackAsync();
             return "Not authorized to remove members";
+        }
 
         var member = await _db.Set<OrganisationMember>()
             .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == userId);
-        if (member == null) return "Member not found";
-        if (member.Role == "owner") return "Cannot remove the owner";
+        if (member == null)
+        {
+            await transaction.RollbackAsync();
+            return "Member not found";
+        }
+        if (org.OwnerId == userId || string.Equals(member.Role, "owner", StringComparison.OrdinalIgnoreCase))
+        {
+            await transaction.RollbackAsync();
+            return "Cannot remove the owner";
+        }
+        if (!requesterIsOwner && string.Equals(member.Role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            await transaction.RollbackAsync();
+            return "Only the owner can revoke an elevated role";
+        }
 
         _db.Set<OrganisationMember>().Remove(member);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return null;
     }
 
     public async Task<(OrganisationMember? Member, string? Error)> UpdateMemberRoleAsync(
         int orgId, int userId, int requesterId, string newRole, string? jobTitle = null)
     {
-        var requester = await _db.Set<OrganisationMember>()
-            .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == requesterId);
-        if (requester == null || requester.Role != "owner")
+        var normalizedRole = NormalizeAssignableRole(newRole);
+        if (normalizedRole == null || normalizedRole == "owner")
+            return (null, "Role must be admin, member, or volunteer");
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(candidate => candidate.Id == orgId);
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Organisation not found");
+        }
+        if (org.OwnerId != requesterId)
+        {
+            await transaction.RollbackAsync();
             return (null, "Only the owner can change roles");
+        }
+        if (org.OwnerId == userId)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Cannot change the owner's role");
+        }
 
         var member = await _db.Set<OrganisationMember>()
             .FirstOrDefaultAsync(m => m.OrganisationId == orgId && m.UserId == userId);
-        if (member == null) return (null, "Member not found");
+        if (member == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Member not found");
+        }
+        if (await FindActiveTenantUserAsync(member.UserId) == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "User not found");
+        }
 
-        member.Role = newRole;
+        member.Role = normalizedRole;
         if (jobTitle != null) member.JobTitle = jobTitle;
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return (member, null);
     }
 
@@ -308,25 +488,65 @@ public class OrganisationService
 
     public async Task<(Organisation? Org, string? Error)> AdminVerifyAsync(int orgId)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
         var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
-        if (org == null) return (null, "Organisation not found");
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Organisation not found");
+        }
 
         org.Status = "verified";
         org.VerifiedAt = DateTime.UtcNow;
         org.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return (org, null);
     }
 
     public async Task<(Organisation? Org, string? Error)> AdminSuspendAsync(int orgId)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.ReadCommitted);
+        await OrganisationLifecycleLock.AcquireAsync(_db, orgId);
+
         var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
-        if (org == null) return (null, "Organisation not found");
+        if (org == null)
+        {
+            await transaction.RollbackAsync();
+            return (null, "Organisation not found");
+        }
 
         org.Status = "suspended";
         org.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return (org, null);
+    }
+
+    private async Task<User?> FindActiveTenantUserAsync(int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        return await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Id == userId
+                && user.TenantId == tenantId
+                && user.IsActive
+                && user.SuspendedAt == null);
+    }
+
+    private static string? NormalizeAssignableRole(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role)) return null;
+
+        var normalized = role.Trim().ToLowerInvariant();
+        return normalized is "owner" or "admin" or "member" or "volunteer"
+            ? normalized
+            : null;
     }
 
     private static string GenerateSlug(string name)

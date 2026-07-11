@@ -168,7 +168,7 @@ public class GroupExchangeController : ControllerBase
         }
 
         request ??= new UpdateGroupExchangeRequest();
-        await _service.UpdateAsync(
+        var updatedSuccessfully = await _service.UpdateAsync(
             id,
             new UpdateGroupExchangeInput(
                 request.Title,
@@ -179,6 +179,15 @@ public class GroupExchangeController : ControllerBase
                 request.BrokerNotes,
                 request.ListingId),
             cancellationToken);
+
+        if (!updatedSuccessfully)
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "This exchange can no longer be updated.",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
 
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
         return Ok(Data(updated!));
@@ -201,7 +210,14 @@ public class GroupExchangeController : ControllerBase
             return Error("FORBIDDEN", "Only the organizer can cancel", null, StatusCodes.Status403Forbidden);
         }
 
-        await _service.CancelAsync(id, cancellationToken);
+        if (!await _service.CancelAsync(id, cancellationToken))
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "A completed or cancelled exchange cannot be cancelled.",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
         return Ok(Data(new { message = "Exchange cancelled" }));
     }
 
@@ -277,7 +293,14 @@ public class GroupExchangeController : ControllerBase
             return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
         }
 
-        await _service.RemoveParticipantAsync(id, participantUserId, cancellationToken);
+        if (!await _service.RemoveParticipantAsync(id, userId.Value, participantUserId, cancellationToken))
+        {
+            return Error(
+                "VALIDATION_ERROR",
+                "This participant can no longer be removed.",
+                null,
+                StatusCodes.Status400BadRequest);
+        }
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
         return Ok(Data(updated!));
     }

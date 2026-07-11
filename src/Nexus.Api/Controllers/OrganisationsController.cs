@@ -69,12 +69,13 @@ public class OrganisationsController : ControllerBase
     /// GET /api/organisations/{id} - Get organisation details.
     /// </summary>
     [HttpGet("{id:int}")]
+    [HttpGet("/api/organizations/{id:int}")]
     public async Task<IActionResult> GetOrganisation(int id)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var org = await _orgs.GetByIdAsync(id);
+        var org = await _orgs.GetByIdAsync(id, userId.Value);
         if (org == null) return NotFound(new { error = "Organisation not found" });
 
         return Ok(new
@@ -173,7 +174,8 @@ public class OrganisationsController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var members = await _orgs.GetMembersAsync(id);
+        var members = await _orgs.GetMembersAsync(id, userId.Value);
+        if (members == null) return NotFound(new { error = "Organisation not found" });
         return Ok(new
         {
             data = members.Select(m => new

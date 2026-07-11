@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Tests;
 
@@ -124,7 +125,7 @@ public class CaringCommunityHourGiftsControllerUnitTests
     }
 
     [Fact]
-    public async Task Send_CreatesPendingGiftAndPendingOutgoingWalletHold()
+    public async Task Send_CreatesPendingGiftAndCompletedHiddenWalletReservation()
     {
         var tenant = CreateTenantContext(42);
         await using var db = CreateDbContext(tenant);
@@ -157,12 +158,14 @@ public class CaringCommunityHourGiftsControllerUnitTests
         gift.Status.Should().Be("pending");
 
         var hold = await db.Transactions.IgnoreQueryFilters()
-            .SingleAsync(t => t.Description == "Caring hour gift pending");
+            .SingleAsync(t => t.Description == "Caring hour gift reservation");
+        gift.ReservationTransactionId.Should().Be(hold.Id);
         hold.TenantId.Should().Be(42);
         hold.SenderId.Should().Be(10);
-        hold.ReceiverId.Should().Be(20);
+        hold.ReceiverId.Should().BeNull();
         hold.Amount.Should().Be(2.5m);
-        hold.Status.Should().Be(TransactionStatus.Pending);
+        hold.Status.Should().Be(TransactionStatus.Completed);
+        hold.TransactionType.Should().Be(PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType);
     }
 
     [Fact]
@@ -174,7 +177,9 @@ public class CaringCommunityHourGiftsControllerUnitTests
         db.Users.AddRange(
             User(42, 10, "sender@example.test", "Sam", "Sender"),
             User(42, 20, "recipient@example.test", "Robin", "Recipient"));
-        db.Add(CreateGift(
+        SeedBalance(db, tenantId: 42, receiverId: 10, amount: 8m);
+        db.Add(CreateReservedGift(
+            db,
             42,
             senderId: 10,
             recipientId: 20,
@@ -197,14 +202,55 @@ public class CaringCommunityHourGiftsControllerUnitTests
         gift.Status.Should().Be("accepted");
         gift.AcceptedAt.Should().NotBeNull();
         gift.UpdatedAt.Should().NotBeNull();
+        gift.ReservationTransactionId.Should().NotBeNull();
+        gift.SettlementTransactionId.Should().NotBeNull();
 
-        var walletCredit = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        var walletCredit = await db.Transactions.IgnoreQueryFilters()
+            .SingleAsync(t => t.Description == "Caring hour gift accepted");
         walletCredit.TenantId.Should().Be(42);
-        walletCredit.SenderId.Should().Be(10);
+        walletCredit.SenderId.Should().BeNull();
         walletCredit.ReceiverId.Should().Be(20);
         walletCredit.Amount.Should().Be(2.75m);
         walletCredit.Status.Should().Be(TransactionStatus.Completed);
         walletCredit.Description.Should().Be("Caring hour gift accepted");
+        walletCredit.TransactionType.Should().Be(PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType);
+
+        var duplicate = await InvokeActionAsync(controller, "Accept", 100L, CancellationToken.None);
+        var duplicateError = duplicate.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        duplicateError.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        (await db.Transactions.IgnoreQueryFilters()
+            .CountAsync(t => t.Description == "Caring hour gift accepted"))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Accept_WhenReservationLinkMissing_FailsWithoutMintingCredit()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(42, 10, "sender@example.test", "Sam", "Sender"),
+            User(42, 20, "recipient@example.test", "Robin", "Recipient"));
+        db.Add(CreateGift(
+            42,
+            senderId: 10,
+            recipientId: 20,
+            hours: 2m,
+            status: "pending",
+            createdAt: DateTime.UtcNow.AddHours(-1),
+            message: "Broken legacy reservation",
+            id: 103));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 20);
+
+        var result = await InvokeActionAsync(controller, "Accept", 103L, CancellationToken.None);
+
+        var error = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        error.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        (await db.CaringHourGifts.IgnoreQueryFilters().SingleAsync(gift => gift.Id == 103))
+            .Status.Should().Be("pending");
+        (await db.Transactions.IgnoreQueryFilters().CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -216,7 +262,9 @@ public class CaringCommunityHourGiftsControllerUnitTests
         db.Users.AddRange(
             User(42, 10, "sender@example.test", "Sam", "Sender"),
             User(42, 20, "recipient@example.test", "Robin", "Recipient"));
-        db.Add(CreateGift(
+        SeedBalance(db, tenantId: 42, receiverId: 10, amount: 8m);
+        db.Add(CreateReservedGift(
+            db,
             42,
             senderId: 10,
             recipientId: 20,
@@ -242,13 +290,17 @@ public class CaringCommunityHourGiftsControllerUnitTests
         gift.UpdatedAt.Should().NotBeNull();
         gift.DeclineReason.Should().Be("Not needed this week");
 
-        var refund = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        gift.ReservationTransactionId.Should().NotBeNull();
+        gift.SettlementTransactionId.Should().NotBeNull();
+        var refund = await db.Transactions.IgnoreQueryFilters()
+            .SingleAsync(t => t.Description == "Caring hour gift declined refund");
         refund.TenantId.Should().Be(42);
-        refund.SenderId.Should().Be(0);
+        refund.SenderId.Should().BeNull();
         refund.ReceiverId.Should().Be(10);
         refund.Amount.Should().Be(3.5m);
         refund.Status.Should().Be(TransactionStatus.Completed);
         refund.Description.Should().Be("Caring hour gift declined refund");
+        refund.TransactionType.Should().Be(PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType);
     }
 
     [Fact]
@@ -260,7 +312,9 @@ public class CaringCommunityHourGiftsControllerUnitTests
         db.Users.AddRange(
             User(42, 10, "sender@example.test", "Sam", "Sender"),
             User(42, 20, "recipient@example.test", "Robin", "Recipient"));
-        db.Add(CreateGift(
+        SeedBalance(db, tenantId: 42, receiverId: 10, amount: 8m);
+        db.Add(CreateReservedGift(
+            db,
             42,
             senderId: 10,
             recipientId: 20,
@@ -284,13 +338,17 @@ public class CaringCommunityHourGiftsControllerUnitTests
         gift.RevertedAt.Should().NotBeNull();
         gift.UpdatedAt.Should().NotBeNull();
 
-        var refund = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        gift.ReservationTransactionId.Should().NotBeNull();
+        gift.SettlementTransactionId.Should().NotBeNull();
+        var refund = await db.Transactions.IgnoreQueryFilters()
+            .SingleAsync(t => t.Description == "Caring hour gift reverted refund");
         refund.TenantId.Should().Be(42);
-        refund.SenderId.Should().Be(0);
+        refund.SenderId.Should().BeNull();
         refund.ReceiverId.Should().Be(10);
         refund.Amount.Should().Be(4.25m);
         refund.Status.Should().Be(TransactionStatus.Completed);
         refund.Description.Should().Be("Caring hour gift reverted refund");
+        refund.TransactionType.Should().Be(PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType);
     }
 
     private static Type? ResolveControllerType()
@@ -339,6 +397,42 @@ public class CaringCommunityHourGiftsControllerUnitTests
         return gift;
     }
 
+    private static object CreateReservedGift(
+        NexusDbContext db,
+        int tenantId,
+        int senderId,
+        int recipientId,
+        decimal hours,
+        string status,
+        DateTime createdAt,
+        string? message,
+        long? id = null)
+    {
+        var reservation = new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = senderId,
+            ReceiverId = null,
+            Amount = hours,
+            Description = "Caring hour gift reservation",
+            TransactionType = PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType,
+            Status = TransactionStatus.Completed,
+            CreatedAt = createdAt
+        };
+        db.Transactions.Add(reservation);
+        var gift = CreateGift(
+            tenantId,
+            senderId,
+            recipientId,
+            hours,
+            status,
+            createdAt,
+            message,
+            id);
+        Set(gift, "ReservationTransaction", reservation);
+        return gift;
+    }
+
     private static object CreateDeclineRequest(string? reason)
     {
         var type = Type.GetType("Nexus.Api.Controllers.CaringHourGiftDeclineRequest, Nexus.Api");
@@ -364,7 +458,7 @@ public class CaringCommunityHourGiftsControllerUnitTests
         db.Transactions.Add(new Transaction
         {
             TenantId = tenantId,
-            SenderId = 0,
+            SenderId = null,
             ReceiverId = receiverId,
             Amount = amount,
             Description = "Seed grant",

@@ -94,6 +94,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     public async Task<IActionResult> PlatformStats()
     {
         var hoursExchanged = await _db.Transactions
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.Status == TransactionStatus.Completed)
             .SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
@@ -104,7 +105,9 @@ public class ReactFrontendCompatibilityController : ControllerBase
             listings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
             skills = await _db.Skills.CountAsync(),
             communities = await _db.Groups.CountAsync(),
-            exchanges = await _db.Transactions.CountAsync(t => t.Status == TransactionStatus.Completed),
+            exchanges = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
+                .CountAsync(t => t.Status == TransactionStatus.Completed),
             events = await _db.Set<Event>().CountAsync(e => !e.IsCancelled),
             volunteering_opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.Status == OpportunityStatus.Published)
         };
@@ -204,6 +207,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
                 enabled = settings.FederationOptIn,
                 profile_visible = settings.ProfileVisible,
                 listings_visible = settings.ListingsVisible,
+                transactions_enabled_federated = settings.TransactionsEnabled,
                 active_partners = partnerCount
             }
         });
@@ -743,23 +747,41 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
     [HttpGet("api/wallet/user-search")]
     [Authorize]
-    public async Task<IActionResult> WalletUserSearch([FromQuery] string? q = null, [FromQuery] string? search = null)
+    [EnableRateLimiting(RateLimitingExtensions.PersonalWalletUserSearchPolicy)]
+    public async Task<IActionResult> WalletUserSearch(
+        [FromQuery] string? q = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int limit = 10)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { error = "Invalid token" });
+
         var term = (q ?? search ?? string.Empty).Trim().ToLowerInvariant();
+        if (term.Length < 1)
+            return Ok(new { data = Array.Empty<object>(), users = Array.Empty<object>() });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        limit = Math.Clamp(limit, 1, 20);
         var users = await _db.Users
-            .Where(u => u.IsActive && (term == string.Empty ||
-                u.FirstName.ToLower().Contains(term) ||
-                u.LastName.ToLower().Contains(term) ||
-                u.Email.ToLower().Contains(term)))
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId
+                && u.Id != currentUserId.Value
+                && u.IsActive
+                && u.SuspendedAt == null
+                && (u.FirstName.ToLower().Contains(term)
+                    || u.LastName.ToLower().Contains(term)
+                    || (u.FirstName + " " + u.LastName).ToLower().Contains(term)))
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
-            .Take(20)
+            .Take(limit)
             .Select(u => new
             {
                 id = u.Id,
+                username = (string?)null,
                 name = (u.FirstName + " " + u.LastName).Trim(),
                 first_name = u.FirstName,
                 last_name = u.LastName,
+                avatar = u.AvatarUrl,
                 avatar_url = u.AvatarUrl
             })
             .ToListAsync();
@@ -1322,8 +1344,13 @@ public class ReactFrontendCompatibilityController : ControllerBase
     {
         var data = new
         {
-            completed_transactions = await _db.Transactions.CountAsync(t => t.Status == TransactionStatus.Completed),
-            total_hours = await _db.Transactions.Where(t => t.Status == TransactionStatus.Completed).SumAsync(t => (decimal?)t.Amount) ?? 0m
+            completed_transactions = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
+                .CountAsync(t => t.Status == TransactionStatus.Completed),
+            total_hours = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
+                .Where(t => t.Status == TransactionStatus.Completed)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0m
         };
         return Ok(new { data });
     }
@@ -1904,13 +1931,22 @@ public class ReactFrontendCompatibilityController : ControllerBase
             l.UserId == userId.Value &&
             l.Type == ListingType.Request &&
             l.Status == ListingStatus.Active);
-        var givenTotal = await _db.Transactions
+        var completedTransactions = _db.Transactions
+            .Where(t => t.TenantId == tenantId && t.Status == TransactionStatus.Completed);
+        var rawGivenTotal = await completedTransactions
             .Where(t => t.TenantId == tenantId && t.SenderId == userId.Value && t.Status == TransactionStatus.Completed)
             .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-        var receivedTotal = await _db.Transactions
+        var rawReceivedTotal = await completedTransactions
             .Where(t => t.TenantId == tenantId && t.ReceiverId == userId.Value && t.Status == TransactionStatus.Completed)
             .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-        var walletBalance = Math.Round(receivedTotal - givenTotal, 2);
+        var visibleTransactions = completedTransactions.ExcludeInternalWalletAdapters();
+        var givenTotal = await visibleTransactions
+            .Where(t => t.SenderId == userId.Value)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var receivedTotal = await visibleTransactions
+            .Where(t => t.ReceiverId == userId.Value)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var walletBalance = Math.Round(rawReceivedTotal - rawGivenTotal, 2);
 
         var stats = new
         {
@@ -1921,7 +1957,10 @@ public class ReactFrontendCompatibilityController : ControllerBase
             requests_count = requestsCount,
             wallet_balance = walletBalance,
             listings = offersCount + requestsCount,
-            completed_exchanges = await _db.Transactions.CountAsync(t => (t.SenderId == userId.Value || t.ReceiverId == userId.Value) && t.Status == TransactionStatus.Completed),
+            completed_exchanges = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
+                .CountAsync(t => (t.SenderId == userId.Value || t.ReceiverId == userId.Value)
+                    && t.Status == TransactionStatus.Completed),
             connections = await _db.Connections.CountAsync(c => (c.RequesterId == userId.Value || c.AddresseeId == userId.Value) && c.Status == Connection.Statuses.Accepted),
             reviews = await _db.Reviews.CountAsync(r => r.TargetUserId == userId.Value),
             volunteer_hours = await _db.VolunteerCheckIns.Where(c => c.UserId == userId.Value).SumAsync(c => c.HoursLogged) ?? 0m

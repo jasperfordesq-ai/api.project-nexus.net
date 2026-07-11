@@ -23,8 +23,16 @@ public class WalletConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("transactions");
             entity.HasKey(e => e.Id);
+            // Tenant-aware financial evidence can only point at a transaction
+            // from the same isolation boundary.
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Amount).HasPrecision(10, 2);
-            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.TransactionType)
+                .HasMaxLength(50)
+                .HasDefaultValue("transfer");
+            entity.Property(e => e.DeletedForSender).HasDefaultValue(false);
+            entity.Property(e => e.DeletedForReceiver).HasDefaultValue(false);
 
             // Optimistic concurrency control
             entity.Property(e => e.RowVersion)

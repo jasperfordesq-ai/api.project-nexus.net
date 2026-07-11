@@ -40,6 +40,9 @@ public class FederationPartner : ITenantEntity
     /// </summary>
     public bool SharedMembers { get; set; } = false;
 
+    /// <summary>Whether this partnership permits cross-tenant credit transactions.</summary>
+    public bool TransactionsEnabled { get; set; }
+
     /// <summary>
     /// Exchange rate for cross-tenant credit transfers.
     /// 1.0 means 1 hour in tenant A = 1 hour in tenant B.

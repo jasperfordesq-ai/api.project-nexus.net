@@ -85,6 +85,24 @@ public sealed class VolunteerOrganisationFeatureGateMiddleware
                     "/api/volunteering/opportunities/",
                     StringComparison.OrdinalIgnoreCase) == true)
             && int.TryParse(opportunityIdSegment, out _);
-        return isCreate || isMyOrganisations || isOpportunityDelete;
+        var isMemberWallet = (path?.StartsWith(
+                    "/api/v2/volunteering/organisations/",
+                    StringComparison.OrdinalIgnoreCase) == true
+                || path?.StartsWith(
+                    "/api/volunteering/organisations/",
+                    StringComparison.OrdinalIgnoreCase) == true)
+            && (path.EndsWith("/wallet", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/wallet/transactions", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/wallet/deposit", StringComparison.OrdinalIgnoreCase));
+        var isAdminWalletAdjustment = HttpMethods.IsPut(context.Request.Method)
+            && path?.StartsWith(
+                "/api/v2/admin/volunteering/organizations/",
+                StringComparison.OrdinalIgnoreCase) == true
+            && path.EndsWith("/wallet/adjust", StringComparison.OrdinalIgnoreCase);
+        return isCreate
+            || isMyOrganisations
+            || isOpportunityDelete
+            || isMemberWallet
+            || isAdminWalletAdjustment;
     }
 }

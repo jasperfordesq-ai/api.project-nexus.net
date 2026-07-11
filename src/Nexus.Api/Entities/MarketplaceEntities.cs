@@ -348,6 +348,8 @@ public class CaringLoyaltyRedemption : ITenantEntity
     public int MerchantUserId { get; set; }
     public int? MarketplaceListingId { get; set; }
     public int? MarketplaceOrderId { get; set; }
+    public int? RedemptionTransactionId { get; set; }
+    public int? ReversalTransactionId { get; set; }
     public decimal CreditsUsed { get; set; }
     public decimal ExchangeRateChf { get; set; }
     public decimal DiscountChf { get; set; }
@@ -359,4 +361,7 @@ public class CaringLoyaltyRedemption : ITenantEntity
     public string? ReversalReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    public Transaction? RedemptionTransaction { get; set; }
+    public Transaction? ReversalTransaction { get; set; }
 }

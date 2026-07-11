@@ -169,6 +169,8 @@ public sealed class AdminRouteOwnershipParityTests : IClassFixture<AdminRouteOwn
         routes.Add("POST", "api/v2/admin/volunteering/organizations", "AdminExplicitParity", "Post");
         routes.Add("PUT", "api/v2/admin/volunteering/organizations/{id}", "AdminExplicitParity", "Put");
         routes.Add("PUT", "api/v2/admin/volunteering/organizations/{id}/status", "AdminExplicitParity", "Put");
+        routes.Add("GET", "api/v2/admin/volunteering/organizations/{id:int}/wallet/transactions", "AdminVolunteerOrganisationWallet", "GetTransactions");
+        routes.Add("PUT", "api/v2/admin/volunteering/organizations/{id:int}/wallet/adjust", "AdminVolunteerOrganisationWallet", "Adjust");
         routes.Add("GET", "api/v2/admin/volunteering/guardian-consents", "VolunteerAdmin", "ListCanonicalGuardianConsents");
         AddLegacyAndV2(routes, "PUT", "groups/{id:int}", "AdminExplicitParity", "Put");
         AddLegacyAndV2(routes, "POST", "listings/{id:int}/approve", "Admin", "ApproveListing");

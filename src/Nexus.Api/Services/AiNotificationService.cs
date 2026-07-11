@@ -198,6 +198,7 @@ public class AiNotificationService
                 .CountAsync(l => l.UserId == userId && l.CreatedAt > weekAgo, ct);
 
             var transactionsCompleted = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
                 .CountAsync(t => (t.SenderId == userId || t.ReceiverId == userId)
                     && t.CreatedAt > weekAgo, ct);
 
@@ -263,6 +264,7 @@ public class AiNotificationService
                 .MaxAsync(l => (DateTime?)l.CreatedAt, ct);
 
             var lastTransaction = await _db.Transactions
+                .ExcludeInternalWalletAdapters()
                 .Where(t => t.SenderId == userId || t.ReceiverId == userId)
                 .MaxAsync(t => (DateTime?)t.CreatedAt, ct);
 

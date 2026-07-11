@@ -7,6 +7,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -18,6 +23,9 @@ namespace Nexus.Api.Tests;
 [Collection("Integration")]
 public class ExchangesControllerTests : IntegrationTestBase
 {
+    private const string CompletionUnavailable =
+        "Exchange completion requires matching confirmation from both participants and is not available on this endpoint.";
+
     public ExchangesControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     #region Create Exchange
@@ -240,57 +248,93 @@ public class ExchangesControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CompleteExchange_TransfersCredits()
+    public async Task CompleteExchange_WithoutTwoPartyConfirmation_FailsClosedWithoutMutation()
     {
         var exchangeId = await CreateAcceptAndStartExchangeAsync();
+        var memberBalanceBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        var adminBalanceBefore = await GetBalanceAsync(TestData.AdminUser.Id);
+        int transactionCountBefore;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            transactionCountBefore = await db.Transactions.IgnoreQueryFilters().CountAsync();
+        }
 
-        // Complete as member
         await AuthenticateAsMemberAsync();
         var response = await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/complete", new
         {
             actual_hours = 2.0
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("status").GetString().Should().Be("completed");
-        content.GetProperty("actual_hours").GetDecimal().Should().Be(2.0m);
-        content.GetProperty("transaction_id").ValueKind.Should().NotBe(JsonValueKind.Null);
+        content.GetProperty("error").GetString().Should().Be(CompletionUnavailable);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var exchange = await db.Exchanges.IgnoreQueryFilters().SingleAsync(row => row.Id == exchangeId);
+            exchange.Status.Should().Be(ExchangeStatus.InProgress);
+            exchange.ActualHours.Should().BeNull();
+            exchange.CompletedAt.Should().BeNull();
+            exchange.TransactionId.Should().BeNull();
+            (await db.Transactions.IgnoreQueryFilters().CountAsync()).Should().Be(transactionCountBefore);
+        }
+
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBalanceBefore);
+        (await GetBalanceAsync(TestData.AdminUser.Id)).Should().Be(adminBalanceBefore);
     }
 
     [Fact]
-    public async Task CompleteExchange_InsufficientBalance_Fails()
+    public async Task CompleteExchange_WithInsufficientBalance_StillReturnsConfirmationUnavailableWithoutMutation()
     {
-        // Admin creates a listing, member requests an exchange
-        // Member will need to pay (as receiver of an offer), but if balance is too low...
-        await AuthenticateAsAdminAsync();
+        var exchangeId = await CreateAcceptAndStartExchangeAsync();
 
-        // Create exchange on member's listing (so admin is initiator and will be receiver)
-        var createResponse = await Client.PostAsJsonAsync("/api/exchanges", new
+        // Raise the settlement amount only after a valid lifecycle setup so
+        // the request reaches the deliberately unavailable completion path.
+        using (var scope = Factory.Services.CreateScope())
         {
-            listing_id = TestData.Listing2.Id, // Member's listing (offer)
-            agreed_hours = 9999.0 // Way more than anyone has
-        });
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var exchange = await db.Exchanges.SingleAsync(row => row.Id == exchangeId);
+            exchange.AgreedHours = 9999m;
+            await db.SaveChangesAsync();
+        }
 
-        if (createResponse.StatusCode != HttpStatusCode.Created)
-            return; // Skip if setup fails
+        var adminBalanceBefore = await GetBalanceAsync(TestData.AdminUser.Id);
+        var memberBalanceBefore = await GetBalanceAsync(TestData.MemberUser.Id);
+        int transactionCountBefore;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            transactionCountBefore = await scope.ServiceProvider.GetRequiredService<NexusDbContext>()
+                .Transactions.IgnoreQueryFilters().CountAsync();
+        }
 
-        var exchangeId = (await createResponse.Content.ReadFromJsonAsync<JsonElement>())
-            .GetProperty("id").GetInt32();
-
-        // Accept as member (listing owner)
-        await AuthenticateAsMemberAsync();
-        await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/accept", new { });
-
-        // Start
-        await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/start", new { });
-
-        // Complete - should fail due to insufficient balance
+        // The confirmation boundary is checked before any balance/settlement work.
         var response = await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/complete", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("error").GetString().Should().Contain("Insufficient");
+        content.GetProperty("error").GetString().Should().Be(CompletionUnavailable);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var exchange = await db.Exchanges.IgnoreQueryFilters().SingleAsync(row => row.Id == exchangeId);
+            exchange.Status.Should().Be(ExchangeStatus.InProgress);
+            exchange.AgreedHours.Should().Be(9999m);
+            exchange.ActualHours.Should().BeNull();
+            exchange.CompletedAt.Should().BeNull();
+            exchange.TransactionId.Should().BeNull();
+            (await db.Transactions.IgnoreQueryFilters().CountAsync()).Should().Be(transactionCountBefore);
+        }
+
+        (await GetBalanceAsync(TestData.AdminUser.Id)).Should().Be(adminBalanceBefore);
+        (await GetBalanceAsync(TestData.MemberUser.Id)).Should().Be(memberBalanceBefore);
     }
 
     #endregion
@@ -322,7 +366,7 @@ public class ExchangesControllerTests : IntegrationTestBase
     [Fact]
     public async Task DisputeExchange_WhenCompleted_Succeeds()
     {
-        var exchangeId = await CreateFullExchangeAsync();
+        var exchangeId = await SeedCompletedExchangeAsync();
 
         await AuthenticateAsMemberAsync();
         var response = await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/dispute", new
@@ -362,7 +406,7 @@ public class ExchangesControllerTests : IntegrationTestBase
     [Fact]
     public async Task RateExchange_WhenCompleted_Succeeds()
     {
-        var exchangeId = await CreateFullExchangeAsync();
+        var exchangeId = await SeedCompletedExchangeAsync();
 
         await AuthenticateAsMemberAsync();
         var response = await Client.PostAsJsonAsync($"/api/exchanges/{exchangeId}/rate", new
@@ -381,7 +425,7 @@ public class ExchangesControllerTests : IntegrationTestBase
     [Fact]
     public async Task RateExchange_DuplicateRating_Fails()
     {
-        var exchangeId = await CreateFullExchangeAsync();
+        var exchangeId = await SeedCompletedExchangeAsync();
 
         await AuthenticateAsMemberAsync();
         await Client.PostAsJsonAsync($"/api/exchanges/{exchangeId}/rate", new
@@ -404,7 +448,7 @@ public class ExchangesControllerTests : IntegrationTestBase
     [Fact]
     public async Task RateExchange_InvalidRating_Fails()
     {
-        var exchangeId = await CreateFullExchangeAsync();
+        var exchangeId = await SeedCompletedExchangeAsync();
 
         await AuthenticateAsMemberAsync();
         var response = await Client.PostAsJsonAsync($"/api/exchanges/{exchangeId}/rate", new
@@ -526,17 +570,32 @@ public class ExchangesControllerTests : IntegrationTestBase
         return exchangeId;
     }
 
-    private async Task<int> CreateFullExchangeAsync()
+    private async Task<int> SeedCompletedExchangeAsync()
     {
         var exchangeId = await CreateAcceptAndStartExchangeAsync();
 
-        await AuthenticateAsMemberAsync();
-        await Client.PutAsJsonAsync($"/api/exchanges/{exchangeId}/complete", new
-        {
-            actual_hours = 2.0
-        });
+        // Completion itself is intentionally unavailable. Tests for dispute
+        // and rating seed their required completed-state fixture directly so
+        // they do not imply that the one-party completion endpoint is usable.
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var exchange = await db.Exchanges.SingleAsync(row => row.Id == exchangeId);
+        exchange.Status = ExchangeStatus.Completed;
+        exchange.ActualHours = exchange.AgreedHours;
+        exchange.CompletedAt = DateTime.UtcNow;
+        exchange.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
 
         return exchangeId;
+    }
+
+    private async Task<decimal> GetBalanceAsync(int userId)
+    {
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        var wallet = scope.ServiceProvider.GetRequiredService<PersonalWalletLedgerService>();
+        return await wallet.GetBalanceAsync(TestData.Tenant1.Id, userId);
     }
 
     #endregion

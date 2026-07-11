@@ -207,8 +207,8 @@ public class ExchangeService
     }
 
     /// <summary>
-    /// Complete an exchange and transfer credits.
-    /// Either party can mark as complete, but credits transfer from receiver to provider.
+    /// Fail closed until the canonical two-party hours-confirmation state and
+    /// exactly-once settlement evidence are represented in this model.
     /// </summary>
     public async Task<(Exchange? Exchange, string? Error)> CompleteExchangeAsync(
         int exchangeId, int userId, decimal? actualHours)
@@ -220,132 +220,12 @@ public class ExchangeService
         if (!IsParticipant(exchange, userId))
             return (null, "You are not a participant in this exchange");
 
-        var transitionError = ValidateTransition(exchange, ExchangeStatus.Completed);
-        if (transitionError != null)
-            return (null, transitionError);
-
-        if (!exchange.ProviderId.HasValue || !exchange.ReceiverId.HasValue)
-            return (null, "Exchange provider/receiver not set");
-
-        var hours = actualHours ?? exchange.AgreedHours;
-        if (hours <= 0)
-            return (null, "Hours must be greater than zero");
-
-        var stopwatch = Stopwatch.StartNew();
-
-        // Transfer credits atomically
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-        try
-        {
-            // Advisory lock on the receiver (who pays credits)
-            await _db.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock({0})",
-                exchange.ReceiverId.Value);
-
-            // Check receiver's balance
-            var received = await _db.Transactions
-                .Where(t => t.ReceiverId == exchange.ReceiverId.Value && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-            var sent = await _db.Transactions
-                .Where(t => t.SenderId == exchange.ReceiverId.Value && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-            var balance = received - sent;
-
-            if (balance < hours)
-            {
-                await dbTransaction.RollbackAsync();
-                return (null, $"Insufficient balance. Current: {balance:F2}, Required: {hours:F2}");
-            }
-
-            // Create the credit transaction
-            var transaction = new Transaction
-            {
-                TenantId = exchange.TenantId,
-                SenderId = exchange.ReceiverId.Value,
-                ReceiverId = exchange.ProviderId.Value,
-                Amount = hours,
-                Description = $"Exchange #{exchange.Id}: {exchange.Listing?.Title ?? "Service exchange"}",
-                ListingId = exchange.ListingId,
-                Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Transactions.Add(transaction);
-            await _db.SaveChangesAsync();
-
-            // Update exchange
-            exchange.Status = ExchangeStatus.Completed;
-            exchange.ActualHours = hours;
-            exchange.CompletedAt = DateTime.UtcNow;
-            exchange.TransactionId = transaction.Id;
-            exchange.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync();
-            await dbTransaction.CommitAsync();
-
-            stopwatch.Stop();
-            var tenantTag = new KeyValuePair<string, object?>("tenant_id", exchange.TenantId);
-            NexusMetrics.ExchangesCompleted.Add(1, tenantTag);
-            NexusMetrics.ExchangeCompletionDuration.Record(stopwatch.Elapsed.TotalSeconds, tenantTag);
-
-            _logger.LogInformation(
-                "Exchange {ExchangeId} completed: {Hours}h transferred from user {ReceiverId} to user {ProviderId}",
-                exchangeId, hours, exchange.ReceiverId, exchange.ProviderId);
-
-            // Award XP using V1 values (non-critical)
-            try
-            {
-                await _gamification.AwardXpAsync(exchange.ProviderId.Value,
-                    XpLog.Amounts.ExchangeCompleted, XpLog.Sources.ExchangeCompleted,
-                    exchange.Id, "Completed an exchange as provider");
-                await _gamification.AwardXpAsync(exchange.ReceiverId.Value,
-                    XpLog.Amounts.ExchangeCompleted, XpLog.Sources.ExchangeCompleted,
-                    exchange.Id, "Completed an exchange as receiver");
-                // Credit-based XP: provider earned credits, receiver spent credits
-                await _gamification.AwardXpAsync(exchange.ProviderId.Value,
-                    (int)(hours * XpLog.Amounts.CreditsReceivedPerCredit), XpLog.Sources.CreditsReceived,
-                    exchange.Id, $"Received {hours} credits");
-                await _gamification.AwardXpAsync(exchange.ReceiverId.Value,
-                    (int)(hours * XpLog.Amounts.CreditsSentPerCredit), XpLog.Sources.CreditsSent,
-                    exchange.Id, $"Sent {hours} credits");
-                await _gamification.CheckAndAwardBadgesAsync(exchange.ProviderId.Value, "exchange_completed");
-                await _gamification.CheckAndAwardBadgesAsync(exchange.ReceiverId.Value, "exchange_completed");
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogWarning(ex, "Failed to award XP for exchange {ExchangeId}", exchangeId);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Failed to award XP for exchange {ExchangeId}", exchangeId);
-            }
-
-            return (exchange, null);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
-            return (null, "Failed to complete exchange. Please try again.");
-        }
-        catch (DbUpdateException ex)
-        {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
-            return (null, "Failed to complete exchange. Please try again.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
-            return (null, "Failed to complete exchange. Please try again.");
-        }
-        catch (OperationCanceledException ex)
-        {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
-            return (null, "Failed to complete exchange. Please try again.");
-        }
+        _logger.LogWarning(
+            "Blocked one-party completion for exchange {ExchangeId} by user {UserId}: two-party confirmation evidence is unavailable",
+            exchangeId,
+            userId);
+        return (null,
+            "Exchange completion requires matching confirmation from both participants and is not available on this endpoint.");
     }
 
     /// <summary>

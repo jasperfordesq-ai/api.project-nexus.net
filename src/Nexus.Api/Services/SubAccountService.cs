@@ -15,8 +15,10 @@ namespace Nexus.Api.Services;
 /// </summary>
 public class SubAccountService
 {
+    private static readonly bool ChildApprovalWorkflowAvailable = false;
     private readonly NexusDbContext _db;
     private readonly ILogger<SubAccountService> _logger;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
     private static readonly HashSet<string> ValidRelationships = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -25,10 +27,14 @@ public class SubAccountService
 
     private const int MaxSubAccountsPerUser = 10;
 
-    public SubAccountService(NexusDbContext db, ILogger<SubAccountService> logger)
+    public SubAccountService(
+        NexusDbContext db,
+        ILogger<SubAccountService> logger,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
         _logger = logger;
+        _personalWallet = personalWallet;
     }
 
     /// <summary>
@@ -68,6 +74,12 @@ public class SubAccountService
     public async Task<(SubAccount? SubAccount, string? Error)> CreateSubAccountAsync(
         int tenantId, int primaryUserId, int subUserId, string relationship, string? displayName)
     {
+        if (!ChildApprovalWorkflowAvailable)
+        {
+            return (null,
+                "Sub-account linking is unavailable until the managed user can explicitly approve the relationship and permissions.");
+        }
+
         if (primaryUserId == subUserId)
             return (null, "Cannot add yourself as a sub-account.");
 
@@ -272,6 +284,12 @@ public class SubAccountService
     public async Task<(bool Success, string? Error)> PoolTransferAsync(
         int tenantId, int primaryUserId, int fromUserId, int toUserId, decimal amount, string? description)
     {
+        if (!ChildApprovalWorkflowAvailable)
+        {
+            return (false,
+                "Pooled wallet transfers are unavailable until the managed user has explicitly approved transaction access.");
+        }
+
         if (amount <= 0)
             return (false, "Transfer amount must be greater than zero.");
 
@@ -297,23 +315,16 @@ public class SubAccountService
         if (!subAccount.CanTransact)
             return (false, "This sub-account does not have permission to transfer credits.");
 
-        // Use serializable transaction with advisory lock to prevent race conditions
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        // READ COMMITTED is safe here because every personal-wallet spender
+        // takes the same transaction-scoped advisory lock before its balance read.
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         try
         {
             // Lock on sender to serialize concurrent transfers from same user
-            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", fromUserId);
+            await _personalWallet.AcquireSpendLockAsync(fromUserId);
 
             // Check sender has sufficient balance (now protected by lock)
-            var received = await _db.Transactions
-                .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-
-            var sent = await _db.Transactions
-                .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-
-            var senderBalance = received - sent;
+            var senderBalance = await _personalWallet.GetBalanceAsync(tenantId, fromUserId);
             if (senderBalance < amount)
             {
                 await dbTransaction.RollbackAsync();
@@ -328,6 +339,7 @@ public class SubAccountService
                 ReceiverId = toUserId,
                 Amount = amount,
                 Description = description ?? "Family pool transfer",
+                TransactionType = "sub_account_transfer",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow
             };
@@ -388,14 +400,18 @@ public class SubAccountService
 
         // Query transactions
         var transactions = await _db.Transactions
-            .Where(t => (allUserIds.Contains(t.SenderId) || allUserIds.Contains(t.ReceiverId)) && t.Status == TransactionStatus.Completed)
+            .Where(t => ((t.SenderId.HasValue && allUserIds.Contains(t.SenderId.Value))
+                    || (t.ReceiverId.HasValue && allUserIds.Contains(t.ReceiverId.Value)))
+                && t.Status == TransactionStatus.Completed)
             .OrderByDescending(t => t.CreatedAt)
             .Take(limit * 3)
             .ToListAsync();
 
         foreach (var t in transactions)
         {
-            var userId = allUserIds.Contains(t.SenderId) ? t.SenderId : t.ReceiverId;
+            var userId = t.SenderId.HasValue && allUserIds.Contains(t.SenderId.Value)
+                ? t.SenderId.Value
+                : t.ReceiverId!.Value;
             var (name, relationship) = userInfo.GetValueOrDefault(userId, ($"User {userId}", "unknown"));
             activities.Add(new FamilyActivityItem
             {

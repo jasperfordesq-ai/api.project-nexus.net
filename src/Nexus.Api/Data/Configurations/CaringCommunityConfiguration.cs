@@ -988,6 +988,7 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("nominated").IsRequired();
             entity.Property(e => e.ReportedBalanceHours).HasColumnName("reported_balance_hours").HasPrecision(8, 2);
             entity.Property(e => e.SettledHours).HasColumnName("settled_hours").HasPrecision(8, 2);
+            entity.Property(e => e.SettlementTransactionId).HasColumnName("settlement_transaction_id");
             entity.Property(e => e.PolicyDocumentReference).HasColumnName("policy_document_reference").HasMaxLength(255);
             entity.Property(e => e.MemberNotes).HasColumnName("member_notes").HasColumnType("text");
             entity.Property(e => e.CoordinatorNotes).HasColumnName("coordinator_notes").HasColumnType("text");
@@ -1005,6 +1006,9 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => new { e.TenantId, e.MemberUserId })
                 .IsUnique()
                 .HasDatabaseName("caring_hour_estates_tenant_member_unique");
+            entity.HasIndex(e => new { e.TenantId, e.SettlementTransactionId })
+                .IsUnique()
+                .HasFilter("\"settlement_transaction_id\" IS NOT NULL");
 
             entity.HasOne(e => e.Tenant)
                 .WithMany()
@@ -1019,6 +1023,12 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.BeneficiaryUser)
                 .WithMany()
                 .HasForeignKey(e => e.BeneficiaryUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.SettlementTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.SettlementTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
@@ -1083,6 +1093,8 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.SenderUserId).HasColumnName("sender_user_id");
             entity.Property(e => e.RecipientUserId).HasColumnName("recipient_user_id");
+            entity.Property(e => e.ReservationTransactionId).HasColumnName("reservation_transaction_id");
+            entity.Property(e => e.SettlementTransactionId).HasColumnName("settlement_transaction_id");
             entity.Property(e => e.Hours).HasColumnName("hours").HasPrecision(8, 2);
             entity.Property(e => e.Message).HasColumnName("message").HasColumnType("text");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("pending").IsRequired();
@@ -1099,6 +1111,12 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
                 .HasDatabaseName("caring_hour_gifts_tenant_recipient_idx");
             entity.HasIndex(e => new { e.TenantId, e.Status })
                 .HasDatabaseName("caring_hour_gifts_tenant_status_idx");
+            entity.HasIndex(e => new { e.TenantId, e.ReservationTransactionId })
+                .IsUnique()
+                .HasFilter("\"reservation_transaction_id\" IS NOT NULL");
+            entity.HasIndex(e => new { e.TenantId, e.SettlementTransactionId })
+                .IsUnique()
+                .HasFilter("\"settlement_transaction_id\" IS NOT NULL");
 
             entity.HasOne(e => e.Tenant)
                 .WithMany()
@@ -1113,6 +1131,18 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.RecipientUser)
                 .WithMany()
                 .HasForeignKey(e => e.RecipientUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.SettlementTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.SettlementTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ReservationTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.ReservationTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);

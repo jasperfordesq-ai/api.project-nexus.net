@@ -503,6 +503,8 @@ public class NexusDbContext : DbContext
 
     // API Partners (third-party API consumers)
     public DbSet<ApiPartner> ApiPartners => Set<ApiPartner>();
+    public DbSet<ApiPartnerAccessToken> ApiPartnerAccessTokens => Set<ApiPartnerAccessToken>();
+    public DbSet<ApiPartnerWalletCredit> ApiPartnerWalletCredits => Set<ApiPartnerWalletCredit>();
 
     // Jobs parity
     public DbSet<JobSavedProfile> JobSavedProfiles => Set<JobSavedProfile>();
@@ -684,6 +686,22 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.MerchantUserId });
             entity.HasIndex(e => new { e.TenantId, e.RedeemedAt });
             entity.HasIndex(e => new { e.TenantId, e.MarketplaceListingId });
+            entity.HasIndex(e => new { e.TenantId, e.RedemptionTransactionId })
+                .IsUnique()
+                .HasFilter("\"RedemptionTransactionId\" IS NOT NULL");
+            entity.HasIndex(e => new { e.TenantId, e.ReversalTransactionId })
+                .IsUnique()
+                .HasFilter("\"ReversalTransactionId\" IS NOT NULL");
+            entity.HasOne(e => e.RedemptionTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.RedemptionTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReversalTransaction)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.ReversalTransactionId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

@@ -150,6 +150,7 @@ public class EnterpriseService
 
         var totalCreditsTransferred = await _db.Transactions
             .IgnoreQueryFilters()
+            .ExcludeInternalWalletAdapters()
             .Where(t => t.TenantId == tenantId && t.CreatedAt >= monthStart)
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 

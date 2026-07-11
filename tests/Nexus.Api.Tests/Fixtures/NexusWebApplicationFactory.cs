@@ -61,6 +61,13 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 ["RateLimiting:GuardianConsent:VerifyWindowSeconds"] = "1",
                 ["RateLimiting:GuardianConsent:WithdrawPermitLimit"] = "1000",
                 ["RateLimiting:GuardianConsent:WithdrawWindowSeconds"] = "1",
+                ["RateLimiting:PersonalWallet:TransferPermitLimit"] = "1000",
+                ["RateLimiting:PersonalWallet:TransferWindowSeconds"] = "1",
+                ["RateLimiting:PersonalWallet:UserSearchPermitLimit"] = "1000",
+                ["RateLimiting:PersonalWallet:UserSearchWindowSeconds"] = "1",
+                ["RateLimiting:VolunteerOrganisationWallet:DepositPermitLimit"] = "1000",
+                ["RateLimiting:VolunteerOrganisationWallet:DepositWindowSeconds"] = "1",
+                ["Cors:AllowedOrigins:0"] = "https://wallet-ui.example.test",
                 ["RabbitMq:Enabled"] = "false", // Disable RabbitMQ for tests
                 ["LlamaService:BaseUrl"] = "http://localhost:11434", // Mock URL
                 // Disable the outbound-network security gates in the test host.

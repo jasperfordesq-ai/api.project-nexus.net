@@ -243,6 +243,7 @@ public class AdminController : ControllerBase
         // Batch transaction stats into single query
         var transactionStats = await _db.Transactions
             .AsNoTracking()
+            .ExcludeInternalWalletAdapters()
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -476,7 +477,9 @@ public class AdminController : ControllerBase
 
         // Get activity stats
         var listingCount = await _db.Listings.CountAsync(l => l.UserId == id);
-        var transactionCount = await _db.Transactions.CountAsync(t => t.SenderId == id || t.ReceiverId == id);
+        var transactionCount = await _db.Transactions
+            .ExcludeInternalWalletAdapters()
+            .CountAsync(t => t.SenderId == id || t.ReceiverId == id);
         var connectionCount = await _db.Connections.CountAsync(c =>
             (c.RequesterId == id || c.AddresseeId == id) && c.Status == Connection.Statuses.Accepted);
 

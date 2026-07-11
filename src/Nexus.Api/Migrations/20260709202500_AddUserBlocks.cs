@@ -9,7 +9,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Nexus.Api.Migrations;
 
-public partial class AddUserBlocks : Migration
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260709202500_AddUserBlocks")]
+    public partial class AddUserBlocks : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
@@ -31,6 +33,12 @@ public partial class AddUserBlocks : Migration
 
             CREATE INDEX IF NOT EXISTS "IX_user_blocks_tenant_blocked"
                 ON user_blocks (tenant_id, blocked_user_id);
+
+            CREATE INDEX IF NOT EXISTS "IX_user_blocks_UserId"
+                ON user_blocks (user_id);
+
+            CREATE INDEX IF NOT EXISTS "IX_user_blocks_BlockedUserId"
+                ON user_blocks (blocked_user_id);
             """);
     }
 

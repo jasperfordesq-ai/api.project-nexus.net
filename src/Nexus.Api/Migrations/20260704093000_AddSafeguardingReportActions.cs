@@ -11,6 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Nexus.Api.Migrations
 {
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260704093000_AddSafeguardingReportActions")]
     public partial class AddSafeguardingReportActions : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

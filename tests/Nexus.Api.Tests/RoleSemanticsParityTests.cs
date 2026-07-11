@@ -43,6 +43,8 @@ public class RoleSemanticsParityTests : IntegrationTestBase
     [InlineData("/api/v2/super-admin/provisioning-requests", NexusAccessLevel.PlatformSuperAdmin)]
     [InlineData("/api/admin/settings/powered-by-image-light", NexusAccessLevel.God)]
     [InlineData("/api/admin/system/users/admins", NexusAccessLevel.PlatformSuperAdmin)]
+    [InlineData("/api/admin/timebanking/adjust-balance", NexusAccessLevel.BrokerOrAdmin)]
+    [InlineData("/api/v2/admin/timebanking/adjust-balance", NexusAccessLevel.BrokerOrAdmin)]
     public void RouteAwareResolver_UsesCanonicalPrivilegeTier(string path, NexusAccessLevel expected)
     {
         NexusRouteAccessResolver.Resolve(path).Should().Be(expected);
@@ -290,8 +292,11 @@ public class RoleSemanticsParityTests : IntegrationTestBase
                 .IgnoreQueryFilters()
                 .SingleAsync(candidate => candidate.Id == TestData.MemberUser.Id);
             TrackForRestore(user);
-            user.TenantId = TestData.Tenant2.Id;
-            await db.SaveChangesAsync();
+            await db.Users
+                .IgnoreQueryFilters()
+                .Where(candidate => candidate.Id == user.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(candidate => candidate.TenantId, TestData.Tenant2.Id));
         }
 
         SetAuthToken(token);

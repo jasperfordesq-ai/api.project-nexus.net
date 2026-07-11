@@ -31,19 +31,22 @@ public class GroupExchangeService
     private readonly PushNotificationService _pushNotifications;
     private readonly EmailNotificationService _emailNotifications;
     private readonly ILogger<GroupExchangeService> _logger;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
     public GroupExchangeService(
         NexusDbContext db,
         TenantContext tenantContext,
         PushNotificationService pushNotifications,
         EmailNotificationService emailNotifications,
-        ILogger<GroupExchangeService> logger)
+        ILogger<GroupExchangeService> logger,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
         _tenantContext = tenantContext;
         _pushNotifications = pushNotifications;
         _emailNotifications = emailNotifications;
         _logger = logger;
+        _personalWallet = personalWallet;
     }
 
     public async Task<GroupExchangeListResult> ListForUserAsync(
@@ -111,6 +114,12 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (RoundHours(input.TotalHours) <= 0m ||
+            (input.SplitType != null && input.SplitType is not ("equal" or "custom" or "weighted")))
+        {
+            return GroupExchangeMutationResult.Failed("Invalid exchange total or split type");
+        }
+
         var participantInputs = input.Participants ?? Array.Empty<GroupExchangeParticipantInput>();
         GroupExchange exchange;
         try
@@ -124,7 +133,9 @@ public class GroupExchangeService
                 Title = input.Title.Trim(),
                 Description = NormalizeOptionalText(input.Description),
                 TotalHours = RoundHours(input.TotalHours),
-                Status = input.Status ?? "draft",
+                // Lifecycle state is server-owned. Accepting a caller supplied
+                // completed/pending status would bypass start and fresh consent.
+                Status = "draft",
                 SplitType = input.SplitType ?? "equal",
                 ListingId = input.ListingId,
                 BrokerId = input.BrokerId,
@@ -184,44 +195,89 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var exchange = await _db.GroupExchanges
-            .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
-
-        if (exchange == null)
+        if (input.TotalHours is <= 0m ||
+            (input.SplitType != null && input.SplitType is not ("equal" or "custom" or "weighted")))
         {
             return false;
         }
 
-        if (input.Title != null) exchange.Title = input.Title;
-        if (input.Description != null) exchange.Description = input.Description;
-        if (input.SplitType != null) exchange.SplitType = input.SplitType;
-        if (input.TotalHours.HasValue) exchange.TotalHours = RoundHours(input.TotalHours.Value);
-        if (input.BrokerId.HasValue) exchange.BrokerId = input.BrokerId;
-        if (input.BrokerNotes != null) exchange.BrokerNotes = input.BrokerNotes;
-        if (input.ListingId.HasValue) exchange.ListingId = input.ListingId;
-        exchange.UpdatedAt = DateTime.UtcNow;
+        var lockAttempted = false;
+        await _db.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            lockAttempted = true;
+            await AcquireSessionExchangeLockAsync(tenantId, id, cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
 
-        await _db.SaveChangesAsync(cancellationToken);
-        return true;
+            var exchange = await _db.GroupExchanges
+                .Include(item => item.Participants)
+                .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
+
+            if (exchange == null || exchange.Status is not ("draft" or "pending_participants"))
+            {
+                return false;
+            }
+
+            var resultingSplitType = input.SplitType ?? exchange.SplitType;
+            if (resultingSplitType == "custom" &&
+                exchange.Participants.Any(participant => RoundHours(participant.Hours) <= 0m))
+            {
+                return false;
+            }
+
+            if (input.Title != null) exchange.Title = input.Title;
+            if (input.Description != null) exchange.Description = input.Description;
+            if (input.SplitType != null) exchange.SplitType = input.SplitType;
+            if (input.TotalHours.HasValue) exchange.TotalHours = RoundHours(input.TotalHours.Value);
+            if (input.BrokerId.HasValue) exchange.BrokerId = input.BrokerId;
+            if (input.BrokerNotes != null) exchange.BrokerNotes = input.BrokerNotes;
+            if (input.ListingId.HasValue) exchange.ListingId = input.ListingId;
+            exchange.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            await ReleaseSessionExchangeLockAndCloseAsync(tenantId, id, lockAttempted);
+        }
     }
 
     public async Task<bool> CancelAsync(int id, CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var exchange = await _db.GroupExchanges
-            .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
-
-        if (exchange == null)
+        var lockAttempted = false;
+        await _db.Database.OpenConnectionAsync(cancellationToken);
+        try
         {
-            return false;
-        }
+            lockAttempted = true;
+            await AcquireSessionExchangeLockAsync(tenantId, id, cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
 
-        // Laravel intentionally allows cancellation from any state, including a
-        // completed exchange. Keep that behavior for contract parity.
-        exchange.Status = "cancelled";
-        exchange.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
-        return true;
+            var exchange = await _db.GroupExchanges
+                .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
+
+            if (exchange == null ||
+                exchange.Status is not ("draft" or "pending_participants" or "pending_confirmation"))
+            {
+                return false;
+            }
+
+            exchange.Status = "cancelled";
+            exchange.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            await ReleaseSessionExchangeLockAndCloseAsync(tenantId, id, lockAttempted);
+        }
     }
 
     public async Task<bool> AddParticipantAsync(
@@ -231,49 +287,62 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var exchangeExists = await _db.GroupExchanges
-            .AnyAsync(item => item.Id == exchangeId &&
-                              item.TenantId == tenantId &&
-                              item.CreatedById == organizerId,
-                cancellationToken);
-
-        if (!exchangeExists || !IsValidParticipant(input))
+        if (!IsValidParticipant(input))
         {
             return false;
         }
 
-        var participantError = await ValidateParticipantInputsAsync(
-            organizerId,
-            new[] { input },
-            cancellationToken,
-            exchangeId);
-
-        if (participantError != null)
-        {
-            return false;
-        }
-
-        var participant = new GroupExchangeParticipant
-        {
-            GroupExchangeId = exchangeId,
-            UserId = input.UserId,
-            Role = input.Role,
-            Hours = RoundHours(input.Hours),
-            Weight = RoundWeight(input.Weight),
-            IsConfirmed = false,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.GroupExchangeParticipants.Add(participant);
-
+        var lockAttempted = false;
+        await _db.Database.OpenConnectionAsync(cancellationToken);
         try
         {
+            lockAttempted = true;
+            await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+
+            var exchange = await _db.GroupExchanges
+                .FirstOrDefaultAsync(item => item.Id == exchangeId &&
+                                             item.TenantId == tenantId &&
+                                             item.CreatedById == organizerId &&
+                                             (item.Status == "draft" || item.Status == "pending_participants"),
+                    cancellationToken);
+
+            if (exchange == null || (exchange.SplitType == "custom" && RoundHours(input.Hours) <= 0m))
+            {
+                return false;
+            }
+
+            var participantError = await ValidateParticipantInputsAsync(
+                organizerId,
+                new[] { input },
+                cancellationToken,
+                exchangeId);
+
+            if (participantError != null)
+            {
+                return false;
+            }
+
+            var participant = new GroupExchangeParticipant
+            {
+                GroupExchangeId = exchangeId,
+                UserId = input.UserId,
+                Role = input.Role,
+                Hours = RoundHours(input.Hours),
+                Weight = RoundWeight(input.Weight),
+                IsConfirmed = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.GroupExchangeParticipants.Add(participant);
+
             await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return true;
         }
         catch (DbUpdateException exception)
         {
-            _db.Entry(participant).State = EntityState.Detached;
-
             if (IsUniqueViolation(exception))
             {
                 _logger.LogInformation(
@@ -289,29 +358,64 @@ public class GroupExchangeService
             // precision, and other database-domain failures escape as server errors.
             throw;
         }
+        finally
+        {
+            await ReleaseSessionExchangeLockAndCloseAsync(
+                tenantId,
+                exchangeId,
+                lockAttempted);
+        }
     }
 
     public async Task<bool> RemoveParticipantAsync(
         int exchangeId,
+        int organizerId,
         int userId,
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var participants = await _db.GroupExchangeParticipants
-            .Where(participant => participant.GroupExchangeId == exchangeId &&
-                                  participant.UserId == userId &&
-                                  participant.GroupExchange != null &&
-                                  participant.GroupExchange.TenantId == tenantId)
-            .ToListAsync(cancellationToken);
-
-        if (participants.Count == 0)
+        var lockAttempted = false;
+        await _db.Database.OpenConnectionAsync(cancellationToken);
+        try
         {
-            return false;
-        }
+            lockAttempted = true;
+            await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
 
-        _db.GroupExchangeParticipants.RemoveRange(participants);
-        await _db.SaveChangesAsync(cancellationToken);
-        return true;
+            var exchange = await _db.GroupExchanges
+                .Include(item => item.Participants)
+                .FirstOrDefaultAsync(item => item.Id == exchangeId &&
+                                             item.TenantId == tenantId &&
+                                             item.CreatedById == organizerId,
+                    cancellationToken);
+
+            if (exchange == null || exchange.Status is not ("draft" or "pending_participants"))
+            {
+                return false;
+            }
+
+            var participants = exchange.Participants
+                .Where(participant => participant.UserId == userId)
+                .ToList();
+            if (participants.Count == 0)
+            {
+                return false;
+            }
+
+            _db.GroupExchangeParticipants.RemoveRange(participants);
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            await ReleaseSessionExchangeLockAndCloseAsync(
+                tenantId,
+                exchangeId,
+                lockAttempted);
+        }
     }
 
     public async Task<GroupExchangeOperationResult> StartAsync(
@@ -370,6 +474,20 @@ public class GroupExchangeService
                 return GroupExchangeOperationResult.Failed(imbalance);
             }
 
+            if (exchange.Participants.GroupBy(item => item.UserId).Any(group => group.Count() > 1))
+            {
+                return GroupExchangeOperationResult.Failed(
+                    "A member cannot be both a provider and a receiver in the same exchange.");
+            }
+
+            // Confirmations are consent to the exact immutable split. Quarantine
+            // historical draft confirmations before entering the consent state.
+            foreach (var participant in exchange.Participants)
+            {
+                participant.IsConfirmed = false;
+                participant.ConfirmedAt = null;
+            }
+
             exchange.Status = "pending_confirmation";
             exchange.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
@@ -398,29 +516,46 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var now = DateTime.UtcNow;
+        var lockAttempted = false;
+        await _db.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            lockAttempted = true;
+            await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.ReadCommitted,
+                cancellationToken);
 
-        var affected = await _db.GroupExchangeParticipants
-            .Where(participant => participant.GroupExchangeId == exchangeId &&
-                                  participant.UserId == userId &&
-                                  !participant.IsConfirmed &&
-                                  participant.GroupExchange != null &&
-                                  participant.GroupExchange.TenantId == tenantId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(participant => participant.IsConfirmed, true)
-                .SetProperty(participant => participant.ConfirmedAt, now), cancellationToken);
+            var affected = await _db.GroupExchangeParticipants
+                .Where(participant => participant.GroupExchangeId == exchangeId &&
+                                      participant.UserId == userId &&
+                                      !participant.IsConfirmed &&
+                                      participant.GroupExchange != null &&
+                                      participant.GroupExchange.TenantId == tenantId &&
+                                      participant.GroupExchange.Status == "pending_confirmation")
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(participant => participant.IsConfirmed, true)
+                    .SetProperty(participant => participant.ConfirmedAt, DateTime.UtcNow), cancellationToken);
 
-        return affected > 0;
+            await transaction.CommitAsync(cancellationToken);
+            return affected > 0;
+        }
+        finally
+        {
+            await ReleaseSessionExchangeLockAndCloseAsync(
+                tenantId,
+                exchangeId,
+                lockAttempted);
+        }
     }
 
     public async Task<GroupExchangeCompletionResult> CompleteAsync(
         int exchangeId,
         CancellationToken cancellationToken = default)
     {
-        // The session advisory lock is acquired before each Serializable
-        // transaction begins, so same-exchange waiters start with a fresh snapshot.
-        // Serializable still protects the cross-exchange case where two exchanges
-        // concurrently try to spend the same receiver's ledger balance.
+        // The session lock serializes same-exchange completion; payer locks inside
+        // the transaction serialize the shared personal-ledger balance across
+        // different exchange and wallet workflows.
         for (var attempt = 0; attempt < 3; attempt++)
         {
             try
@@ -458,7 +593,7 @@ public class GroupExchangeService
             await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
 
             await using var transaction = await _db.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
+                IsolationLevel.ReadCommitted,
                 cancellationToken);
 
             var exchange = await _db.GroupExchanges
@@ -478,6 +613,12 @@ public class GroupExchangeService
             if (exchange.Status == "cancelled")
             {
                 return GroupExchangeCompletionResult.Failed("Exchange cancelled");
+            }
+
+            if (exchange.Status != "pending_confirmation")
+            {
+                return GroupExchangeCompletionResult.Failed(
+                    "Exchange must be started before it can be completed");
             }
 
             if (!await HasValidTenantParticipantsAsync(exchange, tenantId, cancellationToken))
@@ -507,9 +648,20 @@ public class GroupExchangeService
             var receivers = AggregatePositiveSplit(split, ReceiverRole);
             var providers = AggregatePositiveSplit(split, ProviderRole);
 
+            foreach (var payerId in receivers
+                         .Select(item => item.UserId)
+                         .Distinct()
+                         .OrderBy(id => id))
+            {
+                await _personalWallet.AcquireSpendLockAsync(payerId, cancellationToken);
+            }
+
             foreach (var receiver in receivers)
             {
-                var balance = await GetBalanceAsync(tenantId, receiver.UserId, cancellationToken);
+                var balance = await _personalWallet.GetBalanceAsync(
+                    tenantId,
+                    receiver.UserId,
+                    cancellationToken);
                 if (balance < receiver.Hours)
                 {
                     return GroupExchangeCompletionResult.Failed("Insufficient balance for transfer");
@@ -517,6 +669,16 @@ public class GroupExchangeService
             }
 
             var ledgerRows = PairTransfers(receivers, providers);
+            if (ledgerRows.Count == 0)
+            {
+                return GroupExchangeCompletionResult.Failed(
+                    "An exchange must settle a positive number of hours");
+            }
+            if (ledgerRows.Any(row => row.ReceiverId == row.ProviderId))
+            {
+                return GroupExchangeCompletionResult.Failed(
+                    "A member cannot transfer group-exchange hours to themselves");
+            }
             var now = DateTime.UtcNow;
             var transactions = ledgerRows.Select(row => new Transaction
             {
@@ -525,6 +687,7 @@ public class GroupExchangeService
                 ReceiverId = row.ProviderId,
                 Amount = row.Hours,
                 Description = $"Group exchange: {exchange.Title}",
+                TransactionType = "group_exchange",
                 ListingId = null,
                 Status = TransactionStatus.Completed,
                 CreatedAt = now
@@ -571,7 +734,7 @@ public class GroupExchangeService
         }
 
         var duplicate = participants
-            .GroupBy(item => new { item.UserId, item.Role })
+            .GroupBy(item => item.UserId)
             .Any(group => group.Count() > 1);
         if (duplicate)
         {
@@ -623,15 +786,13 @@ public class GroupExchangeService
 
         if (existingExchangeId.HasValue)
         {
-            var requestedPairs = participants.Select(item => new { item.UserId, item.Role }).ToArray();
-            var existingPairs = await _db.GroupExchangeParticipants
+            var existingUserIds = await _db.GroupExchangeParticipants
                 .AsNoTracking()
                 .Where(item => item.GroupExchangeId == existingExchangeId.Value && userIds.Contains(item.UserId))
-                .Select(item => new { item.UserId, item.Role })
+                .Select(item => item.UserId)
                 .ToListAsync(cancellationToken);
 
-            if (requestedPairs.Any(request => existingPairs.Any(existing =>
-                    existing.UserId == request.UserId && existing.Role == request.Role)))
+            if (existingUserIds.Count > 0)
             {
                 return "Failed to add participant (may already exist)";
             }
@@ -853,26 +1014,6 @@ public class GroupExchangeService
         }
     }
 
-    private async Task<decimal> GetBalanceAsync(
-        int tenantId,
-        int userId,
-        CancellationToken cancellationToken)
-    {
-        var received = await _db.Transactions
-            .AsNoTracking()
-            .Where(item => item.TenantId == tenantId &&
-                           item.ReceiverId == userId &&
-                           item.Status == TransactionStatus.Completed)
-            .SumAsync(item => (decimal?)item.Amount, cancellationToken) ?? 0m;
-        var sent = await _db.Transactions
-            .AsNoTracking()
-            .Where(item => item.TenantId == tenantId &&
-                           item.SenderId == userId &&
-                           item.Status == TransactionStatus.Completed)
-            .SumAsync(item => (decimal?)item.Amount, cancellationToken) ?? 0m;
-        return RoundHours(received - sent);
-    }
-
     private async Task<bool> HasValidTenantParticipantsAsync(
         GroupExchange exchange,
         int tenantId,
@@ -886,7 +1027,11 @@ public class GroupExchangeService
 
         var tenantUserCount = await _db.Users
             .AsNoTracking()
-            .CountAsync(user => user.TenantId == tenantId && userIds.Contains(user.Id), cancellationToken);
+            .CountAsync(user => user.TenantId == tenantId &&
+                                userIds.Contains(user.Id) &&
+                                user.IsActive &&
+                                user.SuspendedAt == null,
+                cancellationToken);
         return tenantUserCount == userIds.Length;
     }
 
@@ -952,6 +1097,11 @@ public class GroupExchangeService
 
     private static string? GetSplitImbalanceError(IReadOnlyCollection<GroupExchangeSplit> split)
     {
+        if (split.Any(item => item.Hours <= 0m))
+        {
+            return "Every provider and receiver must settle more than zero hours.";
+        }
+
         var credits = split
             .Where(item => item.Role == ProviderRole && item.Hours > 0m)
             .Sum(item => RoundHours(item.Hours));
@@ -961,6 +1111,11 @@ public class GroupExchangeService
 
         credits = RoundHours(credits);
         debits = RoundHours(debits);
+        if (credits <= 0m || debits <= 0m)
+        {
+            return "Provider and receiver hours must both be greater than zero.";
+        }
+
         return credits == debits
             ? null
             : $"Provider hours ({credits:F2}) and receiver hours ({debits:F2}) must be equal — " +
@@ -1265,7 +1420,8 @@ public class GroupExchangeService
         : $"{user.FirstName} {user.LastName}".Trim();
 
     private static bool IsValidParticipant(GroupExchangeParticipantInput input) =>
-        input.UserId > 0 && HasPhpNonEmptyString(input.Role);
+        input.UserId > 0 &&
+        input.Role is ProviderRole or ReceiverRole;
 
     private static bool HasPhpNonEmptyString(string? value) =>
         !string.IsNullOrEmpty(value) && value != "0";

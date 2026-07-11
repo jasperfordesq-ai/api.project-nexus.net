@@ -3,8 +3,10 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -28,10 +30,23 @@ public sealed class CaringHourEstateService
     ];
 
     private readonly NexusDbContext _db;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
-    public CaringHourEstateService(NexusDbContext db)
+    public CaringHourEstateService(
+        NexusDbContext db,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
+        _personalWallet = personalWallet;
+    }
+
+    public CaringHourEstateService(NexusDbContext db)
+        : this(
+            db,
+            new PersonalWalletLedgerService(
+                db,
+                NullLogger<PersonalWalletLedgerService>.Instance))
+    {
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -119,6 +134,14 @@ public sealed class CaringHourEstateService
             beneficiaryUserId = null;
         }
 
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireEstateLifecycleLockAsync(tenantId, memberUserId, ct);
+        }
+
         var now = DateTime.UtcNow;
         var estate = await _db.CaringHourEstates
             .IgnoreQueryFilters()
@@ -134,6 +157,21 @@ public sealed class CaringHourEstateService
             };
             _db.CaringHourEstates.Add(estate);
         }
+        else if (estate.Status != "nominated")
+        {
+            return EstateFailed("This legacy hour estate can no longer be changed after it has been reported.");
+        }
+
+        if (beneficiaryUserId.HasValue)
+        {
+            var beneficiaryStillExists = await _db.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.TenantId == tenantId && u.Id == beneficiaryUserId.Value, ct);
+            if (!beneficiaryStillExists)
+            {
+                return ValidationError("User not found.");
+            }
+        }
 
         estate.BeneficiaryUserId = beneficiaryUserId;
         estate.PolicyAction = policyAction;
@@ -144,6 +182,10 @@ public sealed class CaringHourEstateService
         estate.UpdatedAt = now;
 
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
         return new HourEstateMutationResult(Row: await MyEstateAsync(tenantId, memberUserId, ct));
     }
 
@@ -181,6 +223,25 @@ public sealed class CaringHourEstateService
         HourEstateAdminNotesRequest request,
         CancellationToken ct)
     {
+        var memberUserId = await _db.CaringHourEstates
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId && e.Id == estateId)
+            .Select(e => (int?)e.MemberUserId)
+            .SingleOrDefaultAsync(ct);
+        if (!memberUserId.HasValue)
+        {
+            return EstateFailed("Legacy hour estate record not found.");
+        }
+
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireEstateLifecycleLockAsync(tenantId, memberUserId.Value, ct);
+        }
+
         var estate = await FindTrackingAsync(tenantId, estateId, ct);
         if (estate is null)
         {
@@ -201,6 +262,10 @@ public sealed class CaringHourEstateService
         estate.UpdatedAt = now;
 
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
         return new HourEstateMutationResult(Row: await MapByIdAsync(tenantId, estate.Id, ct));
     }
 
@@ -211,32 +276,60 @@ public sealed class CaringHourEstateService
         HourEstateAdminNotesRequest request,
         CancellationToken ct)
     {
+        var payerUserId = await _db.CaringHourEstates
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId && e.Id == estateId)
+            .Select(e => (int?)e.MemberUserId)
+            .SingleOrDefaultAsync(ct);
+        if (!payerUserId.HasValue)
+        {
+            return EstateFailed("Legacy hour estate record not found.");
+        }
+
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireEstateLifecycleLockAsync(tenantId, payerUserId.Value, ct);
+            await _personalWallet.AcquireSpendLockAsync(payerUserId.Value, ct);
+        }
+
         var estate = await FindTrackingAsync(tenantId, estateId, ct);
-        if (estate is null)
+        if (estate is null || estate.MemberUserId != payerUserId.Value)
         {
             return EstateFailed("Legacy hour estate record not found.");
         }
 
         if (estate.Status != "reported")
         {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
             return EstateFailed("This legacy hour estate must be reported before it can be settled.");
         }
 
         var memberExists = await _db.Users
             .IgnoreQueryFilters()
             .AnyAsync(u => u.TenantId == tenantId && u.Id == estate.MemberUserId, ct);
-
         if (!memberExists)
         {
             return EstateFailed("User not found.");
         }
 
-        var hours = Math.Max(0m, await GetRoundedBalanceAsync(tenantId, estate.MemberUserId, ct));
+        var hours = Math.Max(
+            0m,
+            Math.Round(
+                await _personalWallet.GetBalanceAsync(tenantId, estate.MemberUserId, ct),
+                2,
+                MidpointRounding.AwayFromZero));
         var now = DateTime.UtcNow;
 
         if (hours > 0)
         {
-            int receiverId;
+            int? receiverId;
             if (estate.PolicyAction == "transfer_to_beneficiary")
             {
                 if (estate.BeneficiaryUserId is null or <= 0)
@@ -257,19 +350,22 @@ public sealed class CaringHourEstateService
             }
             else
             {
-                receiverId = 0;
+                receiverId = null;
             }
 
-            _db.Transactions.Add(new Transaction
+            var settlement = new Transaction
             {
                 TenantId = tenantId,
                 SenderId = estate.MemberUserId,
                 ReceiverId = receiverId,
                 Amount = hours,
                 Description = "Legacy hour estate settlement",
+                TransactionType = PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType,
                 Status = TransactionStatus.Completed,
                 CreatedAt = now
-            });
+            };
+            estate.SettlementTransaction = settlement;
+            _db.Transactions.Add(settlement);
         }
 
         var notes = TrimToNull(request.CoordinatorNotes, 2000);
@@ -281,7 +377,28 @@ public sealed class CaringHourEstateService
         estate.UpdatedAt = now;
 
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
         return new HourEstateMutationResult(Row: await MapByIdAsync(tenantId, estate.Id, ct));
+    }
+
+    private async Task AcquireEstateLifecycleLockAsync(
+        int tenantId,
+        int memberUserId,
+        CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            return;
+        }
+
+        var lockKey = unchecked((tenantId * 397) ^ memberUserId);
+        await _db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, {1})",
+            [-17006, lockKey],
+            ct);
     }
 
     private async Task<CaringHourEstate?> FindTrackingAsync(int tenantId, long estateId, CancellationToken ct)

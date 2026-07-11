@@ -106,6 +106,50 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task RoundedSubCentHours_AreRejectedBeforeExchangeOrCustomParticipantPersistence()
+    {
+        await AuthenticateAsAdminAsync();
+        var roundedZeroTitle = $"Rounded zero {Guid.NewGuid():N}";
+        var create = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+        {
+            title = roundedZeroTitle,
+            split_type = "custom",
+            total_hours = 0.001m
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == roundedZeroTitle))
+                .Should().BeFalse();
+        }
+
+        var exchangeId = await CreateExchangeAsync(
+            $"Custom rounded participant {Guid.NewGuid():N}",
+            1m,
+            "custom",
+            Array.Empty<object>());
+        var add = await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            new
+            {
+                user_id = TestData.MemberUser.Id,
+                role = "provider",
+                hours = 0.001m,
+                weight = 1m
+            });
+
+        add.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var finalScope = Factory.Services.CreateScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await finalDb.GroupExchangeParticipants.AsNoTracking()
+            .AnyAsync(item => item.GroupExchangeId == exchangeId
+                && item.UserId == TestData.MemberUser.Id))
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AuthorizationAndTenantIsolation_AreOrganizerOrParticipantOnly()
     {
         await AuthenticateAsAdminAsync();
@@ -268,12 +312,22 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             1m,
             "equal",
             Array.Empty<object>());
-        await CreateExchangeAsync(
+        var pendingId = await CreateExchangeAsync(
             "Waiting for participants",
             1m,
             "equal",
             Array.Empty<object>(),
             status: "pending_participants");
+
+        // Store always starts in draft. Seed a historical pending row directly so
+        // the list filter itself remains covered without weakening lifecycle ownership.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await db.GroupExchanges
+                .Where(item => item.Id == pendingId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, "pending_participants"));
+        }
 
         var firstPage = await JsonAsync(await Client.GetAsync(
             "/api/v2/group-exchanges?status=draft&limit=1&offset=0"));
@@ -345,6 +399,110 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await JsonAsync(rejected)).GetProperty("errors")[0].GetProperty("message").GetString()
             .Should().Contain("cannot create or destroy time credits");
+
+        var zeroId = await CreateExchangeAsync(
+            "Legacy zero custom rota",
+            5m,
+            "custom",
+            Array.Empty<object>());
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.GroupExchangeParticipants.AddRange(
+                new GroupExchangeParticipant
+                {
+                    GroupExchangeId = zeroId,
+                    UserId = TestData.AdminUser.Id,
+                    Role = "provider",
+                    Hours = 2m,
+                    Weight = 1m,
+                    IsConfirmed = true,
+                    ConfirmedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new GroupExchangeParticipant
+                {
+                    GroupExchangeId = zeroId,
+                    UserId = TestData.MemberUser.Id,
+                    Role = "receiver",
+                    Hours = 2m,
+                    Weight = 1m,
+                    IsConfirmed = true,
+                    ConfirmedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new GroupExchangeParticipant
+                {
+                    GroupExchangeId = zeroId,
+                    UserId = providerTwo,
+                    Role = "provider",
+                    Hours = 0m,
+                    Weight = 1m,
+                    IsConfirmed = true,
+                    ConfirmedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new GroupExchangeParticipant
+                {
+                    GroupExchangeId = zeroId,
+                    UserId = receiverTwo,
+                    Role = "receiver",
+                    Hours = -1m,
+                    Weight = 1m,
+                    IsConfirmed = true,
+                    ConfirmedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                });
+            await db.GroupExchanges
+                .Where(item => item.Id == zeroId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, "pending_confirmation"));
+            await db.SaveChangesAsync();
+        }
+
+        (await Client.PostAsync($"/api/v2/group-exchanges/{zeroId}/complete", null))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.GroupExchanges.AsNoTracking().SingleAsync(item => item.Id == zeroId))
+                .Status.Should().Be("pending_confirmation");
+            (await db.Transactions.AsNoTracking()
+                .CountAsync(item => item.Description == "Group exchange: Legacy zero custom rota"))
+                .Should().Be(0);
+        }
+
+
+        var roundedZeroId = await CreateExchangeAsync(
+            "Rounded zero equal rota",
+            0.01m,
+            "equal",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider"),
+                Participant(providerTwo, "provider"),
+                Participant(TestData.MemberUser.Id, "receiver"),
+                Participant(receiverTwo, "receiver")
+            });
+        var roundedZeroStart = await Client.PostAsync(
+            $"/api/v2/group-exchanges/{roundedZeroId}/start",
+            null);
+        roundedZeroStart.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await JsonAsync(roundedZeroStart)).GetProperty("errors")[0].GetProperty("message").GetString()
+            .Should().Contain("more than zero hours");
+
+        var invalidTransitionId = await CreateExchangeAsync(
+            "Invalid custom transition",
+            2m,
+            "equal",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider"),
+                Participant(TestData.MemberUser.Id, "receiver")
+            });
+        (await Client.PutAsJsonAsync(
+            $"/api/v2/group-exchanges/{invalidTransitionId}",
+            new { split_type = "custom" }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -362,13 +520,11 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             new { user_id = TestData.MemberUser.Id, role = "provider", hours = 1m, weight = 1m });
         addProvider.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // The same user may hold one row per role.
+        // A user cannot occupy both sides of a settlement.
         var addReceiver = await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
             new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 1m, weight = 1m });
-        addReceiver.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await JsonAsync(addReceiver)).GetProperty("data").GetProperty("participant_count").GetInt32()
-            .Should().Be(2);
+        addReceiver.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var duplicateRole = await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
@@ -404,7 +560,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task StorePreservesCanonicalSuppliedStateAndSplit_AndIgnoresInlineParticipantFailure()
+    public async Task StoreForcesDraftState_PreservesSplit_AndIgnoresInlineParticipantFailure()
     {
         await AuthenticateAsAdminAsync();
         var response = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
@@ -424,7 +580,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var data = (await JsonAsync(response)).GetProperty("data");
-        data.GetProperty("status").GetString().Should().Be("pending_broker");
+        data.GetProperty("status").GetString().Should().Be("draft");
         data.GetProperty("split_type").GetString().Should().Be("weighted");
         data.GetProperty("participant_count").GetInt32().Should().Be(2);
         data.GetProperty("participants").EnumerateArray()
@@ -515,6 +671,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     [Fact]
     public async Task ParticipantAdd_EnforcesBidirectionalRequiredVetting()
     {
+        var (secondParticipantId, _) = await AddSameTenantUsersAsync();
         await AuthenticateAsAdminAsync();
         var exchangeId = await CreateExchangeAsync(
             "Vetting-gated exchange",
@@ -549,7 +706,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
         var secondRole = new
         {
-            user_id = TestData.MemberUser.Id,
+            user_id = secondParticipantId,
             role = "provider",
             hours = 2m,
             weight = 1m
@@ -558,10 +715,85 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             $"/api/v2/group-exchanges/{exchangeId}/participants",
             secondRole)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        await AddVerifiedVettingAsync(TestData.MemberUser.Id, "dbs_enhanced");
+        await AddVerifiedVettingAsync(secondParticipantId, "dbs_enhanced");
         (await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
             secondRole)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task StartFreezesRevision_ResetsDraftConfirmations_AndCompletedCannotCancel()
+    {
+        var (additionalUserId, _) = await AddSameTenantUsersAsync();
+        await AuthenticateAsAdminAsync();
+        var exchangeId = await CreateExchangeAsync(
+            "Immutable consent revision",
+            2m,
+            "equal",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider"),
+                Participant(TestData.MemberUser.Id, "receiver")
+            },
+            status: "completed");
+
+        // A confirmation written by a historical/pre-fix client while draft must
+        // never survive the transition into the immutable consent state.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await db.GroupExchangeParticipants
+                .Where(item => item.GroupExchangeId == exchangeId && item.UserId == TestData.AdminUser.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(item => item.IsConfirmed, true)
+                    .SetProperty(item => item.ConfirmedAt, DateTime.UtcNow));
+        }
+
+        (await Client.PutAsJsonAsync($"/api/v2/group-exchanges/{exchangeId}", new { total_hours = 0m }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/start", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var frozen = (await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{exchangeId}")))
+            .GetProperty("data");
+        frozen.GetProperty("status").GetString().Should().Be("pending_confirmation");
+        frozen.GetProperty("participants").EnumerateArray()
+            .Should().OnlyContain(item => !item.GetProperty("confirmed").GetBoolean());
+
+        (await Client.PutAsJsonAsync($"/api/v2/group-exchanges/{exchangeId}", new { total_hours = 9m }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            new { user_id = additionalUserId, role = "provider", hours = 1m, weight = 1m }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.DeleteAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants/{TestData.MemberUser.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsMemberAsync();
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsAdminAsync();
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Client.DeleteAsync($"/api/v2/group-exchanges/{exchangeId}"))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        using var finalScope = Factory.Services.CreateScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var persisted = await finalDb.GroupExchanges.AsNoTracking()
+            .SingleAsync(item => item.Id == exchangeId);
+        persisted.Status.Should().Be("completed");
+        (await finalDb.Transactions.AsNoTracking()
+            .CountAsync(item => item.Description == "Group exchange: Immutable consent revision"))
+            .Should().Be(1);
     }
 
     private async Task<int> CreateExchangeAsync(

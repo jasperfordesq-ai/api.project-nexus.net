@@ -9,7 +9,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Nexus.Api.Migrations;
 
-public partial class AddPostSharePolymorphicFields : Migration
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(Nexus.Api.Data.NexusDbContext))]
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260708153000_AddPostSharePolymorphicFields")]
+    public partial class AddPostSharePolymorphicFields : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {

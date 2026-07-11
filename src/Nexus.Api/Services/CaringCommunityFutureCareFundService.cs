@@ -92,6 +92,7 @@ public sealed class CaringCommunityFutureCareFundService
         var transactions = await _db.Transactions
             .IgnoreQueryFilters()
             .AsNoTracking()
+            .ExcludeInternalWalletAdapters()
             .Where(tx => tx.TenantId == tenantId && tx.SenderId == userId && tx.Status == TransactionStatus.Completed)
             .Select(tx => new
             {
@@ -158,6 +159,7 @@ public sealed class CaringCommunityFutureCareFundService
         var transactions = await _db.Transactions
             .IgnoreQueryFilters()
             .AsNoTracking()
+            .ExcludeInternalWalletAdapters()
             .Where(tx =>
                 tx.TenantId == tenantId
                 && tx.SenderId == userId
@@ -215,6 +217,7 @@ public sealed class CaringCommunityFutureCareFundService
         var transactionRows = await _db.Transactions
             .IgnoreQueryFilters()
             .AsNoTracking()
+            .ExcludeInternalWalletAdapters()
             .Where(tx => tx.TenantId == tenantId && tx.SenderId == userId && tx.Status == TransactionStatus.Completed)
             .GroupBy(tx => tx.CreatedAt.Year)
             .Select(group => new

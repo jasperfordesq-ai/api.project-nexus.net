@@ -6,11 +6,12 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
-using Nexus.Api.Observability;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -27,16 +28,21 @@ public class WalletController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<WalletController> _logger;
-    private readonly GamificationService _gamification;
-    private readonly IConfiguration _configuration;
+    private readonly PersonalWalletLedgerService _personalWallet;
+    private readonly PersonalWalletTransferEffectsService _transferEffects;
 
-    public WalletController(NexusDbContext db, TenantContext tenantContext, ILogger<WalletController> logger, GamificationService gamification, IConfiguration configuration)
+    public WalletController(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        ILogger<WalletController> logger,
+        PersonalWalletLedgerService personalWallet,
+        PersonalWalletTransferEffectsService transferEffects)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
-        _gamification = gamification;
-        _configuration = configuration;
+        _personalWallet = personalWallet;
+        _transferEffects = transferEffects;
     }
 
     /// <summary>
@@ -61,6 +67,23 @@ public class WalletController : ControllerBase
             .Where(t => t.SenderId == userId.Value && t.Status == TransactionStatus.Completed)
             .SumAsync(t => t.Amount);
 
+        var visibleReceived = await _db.Transactions
+            .Where(t => t.ReceiverId == userId.Value
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
+            .SumAsync(t => t.Amount);
+        var visibleSent = await _db.Transactions
+            .Where(t => t.SenderId == userId.Value
+                && t.Status == TransactionStatus.Completed
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType)
+            .SumAsync(t => t.Amount);
+
         var balance = received - sent;
 
         // Compute pending amounts from Pending transactions
@@ -79,10 +102,10 @@ public class WalletController : ControllerBase
         {
             balance,
             currency = "hours",
-            received_total = received,
-            sent_total = sent,
-            total_earned = received,
-            total_spent = sent,
+            received_total = visibleReceived,
+            sent_total = visibleSent,
+            total_earned = visibleReceived,
+            total_spent = visibleSent,
             pending_in = pendingIn,
             pending_out = pendingOut
         });
@@ -110,7 +133,12 @@ public class WalletController : ControllerBase
 
         // Build query
         var query = _db.Transactions
-            .Where(t => t.SenderId == userId.Value || t.ReceiverId == userId.Value);
+            .Where(t => t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
+                && ((t.SenderId == userId.Value && !t.DeletedForSender)
+                    || (t.ReceiverId == userId.Value && !t.DeletedForReceiver)));
 
         // Filter by type if specified (accept both old and new naming)
         if (!string.IsNullOrEmpty(type))
@@ -209,7 +237,11 @@ public class WalletController : ControllerBase
             .Include(t => t.Sender)
             .Include(t => t.Receiver)
             .Include(t => t.Listing)
-            .FirstOrDefaultAsync(t => t.Id == id);
+            .FirstOrDefaultAsync(t => t.Id == id
+                && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType);
 
         if (transaction == null)
         {
@@ -286,7 +318,10 @@ public class WalletController : ControllerBase
     /// Creates a completed transaction atomically.
     /// </summary>
     [HttpPost("transfer")]
-    public async Task<IActionResult> Transfer([FromBody] TransferRequest request)
+    [EnableRateLimiting(RateLimitingExtensions.PersonalWalletTransferPolicy)]
+    public async Task<IActionResult> Transfer(
+        [FromBody] TransferRequest request,
+        CancellationToken cancellationToken = default)
     {
         var senderId = GetCurrentUserId();
         if (senderId == null)
@@ -299,199 +334,60 @@ public class WalletController : ControllerBase
             return BadRequest(new { error = "Tenant context not resolved" });
         }
 
-        // Configurable transaction limits (defaults match V1)
-        var minTransfer = _configuration.GetValue("TransactionLimits:MinTransferAmount", 0.01m);
-        var maxSingle = _configuration.GetValue("TransactionLimits:MaxSingleTransfer", 500m);
-        var dailyLimit = _configuration.GetValue("TransactionLimits:DailyLimit", 1000m);
-        var weeklyLimit = _configuration.GetValue("TransactionLimits:WeeklyLimit", 3000m);
-        var monthlyLimit = _configuration.GetValue("TransactionLimits:MonthlyLimit", 10000m);
-
-        if (request.Amount < minTransfer)
+        var bodyIdempotencyKey = request.IdempotencyKey?.Trim();
+        var idempotencyKey = string.IsNullOrWhiteSpace(bodyIdempotencyKey)
+            ? Request.Headers["Idempotency-Key"].FirstOrDefault()
+            : bodyIdempotencyKey;
+        var result = await _personalWallet.TransferAsync(
+            _tenantContext.TenantId.Value,
+            senderId.Value,
+            request.ReceiverId.ToString(),
+            request.Amount,
+            request.Description,
+            idempotencyKey,
+            cancellationToken);
+        if (!result.Success)
         {
-            return BadRequest(new { error = $"Minimum transfer amount is {minTransfer} credits" });
-        }
-
-        if (request.Amount > maxSingle)
-        {
-            return BadRequest(new { error = $"Maximum single transfer is {maxSingle} credits" });
-        }
-
-        // Hierarchical limits: daily/weekly/monthly per user
-        var now = DateTime.UtcNow;
-        var dailySent = await _db.Transactions
-            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
-                && t.CreatedAt >= now.Date)
-            .SumAsync(t => t.Amount);
-
-        if (dailySent + request.Amount > dailyLimit)
-        {
-            return BadRequest(new { error = $"Daily transfer limit of {dailyLimit:N0} credits exceeded", daily_sent = dailySent });
-        }
-
-        var weeklySent = await _db.Transactions
-            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
-                && t.CreatedAt >= now.AddDays(-7))
-            .SumAsync(t => t.Amount);
-
-        if (weeklySent + request.Amount > weeklyLimit)
-        {
-            return BadRequest(new { error = $"Weekly transfer limit of {weeklyLimit:N0} credits exceeded", weekly_sent = weeklySent });
-        }
-
-        var monthlySent = await _db.Transactions
-            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
-                && t.CreatedAt >= now.AddDays(-30))
-            .SumAsync(t => t.Amount);
-
-        if (monthlySent + request.Amount > monthlyLimit)
-        {
-            return BadRequest(new { error = $"Monthly transfer limit of {monthlyLimit:N0} credits exceeded", monthly_sent = monthlySent });
-        }
-
-        // Validate sender != receiver
-        if (request.ReceiverId == senderId.Value)
-        {
-            return BadRequest(new { error = "Cannot transfer to yourself" });
-        }
-
-        // Validate sender account is active
-        var senderUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == senderId.Value);
-        if (senderUser == null || !senderUser.IsActive)
-        {
-            return BadRequest(new { error = "Your account is suspended or inactive" });
-        }
-
-        // Validate receiver exists in same tenant and is active
-        var receiver = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.ReceiverId);
-        if (receiver == null)
-        {
-            return BadRequest(new { error = "Receiver not found" });
-        }
-
-        if (!receiver.IsActive)
-        {
-            return BadRequest(new { error = "Receiver account is suspended or inactive" });
-        }
-
-        // Use a SERIALIZABLE transaction with advisory lock for atomic balance check + transfer
-        // This prevents race conditions where concurrent requests could overdraft
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-        try
-        {
-            // Acquire an advisory lock on the sender's user ID to serialize transfers from this user
-            // This prevents concurrent transfers from the same user from racing
-            await _db.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock({0})",
-                senderId.Value);
-
-            // Calculate sender's current balance (now protected by advisory lock)
-            var received = await _db.Transactions
-                .Where(t => t.ReceiverId == senderId.Value && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-
-            var sent = await _db.Transactions
-                .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-
-            var balance = received - sent;
-
-            // Validate sufficient balance
-            if (balance < request.Amount)
+            if (result.ErrorCode == "DUPLICATE_TRANSACTION")
             {
-                await dbTransaction.RollbackAsync();
-                return BadRequest(new { error = "Insufficient balance", current_balance = balance, requested_amount = request.Amount });
+                return Conflict(new { error = result.ErrorMessage, code = result.ErrorCode });
             }
 
-            // Create the transaction
-            var transaction = new Transaction
+            if (result.ErrorCode == "SERVER_ERROR")
             {
-                TenantId = _tenantContext.TenantId.Value,
-                SenderId = senderId.Value,
-                ReceiverId = request.ReceiverId,
-                Amount = request.Amount,
-                Description = request.Description?.Trim(),
-                ListingId = request.ListingId,
-                Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Transactions.Add(transaction);
-            await _db.SaveChangesAsync();
-
-            // Commit the transaction (releases advisory lock)
-            await dbTransaction.CommitAsync();
-
-            // Award XP and check badges for both sender and receiver (outside transaction - non-critical)
-            try
-            {
-                await _gamification.AwardXpAsync(senderId.Value, XpLog.Amounts.ExchangeCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
-                await _gamification.AwardXpAsync(request.ReceiverId, XpLog.Amounts.ExchangeCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
-                await _gamification.CheckAndAwardBadgesAsync(senderId.Value, "transaction_completed");
-                await _gamification.CheckAndAwardBadgesAsync(request.ReceiverId, "transaction_completed");
-            }
-            catch (DbUpdateException ex)
-            {
-                // Log but don't fail the transfer if gamification fails
-                _logger.LogWarning(ex, "Failed to award XP/badges for transaction {TransactionId}", transaction.Id);
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Log but don't fail the transfer if gamification fails
-                _logger.LogWarning(ex, "Failed to award XP/badges for transaction {TransactionId}", transaction.Id);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new { error = result.ErrorMessage, code = result.ErrorCode });
             }
 
-            // Load sender info for response
-            var sender = await _db.Users.FirstOrDefaultAsync(u => u.Id == senderId.Value);
-            if (sender == null)
-            {
-                return StatusCode(500, new { error = "Sender data unavailable" });
-            }
-
-            NexusMetrics.WalletTransfers.Add(1,
-                new KeyValuePair<string, object?>("tenant_id", _tenantContext.TenantId ?? 0));
-
-            _logger.LogInformation("Transfer of {Amount} hours from user {SenderId} to user {ReceiverId} completed (transaction {TransactionId})",
-                request.Amount, senderId, request.ReceiverId, transaction.Id);
-
-            return CreatedAtAction(nameof(GetTransaction), new { id = transaction.Id }, new
-            {
-                id = transaction.Id,
-                amount = transaction.Amount,
-                description = transaction.Description,
-                status = transaction.Status.ToString().ToLowerInvariant(),
-                type = "sent",
-                sender = new
-                {
-                    id = sender.Id,
-                    first_name = sender.FirstName,
-                    last_name = sender.LastName
-                },
-                receiver = new
-                {
-                    id = receiver.Id,
-                    first_name = receiver.FirstName,
-                    last_name = receiver.LastName
-                },
-                listing_id = transaction.ListingId,
-                created_at = transaction.CreatedAt,
-                new_balance = balance - request.Amount
-            });
+            return BadRequest(new { error = result.ErrorMessage, code = result.ErrorCode });
         }
-        catch (DbUpdateException ex)
+
+        await _transferEffects.RunAsync(_tenantContext.TenantId.Value, result);
+
+        return CreatedAtAction(nameof(GetTransaction), new { id = result.TransactionId }, new
         {
-            await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "Database error during transfer from user {SenderId} to user {ReceiverId}",
-                senderId, request.ReceiverId);
-            return StatusCode(500, new { error = "Transfer failed due to a database error. Please try again." });
-        }
-        catch (InvalidOperationException ex) when (ex.InnerException is DbUpdateException)
-        {
-            // Handle serialization conflicts wrapped in InvalidOperationException
-            await dbTransaction.RollbackAsync();
-            _logger.LogWarning(ex, "Serialization conflict during transfer from user {SenderId} to user {ReceiverId}. Retry recommended.",
-                senderId, request.ReceiverId);
-            return StatusCode(409, new { error = "Transaction conflict. Please retry." });
-        }
+            id = result.TransactionId,
+            amount = result.Amount,
+            description = result.Description,
+            status = "completed",
+            type = "sent",
+            sender = new
+            {
+                id = result.SenderId,
+                first_name = result.SenderFirstName,
+                last_name = result.SenderLastName
+            },
+            receiver = new
+            {
+                id = result.ReceiverId,
+                first_name = result.ReceiverFirstName,
+                last_name = result.ReceiverLastName
+            },
+            listing_id = (int?)null,
+            created_at = result.CreatedAt,
+            new_balance = result.NewBalance
+        });
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
@@ -513,4 +409,7 @@ public class TransferRequest
 
     [JsonPropertyName("listing_id")]
     public int? ListingId { get; set; }
+
+    [JsonPropertyName("idempotency_key")]
+    public string? IdempotencyKey { get; set; }
 }

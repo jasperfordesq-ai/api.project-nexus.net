@@ -337,6 +337,18 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
     private static void AddVolunteeringActionAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
+        // Focused controllers that already own an explicit V2 volunteering
+        // prefix may also expose absolute legacy compatibility selectors.
+        // Re-aliasing those legacy selectors would register the same V2 action
+        // twice and make money-critical routes ambiguous at runtime.
+        if (controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Any(template => template.Equals("api/v2/volunteering", StringComparison.OrdinalIgnoreCase)
+                || template.StartsWith("api/v2/volunteering/", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
         foreach (var action in controller.Actions)
         {
             var aliases = action.Selectors

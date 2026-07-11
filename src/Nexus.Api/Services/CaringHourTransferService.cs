@@ -3,11 +3,13 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -28,10 +30,23 @@ public sealed class CaringHourTransferService
     };
 
     private readonly NexusDbContext _db;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
-    public CaringHourTransferService(NexusDbContext db)
+    public CaringHourTransferService(
+        NexusDbContext db,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
+        _personalWallet = personalWallet;
+    }
+
+    public CaringHourTransferService(NexusDbContext db)
+        : this(
+            db,
+            new PersonalWalletLedgerService(
+                db,
+                NullLogger<PersonalWalletLedgerService>.Instance))
+    {
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -187,6 +202,14 @@ public sealed class CaringHourTransferService
         CaringHourTransferRejectRequest request,
         CancellationToken ct)
     {
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireTransferLifecycleLockAsync(tenantId, transferId, ct);
+        }
+
         var transfer = await FindSourceTransferAsync(tenantId, transferId, tracking: true, ct);
         if (transfer is null)
         {
@@ -208,6 +231,10 @@ public sealed class CaringHourTransferService
         transfer.Status = StatusRejected;
         transfer.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
 
         return new HourTransferMutationResult(Data: new Dictionary<string, object?>
         {
@@ -222,6 +249,14 @@ public sealed class CaringHourTransferService
         int approverUserId,
         CancellationToken ct)
     {
+        await using var databaseTransaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (databaseTransaction is not null)
+        {
+            await AcquireTransferLifecycleLockAsync(tenantId, transferId, ct);
+        }
+
         var transfer = await FindSourceTransferAsync(tenantId, transferId, tracking: true, ct);
         if (transfer is null)
         {
@@ -230,6 +265,21 @@ public sealed class CaringHourTransferService
 
         if (transfer.Status != StatusPending)
         {
+            return SingleError("TRANSFER_FAILED", "Transfer is not pending and cannot be approved.");
+        }
+
+        var payerUserId = transfer.MemberUserId;
+        if (databaseTransaction is not null)
+        {
+            await _personalWallet.AcquireSpendLockAsync(payerUserId, ct);
+        }
+
+        if (transfer.Status != StatusPending)
+        {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
             return SingleError("TRANSFER_FAILED", "Transfer is not pending and cannot be approved.");
         }
 
@@ -274,9 +324,13 @@ public sealed class CaringHourTransferService
             return SingleError("TRANSFER_FAILED", "Transfer amount exceeds the permitted single-transfer limit.");
         }
 
-        var balance = await GetBalanceAsync(tenantId, transfer.MemberUserId, ct);
+        var balance = await _personalWallet.GetBalanceAsync(tenantId, transfer.MemberUserId, ct);
         if (balance < hours)
         {
+            if (databaseTransaction is not null)
+            {
+                await databaseTransaction.RollbackAsync(ct);
+            }
             return SingleError("TRANSFER_FAILED", "Source member no longer has enough banked hours.");
         }
 
@@ -298,9 +352,10 @@ public sealed class CaringHourTransferService
         {
             TenantId = tenantId,
             SenderId = transfer.MemberUserId,
-            ReceiverId = 0,
+            ReceiverId = null,
             Amount = hours,
             Description = "[hour_transfer_out] " + (transfer.Reason ?? string.Empty),
+            TransactionType = "other",
             Status = TransactionStatus.Completed,
             CreatedAt = now
         });
@@ -326,11 +381,12 @@ public sealed class CaringHourTransferService
         _db.Transactions.Add(new Transaction
         {
             TenantId = destinationTenant.Id,
-            SenderId = transfer.MemberUserId,
+            SenderId = null,
             ReceiverId = destinationUser.Id,
             Amount = hours,
             Description = "[hour_transfer_in] from " + sourceTenant.Slug
                 + (string.IsNullOrWhiteSpace(transfer.Reason) ? string.Empty : " - " + transfer.Reason),
+            TransactionType = "other",
             Status = TransactionStatus.Completed,
             CreatedAt = now
         });
@@ -346,6 +402,10 @@ public sealed class CaringHourTransferService
         transfer.LinkedTransferId = destinationTransfer.Id;
         transfer.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        if (databaseTransaction is not null)
+        {
+            await databaseTransaction.CommitAsync(ct);
+        }
 
         return new HourTransferMutationResult(Data: new Dictionary<string, object?>
         {
@@ -374,6 +434,23 @@ public sealed class CaringHourTransferService
         }
 
         return await query.FirstOrDefaultAsync(ct);
+    }
+
+    private async Task AcquireTransferLifecycleLockAsync(
+        int tenantId,
+        long transferId,
+        CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            return;
+        }
+
+        var lockKey = unchecked((int)(transferId ^ ((long)tenantId << 32)));
+        await _db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, {1})",
+            [-17004, lockKey],
+            ct);
     }
 
     private async Task<decimal> GetBalanceAsync(int tenantId, int userId, CancellationToken ct)

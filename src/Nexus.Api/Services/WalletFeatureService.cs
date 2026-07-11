@@ -19,12 +19,18 @@ public class WalletFeatureService
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<WalletFeatureService> _logger;
+    private readonly PersonalWalletLedgerService _personalWallet;
 
-    public WalletFeatureService(NexusDbContext db, TenantContext tenantContext, ILogger<WalletFeatureService> logger)
+    public WalletFeatureService(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        ILogger<WalletFeatureService> logger,
+        PersonalWalletLedgerService personalWallet)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
+        _personalWallet = personalWallet;
     }
 
     /// <summary>
@@ -61,6 +67,10 @@ public class WalletFeatureService
             var dailyTotal = await _db.Transactions
                 .Where(t => t.SenderId == userId
                     && t.Status == TransactionStatus.Completed
+                    && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
                     && t.CreatedAt >= todayStart)
                 .SumAsync(t => t.Amount);
 
@@ -77,6 +87,10 @@ public class WalletFeatureService
             var dailyCount = await _db.Transactions
                 .Where(t => t.SenderId == userId
                     && t.Status == TransactionStatus.Completed
+                    && t.TransactionType != PersonalWalletLedgerService.VolunteerOrganisationBalanceAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringHourGiftAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringLoyaltyAdapterTransactionType
+                    && t.TransactionType != PersonalWalletLedgerService.CaringHourEstateAdapterTransactionType
                     && t.CreatedAt >= todayStart)
                 .CountAsync();
 
@@ -146,28 +160,37 @@ public class WalletFeatureService
     public async Task<CreditDonation> ProcessDonationAsync(int donorId, int? recipientId, decimal amount, string? message, bool anonymous)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (amount <= 0)
+            throw new InvalidOperationException("Donation amount must be greater than zero.");
+        if (recipientId == donorId)
+            throw new InvalidOperationException("Cannot donate to yourself.");
 
-        // Determine effective receiver: if community fund (recipientId is null), use system account ID 0.
-        // This ensures the donor's balance decreases (sender != receiver) and the community fund
-        // is represented as a system account rather than creating a no-op self-transaction.
-        var effectiveReceiverId = recipientId ?? 0;
-
-        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         try
         {
             // Advisory lock on donor
-            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", donorId);
+            await _personalWallet.AcquireSpendLockAsync(donorId);
+
+            if (recipientId.HasValue)
+            {
+                var recipientIsEligible = await _db.Users
+                    .IgnoreQueryFilters()
+                    .AnyAsync(user => user.Id == recipientId.Value
+                        && user.TenantId == tenantId
+                        && user.IsActive
+                        && user.SuspendedAt == null);
+                if (!recipientIsEligible)
+                    throw new InvalidOperationException("Donation recipient is not eligible.");
+            }
+
+            // Limits must be evaluated after the donor lock. Otherwise two
+            // concurrent donations can both pass a stale daily/cap snapshot.
+            var (allowed, limitReason) = await CheckTransactionLimitsAsync(donorId, amount);
+            if (!allowed)
+                throw new InvalidOperationException(limitReason ?? "Donation exceeds wallet limits.");
 
             // Check balance
-            var received = await _db.Transactions
-                .Where(t => t.ReceiverId == donorId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-
-            var sent = await _db.Transactions
-                .Where(t => t.SenderId == donorId && t.Status == TransactionStatus.Completed)
-                .SumAsync(t => t.Amount);
-
-            var balance = received - sent;
+            var balance = await _personalWallet.GetBalanceAsync(tenantId, donorId);
             if (balance < amount)
             {
                 throw new InvalidOperationException("Insufficient balance for donation.");
@@ -178,11 +201,12 @@ public class WalletFeatureService
             {
                 TenantId = tenantId,
                 SenderId = donorId,
-                ReceiverId = effectiveReceiverId,
+                ReceiverId = recipientId,
                 Amount = amount,
                 Description = recipientId.HasValue
                     ? $"Donation{(anonymous ? " (anonymous)" : "")}: {message ?? "No message"}"
                     : $"Community fund donation: {message ?? "No message"}",
+                TransactionType = "donation",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow
             };
@@ -249,7 +273,9 @@ public class WalletFeatureService
         var query = _db.Transactions
             .Include(t => t.Sender)
             .Include(t => t.Receiver)
-            .Where(t => t.SenderId == userId || t.ReceiverId == userId);
+            .Where(t => (t.SenderId == userId && !t.DeletedForSender)
+                || (t.ReceiverId == userId && !t.DeletedForReceiver))
+            .ExcludeInternalWalletAdapters();
 
         if (startDate.HasValue)
             query = query.Where(t => t.CreatedAt >= startDate.Value);
@@ -313,12 +339,22 @@ public class WalletFeatureService
     /// </summary>
     public async Task<BalanceSummary> GetBalanceSummaryAsync(int userId)
     {
-        var received = await _db.Transactions
+        var completed = _db.Transactions
+            .Where(t => t.Status == TransactionStatus.Completed);
+        var received = await completed
             .Where(t => t.ReceiverId == userId && t.Status == TransactionStatus.Completed)
             .SumAsync(t => t.Amount);
 
-        var sent = await _db.Transactions
+        var sent = await completed
             .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => t.Amount);
+
+        var visibleCompleted = completed.ExcludeInternalWalletAdapters();
+        var visibleReceived = await visibleCompleted
+            .Where(t => t.ReceiverId == userId)
+            .SumAsync(t => t.Amount);
+        var visibleSent = await visibleCompleted
+            .Where(t => t.SenderId == userId)
             .SumAsync(t => t.Amount);
 
         var pending = await _db.Transactions
@@ -336,8 +372,8 @@ public class WalletFeatureService
         return new BalanceSummary
         {
             Balance = received - sent,
-            ReceivedTotal = received,
-            SentTotal = sent,
+            ReceivedTotal = visibleReceived,
+            SentTotal = visibleSent,
             PendingTotal = pending,
             DonatedTotal = donated,
             DonationsReceivedTotal = donationsReceived

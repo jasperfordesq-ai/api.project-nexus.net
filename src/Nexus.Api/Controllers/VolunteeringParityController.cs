@@ -962,18 +962,6 @@ public class VolunteeringParityController : ControllerBase
         });
     }
 
-    [HttpGet("organisations/{organisationId:int}/wallet")]
-    public IActionResult OrganisationWallet(int organisationId) => Ok(new { data = new { organisation_id = organisationId, balance = 0, auto_pay = false } });
-
-    [HttpPost("organisations/{organisationId:int}/wallet/deposit")]
-    public IActionResult OrganisationWalletDeposit(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { organisation_id = organisationId, deposited = Decimal(body, "amount") ?? 0 } });
-
-    [HttpPut("organisations/{organisationId:int}/wallet/auto-pay")]
-    public IActionResult OrganisationWalletAutoPay(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { organisation_id = organisationId, auto_pay = Bool(body, "enabled") ?? true } });
-
-    [HttpGet("organisations/{organisationId:int}/wallet/transactions")]
-    public IActionResult OrganisationWalletTransactions(int organisationId) => Ok(new { data = Array.Empty<object>() });
-
     [HttpGet("admin/swaps")]
     public IActionResult AdminSwaps() => Ok(new { data = Array.Empty<object>() });
 
