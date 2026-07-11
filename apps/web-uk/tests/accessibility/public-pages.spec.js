@@ -56,7 +56,8 @@ const AUTHENTICATED_ROUTES = [
   { name: 'wallet', path: '/wallet' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
-  { name: 'groups', path: '/groups' }
+  { name: 'groups', path: '/groups' },
+  { name: 'appreciation wall', path: '/users/77/appreciations' }
 ];
 
 function seriousOrCritical(violations) {
@@ -636,6 +637,12 @@ test.describe('representative authenticated-page accessibility gate', () => {
         await expect(page.locator('.govuk-service-navigation')).toHaveCount(1);
         if (route.name === 'profile settings') {
           await expect(page.locator('header a.nexus-alpha-header__link[aria-current="page"]')).toHaveText('My account');
+        }
+        if (route.name === 'appreciation wall') {
+          await expect(page.locator('h1')).toContainText(translate('en', 'govuk_alpha_saved.wall.heading', { name: '' }).trim());
+          await expect(page.locator('#appreciation-message')).toHaveAttribute('maxlength', '500');
+          await expect(page.locator('#appreciation-message')).toHaveAttribute('aria-describedby', 'appreciation-message-hint');
+          await expect(page.locator('#appreciation-public')).toHaveAttribute('aria-describedby', 'appreciation-public-hint');
         }
 
         const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {

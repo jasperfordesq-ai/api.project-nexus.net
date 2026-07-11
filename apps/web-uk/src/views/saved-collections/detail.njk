@@ -93,14 +93,14 @@
       {% if currentPage > 1 %}
         <div class="govuk-pagination__prev">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/me/collections/' + (collection.id | string) + '?page=' + ((currentPage - 1) | string)) }}" rel="prev">
-            <span class="govuk-pagination__link-title">Previous</span>
+            <span class="govuk-pagination__link-title">{{ t("govuk_alpha_saved.pagination.previous") }}</span>
           </a>
         </div>
       {% endif %}
       {% if currentPage < lastPage %}
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/me/collections/' + (collection.id | string) + '?page=' + ((currentPage + 1) | string)) }}" rel="next">
-            <span class="govuk-pagination__link-title">Next</span>
+            <span class="govuk-pagination__link-title">{{ t("govuk_alpha_saved.pagination.next") }}</span>
           </a>
         </div>
       {% endif %}

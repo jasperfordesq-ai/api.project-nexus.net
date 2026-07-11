@@ -93,6 +93,30 @@ function renderCollection(locale) {
   });
 }
 
+function renderAppreciations(locale) {
+  return templateEnvironment.render('saved-social/appreciations.njk', {
+    ...baseContext(locale),
+    appreciations: [{
+      id: 8,
+      message: 'Thank you for helping.',
+      myReaction: 'heart',
+      reactionCount: 2,
+      receivedOn: '10 July 2026',
+      sender: { id: 9, name: 'Amina' }
+    }],
+    currentPage: 2,
+    isSelf: false,
+    lastPage: 3,
+    owner: { id: 7, name: 'Morgan' },
+    reactionTypes: [
+      { value: 'heart' },
+      { value: 'clap' },
+      { value: 'star' }
+    ],
+    status: 'appreciation-message-required'
+  });
+}
+
 function renderNetwork(locale) {
   const emptySection = { items: [] };
   return templateEnvironment.render('connections/network.njk', {
@@ -135,6 +159,7 @@ function renderCourse(locale) {
 describe('localized accessible chrome', () => {
   it('delegates dynamic labels and hidden prefixes to exact Laravel keys', () => {
     const search = templateSource('search/advanced.njk');
+    const appreciations = templateSource('saved-social/appreciations.njk');
     const collection = templateSource('saved-collections/detail.njk');
     const network = templateSource('connections/network.njk');
     const course = templateSource('courses/learn.njk');
@@ -148,6 +173,15 @@ describe('localized accessible chrome', () => {
     expect(collection).toContain("t('govuk_alpha_saved.edit.delete_confirm_label', { name: collection.name })");
     expect(collection).not.toContain('There is a problem:</span>');
 
+    expect(appreciations).toContain('t("govuk_alpha_saved.wall.heading", { name: ownerLabel })');
+    expect(appreciations).toContain('t("govuk_alpha_saved.send.message_hint")');
+    expect(appreciations).toContain('maxlength="500"');
+    expect(appreciations).toContain('tc("govuk_alpha_saved.wall.reactions_count", appreciation.reactionCount');
+    expect(appreciations).toContain('t("govuk_alpha_saved.pagination.previous")');
+    expect(appreciations).toContain('t("govuk_alpha_saved.pagination.next")');
+    expect(appreciations).not.toContain('maxlength="1000"');
+    expect(appreciations).not.toContain('Show this thank-you publicly');
+
     expect(network).toContain('t("govuk_alpha_connections.network.about", { name: connection.name })');
     expect(network.match(/govuk_alpha_connections\.network\.load_more_sr/g)).toHaveLength(3);
     expect(network).not.toContain('>About {{ connection.name }}: </span>');
@@ -160,6 +194,7 @@ describe('localized accessible chrome', () => {
     const english = createTranslator('en');
     const t = createTranslator(locale);
     const search = renderAdvancedSearch(locale);
+    const appreciations = renderAppreciations(locale);
     const collection = renderCollection(locale);
     const network = renderNetwork(locale);
     const course = renderCourse(locale);
@@ -173,6 +208,16 @@ describe('localized accessible chrome', () => {
     expect(collection).toContain('aria-label="Remove Tea &amp; &lt;chat&gt; from this collection"');
     expect(collection).toContain('aria-label="Delete the collection Care &amp; &lt;support&gt;"');
     expect(collection).toContain(`<span class="govuk-visually-hidden">${t('states.error_title')}:</span>`);
+    expect(appreciations).toContain(t('govuk_alpha_saved.wall.heading', { name: 'Morgan' }));
+    expect(appreciations).toContain(t('govuk_alpha_saved.send.message_hint'));
+    expect(appreciations).toContain(t('govuk_alpha_saved.status.appreciation_message_required'));
+    expect(appreciations).toContain(`aria-label="${t('govuk_alpha_saved.pagination.page_of', { current: 2, last: 3 })}"`);
+    expect(appreciations).toContain(t('govuk_alpha_saved.pagination.previous'));
+    expect(appreciations).toContain(t('govuk_alpha_saved.pagination.next'));
+    expect(appreciations).toContain('aria-pressed="true"');
+    expect(appreciations).toContain(t('govuk_alpha_saved.react.remove_label', {
+      reaction: t('govuk_alpha_saved.react.heart')
+    }));
     expect(network).toContain(`${t('govuk_alpha_connections.network.about', { name: 'Amina' })}: </span>`);
     expect(network).toContain(t('govuk_alpha_connections.network.load_more'));
     expect(course).toContain('aria-label="Course progress: 42% complete"');

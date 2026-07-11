@@ -7054,14 +7054,20 @@ describe('shared accessible frontend shell', () => {
     expect(appreciations.text).toContain('Appreciation for Morgan Lee');
     expect(appreciations.text).toContain('Your thank-you has been sent.');
     expect(appreciations.text).toContain('method="post" action="/users/77/appreciations"');
+    expect(appreciations.text).toContain('maxlength="500"');
+    expect(appreciations.text).toContain('Up to 500 characters.');
+    expect(appreciations.text).toContain('aria-describedby="appreciation-public-hint"');
     expect(appreciations.text).toContain('Thanks for running the tool library.');
     expect(appreciations.text).toContain('Avery Stone');
     expect(appreciations.text).toContain('method="post" action="/appreciations/55/react"');
     expect(appreciations.text).toContain('name="owner_id" value="77"');
     expect(appreciations.text).toContain('Heart');
+    expect(appreciations.text).toContain('aria-label="Remove your Heart reaction"');
+    expect(appreciations.text).toContain('aria-pressed="true"');
     expect(appreciations.text).toContain('Clap');
     expect(appreciations.text).toContain('Star');
     expect(appreciations.text).toContain('2 reactions');
+    expect(appreciations.text).toContain('aria-label="Page 1 of 2"');
     expect(appreciations.text).toContain('href="/users/77/appreciations?page=2"');
     expect(appreciations.text).not.toContain('shared accessible frontend preparation page');
 

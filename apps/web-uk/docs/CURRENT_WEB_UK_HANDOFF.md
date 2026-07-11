@@ -4583,6 +4583,30 @@ full Chromium/axe aggregate passed all `76/76` cases in `1,547.0` seconds
 (`25.8` minutes), with `0` skipped, `0` unexpected, and `0` flaky results;
 outer wall time was `1,569.5` seconds (`26.2` minutes).
 
+## 2026-07-11 Saved Appreciation Source-Parity Slice
+
+The saved-appreciation wall now follows the authoritative Blade page rather
+than its earlier English approximation. Caption, heading, description, send
+form, status/error states, empty state, dates, reaction counts/actions, and
+pagination all resolve through the exact `govuk_alpha_saved` keys. The form
+now enforces Blade's 500-character client limit instead of 1,000, exposes the
+public-choice hint through a fieldset and `aria-describedby`, and links the
+message error summary to the styled inline error. Reaction controls now have a
+source legend, localized action labels, and `aria-pressed` state; the selected
+reaction uses Blade's primary-button treatment. Saved collection previous/next
+pagination labels use the same source keys.
+
+Focused source/localization coverage passed `3/3`; the Laravel-backed saved
+social route test and full `623/623` shared rendering passed. The real signed
+`/users/77/appreciations` journey passed `1/1` in 39.4 seconds at 320 CSS
+pixels with one main/H1, no horizontal overflow, and no serious/critical axe
+violations. Full verification passed `45/45` Jest suites and `1,430/1,430`
+tests, warning-free lint and brand checks, 11-locale/24-namespace/7,364-key
+structural parity, the 292-template zero-match audit, and 608/608 route parity.
+The next complete browser aggregate contains 77 cases; the latest completed
+full aggregate remains the exact-current `cdc8674d` 76/76 checkpoint recorded
+above.
+
 ## Documents To Trust
 
 Read these in order:

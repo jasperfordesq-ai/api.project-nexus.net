@@ -22,9 +22,9 @@ const { getRequestProfile } = require('../lib/request-profile');
 const router = express.Router();
 const APPRECIATION_REACTIONS = new Set(['heart', 'clap', 'star']);
 const APPRECIATION_REACTION_TYPES = [
-  { value: 'heart', label: 'Heart' },
-  { value: 'clap', label: 'Clap' },
-  { value: 'star', label: 'Star' }
+  { value: 'heart' },
+  { value: 'clap' },
+  { value: 'star' }
 ];
 const SAVED_TYPES = [
   { value: 'post', label: 'Post' },
@@ -195,29 +195,8 @@ function normalizeAppreciation(item) {
     message: trimmed(row.message),
     receivedOn: formatDate(row.created_at ?? row.createdAt),
     reactionCount,
-    reactionLabel: plural(reactionCount, 'reaction', 'reactions'),
     myReaction: trimmed(row.my_reaction ?? row.myReaction)
   };
-}
-
-function successMessage(status) {
-  const messages = {
-    'appreciation-sent': 'Your thank-you has been sent.',
-    'reaction-updated': 'Reaction updated.'
-  };
-  return messages[trimmed(status)] || '';
-}
-
-function errorMessage(status) {
-  const messages = {
-    'appreciation-message-required': 'Enter a thank-you message.',
-    'appreciation-self': 'You cannot send yourself appreciation.',
-    'appreciation-too-long': 'Keep the thank-you message to 1,000 characters or fewer.',
-    'appreciation-rate-limited': 'Please wait before sending another thank-you.',
-    'appreciation-failed': 'Sorry, that thank-you could not be sent. Please try again.',
-    'reaction-failed': 'Sorry, that reaction could not be saved. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
 }
 
 function appreciationStatus(error) {
@@ -299,7 +278,7 @@ router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => 
     .filter((appreciation) => appreciation.id !== null);
 
   return res.render('saved-social/appreciations', {
-    title: 'Appreciation wall',
+    title: res.locals.t('govuk_alpha_saved.wall.title'),
     activeNav: 'members',
     owner,
     isSelf: viewer.id === owner.id,
@@ -307,9 +286,7 @@ router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => 
     reactionTypes: APPRECIATION_REACTION_TYPES,
     currentPage,
     lastPage,
-    status,
-    successMessage: successMessage(status),
-    errorMessage: errorMessage(status)
+    status
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Member not found' }));
 
