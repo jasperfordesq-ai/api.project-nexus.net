@@ -279,7 +279,18 @@ const exploreLinks = [
 function activeNavForPath(pathname = '/') {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/dashboard')) return 'dashboard';
-  if (pathname.startsWith('/account')) return 'account';
+  if ([
+    '/account',
+    '/profile',
+    '/messages',
+    '/connections',
+    '/wallet',
+    '/matches',
+    '/group-exchanges',
+    '/achievements',
+    '/leaderboard',
+    '/nexus-score'
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return 'account';
   if (pathname.startsWith('/feed')) return 'feed';
   if (pathname.startsWith('/listings')) return 'listings';
   if (pathname.startsWith('/members')) return 'members';

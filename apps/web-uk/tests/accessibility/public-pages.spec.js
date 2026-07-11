@@ -94,6 +94,7 @@ test.describe('representative public-page accessibility gate', () => {
       await expect(page.locator('main'), 'each page must have one main landmark').toHaveCount(1);
       await expect(page.locator('#main-content'), 'each page must have one main-content target').toHaveCount(1);
       await expect(page.locator('h1'), 'each representative public page must have one h1').toHaveCount(1);
+      await expect(page.locator('.govuk-service-navigation'), 'tenant-mounted pages must expose service navigation').toHaveCount(1);
 
       const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
         const counts = new Map();
@@ -607,6 +608,10 @@ test.describe('representative authenticated-page accessibility gate', () => {
         await expect(page.locator('main')).toHaveCount(1);
         await expect(page.locator('#main-content')).toHaveCount(1);
         await expect(page.locator('h1')).toHaveCount(1);
+        await expect(page.locator('.govuk-service-navigation')).toHaveCount(1);
+        if (route.name === 'profile settings') {
+          await expect(page.locator('header a.nexus-alpha-header__link[aria-current="page"]')).toHaveText('My account');
+        }
 
         const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
           const counts = new Map();

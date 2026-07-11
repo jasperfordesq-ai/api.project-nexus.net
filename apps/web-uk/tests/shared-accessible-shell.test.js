@@ -307,6 +307,25 @@ process.env.SESSION_SECRET = 'test-session-secret-32-chars!!';
 process.env.NODE_ENV = 'test';
 
 describe('shared accessible frontend shell', () => {
+  it('maps Blade account-family paths to the shared account navigation state', () => {
+    const { activeNavForPath } = require('../src/lib/accessible-shell');
+
+    for (const pathname of [
+      '/account',
+      '/profile/settings',
+      '/messages/42',
+      '/connections',
+      '/wallet/transactions',
+      '/matches/board',
+      '/group-exchanges',
+      '/achievements/shop',
+      '/leaderboard/seasons',
+      '/nexus-score/tiers'
+    ]) {
+      expect(activeNavForPath(pathname)).toBe('account');
+    }
+  });
+
   let app;
 
   function tenantBootstrap(slug = 'acme', overrides = {}) {
@@ -720,6 +739,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-style accessible shell on the home page', async () => {
     const response = await request(app).get('/');
     const components = await request(app).get('/components');
+    const mountedLogin = await request(app).get('/acme/accessible/login');
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('class="nexus-alpha-header"');
@@ -727,7 +747,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Not affiliated with GOV.UK');
     expect(response.text).toContain('Choose a community');
     expect(response.text).toContain('href="/acme/accessible"');
-    expect(response.text).toContain('class="govuk-service-navigation"');
+    expect(response.text).not.toContain('class="govuk-service-navigation"');
+    expect(mountedLogin.status).toBe(200);
+    expect(mountedLogin.text).toContain('class="govuk-service-navigation"');
+    expect(mountedLogin.text).toContain('aria-current="page"><strong class="govuk-service-navigation__active-fallback">Sign in</strong>');
     expect(response.text).toContain('Beta');
     expect(response.text).toContain('Give feedback');
     expect(response.text).toContain('href="/volunteering"');
@@ -2241,6 +2264,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Analytical engines');
     expect(signed.text).toContain('I can offer this');
     expect(signed.text).toContain('Sign-in and security');
+    expect(signed.text).toContain('href="/account" aria-current="page"');
     expect(signed.text).toContain('Two-step verification');
     expect(signed.text).toContain('Passkeys');
     expect(signed.text).toContain('Work laptop');

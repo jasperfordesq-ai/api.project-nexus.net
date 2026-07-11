@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,429/1,429` tests passed.
+- Jest: `45/45` suites and `1,430/1,430` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -64,7 +64,7 @@ scores must not be reused as current results.
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
   passed `75/75` cases in `1,423.4` seconds (`23.7` minutes), with `0` skipped,
-  `0` unexpected, and `0` flaky results, against the exact current source on 2026-07-11.
+  `0` unexpected, and `0` flaky results, at checkpoint `d86d5e5a` on 2026-07-11.
   The outer command wall time, including CSS compilation and runner
   startup, was `1,441.2` seconds (`24.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
@@ -4539,6 +4539,25 @@ The final uninterrupted exact-current Chromium/axe aggregate passed `75/75` in
 `1,423.4` seconds (`23.7` minutes), with `0` skipped, `0` unexpected, and `0`
 flaky results; outer wall time was `1,441.2` seconds (`24.0` minutes). Only the
 pre-existing GOV.UK Sass palette deprecation warnings remain.
+
+## 2026-07-11 Shared Header Navigation Semantics
+
+The shared header now follows Blade's tenant and current-page semantics. The
+service-navigation landmark is omitted on the no-tenant community chooser but
+retained on tenant-mounted pages. Active Sign in and Register items use Blade's
+strong active fallback. The My account header link is current for the complete
+Blade account family: account, profile, messages, connections, wallet, matches,
+group exchanges, achievements, leaderboard, and NEXUS score routes. Both the
+path-derived state and route-supplied `activeNav` values are covered.
+
+Focused shared-shell rendering passed `623/623`. The strengthened live gate
+passed tenant Home `1/1` in 16.8 seconds and normal plus Arabic Profile settings
+`2/2` in 1.7 minutes; it asserts tenant service navigation and the current My
+account link in addition to structure, RTL/reflow, and axe. Complete Jest passed
+`45/45` suites and `1,430/1,430` tests with warning-free lint, branding guard,
+the 292-template zero-match audit, and 608/608 route parity. The latest full
+browser aggregate remains checkpoint `d86d5e5a` at `75/75`; this focused shell
+slice does not claim a newer full aggregate.
 
 ## Documents To Trust
 
