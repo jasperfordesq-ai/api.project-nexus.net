@@ -38,6 +38,26 @@ src/lib/backend-contract.js
 `API_BASE_URL` reports `api-base-url` so override-driven runs cannot be mistaken
 for certified backend readiness.
 
+## ASP.NET Readiness Audit
+
+Run `npm run audit:aspnet:readiness` before attempting an unchanged Web UK
+session against ASP.NET. The audit is intentionally strict: it requires a
+healthy process plus Laravel-compatible public tenant bootstrap and platform
+stats resolution using `X-Tenant-Slug`, because Web UK cannot know an internal
+tenant ID before bootstrap.
+
+The live 2026-07-11 run against `http://127.0.0.1:5080` is blocked: `/health`
+returned `200`, but both `/api/v2/tenant/bootstrap?slug=hour-timebank` and
+`/api/v2/platform/stats` returned `400` with `X-Tenant-ID header is required`.
+Do not work around this in Web UK. ASP.NET must accept the same slug or
+Host/Origin tenant discovery contract as Laravel before an unchanged frontend
+runtime smoke can begin.
+
+The static Laravel/API comparator currently reports `2,436/2,449` source
+operations matched and `13` missing. None of those 13 missing routes is called
+by Web UK, but static route presence does not override the live tenant-context
+blocker or certify response shapes, auth, mutations, uploads, or redirects.
+
 ## Locale And Direction Contract
 
 Localization is a shared frontend contract and must not branch by backend

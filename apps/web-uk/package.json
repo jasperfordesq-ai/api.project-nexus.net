@@ -23,6 +23,7 @@
     "smoke:laravel:saved-collections": "npm run build:css && node scripts/saved-collections-mutation-local-server.js",
     "smoke:laravel:resources-mutation": "npm run build:css && node scripts/resources-mutation-local-server.js",
     "smoke:laravel:tenant-module-gates": "npm run build:css && node scripts/tenant-module-gates-local-server.js",
+    "audit:aspnet:readiness": "node scripts/aspnet-readiness-audit.js",
     "locales:sync": "php scripts/sync-laravel-locales.php",
     "locales:audit": "node scripts/audit-laravel-locales.js",
     "locales:audit-templates": "node scripts/audit-template-localization.js"

@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,434/1,434` tests passed.
+- Jest: `45/45` suites and `1,436/1,436` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -90,6 +90,13 @@ scores must not be reused as current results.
   Marketplace, Courses, Podcasts, and Premium links were absent and each route
   returned `403`; enabled Resources returned the tenant-mounted auth-required
   `302`. No tenant state was changed.
+- ASP.NET unchanged-frontend readiness audit is now repeatable with
+  `npm run audit:aspnet:readiness`. The live process on port `5080` is healthy,
+  but slug-first tenant bootstrap and platform stats both return `400` because
+  ASP.NET requires `X-Tenant-ID` before bootstrap. This is a backend blocker;
+  Web UK must not add an ASP.NET-specific tenant branch. The static comparator
+  reports `2,436/2,449` Laravel operations matched, and none of its 13 missing
+  routes is consumed by Web UK, but runtime switching is not certified.
 - Default-English branded header proof: the real `timebanking-org` bootstrap
   logo loaded at `392x105` intrinsic and `179x48` rendered size, with the exact
   tenant name as alt text and no horizontal overflow. Web UK now follows

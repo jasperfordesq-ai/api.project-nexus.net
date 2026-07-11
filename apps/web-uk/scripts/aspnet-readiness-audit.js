@@ -1,0 +1,74 @@
+// Copyright (c) 2024-2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+const DEFAULT_BASE_URL = 'http://127.0.0.1:5080';
+const DEFAULT_TENANT = 'hour-timebank';
+
+function stripTrailingSlash(value) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+async function check(fetchImpl, baseUrl, name, path, options = {}) {
+  try {
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(options.timeoutMs || 30_000),
+      headers: options.headers || {}
+    });
+    const body = await response.text();
+    return {
+      name,
+      ok: response.status === options.expectedStatus,
+      expectedStatus: options.expectedStatus,
+      actualStatus: response.status,
+      body: body.slice(0, 500)
+    };
+  } catch (error) {
+    return {
+      name,
+      ok: false,
+      expectedStatus: options.expectedStatus,
+      actualStatus: 0,
+      body: error.message
+    };
+  }
+}
+
+async function runAspNetReadinessAudit(options = {}) {
+  const fetchImpl = options.fetchImpl || global.fetch;
+  const baseUrl = stripTrailingSlash(options.baseUrl || process.env.ASPNET_BASE_URL || DEFAULT_BASE_URL);
+  const tenant = options.tenant || process.env.ASPNET_SMOKE_TENANT || DEFAULT_TENANT;
+  const tenantHeaders = { 'X-Tenant-Slug': tenant };
+  const encodedTenant = encodeURIComponent(tenant);
+
+  const checks = await Promise.all([
+    check(fetchImpl, baseUrl, 'health', '/health', { expectedStatus: 200 }),
+    check(fetchImpl, baseUrl, 'tenant-bootstrap-by-slug', `/api/v2/tenant/bootstrap?slug=${encodedTenant}`, {
+      expectedStatus: 200,
+      headers: tenantHeaders
+    }),
+    check(fetchImpl, baseUrl, 'platform-stats-by-slug', '/api/v2/platform/stats', {
+      expectedStatus: 200,
+      headers: tenantHeaders
+    })
+  ]);
+
+  return {
+    target: 'aspnet',
+    baseUrl,
+    tenant,
+    ready: checks.every((item) => item.ok),
+    checks
+  };
+}
+
+if (require.main === module) {
+  runAspNetReadinessAudit().then((report) => {
+    console.log(JSON.stringify(report, null, 2));
+    process.exitCode = report.ready ? 0 : 1;
+  });
+}
+
+module.exports = { runAspNetReadinessAudit };
