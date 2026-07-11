@@ -85,6 +85,7 @@ async function hideCookieBanner(page, baseURL) {
 test.describe('representative public-page accessibility gate', () => {
   for (const route of PUBLIC_ROUTES) {
     test(`${route.name} has a valid document structure and no high-impact axe violations`, async ({ page }, testInfo) => {
+      test.setTimeout(90_000);
       const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
 
       expect(response, `${route.path} did not return a document response`).not.toBeNull();
@@ -688,6 +689,46 @@ test.describe('representative authenticated-page accessibility gate', () => {
       }
     });
   }
+
+  test('Arabic profile password error links the summary to its inline field error', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(90_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      const path = `${authenticatedMountPath}/profile/settings?status=password-mismatch&locale=ar`;
+      const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+      expect(response).not.toBeNull();
+      expect(response.status()).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+
+      const message = translate('ar', 'profile_settings.password_mismatch');
+      const summaryLink = page.locator('.govuk-error-summary__list a[href="#new_password_confirmation"]');
+      await expect(summaryLink).toHaveText(message);
+      await expect(page.locator('#new_password_confirmation-error')).toContainText(message);
+      await expect(page.locator('#new_password_confirmation')).toHaveClass(/govuk-input--error/);
+      await expect(page.locator('#new_password_confirmation')).toHaveAttribute(
+        'aria-describedby',
+        'new_password_confirmation-error'
+      );
+
+      const overflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-profile-password-error', {
+        body: Buffer.from(JSON.stringify({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
 
   test('Arabic report-problem form preserves Laravel validation output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);

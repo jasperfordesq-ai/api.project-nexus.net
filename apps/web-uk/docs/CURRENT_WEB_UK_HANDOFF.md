@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted automated browser accessibility pass: Chromium/axe
-  passed `74/74` cases in `1,120.8` seconds (`18.7` minutes), with `0` skipped,
+  passed `75/75` cases in `1,187.5` seconds (`19.8` minutes), with `0` skipped,
   `0` unexpected, and `0` flaky results, against the exact current source on
   2026-07-11. The outer command wall time, including CSS compilation and runner
-  startup, was `1,138.1` seconds (`19.0` minutes).
+  startup, was `1,199.0` seconds (`20.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4412,6 +4412,37 @@ infrastructure routes. The uninterrupted live Laravel-backed Chromium/axe
 aggregate passed all `74/74` cases in `1,120.8` seconds with `0` skipped, `0`
 unexpected, and `0` flaky results; outer wall time was `1,138.1` seconds.
 Only the pre-existing GOV.UK Sass palette deprecation warnings remain.
+
+## 2026-07-11 Profile Settings Control And Error Parity
+
+Direct Blade-to-Nunjucks control inventory found accessibility-critical drift
+after the reflow recovery. Profile photo and language controls used Web UK-only
+IDs, the personalisation checkbox posted `prefers_chronological_feed` instead
+of Blade's `prefers_chronological`, account status summaries targeted Web UK-
+only email/password IDs, and the account forms had no Laravel-style inline
+errors. Skill/passkey limits, photo hints, location autocomplete, password
+spellcheck, and biography row count also differed from the source template.
+
+The rendered form now uses Laravel's exact control IDs, names, hint
+relationships, limits, autocomplete, and password attributes for that audited
+surface. Account status anchors map to `new_email`, `email_current_password`,
+`current_password`, `new_password`, or `new_password_confirmation` exactly as
+Blade does. Matching fields receive `govuk-form-group--error`,
+`govuk-input--error`, a localized visually hidden error prefix, and the exact
+error ID in `aria-describedby`. Web UK's non-source wrapper IDs were removed
+so the source control IDs remain document-unique.
+
+Focused render/localization verification passed `641/641`; the live
+authenticated Arabic password-mismatch journey passed exact summary/inline
+message linkage, error class and ARIA assertions, RTL, 320px reflow, and axe in
+`53.7` seconds including login/setup. The first expanded aggregate correctly
+caught duplicate `avatar` and `language` IDs plus an unrelated aborted Home
+request. Removing the non-Laravel wrapper IDs fixed the real regression, and a
+focused Home/Profile rerun passed `2/2`. The final uninterrupted current-source
+Chromium/axe aggregate passed `75/75` cases in `1,187.5` seconds with `0`
+skipped, `0` unexpected, and `0` flaky results; outer wall time was `1,199.0`
+seconds. Complete Jest remains `45/45` suites and `1,429/1,429` tests, with
+green lint, brand, catalog/template, CSS, and 608/608 route gates.
 
 ## Documents To Trust
 

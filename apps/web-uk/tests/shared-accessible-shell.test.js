@@ -2189,6 +2189,12 @@ describe('shared accessible frontend shell', () => {
     const arabic = await request(app)
       .get('/acme/accessible/profile/settings?locale=ar')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const emailError = await request(app)
+      .get('/profile/settings?status=email-password-incorrect')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const passwordError = await request(app)
+      .get('/profile/settings?status=password-mismatch')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const legacySettings = await request(app)
       .get('/settings')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
@@ -2218,6 +2224,8 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Your availability');
     expect(signed.text).toContain('Profile photo');
     expect(signed.text).toContain('Upload a new photo');
+    expect(signed.text).toContain('id="avatar" name="avatar"');
+    expect(signed.text).toContain('aria-describedby="avatar-hint"');
     expect(signed.text).toContain('Personal details');
     expect(signed.text).toContain('First name');
     expect(signed.text).toContain('Ada');
@@ -2248,6 +2256,20 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Safeguarding');
     expect(signed.text).toContain('Broker approval');
     expect(signed.text).toContain('Exchanges need broker approval');
+    expect(signed.text).toContain('id="location" name="location" type="text" value="London" autocomplete="address-level2"');
+    expect(signed.text).toContain('id="skill_name" name="skill_name" type="text" maxlength="100"');
+    expect(signed.text).toContain('name="device_name" type="text" value="Work laptop" maxlength="100"');
+    expect(signed.text).toContain('id="language" name="language"');
+    expect(signed.text).toContain('id="prefers_chronological" name="prefers_chronological"');
+    expect(signed.text).not.toContain('id="prefers_chronological_feed"');
+    expect(emailError.status).toBe(200);
+    expect(emailError.text).toContain('href="#email_current_password"');
+    expect(emailError.text).toContain('id="email_current_password-error" class="govuk-error-message"');
+    expect(emailError.text).toContain('id="email_current_password" name="current_password" type="password" autocomplete="current-password" aria-describedby="email-current-password-hint email_current_password-error"');
+    expect(passwordError.status).toBe(200);
+    expect(passwordError.text).toContain('href="#new_password_confirmation"');
+    expect(passwordError.text).toContain('id="new_password_confirmation-error" class="govuk-error-message"');
+    expect(passwordError.text).toContain('id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password" spellcheck="false" aria-describedby="new_password_confirmation-error"');
     expect(signed.text).toContain('Your data and privacy');
     expect(signed.text).toContain('Get a copy of your data');
     expect(signed.text).toContain('Request your data');

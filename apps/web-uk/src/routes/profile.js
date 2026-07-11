@@ -96,32 +96,32 @@ const PROFILE_STATUS_MESSAGES = {
   },
   'email-changed': { type: 'success', message: 'Your email address has been updated.' },
   'email-unchanged': { type: 'info', message: 'That is already your email address.' },
-  'email-invalid': { type: 'error', message: 'Enter a valid email address', anchor: 'email' },
+  'email-invalid': { type: 'error', message: 'Enter a valid email address', anchor: 'new_email' },
   'email-password-incorrect': {
     type: 'error',
     message: 'Your current password was incorrect. Your email was not changed.',
-    anchor: 'current_password'
+    anchor: 'email_current_password'
   },
   'email-reauthentication-unavailable': {
     type: 'error',
     message: 'Email changes are temporarily unavailable because we cannot securely confirm your password. Your email was not changed.',
-    anchor: 'current_password'
+    anchor: 'email_current_password'
   },
   'email-failed': {
     type: 'error',
     message: 'Your email address could not be updated. It may already be in use.',
-    anchor: 'email'
+    anchor: 'new_email'
   },
   'password-changed': { type: 'success', message: 'Your password has been changed.' },
   'password-current-required': {
     type: 'error',
     message: 'Enter your current password',
-    anchor: 'current_password_for_password'
+    anchor: 'current_password'
   },
   'password-current-incorrect': {
     type: 'error',
     message: 'Your current password was incorrect',
-    anchor: 'current_password_for_password'
+    anchor: 'current_password'
   },
   'password-weak': {
     type: 'error',
@@ -141,7 +141,7 @@ const PROFILE_STATUS_MESSAGES = {
   'password-failed': {
     type: 'error',
     message: 'Your password could not be changed. Try again.',
-    anchor: 'current_password_for_password'
+    anchor: 'new_password'
   },
   'language-changed': { type: 'success', message: 'Your language has been updated.' },
   'language-invalid': { type: 'error', message: 'Choose a language from the list', anchor: 'language' },

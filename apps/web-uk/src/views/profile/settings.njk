@@ -60,9 +60,8 @@
       <form method="post" action="{{ urlFor('/profile/settings') }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
-        <section id="avatar" aria-labelledby="profile-photo-heading">
+        <section aria-labelledby="profile-photo-heading">
           <h2 class="govuk-heading-l" id="profile-photo-heading">{{ t("profile_settings.photo_title") }}</h2>
-          <p class="govuk-body">{{ t("profile_settings.photo_hint") }}</p>
           {% if profile.avatar_url %}
             <img class="govuk-!-margin-bottom-3" src="{{ profile.avatar_url }}" alt="{{ t("profile_settings.photo_current_alt") }}" width="120" height="120">
           {% else %}
@@ -70,8 +69,9 @@
           {% endif %}
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="avatar_file">{{ t("profile_settings.photo_label") }}</label>
-            <input class="govuk-file-upload" id="avatar_file" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp">
+            <label class="govuk-label" for="avatar">{{ t("profile_settings.photo_label") }}</label>
+            <div id="avatar-hint" class="govuk-hint">{{ t("profile_settings.photo_hint") }}</div>
+            <input class="govuk-file-upload" id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="avatar-hint">
           </div>
 
           {% if profile.avatar_url %}
@@ -121,11 +121,11 @@
           </div>
           <div class="govuk-form-group">
             <label class="govuk-label" for="bio">{{ t("profile_settings.bio_label") }}</label>
-            <textarea class="govuk-textarea" id="bio" name="bio" rows="5">{{ profile.bio }}</textarea>
+            <textarea class="govuk-textarea" id="bio" name="bio" rows="6">{{ profile.bio }}</textarea>
           </div>
           <div class="govuk-form-group">
             <label class="govuk-label" for="location">{{ t("profile_settings.location_label") }}</label>
-            <input class="govuk-input govuk-!-width-two-thirds" id="location" name="location" type="text" value="{{ profile.location }}">
+            <input class="govuk-input govuk-!-width-two-thirds" id="location" name="location" type="text" value="{{ profile.location }}" autocomplete="address-level2">
           </div>
         </section>
 
@@ -193,7 +193,7 @@
           <div class="govuk-form-group">
             <label class="govuk-label" for="skill_name">{{ t("profile_settings.skills.add_label") }}</label>
             <div id="skill-name-hint" class="govuk-hint">{{ t("profile_settings.skills.add_hint") }}</div>
-            <input class="govuk-input govuk-!-width-two-thirds" id="skill_name" name="skill_name" type="text" aria-describedby="skill-name-hint">
+            <input class="govuk-input govuk-!-width-two-thirds" id="skill_name" name="skill_name" type="text" maxlength="100" aria-describedby="skill-name-hint">
           </div>
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-4">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("profile_settings.skills.type_legend") }}</legend>
@@ -222,35 +222,45 @@
         <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/profile/blocked') }}">{{ t("profile_settings.blocked_link") }}</a></p>
 
         <h3 class="govuk-heading-m">{{ t("profile_settings.email_heading") }}</h3>
+        {% set newEmailError = statusConfig.message if errorStatus and errorAnchor == 'new_email' else null %}
+        {% set emailPasswordError = statusConfig.message if errorStatus and errorAnchor == 'email_current_password' else null %}
         <form method="post" action="{{ urlFor('/profile/email') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="email">{{ t("profile_settings.email_label") }}</label>
-            <input class="govuk-input govuk-!-width-two-thirds" id="email" name="email" type="email" value="{{ profile.email }}" autocomplete="email">
+          <div class="govuk-form-group{% if newEmailError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="new_email">{{ t("profile_settings.email_label") }}</label>
+            {% if newEmailError %}<p id="new_email-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ newEmailError }}</p>{% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if newEmailError %} govuk-input--error{% endif %}" id="new_email" name="email" type="email" value="{{ profile.email }}" autocomplete="email"{% if newEmailError %} aria-describedby="new_email-error"{% endif %}>
           </div>
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="current_password">{{ t("profile_settings.confirm_password_label") }}</label>
+          <div class="govuk-form-group{% if emailPasswordError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="email_current_password">{{ t("profile_settings.confirm_password_label") }}</label>
             <div id="email-current-password-hint" class="govuk-hint">{{ t("profile_settings.confirm_password_hint") }}</div>
-            <input class="govuk-input govuk-input--width-20" id="current_password" name="current_password" type="password" autocomplete="current-password">
+            {% if emailPasswordError %}<p id="email_current_password-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ emailPasswordError }}</p>{% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if emailPasswordError %} govuk-input--error{% endif %}" id="email_current_password" name="current_password" type="password" autocomplete="current-password" aria-describedby="email-current-password-hint{% if emailPasswordError %} email_current_password-error{% endif %}">
           </div>
           <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.email_submit") }}</button>
         </form>
 
         <h3 class="govuk-heading-m">{{ t("profile_settings.password_heading") }}</h3>
+        {% set currentPasswordError = statusConfig.message if errorStatus and errorAnchor == 'current_password' else null %}
+        {% set newPasswordError = statusConfig.message if errorStatus and errorAnchor == 'new_password' else null %}
+        {% set confirmPasswordError = statusConfig.message if errorStatus and errorAnchor == 'new_password_confirmation' else null %}
         <form method="post" action="{{ urlFor('/profile/password') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <div class="govuk-form-group">
-            <label class="govuk-label" for="current_password_for_password">{{ t("profile_settings.current_password_label") }}</label>
-            <input class="govuk-input govuk-input--width-20" id="current_password_for_password" name="current_password" type="password" autocomplete="current-password">
+          <div class="govuk-form-group{% if currentPasswordError %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label" for="current_password">{{ t("profile_settings.current_password_label") }}</label>
+            {% if currentPasswordError %}<p id="current_password-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ currentPasswordError }}</p>{% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if currentPasswordError %} govuk-input--error{% endif %}" id="current_password" name="current_password" type="password" autocomplete="current-password"{% if currentPasswordError %} aria-describedby="current_password-error"{% endif %}>
           </div>
-          <div class="govuk-form-group">
+          <div class="govuk-form-group{% if newPasswordError %} govuk-form-group--error{% endif %}">
             <label class="govuk-label" for="new_password">{{ t("profile_settings.new_password_label") }}</label>
             <div id="new-password-hint" class="govuk-hint">{{ t("profile_settings.new_password_hint") }}</div>
-            <input class="govuk-input govuk-input--width-20" id="new_password" name="new_password" type="password" autocomplete="new-password">
+            {% if newPasswordError %}<p id="new_password-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ newPasswordError }}</p>{% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if newPasswordError %} govuk-input--error{% endif %}" id="new_password" name="new_password" type="password" autocomplete="new-password" spellcheck="false" aria-describedby="new-password-hint{% if newPasswordError %} new_password-error{% endif %}">
           </div>
-          <div class="govuk-form-group">
+          <div class="govuk-form-group{% if confirmPasswordError %} govuk-form-group--error{% endif %}">
             <label class="govuk-label" for="new_password_confirmation">{{ t("profile_settings.new_password_confirm_label") }}</label>
-            <input class="govuk-input govuk-input--width-20" id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password">
+            {% if confirmPasswordError %}<p id="new_password_confirmation-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ confirmPasswordError }}</p>{% endif %}
+            <input class="govuk-input govuk-!-width-two-thirds{% if confirmPasswordError %} govuk-input--error{% endif %}" id="new_password_confirmation" name="new_password_confirmation" type="password" autocomplete="new-password" spellcheck="false"{% if confirmPasswordError %} aria-describedby="new_password_confirmation-error"{% endif %}>
           </div>
           <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("profile_settings.password_submit") }}</button>
         </form>
@@ -267,7 +277,7 @@
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
                   <label class="govuk-label" for="passkey-name-{{ loop.index }}">{{ t("profile_settings.passkeys.rename_label") }}</label>
-                  <input class="govuk-input govuk-!-width-two-thirds" id="passkey-name-{{ loop.index }}" name="device_name" type="text" value="{{ passkey.device_name }}">
+                  <input class="govuk-input govuk-!-width-two-thirds" id="passkey-name-{{ loop.index }}" name="device_name" type="text" value="{{ passkey.device_name }}" maxlength="100">
                   <button class="govuk-button govuk-button--secondary govuk-!-margin-top-2" data-module="govuk-button">{{ t("profile_settings.passkeys.rename_submit") }}</button>
                 </form>
                 <form method="post" action="{{ urlFor('/profile/passkeys/remove') }}">
@@ -311,14 +321,14 @@
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-      <section id="language" aria-labelledby="language-heading">
+      <section aria-labelledby="language-heading">
         <h2 class="govuk-heading-l" id="language-heading">{{ t("profile_settings.language_title") }}</h2>
         <p class="govuk-body">{{ t("profile_settings.language_description") }}</p>
         <form method="post" action="{{ urlFor('/profile/language') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="language_select">{{ t("header.language_label") }}</label>
-            <select class="govuk-select" id="language_select" name="language">
+            <label class="govuk-label" for="language">{{ t("header.language_label") }}</label>
+            <select class="govuk-select" id="language" name="language">
               {% for option in localeOptions %}
                 <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
               {% endfor %}
@@ -406,12 +416,12 @@
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("profile_settings.personalisation.options_legend") }}</legend>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
             <div class="govuk-checkboxes__item">
-              <input class="govuk-checkboxes__input" id="prefers_chronological_feed" name="prefers_chronological_feed" type="checkbox" value="1"{% if profile.prefers_chronological_feed %} checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="prefers_chronological_feed">{{ t("profile_settings.personalisation.chronological_label") }}</label>
+              <input class="govuk-checkboxes__input" id="prefers_chronological" name="prefers_chronological" type="checkbox" value="1"{% if profile.prefers_chronological_feed %} checked{% endif %} aria-describedby="prefers_chronological-hint">
+              <label class="govuk-label govuk-checkboxes__label" for="prefers_chronological">{{ t("profile_settings.personalisation.chronological_label") }}</label>
               <div id="prefers_chronological-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("profile_settings.personalisation.chronological_hint") }}</div>
             </div>
             <div class="govuk-checkboxes__item">
-              <input class="govuk-checkboxes__input" id="auto_translate_ugc" name="auto_translate_ugc" type="checkbox" value="1"{% if profile.auto_translate_ugc %} checked{% endif %}>
+              <input class="govuk-checkboxes__input" id="auto_translate_ugc" name="auto_translate_ugc" type="checkbox" value="1"{% if profile.auto_translate_ugc %} checked{% endif %} aria-describedby="auto_translate_ugc-hint">
               <label class="govuk-label govuk-checkboxes__label" for="auto_translate_ugc">{{ t("profile_settings.personalisation.auto_translate_label") }}</label>
               <div id="auto_translate_ugc-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("profile_settings.personalisation.auto_translate_hint") }}</div>
             </div>
