@@ -77,9 +77,9 @@
         <li class="nexus-alpha-card" id="appreciation-{{ appreciation.id }}">
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
             {% if appreciation.sender.id %}
-              <a class="govuk-link" href="{{ urlFor('/members/' + (appreciation.sender.id | string)) }}">{{ appreciation.sender.name }}</a>
+              <a class="govuk-link" href="{{ urlFor('/members/' + (appreciation.sender.id | string)) }}">{{ appreciation.sender.name or t("govuk_alpha_saved.wall.from_someone") }}</a>
             {% else %}
-              {{ appreciation.sender.name }}
+              {{ appreciation.sender.name or t("govuk_alpha_saved.wall.from_someone") }}
             {% endif %}
             {% if appreciation.receivedOn %}<span class="govuk-!-margin-left-1">{{ t("govuk_alpha_saved.wall.received_on", { date: appreciation.receivedOn }) }}</span>{% endif %}
           </p>

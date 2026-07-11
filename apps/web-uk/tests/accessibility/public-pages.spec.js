@@ -54,6 +54,9 @@ const AUTHENTICATED_ROUTES = [
   { name: 'NEXUS score', path: '/nexus-score' },
   { name: 'NEXUS tier ladder', path: '/nexus-score/tiers' },
   { name: 'wallet', path: '/wallet' },
+  { name: 'saved items', path: '/saved' },
+  { name: 'my collections', path: '/me/collections' },
+  { name: 'public collections', path: '/users/77/collections' },
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
   { name: 'groups', path: '/groups' },
@@ -643,6 +646,18 @@ test.describe('representative authenticated-page accessibility gate', () => {
           await expect(page.locator('#appreciation-message')).toHaveAttribute('maxlength', '500');
           await expect(page.locator('#appreciation-message')).toHaveAttribute('aria-describedby', 'appreciation-message-hint');
           await expect(page.locator('#appreciation-public')).toHaveAttribute('aria-describedby', 'appreciation-public-hint');
+        }
+        if (route.name === 'saved items') {
+          await expect(page.locator('h1')).toHaveText(translate('en', 'saved.title'));
+          await expect(page.locator('label[for="saved-type-filter"]')).toHaveText(translate('en', 'polish_discovery.saved_type_filter_label'));
+        }
+        if (route.name === 'my collections') {
+          await expect(page.locator('h1')).toHaveText(translate('en', 'govuk_alpha_saved.collections.title'));
+          await expect(page.locator('label[for="collection-name"]')).toHaveText(translate('en', 'govuk_alpha_saved.create.name_label'));
+          await expect(page.locator('#collection-public')).toHaveAttribute('aria-describedby', 'collection-public-hint');
+        }
+        if (route.name === 'public collections') {
+          await expect(page.locator('h1')).toContainText(translate('en', 'govuk_alpha_saved.public.heading', { name: '' }).trim());
         }
 
         const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {

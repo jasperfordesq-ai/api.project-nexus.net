@@ -79,6 +79,7 @@ function renderCollection(locale) {
       description: '',
       id: 4,
       isPublic: false,
+      itemsCount: 1,
       name: 'Care & <support>',
       visibilityLabel: 'Private'
     },
@@ -161,6 +162,9 @@ describe('localized accessible chrome', () => {
     const search = templateSource('search/advanced.njk');
     const appreciations = templateSource('saved-social/appreciations.njk');
     const collection = templateSource('saved-collections/detail.njk');
+    const collectionIndex = templateSource('saved-collections/index.njk');
+    const publicCollections = templateSource('saved-social/public-collections.njk');
+    const savedItems = templateSource('saved/index.njk');
     const network = templateSource('connections/network.njk');
     const course = templateSource('courses/learn.njk');
 
@@ -170,8 +174,17 @@ describe('localized accessible chrome', () => {
 
     expect(collection).toContain("t('govuk_alpha_saved.detail.remove_item_label', { title: item.title })");
     expect(collection).toContain("t('govuk_alpha_saved.pagination.page_of', { current: currentPage, last: lastPage })");
-    expect(collection).toContain("t('govuk_alpha_saved.edit.delete_confirm_label', { name: collection.name })");
+    expect(collection).toContain("t('govuk_alpha_saved.edit.delete_confirm_label', { name: collection.name or t('govuk_alpha_saved.detail.title') })");
     expect(collection).not.toContain('There is a problem:</span>');
+
+    expect(collectionIndex).toContain('tc("govuk_alpha_saved.collections.count", collection.itemsCount');
+    expect(collectionIndex).toContain('t("govuk_alpha_saved.create.public_hint")');
+    expect(collectionIndex).not.toContain('>Create a collection</h2>');
+    expect(publicCollections).toContain('t("govuk_alpha_saved.public.heading", { name: ownerLabel })');
+    expect(publicCollections).toContain('tc("govuk_alpha_saved.collections.count", collection.itemsCount');
+    expect(savedItems).toContain('t("polish_discovery.saved_type_filter_label")');
+    expect(savedItems).toContain("t('polish_discovery.saved_remove_label', { title: item.title })");
+    expect(savedItems).not.toContain('id="saved-status-title"');
 
     expect(appreciations).toContain('t("govuk_alpha_saved.wall.heading", { name: ownerLabel })');
     expect(appreciations).toContain('t("govuk_alpha_saved.send.message_hint")');
@@ -193,6 +206,7 @@ describe('localized accessible chrome', () => {
   it.each(['ga', 'ar'])('renders safe interpolated labels and available native %s copy', (locale) => {
     const english = createTranslator('en');
     const t = createTranslator(locale);
+    const tc = createChoiceTranslator(locale);
     const search = renderAdvancedSearch(locale);
     const appreciations = renderAppreciations(locale);
     const collection = renderCollection(locale);
@@ -207,7 +221,8 @@ describe('localized accessible chrome', () => {
     expect(search).toContain('aria-label="Delete saved search Care &amp; &lt;support&gt;"');
     expect(collection).toContain('aria-label="Remove Tea &amp; &lt;chat&gt; from this collection"');
     expect(collection).toContain('aria-label="Delete the collection Care &amp; &lt;support&gt;"');
-    expect(collection).toContain(`<span class="govuk-visually-hidden">${t('states.error_title')}:</span>`);
+    expect(collection).toContain(`<span class="govuk-visually-hidden">${t('govuk_alpha_saved.errors.summary_title')}:</span>`);
+    expect(collection).toContain(tc('govuk_alpha_saved.detail.count', 1, { count: 1 }));
     expect(appreciations).toContain(t('govuk_alpha_saved.wall.heading', { name: 'Morgan' }));
     expect(appreciations).toContain(t('govuk_alpha_saved.send.message_hint'));
     expect(appreciations).toContain(t('govuk_alpha_saved.status.appreciation_message_required'));

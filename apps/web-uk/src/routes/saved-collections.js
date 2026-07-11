@@ -79,12 +79,6 @@ function safeColor(value) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#6366f1';
 }
 
-function plural(count, singular, pluralText) {
-  if (count === 0) return `No ${pluralText}`;
-  if (count === 1) return `1 ${singular}`;
-  return `${count} ${pluralText}`;
-}
-
 function normalizeCollection(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -95,30 +89,20 @@ function normalizeCollection(item) {
     ...row,
     id,
     userId: positiveInteger(row.user_id ?? row.userId),
-    name: trimmed(row.name) || 'Collection',
+    name: trimmed(row.name),
     description: trimmed(row.description),
     color: safeColor(row.color),
     itemsCount: count,
-    countLabel: plural(count, 'item', 'items'),
-    isPublic: row.is_public === true || row.isPublic === true,
-    visibilityLabel: row.is_public === true || row.isPublic === true ? 'Public' : 'Private'
+    isPublic: row.is_public === true || row.isPublic === true
   };
 }
 
-function typeLabel(type) {
-  const labels = {
-    post: 'Post',
-    listing: 'Listing',
-    event: 'Event',
-    group: 'Group',
-    article: 'Article',
-    marketplace_listing: 'Marketplace listing',
-    job: 'Opportunity',
-    resource: 'Resource'
-  };
+function typeLabel(type, t) {
   const key = trimmed(type);
-  if (labels[key]) return labels[key];
-  return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Saved item';
+  const translationKey = `govuk_alpha_saved.types.${key}`;
+  const translated = typeof t === 'function' ? t(translationKey) : translationKey;
+  if (translated !== translationKey) return translated;
+  return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function itemHref(type, id) {
@@ -149,11 +133,11 @@ function previewTitle(row) {
   return trimmed(row.preview_title ?? row.previewTitle ?? preview.title);
 }
 
-function normalizeSavedItem(item) {
+function normalizeSavedItem(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const itemType = trimmed(row.item_type ?? row.itemType);
   const itemId = positiveInteger(row.item_id ?? row.itemId);
-  const label = typeLabel(itemType);
+  const label = typeLabel(itemType, t);
   const title = previewTitle(row) || `${label} #${itemId || ''}`.trim();
   const savedOn = formatSavedDate(row.saved_at ?? row.savedAt);
   return {
@@ -169,13 +153,13 @@ function normalizeSavedItem(item) {
   };
 }
 
-function detailPayload(result, fallbackId) {
+function detailPayload(result, fallbackId, t) {
   const data = dataFrom(result);
   const collection = normalizeCollection((data && data.collection) || {});
   if (!collection.id) collection.id = fallbackId;
   return {
     collection,
-    items: collectionRows(data).map(normalizeSavedItem).filter((item) => item.id !== null),
+    items: collectionRows(data).map((item) => normalizeSavedItem(item, t)).filter((item) => item.id !== null),
     meta: {
       current_page: Number(metaFrom(result).current_page || 1),
       last_page: Number(metaFrom(result).last_page || 1),
@@ -183,25 +167,6 @@ function detailPayload(result, fallbackId) {
       per_page: Number(metaFrom(result).per_page || 20)
     }
   };
-}
-
-function statusMessage(status) {
-  const messages = {
-    'collection-created': 'Collection created.',
-    'collection-updated': 'Collection updated.',
-    'collection-deleted': 'Collection deleted.',
-    'item-removed': 'Item removed from the collection.'
-  };
-  return messages[trimmed(status)] || '';
-}
-
-function errorMessage(status) {
-  const messages = {
-    'collection-name-required': 'Enter a name for the collection.',
-    'collection-failed': 'Sorry, that could not be saved. Please try again.',
-    'item-remove-failed': 'Sorry, that item could not be removed.'
-  };
-  return messages[trimmed(status)] || '';
 }
 
 function collectionPayload(body) {
@@ -239,12 +204,10 @@ router.get('/', asyncRoute(async (req, res) => {
     .filter((collection) => collection.id !== null);
 
   return res.render('saved-collections/index', {
-    title: 'My collections',
+    title: res.locals.t('govuk_alpha_saved.collections.title'),
     activeNav: 'saved',
     collections,
-    status,
-    successMessage: statusMessage(status),
-    errorMessage: errorMessage(status)
+    status
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -259,7 +222,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     getSavedCollectionItems(token, id, { page, per_page: 20 }),
     getRequestProfile(req, token)
   ]);
-  const payload = detailPayload(collectionResult, id);
+  const payload = detailPayload(collectionResult, id, res.locals.t);
   const profile = dataFrom(profileResult);
   const currentUserId = positiveInteger(profile && (profile.id ?? profile.user_id));
   const isOwner = currentUserId !== null && payload.collection.userId === currentUserId;
@@ -273,9 +236,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     currentPage: page,
     lastPage: payload.meta.last_page || 1,
     isOwner,
-    status,
-    successMessage: statusMessage(status),
-    errorMessage: errorMessage(status)
+    status
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Collection not found' }));
 

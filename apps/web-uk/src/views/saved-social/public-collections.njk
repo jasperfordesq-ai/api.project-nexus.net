@@ -6,11 +6,12 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">{{ t("actions.back_to_profile") }}</a>
+  {% set ownerLabel = owner.name or t("govuk_alpha_saved.wall.from_someone") %}
+  <a class="govuk-back-link" href="{{ urlFor('/members/' + (owner.id | string)) }}">{{ t("govuk_alpha_saved.public.back_to_profile") }}</a>
 
-  <span class="govuk-caption-xl">Collections shared by {{ owner.name }}</span>
-  <h1 class="govuk-heading-xl">Public collections of {{ owner.name }}</h1>
-  <p class="govuk-body-l">Collections this member has chosen to share publicly.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_saved.public.caption", { name: ownerLabel }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_saved.public.heading", { name: ownerLabel }) }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_saved.public.description") }}</p>
 
   {% if collections and collections.length %}
     <ul class="govuk-list nexus-alpha-card-list">
@@ -18,22 +19,22 @@
         <li class="nexus-alpha-card">
           <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
             <span class="nexus-alpha-avatar" style="background-color: {{ collection.color }}; width: 1rem; height: 1rem; display: inline-block; border-radius: 50%; vertical-align: middle;" aria-hidden="true"></span>
-            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">{{ collection.name }}</a>
+            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">{{ collection.name or t("govuk_alpha_saved.detail.title") }}</a>
           </h2>
-          <p class="govuk-body-s nexus-alpha-meta">{{ collection.countLabel }}</p>
+          <p class="govuk-body-s nexus-alpha-meta">{{ tc("govuk_alpha_saved.collections.count", collection.itemsCount, { count: collection.itemsCount }) }}</p>
           {% if collection.description %}
             <p class="govuk-body">{{ collection.description }}</p>
           {% endif %}
           <p class="govuk-body govuk-!-margin-bottom-0">
-            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">View collection</a>
+            <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">{{ t("govuk_alpha_saved.collections.view") }}</a>
           </p>
         </li>
       {% endfor %}
     </ul>
   {% else %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">No public collections</h2>
-      <p class="govuk-body">This member has not shared any collections publicly.</p>
+      <h2 class="govuk-heading-m">{{ t("govuk_alpha_saved.public.empty_title") }}</h2>
+      <p class="govuk-body">{{ t("govuk_alpha_saved.public.empty_body") }}</p>
     </div>
   {% endif %}
 {% endblock %}

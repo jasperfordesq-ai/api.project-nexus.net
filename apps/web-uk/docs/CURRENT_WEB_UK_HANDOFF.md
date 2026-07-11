@@ -4583,7 +4583,7 @@ full Chromium/axe aggregate passed all `76/76` cases in `1,547.0` seconds
 (`25.8` minutes), with `0` skipped, `0` unexpected, and `0` flaky results;
 outer wall time was `1,569.5` seconds (`26.2` minutes).
 
-## 2026-07-11 Saved Appreciation Source-Parity Slice
+## 2026-07-11 Saved Family Source-Parity Slice
 
 The saved-appreciation wall now follows the authoritative Blade page rather
 than its earlier English approximation. Caption, heading, description, send
@@ -4603,9 +4603,32 @@ pixels with one main/H1, no horizontal overflow, and no serious/critical axe
 violations. Full verification passed `45/45` Jest suites and `1,430/1,430`
 tests, warning-free lint and brand checks, 11-locale/24-namespace/7,364-key
 structural parity, the 292-template zero-match audit, and 608/608 route parity.
-The next complete browser aggregate contains 77 cases; the latest completed
-full aggregate remains the exact-current `cdc8674d` 76/76 checkpoint recorded
-above.
+At that appreciation-only checkpoint, the next complete browser aggregate
+contained 77 cases; the later saved-family expansion below supersedes that
+inventory. The latest completed full aggregate remains the exact-current
+`cdc8674d` 76/76 checkpoint recorded above.
+
+The follow-up completed the visible saved-items, collection index/detail, and
+public-collection source reconciliation. Those pages now use the exact
+`saved`, `polish_discovery`, and `govuk_alpha_saved` keys for captions, filters,
+types, removal actions, collection counts/visibility, create/edit/delete
+controls, validation/status states, saved dates, empty states, and pagination.
+Request-localized plurals replace English counts created in route code, and
+translated type labels replace JavaScript label tables. The non-Blade saved
+removal banner was removed rather than preserved as invented presentation.
+Blank member, collection, and appreciation-sender names now fall back in the
+template through Laravel's source keys. Collection pagination also restores
+Blade's previous/next icons.
+
+Real signed 320px browser proof passed saved items `1/1` in 46.9 seconds and
+the new my/public collection cases `2/2` within a three-case 1.7-minute run
+(the grep also selected the already-certified badge-collections case). Every
+new case retained one main/H1, reflowed without horizontal overflow, and had no
+serious/critical axe findings. Full verification remains `45/45` Jest suites
+and `1,430/1,430` tests with green lint, brand, locale/template audits, CSS,
+and 608/608 route parity. The next full browser aggregate now contains 80
+cases; the exact-current completed aggregate remains 76/76 until that expanded
+run finishes.
 
 ## Documents To Trust
 

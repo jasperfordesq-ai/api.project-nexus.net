@@ -5,34 +5,23 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
+  <span class="govuk-caption-xl">{{ t("saved.caption", { community: tenant.name or tenant.slug or serviceName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("saved.title") }}</h1>
   <p class="govuk-body-l">{{ t("saved.description") }}</p>
 
-  {% if statusMessage %}
-    <div class="govuk-notification-banner{% if not statusIsError %} govuk-notification-banner--success{% endif %}" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-status-title">
-      <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="saved-status-title">{% if statusIsError %}There is a problem{% else %}Success{% endif %}</h2>
-      </div>
-      <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
-      </div>
-    </div>
-  {% endif %}
-
   <form method="get" action="{{ urlFor('/saved') }}" class="govuk-!-margin-bottom-4">
     <div class="govuk-form-group govuk-!-margin-bottom-2">
-      <label class="govuk-label" for="saved-type-filter">Filter saved items by type</label>
+      <label class="govuk-label" for="saved-type-filter">{{ t("polish_discovery.saved_type_filter_label") }}</label>
       <select class="govuk-select" id="saved-type-filter" name="type">
-        <option value="">All saved items</option>
+        <option value="">{{ t("polish_discovery.saved_type_all") }}</option>
         {% for type in savedTypes %}
-          <option value="{{ type.value }}"{% if selectedType == type.value %} selected{% endif %}>{{ type.label }}</option>
+          <option value="{{ type.value }}"{% if selectedType == type.value %} selected{% endif %}>{{ t("saved.types." ~ type.value) }}</option>
         {% endfor %}
       </select>
     </div>
-    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply</button>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.apply") }}</button>
     {% if selectedType %}
-      <a class="govuk-link govuk-!-margin-left-4" href="{{ urlFor('/saved') }}">Clear filters</a>
+      <a class="govuk-link govuk-!-margin-left-4" href="{{ urlFor('/saved') }}">{{ t("actions.clear_filters") }}</a>
     {% endif %}
   </form>
 
@@ -57,7 +46,7 @@
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="type" value="{{ item.type }}">
               <input type="hidden" name="id" value="{{ item.itemId }}">
-              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="Remove {{ item.title }}">Remove</button>
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" aria-label="{{ t('polish_discovery.saved_remove_label', { title: item.title }) }}">{{ t("polish_discovery.saved_remove_button") }}</button>
             </form>
           {% endif %}
         </li>

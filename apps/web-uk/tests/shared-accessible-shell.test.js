@@ -6823,7 +6823,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getBookmarks).toHaveBeenCalledWith('test-token', { type: 'event', page: 1, per_page: 50 });
     expect(response.text).toContain('Saved items');
     expect(response.text).toContain('Listings, posts and other items you have saved.');
-    expect(response.text).toContain('Item removed from saved items.');
+    expect(response.text).not.toContain('Item removed from saved items.');
     expect(response.text).toContain('id="saved-type-filter" name="type"');
     expect(response.text).toContain('<option value="event" selected>');
     expect(response.text).toContain('href="/saved"');

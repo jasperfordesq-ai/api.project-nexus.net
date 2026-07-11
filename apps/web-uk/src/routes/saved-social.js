@@ -27,12 +27,12 @@ const APPRECIATION_REACTION_TYPES = [
   { value: 'star' }
 ];
 const SAVED_TYPES = [
-  { value: 'post', label: 'Post' },
-  { value: 'listing', label: 'Listing' },
-  { value: 'event', label: 'Event' },
-  { value: 'job', label: 'Opportunity' },
-  { value: 'blog', label: 'Blog post' },
-  { value: 'discussion', label: 'Discussion' }
+  { value: 'post' },
+  { value: 'listing' },
+  { value: 'event' },
+  { value: 'job' },
+  { value: 'blog' },
+  { value: 'discussion' }
 ];
 
 function tokenFrom(req) {
@@ -96,19 +96,13 @@ function safeColor(value) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1d70b8';
 }
 
-function plural(count, singular, pluralText) {
-  if (count === 0) return `No ${pluralText}`;
-  if (count === 1) return `1 ${singular}`;
-  return `${count} ${pluralText}`;
-}
-
 function normalizeOwner(result, fallbackId) {
   const data = dataFrom(result) || {};
   const row = data.user || data.member || data.profile || data;
   const firstLast = `${trimmed(row.first_name ?? row.firstName)} ${trimmed(row.last_name ?? row.lastName)}`.trim();
   return {
     id: positiveInteger(row.id) || fallbackId,
-    name: trimmed(row.name) || firstLast || 'A member'
+    name: trimmed(row.name) || firstLast
   };
 }
 
@@ -126,17 +120,20 @@ function bookmarkHref(type, id, slug) {
   return '';
 }
 
-function savedTypeLabel(type) {
-  return (SAVED_TYPES.find((item) => item.value === type) || {}).label
-    || type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+function savedTypeLabel(type, t) {
+  const key = `saved.types.${type}`;
+  const translated = typeof t === 'function' ? t(key) : key;
+  return translated !== key
+    ? translated
+    : type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function normalizeBookmark(item) {
+function normalizeBookmark(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const itemId = positiveInteger(row.bookmarkable_id ?? row.bookmarkableId ?? row.item_id ?? row.itemId);
   const type = bookmarkType(row.bookmarkable_type ?? row.bookmarkableType ?? row.item_type ?? row.itemType);
   const slug = trimmed(row.slug);
-  const label = savedTypeLabel(type);
+  const label = savedTypeLabel(type, t);
   const title = trimmed(row.title) || (itemId ? `${label} #${itemId}` : label);
   return {
     id: positiveInteger(row.id),
@@ -155,20 +152,11 @@ function normalizeCollection(item) {
     : 0;
   return {
     id: positiveInteger(row.id),
-    name: trimmed(row.name) || 'Collection',
+    name: trimmed(row.name),
     description: trimmed(row.description),
     color: safeColor(row.color),
-    itemsCount: count,
-    countLabel: plural(count, 'item', 'items')
+    itemsCount: count
   };
-}
-
-function savedStatusMessage(status) {
-  const messages = {
-    'bookmark-removed': 'Item removed from saved items.',
-    'bookmark-failed': 'Sorry, that item could not be removed. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
 }
 
 function formatDate(value) {
@@ -190,7 +178,7 @@ function normalizeAppreciation(item) {
     id: positiveInteger(row.id),
     sender: {
       id: senderId,
-      name: trimmed(sender.name ?? row.sender_name ?? row.senderName) || 'Someone'
+      name: trimmed(sender.name ?? row.sender_name ?? row.senderName)
     },
     message: trimmed(row.message),
     receivedOn: formatDate(row.created_at ?? row.createdAt),
@@ -218,18 +206,16 @@ router.get('/saved', asyncRoute(async (req, res) => {
     page: 1,
     per_page: 50
   }))
-    .map(normalizeBookmark)
+    .map((item) => normalizeBookmark(item, res.locals.t))
     .filter((item) => item.title || item.type);
 
   return res.render('saved/index', {
-    title: 'Saved items',
+    title: res.locals.t('saved.title'),
     activeNav: 'saved',
     bookmarks,
     savedTypes: SAVED_TYPES,
     selectedType: type,
     status,
-    statusMessage: savedStatusMessage(status),
-    statusIsError: status === 'bookmark-failed',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -249,7 +235,7 @@ router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
     .filter((collection) => collection.id !== null);
 
   return res.render('saved-social/public-collections', {
-    title: 'Public collections',
+    title: res.locals.t('govuk_alpha_saved.public.title'),
     activeNav: 'members',
     owner,
     collections
