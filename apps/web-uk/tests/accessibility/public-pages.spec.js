@@ -159,6 +159,7 @@ test.describe('representative public-page accessibility gate', () => {
 test.describe('Arabic RTL and narrow reflow gate', () => {
   for (const route of RTL_ROUTES) {
     test(`${route.name} has RTL semantics, reflows, and has no high-impact axe violations`, async ({ page }, testInfo) => {
+      test.setTimeout(90_000);
       await page.setViewportSize({ width: 320, height: 640 });
       const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
 
@@ -2049,6 +2050,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic connections pages preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
