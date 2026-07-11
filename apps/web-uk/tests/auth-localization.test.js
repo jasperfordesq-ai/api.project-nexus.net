@@ -190,16 +190,16 @@ describe('Laravel-first auth localization', () => {
     expect(response.body.view).toBe('profile/settings');
     expect(response.body.locals.localeOptions).toEqual([
       { value: 'en', label: 'English', selected: true },
-      { value: 'ga', label: 'Irish', selected: false },
-      { value: 'de', label: 'German', selected: false },
-      { value: 'fr', label: 'French', selected: false },
-      { value: 'it', label: 'Italian', selected: false },
-      { value: 'pt', label: 'Portuguese', selected: false },
-      { value: 'es', label: 'Spanish', selected: false },
-      { value: 'nl', label: 'Dutch', selected: false },
-      { value: 'pl', label: 'Polish', selected: false },
-      { value: 'ja', label: 'Japanese', selected: false },
-      { value: 'ar', label: 'Arabic', selected: false }
+      { value: 'ga', label: 'Gaeilge', selected: false },
+      { value: 'de', label: 'Deutsch', selected: false },
+      { value: 'fr', label: 'Français', selected: false },
+      { value: 'it', label: 'Italiano', selected: false },
+      { value: 'pt', label: 'Português', selected: false },
+      { value: 'es', label: 'Español', selected: false },
+      { value: 'nl', label: 'Nederlands', selected: false },
+      { value: 'pl', label: 'Polski', selected: false },
+      { value: 'ja', label: '日本語', selected: false },
+      { value: 'ar', label: 'العربية', selected: false }
     ]);
     expect(response.body.locals.localeOptions.map(({ value }) => value)).toEqual(SUPPORTED_LOCALES);
     expect(response.body.locals.autoTranslateLocaleOptions.map(({ value }) => value)).toEqual(SUPPORTED_LOCALES);

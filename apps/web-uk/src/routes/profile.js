@@ -454,14 +454,6 @@ function boolValue(...values) {
   return false;
 }
 
-function optionsWithSelected(values, labels, selectedValue) {
-  return values.map((value) => ({
-    value,
-    label: labels[value] || value,
-    selected: value === selectedValue
-  }));
-}
-
 function formatProfileDate(value, includeTime = false) {
   if (!value) return '';
   const date = new Date(value);
@@ -490,6 +482,14 @@ function translateStatusMessage(req, key, fallbackMessage = '') {
 
   const english = fallbackTranslator(key);
   return typeof english === 'string' && english !== '' && english !== key ? english : fallbackMessage;
+}
+
+function localizedOptions(req, values, keyForValue, fallbackLabels, selectedValue) {
+  return values.map((value) => ({
+    value,
+    label: translateStatusMessage(req, keyForValue(value), fallbackLabels[value] || value),
+    selected: value === selectedValue
+  }));
 }
 
 function localizedStatusConfig(req, status, messages, messageKeys) {
@@ -789,26 +789,50 @@ function buildProfileSettingsViewModel(req, data) {
       auto_translate_ugc: boolValue(account.auto_translate_ugc, profileValue(profile, 'auto_translate_ugc')),
       auto_translate_target_locale: autoTranslateLocale
     },
-    currentLanguageLabel: PROFILE_LOCALE_LABELS[preferredLanguage] || preferredLanguage,
-    privacyProfileLabel: PROFILE_PRIVACY_LABELS[privacyProfile] || privacyProfile,
-    profileTypeOptions: optionsWithSelected(PROFILE_TYPES, PROFILE_TYPE_LABELS, profileType),
-    privacyOptions: optionsWithSelected(PROFILE_PRIVACY_OPTIONS, PROFILE_PRIVACY_LABELS, privacyProfile),
-    localeOptions: optionsWithSelected(profileLocales, PROFILE_LOCALE_LABELS, preferredLanguage),
-    autoTranslateLocaleOptions: optionsWithSelected(profileLocales, PROFILE_LOCALE_LABELS, autoTranslateLocale),
-    digestOptions: optionsWithSelected(
+    profileTypeOptions: localizedOptions(
+      req,
+      PROFILE_TYPES,
+      (value) => `profile.profile_type_${value}`,
+      PROFILE_TYPE_LABELS,
+      profileType
+    ),
+    privacyOptions: localizedOptions(
+      req,
+      PROFILE_PRIVACY_OPTIONS,
+      (value) => `profile_settings.privacy_options.${value}`,
+      PROFILE_PRIVACY_LABELS,
+      privacyProfile
+    ),
+    localeOptions: localizedOptions(
+      req,
+      profileLocales,
+      (value) => `profile_settings.languages.${value}`,
+      PROFILE_LOCALE_LABELS,
+      preferredLanguage
+    ),
+    autoTranslateLocaleOptions: localizedOptions(
+      req,
+      profileLocales,
+      (value) => `profile_settings.languages.${value}`,
+      PROFILE_LOCALE_LABELS,
+      autoTranslateLocale
+    ),
+    digestOptions: localizedOptions(
+      req,
       PROFILE_DIGEST_FREQUENCIES,
+      (value) => `profile_settings.notifications.digest_options.${value}`,
       PROFILE_DIGEST_LABELS,
       data.notificationPrefs.digest_frequency
     ),
-    matchFrequencyOptions: optionsWithSelected(
+    matchFrequencyOptions: localizedOptions(
+      req,
       PROFILE_MATCH_FREQUENCIES,
+      (value) => `profile_settings.match.frequency.${value}`,
       PROFILE_MATCH_FREQUENCY_LABELS,
       data.matchPrefs.notification_frequency
     ),
     notificationPrefs: data.notificationPrefs,
-    digestFrequencyLabel: PROFILE_DIGEST_LABELS[data.notificationPrefs.digest_frequency],
     matchPrefs: data.matchPrefs,
-    matchFrequencyLabel: PROFILE_MATCH_FREQUENCY_LABELS[data.matchPrefs.notification_frequency],
     mySkills: data.skills,
     passkeys: data.passkeys,
     sessions: data.sessions,

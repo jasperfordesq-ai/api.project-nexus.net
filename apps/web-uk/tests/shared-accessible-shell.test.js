@@ -2247,7 +2247,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Where you are signed in');
     expect(signed.text).toContain('Desktop');
     expect(signed.text).toContain('Language');
-    expect(signed.text).toContain('Irish');
+    expect(signed.text).toContain('Gaeilge');
     expect(signed.text).toContain('Email and notifications');
     expect(signed.text).toContain('Activity digest emails');
     expect(signed.text).toContain('Match notifications');
@@ -2285,6 +2285,11 @@ describe('shared accessible frontend shell', () => {
     expect(arabic.text).toContain(translate('ar', 'profile_settings.notifications.digest_label'));
     expect(arabic.text).toContain(translate('ar', 'profile_settings.match.notify_hot'));
     expect(arabic.text).toContain(translate('ar', 'profile_settings.personalisation.auto_translate_label'));
+    expect(arabic.text).toContain(translate('ar', 'profile.profile_type_individual'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.privacy_options.members'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.languages.ar'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.notifications.digest_options.daily'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.match.frequency.weekly'));
     expect(arabic.text).not.toContain('Profile photo');
     expect(arabic.text).not.toContain('Save notification preferences');
     expect(arabic.text).not.toContain('Tell me about high priority matches');

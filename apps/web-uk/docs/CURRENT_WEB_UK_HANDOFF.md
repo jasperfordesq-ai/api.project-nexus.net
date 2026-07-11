@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted automated browser accessibility pass: Chromium/axe
-  passed `75/75` cases in `1,187.5` seconds (`19.8` minutes), with `0` skipped,
+  passed `75/75` cases in `1,148.5` seconds (`19.1` minutes), with `0` skipped,
   `0` unexpected, and `0` flaky results, against the exact current source on
   2026-07-11. The outer command wall time, including CSS compilation and runner
-  startup, was `1,199.0` seconds (`20.0` minutes).
+  startup, was `1,163.7` seconds (`19.4` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4443,6 +4443,33 @@ Chromium/axe aggregate passed `75/75` cases in `1,187.5` seconds with `0`
 skipped, `0` unexpected, and `0` flaky results; outer wall time was `1,199.0`
 seconds. Complete Jest remains `45/45` suites and `1,429/1,429` tests, with
 green lint, brand, catalog/template, CSS, and 608/608 route gates.
+
+## 2026-07-11 Profile Settings Layout And Dynamic Localization
+
+The remaining top-form structure now follows `profile-settings.blade.php`
+rather than the earlier Web UK presentation. The five settings shortcuts are a
+simple GOV.UK list with no invented descriptions. Photo, personal details,
+public profile, privacy, and marketing are fieldsets with Blade-shaped legends,
+the name controls use the source two-column grid, privacy/marketing hints and
+checkbox groups use the same semantic nesting, and the status block follows
+the heading/settings navigation in source order.
+
+Profile type, privacy, language, auto-translation language, digest, and match-
+frequency options now resolve the exact request-locale Laravel keys instead of
+English JavaScript constants. This also corrected the English source label
+from the old fallback `Irish` to Laravel's `Gaeilge`; Arabic integration
+coverage asserts real localized values from all five option families. The
+extra selected-value paragraphs that Blade does not render were removed.
+
+Focused layout/browser verification passed `622/622` plus both normal and
+Arabic-error Profile-settings journeys. Focused dynamic-localization coverage
+passed `644/644`; complete verification passed `45/45` Jest suites and
+`1,429/1,429` tests, warning-free lint, branding guard, CSS compilation, the
+11-locale/24-namespace/7,364-key audit, the 292-template zero-match audit, and
+608/608 route parity. The final uninterrupted exact-current Chromium/axe run
+passed `75/75` in `1,148.5` seconds with `0` skipped, `0` unexpected, and `0`
+flaky results; outer wall time was `1,163.7` seconds. Only the pre-existing
+GOV.UK Sass palette deprecation warnings remain.
 
 ## Documents To Trust
 

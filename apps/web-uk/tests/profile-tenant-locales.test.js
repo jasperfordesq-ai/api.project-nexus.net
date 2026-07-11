@@ -77,13 +77,13 @@ describe('tenant-scoped profile language settings', () => {
     expect(response.body.view).toBe('profile/settings');
     expect(response.body.locals.localeOptions).toEqual([
       { value: 'en', label: 'English', selected: false },
-      { value: 'fr', label: 'French', selected: true },
-      { value: 'ar', label: 'Arabic', selected: false }
+      { value: 'fr', label: 'Français', selected: true },
+      { value: 'ar', label: 'العربية', selected: false }
     ]);
     expect(response.body.locals.autoTranslateLocaleOptions).toEqual([
       { value: 'en', label: 'English', selected: false },
-      { value: 'fr', label: 'French', selected: false },
-      { value: 'ar', label: 'Arabic', selected: true }
+      { value: 'fr', label: 'Français', selected: false },
+      { value: 'ar', label: 'العربية', selected: true }
     ]);
   });
 
