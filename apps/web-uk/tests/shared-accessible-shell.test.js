@@ -11308,7 +11308,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Back to resource library');
     expect(response.text).toContain('Upload a resource');
-    expect(response.text).toContain('Share files, guides and templates with your community.');
+    expect(response.text).toContain(createTranslator('en')('govuk_alpha_resources.upload.description'));
     expect(response.text).toContain('We could not upload the resource. Please try again.');
     expect(response.text).toContain('method="post" action="/resources/upload" enctype="multipart/form-data"');
     expect(response.text).toContain('name="title"');
@@ -11436,12 +11436,70 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Back to resource library');
     expect(response.text).toContain('Delete resource');
-    expect(response.text).toContain('This action cannot be undone.');
+    expect(response.text).toContain(createTranslator('en')('govuk_alpha_resources.delete.warning'));
     expect(response.text).toContain('Are you sure you want to delete Community handbook?');
     expect(response.text).toContain('method="post" action="/resources/42/delete"');
     expect(response.text).toContain('Delete resource');
     expect(response.text).toContain('Cancel');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the complete Laravel-backed Resources family from the exact Arabic catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const resource = {
+      id: 42,
+      title: 'دليل المجتمع',
+      description: 'دليل عملي للمجتمع.',
+      file_path: 'community-handbook.pdf',
+      file_size: 1536,
+      downloads: 3,
+      uploader_id: 101,
+      uploader_name: 'عضو المجتمع',
+      created_at: '2026-07-01T12:00:00Z',
+      can_delete: true,
+      like_count: 2,
+      comment_count: 1
+    };
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'admin' } });
+    api.getResources.mockResolvedValue({ data: [resource], meta: { has_more: false } });
+    api.getResourceCategories.mockResolvedValue({ data: [{ id: 7, name: 'أدلة', resource_count: 1 }] });
+    api.getResourceCategoryTree.mockResolvedValue({ data: [{ id: 7, name: 'أدلة', resource_count: 1, children: [] }] });
+    api.getComments.mockResolvedValue({
+      data: {
+        comments: [{ id: 12, content: 'تعليق مفيد', user_id: 101, created_at: '2026-07-02T12:00:00Z' }],
+        count: 1
+      }
+    });
+    api.getReactionSummary.mockResolvedValue({ data: { counts: { like: 2 }, total: 2, user_reaction: 'like' } });
+
+    const cookie = signedCookieHeader();
+    const [index, library, upload, comments, remove] = await Promise.all([
+      request(app).get('/resources?locale=ar').set('Cookie', cookie),
+      request(app).get('/resources/library?locale=ar&status=resource-uploaded').set('Cookie', cookie),
+      request(app).get('/resources/upload?locale=ar&status=resource-upload-failed').set('Cookie', cookie),
+      request(app).get('/resources/42/comments?locale=ar&status=reply-added').set('Cookie', cookie),
+      request(app).get('/resources/42/delete?locale=ar').set('Cookie', cookie)
+    ]);
+
+    for (const response of [index, library, upload, comments, remove]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('<html lang="ar" dir="rtl"');
+      expect(response.text).not.toContain('govuk_alpha_resources.');
+    }
+    expect(index.text).toContain(t('resources.caption', { community: 'Project NEXUS Accessible' }));
+    expect(index.text).toContain(t('govuk_alpha_resources.nav.library'));
+    expect(library.text).toContain(t('govuk_alpha_resources.library.title'));
+    expect(library.text).toContain(t('govuk_alpha_resources.states.uploaded'));
+    expect(library.text).toContain(t('govuk_alpha_resources.actions.download_aria', { title: resource.title }));
+    expect(upload.text).toContain(t('govuk_alpha_resources.upload.description'));
+    expect(upload.text).toContain(t('govuk_alpha_resources.states.upload_failed'));
+    expect(comments.text).toContain(t('govuk_alpha_resources.social.comments_caption'));
+    expect(comments.text).toContain(t('govuk_alpha_resources.social.status.reply-added'));
+    expect(comments.text).toContain(t('govuk_alpha_resources.social.reaction_types.like'));
+    expect(remove.text).toContain(t('govuk_alpha_resources.delete.warning'));
+    expect(remove.text).toContain(t('govuk_alpha_resources.delete.confirm_question', { title: resource.title }));
   });
 
   it('finds an owned resource beyond the first Laravel cursor page', async () => {

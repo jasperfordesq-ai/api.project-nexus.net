@@ -6,21 +6,21 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">This community</span>
+  <span class="govuk-caption-xl">{{ t("resources.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("resources.title") }}</h1>
   <p class="govuk-body-l">{{ t("resources.description") }}</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
-    <a class="govuk-link" href="{{ urlFor('/resources/library') }}">Open the full resource library</a>
+    <a class="govuk-link" href="{{ urlFor('/resources/library') }}">{{ t("govuk_alpha_resources.nav.library") }}</a>
   </p>
 
   <form method="get" action="{{ urlFor('/resources') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">{{ t("resources.search_label") }}</label>
-      <div id="q-hint" class="govuk-hint">Search by title.</div>
+      <div id="q-hint" class="govuk-hint">{{ t("resources.search_hint") }}</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ resourcesQuery }}" aria-describedby="q-hint">
     </div>
-    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.search") }}</button>
   </form>
 
   {% if not resources.length %}
@@ -39,7 +39,7 @@
           {% endif %}
 
           {% if resource.href %}
-            <a class="govuk-link" href="{{ resource.href }}" rel="noopener" aria-label="Download {{ resource.title }}">{{ t("resources.download") }}</a>
+            <a class="govuk-link" href="{{ resource.href }}" rel="noopener" aria-label="{{ t('resources.download') }} {{ resource.title }}">{{ t("resources.download") }}</a>
           {% endif %}
         </article>
       {% endfor %}

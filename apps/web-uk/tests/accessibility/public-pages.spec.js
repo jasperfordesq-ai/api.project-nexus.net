@@ -1470,6 +1470,62 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic Resources browse, library, and upload pages use the exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(180_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+    const pages = [
+      {
+        path: '/resources?locale=ar',
+        title: translate('ar', 'resources.title'),
+        marker: translate('ar', 'govuk_alpha_resources.nav.library')
+      },
+      {
+        path: '/resources/library?locale=ar',
+        title: translate('ar', 'govuk_alpha_resources.library.title'),
+        marker: translate('ar', 'govuk_alpha_resources.library.description')
+      },
+      {
+        path: '/resources/upload?locale=ar',
+        title: translate('ar', 'govuk_alpha_resources.upload.title'),
+        marker: translate('ar', 'govuk_alpha_resources.upload.file_label')
+      }
+    ];
+    const evidence = [];
+
+    try {
+      for (const resourcePage of pages) {
+        const path = `${authenticatedMountPath}${resourcePage.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBe(200);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(resourcePage.title);
+        await expect(page.locator('main')).toContainText(resourcePage.marker);
+        expect(await page.locator('body').innerText()).not.toContain('govuk_alpha_resources.');
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+        evidence.push({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) });
+      }
+      await testInfo.attach('authenticated-arabic-resources', {
+        body: Buffer.from(JSON.stringify(evidence, null, 2)),
+        contentType: 'application/json'
+      });
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic account hub localizes its Laravel-owned actions with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();

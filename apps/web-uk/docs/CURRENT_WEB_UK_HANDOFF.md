@@ -4331,6 +4331,33 @@ ephemeral Chromium runs pass both the standalone Arabic 404 and invalid-CSRF
 419 journeys with exact markers, RTL, 320px reflow, and no serious/critical axe
 violations. The runs retain only the pre-existing GOV.UK Sass palette warnings.
 
+Latest focused Resources localization slice: signed `/resources`,
+`/resources/library`, `/resources/upload`, `/resources/{id}/delete`, and
+`/resources/{id}/comments` now use Laravel's exact request-locale
+`govuk_alpha.resources` and `govuk_alpha_resources` catalogs. The slice covers
+document/page titles, tenant captions, simple/full-library navigation, search
+and category controls, plural result/download/reaction/comment counts, empty
+and status states, file metadata/type labels, upload fields and limits, delete
+warnings/confirmation, reaction controls, recursive comment author fallbacks,
+dates, actions, and dynamic ARIA labels. The previous unrelated Blog, Jobs,
+Events, Federation, and Discovery fallback keys were removed from these pages.
+
+The first focused run correctly failed two English assertions that encoded the
+old Web UK-only upload description and generic delete warning. They now assert
+Laravel's exact Resources keys. Focused Resource coverage passes 20/20,
+including a five-page Arabic integration render for browse/library/upload/
+discussion/delete with exact status, warning, dynamic-title, fallback, and
+reaction markers. A fresh ephemeral Laravel-backed Chromium journey passed
+Arabic browse, full library, and upload at HTTP 200 with exact markers,
+`Content-Language: ar`, RTL, 320px reflow, and no serious/critical axe
+violations (`1/1`, 32.3 seconds inside Playwright; 1.2 minutes including login
+and setup). Complete verification passed 45/45 Jest suites and 1,426/1,426
+tests, warning-free ESLint, branding guard, the 292-template zero-match audit,
+and 608/608 route parity with 0 missing, 0 extra, and 3 ignored infrastructure
+routes. Live upload/delete/reorder/comment/reaction persistence was not run
+because it requires disposable mutation fixtures; this slice does not claim
+those effects.
+
 ## Documents To Trust
 
 Read these in order:

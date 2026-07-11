@@ -9,11 +9,11 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="{{ urlFor('/resources/library') }}">Back to resource library</a>
+      <a class="govuk-back-link" href="{{ urlFor('/resources/library') }}">{{ t("govuk_alpha_resources.actions.back_to_library") }}</a>
 
-      <span class="govuk-caption-l">Community resources</span>
-      <h1 class="govuk-heading-xl">Upload a resource</h1>
-      <p class="govuk-body-l">Share files, guides and templates with your community.</p>
+      <span class="govuk-caption-l">{{ t("govuk_alpha_resources.upload.caption", { community: tenantName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_resources.upload.title") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_resources.upload.description") }}</p>
 
       {% if status %}
         {{ govukErrorSummary({
@@ -26,23 +26,23 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="title">{{ t("group_exchanges.form_title_label") }}</label>
-          <div id="title-hint" class="govuk-hint">Use a clear name so members can recognise the resource.</div>
+          <label class="govuk-label govuk-label--m" for="title">{{ t("govuk_alpha_resources.upload.title_label") }}</label>
+          <div id="title-hint" class="govuk-hint">{{ t("govuk_alpha_resources.upload.title_hint") }}</div>
           <input class="govuk-input" id="title" name="title" type="text" maxlength="255" aria-describedby="title-hint">
         </div>
 
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="description">Description</label>
-          <div id="description-hint" class="govuk-hint">Summarise what the resource helps people do.</div>
+          <label class="govuk-label govuk-label--m" for="description">{{ t("govuk_alpha_resources.upload.description_label") }}</label>
+          <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha_resources.upload.description_hint") }}</div>
           <textarea class="govuk-textarea" id="description" name="description" rows="4" aria-describedby="description-hint"></textarea>
         </div>
 
         {% if flatCategories and flatCategories.length %}
           <div class="govuk-form-group">
-            <label class="govuk-label" for="category_id">Category</label>
-            <div id="category_id-hint" class="govuk-hint">Choose where this resource should appear in the library.</div>
+            <label class="govuk-label" for="category_id">{{ t("govuk_alpha_resources.upload.category_label") }}</label>
+            <div id="category_id-hint" class="govuk-hint">{{ t("govuk_alpha_resources.upload.category_hint") }}</div>
             <select class="govuk-select" id="category_id" name="category_id" aria-describedby="category_id-hint">
-              <option value="">{{ t("events.no_category") }}</option>
+              <option value="">{{ t("govuk_alpha_resources.upload.category_none") }}</option>
               {% for category in flatCategories %}
                 <option value="{{ category.id }}">{{ category.name }}</option>
               {% endfor %}
@@ -51,14 +51,14 @@
         {% endif %}
 
         <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="file">File</label>
-          <div id="file-hint" class="govuk-hint">The file must be smaller than {{ maxSizeLabel }}. Allowed types: {{ allowedLabel }}.</div>
+          <label class="govuk-label govuk-label--m" for="file">{{ t("govuk_alpha_resources.upload.file_label") }}</label>
+          <div id="file-hint" class="govuk-hint">{{ t("govuk_alpha_resources.upload.file_hint", { size: maxSizeLabel, types: allowedLabel }) }}</div>
           <input class="govuk-file-upload" id="file" name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.png,.gif,.webp" aria-describedby="file-hint">
         </div>
 
         <div class="govuk-button-group">
-          <button class="govuk-button" data-module="govuk-button" type="submit">Upload resource</button>
-          <a class="govuk-link" href="{{ urlFor('/resources/library') }}">{{ t("polish_federation.transfer_cancel") }}</a>
+          <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("govuk_alpha_resources.upload.submit") }}</button>
+          <a class="govuk-link" href="{{ urlFor('/resources/library') }}">{{ t("govuk_alpha_resources.upload.cancel") }}</a>
         </div>
       </form>
     </div>

@@ -35,14 +35,6 @@ const DOWNLOAD_HEADER_NAMES = [
   'etag',
   'last-modified'
 ];
-const RESOURCE_REACTION_LABELS = {
-  like: 'Like',
-  love: 'Love',
-  laugh: 'Haha',
-  wow: 'Wow',
-  sad: 'Sad',
-  celebrate: 'Celebrate'
-};
 const RESOURCE_PAGE_SIZE = 50;
 const MAX_RESOURCE_PAGES = 100;
 
@@ -223,11 +215,15 @@ function truncate(value, length) {
   return `${text.slice(0, Math.max(0, length - 3))}...`;
 }
 
-function normalizeResource(resource) {
+function translateOr(t, key, fallback) {
+  return typeof t === 'function' ? t(key) : fallback;
+}
+
+function normalizeResource(resource, t) {
   const item = resource && typeof resource === 'object' ? resource : {};
   return {
     id: positiveInteger(item.id),
-    title: trimmed(item.title) || 'Resources',
+    title: trimmed(item.title) || translateOr(t, 'resources.title', 'Resources'),
     description: truncate(item.description, 200),
     type: resourceType(item),
     href: resourceHref(item)
@@ -268,19 +264,33 @@ function uploaderName(resource) {
   return trimmed(resource.uploader_name || uploader.name || uploader.full_name);
 }
 
-function normalizeLibraryResource(resource) {
+function fileTypeLabel(resource, t) {
+  const path = trimmed(resource.file_path || resource.url || resource.file_url);
+  const match = path.match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+  const extension = match ? match[1].toLowerCase() : '';
+  let type = 'file';
+  if (extension === 'pdf') type = 'pdf';
+  else if (['doc', 'docx', 'rtf', 'odt'].includes(extension)) type = 'doc';
+  else if (['xls', 'xlsx', 'csv', 'ods'].includes(extension)) type = 'spreadsheet';
+  else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) type = 'image';
+  else if (extension === 'txt') type = 'text';
+  return translateOr(t, `govuk_alpha_resources.file_types.${type}`, 'File');
+}
+
+function normalizeLibraryResource(resource, t, formatDate) {
   const item = resource && typeof resource === 'object' ? resource : {};
   const id = positiveInteger(item.id);
   return {
     id,
-    title: trimmed(item.title) || 'File',
+    title: trimmed(item.title) || translateOr(t, 'govuk_alpha_resources.file_types.file', 'File'),
     description: truncate(item.description, 220),
     fileExtension: fileExtension(item),
+    fileTypeLabel: fileTypeLabel(item, t),
     fileSize: formatFileSize(item.file_size),
     downloads: Number.isInteger(Number(item.downloads)) ? Number(item.downloads) : 0,
     uploaderName: uploaderName(item),
     category: resourceCategory(item),
-    createdAt: trimmed(item.created_at),
+    createdAt: typeof formatDate === 'function' ? formatDate(item.created_at) : trimmed(item.created_at),
     downloadHref: id ? `/resources/${id}/download` : '',
     commentsHref: id ? `/resources/${id}/comments` : '',
     likeCount: Number.isInteger(Number(item.like_count || item.reaction_count || item.reactions_count))
@@ -307,16 +317,18 @@ function normalizeCategory(category) {
   };
 }
 
-function normalizeComment(comment) {
+function normalizeComment(comment, t, formatDate) {
   const item = objectFrom(comment);
   const author = objectFrom(item.author || item.user);
   return {
     id: positiveInteger(item.id),
     content: trimmed(item.content || item.body),
-    createdAt: trimmed(item.created_at || item.createdAt),
+    createdAt: typeof formatDate === 'function' ? formatDate(item.created_at || item.createdAt) : trimmed(item.created_at || item.createdAt),
     userId: positiveInteger(item.user_id || author.id),
-    authorName: trimmed(item.author_name || item.user_name || author.name || [author.first_name, author.last_name].filter(Boolean).join(' ')) || 'Community member',
-    replies: (Array.isArray(item.replies) ? item.replies : Array.isArray(item.children) ? item.children : []).map(normalizeComment)
+    authorName: trimmed(item.author_name || item.user_name || author.name || [author.first_name, author.last_name].filter(Boolean).join(' '))
+      || translateOr(t, 'govuk_alpha_resources.social.unknown_author', 'Community member'),
+    replies: (Array.isArray(item.replies) ? item.replies : Array.isArray(item.children) ? item.children : [])
+      .map((reply) => normalizeComment(reply, t, formatDate))
   };
 }
 
@@ -346,53 +358,43 @@ function isResourceAdmin(profile) {
   return ['admin', 'super_admin', 'tenant_admin'].includes(role) || Boolean(user.is_super_admin);
 }
 
-function statusMessage(status) {
-  switch (status) {
-    case 'resource-uploaded':
-      return { type: 'success', title: 'Success', message: 'Your resource was uploaded.' };
-    case 'resource-deleted':
-      return { type: 'success', title: 'Success', message: 'The resource was deleted.' };
-    case 'resource-delete-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not delete the resource. Please try again.' };
-    case 'resource-reorder-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not save the new order. Please try again.' };
-    default:
-      return null;
-  }
+function statusMessage(status, t) {
+  const keyByStatus = {
+    'resource-uploaded': ['success', 'uploaded'],
+    'resource-deleted': ['success', 'deleted'],
+    'resource-delete-failed': ['error', 'delete_failed'],
+    'resource-reorder-failed': ['error', 'reorder_failed']
+  };
+  const match = keyByStatus[status];
+  if (!match) return null;
+  const [type, key] = match;
+  return {
+    type,
+    title: translateOr(t, `govuk_alpha_resources.states.${type === 'success' ? 'success_title' : 'error_title'}`, type === 'success' ? 'Success' : 'There is a problem'),
+    message: translateOr(t, `govuk_alpha_resources.states.${key}`, status)
+  };
 }
 
-function commentsStatusMessage(status) {
-  switch (status) {
-    case 'comment-added':
-      return { type: 'success', title: 'Success', message: 'Your comment was posted.' };
-    case 'reply-added':
-      return { type: 'success', title: 'Success', message: 'Your reply was posted.' };
-    case 'reaction-added':
-      return { type: 'success', title: 'Success', message: 'Your reaction was saved.' };
-    case 'reaction-removed':
-      return { type: 'success', title: 'Success', message: 'Your reaction was removed.' };
-    case 'comment-deleted':
-      return { type: 'success', title: 'Success', message: 'The comment was deleted.' };
-    case 'comment-invalid':
-      return { type: 'error', title: 'There is a problem', message: 'Enter a comment before submitting.', anchor: 'body' };
-    case 'comment-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not post your comment. Please try again.', anchor: 'body' };
-    case 'comment-delete-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not delete the comment. Please try again.' };
-    case 'reaction-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not save your reaction. Please try again.' };
-    default:
-      return null;
-  }
+function commentsStatusMessage(status, t) {
+  const success = ['comment-added', 'reply-added', 'reaction-added', 'reaction-removed', 'comment-deleted'];
+  const failure = ['comment-invalid', 'comment-failed', 'comment-delete-failed', 'reaction-failed'];
+  if (!success.includes(status) && !failure.includes(status)) return null;
+  const type = success.includes(status) ? 'success' : 'error';
+  return {
+    type,
+    title: translateOr(t, `govuk_alpha_resources.states.${type === 'success' ? 'success_title' : 'error_title'}`, type === 'success' ? 'Success' : 'There is a problem'),
+    message: translateOr(t, `govuk_alpha_resources.social.status.${status}`, status),
+    anchor: ['comment-invalid', 'comment-failed'].includes(status) ? 'body' : undefined
+  };
 }
 
-function uploadStatusMessage(status) {
-  switch (status) {
-    case 'resource-upload-failed':
-      return { type: 'error', title: 'There is a problem', message: 'We could not upload the resource. Please try again.' };
-    default:
-      return null;
-  }
+function uploadStatusMessage(status, t) {
+  if (status !== 'resource-upload-failed') return null;
+  return {
+    type: 'error',
+    title: translateOr(t, 'govuk_alpha_resources.states.error_title', 'There is a problem'),
+    message: translateOr(t, 'govuk_alpha_resources.states.upload_failed', status)
+  };
 }
 
 function uploadedFile(req, fieldName) {
@@ -440,10 +442,10 @@ router.get('/', asyncRoute(async (req, res) => {
   }
 
   const result = await getResources(token, params);
-  const resources = resourceItemsFrom(result).map(normalizeResource);
+  const resources = resourceItemsFrom(result).map((resource) => normalizeResource(resource, res.locals.t));
 
   return res.render('resources/index', {
-    title: 'Resources',
+    title: res.locals.t('resources.title'),
     activeNav: 'explore',
     resources,
     resourcesQuery
@@ -477,7 +479,7 @@ router.get('/library', asyncRoute(async (req, res) => {
   const currentUserId = positiveInteger(profile.id || profile.user_id);
   const isAdmin = isResourceAdmin(profile);
   const resources = resourceItemsFrom(resourcesResult).map((resource) => {
-    const normalized = normalizeLibraryResource(resource);
+    const normalized = normalizeLibraryResource(resource, res.locals.t, res.locals.formatLocaleDate);
     return {
       ...normalized,
       canManage: isAdmin || normalized.canManage || canManageResource(resource, currentUserId)
@@ -491,7 +493,7 @@ router.get('/library', asyncRoute(async (req, res) => {
   const hasFilters = Boolean(searchQuery || selectedCategory !== null);
 
   return res.render('resources/library', {
-    title: 'Resource library',
+    title: res.locals.t('govuk_alpha_resources.library.title'),
     activeNav: 'explore',
     resources,
     categoryTree,
@@ -503,11 +505,13 @@ router.get('/library', asyncRoute(async (req, res) => {
     hasMore,
     nextCursor,
     hasFilters,
-    status: statusMessage(trimmed(req.query && req.query.status)),
+    status: statusMessage(trimmed(req.query && req.query.status), res.locals.t),
     reorderMode: reorderMode && isAdmin,
     reorderOnHref: libraryHref({ q: searchQuery, category_id: selectedCategory, reorder: '1' }),
     reorderOffHref: libraryHref({ q: searchQuery, category_id: selectedCategory }),
-    resourceCountText: resources.length === 0 ? 'No resources' : resources.length === 1 ? '1 resource' : `${resources.length} resources`,
+    resourceCountText: res.locals.tc('govuk_alpha_resources.library.count', resources.length, {
+      count: res.locals.formatLocaleNumber(resources.length)
+    }),
     clearHref: '/resources/library',
     loadMoreHref: hasMore && nextCursor ? `/resources/library${libraryQuery({
       q: searchQuery,
@@ -533,12 +537,12 @@ router.get('/upload', asyncRoute(async (req, res) => {
   }
 
   return res.render('resources/upload', {
-    title: 'Upload a resource',
+    title: res.locals.t('govuk_alpha_resources.upload.title'),
     activeNav: 'explore',
     flatCategories,
     maxSizeLabel: '10MB',
     allowedLabel: 'PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, JPG, PNG, GIF, WEBP',
-    status: uploadStatusMessage(trimmed(req.query && req.query.status))
+    status: uploadStatusMessage(trimmed(req.query && req.query.status), res.locals.t)
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Upload a resource' }));
 
@@ -564,10 +568,10 @@ router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
   }
 
   return res.render('resources/delete', {
-    title: 'Delete resource',
+    title: res.locals.t('govuk_alpha_resources.delete.title'),
     activeNav: 'explore',
     resourceId,
-    resourceTitle: trimmed(resource.title) || 'File'
+    resourceTitle: trimmed(resource.title) || res.locals.t('govuk_alpha_resources.file_types.file')
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Delete resource' }));
 
@@ -624,22 +628,28 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   ]);
 
   const commentsData = objectFrom(dataFrom(commentsResult));
-  const comments = (Array.isArray(commentsData.comments) ? commentsData.comments : resourceItemsFrom(commentsResult)).map(normalizeComment);
+  const comments = (Array.isArray(commentsData.comments) ? commentsData.comments : resourceItemsFrom(commentsResult))
+    .map((comment) => normalizeComment(comment, res.locals.t, res.locals.formatLocaleDate));
   const reactions = reactionSummaryFrom(reactionsResult);
   const profile = objectFrom(dataFrom(profileResult));
   const currentUserId = positiveInteger(profile.id || profile.user_id);
 
   return res.render('resources/comments', {
-    title: `Comments on ${trimmed(resource.title) || 'resource'}`,
+    title: res.locals.t('govuk_alpha_resources.social.comments_title', {
+      title: trimmed(resource.title) || res.locals.t('govuk_alpha_resources.file_types.file')
+    }),
     activeNav: 'explore',
     resourceId,
-    resourceTitle: trimmed(resource.title) || 'Resource',
+    resourceTitle: trimmed(resource.title) || res.locals.t('govuk_alpha_resources.file_types.file'),
     comments,
     commentsTotal: positiveInteger(commentsData.count) || commentCount(comments),
     currentUserId,
     reactions,
-    reactionLabels: RESOURCE_REACTION_LABELS,
-    status: commentsStatusMessage(trimmed(req.query && req.query.status))
+    reactionLabels: Object.fromEntries([...RESOURCE_REACTIONS].map((type) => [
+      type,
+      res.locals.t(`govuk_alpha_resources.social.reaction_types.${type}`)
+    ])),
+    status: commentsStatusMessage(trimmed(req.query && req.query.status), res.locals.t)
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource comments' }));
 
