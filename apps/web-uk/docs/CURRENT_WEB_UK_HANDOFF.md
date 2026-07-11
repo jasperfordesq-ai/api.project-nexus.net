@@ -4839,6 +4839,20 @@ Laravel's live `/api/v2/events` still returns `401` without a token even though
 the Blade controller declares Event browse public, so anonymous Event rows
 remain an upstream Laravel contract blocker rather than a Web UK claim.
 
+## 2026-07-11 Disposable Group Mutation Certification
+
+`npm run smoke:laravel:groups-mutation` creates a uniquely named private Group
+through Web UK, verifies it in Laravel, edits it, and deletes it through the
+visible no-JavaScript confirmation before proving final API absence. The live
+contract reports the creator as an active `admin` membership plus `owner_id`;
+Web UK now derives ownership from either Laravel signal, so ordinary group
+admins can edit but only the owner sees and replays the destructive flow. The
+terminal 320 CSS pixel run passed `1/1` in `69.5` seconds with one main/H1,
+unique IDs, no horizontal overflow, and no serious/critical axe violations on
+detail and edit; no fixture remained. Full Jest passed `45/45` suites and
+`1,452/1,452` tests, with green lint. Manual assistive-technology review and
+ASP.NET switching proof remain open.
+
 ## Documents To Trust
 
 Read these in order:

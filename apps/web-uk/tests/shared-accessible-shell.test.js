@@ -21492,6 +21492,41 @@ describe('shared accessible frontend shell', () => {
     expect(api.deleteGroup).toHaveBeenCalledWith('test-token', 88);
   });
 
+  it('recognises the Laravel group creator as owner when viewer membership is admin', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.getProfile.mockResolvedValue({ id: 101 });
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 88,
+        owner_id: 101,
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        visibility: 'private',
+        viewer_membership: { role: 'admin', status: 'active' }
+      }
+    });
+
+    const edit = await agent
+      .get('/groups/88/edit')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = edit.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(edit.status).toBe(200);
+    expect(csrfMatch).not.toBeNull();
+    expect(edit.text).toContain('action="/groups/88/delete"');
+
+    const unconfirmed = await agent
+      .post('/groups/88/delete')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(unconfirmed.status).toBe(400);
+    expect(unconfirmed.text).toContain('Confirm that you understand the group will be permanently deleted.');
+    expect(api.deleteGroup).not.toHaveBeenCalled();
+  });
+
   it.each([404, 429, 500])('preserves Laravel group update and delete HTTP status %s', async (status) => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);

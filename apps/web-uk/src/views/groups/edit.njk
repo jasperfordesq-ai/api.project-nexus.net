@@ -99,7 +99,7 @@
         </div>
       </form>
 
-      {% if myMembership and myMembership.role == 'owner' %}
+      {% if isOwner %}
         <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
 
         <h2 class="govuk-heading-l">{{ t("groups.delete.title") }}</h2>

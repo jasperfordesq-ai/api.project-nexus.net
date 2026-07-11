@@ -460,6 +460,16 @@ function isGroupAdmin(group, profile = {}) {
     || isPlatformAdmin(profile);
 }
 
+function isGroupOwner(group, profile = {}) {
+  const membership = groupMembership(group);
+  const role = trimmed(membership?.role || group?.my_role || group?.myRole || '');
+  const profileId = positiveInteger(profile?.id || profile?.user_id || profile?.userId);
+  const ownerId = positiveInteger(group?.owner_id || group?.ownerId);
+
+  return role === 'owner'
+    || (profileId !== null && ownerId !== null && profileId === ownerId);
+}
+
 function isActiveGroupMember(group, profile = {}) {
   if (isGroupAdmin(group, profile)) return true;
   const membership = groupMembership(group);
@@ -957,12 +967,16 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
 
-  const groupResult = await getGroup(req.token, id);
+  const [groupResult, profileResult] = await Promise.all([
+    getGroup(req.token, id),
+    getRequestProfile(req, req.token)
+  ]);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const profile = objectFrom(profileResult);
   const myMembership = group.myMembership || group.my_membership;
 
   // Check permission
-  if (!myMembership || !['admin', 'owner'].includes(myMembership.role)) {
+  if (!isGroupAdmin(group, profile)) {
     if (req.flash) {
       req.flash('error', 'You do not have permission to edit this group');
     }
@@ -973,6 +987,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
     title: `Edit ${group.name}`,
     group,
     myMembership,
+    isOwner: isGroupOwner(group, profile),
     deleteConfirmationRequired: false,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1323,10 +1338,14 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.groupDelete(), asyncRoute(as
   const id = Number(req.params.id);
 
   if (trimmed(req.body.confirm).toLowerCase() !== 'yes') {
-    const groupResult = await getGroup(req.token, id);
+    const [groupResult, profileResult] = await Promise.all([
+      getGroup(req.token, id),
+      getRequestProfile(req, req.token)
+    ]);
     const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), id);
+    const profile = objectFrom(profileResult);
     const myMembership = group.myMembership || group.my_membership;
-    if (trimmed(myMembership?.role).toLowerCase() !== 'owner') {
+    if (!isGroupOwner(group, profile)) {
       return renderForbidden(res);
     }
 
@@ -1334,6 +1353,7 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.groupDelete(), asyncRoute(as
       title: `Edit ${group.name}`,
       group,
       myMembership,
+      isOwner: true,
       errors: [{ text: 'Confirm that you understand the group will be permanently deleted.', href: '#confirm-delete' }],
       deleteConfirmationRequired: true,
       csrfToken: req.csrfToken ? req.csrfToken() : ''

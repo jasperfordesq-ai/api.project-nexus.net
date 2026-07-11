@@ -865,6 +865,7 @@ describe('tenant-aware template helper conversion', () => {
       'utf8'
     );
 
+    expect(edit).toContain('{% if isOwner %}');
     expect(edit).toContain('id="confirm-delete" name="confirm" type="checkbox" value="yes" required');
     expect(edit).toContain('t("groups.delete.warning")');
     expect(edit).toContain("urlFor('/groups/' + (group.id | string) + '/delete')");
