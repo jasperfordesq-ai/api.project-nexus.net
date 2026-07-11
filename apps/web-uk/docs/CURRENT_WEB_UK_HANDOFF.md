@@ -4853,6 +4853,21 @@ detail and edit; no fixture remained. Full Jest passed `45/45` suites and
 `1,452/1,452` tests, with green lint. Manual assistive-technology review and
 ASP.NET switching proof remain open.
 
+The default-English create/edit follow-up now matches Blade's community/group
+captions, page descriptions, name hint, five-row description, location and
+visibility controls, comma-separated tag field, optional cover upload, and
+single submit action; the invented cancel links were removed. Multipart parsing
+runs before CSRF protection, and cover upload is a best-effort secondary action
+after the group exists, so an image failure cannot falsely replay creation.
+The strengthened disposable lifecycle passed `1/1` in `111.2` seconds with a
+real PNG cover persisted through Laravel, create-time tag text, edit/delete,
+320 CSS pixel structural/reflow/axe checks, and final absence. Focused proof
+passed `752/752`; full Jest passed `45/45` suites and `1,452/1,452` tests with
+green lint. Laravel's accessible edit controller submits `tags`, but the
+current read-only `GroupService::update()` allowlist discards that field and
+the v2 detail contract omits tags; edit-tag persistence is therefore an
+upstream Laravel limitation, not certified Web UK behavior.
+
 ## Documents To Trust
 
 Read these in order:

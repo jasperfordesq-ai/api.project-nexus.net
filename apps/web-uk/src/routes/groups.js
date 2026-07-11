@@ -261,6 +261,25 @@ function groupFormErrors(error, fallback) {
   }));
 }
 
+function groupTags(value) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(',');
+  return raw.map((tag) => trimmed(tag)).filter(Boolean);
+}
+
+async function uploadGroupCover(token, groupId, file) {
+  if (!file) return;
+  const buffer = await fs.readFile(file.filepath);
+  await uploadGroupImage(token, groupId, {
+    type: 'cover',
+    file: {
+      buffer,
+      filename: trimmed(file.originalFilename) || 'group-cover',
+      contentType: trimmed(file.mimetype) || 'application/octet-stream',
+      size: file.size
+    }
+  });
+}
+
 function applyDownloadHeaders(res, headers = {}) {
   DOWNLOAD_HEADER_NAMES.forEach((name) => {
     if (headers[name]) {
@@ -331,6 +350,7 @@ function normalizeGroup(item, fallbackId = null) {
     name: trimmed(raw.name || raw.title) || 'Group',
     imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
     coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || ''),
+    tagsText: groupTags(raw.tags).join(', '),
     my_membership: raw.my_membership || raw.myMembership || raw.membership || viewerMembership || null,
     myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null,
     viewerMembershipKnown
@@ -870,7 +890,8 @@ router.get('/new', requireAuth, (req, res) => {
 
 // Create group
 router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res) => {
-  const { name, description, location } = req.body;
+  const cover = uploadedFile(req, 'cover');
+  const { name, description, location, tags } = req.body;
   const visibility = ['public', 'private'].includes(req.body.visibility)
     ? req.body.visibility
     : (req.body.is_private === 'true' ? 'private' : 'public');
@@ -888,30 +909,45 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
   }
 
   if (errors.length > 0) {
+    await removeUploadedFile(cover);
     return res.render('groups/new', {
       title: 'Create a group',
       errors,
-      values: { name, description, location, visibility },
+      values: { name, description, location, visibility, tags },
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
   try {
+    const tagList = groupTags(tags);
+    const tagLabel = res.locals.t('groups.create.tags_label');
+    const descriptionText = trimmed(description);
+    const descriptionWithTags = tagList.length > 0
+      ? trimmed(`${descriptionText}\n\n${tagLabel}: ${tagList.join(', ')}`)
+      : descriptionText;
     const result = await createGroup(req.token, {
       name: name.trim(),
-      description: description ? description.trim() : null,
+      description: descriptionWithTags || null,
       location: location ? location.trim() : null,
       visibility
     });
-
-    if (req.flash) {
-      req.flash('success', 'Group created successfully');
-    }
 
     const createdGroup = dataFrom(result)?.group || dataFrom(result);
     const groupId = positiveInteger(createdGroup && createdGroup.id);
     if (groupId === null) {
       throw new ApiError('Laravel did not return the created group', 502);
+    }
+    let coverError = null;
+    if (cover) {
+      try {
+        await uploadGroupCover(req.token, groupId, cover);
+      } catch (error) {
+        coverError = error;
+      }
+    }
+    if (req.flash) {
+      req.flash('success', 'Group created successfully');
+      if (coverError) req.flash('error', 'The group was created, but its cover image could not be uploaded.');
     }
     res.redirect(urlFor(res, `/groups/${groupId}`));
   } catch (error) {
@@ -925,11 +961,13 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
       return res.render('groups/new', {
         title: 'Create a group',
         errors: groupFormErrors(error, 'Unable to create group'),
-        values: { name, description, location, visibility },
+        values: { name, description, location, visibility, tags },
         csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
+  } finally {
+    await removeUploadedFile(cover);
   }
 }));
 
@@ -1276,7 +1314,8 @@ router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
 // Update group
 router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  const { name, description, location } = req.body;
+  const cover = uploadedFile(req, 'cover');
+  const { name, description, location, tags } = req.body;
   const visibility = ['public', 'private'].includes(req.body.visibility)
     ? req.body.visibility
     : (req.body.is_private === 'true' ? 'private' : 'public');
@@ -1294,9 +1333,10 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
   }
 
   if (errors.length > 0) {
+    await removeUploadedFile(cover);
     return res.render('groups/edit', {
       title: 'Edit group',
-      group: { id, name, description, location, visibility },
+      group: { id, name, description, location, visibility, tagsText: trimmed(tags) },
       errors,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
@@ -1307,8 +1347,21 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
       name: name.trim(),
       description: description ? description.trim() : null,
       location: location ? location.trim() : null,
-      visibility
+      visibility,
+      tags: groupTags(tags)
     });
+
+    let coverError = null;
+    if (cover) {
+      try {
+        await uploadGroupCover(req.token, id, cover);
+      } catch (error) {
+        coverError = error;
+      }
+    }
+    if (coverError && req.flash) {
+      req.flash('error', 'The group was updated, but its cover image could not be uploaded.');
+    }
 
     return res.redirect(groupRedirect(res, id, 'group-updated'));
   } catch (error) {
@@ -1324,12 +1377,14 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
       return res.render('groups/edit', {
         title: 'Edit group',
-        group: { id, name, description, location, visibility },
+        group: { id, name, description, location, visibility, tagsText: trimmed(tags) },
         errors: groupFormErrors(error, 'Unable to update group'),
         csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
+  } finally {
+    await removeUploadedFile(cover);
   }
 }));
 

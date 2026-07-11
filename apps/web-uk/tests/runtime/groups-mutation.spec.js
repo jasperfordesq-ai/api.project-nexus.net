@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { deleteGroup, getGroups, login } = require('../../src/lib/api');
+const { deleteGroup, getGroup, getGroups, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -18,6 +18,11 @@ function rowsFrom(result) {
   if (Array.isArray(result?.data?.items)) return result.data.items;
   if (Array.isArray(result?.items)) return result.items;
   return [];
+}
+
+function objectFrom(result) {
+  const data = result?.data ?? result;
+  return data?.group && typeof data.group === 'object' ? data.group : data;
 }
 
 async function authenticate(page) {
@@ -77,7 +82,13 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     await page.locator('#name').fill(createdName);
     await page.locator('#description').fill('Disposable Laravel group mutation fixture created by the Web UK runtime gate.');
     await page.locator('#location').fill('Disposable test location');
+    await page.locator('#tags').fill('disposable, accessibility');
     await page.locator('input[name="visibility"][value="private"]').check();
+    await page.locator('#cover').setInputFiles({
+      name: 'disposable-group-cover.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2ZQAAAABJRU5ErkJggg==', 'base64')
+    });
 
     const createResponse = await submit(page, '/groups/new', page.locator('form:has(#name) button[type="submit"]'));
     expect(createResponse.status()).toBe(302);
@@ -90,10 +101,14 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     expect(new URL(page.url()).pathname).toBe(`${mountPath}/groups/${groupId}`);
     await expect(page.locator('h1')).toContainText(createdName);
     await expectAccessibleReflow(page);
+    const createdDetail = objectFrom(await getGroup(token, groupId));
+    expect(createdDetail.description).toContain('Tags (optional): disposable, accessibility');
+    expect(createdDetail.cover_image_url || createdDetail.coverImageUrl || createdDetail.cover_image || createdDetail.cover_url).toBeTruthy();
 
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);
+    await page.locator('#tags').fill('disposable, verified');
     const updateResponse = await submit(page, `/groups/${groupId}/edit`, page.locator('form:has(#name) button[type="submit"]'));
     expect(updateResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });

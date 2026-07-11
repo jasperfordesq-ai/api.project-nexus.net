@@ -26,9 +26,11 @@
         }) }}
       {% endif %}
 
+      <span class="govuk-caption-l">{{ t("groups.caption", { community: tenantName or serviceName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("groups.create.title") }}</h1>
+      <p class="govuk-body-l">{{ t("groups.create.description", { community: tenantName or serviceName }) }}</p>
 
-      <form method="post" action="{{ urlFor('/groups/new') }}" novalidate data-validate-form data-validation-error-title="{{ t('states.error_title') }}" data-validation-error-prefix="{{ t('states.error_prefix') }}">
+      <form method="post" action="{{ urlFor('/groups/new') }}" enctype="multipart/form-data" novalidate data-validate-form data-validation-error-title="{{ t('states.error_title') }}" data-validation-error-prefix="{{ t('states.error_prefix') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
         {{ govukInput({
@@ -36,6 +38,7 @@
             text: t("groups.create.name_label"),
             classes: "govuk-label--m"
           },
+          hint: { text: t("groups.create.name_hint") },
           id: "name",
           name: "name",
           value: values.name if values else "",
@@ -55,7 +58,7 @@
           },
           id: "description",
           name: "description",
-          rows: 4,
+          rows: 5,
           value: values.description if values else ""
         }) }}
 
@@ -96,12 +99,23 @@
           ]
         }) }}
 
-        <div class="govuk-button-group">
-          {{ govukButton({
-            text: t("groups.create.submit")
-          }) }}
-          <a href="{{ urlFor('/groups') }}" class="govuk-link">{{ t("polish_federation.transfer_cancel") }}</a>
+        {{ govukInput({
+          label: { text: t("groups.create.tags_label") },
+          hint: { text: t("groups.create.tags_hint") },
+          id: "tags",
+          name: "tags",
+          value: values.tags if values else "",
+          classes: "govuk-!-width-two-thirds",
+          attributes: { maxlength: "255" }
+        }) }}
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="cover">{{ t("groups.create.cover_label") }}</label>
+          <div id="cover-hint" class="govuk-hint">{{ t("groups.create.cover_hint") }}</div>
+          <input class="govuk-file-upload" id="cover" name="cover" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="cover-hint">
         </div>
+
+        {{ govukButton({ text: t("groups.create.submit") }) }}
       </form>
 
     </div>

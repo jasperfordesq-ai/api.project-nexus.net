@@ -21363,27 +21363,37 @@ describe('shared accessible frontend shell', () => {
     expect(form.text).toContain('name="visibility"');
     expect(form.text).toContain('value="private"');
     expect(form.text).toContain('id="location" name="location"');
+    expect(form.text).toContain('id="tags" name="tags"');
+    expect(form.text).toContain('id="cover" name="cover" type="file"');
+    expect(form.text).toContain('Bring members together around a shared interest in Project NEXUS Accessible.');
+    expect(form.text).not.toContain('Cancel');
 
     const created = await agent
       .post('/groups/new')
       .set('Cookie', signedCookieHeader())
-      .type('form')
-      .send({
-        _csrf: csrfMatch[1],
-        name: ' Repair circle ',
-        description: ' Share repair skills. ',
-        location: ' Dublin ',
-        visibility: 'private'
+      .field('_csrf', csrfMatch[1])
+      .field('name', ' Repair circle ')
+      .field('description', ' Share repair skills. ')
+      .field('location', ' Dublin ')
+      .field('visibility', 'private')
+      .field('tags', ' repair, tools ')
+      .attach('cover', Buffer.from('fake group cover', 'utf8'), {
+        filename: 'repair-cover.png',
+        contentType: 'image/png'
       });
 
     expect(created.status).toBe(302);
     expect(created.headers.location).toBe('/groups/88');
     expect(api.createGroup).toHaveBeenCalledWith('test-token', {
       name: 'Repair circle',
-      description: 'Share repair skills.',
+      description: 'Share repair skills.\n\nTags (optional): repair, tools',
       location: 'Dublin',
       visibility: 'private'
     });
+    expect(api.uploadGroupImage).toHaveBeenCalledWith('test-token', 88, expect.objectContaining({
+      type: 'cover',
+      file: expect.objectContaining({ filename: 'repair-cover.png', contentType: 'image/png' })
+    }));
 
     api.getGroup.mockResolvedValueOnce({
       data: {
@@ -21391,6 +21401,7 @@ describe('shared accessible frontend shell', () => {
         name: 'Repair circle',
         description: 'Share repair skills.',
         location: 'Dublin',
+        tags: ['repair', 'tools'],
         visibility: 'private',
         viewer_membership: { role: 'owner', status: 'active' }
       }
@@ -21403,17 +21414,22 @@ describe('shared accessible frontend shell', () => {
     expect(edit.text).toContain('name="visibility"');
     expect(edit.text).toMatch(/name="visibility"[^>]*value="private"[^>]*checked/);
     expect(edit.text).toContain('value="Dublin"');
+    expect(edit.text).toContain('value="repair, tools"');
+    expect(edit.text).toContain('id="cover" name="cover" type="file"');
+    expect(edit.text).not.toContain('Cancel');
 
     const updated = await agent
       .post('/groups/88/edit')
       .set('Cookie', signedCookieHeader())
-      .type('form')
-      .send({
-        _csrf: csrfMatch[1],
-        name: 'Repair circle',
-        description: 'Updated description',
-        location: 'Cork',
-        visibility: 'public'
+      .field('_csrf', csrfMatch[1])
+      .field('name', 'Repair circle')
+      .field('description', 'Updated description')
+      .field('location', 'Cork')
+      .field('visibility', 'public')
+      .field('tags', 'repair, sharing')
+      .attach('cover', Buffer.from('updated group cover', 'utf8'), {
+        filename: 'updated-cover.webp',
+        contentType: 'image/webp'
       });
 
     expect(updated.status).toBe(302);
@@ -21422,8 +21438,13 @@ describe('shared accessible frontend shell', () => {
       name: 'Repair circle',
       description: 'Updated description',
       location: 'Cork',
-      visibility: 'public'
+      visibility: 'public',
+      tags: ['repair', 'sharing']
     });
+    expect(api.uploadGroupImage).toHaveBeenLastCalledWith('test-token', 88, expect.objectContaining({
+      type: 'cover',
+      file: expect.objectContaining({ filename: 'updated-cover.webp', contentType: 'image/webp' })
+    }));
 
     api.createGroup.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
       errors: [{ code: 'VALIDATION_ERROR', field: 'visibility', message: 'Select a valid visibility.' }]
