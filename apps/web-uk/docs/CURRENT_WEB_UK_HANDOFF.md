@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
-  passed `75/75` cases in `1,423.4` seconds (`23.7` minutes), with `0` skipped,
-  `0` unexpected, and `0` flaky results, at checkpoint `d86d5e5a` on 2026-07-11.
+  passed `76/76` cases in `1,547.0` seconds (`25.8` minutes), with `0` skipped,
+  `0` unexpected, and `0` flaky results, at checkpoint `cdc8674d` on 2026-07-11.
   The outer command wall time, including CSS compilation and runner
-  startup, was `1,441.2` seconds (`24.0` minutes).
+  startup, was `1,569.5` seconds (`26.2` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4578,9 +4578,10 @@ A new real-browser tenant-chooser case passed `1/1` in 17.3 seconds, proving one
 main/H1, no tenant-only service/footer navigation or report-problem link, no
 horizontal overflow, and no serious/critical axe findings. Complete Jest passed
 `45/45` suites and `1,430/1,430` tests with warning-free lint, branding, locale/
-template audits, CSS, and 608/608 route parity. The next full browser aggregate
-will contain 76 cases; the latest completed full aggregate remains checkpoint
-`d86d5e5a` at `75/75`.
+template audits, CSS, and 608/608 route parity. The uninterrupted exact-current
+full Chromium/axe aggregate passed all `76/76` cases in `1,547.0` seconds
+(`25.8` minutes), with `0` skipped, `0` unexpected, and `0` flaky results;
+outer wall time was `1,569.5` seconds (`26.2` minutes).
 
 ## Documents To Trust
 
