@@ -3994,6 +3994,28 @@ create and manage catalog conversion remain open. The latest uninterrupted full
 browser aggregate remains 62/62 at `e155375c`; the three-page current-source
 journey is focused-green, not a replacement full aggregate.
 
+Latest focused poll create/manage localization slice: signed
+`/polls/parity/create` and `/polls/parity/manage` now use Laravel's exact
+`poll_create` and `poll_manage` catalogs for document/page titles, community
+captions, descriptions, fields and hints, poll types, tags and plural counts,
+empty states, export/delete actions and warnings, and context-specific outcome
+states. Create also restores Blade's required question and first two options,
+tomorrow-minimum closing date, and verbatim category display. Focused Arabic
+create/manage catalog and form-contract coverage passed `1/1`; the authenticated
+Arabic Laravel-backed list/detail/rank/create/manage journey passed HTTP 200,
+exact catalog markers, non-empty captions, RTL, 320px reflow, and axe (`1/1`,
+87.9 seconds). The first browser command used a space-containing grep value that
+the wrapper split and found no tests; the no-space regex rerun produced the live
+evidence. The first full Jest run then exposed two stale English assertions for
+the old create/delete outcome strings; both were changed to read the exact
+Laravel catalog and the focused test plus full suite reran green. Final
+verification passed 45/45 Jest suites and 1,424/1,424 tests, ESLint, the
+290-template conservative audit with zero matches, and the refreshed route
+matrix at 608/608 matched with 0 missing, 0 extra, and 3 ignored infrastructure
+routes. The visible poll-family catalog conversion is complete; authorization
+depth, live mutation/destructive-side-effect proof, manual parity, and a fresh
+full current-source browser aggregate remain open.
+
 ## Documents To Trust
 
 Read these in order:

@@ -206,6 +206,28 @@ function pollRedirect(status, id = null) {
   return `${POLLS_PATH}?status=${encodeURIComponent(status)}${suffix}`;
 }
 
+function pollCreateStatusBanner(status, t) {
+  const banners = {
+    'poll-created': { type: 'success', message: t('govuk_alpha_gamification.poll_create.states.poll-created') },
+    'poll-create-failed': { type: 'error', message: t('govuk_alpha_gamification.poll_create.states.poll-create-failed') }
+  };
+  return banners[trimmed(status)] || null;
+}
+
+function pollManageStatusBanner(status, t) {
+  const banners = {
+    'poll-deleted': { type: 'success', message: t('govuk_alpha_gamification.poll_manage.states.poll-deleted') },
+    'poll-delete-failed': { type: 'error', message: t('govuk_alpha_gamification.poll_manage.states.poll-delete-failed') }
+  };
+  return banners[trimmed(status)] || null;
+}
+
+function tomorrowDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().slice(0, 10);
+}
+
 function pollDetailRedirect(id, status, fragment) {
   const suffix = fragment ? `#${fragment}` : '';
   return `${POLLS_PATH}/${encodeURIComponent(id)}?status=${encodeURIComponent(status)}${suffix}`;
@@ -331,10 +353,11 @@ router.get('/parity/create', asyncRoute(async (req, res) => {
 
   const categories = categoriesFrom(await getPollCategories(token));
   return res.render('polls/create', {
-    title: 'Create a poll',
+    title: res.locals.t('govuk_alpha_gamification.poll_create.title'),
     activeNav: 'explore',
     categories,
-    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
+    minDate: tomorrowDate(),
+    statusBanner: pollCreateStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 
@@ -345,10 +368,10 @@ router.get('/parity/manage', asyncRoute(async (req, res) => {
   const result = await getPolls(token, { mine: true, per_page: 30 });
   const polls = asList(dataFrom(result)).map((poll) => normalizePoll(poll, res.locals.t));
   return res.render('polls/manage', {
-    title: 'Manage my polls',
+    title: res.locals.t('govuk_alpha_gamification.poll_manage.title'),
     activeNav: 'explore',
     polls,
-    statusBanner: pollStatusBanner(req.query && req.query.status, res.locals.t)
+    statusBanner: pollManageStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 

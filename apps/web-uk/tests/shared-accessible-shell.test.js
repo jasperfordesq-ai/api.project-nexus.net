@@ -13011,7 +13011,7 @@ describe('shared accessible frontend shell', () => {
     expect(create.status).toBe(200);
     expect(create.text).toContain('Create a poll');
     expect(create.text).toContain('Ranked choice');
-    expect(create.text).toContain('Could not create the poll. Check your entries and try again.');
+    expect(create.text).toContain(createTranslator('en')('govuk_alpha_gamification.poll_create.states.poll-create-failed'));
     expect(create.text).toContain('Community');
 
     const manage = await request(app)
@@ -13024,9 +13024,9 @@ describe('shared accessible frontend shell', () => {
       per_page: 30
     });
     expect(manage.text).toContain('Manage my polls');
-    expect(manage.text).toContain('Poll deleted.');
-    expect(manage.text).toContain('Export results');
-    expect(manage.text).toContain('Delete poll');
+    expect(manage.text).toContain(createTranslator('en')('govuk_alpha_gamification.poll_manage.states.poll-deleted'));
+    expect(manage.text).toContain(createTranslator('en')('govuk_alpha_gamification.poll_manage.export_button'));
+    expect(manage.text).toContain(createTranslator('en')('govuk_alpha_gamification.poll_manage.delete_button'));
 
     const exported = await request(app)
       .get('/polls/42/export')
@@ -13232,6 +13232,74 @@ describe('shared accessible frontend shell', () => {
     expect(ranked.text).toContain(tc('govuk_alpha_gamification.ranked.first_choice_votes', 2, { count: 2 }));
     expect(ranked.text).toContain(t('govuk_alpha_gamification.common.unknown_member'));
     expect((ranked.text.match(/govuk-tag--green/g) || [])).toHaveLength(2);
+  });
+
+  it('renders poll create and manage from their exact Arabic Laravel catalogs', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
+    api.getPollCategories.mockResolvedValue({ data: ['community repair'] });
+    api.getPolls.mockResolvedValue({
+      data: [{
+        id: 55,
+        question: 'Choose a project',
+        status: 'open',
+        poll_type: 'ranked',
+        is_anonymous: true,
+        total_votes: 2,
+        expires_at: '2026-08-01T00:00:00Z'
+      }]
+    });
+
+    const create = await request(app)
+      .get('/polls/parity/create?status=poll-create-failed&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(create.status).toBe(200);
+    for (const key of [
+      'govuk_alpha_gamification.poll_create.title',
+      'govuk_alpha_gamification.poll_create.description',
+      'govuk_alpha_gamification.poll_create.states.poll-create-failed',
+      'govuk_alpha_gamification.poll_create.question_label',
+      'govuk_alpha_gamification.poll_create.question_hint',
+      'govuk_alpha_gamification.poll_create.desc_label',
+      'govuk_alpha_gamification.poll_create.options_hint',
+      'govuk_alpha_gamification.poll_create.type_standard',
+      'govuk_alpha_gamification.poll_create.type_ranked',
+      'govuk_alpha_gamification.poll_create.submit_button'
+    ]) {
+      expect(create.text).toContain(t(key));
+    }
+    expect(create.text).toContain('community repair');
+    expect(create.text).not.toContain('Community repair');
+    expect(create.text).toMatch(/id="poll-question"[^>]* required/);
+    expect(create.text).toMatch(/id="poll-option-1"[^>]* required/);
+    expect(create.text).toMatch(/id="poll-option-2"[^>]* required/);
+    expect(create.text).not.toMatch(/id="poll-option-3"[^>]* required/);
+    expect(create.text).toMatch(/id="poll-expires"[^>]* min="\d{4}-\d{2}-\d{2}"/);
+
+    const manage = await request(app)
+      .get('/polls/parity/manage?status=poll-deleted&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(manage.status).toBe(200);
+    for (const key of [
+      'govuk_alpha_gamification.poll_manage.title',
+      'govuk_alpha_gamification.poll_manage.description',
+      'govuk_alpha_gamification.poll_manage.states.poll-deleted',
+      'govuk_alpha_gamification.poll_manage.create_link',
+      'govuk_alpha_gamification.poll_manage.open_tag',
+      'govuk_alpha_gamification.poll_manage.ranked_tag',
+      'govuk_alpha_gamification.poll_manage.anonymous_tag',
+      'govuk_alpha_gamification.poll_manage.view_ranked',
+      'govuk_alpha_gamification.poll_manage.export_button',
+      'govuk_alpha_gamification.poll_manage.delete_warning',
+      'govuk_alpha_gamification.poll_manage.delete_button'
+    ]) {
+      expect(manage.text).toContain(t(key));
+    }
+    expect(manage.text).toContain(tc('govuk_alpha_gamification.poll_manage.votes_count', 2, { count: 2 }));
+    expect(manage.text).not.toContain('Polls at this community');
   });
 
   it('submits the Laravel poll store route through the v2 polls API helper', async () => {

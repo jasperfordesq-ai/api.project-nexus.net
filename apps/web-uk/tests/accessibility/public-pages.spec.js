@@ -833,7 +833,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic poll listing detail and rank use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic poll family uses its exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -939,6 +939,42 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(rankAxeResults.violations))).toEqual([]);
+
+      const pollBasePath = detailHref.replace(/\/polls\/\d+(?:\?.*)?$/, '/polls');
+      for (const parityPage of [
+        { slug: 'create', titleKey: 'govuk_alpha_gamification.poll_create.title' },
+        { slug: 'manage', titleKey: 'govuk_alpha_gamification.poll_manage.title' }
+      ]) {
+        const parityPath = `${pollBasePath}/parity/${parityPage.slug}?locale=ar`;
+        const parityResponse = await page.goto(parityPath, { waitUntil: 'domcontentloaded' });
+        expect(parityResponse, `${parityPath} did not return a document response`).not.toBeNull();
+        expect(parityResponse.status(), `${parityPath} returned HTTP ${parityResponse.status()}`).toBeLessThan(400);
+        expect(parityResponse.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+        await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+        await expect(page.locator('h1')).toHaveText(translate('ar', parityPage.titleKey));
+
+        const parityOverflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(parityOverflow.scrollWidth, `${parityPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(parityOverflow.clientWidth + 1);
+        const parityAxeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-poll-${parityPage.slug}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow: parityOverflow,
+            violations: formatViolations(parityAxeResults.violations),
+            incomplete: formatViolations(parityAxeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(parityAxeResults.violations))).toEqual([]);
+      }
     } finally {
       await context.close();
     }
