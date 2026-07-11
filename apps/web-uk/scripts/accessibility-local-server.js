@@ -53,13 +53,14 @@ server.on('listening', () => {
   const address = server.address();
   const baseURL = `http://127.0.0.1:${address.port}`;
   const playwrightCli = require.resolve('@playwright/test/cli');
+  const playwrightConfig = process.env.WEB_UK_PLAYWRIGHT_CONFIG || 'playwright.accessibility.config.js';
 
   console.log(`Accessibility gate server: ${baseURL}`);
   console.log(`Laravel API base URL: ${laravelBaseUrl}`);
 
   playwrightProcess = spawn(
     process.execPath,
-    [playwrightCli, 'test', '--config=playwright.accessibility.config.js', ...process.argv.slice(2)],
+    [playwrightCli, 'test', `--config=${playwrightConfig}`, ...process.argv.slice(2)],
     {
       cwd: projectRoot,
       env: {

@@ -68,6 +68,11 @@ scores must not be reused as current results.
   The outer command wall time, including CSS compilation and runner
   startup, was `1,632.4` seconds (`27.2` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
+- Opt-in saved-collection mutation smoke: `1/1` passed in `81.0` seconds
+  against Laravel. It created a unique private collection, updated its name and
+  description, deleted it, and verified it was absent from the final listing.
+  All three POSTs returned `302`; the fixture was disposable and no collection
+  was retained.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
   and signed dashboard. The expanded gate now drives native Chromium Tab/Enter
@@ -92,9 +97,10 @@ and all `270` default body markers were then covered across six shards. Shards
 (`/ideation/2/ideas/1` and `/jobs/employers/14` respectively); each isolated
 retry passed `11/11`. In aggregate, all `639` distinct default checks passed
 with no repeatable route failure. This is current read/auth/gate/body evidence,
-not mutation, upload, download, or destructive-side-effect certification, and
-the two latency aborts mean it is not represented as one uninterrupted clean
-broad run.
+not broad mutation, upload, download, or destructive-side-effect certification.
+Saved-collection create/update/delete is separately certified by the opt-in
+disposable-fixture smoke above. The two latency aborts mean the broad read smoke
+is not represented as one uninterrupted clean run.
 
 That smoke exposed a current fixture contract on federation-protected pages:
 Laravel returns `403` with `FEDERATION_NOT_ENABLED` until the member opts in.
