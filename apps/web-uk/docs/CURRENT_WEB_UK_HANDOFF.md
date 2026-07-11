@@ -4880,6 +4880,20 @@ at 320 CSS pixels before edit/delete; it passed `1/1` in `135.7` seconds with
 no retained fixture. Focused proof passed `752/752`; full Jest passed `45/45`
 suites and `1,452/1,452` tests, with green lint.
 
+The default-English detail follow-up now matches Blade's community caption,
+public/private heading tag, no-border visibility/member/location/created
+summary, member/pending/join states, discussions/notification/files links, and
+edit/manage/invite/image admin actions. Invented creator/report content,
+private-group contact guidance, avatar-role roster, and generic event copy were
+removed; private non-members now receive Laravel's real join-request action.
+The Group event heading/description/access/empty/card states use the source
+catalog and hierarchy. A new focused pending/private role regression brings
+the focused gate to `753/753` and full Jest to `1,453/1,453` across `45/45`
+suites. The disposable lifecycle passed `1/1` in `152.6` seconds with the new
+detail controls and 320 CSS pixel checks, and retained no fixture; lint is
+green. Pinned announcements, subgroups, and the embedded group-feed composer/
+timeline remain separate detail-depth gaps.
+
 ## Documents To Trust
 
 Read these in order:

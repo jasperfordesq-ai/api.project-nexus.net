@@ -988,6 +988,10 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const members = collectionFrom(membersResult);
   const events = collectionFrom(eventsResult);
   const myMembership = group.myMembership || group.my_membership;
+  const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
+  const isAdmin = isGroupAdmin(group);
+  const isMember = isActiveGroupMember(group);
+  const isPending = membershipStatus === 'pending';
   const statusMessages = groupPageStatus(req.query.status);
 
   res.render('groups/detail', {
@@ -996,6 +1000,11 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     members,
     events,
     myMembership,
+    isAdmin,
+    isMember,
+    isPending,
+    groupCanParticipate: isMember,
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
     errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)
   });

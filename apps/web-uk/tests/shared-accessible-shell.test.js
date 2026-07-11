@@ -19075,6 +19075,12 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('href="/groups/42/manage"');
+    expect(detail.text).toContain('href="/groups/42/discussions"');
+    expect(detail.text).toContain('href="/groups/42/notifications"');
+    expect(detail.text).toContain('href="/groups/42/files"');
+    expect(detail.text).toContain('href="/groups/42/invite"');
+    expect(detail.text).toContain('href="/groups/42/image"');
+    expect(detail.text).not.toContain('Created by');
     expect(detail.text).not.toContain('href="/groups/42/members"');
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
   });
@@ -19125,6 +19131,43 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Munster');
     expect(response.text).toContain('Leave group');
     expect(response.text).not.toContain('Join this group');
+  });
+
+  it('matches Blade pending and private-group join states', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup
+      .mockResolvedValueOnce({
+        data: {
+          id: 450,
+          name: 'Pending circle',
+          visibility: 'private',
+          viewer_membership: { role: 'member', status: 'pending' }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 451,
+          name: 'Private circle',
+          visibility: 'private',
+          viewer_membership: null
+        }
+      });
+    api.getGroupMembers.mockResolvedValue({ data: [] });
+    api.getEvents.mockResolvedValue({ data: [] });
+
+    const pending = await request(app)
+      .get('/groups/450')
+      .set('Cookie', signedCookieHeader());
+    const privateNonMember = await request(app)
+      .get('/groups/451')
+      .set('Cookie', signedCookieHeader());
+
+    expect(pending.status).toBe(200);
+    expect(pending.text).toContain('Your request to join is waiting for an admin to approve it.');
+    expect(pending.text).not.toContain('action="/groups/450/join"');
+    expect(privateNonMember.status).toBe(200);
+    expect(privateNonMember.text).toContain('action="/groups/451/join"');
+    expect(privateNonMember.text).not.toContain('Contact an admin to join');
   });
 
   it('does not hide expired Laravel authentication behind the group index', async () => {

@@ -100,6 +100,14 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     expect(groupId).toBeGreaterThan(0);
     expect(new URL(page.url()).pathname).toBe(`${mountPath}/groups/${groupId}`);
     await expect(page.locator('h1')).toContainText(createdName);
+    await expect(page.locator('.govuk-caption-xl')).toContainText('Hour Timebank');
+    await expect(page.locator('.govuk-summary-list')).toContainText('Visibility');
+    await expect(page.locator(`a[href$="/groups/${groupId}/discussions"]`)).toHaveCount(1);
+    await expect(page.locator(`a[href$="/groups/${groupId}/notifications"]`)).toHaveCount(1);
+    await expect(page.locator(`a[href$="/groups/${groupId}/files"]`)).toHaveCount(1);
+    await expect(page.locator(`a[href$="/groups/${groupId}/invite"]`)).toHaveCount(1);
+    await expect(page.locator(`a[href$="/groups/${groupId}/image"]`)).toHaveCount(1);
+    await expect(page.getByText('Created by', { exact: true })).toHaveCount(0);
     await expectAccessibleReflow(page);
     const createdDetail = objectFrom(await getGroup(token, groupId));
     expect(createdDetail.description).toContain('Tags (optional): disposable, accessibility');

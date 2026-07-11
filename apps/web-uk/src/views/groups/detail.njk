@@ -2,163 +2,130 @@
 
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+
 {% block beforeContent %}
   {{ super() }}
   <a class="govuk-back-link" href="{{ urlFor('/groups') }}">{{ t("actions.back_to_groups") }}</a>
 {% endblock %}
 
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
+  {% set isPrivate = group.visibility != "public" %}
+  {% set memberCount = group.memberCount or group.member_count or members.length or 0 %}
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      <h1 class="govuk-heading-xl">
-        {{ group.name }}
-        {% if group.isPrivate or group.is_private %}
-          {{ govukTag({ text: "Private", classes: "govuk-tag--grey govuk-!-margin-left-2" }) }}
-        {% endif %}
-      </h1>
-
-      {% if group.description %}
-        <p class="govuk-body-l">{{ group.description }}</p>
-      {% endif %}
-
-      {{ govukSummaryList({
-        rows: [
-          {
-            key: { text: "Created by" },
-            value: { text: (((group.createdBy or group.created_by).firstName or (group.createdBy or group.created_by).first_name) + " " + ((group.createdBy or group.created_by).lastName or (group.createdBy or group.created_by).last_name)) if group.createdBy or group.created_by else "Unknown" }
-          },
-          {
-            key: { text: "Members" },
-            value: { text: (group.memberCount or group.member_count) | string }
-          },
-          {
-            key: { text: "Created" },
-            value: { text: (group.createdAt or group.created_at) | formatDate if group.createdAt or group.created_at else "Unknown" }
-          }
-        ]
-      }) }}
-
-      <p class="govuk-body">
-        {% set reportType = "group" %}
-        {% set reportId = group.id %}
-        {% set returnTo = urlFor("/groups/" + (group.id | string)) %}
-        {% include "partials/report-link.njk" %}
-      </p>
-
-      <div class="govuk-button-group govuk-!-margin-top-6">
-        {% if myMembership %}
-          {# User is a member #}
-          {% if myMembership.role == 'owner' or myMembership.role == 'admin' %}
-            <a href="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}" class="govuk-button govuk-button--secondary">
-              {{ t("polish_groups.edit_link") }}
-            </a>
-            <a href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}" class="govuk-button govuk-button--secondary">
-              Manage members
-            </a>
-          {% endif %}
-
-          {% if myMembership.role != 'owner' %}
-            <form action="{{ urlFor('/groups/' + (group.id | string) + '/leave') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: t("groups.leave"),
-                classes: "govuk-button--warning"
-              }) }}
-            </form>
-          {% endif %}
-
-        {% else %}
-          {# User is not a member #}
-          {% if not (group.isPrivate or group.is_private) %}
-            <form action="{{ urlFor('/groups/' + (group.id | string) + '/join') }}" method="post" style="display: inline;">
-              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              {{ govukButton({
-                text: "Join this group"
-              }) }}
-            </form>
-          {% else %}
-            <p class="govuk-body">This is a private group. Contact an admin to join.</p>
-          {% endif %}
-        {% endif %}
-      </div>
-
-      {# Members section #}
-      <h2 class="govuk-heading-l govuk-!-margin-top-8">Members</h2>
-
-      {% if members and members.length > 0 %}
-        <ul class="govuk-list">
-          {% for member in members | take(10) %}
-            <li class="govuk-!-margin-bottom-2">
-              <div class="app-member-cell">
-                {% set user = member %}
-                {% include "partials/avatar.njk" %}
-                <span>
-                  {{ member.name or ((member.first_name or member.firstName) + " " + (member.last_name or member.lastName)) }}
-                  {% if member.role == 'owner' %}
-                    {{ govukTag({ text: "Owner", classes: "govuk-tag--purple govuk-!-margin-left-1" }) }}
-                  {% elif member.role == 'admin' %}
-                    {{ govukTag({ text: "Admin", classes: "govuk-tag--blue govuk-!-margin-left-1" }) }}
-                  {% endif %}
-                </span>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-        {% if members and members.length > 10 %}
-          <p class="govuk-body">
-            <a href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}" class="govuk-link">View all {{ members.length }} members</a>
-          </p>
-        {% endif %}
-      {% else %}
-        <p class="govuk-body">No members yet.</p>
-      {% endif %}
-
-      {# Group events section #}
-      <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("groups_t1.events_title") }}</h2>
-
-      {% if events and events.length > 0 %}
-        <ul class="govuk-list">
-          {% for event in events %}
-            <li class="govuk-!-margin-bottom-4">
-              <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link govuk-!-font-weight-bold">
-                {{ event.title }}
-              </a>
-              <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
-                {{ (event.startsAt or event.starts_at) | formatDate }}
-                {% if event.location %}
-                   - {{ event.location }}
-                {% endif %}
-              </p>
-            </li>
-          {% endfor %}
-        </ul>
-        <p class="govuk-body">
-          <a href="{{ urlFor('/events?group_id=' + (group.id | string)) }}" class="govuk-link">View all events for this group</a>
-        </p>
-      {% else %}
-        <p class="govuk-body">No upcoming events.</p>
-      {% endif %}
-
-      {% if myMembership %}
-        <p class="govuk-body govuk-!-margin-top-4">
-          <a href="{{ urlFor('/events/new?group_id=' + (group.id | string)) }}" class="govuk-link">Create an event for this group</a>
-        </p>
-      {% endif %}
-
-    </div>
+  <span class="govuk-caption-xl">{{ t("groups.caption", { community: tenantName or serviceName }) }}</span>
+  <div class="nexus-alpha-module-row">
+    <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ group.name }}</h1>
+    {{ govukTag({
+      text: t("groups.visibility_private") if isPrivate else t("groups.visibility_public"),
+      classes: "govuk-tag--grey" if isPrivate else "govuk-tag--green"
+    }) }}
   </div>
+
+  {% if successMessage %}
+    {% set notificationMessage = successMessage %}
+    {% set notificationType = "success" %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
+  {% if errorMessage %}
+    {% set notificationMessage = errorMessage %}
+    {% set notificationType = null %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
+  {% if group.description %}
+    <p class="govuk-body-l">{{ group.description }}</p>
+  {% endif %}
+
+  <dl class="govuk-summary-list govuk-summary-list--no-border govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">{{ t("polish_groups.meta_visibility_label") }}</dt>
+      <dd class="govuk-summary-list__value">{{ govukTag({
+        text: t("groups.visibility_private") if isPrivate else t("groups.visibility_public"),
+        classes: "govuk-tag--grey" if isPrivate else "govuk-tag--green"
+      }) }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">{{ t("polish_groups.meta_members_label") }}</dt>
+      <dd class="govuk-summary-list__value">
+        {{ memberCount }}
+        {% if isAdmin %}&ensp;<a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}">{{ t("polish_groups.meta_manage_link") }}</a>{% endif %}
+      </dd>
+    </div>
+    {% if group.location %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">{{ t("polish_groups.location_label") }}</dt>
+        <dd class="govuk-summary-list__value">{{ group.location }}</dd>
+      </div>
+    {% endif %}
+    {% if group.createdAt or group.created_at %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">{{ t("polish_groups.meta_created_label") }}</dt>
+        <dd class="govuk-summary-list__value">{{ (group.createdAt or group.created_at) | formatDate }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  <div class="govuk-!-margin-bottom-6">
+    {% if isMember %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.you_are_member") }}</p></div>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions') }}">{{ t("groups.discussions.link") }}</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/notifications') }}">{{ t("govuk_alpha_groups.nav.notification_settings") }}</a></p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/files') }}">{{ t("govuk_alpha_groups.files.nav_files") }}</a></p>
+      <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/leave') }}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {{ govukButton({ text: t("groups.leave"), classes: "govuk-button--warning govuk-!-margin-bottom-0" }) }}
+      </form>
+    {% elif isPending %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.pending_member") }}</p></div>
+    {% else %}
+      <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/join') }}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {{ govukButton({ text: t("groups.join"), classes: "govuk-!-margin-bottom-0" }) }}
+      </form>
+    {% endif %}
+  </div>
+
+  {% if isAdmin %}
+    <div class="govuk-button-group govuk-!-margin-bottom-6">
+      <a class="govuk-button govuk-button--secondary" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/edit') }}">{{ t("polish_groups.edit_link") }}</a>
+      <a class="govuk-button govuk-button--secondary" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}">{{ t("polish_groups.manage_link") }}</a>
+      <a class="govuk-button govuk-button--secondary" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/invite') }}">{{ t("govuk_alpha_groups.nav.invite_members") }}</a>
+      <a class="govuk-button govuk-button--secondary" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/image') }}">{{ t("govuk_alpha_groups.nav.group_image") }}</a>
+    </div>
+  {% endif %}
+
+  {% if members.length > 0 %}
+    <h2 class="govuk-heading-l">{{ t("groups.members_title") }}</h2>
+    <ul class="govuk-list">
+      {% for member in members %}
+        {% set memberName = member.name or ((member.first_name or member.firstName or "") + " " + (member.last_name or member.lastName or "")) %}
+        {% set memberId = member.user_id or member.userId or member.id %}
+        {% if memberName | trim %}
+          <li>{% if memberId %}<a class="govuk-link" href="{{ urlFor('/members/' + (memberId | string)) }}">{{ memberName | trim }}</a>{% else %}{{ memberName | trim }}{% endif %}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2 class="govuk-heading-l" id="group-events">{{ t("groups_t1.events_title") }}</h2>
+  <p class="govuk-body">{{ t("groups_t1.events_description") }}</p>
+  {% if not groupCanParticipate and isPrivate %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups_t1.events_members_only") }}</p></div>
+  {% elif events.length == 0 %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups_t1.events_empty") }}</p></div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for event in events %}
+        <article class="nexus-alpha-card">
+          <h3 class="govuk-heading-m govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ event.title }}</a></h3>
+          <dl class="nexus-alpha-inline-list">
+            {% if event.startsAt or event.starts_at or event.start_time %}<div><dt>{{ t("groups_t1.event_starts") }}</dt><dd>{{ (event.startsAt or event.starts_at or event.start_time) | formatDate }}</dd></div>{% endif %}
+            <div><dt>{{ t("groups_t1.event_location") }}</dt><dd>{{ event.location or t("groups_t1.event_online") }}</dd></div>
+          </dl>
+          <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("actions.view_details") }}</a>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
 {% endblock %}
