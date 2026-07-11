@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,414/1,414` tests passed.
+- Jest: `45/45` suites and `1,415/1,415` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -173,6 +173,32 @@ passed `1/1`, and the aggregate Jest gate passed `45/45` suites and
 certification slice. A live custom-domain browser fixture, the latency-blocked
 current aggregate browser rerun, manual assistive-technology review, and
 ASP.NET backend compatibility remain open.
+
+## 2026-07-10 Tenant Home Localization Slice
+
+The standard tenant Home now resolves Laravel's exact request-locale catalog
+for its caption/default description, guest and profile actions, four impact
+labels, module titles/descriptions, modules heading/intro, community/account
+summary labels, and signed-in/signed-out state. Platform statistics now use the
+request locale and Laravel-equivalent zero-decimal formatting instead of fixed
+`en-GB` formatting with a retained decimal. Tenant SEO heading/intro and the
+Web UK-only master/cluster network landing copy remain backend-owned or local
+enhancements and were not replaced with invented Laravel keys.
+
+Focused English/Arabic Home coverage passed `2/2`; the complete route suite
+passed `67/67`; and the real Laravel-backed Arabic Home/About/Guide/Features/FAQ
+journey passed in `29.2` seconds with localized Home module/stat markers, RTL,
+320-pixel reflow, and no serious/critical axe findings. ESLint and the `290/0`
+template audit passed. The normal aggregate Jest rerun passed `45/45` suites
+and `1,415/1,415` tests in `160.5` seconds.
+
+During verification, an inspection command accidentally left an unquoted
+PowerShell redirection operator and overwrote
+`tests/shared-accessible-shell.test.js` with UTF-16 search output. Two
+aggregate runs exposed the resulting NUL/Babel parse failure. The file was
+restored exactly from committed `HEAD` (which already contained all intended
+changes), its diff returned empty, and the subsequent normal aggregate passed.
+No user or concurrent backend change was overwritten.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 

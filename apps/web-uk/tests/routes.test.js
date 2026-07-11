@@ -147,7 +147,7 @@ describe('Public Routes', () => {
       expect(response.text).toContain('Built for accessibility needs');
       expect(response.text).toContain('Members');
       expect(response.text).toContain('1,234');
-      expect(response.text).toContain('567.5');
+      expect(response.text).toContain('568');
       expect(response.text).toContain('What you can do');
       expect(response.text).toContain('Choose a task for Acme Timebank.');
       expect(response.text).toContain('This module is not enabled for this community.');
@@ -155,6 +155,42 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('Welcome to Project NEXUS Community');
       expect(api.getTenantBootstrap).toHaveBeenCalledWith({ slug: 'acme' });
       expect(api.getPlatformStats).toHaveBeenCalledWith({ slug: 'acme' });
+    });
+
+    it('localizes Laravel-owned tenant Home copy and statistics', async () => {
+      const api = require('../src/lib/api');
+      const { formatLocaleNumber, translate } = require('../src/lib/localization');
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 2,
+          name: 'Acme Timebank',
+          slug: 'acme',
+          modules: { feed: true, listings: true, wallet: true },
+          features: { connections: true, events: true, volunteering: true }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({
+        data: { members: 1234, hours_exchanged: 567.5, listings: 89, communities: 12 }
+      });
+
+      const response = await request(app).get('/acme/accessible?locale=ar');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('dir="rtl"');
+      expect(response.text).toContain(translate('ar', 'home.description', { community: 'Acme Timebank' }));
+      expect(response.text).toContain(translate('ar', 'home.secondary_guest'));
+      expect(response.text).toContain(translate('ar', 'about.stats.members'));
+      expect(response.text).toContain(translate('ar', 'about.stats.hours_exchanged'));
+      expect(response.text).toContain(translate('ar', 'home.modules_title'));
+      expect(response.text).toContain(translate('ar', 'home.modules_intro', { community: 'Acme Timebank' }));
+      expect(response.text).toContain(translate('ar', 'home.summary_community_key'));
+      expect(response.text).toContain(translate('ar', 'home.summary_account_signed_out'));
+      expect(response.text).toContain(formatLocaleNumber(1234, 'ar', { maximumFractionDigits: 0 }));
+      expect(response.text).toContain(formatLocaleNumber(567.5, 'ar', { maximumFractionDigits: 0 }));
+      expect(response.text).not.toContain('What you can do');
+      expect(response.text).not.toContain('Hours exchanged');
+      expect(response.text).not.toContain('Not signed in');
     });
 
     it('canonicalizes Laravel legacy alpha mount paths to the cleaner accessible mount', async () => {

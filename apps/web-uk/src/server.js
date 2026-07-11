@@ -96,16 +96,16 @@ const LEGACY_ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
 const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
 const HOME_MODULES = [
-  { key: 'dashboard', title: 'Dashboard', description: 'See your tasks, activity and quick links.', href: '/dashboard', authRequired: true },
-  { key: 'feed', title: 'Feed', description: 'Read updates and take part in community conversations.', href: '/feed', moduleKey: 'feed' },
-  { key: 'listings', title: 'Listings', description: 'Find offers and requests from people nearby.', href: '/listings', moduleKey: 'listings' },
-  { key: 'members', title: 'Members', description: 'Find members and build trusted connections.', href: '/members', featureKey: 'connections' },
-  { key: 'events', title: 'Events', description: 'Browse and join community events.', href: '/events', featureKey: 'events' },
-  { key: 'volunteering', title: 'Volunteering', description: 'Find volunteering opportunities and manage shifts.', href: '/volunteering', featureKey: 'volunteering' },
-  { key: 'messages', title: 'Messages', description: 'Read and send direct messages with members.', href: '/messages', authRequired: true },
-  { key: 'exchanges', title: 'Exchanges', description: 'Manage exchange requests and time-credit agreements.', href: '/exchanges', authRequired: true, moduleKey: 'listings' },
-  { key: 'wallet', title: 'Wallet', description: 'View your balance, history and time-credit transfers.', href: '/wallet', authRequired: true, moduleKey: 'wallet' },
-  { key: 'profile', title: 'My Profile', description: 'View and edit how you appear to other members.', href: '/profile', authRequired: true }
+  { key: 'dashboard', titleKey: 'dashboard.title', descriptionKey: 'dashboard.description', href: '/dashboard', authRequired: true },
+  { key: 'feed', titleKey: 'feed.title', descriptionKey: 'feed.description', href: '/feed', moduleKey: 'feed' },
+  { key: 'listings', titleKey: 'listings.title', descriptionKey: 'listings.description', href: '/listings', moduleKey: 'listings' },
+  { key: 'members', titleKey: 'members.title', descriptionKey: 'members.description', href: '/members', featureKey: 'connections' },
+  { key: 'events', titleKey: 'events.title', descriptionKey: 'events.description', href: '/events', featureKey: 'events' },
+  { key: 'volunteering', titleKey: 'volunteering.title', descriptionKey: 'volunteering.description', href: '/volunteering', featureKey: 'volunteering' },
+  { key: 'messages', titleKey: 'messages.title', descriptionKey: 'messages.description', href: '/messages', authRequired: true },
+  { key: 'exchanges', titleKey: 'exchanges.title', descriptionKey: 'exchanges.description', href: '/exchanges', authRequired: true, moduleKey: 'listings' },
+  { key: 'wallet', titleKey: 'wallet.title', descriptionKey: 'wallet.description', href: '/wallet', authRequired: true, moduleKey: 'wallet' },
+  { key: 'profile', titleKey: 'nav.profile', descriptionKey: 'profile_settings.description', href: '/profile', authRequired: true }
 ];
 
 if (!COOKIE_SECRET) {
@@ -418,12 +418,13 @@ function dataFrom(result) {
   return result?.data || result?.tenant || result || {};
 }
 
-function numberLabel(value) {
+function numberLabel(value, formatNumber) {
   const number = Number(value || 0);
   if (!Number.isFinite(number)) return '0';
-  return new Intl.NumberFormat('en-GB', {
-    maximumFractionDigits: Number.isInteger(number) ? 0 : 1
-  }).format(number);
+  if (typeof formatNumber === 'function') {
+    return formatNumber(number, { maximumFractionDigits: 0 });
+  }
+  return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }).format(number);
 }
 
 function normalizeRequestHost(req) {
@@ -486,7 +487,7 @@ function featureEnabled(tenant, key, fallback = true) {
   return fallback;
 }
 
-function buildHomeModules(tenant, isAuthenticated) {
+function buildHomeModules(tenant, isAuthenticated, t) {
   return HOME_MODULES.map((module) => {
     const tenantEnabled = module.moduleKey || module.featureKey
       ? featureEnabled(tenant, module.moduleKey || module.featureKey, true)
@@ -496,6 +497,8 @@ function buildHomeModules(tenant, isAuthenticated) {
 
     return {
       ...module,
+      title: t(module.titleKey),
+      description: t(module.descriptionKey),
       href: needsSignIn ? '/login?status=auth-required' : module.href,
       available,
       needsSignIn,
@@ -549,9 +552,9 @@ async function loadTenantHomeData(req, res) {
   const configuredHomeHeading = usesNetworkLanding ? tenant.seo?.h1_headline : '';
   const homeHeading = configuredHomeHeading || 'Accessible';
   const homeHeadingKey = configuredHomeHeading ? '' : 'home.title';
-  const homeDescription = usesNetworkLanding
-    ? tenant.seo?.hero_intro || `Use a simpler, accessible version of ${communityName} for core community tasks.`
-    : `Use a simpler, accessible version of ${communityName} for core community tasks.`;
+  const configuredHomeDescription = usesNetworkLanding ? tenant.seo?.hero_intro : '';
+  const homeDescription = configuredHomeDescription || '';
+  const homeDescriptionKey = configuredHomeDescription ? '' : 'home.description';
 
   return {
     tenant,
@@ -559,15 +562,16 @@ async function loadTenantHomeData(req, res) {
     homeHeading,
     homeHeadingKey,
     homeDescription,
+    homeDescriptionKey,
     tagline: tenant.tagline || '',
     networkCommunities,
     stats: {
-      members: numberLabel(stats.members),
-      hoursExchanged: numberLabel(stats.hours_exchanged ?? stats.hoursExchanged),
-      listings: numberLabel(stats.listings),
-      communities: numberLabel(stats.communities)
+      members: numberLabel(stats.members, res.locals.formatLocaleNumber),
+      hoursExchanged: numberLabel(stats.hours_exchanged ?? stats.hoursExchanged, res.locals.formatLocaleNumber),
+      listings: numberLabel(stats.listings, res.locals.formatLocaleNumber),
+      communities: numberLabel(stats.communities, res.locals.formatLocaleNumber)
     },
-    modules: buildHomeModules(tenant, res.locals.isAuthenticated)
+    modules: buildHomeModules(tenant, res.locals.isAuthenticated, res.locals.t)
   };
 }
 

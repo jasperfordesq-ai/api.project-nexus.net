@@ -206,10 +206,15 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     });
   });
 
-  test('Arabic About, Guide, Features, and FAQ preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
+  test('Arabic Home, About, Guide, Features, and FAQ preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 320, height: 640 });
     const routes = [
+      {
+        path: `${mountPath}?locale=ar`,
+        marker: translate('ar', 'home.modules_title'),
+        statsMarker: translate('ar', 'about.stats.hours_exchanged')
+      },
       {
         path: `${mountPath}/about?locale=ar`,
         marker: translate('ar', 'about.how_it_works.title'),

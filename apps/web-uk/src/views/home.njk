@@ -16,9 +16,9 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">{{ communityName }}</span>
+      <span class="govuk-caption-xl">{{ t("home.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t(homeHeadingKey) if homeHeadingKey and t else (homeHeading or "Accessible") }}</h1>
-      <p class="govuk-body-l">{{ homeDescription or ("Use a simpler, accessible version of " + communityName + " for core community tasks.") }}</p>
+      <p class="govuk-body-l">{{ t(homeDescriptionKey, { community: communityName }) if homeDescriptionKey else homeDescription }}</p>
       {% if tagline %}
         <p class="govuk-body-l govuk-!-font-weight-bold">{{ tagline }}</p>
       {% endif %}
@@ -30,10 +30,10 @@
       <div class="govuk-button-group govuk-!-margin-bottom-8">
         {% if isAuthenticated %}
           {{ govukButton({ text: t("home.primary_authenticated"), href: urlFor("/dashboard") }) }}
-          {{ govukButton({ text: t("dashboard.view_profile"), href: urlFor("/profile"), classes: "govuk-button--secondary" }) }}
+          {{ govukButton({ text: t("home.profile_action"), href: urlFor("/profile"), classes: "govuk-button--secondary" }) }}
         {% else %}
           {{ govukButton({ text: t("auth.login_action"), href: urlFor("/login") }) }}
-          {{ govukButton({ text: "Register", href: urlFor("/register"), classes: "govuk-button--secondary" }) }}
+          {{ govukButton({ text: t("home.secondary_guest"), href: urlFor("/register"), classes: "govuk-button--secondary" }) }}
         {% endif %}
       </div>
     </div>
@@ -48,15 +48,15 @@
   {% if stats %}
     <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
       <div class="nexus-alpha-stat">
-        <dt>Members</dt>
+        <dt>{{ t("about.stats.members") }}</dt>
         <dd>{{ stats.members }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Hours exchanged</dt>
+        <dt>{{ t("about.stats.hours_exchanged") }}</dt>
         <dd>{{ stats.hoursExchanged }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Active listings</dt>
+        <dt>{{ t("about.stats.active_listings") }}</dt>
         <dd>{{ stats.listings }}</dd>
       </div>
       <div class="nexus-alpha-stat">
@@ -92,8 +92,8 @@
     {{ t("home.accessibility_note") }}
   </div>
 
-  <h2 class="govuk-heading-l">What you can do</h2>
-  <p class="govuk-body">Choose a task for {{ communityName }}. Availability follows the modules enabled for this community.</p>
+  <h2 class="govuk-heading-l">{{ t("home.modules_title") }}</h2>
+  <p class="govuk-body">{{ t("home.modules_intro", { community: communityName }) }}</p>
   <div class="nexus-alpha-card-list">
     {% for module in modules %}
       <article class="nexus-alpha-card">
@@ -130,7 +130,7 @@
       <h2 class="govuk-heading-l">{{ t("home.summary_title") }}</h2>
       <dl class="govuk-summary-list">
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Community</dt>
+          <dt class="govuk-summary-list__key">{{ t("home.summary_community_key") }}</dt>
           <dd class="govuk-summary-list__value">{{ communityName }}</dd>
         </div>
         <div class="govuk-summary-list__row">
@@ -139,7 +139,7 @@
         </div>
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">{{ t("home.summary_account_key") }}</dt>
-          <dd class="govuk-summary-list__value">{% if isAuthenticated %}Signed in{% else %}Not signed in{% endif %}</dd>
+          <dd class="govuk-summary-list__value">{{ t("home.summary_account_signed_in") if isAuthenticated else t("home.summary_account_signed_out") }}</dd>
         </div>
       </dl>
     </div>
