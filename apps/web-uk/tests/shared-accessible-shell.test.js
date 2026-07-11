@@ -8264,6 +8264,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal reminder form for signed-in members', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8281,27 +8282,36 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/reminder');
     const signed = await request(app)
-      .get('/goals/42/reminder?status=reminder-failed')
+      .get('/goals/42/reminder?status=reminder-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Reminder settings');
-    expect(signed.text).toContain('Get an email and a notification reminding you to check in on this goal.');
-    expect(signed.text).toContain('We could not save your reminder. Only the goal owner, or any member for a public goal, can set one.');
-    expect(signed.text).toContain('Reminder active');
-    expect(signed.text).toContain('You will be reminded Weekly.');
-    expect(signed.text).toContain('Next reminder:');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.reminder.caption',
+      'govuk_alpha_goals.reminder.title',
+      'govuk_alpha_goals.reminder.intro',
+      'govuk_alpha_goals.states.reminder-failed',
+      'govuk_alpha_goals.reminder.status_active',
+      'govuk_alpha_goals.reminder.frequency_legend',
+      'govuk_alpha_goals.reminder.enabled_label',
+      'govuk_alpha_goals.reminder.save',
+      'govuk_alpha_goals.reminder.remove_warning',
+      'govuk_alpha_goals.reminder.remove'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
+    expect(signed.text).toContain(t('govuk_alpha_goals.reminder.status_active_detail', {
+      frequency: t('govuk_alpha_goals.frequency.weekly')
+    }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.reminder.next_reminder', { date: '' }).trim());
     expect(signed.text).toContain('method="post" action="/goals/42/reminder"');
     expect(signed.text).toContain('id="frequency-weekly" name="frequency" type="radio" value="weekly" checked');
     expect(signed.text).toContain('id="enabled" name="enabled" type="checkbox" value="1" checked');
-    expect(signed.text).toContain('Save reminder');
-    expect(signed.text).toContain('Removing the reminder stops all emails and notifications for this goal. You can set it again at any time.');
     expect(signed.text).toContain('method="post" action="/goals/42/reminder/delete"');
-    expect(signed.text).toContain('Remove reminder');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');

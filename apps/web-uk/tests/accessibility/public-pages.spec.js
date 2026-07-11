@@ -980,7 +980,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic goals index detail edit and check-in use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic goals index detail edit check-in and reminder use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -1116,6 +1116,37 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(checkinAxeResults.violations))).toEqual([]);
+
+      const reminderPath = `${authenticatedMountPath}/goals/162/reminder?locale=ar`;
+      const reminderResponse = await page.goto(reminderPath, { waitUntil: 'domcontentloaded' });
+      expect(reminderResponse, `${reminderPath} did not return a document response`).not.toBeNull();
+      expect(reminderResponse.status(), `${reminderPath} returned HTTP ${reminderResponse.status()}`).toBeLessThan(400);
+      expect(reminderResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'govuk_alpha_goals.reminder.title'));
+      await expect(page.locator('main legend')).toHaveText(translate('ar', 'govuk_alpha_goals.reminder.frequency_legend'));
+      await expect(page.locator('main form[action$="/reminder"] button[type="submit"]')).toHaveText(translate('ar', 'govuk_alpha_goals.reminder.save'));
+      expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+      const reminderOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(reminderOverflow.scrollWidth, `${reminderPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(reminderOverflow.clientWidth + 1);
+      const reminderAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-goal-reminder', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: reminderOverflow,
+          violations: formatViolations(reminderAxeResults.violations),
+          incomplete: formatViolations(reminderAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(reminderAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

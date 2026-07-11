@@ -528,7 +528,7 @@ function normalizeInsights(item) {
   };
 }
 
-function normalizeReminder(item) {
+function normalizeReminder(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const hasReminder = Object.keys(raw).length > 0;
   const frequency = allowedValue(raw.frequency, GOAL_REMINDER_FREQUENCIES, 'weekly');
@@ -538,7 +538,7 @@ function normalizeReminder(item) {
     hasReminder,
     enabled,
     frequency,
-    frequencyLabel: GOAL_REMINDER_LABELS[frequency],
+    frequencyLabel: t(`govuk_alpha_goals.frequency.${frequency}`),
     nextReminderLabel: dateTimeLabel(raw.next_reminder_at || raw.nextReminderAt)
   };
 }
@@ -577,18 +577,18 @@ function checkinStatus(status, t) {
   return { successMessage: '', errorMessage: '' };
 }
 
-function reminderStatus(status) {
+function reminderStatus(status, t) {
   const value = trimmed(status);
   if (value === 'reminder-saved') {
-    return { successMessage: 'Your reminder settings have been saved.', errorMessage: '' };
+    return { successMessage: t('govuk_alpha_goals.states.reminder-saved'), errorMessage: '' };
   }
   if (value === 'reminder-removed') {
-    return { successMessage: 'Your reminder has been removed.', errorMessage: '' };
+    return { successMessage: t('govuk_alpha_goals.states.reminder-removed'), errorMessage: '' };
   }
   if (value === 'reminder-failed') {
     return {
       successMessage: '',
-      errorMessage: 'We could not save your reminder. Only the goal owner, or any member for a public goal, can set one.'
+      errorMessage: t('govuk_alpha_goals.states.reminder-failed')
     };
   }
   return { successMessage: '', errorMessage: '' };
@@ -858,17 +858,20 @@ router.get('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const goal = normalizeGoal(dataFrom(goalResult));
+  const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
   goal.id = goal.id || Number(id);
-  const reminder = normalizeReminder(dataFrom(reminderResult));
+  const reminder = normalizeReminder(dataFrom(reminderResult), res.locals.t);
 
   return res.render('goals/reminder', {
-    title: 'Reminder settings',
+    title: res.locals.t('govuk_alpha_goals.reminder.title'),
     activeNav: 'explore',
     goal,
     reminder,
-    frequencies: GOAL_REMINDER_FREQUENCIES.map((value) => ({ value, label: GOAL_REMINDER_LABELS[value] })),
-    ...reminderStatus(req.query.status)
+    frequencies: GOAL_REMINDER_FREQUENCIES.map((value) => ({
+      value,
+      label: res.locals.t(`govuk_alpha_goals.frequency.${value}`)
+    })),
+    ...reminderStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

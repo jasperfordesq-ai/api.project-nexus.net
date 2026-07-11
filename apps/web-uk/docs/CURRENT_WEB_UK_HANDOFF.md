@@ -4077,6 +4077,18 @@ and 608/608 route parity. Reminder, buddy-actions, insights, history, and social
 remain open; the latest uninterrupted full browser aggregate is still 62/62 at
 `e155375c`.
 
+Latest focused Goals-reminder localization slice: signed
+`/goals/{id}/reminder` now uses Laravel's exact `govuk_alpha_goals` keys for its
+document title, outcome states, goal fallback/caption, intro, active/none
+details, localized cadence and next-reminder copy, frequency choices,
+enabled/save controls, and removal warning/action. Focused Arabic reminder
+coverage passed `1/1`. The live Arabic index/detail/edit/check-in/reminder
+journey passed HTTP 200, exact markers, no `undefined`, RTL, 320px reflow, and
+axe (`1/1`, 92.5 seconds). Full verification passed 45/45 Jest suites and
+1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit, and
+608/608 route parity. Buddy-actions, insights, history, and social remain open;
+the latest uninterrupted full browser aggregate is still 62/62 at `e155375c`.
+
 ## Documents To Trust
 
 Read these in order:
