@@ -980,8 +980,8 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic goals workflow uses exact Laravel catalogs through buddy support', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(120_000);
+  test('Arabic goals workflow uses exact Laravel catalogs across all pages', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(180_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
@@ -1179,6 +1179,43 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(buddyAxeResults.violations))).toEqual([]);
+
+      for (const goalPage of [
+        { slug: 'insights', titleKey: 'govuk_alpha_goals.insights.title' },
+        { slug: 'history', titleKey: 'govuk_alpha_goals.history.title' },
+        { slug: 'social', titleKey: 'govuk_alpha_goals.social.title' }
+      ]) {
+        const goalPagePath = `${authenticatedMountPath}/goals/162/${goalPage.slug}?locale=ar`;
+        const goalPageResponse = await page.goto(goalPagePath, { waitUntil: 'domcontentloaded' });
+        expect(goalPageResponse, `${goalPagePath} did not return a document response`).not.toBeNull();
+        expect(goalPageResponse.status(), `${goalPagePath} returned HTTP ${goalPageResponse.status()}`).toBeLessThan(400);
+        expect(goalPageResponse.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(translate('ar', goalPage.titleKey));
+        await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+        await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+        expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+        const goalPageOverflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(goalPageOverflow.scrollWidth, `${goalPagePath} has horizontal overflow at 320px`).toBeLessThanOrEqual(goalPageOverflow.clientWidth + 1);
+        const goalPageAxeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-goal-${goalPage.slug}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow: goalPageOverflow,
+            violations: formatViolations(goalPageAxeResults.violations),
+            incomplete: formatViolations(goalPageAxeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(goalPageAxeResults.violations))).toEqual([]);
+      }
     } finally {
       await context.close();
     }

@@ -4102,6 +4102,32 @@ and 1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit,
 and 608/608 route parity. Insights, history, and social remain open; the latest
 uninterrupted full browser aggregate is still 62/62 at `e155375c`.
 
+Latest focused Goals-insights/history/social localization slice: signed
+`/goals/{id}/insights`, `/goals/{id}/history`, and `/goals/{id}/social` now use
+Laravel's exact request-locale `govuk_alpha_goals` catalogs for document titles,
+captions, introductions, empty/load-more states, streak/check-in/milestone
+summaries, cadence helpers, chronological event labels, recursive comment author
+fallbacks, likes/comments plural counts, social controls, status banners, and
+comment validation. This completes exact visible-catalog wiring across the nine
+currently rendered Goals pages. Focused Arabic history/insights/social coverage
+passed `3/3`. The live Arabic nine-page workflow passed HTTP 200, exact title
+markers, non-empty captions, no `undefined`, RTL, 320px reflow, and axe with no
+serious/critical violations (`1/1`, 3.2 minutes wall time).
+
+The first complete Jest run correctly failed one detail-history fixture: direct
+`Array.map(normalizeHistoryEvent)` invocation supplied the second item's array
+index as the optional translator. The detail route now calls the normalizer
+explicitly without a translator to preserve its existing `goals.history_type_*`
+catalog, while the dedicated History page supplies `res.locals.t` explicitly.
+The affected detail/history/insights/social route set then passed `4/4`, and the
+complete rerun passed 45/45 suites and 1,424/1,424 tests, warning-free ESLint,
+the 290-template zero-match audit, and the route matrix at 608 Laravel routes,
+608 matched, 0 missing, 0 extra, and 3 ignored infrastructure routes. Goals
+feature gates, live mutation persistence, recorded manual parity, a fresh full
+current-source browser aggregate, and ASP.NET backend compatibility remain
+open; the latest uninterrupted full browser aggregate remains 62/62 at
+`e155375c`.
+
 ## Documents To Trust
 
 Read these in order:

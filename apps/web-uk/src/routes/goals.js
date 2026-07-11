@@ -25,12 +25,6 @@ const GOAL_CHECKIN_MOODS = ['great', 'good', 'neutral', 'okay', 'struggling', 's
 const GOAL_CHECKIN_FREQUENCIES = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_REMINDER_FREQUENCIES = ['daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_BUDDY_ACTION_TYPES = ['nudge', 'encouragement', 'offer_help'];
-const GOAL_REMINDER_LABELS = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  biweekly: 'Every 2 weeks',
-  monthly: 'Monthly'
-};
 const GOAL_BUDDY_TYPE_LABELS = {
   nudge: 'Nudge',
   encouragement: 'Encouragement',
@@ -359,7 +353,7 @@ function normalizeCheckin(item, t) {
   };
 }
 
-function normalizeHistoryEvent(item) {
+function normalizeHistoryEvent(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const type = allowedValue(raw.type || raw.event_type || raw.eventType, Object.keys(GOAL_HISTORY_LABELS), 'progress_update');
   const createdAt = raw.created_at || raw.createdAt || '';
@@ -367,7 +361,7 @@ function normalizeHistoryEvent(item) {
   return {
     id: positiveInteger(raw.id),
     type,
-    label: GOAL_HISTORY_LABELS[type],
+    label: t ? t(`govuk_alpha_goals.history.type_${type}`) : GOAL_HISTORY_LABELS[type],
     tagClass: GOAL_HISTORY_TAG_CLASSES[type],
     description: trimmed(raw.description || ''),
     createdAt,
@@ -375,19 +369,7 @@ function normalizeHistoryEvent(item) {
   };
 }
 
-function pluralStreak(count) {
-  if (count === 0) return 'No check-ins yet';
-  if (count === 1) return '1 check-in in a row';
-  return `${count} check-ins in a row`;
-}
-
-function pluralCheckins(count) {
-  if (count === 0) return 'None recorded';
-  if (count === 1) return '1 recorded';
-  return `${count} recorded`;
-}
-
-function normalizeMilestone(item) {
+function normalizeMilestone(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const percent = Math.round(Number(raw.target_percent ?? raw.targetPercent ?? 0)) || 0;
   const done = Boolean(raw.completed_at || raw.completedAt);
@@ -395,7 +377,9 @@ function normalizeMilestone(item) {
     title: trimmed(raw.title || ''),
     done,
     tagClass: done ? 'govuk-tag--green' : 'govuk-tag--grey',
-    statusLabel: done ? 'Reached' : `Target: ${percent}%`
+    statusLabel: done
+      ? t('govuk_alpha_goals.insights.milestone_done')
+      : t('govuk_alpha_goals.insights.milestone_target', { percent })
   };
 }
 
@@ -430,25 +414,26 @@ function goalDetailStatus(status) {
   return { successStateKey: '', errorStateKey: '', errorHref: '' };
 }
 
-function commentAuthorName(raw) {
+function commentAuthorName(raw, t) {
   const author = raw && typeof raw.author === 'object' && raw.author !== null ? raw.author : {};
   const user = raw && typeof raw.user === 'object' && raw.user !== null ? raw.user : {};
-  return trimmed(author.name || user.name || raw.author_name || raw.authorName || raw.user_name || raw.userName) || 'A member';
+  return trimmed(author.name || user.name || raw.author_name || raw.authorName || raw.user_name || raw.userName)
+    || t('govuk_alpha_goals.social.author_fallback');
 }
 
-function normalizeSocialComment(item) {
+function normalizeSocialComment(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const replies = Array.isArray(raw.replies) ? raw.replies : [];
   const createdAt = raw.created_at || raw.createdAt || '';
   return {
     id: positiveInteger(raw.id),
-    authorName: commentAuthorName(raw),
+    authorName: commentAuthorName(raw, t),
     content: trimmed(raw.content || raw.body || ''),
     createdAt,
     createdAtLabel: dateTimeLabel(createdAt),
     isOwn: checked(raw.is_own ?? raw.isOwn),
     edited: checked(raw.edited ?? raw.is_edited ?? raw.isEdited),
-    replies: replies.map(normalizeSocialComment).filter((reply) => reply.id !== null)
+    replies: replies.map((reply) => normalizeSocialComment(reply, t)).filter((reply) => reply.id !== null)
   };
 }
 
@@ -480,19 +465,7 @@ function socialCountFrom(data, keys, fallback = 0) {
   return fallback;
 }
 
-function likesLabel(count) {
-  if (count === 0) return 'No likes yet';
-  if (count === 1) return '1 person likes this';
-  return `${count} people like this`;
-}
-
-function commentsLabel(count) {
-  if (count === 0) return 'No comments yet';
-  if (count === 1) return '1 comment';
-  return `${count} comments`;
-}
-
-function normalizeInsights(item) {
+function normalizeInsights(item, t, tc) {
   const raw = item && typeof item === 'object' ? item : {};
   const keys = Object.keys(raw);
   const streak = Math.max(0, Number(raw.streak_count ?? raw.streakCount ?? 0) || 0);
@@ -507,19 +480,29 @@ function normalizeInsights(item) {
 
   return {
     hasInsights: keys.length > 0,
-    streakText: pluralStreak(streak),
-    bestStreakText: `Best streak: ${best}`,
+    streakText: tc('govuk_alpha_goals.insights.streak_value', streak, { count: streak }),
+    bestStreakText: t('govuk_alpha_goals.insights.best_streak', { count: best }),
     checkinDue: checked(raw.is_checkin_due || raw.isCheckinDue),
     nextCheckinText: checked(raw.is_checkin_due || raw.isCheckinDue)
       ? ''
-      : (nextDue || 'No cadence set'),
-    frequencyHelper: frequency === 'none' ? 'Set a check-in cadence when you edit this goal.' : `${GOAL_REMINDER_LABELS[frequency]} cadence`,
-    checkinsText: pluralCheckins(checkinCount),
-    lastCheckinText: lastCheckin ? `Last check-in: ${lastCheckin}` : 'No check-ins yet',
-    milestonesText: `${completedMilestones} of ${milestoneCount} reached`,
+      : (nextDue || t('govuk_alpha_goals.insights.no_cadence')),
+    frequencyHelper: frequency === 'none'
+      ? t('govuk_alpha_goals.insights.no_cadence_helper')
+      : t('govuk_alpha_goals.insights.frequency_helper', {
+        frequency: t(`govuk_alpha_goals.frequency.${frequency}`)
+      }),
+    checkinsText: tc('govuk_alpha_goals.insights.checkins_value', checkinCount, { count: checkinCount }),
+    lastCheckinText: lastCheckin
+      ? t('govuk_alpha_goals.insights.last_checkin', { date: lastCheckin })
+      : t('govuk_alpha_goals.insights.no_checkins'),
+    milestonesText: t('govuk_alpha_goals.insights.milestones_value', {
+      completed: completedMilestones,
+      total: milestoneCount
+    }),
     milestonePercent,
-    milestones: collectionFrom({ data: raw.milestones || [] }).map(normalizeMilestone),
-    buddyNotes: collectionFrom({ data: raw.buddy_notes || raw.buddyNotes || [] }).map(normalizeBuddyNote)
+    milestones: collectionFrom({ data: raw.milestones || [] }).map((milestone) => normalizeMilestone(milestone, t)),
+    buddyNotes: collectionFrom({ data: raw.buddy_notes || raw.buddyNotes || [] })
+      .map((note) => normalizeBuddyNote(note, t))
   };
 }
 
@@ -600,14 +583,14 @@ function buddyActionStatus(status, t) {
   return { successMessage: '', errorMessage: '' };
 }
 
-function socialStatus(status) {
+function socialStatus(status, t) {
   const value = trimmed(status);
   if (Object.prototype.hasOwnProperty.call(GOAL_SOCIAL_SUCCESS_MESSAGES, value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GOAL_SOCIAL_SUCCESS_MESSAGES[value],
+        title: t('govuk_alpha_goals.common.success_title'),
+        message: t(`govuk_alpha_goals.states.${value}`),
         anchor: ''
       }
     };
@@ -616,8 +599,8 @@ function socialStatus(status) {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GOAL_SOCIAL_ERROR_MESSAGES[value],
+        title: t('govuk_alpha_goals.common.error_title'),
+        message: t(`govuk_alpha_goals.states.${value}`),
         anchor: 'body'
       }
     };
@@ -905,14 +888,14 @@ router.get('/:id(\\d+)/insights', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const goal = normalizeGoal(dataFrom(goalResult));
+  const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
   goal.id = goal.id || Number(id);
 
   return res.render('goals/insights', {
-    title: 'Goal insights',
+    title: res.locals.t('govuk_alpha_goals.insights.title'),
     activeNav: 'explore',
     goal,
-    insights: normalizeInsights(dataFrom(insightsResult)),
+    insights: normalizeInsights(dataFrom(insightsResult), res.locals.t, res.locals.tc),
     isOwner: checked(goal.is_owner || goal.isOwner || goal.can_edit || goal.canEdit),
     isBuddy: checked(goal.is_buddy || goal.isBuddy)
   });
@@ -935,17 +918,17 @@ router.get('/:id(\\d+)/history', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const goal = normalizeGoal(dataFrom(goalResult));
+  const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
   goal.id = goal.id || Number(id);
   const meta = metaFrom(historyResult);
   const nextParams = new URLSearchParams();
   if (meta.cursor) nextParams.set('cursor', meta.cursor);
 
   return res.render('goals/history', {
-    title: 'Progress history',
+    title: res.locals.t('govuk_alpha_goals.history.title'),
     activeNav: 'explore',
     goal,
-    items: collectionFrom(historyResult).map(normalizeHistoryEvent),
+    items: collectionFrom(historyResult).map((item) => normalizeHistoryEvent(item, res.locals.t)),
     hasMore: meta.hasMore,
     nextHref: meta.hasMore && meta.cursor ? `/goals/${goal.id}/history?${nextParams.toString()}` : ''
   });
@@ -969,9 +952,11 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const goal = normalizeGoal(dataFrom(goalResult));
+  const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
   goal.id = goal.id || numericId;
-  const comments = socialCommentsFrom(commentsResult).map(normalizeSocialComment).filter((comment) => comment.id !== null);
+  const comments = socialCommentsFrom(commentsResult)
+    .map((comment) => normalizeSocialComment(comment, res.locals.t))
+    .filter((comment) => comment.id !== null);
   const commentsData = dataFrom(commentsResult) || {};
   const commentsFallback = socialCommentCount(comments);
   const commentsTotal = socialCountFrom(
@@ -1000,16 +985,17 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
   );
 
   return res.render('goals/social', {
-    title: 'Likes and comments',
+    title: res.locals.t('govuk_alpha_goals.social.title'),
     activeNav: 'explore',
     goal,
     likeCount,
     liked,
-    likeCountLabel: likesLabel(likeCount),
+    likeCountLabel: res.locals.tc('govuk_alpha_goals.social.likes_count', likeCount, { count: likeCount }),
     comments,
     commentsTotal,
-    commentsTotalLabel: commentsLabel(commentsTotal),
-    ...socialStatus(req.query.status)
+    commentsTotalLabel: res.locals.tc('govuk_alpha_goals.social.comments_count', commentsTotal, { count: commentsTotal }),
+    commentInvalid: trimmed(req.query.status) === 'comment-invalid',
+    ...socialStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
@@ -1295,7 +1281,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     isBuddy,
     hasBuddy,
     canBecomeBuddy: checked(goal.is_public || goal.isPublic) && !isOwner && !hasBuddy,
-    goalHistory: collectionFrom(historyResult).map(normalizeHistoryEvent),
+    goalHistory: collectionFrom(historyResult).map((item) => normalizeHistoryEvent(item)),
     buddyNotes: collectionFrom({ data: rawInsights.buddy_notes || rawInsights.buddyNotes || [] })
       .map((note) => normalizeBuddyNote(note, res.locals.t)),
     status: trimmed(req.query.status),

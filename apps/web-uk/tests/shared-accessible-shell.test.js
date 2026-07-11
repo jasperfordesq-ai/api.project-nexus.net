@@ -8368,6 +8368,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal progress history timeline for signed-in viewers', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8398,23 +8399,28 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/history');
     const signed = await request(app)
-      .get('/goals/42/history?cursor=abc')
+      .get('/goals/42/history?cursor=abc&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Progress history');
-    expect(signed.text).toContain('A chronological record of every event for this goal');
-    expect(signed.text).toContain('aria-label="Goal progress history"');
-    expect(signed.text).toContain('Created');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.history.caption',
+      'govuk_alpha_goals.history.title',
+      'govuk_alpha_goals.history.intro',
+      'govuk_alpha_goals.history.load_more'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
+    expect(signed.text).toContain(`aria-label="${t('govuk_alpha_goals.history.list_aria')}"`);
+    expect(signed.text).toContain(t('govuk_alpha_goals.history.type_created'));
     expect(signed.text).toContain('Goal created with a 20 bed target.');
-    expect(signed.text).toContain('Buddy action');
+    expect(signed.text).toContain(t('govuk_alpha_goals.history.type_buddy_action'));
     expect(signed.text).toContain('Alex sent encouragement.');
     expect(signed.text).toContain('/goals/42/history?cursor=older-page');
-    expect(signed.text).toContain('Load older events');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
@@ -8424,6 +8430,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal insights summary for signed-in viewers', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8459,32 +8467,43 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/insights');
     const signed = await request(app)
-      .get('/goals/42/insights')
+      .get('/goals/42/insights?locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Goal insights');
-    expect(signed.text).toContain('A summary of your check-in cadence, streaks, milestones and recent buddy support.');
-    expect(signed.text).toContain('Current streak');
-    expect(signed.text).toContain('3 check-ins in a row');
-    expect(signed.text).toContain('Best streak: 5');
-    expect(signed.text).toContain('A check-in is due');
-    expect(signed.text).toContain('Weekly cadence');
-    expect(signed.text).toContain('8 recorded');
-    expect(signed.text).toContain('Last check-in:');
-    expect(signed.text).toContain('1 of 2 reached');
-    expect(signed.text).toContain('aria-label="Milestone progress: 50 percent"');
-    expect(signed.text).toContain('Milestone plan');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.insights.caption',
+      'govuk_alpha_goals.insights.title',
+      'govuk_alpha_goals.insights.intro',
+      'govuk_alpha_goals.insights.current_streak',
+      'govuk_alpha_goals.insights.checkin_due',
+      'govuk_alpha_goals.insights.checkins',
+      'govuk_alpha_goals.insights.milestones',
+      'govuk_alpha_goals.insights.milestone_plan',
+      'govuk_alpha_goals.insights.recent_buddy_support',
+      'govuk_alpha_goals.insights.log_checkin_link',
+      'govuk_alpha_goals.insights.reminder_link',
+      'govuk_alpha_goals.insights.buddy_actions_link'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
+    expect(signed.text).toContain(tc('govuk_alpha_goals.insights.streak_value', 3, { count: 3 }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.insights.best_streak', { count: 5 }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.insights.frequency_helper', {
+      frequency: t('govuk_alpha_goals.frequency.weekly')
+    }));
+    expect(signed.text).toContain(tc('govuk_alpha_goals.insights.checkins_value', 8, { count: 8 }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.insights.milestones_value', { completed: 1, total: 2 }));
+    expect(signed.text).toContain(`aria-label="${t('govuk_alpha_goals.insights.milestones_progress_aria', { percent: 50 })}"`);
     expect(signed.text).toContain('Prepare the first bed');
-    expect(signed.text).toContain('Reached');
+    expect(signed.text).toContain(t('govuk_alpha_goals.insights.milestone_done'));
     expect(signed.text).toContain('Plant autumn bulbs');
-    expect(signed.text).toContain('Target: 100%');
-    expect(signed.text).toContain('Recent buddy support');
-    expect(signed.text).toContain('Encouragement');
+    expect(signed.text).toContain(t('govuk_alpha_goals.insights.milestone_target', { percent: 100 }));
+    expect(signed.text).toContain(t('govuk_alpha_goals.buddy_type.encouragement'));
     expect(signed.text).toContain('You are making brilliant progress.');
     expect(signed.text).toContain('Alex Morgan');
     expect(signed.text).toContain('/goals/42/checkin');
@@ -8499,6 +8518,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal social page for signed-in viewers', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8540,40 +8561,45 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/social');
     const signed = await request(app)
-      .get('/goals/42/social?status=comment-invalid')
+      .get('/goals/42/social?status=comment-invalid&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Likes and comments');
-    expect(signed.text).toContain('Show your support for this goal and join the conversation.');
-    expect(signed.text).toContain('Support');
-    expect(signed.text).toContain('2 people like this');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.social.caption',
+      'govuk_alpha_goals.social.title',
+      'govuk_alpha_goals.social.intro',
+      'govuk_alpha_goals.social.likes_heading',
+      'govuk_alpha_goals.social.unlike_button',
+      'govuk_alpha_goals.social.comments_heading',
+      'govuk_alpha_goals.social.you',
+      'govuk_alpha_goals.social.edited',
+      'govuk_alpha_goals.social.reply_link',
+      'govuk_alpha_goals.social.reply_label',
+      'govuk_alpha_goals.social.reply_submit',
+      'govuk_alpha_goals.social.delete_comment_warning',
+      'govuk_alpha_goals.social.add_comment_heading',
+      'govuk_alpha_goals.social.comment_label',
+      'govuk_alpha_goals.social.comment_help',
+      'govuk_alpha_goals.social.comment_submit',
+      'govuk_alpha_goals.states.comment-invalid'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
+    expect(signed.text).toContain(tc('govuk_alpha_goals.social.likes_count', 2, { count: 2 }));
     expect(signed.text).toContain('aria-pressed="true"');
-    expect(signed.text).toContain('Remove your like');
     expect(signed.text).toContain('method="post" action="/goals/42/like"');
-    expect(signed.text).toContain('Comments');
     expect(signed.text).toContain('(2)');
-    expect(signed.text).toContain('2 comments');
+    expect(signed.text).toContain(tc('govuk_alpha_goals.social.comments_count', 2, { count: 2 }));
     expect(signed.text).toContain('Avery Green');
-    expect(signed.text).toContain('(You)');
-    expect(signed.text).toContain('(Edited)');
     expect(signed.text).toContain('This goal is already bringing people together.');
     expect(signed.text).toContain('Sam Lee');
     expect(signed.text).toContain('We can help with the weekend planting.');
-    expect(signed.text).toContain('Reply');
-    expect(signed.text).toContain('Your reply');
-    expect(signed.text).toContain('Post reply');
-    expect(signed.text).toContain('Deleting a comment also removes any replies to it. This cannot be undone.');
     expect(signed.text).toContain('method="post" action="/goals/42/comments/12/delete"');
-    expect(signed.text).toContain('Add a comment');
-    expect(signed.text).toContain('Your comment');
-    expect(signed.text).toContain('Keep it kind and supportive.');
-    expect(signed.text).toContain('Post comment');
-    expect(signed.text).toContain('Please enter a comment before posting.');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
