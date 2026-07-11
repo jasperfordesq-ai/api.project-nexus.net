@@ -105,6 +105,12 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     expect(createdDetail.description).toContain('Tags (optional): disposable, accessibility');
     expect(createdDetail.cover_image_url || createdDetail.coverImageUrl || createdDetail.cover_image || createdDetail.cover_url).toBeTruthy();
 
+    await page.goto(`${mountPath}/groups?q=${encodeURIComponent(createdName)}&filter=joined`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Groups');
+    await expect(page.locator(`a[href$="/groups/${groupId}"]`)).toContainText(createdName);
+    await expect(page.locator('#filter')).toHaveValue('joined');
+    await expectAccessibleReflow(page);
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);

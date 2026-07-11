@@ -1,100 +1,87 @@
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full">
+  <span class="govuk-caption-xl">{{ t("groups.caption", { community: tenantName or serviceName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("groups.title") }}</h1>
+  <p class="govuk-body-l">{{ t("groups.description") }}</p>
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
+  {% if successMessage %}
+    {% set notificationMessage = successMessage %}
+    {% set notificationType = "success" %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
 
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
+  {% if errorMessage %}
+    {% set notificationMessage = errorMessage %}
+    {% set notificationType = null %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
 
-      <div class="govuk-!-margin-bottom-6" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <h1 class="govuk-heading-xl govuk-!-margin-bottom-0">Groups</h1>
-        <div>
-          <a href="{{ urlFor('/groups/new') }}" class="govuk-button">Create a group</a>
-        </div>
-      </div>
+  <p class="govuk-body">
+    <a href="{{ urlFor('/groups/new') }}" class="govuk-button" role="button" draggable="false" data-module="govuk-button">{{ t("polish_groups.create_group_cta") }}</a>
+  </p>
 
-      <p class="govuk-body">Browse and join groups to connect with community members who share your interests.</p>
+  <form action="{{ urlFor('/groups') }}" method="get" class="govuk-!-margin-bottom-6">
+    {{ govukInput({
+      id: "q",
+      name: "q",
+      value: searchQuery,
+      label: { text: t("groups.search_label") },
+      hint: { text: t("groups.search_hint") },
+      classes: "govuk-!-width-two-thirds"
+    }) }}
 
-      <form action="{{ urlFor('/groups') }}" method="get" class="govuk-!-margin-bottom-6">
-        <div class="app-search-form">
-          {{ govukInput({
-            id: "search",
-            name: "search",
-            value: searchQuery,
-            label: {
-              text: t("polish_federation.groups_search_label"),
-              classes: "govuk-visually-hidden"
-            },
-            classes: "app-search-form__input",
-            attributes: {
-              placeholder: "Search by group name..."
-            }
-          }) }}
-          <button type="submit" class="govuk-button app-search-form__button govuk-!-margin-bottom-0">
-            Search
-          </button>
-          {% if searchQuery %}
-            <a href="{{ urlFor('/groups') }}" class="govuk-link govuk-!-margin-left-3">Clear</a>
+    {{ govukSelect({
+      id: "filter",
+      name: "filter",
+      label: { text: t("groups.filter_label") },
+      items: [
+        { value: "all", text: t("groups.filter_all"), selected: groupsFilter == "all" },
+        { value: "joined", text: t("groups.filter_joined"), selected: groupsFilter == "joined" },
+        { value: "public", text: t("groups.filter_public"), selected: groupsFilter == "public" },
+        { value: "private", text: t("groups.filter_private"), selected: groupsFilter == "private" }
+      ]
+    }) }}
+
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.search") }}</button>
+  </form>
+
+  {% if groups.length == 0 %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.empty") }}</p></div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for group in groups %}
+        {% set isPrivate = group.visibility != "public" %}
+        {% set memberCount = group.memberCount or group.member_count or 0 %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ group.name }}</a></h2>
+            {{ govukTag({
+              text: t("groups.visibility_private") if isPrivate else t("groups.visibility_public"),
+              classes: "govuk-tag--grey" if isPrivate else "govuk-tag--green"
+            }) }}
+          </div>
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ tc("groups.members_count", memberCount, { count: memberCount }) }}</p>
+          {% if group.description %}
+            <p class="govuk-body govuk-!-margin-bottom-0">{{ group.description | truncate(160) }}</p>
           {% endif %}
-        </div>
-      </form>
-
-      {% if groups.length > 0 %}
-        <div class="app-card-grid">
-          {% for group in groups %}
-            <div class="app-card app-card--clickable">
-              <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="app-card__link">
-                <div class="app-card__header">
-                  <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ group.name }}</h2>
-                  {% if group.isPrivate or group.is_private %}
-                    {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
-                  {% endif %}
-                  {% if myGroupIds[group.id] %}
-                    {{ govukTag({ text: t("profile.joined_label"), classes: "govuk-tag--green" }) }}
-                  {% endif %}
-                </div>
-                {% if group.description %}
-                  <p class="govuk-body-s govuk-!-margin-bottom-2">{{ group.description | truncate(100) }}</p>
-                {% endif %}
-                <p class="govuk-body-s app-card__meta">
-                  {{ group.memberCount or group.member_count }} member{{ 's' if group.memberCount or group.member_count != 1 else '' }}
-                </p>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="govuk-inset-text">
-          <p class="govuk-body">{{ t("groups.empty") }}</p>
-        </div>
-      {% endif %}
-
-      {# Laravel returns cursor pagination rather than page totals. #}
-      {% if pagination.hasMore and pagination.cursor %}
-        {{ govukPagination({
-          next: {
-            labelText: "More groups",
-            href: urlFor("/groups?" + ("search=" + (searchQuery | urlencode) + "&" if searchQuery else "") + "cursor=" + (pagination.cursor | urlencode))
-          },
-          landmarkLabel: "Group results"
-        }) }}
-      {% endif %}
-
+        </article>
+      {% endfor %}
     </div>
-  </div>
+
+    {% if pagination.hasMore and pagination.cursor %}
+      {{ govukPagination({
+        next: {
+          labelText: t("polish_groups.pagination_next"),
+          href: pagination.nextHref
+        },
+        landmarkLabel: t("groups.pagination_label")
+      }) }}
+    {% endif %}
+  {% endif %}
 {% endblock %}

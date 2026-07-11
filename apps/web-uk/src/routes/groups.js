@@ -7,7 +7,6 @@ const express = require('express');
 const fs = require('fs/promises');
 const {
   getGroups,
-  getMyGroups,
   getGroup,
   createGroup,
   updateGroup,
@@ -842,38 +841,39 @@ async function removeUploadedFile(file) {
 
 // List all groups
 router.get('/', requireAuth, asyncRoute(async (req, res) => {
-  const limit = 20;
+  const limit = 30;
   const searchQuery = trimmed(req.query.q || req.query.search);
   const cursor = trimmed(req.query.cursor) || undefined;
+  const groupsFilter = allowed(req.query.filter, ['all', 'joined', 'public', 'private'], 'all');
+  const filters = {
+    per_page: limit,
+    cursor,
+    q: searchQuery || undefined
+  };
+  if (groupsFilter === 'joined') filters.member = 'me';
+  if (groupsFilter === 'public' || groupsFilter === 'private') filters.visibility = groupsFilter;
 
-  const [groupsResult, myGroupsResult] = await Promise.all([
-    getGroups(req.token, {
-      per_page: limit,
-      cursor,
-      q: searchQuery || undefined
-    }),
-    getMyGroups(req.token)
-  ]);
+  const groupsResult = await getGroups(req.token, filters);
 
   const groups = collectionFrom(groupsResult)
     .map((group) => normalizeGroup(group, positiveInteger(group?.id)));
-  const myGroups = collectionFrom(myGroupsResult);
-  const myGroupIds = {};
-  myGroups.forEach(g => { myGroupIds[g.id] = true; });
-  groups.forEach((group) => {
-    if (groupMembership(group)) myGroupIds[group.id] = true;
-  });
   const meta = groupsResult?.meta || {};
   const statusMessages = groupPageStatus(req.query.status);
+  const nextQuery = new URLSearchParams();
+  if (searchQuery) nextQuery.set('q', searchQuery);
+  if (groupsFilter !== 'all') nextQuery.set('filter', groupsFilter);
+  const nextCursor = trimmed(meta.cursor || meta.next_cursor);
+  if (nextCursor) nextQuery.set('cursor', nextCursor);
 
   res.render('groups/index', {
     title: 'Groups',
     groups,
-    myGroupIds,
     searchQuery,
+    groupsFilter,
     pagination: {
       hasMore: Boolean(meta.has_more),
-      cursor: trimmed(meta.cursor || meta.next_cursor)
+      cursor: nextCursor,
+      nextHref: urlFor(res, `/groups?${nextQuery.toString()}`)
     },
     successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
     errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)

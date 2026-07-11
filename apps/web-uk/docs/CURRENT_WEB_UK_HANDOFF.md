@@ -4868,6 +4868,18 @@ current read-only `GroupService::update()` allowlist discards that field and
 the v2 detail contract omits tags; edit-tag persistence is therefore an
 upstream Laravel limitation, not certified Web UK behavior.
 
+The default-English index follow-up replaces the invented flex header,
+placeholder-only search, clickable card grid, Joined tag, and English-authored
+pagination with Blade's community caption, description, create action, labelled
+search/hint, `all|joined|public|private` filter, visibility-tagged card list,
+localized member count, 160-character description treatment, and source
+pagination labels. The route sends those exact filters to Laravel's v2 group
+index and no longer makes a redundant second my-groups request. The disposable
+lifecycle now proves the created group through the real `filter=joined` index
+at 320 CSS pixels before edit/delete; it passed `1/1` in `135.7` seconds with
+no retained fixture. Focused proof passed `752/752`; full Jest passed `45/45`
+suites and `1,452/1,452` tests, with green lint.
+
 ## Documents To Trust
 
 Read these in order:

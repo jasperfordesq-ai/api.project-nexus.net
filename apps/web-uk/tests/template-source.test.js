@@ -873,7 +873,7 @@ describe('tenant-aware template helper conversion', () => {
     expect(detail).not.toContain('onsubmit="return confirm');
     expect(detail).not.toContain("'/delete')");
     expect(index).toContain('pagination.hasMore and pagination.cursor');
-    expect(index).toContain('(pagination.cursor | urlencode)');
+    expect(index).toContain('href: pagination.nextHref');
   });
 
   it('keeps resource browse, library, upload, delete, and discussion controls behind urlFor()', () => {

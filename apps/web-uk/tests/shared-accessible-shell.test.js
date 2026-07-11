@@ -19028,10 +19028,6 @@ describe('shared accessible frontend shell', () => {
       ],
       meta: { cursor: 'next-groups', per_page: 20, has_more: true }
     });
-    api.getMyGroups.mockResolvedValueOnce({
-      data: [{ id: 42 }],
-      meta: { cursor: null, per_page: 100, has_more: false }
-    });
     api.getGroup.mockResolvedValueOnce({
       data: {
         id: 42,
@@ -19056,7 +19052,7 @@ describe('shared accessible frontend shell', () => {
     api.getEvents.mockResolvedValueOnce({ data: [] });
 
     const index = await request(app)
-      .get('/groups?search=repair&cursor=current-groups')
+      .get('/groups?q=repair&filter=joined&cursor=current-groups')
       .set('Cookie', signedCookieHeader());
     const detail = await request(app)
       .get('/groups/42')
@@ -19064,15 +19060,18 @@ describe('shared accessible frontend shell', () => {
 
     expect(index.status).toBe(200);
     expect(index.text).toContain('href="/groups/42"');
-    expect(index.text).toContain('Joined');
-    expect(index.text).toContain('href="/groups?search=repair&amp;cursor=next-groups"');
+    expect(index.text).toContain('Public');
+    expect(index.text).toContain('href="/groups?q=repair&amp;filter=joined&amp;cursor=next-groups"');
+    expect(index.text).toContain('id="q" name="q" type="text" value="repair"');
+    expect(index.text).toMatch(/value="joined" selected/);
+    expect(index.text).not.toContain('Joined</strong>');
     expect(index.text).not.toContain('href="/groups/my"');
     expect(api.getGroups).toHaveBeenCalledWith('test-token', {
-      per_page: 20,
+      per_page: 30,
       cursor: 'current-groups',
-      q: 'repair'
+      q: 'repair',
+      member: 'me'
     });
-    expect(api.getMyGroups).toHaveBeenCalledWith('test-token');
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('href="/groups/42/manage"');
@@ -19083,10 +19082,8 @@ describe('shared accessible frontend shell', () => {
   it('matches the Blade group empty state without invented search or create actions', async () => {
     const api = require('../src/lib/api');
     api.getGroups.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
-    api.getMyGroups.mockResolvedValueOnce({ data: [] });
-
     const response = await request(app)
-      .get('/groups?search=missing')
+      .get('/groups?q=missing&filter=private')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
@@ -19094,6 +19091,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('No groups match');
     expect(response.text).not.toContain('Be the first to create a group');
     expect(response.text).not.toContain('>Clear filters<');
+    expect(api.getGroups).toHaveBeenCalledWith('test-token', {
+      per_page: 30,
+      cursor: undefined,
+      q: 'missing',
+      visibility: 'private'
+    });
   });
 
   it('uses Laravel viewer membership when rendering group actions', async () => {
@@ -19124,13 +19127,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Join this group');
   });
 
-  it('does not hide expired Laravel authentication behind an empty group membership list', async () => {
+  it('does not hide expired Laravel authentication behind the group index', async () => {
     const api = require('../src/lib/api');
-    api.getGroups.mockResolvedValueOnce({
-      data: [{ id: 42, name: 'Repair circle' }],
-      meta: { cursor: null, per_page: 20, has_more: false }
-    });
-    api.getMyGroups.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {
+    api.getGroups.mockRejectedValueOnce(new api.ApiError('Unauthenticated', 401, {
       errors: [{ code: 'UNAUTHENTICATED', message: 'Unauthenticated' }]
     }));
 
