@@ -1222,6 +1222,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   res.render('listings/detail', {
     title: listing.title || listing.name || 'Listing details',
     listing: { ...listing, can_edit },
+    listingImageUrl: resolveBackendAssetUrl(listing.image_url || listing.imageUrl),
     reviewSummary,
     isAuthenticated: Boolean(token),
     currentUserId,

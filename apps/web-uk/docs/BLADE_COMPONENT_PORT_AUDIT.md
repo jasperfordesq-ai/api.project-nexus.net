@@ -25,7 +25,7 @@ row-level evidence review, not inferred from the route count:
   have current Laravel runtime proof with no open boundary. Route declaration
   equality alone never qualifies. No row currently meets that bar.
 
-The current aggregate evidence is `45/45` Jest suites and `1,446/1,446` tests,
+The current aggregate evidence is `45/45` Jest suites and `1,447/1,447` tests,
 green lint/brand/CSS gates, `608` of `608` Laravel routes matched (`610` local
 declarations, `0` missing, `0` extra parity routes, `3` ignored infrastructure
 routes), structurally complete `11`-locale/`24`-namespace/`7,364`-key catalogs,

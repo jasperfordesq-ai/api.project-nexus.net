@@ -16,9 +16,11 @@
   {% elif listing.status == "draft" %}
     {% set tagColour = "grey" %}
   {% else %}
-    {% set tagColour = "red" %}
+    {% set tagColour = "grey" %}
   {% endif %}
-  {% set statusHtml %}<strong class="govuk-tag govuk-tag--{{ tagColour }}">{{ listing.status or "N/A" }}</strong>{% endset %}
+  {% set listingType = "request" if listing.type == "request" else "offer" %}
+  {% set typeColour = "purple" if listingType == "request" else "blue" %}
+  {% set statusHtml %}<strong class="govuk-tag govuk-tag--{{ tagColour }}">{{ t("listings.status_values." + listing.status) if listing.status else "" }}</strong>{% endset %}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
@@ -35,7 +37,22 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">{{ listing.title or listing.name or "Listing details" }}</h1>
+      <span class="govuk-caption-l">{{ t("listings.detail_title") }}</span>
+      <h1 class="govuk-heading-xl">{{ listing.title or listing.name or t("listings.detail_title") }}</h1>
+      <p class="nexus-alpha-actions govuk-!-margin-bottom-4">
+        <strong class="govuk-tag govuk-tag--{{ typeColour }}">{{ t("listings." + listingType) }}</strong>
+        {% if listing.is_featured %}<strong class="govuk-tag govuk-tag--yellow">{{ t("listings.featured") }}</strong>{% endif %}
+        {% if listing.service_type and listing.service_type != "physical_only" %}<strong class="govuk-tag govuk-tag--turquoise">{{ t("listings.service_types." + listing.service_type) }}</strong>{% endif %}
+      </p>
+
+      {% if listingImageUrl %}
+        <figure class="nexus-alpha-detail-hero">
+          <img src="{{ listingImageUrl }}" alt="{{ t('listings.image_alt', { title: listing.title }) }}" width="640" height="360" decoding="async">
+        </figure>
+      {% endif %}
+
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("listings.description_title") }}</h2>
+      <div class="govuk-body">{{ listing.description | nl2br }}</div>
 
       {# Rating summary if available #}
       {% if reviewSummary and reviewSummary.average_rating %}
@@ -53,43 +70,32 @@
         </p>
       {% endif %}
 
-      {{ govukSummaryList({
-        rows: [
-          {
-            key: { text: "ID" },
-            value: { text: listing.id }
-          },
-          {
-            key: { text: t("group_exchanges.form_title_label") },
-            value: { text: listing.title or listing.name or "N/A" }
-          },
-          {
-            key: { text: "Type" },
-            value: { text: listing.type or listing.listingType or "N/A" }
-          },
-          {
-            key: { text: "Description" },
-            value: { text: listing.description or "N/A" }
-          },
-          {
-            key: { text: "Status" },
-            value: { html: statusHtml }
-          },
-          {
-            key: { text: "Created" },
-            value: { text: (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }
-          },
-          {
-            key: { text: t("blog.updated_label") },
-            value: { text: (listing.updatedAt or listing.updated_at) | formatDate if listing.updatedAt or listing.updated_at else "N/A" }
-          }
-        ]
-      }) }}
+      <h2 class="govuk-heading-l">{{ t("listings.summary_title") }}</h2>
+      {% set summaryRows = [{ key: { text: t("listings.type") }, value: { text: t("listings." + listingType) } }] %}
+      {% if listing.service_type %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.service_type_label") }, value: { text: t("listings.service_types." + listing.service_type) } }), summaryRows) %}
+      {% endif %}
+      {% if listing.status %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.status_label") }, value: { html: statusHtml } }), summaryRows) %}
+      {% endif %}
+      {% if listing.category_name or listing.category.name %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.category") }, value: { text: listing.category_name or listing.category.name } }), summaryRows) %}
+      {% endif %}
+      {% if listing.location %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.location") }, value: { text: listing.location } }), summaryRows) %}
+      {% endif %}
+      {% if listing.hours_estimate %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.hours_label") }, value: { text: tc("listings.hours", listing.hours_estimate, { count: listing.hours_estimate }) } }), summaryRows) %}
+      {% endif %}
+      {% if listing.createdAt or listing.created_at %}
+        {% set summaryRows = (summaryRows.push({ key: { text: t("listings.created") }, value: { text: (listing.createdAt or listing.created_at) | formatDate } }), summaryRows) %}
+      {% endif %}
+      {{ govukSummaryList({ rows: summaryRows }) }}
 
       {% if listing.can_edit %}
         <div class="govuk-button-group">
           {{ govukButton({
-            text: t("jobs_t3.edit_button"),
+            text: t("listings.edit.edit_listing"),
             href: urlFor("/listings/" + (listing.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}
@@ -152,10 +158,6 @@
           <div class="govuk-inset-text">{{ t("listings.messaging_unavailable") }}</div>
         {% endif %}
       </section>
-
-      <p class="govuk-body govuk-!-margin-top-6">
-        <a href="{{ urlFor('/listings') }}" class="govuk-link">Back to listings</a>
-      </p>
 
     </div>
   </div>

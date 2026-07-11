@@ -2037,6 +2037,24 @@ describe('tenant-aware template helper conversion', () => {
     expect(form).not.toContain('polish_listings.save_listing');
   });
 
+  it('uses the Blade listing-detail hierarchy instead of internal summary rows', () => {
+    const detail = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'listings', 'detail.njk'),
+      'utf8'
+    );
+
+    for (const key of [
+      'listings.detail_title', 'listings.description_title', 'listings.summary_title',
+      'listings.type', 'listings.status_label', 'listings.service_type_label',
+      'listings.category', 'listings.location', 'listings.hours_label',
+      'listings.created', 'listings.image_alt', 'listings.edit.edit_listing'
+    ]) expect(detail).toContain(key);
+
+    expect(detail).not.toContain('key: { text: "ID" }');
+    expect(detail).not.toContain('key: { text: "Description" }');
+    expect(detail.match(/actions.back_to_listings/g)).toHaveLength(1);
+  });
+
   it('avoids duplicate navigation on direct conversations', () => {
     const directConversation = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'messages', 'direct-conversation.njk'),

@@ -4773,6 +4773,15 @@ constraint so client guidance remains truthful. Focused source/render proof
 passed `3/3`; full Jest passed `45/45` suites and `1,446/1,446` tests with green
 lint.
 
+The default-English detail follow-up now matches Blade's caption/title/type,
+featured and delivery badges, safely resolved hero image, separate description
+section, and source-shaped listing-information summary. Internal ID/title/
+description/updated rows, raw type/status values, generic Edit copy, and the
+duplicate bottom back link were removed. Focused source/render proof passed
+`3/3`; full Jest passed `45/45` suites and `1,447/1,447` tests. The exact-current
+disposable create/upload/edit/detail/delete journey also passed `1/1` in `85.2`
+seconds and retained no fixture.
+
 ## Documents To Trust
 
 Read these in order:
