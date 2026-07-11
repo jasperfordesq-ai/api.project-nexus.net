@@ -8,7 +8,7 @@
 {% block content %}
   <a href="{{ urlFor('/coupons') }}" class="govuk-back-link">{{ t("polish_commerce.coupon_detail_back") }}</a>
 
-  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
+  <span class="govuk-caption-xl">{{ t("coupons.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ coupon.title }}</h1>
 
   {% if coupon.discountLabel %}
@@ -21,7 +21,7 @@
 
   {% if coupon.code %}
     <div class="govuk-panel govuk-panel--confirmation govuk-!-margin-bottom-4">
-      <h2 class="govuk-panel__title">Coupon code</h2>
+      <h2 class="govuk-panel__title">{{ t("polish_commerce.coupon_code_panel_title") }}</h2>
       <div class="govuk-panel__body">
         <strong>{{ coupon.code }}</strong>
       </div>

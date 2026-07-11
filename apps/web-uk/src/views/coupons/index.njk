@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
+  <span class="govuk-caption-xl">{{ t("coupons.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("coupons.title") }}</h1>
   <p class="govuk-body-l">{{ t("coupons.description") }}</p>
 
@@ -28,11 +28,11 @@
           {% endif %}
 
           {% if coupon.code %}
-            <p class="govuk-body govuk-!-margin-bottom-1">Code: <strong>{{ coupon.code }}</strong></p>
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ t("coupons.code_label") }}: <strong>{{ coupon.code }}</strong></p>
           {% endif %}
 
           {% if coupon.validUntilText %}
-            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">Valid until {{ coupon.validUntilText }}</p>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ t("coupons.valid_until", { date: coupon.validUntilText }) }}</p>
           {% endif %}
         </article>
       {% endfor %}

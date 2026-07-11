@@ -8667,6 +8667,13 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed public coupon index and detail pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
+    const validUntil = new Intl.DateTimeFormat('ar', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC'
+    }).format(new Date('2026-09-30'));
     api.callCouponApi
       .mockResolvedValueOnce({
         data: {
@@ -8698,29 +8705,33 @@ describe('shared accessible frontend shell', () => {
       });
 
     const index = await request(app)
-      .get('/coupons')
+      .get('/coupons?locale=ar')
       .set('Cookie', signedCookieHeader());
     const detail = await request(app)
-      .get('/coupons/42')
+      .get('/coupons/42?locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
     expect(staticPageRoutes.pages['/coupons']).toBeUndefined();
-    expect(index.text).toContain('Coupons');
+    expect(index.text).toContain(t('coupons.title'));
+    expect(index.text).toContain(t('coupons.caption', { community: 'Project NEXUS Accessible' }));
+    expect(index.text).toContain(t('coupons.description'));
     expect(index.text).toContain('Community market discount');
     expect(index.text).toContain('Save money with a local seller.');
-    expect(index.text).toContain('10% off');
-    expect(index.text).toContain('Code: <strong>NEXUS10</strong>');
+    expect(index.text).toContain(t('coupons.percent_off', { value: '10' }));
+    expect(index.text).toContain(`${t('coupons.code_label')}: <strong>NEXUS10</strong>`);
+    expect(index.text).toContain(t('coupons.valid_until', { date: validUntil }));
     expect(index.text).toContain('href="/coupons/42"');
     expect(index.text).not.toContain('Coupon pages will follow the Laravel accessible frontend contract.');
     expect(detail.status).toBe(200);
-    expect(detail.text).toContain('Back to coupons');
+    expect(detail.text).toContain(t('polish_commerce.coupon_detail_back'));
     expect(detail.text).toContain('Community market discount');
-    expect(detail.text).toContain('Coupon code');
+    expect(detail.text).toContain(t('polish_commerce.coupon_code_panel_title'));
     expect(detail.text).toContain('NEXUS10');
-    expect(detail.text).toContain('How to use this coupon');
+    expect(detail.text).toContain(t('polish_commerce.coupon_redemption_heading'));
+    expect(detail.text).toContain(t('polish_commerce.coupon_redemption_body'));
     expect(detail.text).toContain('Harbour Co-op');
-    expect(detail.text).toContain('30 September 2026');
+    expect(detail.text).toContain(validUntil);
     expect(api.callCouponApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '');
     expect(api.callCouponApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42');
   });

@@ -4188,6 +4188,22 @@ and 3 ignored infrastructure routes. Category/member authorization edge cases,
 deeper runtime fixtures, recorded manual parity, and ASP.NET backend
 compatibility remain open.
 
+Latest focused public-Coupons localization slice: signed `/coupons` and
+`/coupons/{id}` now use Laravel's exact request-locale `coupons` and
+`polish_commerce` catalogs for route/fallback title, tenant caption,
+description/empty state, percentage/amount discount labels, code/date
+metadata, detail back link, code panel, redemption guidance, merchant label,
+and validity label. Request-localized date formatting remains intact. A test
+date-helper patch initially matched the adjacent Skills test and was moved to
+the intended coupon test before any test was run. Focused Arabic list/detail
+coverage then passed `1/1`. Complete verification passed 45/45 Jest suites and
+1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit, and
+the route matrix at 608 Laravel routes, 608 matched, 0 missing, 0 extra, and 3
+ignored infrastructure routes. The current live tenant remains merchant-
+coupons-disabled and returns the existing Laravel-aligned 403 gate, so enabled-
+tenant body runtime proof, QR redemption/validation, runtime persistence,
+recorded manual parity, and ASP.NET backend compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

@@ -57,11 +57,13 @@ function formatNumber(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function discountLabel(coupon) {
+function discountLabel(coupon, t) {
   const value = formatNumber(coupon.discount_value ?? coupon.discountValue);
   if (value === '') return '';
   const type = trimmed(coupon.discount_type ?? coupon.discountType).toLowerCase();
-  return ['percentage', 'percent'].includes(type) ? `${value}% off` : `${value} off`;
+  return ['percentage', 'percent'].includes(type)
+    ? t('coupons.percent_off', { value })
+    : t('coupons.amount_off', { value });
 }
 
 function formatDate(value) {
@@ -82,7 +84,7 @@ function merchantName(coupon) {
   return trimmed(merchant.name || coupon.merchant_name || coupon.merchantName);
 }
 
-function normalizeCoupon(item) {
+function normalizeCoupon(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
   const code = trimmed(row.code);
@@ -90,9 +92,9 @@ function normalizeCoupon(item) {
     ...row,
     id,
     code,
-    title: trimmed(row.title) || code || 'Coupon',
+    title: trimmed(row.title) || code || t('coupons.title'),
     description: trimmed(row.description),
-    discountLabel: discountLabel(row),
+    discountLabel: discountLabel(row, t),
     validUntilText: formatDate(row.valid_until ?? row.validUntil),
     merchantName: merchantName(row)
   };
@@ -103,10 +105,11 @@ router.get('/', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const result = await callCouponApi(token, 'GET', '');
-  const coupons = collectionFrom(result).map(normalizeCoupon).filter((coupon) => coupon.id !== null);
+  const coupons = collectionFrom(result)
+    .map((coupon) => normalizeCoupon(coupon, res.locals.t)).filter((coupon) => coupon.id !== null);
 
   return res.render('coupons/index', {
-    title: 'Coupons',
+    title: res.locals.t('coupons.title'),
     activeNav: 'explore',
     coupons
   });
@@ -118,7 +121,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
 
   const id = positiveInteger(req.params.id);
   const result = await callCouponApi(token, 'GET', `/${id}`);
-  const coupon = normalizeCoupon(itemFrom(result));
+  const coupon = normalizeCoupon(itemFrom(result), res.locals.t);
 
   return res.render('coupons/detail', {
     title: coupon.title,
