@@ -1464,10 +1464,7 @@ app.use(laravelPrepRoutes);
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN' || err.code === 'ERR_BAD_CSRF_TOKEN' || (err.message && err.message.includes('csrf'))) {
-    return res.status(403).render('errors/403', {
-      title: 'Forbidden',
-      message: 'Your session has expired. Please try again.'
-    });
+    return res.status(419).render('errors/419', { title: 'This page has expired' });
   }
   next(err);
 });

@@ -198,6 +198,50 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
   });
 
+  test('expired Arabic form session uses Laravel 419 semantics with RTL reflow', async ({ page, baseURL }, testInfo) => {
+    await hideCookieBanner(page, baseURL);
+    await page.setViewportSize({ width: 320, height: 640 });
+    const contactPath = `${mountPath}/contact?locale=ar`;
+    const initialResponse = await page.goto(contactPath, { waitUntil: 'domcontentloaded' });
+    expect(initialResponse).not.toBeNull();
+    expect(initialResponse.status()).toBe(200);
+
+    const form = page.locator(`form[method="post"][action="${mountPath}/contact"]`);
+    await expect(form).toHaveCount(1);
+    await form.locator('input[name="_csrf"]').evaluate((input) => {
+      input.value = 'expired-token';
+    });
+    const [expiredResponse] = await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      form.evaluate((element) => element.submit())
+    ]);
+
+    expect(expiredResponse).not.toBeNull();
+    expect(expiredResponse.status()).toBe(419);
+    expect(expiredResponse.headers()['content-language']).toBe('ar');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('h1')).toHaveText(translate('ar', 'error_pages.419_title'));
+    await expect(page.locator('main')).toContainText(translate('ar', 'error_pages.419_body'));
+
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+    const axeResults = await new AxeBuilder({ page }).analyze();
+    await testInfo.attach('arabic-419-evidence', {
+      body: Buffer.from(JSON.stringify({
+        url: page.url(),
+        status: expiredResponse.status(),
+        overflow,
+        violations: formatViolations(axeResults.violations)
+      }, null, 2)),
+      contentType: 'application/json'
+    });
+    expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+  });
+
   test('Arabic Help Centre and Trust and Safety preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 320, height: 640 });

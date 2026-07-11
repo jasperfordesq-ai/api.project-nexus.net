@@ -4286,6 +4286,24 @@ intended test. The latest uninterrupted full browser aggregate remains 62/62
 at `e155375c`; this focused current-source result does not relabel that older
 aggregate.
 
+Latest CSRF-expiry 419 parity slice: Laravel's `AccessibleErrorPage` explicitly
+maps `TokenMismatchException` to HTTP 419 and `error_pages.419_*`, while Web UK
+still returned a localized 403 for invalid or expired CSRF tokens. Web UK now
+has a shared `errors/419.njk` template, maps final-handler status 419 to it, and
+returns 419 from the CSRF middleware with Laravel's exact request-locale title,
+body, and home action. The focused integration path posts an invalid token to
+the real Contact boundary and proves Arabic HTTP 419 output alongside the other
+five shared error statuses. Focused error coverage passed 7/7 selected tests.
+Complete verification passed 45/45 Jest suites and 1,425/1,425 tests,
+warning-free ESLint, the 291-template zero-match audit, and 608/608 route parity
+with 0 missing, 0 extra, and 3 ignored infrastructure routes. A fresh ephemeral
+Chromium form round trip first
+found the language selector and Contact form shared the same action; tightening
+the locator to the POST form made the intended test pass HTTP 419, exact Arabic
+markers, `Content-Language: ar`, RTL, 320px reflow, and axe (`1/1`, 9.2 seconds
+inside Playwright). The recurring Sass output remains the pre-existing GOV.UK
+palette deprecation warning set.
+
 ## Documents To Trust
 
 Read these in order:

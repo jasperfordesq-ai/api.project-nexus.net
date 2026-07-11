@@ -24,6 +24,7 @@ const templateEnvironment = nunjucks.configure([viewsDirectory, govukViewsDirect
 const errorTemplates = [
   'errors/403.njk',
   'errors/404.njk',
+  'errors/419.njk',
   'errors/429.njk',
   'errors/500.njk',
   'errors/503.njk',
@@ -66,6 +67,7 @@ describe('Laravel-first error-page localization', () => {
         'error_pages.home_link',
         'error_pages.403_title',
         'error_pages.404_title',
+        'error_pages.419_title',
         'error_pages.429_title',
         'error_pages.503_title',
         'error_pages.generic_title'

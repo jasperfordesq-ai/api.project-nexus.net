@@ -155,6 +155,10 @@ function finalErrorHandler(err, req, res, next) {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
 
+  if (status === 419) {
+    return res.status(419).render('errors/419', { title: 'This page has expired' });
+  }
+
   if (status === 429) {
     return res.status(429).render('errors/429', { title: 'Too many requests' });
   }

@@ -7719,6 +7719,10 @@ describe('shared accessible frontend shell', () => {
 
       const forbidden = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
       const missing = await request(app).get('/nonexistent-page?locale=ar');
+      const expired = await request(app)
+        .post('/contact?locale=ar')
+        .type('form')
+        .send({ _csrf: 'expired-token' });
       const limited = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
       const unavailable = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
       const failed = await request(app).get('/goals?locale=ar').set('Cookie', signedCookieHeader());
@@ -7728,6 +7732,9 @@ describe('shared accessible frontend shell', () => {
       expect(missing.status).toBe(404);
       expect(missing.text).toContain(t('error_pages.404_title'));
       expect(missing.text).toContain(t('error_pages.404_body'));
+      expect(expired.status).toBe(419);
+      expect(expired.text).toContain(t('error_pages.419_title'));
+      expect(expired.text).toContain(t('error_pages.419_body'));
       expect(limited.status).toBe(429);
       expect(limited.text).toContain(t('error_pages.429_title'));
       expect(limited.text).toContain(t('error_pages.429_body'));
@@ -7737,7 +7744,7 @@ describe('shared accessible frontend shell', () => {
       expect(failed.status).toBe(500);
       expect(failed.text).toContain(t('error_pages.generic_title'));
       expect(failed.text).toContain(t('error_pages.generic_body'));
-      for (const response of [forbidden, missing, limited, unavailable, failed]) {
+      for (const response of [forbidden, missing, expired, limited, unavailable, failed]) {
         expect(response.text).toContain(t('error_pages.home_link'));
         expect(response.text).not.toContain('error_pages.');
       }
