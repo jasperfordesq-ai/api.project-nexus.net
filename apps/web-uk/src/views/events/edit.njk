@@ -7,12 +7,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% block beforeContent %}
   {{ super() }}
-  {% set breadcrumbs = [
-    { text: "Events", href: urlFor("/events") },
-    { text: event.title, href: urlFor("/events/" + (event.id | string)) },
-    { text: t("jobs_t3.edit_button") }
-  ] %}
-  {% include "partials/breadcrumbs.njk" %}
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("events.back_to_event") }}</a>
 {% endblock %}
 
 {% block mainContent %}

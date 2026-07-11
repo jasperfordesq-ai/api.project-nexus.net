@@ -8,11 +8,7 @@
 
 {% block beforeContent %}
   {{ super() }}
-  {% set breadcrumbs = [
-    { text: "Events", href: urlFor("/events") },
-    { text: event.title }
-  ] %}
-  {% include "partials/breadcrumbs.njk" %}
+  <a class="govuk-back-link" href="{{ urlFor('/events') }}">{{ t("actions.back_to_events") }}</a>
 {% endblock %}
 
 {% block mainContent %}

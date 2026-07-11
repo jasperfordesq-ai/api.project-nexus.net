@@ -5,11 +5,7 @@
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% block beforeContent %}
   {{ super() }}
-  {% set breadcrumbs = [
-    { text: "Groups", href: urlFor("/groups") },
-    { text: group.name }
-  ] %}
-  {% include "partials/breadcrumbs.njk" %}
+  <a class="govuk-back-link" href="{{ urlFor('/groups') }}">{{ t("actions.back_to_groups") }}</a>
 {% endblock %}
 
 {% block mainContent %}

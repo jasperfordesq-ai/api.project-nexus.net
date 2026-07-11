@@ -7,12 +7,7 @@
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% block beforeContent %}
   {{ super() }}
-  {% set breadcrumbs = [
-    { text: "Groups", href: urlFor("/groups") },
-    { text: group.name, href: urlFor("/groups/" + (group.id | string)) },
-    { text: t("jobs_t3.edit_button") }
-  ] %}
-  {% include "partials/breadcrumbs.njk" %}
+  <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 {% endblock %}
 
 {% block mainContent %}

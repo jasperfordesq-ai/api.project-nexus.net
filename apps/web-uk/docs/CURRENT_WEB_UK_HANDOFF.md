@@ -4708,6 +4708,15 @@ main/H1, unique IDs, 320px reflow, and no serious/critical axe violations.
 This is a focused 81st case; the latest uninterrupted full aggregate remains
 checkpoint `ea1ed6d4` at `80/80`, and no newer aggregate is claimed.
 
+## 2026-07-11 Event And Group Back-Link Parity
+
+Event and Group detail/edit pages now match Blade's single GOV.UK back-link
+pattern and exact request-localized labels. The former multi-item breadcrumbs
+and generic Edit crumb were Web UK inventions. Focused source and Laravel-
+shaped renders passed `3/3`; full Jest passed `45/45` suites and `1,441/1,441`
+tests, with green lint, branding guard, and a `291`-template localization audit
+with zero conservative matches.
+
 ## Documents To Trust
 
 Read these in order:

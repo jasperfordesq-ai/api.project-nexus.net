@@ -1953,6 +1953,26 @@ describe('tenant-aware template helper conversion', () => {
     expect(breadcrumbs).not.toContain('href: "/groups/123"');
     expect(breadcrumbs).toContain("urlFor('/groups')");
   });
+
+  it('uses Blade back links instead of invented breadcrumbs on event and group pages', () => {
+    const expectations = [
+      ['events', 'detail.njk', "urlFor('/events')", 't("actions.back_to_events")'],
+      ['events', 'edit.njk', "urlFor('/events/' + (event.id | string))", 't("events.back_to_event")'],
+      ['groups', 'detail.njk', "urlFor('/groups')", 't("actions.back_to_groups")'],
+      ['groups', 'edit.njk', "urlFor('/groups/' + (group.id | string))", 't("groups.back_to_group")']
+    ];
+
+    for (const [family, template, href, label] of expectations) {
+      const source = fs.readFileSync(
+        path.join(__dirname, '..', 'src', 'views', family, template),
+        'utf8'
+      );
+      expect(source).toContain('class="govuk-back-link"');
+      expect(source).toContain(href);
+      expect(source).toContain(label);
+      expect(source).not.toContain('partials/breadcrumbs.njk');
+    }
+  });
 });
 
 describe('localized progressive validation source contract', () => {
