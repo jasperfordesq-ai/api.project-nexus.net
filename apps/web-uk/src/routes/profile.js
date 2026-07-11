@@ -171,7 +171,7 @@ const PROFILE_STATUS_MESSAGES = {
   },
   'skill-added': { type: 'success', message: 'Your skill has been added.' },
   'skill-removed': { type: 'success', message: 'Your skill has been removed.' },
-  'skill-name-required': { type: 'error', message: 'Enter a skill name.', anchor: 'skill_name' },
+  'skill-name-required': { type: 'error', message: 'Enter a skill name.', anchor: 'skills' },
   'skill-failed': { type: 'error', message: 'Your skill could not be saved.', anchor: 'skills' },
   'safeguarding-revoked': { type: 'success', message: 'The safeguarding preference has been removed.' },
   'safeguarding-failed': {
@@ -888,39 +888,19 @@ function buildProfileSettingsViewModel(req, data) {
         )
       }
     ].filter(Boolean),
-    notificationGroups: [
-      {
-        title: 'Messages and connections',
-        items: [
-          { key: 'email_messages', label: 'Messages from other members' },
-          { key: 'email_connections', label: 'Connection requests and updates' }
-        ]
-      },
-      {
-        title: 'Marketplace and organisations',
-        items: [
-          { key: 'email_listings', label: 'Listing updates' },
-          { key: 'email_transactions', label: 'Transaction updates' },
-          { key: 'email_reviews', label: 'Review reminders' },
-          { key: 'email_org_payments', label: 'Organisation payment updates' },
-          { key: 'email_org_transfers', label: 'Organisation transfer updates' },
-          { key: 'email_org_membership', label: 'Organisation membership updates' },
-          { key: 'email_org_admin', label: 'Organisation admin updates' }
-        ]
-      },
-      {
-        title: 'Community updates',
-        items: [
-          { key: 'caring_smart_nudges', label: 'Caring community nudges' },
-          { key: 'email_gamification_digest', label: 'Gamification digest emails' },
-          { key: 'email_gamification_milestones', label: 'Milestone emails' },
-          { key: 'email_digest', label: 'Activity digest emails' },
-          { key: 'push_enabled', label: 'Push notifications' },
-          { key: 'push_campaigns_opted_in', label: 'Campaign notifications' },
-          { key: 'federation_notifications_enabled', label: 'Federation notifications' }
-        ]
-      }
-    ]
+    notificationGroups: Object.entries({
+      messages: ['email_messages', 'email_connections', 'caring_smart_nudges', 'federation_notifications_enabled'],
+      activity: ['email_listings', 'email_transactions', 'email_reviews'],
+      achievements: ['email_gamification_digest', 'email_gamification_milestones', 'email_digest'],
+      organisation: ['email_org_payments', 'email_org_transfers', 'email_org_membership', 'email_org_admin'],
+      push: ['push_enabled', 'push_campaigns_opted_in']
+    }).map(([group, keys]) => ({
+      title: translateStatusMessage(req, `profile_settings.notifications.groups.${group}`, group),
+      items: keys.map((key) => ({
+        key,
+        label: translateStatusMessage(req, `profile_settings.notifications.labels.${key}`, key)
+      }))
+    }))
   };
 }
 

@@ -1770,6 +1770,8 @@ test.describe('representative authenticated-page accessibility gate', () => {
       await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
       await expect(page.locator('h1')).toHaveText(translate('ar', 'profile_settings.title'));
       await expect(page.getByRole('heading', { name: translate('ar', 'profile_settings.security_title'), exact: true })).toHaveCount(1);
+      await expect(page.getByRole('heading', { name: translate('ar', 'profile_settings.notifications.groups.messages'), exact: true })).toHaveCount(1);
+      await expect(page.getByText(translate('ar', 'profile_settings.notifications.labels.email_messages'), { exact: true })).toHaveCount(1);
       await expect(page.getByText(translate('ar', 'profile_settings.notifications.digest_label'), { exact: true })).toHaveCount(1);
       await expect(page.getByText(translate('ar', 'profile_settings.match.notify_hot'), { exact: true })).toHaveCount(1);
       await expect(page.getByText(translate('ar', 'profile_settings.personalisation.auto_translate_label'), { exact: true })).toHaveCount(1);
@@ -1777,6 +1779,9 @@ test.describe('representative authenticated-page accessibility gate', () => {
       const visibleText = await page.locator('main').innerText();
       for (const englishLabel of [
         'Profile photo',
+        'Messages and connections',
+        'Marketplace and organisations',
+        'Community updates',
         'Save notification preferences',
         'Tell me about high priority matches',
         'Automatically translate community posts'

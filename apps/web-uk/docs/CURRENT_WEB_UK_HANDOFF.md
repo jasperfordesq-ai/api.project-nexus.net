@@ -63,10 +63,10 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
-  passed `75/75` cases in `1,538.9` seconds (`25.6` minutes), with `0` skipped,
-  `0` unexpected, and `0` flaky results, at checkpoint `c6c20df6` on 2026-07-11.
+  passed `75/75` cases in `1,423.4` seconds (`23.7` minutes), with `0` skipped,
+  `0` unexpected, and `0` flaky results, against the exact current source on 2026-07-11.
   The outer command wall time, including CSS compilation and runner
-  startup, was `1,557.7` seconds (`26.0` minutes).
+  startup, was `1,441.2` seconds (`24.0` minutes).
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -4516,6 +4516,29 @@ branding, 11-locale/24-namespace/7,364-key structure, CSS compilation, and
 608/608 route parity remain green. The latest uninterrupted full browser
 aggregate remains the immediately preceding `c6c20df6` checkpoint at `75/75`;
 this slice does not claim a newer full aggregate.
+
+## 2026-07-11 Profile Notification Group Parity
+
+The Profile-settings notification model now matches Blade's five exact groups:
+messages, activity, achievements, organisation, and push. Their headings and
+all 16 option labels resolve from the request-locale Laravel catalog instead of
+three invented English-only Web UK groups. The settings shortcuts are now the
+same plain list Blade renders, without the extra navigation landmark, and the
+skill-name-required summary links to Blade's `#skills` section target.
+
+Focused shared rendering passed `622/622`. The strengthened live Arabic journey
+asserts the localized messages-group heading and direct-message option, rejects
+the former invented English group names, and passed RTL, 320px reflow, and axe
+in `1.0` minute. The normal plus Arabic Profile-settings pair also passed `2/2`
+in `2.0` minutes.
+
+Complete verification passed `45/45` Jest suites and `1,429/1,429` tests,
+warning-free lint, branding guard, CSS compilation, the 11-locale/24-namespace/
+7,364-key audit, the 292-template zero-match audit, and 608/608 route parity.
+The final uninterrupted exact-current Chromium/axe aggregate passed `75/75` in
+`1,423.4` seconds (`23.7` minutes), with `0` skipped, `0` unexpected, and `0`
+flaky results; outer wall time was `1,441.2` seconds (`24.0` minutes). Only the
+pre-existing GOV.UK Sass palette deprecation warnings remain.
 
 ## Documents To Trust
 

@@ -2254,6 +2254,11 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Language');
     expect(signed.text).toContain('Gaeilge');
     expect(signed.text).toContain('Email and notifications');
+    expect(signed.text).toContain('Messages and community');
+    expect(signed.text).toContain('Your activity');
+    expect(signed.text).toContain('Achievements and digests');
+    expect(signed.text).toContain('Organisation emails');
+    expect(signed.text).toContain('Push notifications');
     expect(signed.text).toContain('Activity digest emails');
     expect(signed.text).toContain('class="govuk-checkboxes govuk-checkboxes--small"');
     expect(signed.text).toContain('id="notif_email_messages" name="email_messages"');
@@ -2291,6 +2296,8 @@ describe('shared accessible frontend shell', () => {
     expect(arabic.headers['content-language']).toBe('ar');
     expect(arabic.text).toContain('<html lang="ar" dir="rtl"');
     expect(arabic.text).toContain(translate('ar', 'profile_settings.title'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.notifications.groups.messages'));
+    expect(arabic.text).toContain(translate('ar', 'profile_settings.notifications.labels.email_messages'));
     expect(arabic.text).toContain(translate('ar', 'profile_settings.photo_title'));
     expect(arabic.text).toContain(translate('ar', 'profile_settings.skills.title'));
     expect(arabic.text).toContain(translate('ar', 'profile_settings.security_title'));
