@@ -12,7 +12,7 @@
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">
-          {% if status == 'search-saved' %}Your search has been saved.{% else %}The saved search has been deleted.{% endif %}
+          {% if status == 'search-saved' %}{{ t("govuk_alpha_search.saved.saved_banner") }}{% else %}{{ t("govuk_alpha_search.saved.deleted_banner") }}{% endif %}
         </p>
       </div>
     </div>
@@ -21,7 +21,7 @@
       <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
       <div class="govuk-error-summary__body">
         <ul class="govuk-list govuk-error-summary__list">
-          <li>{% if status == 'search-save-failed' %}<a href="#saved-name">We could not save your search. Add a name and a keyword, then try again.</a>{% else %}We could not delete the saved search. Please try again.{% endif %}</li>
+          <li>{% if status == 'search-save-failed' %}<a href="#saved-name">{{ t("govuk_alpha_search.saved.save_failed_banner") }}</a>{% else %}{{ t("govuk_alpha_search.saved.delete_failed_banner") }}{% endif %}</li>
         </ul>
       </div>
     </div>
@@ -32,52 +32,52 @@
       <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
       <div class="govuk-error-summary__body">
         <ul class="govuk-list govuk-error-summary__list">
-          <li><a href="#q">Something went wrong while searching. Please try again.</a></li>
+          <li><a href="#q">{{ t("govuk_alpha_search.states.error") }}</a></li>
         </ul>
       </div>
     </div>
   {% endif %}
 
-  <span class="govuk-caption-xl">Search {{ communityName }}</span>
-  <h1 class="govuk-heading-xl">Advanced search</h1>
-  <p class="govuk-body-l">Search across listings, members, events and groups, then narrow your results with filters.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_search.advanced.caption", { community: communityName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_search.advanced.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_search.advanced.description") }}</p>
 
-  <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/search') }}">Switch to simple search</a></p>
+  <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/search') }}">{{ t("govuk_alpha_search.advanced.simple_view_link") }}</a></p>
 
   <form method="get" action="{{ urlFor('/search/advanced') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--m" for="q">What are you looking for?</label>
-      <div id="q-hint" class="govuk-hint">Search by keyword, name, title or description.</div>
+      <label class="govuk-label govuk-label--m" for="q">{{ t("govuk_alpha_search.query.label") }}</label>
+      <div id="q-hint" class="govuk-hint">{{ t("govuk_alpha_search.query.hint") }}</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
     </div>
 
     <details class="govuk-details" data-module="govuk-details"{% if activeFilterCount > 0 %} open{% endif %}>
       <summary class="govuk-details__summary">
         <span class="govuk-details__summary-text">
-          {% if activeFilterCount > 0 %}Advanced filters ({{ activeFilterCount }} applied){% else %}Advanced filters{% endif %}
+          {% if activeFilterCount > 0 %}{{ t("govuk_alpha_search.filters.summary_with_count", { count: activeFilterCount }) }}{% else %}{{ t("govuk_alpha_search.filters.summary") }}{% endif %}
         </span>
       </summary>
       <div class="govuk-details__text">
         <fieldset class="govuk-fieldset">
           <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-            <h2 class="govuk-fieldset__heading">Filter your results</h2>
+            <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha_search.filters.legend") }}</h2>
           </legend>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="type">Content type</label>
+            <label class="govuk-label" for="type">{{ t("govuk_alpha_search.filters.content_type") }}</label>
             <select class="govuk-select" id="type" name="type">
-              <option value="all"{% if filters.type == 'all' %} selected{% endif %}>All content</option>
-              <option value="listings"{% if filters.type == 'listings' %} selected{% endif %}>Listings</option>
-              <option value="users"{% if filters.type == 'users' %} selected{% endif %}>Members</option>
-              <option value="events"{% if filters.type == 'events' %} selected{% endif %}>Events</option>
-              <option value="groups"{% if filters.type == 'groups' %} selected{% endif %}>Groups</option>
+              <option value="all"{% if filters.type == 'all' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.all_types") }}</option>
+              <option value="listings"{% if filters.type == 'listings' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.type_listings") }}</option>
+              <option value="users"{% if filters.type == 'users' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.type_users") }}</option>
+              <option value="events"{% if filters.type == 'events' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.type_events") }}</option>
+              <option value="groups"{% if filters.type == 'groups' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.type_groups") }}</option>
             </select>
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="category_id">Category</label>
+            <label class="govuk-label" for="category_id">{{ t("govuk_alpha_search.filters.category") }}</label>
             <select class="govuk-select" id="category_id" name="category_id">
-              <option value="0"{% if filters.category_id == '0' %} selected{% endif %}>All categories</option>
+              <option value="0"{% if filters.category_id == '0' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.all_categories") }}</option>
               {% if filters.category_id != '0' %}
                 <option value="{{ filters.category_id }}" selected>Category {{ filters.category_id }}</option>
               {% endif %}
@@ -85,39 +85,39 @@
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="sort">Sort by</label>
+            <label class="govuk-label" for="sort">{{ t("govuk_alpha_search.filters.sort_by") }}</label>
             <select class="govuk-select" id="sort" name="sort">
-              <option value="relevance"{% if filters.sort == 'relevance' %} selected{% endif %}>Relevance</option>
+              <option value="relevance"{% if filters.sort == 'relevance' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.sort_relevance") }}</option>
               <option value="newest"{% if filters.sort == 'newest' %} selected{% endif %}>{{ t("polish_commerce.podcast_sort_newest") }}</option>
-              <option value="oldest"{% if filters.sort == 'oldest' %} selected{% endif %}>Oldest first</option>
+              <option value="oldest"{% if filters.sort == 'oldest' %} selected{% endif %}>{{ t("govuk_alpha_search.filters.sort_oldest") }}</option>
             </select>
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="date_from">From date</label>
-            <div id="date-from-hint" class="govuk-hint">For example, 2026-06-01</div>
+            <label class="govuk-label" for="date_from">{{ t("govuk_alpha_search.filters.date_from") }}</label>
+            <div id="date-from-hint" class="govuk-hint">{{ t("govuk_alpha_search.filters.date_from_hint") }}</div>
             <input class="govuk-input govuk-input--width-10" id="date_from" name="date_from" type="date" value="{{ filters.date_from }}" aria-describedby="date-from-hint">
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="date_to">To date</label>
-            <div id="date-to-hint" class="govuk-hint">For example, 2026-06-30</div>
+            <label class="govuk-label" for="date_to">{{ t("govuk_alpha_search.filters.date_to") }}</label>
+            <div id="date-to-hint" class="govuk-hint">{{ t("govuk_alpha_search.filters.date_to_hint") }}</div>
             <input class="govuk-input govuk-input--width-10" id="date_to" name="date_to" type="date" value="{{ filters.date_to }}" aria-describedby="date-to-hint">
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="location">Location</label>
-            <div id="location-hint" class="govuk-hint">Filter by town, city or area.</div>
+            <label class="govuk-label" for="location">{{ t("govuk_alpha_search.filters.location") }}</label>
+            <div id="location-hint" class="govuk-hint">{{ t("govuk_alpha_search.filters.location_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="location" name="location" type="text" value="{{ filters.location }}" aria-describedby="location-hint" autocomplete="off">
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="skills">Skills and tags</label>
-            <div id="skills-hint" class="govuk-hint">Add a skill or tag, then select Add. Filtered listings must match at least one.</div>
+            <label class="govuk-label" for="skills">{{ t("govuk_alpha_search.filters.skills") }}</label>
+            <div id="skills-hint" class="govuk-hint">{{ t("govuk_alpha_search.filters.skills_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="skills" name="skills" type="text" value="{{ skillsList | join(', ') }}" aria-describedby="skills-hint" autocomplete="off">
 
             {% if skillsList.length %}
-              <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Selected skills</p>
+              <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">{{ t("govuk_alpha_search.filters.active_skills") }}</p>
               <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-0">
                 {% for skill in skillsList %}
                   <li><strong class="govuk-tag govuk-tag--blue">{{ skill }}</strong></li>
@@ -128,14 +128,14 @@
         </fieldset>
 
         <div class="govuk-button-group">
-          <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Apply filters</button>
-          {% if activeFilterCount > 0 %}<a class="govuk-link" href="{{ urlFor('/search/advanced' + ('?q=' + (searchQuery | urlencode) if searchQuery else '')) }}">Reset filters</a>{% endif %}
+          <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("govuk_alpha_search.filters.apply") }}</button>
+          {% if activeFilterCount > 0 %}<a class="govuk-link" href="{{ urlFor('/search/advanced' + ('?q=' + (searchQuery | urlencode) if searchQuery else '')) }}">{{ t("govuk_alpha_search.filters.reset") }}</a>{% endif %}
         </div>
       </div>
     </details>
 
     <div class="govuk-button-group">
-      <button type="submit" class="govuk-button" data-module="govuk-button">Search</button>
+      <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_search.query.submit") }}</button>
       {% if searchQuery %}<a class="govuk-link" href="{{ urlFor('/search/advanced') }}">{{ t("polish_members.connections_search_clear") }}</a>{% endif %}
     </div>
   </form>
@@ -143,7 +143,7 @@
   {% if hasSearched and not searchError %}
     <details class="govuk-details" data-module="govuk-details">
       <summary class="govuk-details__summary">
-        <span class="govuk-details__summary-text">Save this search</span>
+        <span class="govuk-details__summary-text">{{ t("govuk_alpha_search.saved.save_this") }}</span>
       </summary>
       <div class="govuk-details__text">
         <form method="post" action="{{ urlFor('/search/saved') }}">
@@ -157,11 +157,11 @@
           <input type="hidden" name="date_to" value="{{ filters.date_to }}">
           <input type="hidden" name="location" value="{{ filters.location }}">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="saved-name">Name this search</label>
-            <div id="saved-name-hint" class="govuk-hint">Give it a name so you can recognise it later.</div>
+            <label class="govuk-label" for="saved-name">{{ t("govuk_alpha_search.saved.name_label") }}</label>
+            <div id="saved-name-hint" class="govuk-hint">{{ t("govuk_alpha_search.saved.name_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="saved-name" name="name" type="text" value="{{ searchQuery }}" aria-describedby="saved-name-hint" maxlength="255">
           </div>
-          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Save search</button>
+          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_search.saved.save_submit") }}</button>
         </form>
       </div>
     </details>
@@ -183,7 +183,7 @@
             <span class="nexus-alpha-actions">
               <form method="post" action="{{ urlFor('/search/saved/' + (saved.id | string) + '/run') }}" class="govuk-!-display-inline">
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="{{ t('govuk_alpha_search.saved.run_aria', { name: saved.name }) }}">Run search</button>
+                <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="{{ t('govuk_alpha_search.saved.run_aria', { name: saved.name }) }}">{{ t("govuk_alpha_search.saved.run") }}</button>
               </form>
               <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="{{ t('govuk_alpha_search.saved.delete_aria', { name: saved.name }) }}">{{ t("jobs_t3.delete_button") }}</a>
             </span>
@@ -195,12 +195,12 @@
 
   {% if not hasSearched %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">Start your search</h2>
-      <p class="govuk-body">Enter a keyword above to search across the community.</p>
+      <h2 class="govuk-heading-m">{{ t("govuk_alpha_search.states.no_query_title") }}</h2>
+      <p class="govuk-body">{{ t("govuk_alpha_search.states.no_query") }}</p>
       <ul class="govuk-list govuk-list--bullet">
-        <li>Search for services and skills offered by members.</li>
-        <li>Find members by name or what they do.</li>
-        <li>Discover upcoming events and groups.</li>
+        <li>{{ t("govuk_alpha_search.states.no_query_tip_services") }}</li>
+        <li>{{ t("govuk_alpha_search.states.no_query_tip_people") }}</li>
+        <li>{{ t("govuk_alpha_search.states.no_query_tip_events") }}</li>
       </ul>
     </div>
   {% elif not searchError and total == 0 %}
@@ -208,9 +208,9 @@
       <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
       <p class="govuk-body">We could not find anything matching {{ searchQuery }}.</p>
       <ul class="govuk-list govuk-list--bullet">
-        <li>Check your spelling and try again.</li>
-        <li>Remove some filters to widen your search.</li>
-        <li>Try more general keywords.</li>
+        <li>{{ t("govuk_alpha_search.states.empty_tip_spelling") }}</li>
+        <li>{{ t("govuk_alpha_search.states.empty_tip_filters") }}</li>
+        <li>{{ t("govuk_alpha_search.states.empty_tip_broaden") }}</li>
       </ul>
     </div>
   {% elif not searchError %}
@@ -228,18 +228,18 @@
 
     {% if (activeTab == 'all' or activeTab == 'listings') and grouped.listings.length %}
       <section>
-        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">Listings</h2>{% endif %}
+        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">{{ t("govuk_alpha_search.results.section_listings") }}</h2>{% endif %}
         <div class="nexus-alpha-card-list">
           {% for listing in grouped.listings %}
             <article class="nexus-alpha-card">
               <div class="nexus-alpha-module-row">
                 <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ listing.title or 'Listings' }}</a></h3>
-                {% if listing.listing_type == 'offer' %}<strong class="govuk-tag govuk-tag--green">Offering</strong>{% elif listing.listing_type == 'request' %}<strong class="govuk-tag govuk-tag--orange">Requesting</strong>{% endif %}
+                {% if listing.listing_type == 'offer' %}<strong class="govuk-tag govuk-tag--green">{{ t("govuk_alpha_search.results.listing_offering") }}</strong>{% elif listing.listing_type == 'request' %}<strong class="govuk-tag govuk-tag--orange">{{ t("govuk_alpha_search.results.listing_requesting") }}</strong>{% endif %}
               </div>
-              {% if listing.is_featured %}<p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">Featured</strong></p>{% endif %}
+              {% if listing.is_featured %}<p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">{{ t("govuk_alpha_search.results.featured") }}</strong></p>{% endif %}
               {% if listing.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(listing.description, 200) }}</p>{% endif %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{% if listing.hours_estimate %}{{ listing.hours_estimate }} hours{% else %}Time to be agreed{% endif %}</p>
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/listings/' + (listing.id | string)) }}">View listing</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ t("govuk_alpha_search.results.view_listing") }}</a></p>
             </article>
           {% endfor %}
         </div>
@@ -248,14 +248,14 @@
 
     {% if (activeTab == 'all' or activeTab == 'users') and grouped.users.length %}
       <section>
-        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">Members</h2>{% endif %}
+        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">{{ t("govuk_alpha_search.results.section_users") }}</h2>{% endif %}
         <div class="nexus-alpha-card-list">
           {% for user in grouped.users %}
             <article class="nexus-alpha-card">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/members/' + (user.id | string)) }}">{{ user.name or 'Members' }}</a></h3>
               {% if user.location %}<p class="govuk-body-s nexus-alpha-meta">{{ user.location }}</p>{% endif %}
               {% if user.bio %}<p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-2">{{ truncate(user.bio, 180) }}</p>{% endif %}
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/members/' + (user.id | string)) }}">View member</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/members/' + (user.id | string)) }}">{{ t("govuk_alpha_search.results.view_member") }}</a></p>
             </article>
           {% endfor %}
         </div>
@@ -264,14 +264,14 @@
 
     {% if (activeTab == 'all' or activeTab == 'events') and grouped.events.length %}
       <section>
-        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">Events</h2>{% endif %}
+        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">{{ t("govuk_alpha_search.results.section_events") }}</h2>{% endif %}
         <div class="nexus-alpha-card-list">
           {% for event in grouped.events %}
             <article class="nexus-alpha-card">
               <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ event.title or 'Events' }}</a></h3>
               {% if event.description %}<p class="govuk-body govuk-!-margin-bottom-2">{{ truncate(event.description, 200) }}</p>{% endif %}
               {% if event.location %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ event.location }}</p>{% endif %}
-              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">View event</a></p>
+              <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("govuk_alpha_search.results.view_event") }}</a></p>
             </article>
           {% endfor %}
         </div>
@@ -280,7 +280,7 @@
 
     {% if (activeTab == 'all' or activeTab == 'groups') and grouped.groups.length %}
       <section>
-        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">Groups</h2>{% endif %}
+        {% if activeTab == 'all' %}<h2 class="govuk-heading-m">{{ t("govuk_alpha_search.results.section_groups") }}</h2>{% endif %}
         <div class="nexus-alpha-card-list">
           {% for group in grouped.groups %}
             <article class="nexus-alpha-card">

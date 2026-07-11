@@ -9218,6 +9218,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders simple search from the flat Laravel v2 envelope inside the active tenant mount', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
     api.searchV2.mockResolvedValueOnce({
       data: [
         {
@@ -9258,7 +9260,7 @@ describe('shared accessible frontend shell', () => {
     const unsigned = await request(app)
       .get('/acme/accessible/search?q=garden');
     const response = await request(app)
-      .get('/acme/accessible/search?q=garden&type=all&cursor=opaque-current')
+      .get('/acme/accessible/search?q=garden&type=all&cursor=opaque-current&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
@@ -9270,18 +9272,23 @@ describe('shared accessible frontend shell', () => {
       per_page: 30,
       cursor: 'opaque-current'
     });
-    expect(response.text).toContain('<strong>9</strong> results found');
+    expect(response.text).toContain(t('search.title'));
+    expect(response.text).toContain(t('search.caption', { community: 'Project NEXUS Accessible' }));
+    expect(response.text).toContain(t('search.label'));
+    expect(response.text).toContain(t('search.results_count', { count: 9 }));
     expect(response.text).toContain('Garden help');
-    expect(response.text).toContain('Offer');
+    expect(response.text).toContain(t('govuk_alpha_search.results.listing_offering'));
     expect(response.text).toContain('Avery Garden Services');
     expect(response.text).toContain('datetime="2026-07-20T10:00:00Z"');
-    expect(response.text).toContain('6 members');
+    expect(response.text).toContain(tc('govuk_alpha_search.results.members_count', 6, { count: 6 }));
     expect(response.text).toContain('href="/acme/accessible/listings/42"');
     expect(response.text).toContain('href="/acme/accessible/search?q=garden&amp;type=all&amp;cursor=opaque-next"');
   });
 
   it('renders the Laravel-style advanced search page', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
@@ -9337,7 +9344,7 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/search/advanced?q=garden');
     const signed = await request(app)
-      .get('/search/advanced?q=garden&type=listings&sort=newest&category_id=3&skills=repair%2Cteaching&date_from=2026-07-01&location=Town&status=search-saved')
+      .get('/search/advanced?q=garden&type=listings&sort=newest&category_id=3&skills=repair%2Cteaching&date_from=2026-07-01&location=Town&status=search-saved&locale=ar')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(unsigned.status).toBe(302);
@@ -9353,35 +9360,35 @@ describe('shared accessible frontend shell', () => {
       skills: 'repair,teaching'
     });
     expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
-    expect(signed.text).toContain('Your search has been saved.');
-    expect(signed.text).toContain('Search Project NEXUS Accessible');
-    expect(signed.text).toContain('Advanced search');
-    expect(signed.text).toContain('Search across listings, members, events and groups, then narrow your results with filters.');
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.saved_banner'));
+    expect(signed.text).toContain(t('govuk_alpha_search.advanced.caption', { community: 'Project NEXUS Accessible' }));
+    expect(signed.text).toContain(t('govuk_alpha_search.advanced.title'));
+    expect(signed.text).toContain(t('govuk_alpha_search.advanced.description'));
     expect(signed.text).toContain('href="/search"');
-    expect(signed.text).toContain('Switch to simple search');
-    expect(signed.text).toContain('What are you looking for?');
-    expect(signed.text).toContain('Advanced filters (6 applied)');
-    expect(signed.text).toContain('Content type');
-    expect(signed.text).toContain('Listings');
-    expect(signed.text).toContain('Skills and tags');
-    expect(signed.text).toContain('Selected skills');
+    expect(signed.text).toContain(t('govuk_alpha_search.advanced.simple_view_link'));
+    expect(signed.text).toContain(t('govuk_alpha_search.query.label'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.summary_with_count', { count: 6 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.content_type'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.type_listings'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.skills'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.active_skills'));
     expect(signed.text).toContain('repair');
     expect(signed.text).toContain('teaching');
-    expect(signed.text).toContain('Save this search');
-    expect(signed.text).toContain('Name this search');
-    expect(signed.text).toContain('1 saved search');
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.save_this'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.name_label'));
+    expect(signed.text).toContain(tc('govuk_alpha_search.saved.count', 1, { count: 1 }));
     expect(signed.text).toContain('Garden helpers');
-    expect(signed.text).toContain('Run search');
-    expect(signed.text).toContain('Delete');
-    expect(signed.text).toContain('4 results found');
-    expect(signed.text).toContain('All (4)');
-    expect(signed.text).toContain('Listings (1)');
-    expect(signed.text).toContain('Members (1)');
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.run'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete'));
+    expect(signed.text).toContain(tc('govuk_alpha_search.results.count', 4, { count: 4 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_all', { count: 4 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_listings', { count: 1 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_users', { count: 1 }));
     expect(signed.text).toContain('href="/search/advanced?q=garden&amp;type=listings&amp;category_id=3&amp;sort=newest&amp;skills=repair%2Cteaching&amp;date_from=2026-07-01&amp;location=Town&amp;tab=users"');
-    expect(signed.text).toContain('Events (1)');
-    expect(signed.text).toContain('Groups (1)');
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_events', { count: 1 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_groups', { count: 1 }));
     expect(signed.text).toContain('Garden help');
-    expect(signed.text).toContain('Offering');
+    expect(signed.text).toContain(t('govuk_alpha_search.results.listing_offering'));
     expect(signed.text).toContain('Avery Stone');
     expect(signed.text).toContain('Seed swap');
     expect(signed.text).toContain('Garden circle');
@@ -9462,6 +9469,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel saved search delete confirmation page', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
@@ -9477,7 +9485,7 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/search/saved/12/delete');
     const signed = await request(app)
-      .get('/search/saved/12/delete')
+      .get('/search/saved/12/delete?locale=ar')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(unsigned.status).toBe(302);
@@ -9486,16 +9494,16 @@ describe('shared accessible frontend shell', () => {
     expect(signed.status).toBe(200);
     expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
     expect(signed.text).toContain('href="/search/advanced"');
-    expect(signed.text).toContain('Back to search');
-    expect(signed.text).toContain('Delete this saved search?');
-    expect(signed.text).toContain('Saved search');
+    expect(signed.text).toContain(t('govuk_alpha_search.back_to_search'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_title'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_summary'));
     expect(signed.text).toContain('Garden helpers');
     expect(signed.text).toContain('gardening');
-    expect(signed.text).toContain('There is a problem');
-    expect(signed.text).toContain('This will permanently delete the saved search. You cannot undo this.');
+    expect(signed.text).toContain(t('states.error_title'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_warning'));
     expect(signed.text).toContain('action="/search/saved/12/delete"');
-    expect(signed.text).toContain('Yes, delete it');
-    expect(signed.text).toContain('No, keep it');
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_confirm'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_cancel'));
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

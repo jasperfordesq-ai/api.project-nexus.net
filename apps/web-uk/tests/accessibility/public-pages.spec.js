@@ -1259,6 +1259,53 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic search pages use exact Laravel catalogs with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(150_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      for (const searchPage of [
+        { slug: 'search', titleKey: 'search.title', labelKey: 'search.label' },
+        { slug: 'search/advanced', titleKey: 'govuk_alpha_search.advanced.title', labelKey: 'govuk_alpha_search.query.label' }
+      ]) {
+        const path = `${authenticatedMountPath}/${searchPage.slug}?locale=ar`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(translate('ar', searchPage.titleKey));
+        await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+        await expect(page.locator('main label').first()).toHaveText(translate('ar', searchPage.labelKey));
+        expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-${searchPage.slug.replace('/', '-')}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow,
+            violations: formatViolations(axeResults.violations),
+            incomplete: formatViolations(axeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic blog index uses the exact Laravel catalog with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });

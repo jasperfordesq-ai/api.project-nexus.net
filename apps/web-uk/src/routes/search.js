@@ -268,26 +268,22 @@ function resultCounts(grouped, total) {
   };
 }
 
-function resultCountLabel(count) {
-  if (count === 0) return 'No results found';
-  if (count === 1) return '1 result found';
-  return `${count.toLocaleString(getRequestIntlLocale())} results found`;
+function resultCountLabel(count, tc) {
+  return tc('govuk_alpha_search.results.count', count, { count });
 }
 
-function membersCountLabel(count) {
-  if (count === 0) return 'No members';
-  if (count === 1) return '1 member';
-  return `${count.toLocaleString(getRequestIntlLocale())} members`;
+function membersCountLabel(count, tc) {
+  return tc('govuk_alpha_search.results.members_count', count, { count });
 }
 
-function savedSearchRows(result) {
+function savedSearchRows(result, t) {
   const rows = Array.isArray(result?.data) ? result.data : [];
   return rows.map((row) => {
     const object = objectFrom(row);
     const queryParams = objectFrom(object.query_params);
     return {
       id: intFrom(object.id),
-      name: textFrom(object.name, 'Saved search'),
+      name: textFrom(object.name, t ? t('govuk_alpha_search.saved.delete_summary') : 'Saved search'),
       query: textFrom(queryParams.q),
       lastResultCount: object.last_result_count === null || object.last_result_count === undefined
         ? ''
@@ -296,14 +292,12 @@ function savedSearchRows(result) {
   }).filter((row) => row.id > 0);
 }
 
-function savedCountLabel(count) {
-  if (count === 0) return 'No saved searches';
-  if (count === 1) return '1 saved search';
-  return `${count.toLocaleString(getRequestIntlLocale())} saved searches`;
+function savedCountLabel(count, tc) {
+  return tc('govuk_alpha_search.saved.count', count, { count });
 }
 
-function savedSearchById(result, id) {
-  return savedSearchRows(result).find((row) => row.id === id) || null;
+function savedSearchById(result, id, t) {
+  return savedSearchRows(result, t).find((row) => row.id === id) || null;
 }
 
 router.get('/advanced', asyncRoute(async (req, res) => {
@@ -337,10 +331,10 @@ router.get('/advanced', asyncRoute(async (req, res) => {
   const grouped = groupedSearchResults(searchResult.data);
   const total = intFrom(searchResult?.meta?.search?.total) || Object.values(grouped).reduce((sum, rows) => sum + rows.length, 0);
   const counts = resultCounts(grouped, total);
-  const savedSearches = savedSearchRows(savedResult);
+  const savedSearches = savedSearchRows(savedResult, res.locals.t);
 
   return res.render('search/advanced', {
-    title: 'Advanced search',
+    title: res.locals.t('govuk_alpha_search.advanced.title'),
     activeNav: 'explore',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     status: allowed(req.query.status, new Set(['search-saved', 'search-deleted', 'search-save-failed', 'search-delete-failed']), ''),
@@ -350,12 +344,12 @@ router.get('/advanced', asyncRoute(async (req, res) => {
     searchError,
     total,
     counts,
-    resultCountLabel: resultCountLabel(total),
+    resultCountLabel: resultCountLabel(total, res.locals.tc),
     grouped,
     savedSearches,
-    savedCountLabel: savedCountLabel(savedSearches.length),
+    savedCountLabel: savedCountLabel(savedSearches.length, res.locals.tc),
     truncate,
-    membersCountLabel
+    membersCountLabel: (count) => membersCountLabel(count, res.locals.tc)
   });
 }));
 
@@ -367,13 +361,13 @@ router.get('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 
   const id = Number(req.params.id);
   const result = await getSavedSearches(token);
-  const savedSearch = savedSearchById(result, id);
+  const savedSearch = savedSearchById(result, id, res.locals.t);
   if (savedSearch === null) {
     throw new ApiError('Saved search not found', 404);
   }
 
   return res.render('search/saved-delete', {
-    title: 'Delete this saved search?',
+    title: res.locals.t('govuk_alpha_search.saved.delete_title'),
     activeNav: 'explore',
     savedSearch
   });
@@ -452,12 +446,12 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   // If no query, show empty search page
   if (!query || query.length < 2) {
     return res.render('search/index', {
-      title: 'Search',
+      title: res.locals.t('search.title'),
       query: '',
       type: 'all',
       results: null,
       pagination: null,
-      errorMessage: query && query.length < 2 ? 'Search query must be at least 2 characters' : null
+      errorMessage: query && query.length < 2 ? res.locals.t('search.no_query') : null
     });
   }
 
@@ -472,7 +466,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     const totalResults = intFrom(result?.meta?.search?.total) || returnedTotal;
 
     res.render('search/index', {
-      title: `Search results for "${query}"`,
+      title: res.locals.t('search.title'),
       query,
       type,
       results,
@@ -485,12 +479,12 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     // Handle non-401 API errors by showing search page with error
     if (error instanceof ApiError && error.status !== 401) {
       return res.render('search/index', {
-        title: 'Search',
+        title: res.locals.t('search.title'),
         query,
         type,
         results: null,
         pagination: null,
-        errorMessage: error.message
+        errorMessage: res.locals.t('govuk_alpha_search.states.error')
       });
     }
     throw error; // Re-throw for asyncRoute to handle 401/503

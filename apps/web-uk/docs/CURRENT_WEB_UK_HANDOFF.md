@@ -4240,6 +4240,24 @@ missing, 0 extra, and 3 ignored infrastructure routes. Feature-gate depth,
 exact rich-text policy, live discussion/reaction mutations, RSS metadata depth,
 recorded manual parity, and ASP.NET backend compatibility remain open.
 
+Latest focused Search localization slice: signed `/search`,
+`/search/advanced`, and `/search/saved/{id}/delete` now use Laravel's exact
+request-locale `search` and `govuk_alpha_search` catalogs for route titles,
+tenant captions, simple query/results/tabs/cards/plurals/empty states, advanced
+filters/results/saved states, and destructive confirmation. Result, saved, and
+member count helpers now use the request plural translator. Focused Arabic
+simple/advanced/delete coverage passed; the grep also selected the existing
+marketplace advanced-search test, so the run reported `4/4` while the intended
+Search set was `3/3`. The live Arabic simple and advanced pages both passed
+HTTP 200, exact title/label markers, RTL, 320px reflow, and axe with no serious/
+critical violations (`1/1`, 1.0 minute wall time; 18.8 seconds inside the test).
+Complete verification passed 45/45 Jest suites and 1,424/1,424 tests,
+warning-free ESLint, the 290-template zero-match audit, and the route matrix at
+608 Laravel routes, 608 matched, 0 missing, 0 extra, and 3 ignored
+infrastructure routes. Feature-gate depth, live saved-search mutations,
+recorded manual parity, broader runtime behavior, and ASP.NET backend
+compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:
