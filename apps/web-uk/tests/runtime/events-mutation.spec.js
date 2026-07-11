@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const { test, expect } = require('@playwright/test');
+const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const { deleteEvent, getEvents, login } = require('../../src/lib/api');
 
@@ -45,6 +46,23 @@ async function findByTitle(token, title) {
   return rowsFrom(result).find(event => event?.title === title) || null;
 }
 
+async function expectAccessibleReflow(page) {
+  await expect(page.locator('main')).toHaveCount(1);
+  await expect(page.locator('h1')).toHaveCount(1);
+  const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
+    const ids = elements.map(element => element.id).filter(Boolean);
+    return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  });
+  expect(duplicateIds).toEqual([]);
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
+}
+
 test('creates, updates, and deletes a disposable event through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable event ${runId}`;
@@ -61,6 +79,7 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
   console.log(`Disposable event fixture: ${createdTitle}`);
 
   try {
+    await page.setViewportSize({ width: 320, height: 640 });
     await authenticate(page);
     await page.goto(`${mountPath}/events/new`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await page.locator('#title').fill(createdTitle);
@@ -86,8 +105,10 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     await expect(page.locator('dt', { hasText: 'Going' })).toHaveCount(1);
     await expect(page.locator('dt', { hasText: 'Interested' })).toHaveCount(1);
     await expect(page.getByRole('heading', { name: 'About this event', exact: true })).toHaveCount(0);
+    await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/events/${eventId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expectAccessibleReflow(page);
     await page.locator('#title').fill(updatedTitle);
     const updateResponse = await submit(page, `/events/${eventId}/edit`, page.locator('form:has(#title) button[type="submit"]').last());
     expect(updateResponse.status()).toBe(302);

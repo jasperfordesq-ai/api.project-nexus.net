@@ -4821,6 +4821,12 @@ proof passed `10/10`; the strengthened Laravel lifecycle passed `1/1` in `1.1`
 minutes and proved the created detail structure before edit/delete. Full Jest
 passed `45/45` suites and `1,449/1,449` tests with green lint.
 
+The same disposable Event journey now runs at 320 CSS pixels and proves one
+main/H1, unique IDs, no horizontal overflow, and no serious/critical axe
+violations on the created detail and populated edit form. The strengthened run
+passed `1/1` in `2.4` minutes and retained no fixture. This is automated browser
+evidence, not a claim of manual screen-reader or assistive-technology review.
+
 ## Documents To Trust
 
 Read these in order:
