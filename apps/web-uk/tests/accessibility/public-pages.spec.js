@@ -205,6 +205,40 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
       contentType: 'application/json'
     });
   });
+
+  test('Arabic About, Guide, Features, and FAQ preserve Laravel catalog output with RTL reflow', async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 320, height: 640 });
+    const routes = [
+      { path: `${mountPath}/about?locale=ar`, marker: translate('ar', 'about.how_it_works.title') },
+      { path: `${mountPath}/guide?locale=ar`, marker: translate('ar', 'guide.title') },
+      { path: `${mountPath}/features?locale=ar`, marker: translate('ar', 'features.items.find_help') },
+      { path: `${mountPath}/faq?locale=ar`, marker: translate('ar', 'faq.q1') }
+    ];
+    const evidence = [];
+
+    for (const route of routes) {
+      const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+      expect(response).not.toBeNull();
+      expect(response.status()).toBeLessThan(400);
+      expect(response.headers()['content-language']).toBe('ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.getByText(route.marker, { exact: true }).first()).toBeVisible();
+      const overflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      evidence.push({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) });
+    }
+
+    await testInfo.attach('arabic-public-information-family', {
+      body: Buffer.from(JSON.stringify(evidence, null, 2)),
+      contentType: 'application/json'
+    });
+  });
 });
 
 test.describe('keyboard, focus, error, and forced-colour gate', () => {

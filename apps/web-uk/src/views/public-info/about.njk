@@ -7,9 +7,9 @@
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-l">{{ communityName }}</span>
+      <span class="govuk-caption-l">{{ t("about.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("about.title", { name: communityName }) if t else title }}</h1>
-      <p class="govuk-body-l">{{ communityName }} is a modern time banking platform where every hour of service is valued equally. We help communities exchange skills, build trust, and create a fairer local economy - one hour at a time.</p>
+      <p class="govuk-body-l">{{ t("about.description", { name: communityName }) }}</p>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
       </ol>
 
       <h2 class="govuk-heading-l">{{ t("about.values.title") }}</h2>
-      <p class="govuk-body">The principles that guide everything we do at {{ communityName }}.</p>
+      <p class="govuk-body">{{ t("about.values.subtitle", { name: communityName }) }}</p>
       {% for value in values %}
         <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ value.title }}</h3>
         <p class="govuk-body">{{ value.description }}</p>
@@ -95,11 +95,11 @@
       <p class="govuk-body">{{ t("about.cta.description") }}</p>
       <div class="govuk-button-group">
         {% if isAuthenticated %}
-          <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/dashboard') }}">{{ t("home.primary_authenticated") }}</a>
+          <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/dashboard') }}">{{ t("about.cta.dashboard") }}</a>
         {% else %}
           <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/register') }}">{{ t("about.cta.join") }}</a>
         {% endif %}
-        <a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("help.contact_cta_button") }}</a>
+        <a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("about.cta.contact_us") }}</a>
       </div>
     </div>
   </div>

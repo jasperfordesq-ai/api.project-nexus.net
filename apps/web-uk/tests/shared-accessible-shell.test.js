@@ -1600,6 +1600,32 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('A timebanking platform for community exchange.');
   });
 
+  it('localizes the About, Guide, Features, and FAQ family from Laravel catalogs', async () => {
+    const { translate } = require('../src/lib/localization');
+    const [about, guide, features, faq] = await Promise.all([
+      request(app).get('/about?locale=ar'),
+      request(app).get('/guide?locale=ar'),
+      request(app).get('/features?locale=ar'),
+      request(app).get('/faq?locale=ar')
+    ]);
+
+    for (const response of [about, guide, features, faq]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('dir="rtl"');
+    }
+    expect(about.text).toContain(translate('ar', 'about.description', { name: 'Project NEXUS Accessible' }));
+    expect(about.text).toContain(translate('ar', 'about.how_it_works.steps.0.title'));
+    expect(about.text).toContain(translate('ar', 'about.values.items.2.title'));
+    expect(about.text).toContain(translate('ar', 'about.cta.contact_us'));
+    expect(guide.text).toContain(translate('ar', 'guide.step1_title'));
+    expect(guide.text).toContain(translate('ar', 'guide.step1_body'));
+    expect(features.text).toContain(translate('ar', 'features.items.find_help'));
+    expect(features.text).toContain(translate('ar', 'features.items.recognition'));
+    expect(faq.text).toContain(translate('ar', 'faq.q1'));
+    expect(faq.text).toContain(translate('ar', 'faq.a5'));
+  });
+
   it('renders the Laravel-style newsletter unsubscribe states', async () => {
     const api = require('../src/lib/api');
     api.callNewsletterApi.mockResolvedValueOnce({ data: { success: true } });

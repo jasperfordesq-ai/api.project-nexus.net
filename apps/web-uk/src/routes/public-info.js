@@ -6,78 +6,11 @@
 const express = require('express');
 const { getContributors } = require('../lib/contributors');
 const { callNewsletterApi, verifyEmail } = require('../lib/api');
+const { catalogFor, valueInCatalog } = require('../lib/localization');
 
 const router = express.Router();
 
-const ABOUT_STEPS = [
-  {
-    title: 'Create your profile',
-    description: 'Sign up for free and list the skills you can offer to your community.'
-  },
-  {
-    title: 'Find what you need',
-    description: 'Browse listings to discover services offered by members near you.'
-  },
-  {
-    title: 'Exchange services',
-    description: 'Connect with members and arrange skill exchanges that work for both of you.'
-  },
-  {
-    title: 'Earn and spend credits',
-    description: 'Earn one time credit for every hour you give, and spend them on services you need.'
-  }
-];
-
-const ABOUT_VALUES = [
-  {
-    title: 'Equality',
-    description: "Every person's time is valued equally. One hour of gardening is worth the same as one hour of tutoring."
-  },
-  {
-    title: 'Community',
-    description: 'We believe in building strong local connections. Every exchange strengthens the fabric of your neighbourhood.'
-  },
-  {
-    title: 'Trust and safety',
-    description: 'Reviews, ratings, and broker oversight ensure a safe environment for all members to participate.'
-  },
-  {
-    title: 'Sustainability',
-    description: 'By sharing skills locally, we reduce waste, support circular economies, and strengthen local resilience.'
-  }
-];
-
-const FEATURES = [
-  'Find members who can help with what you need, and offer your own skills in return.',
-  'Earn and spend time credits - one hour always equals one credit.',
-  'Discover and host community events.',
-  'Find volunteering opportunities and log your hours.',
-  'Join groups of members with shared interests.',
-  'Earn badges and see how you are contributing.'
-];
-
-const FAQS = [
-  {
-    question: 'What is a time credit?',
-    answer: 'A time credit is one hour of your time. You earn a credit for every hour you give, and spend credits to receive help from others.'
-  },
-  {
-    question: "Is everyone's time worth the same?",
-    answer: 'Yes. One hour always equals one time credit, whatever the task. This is what makes timebanking fair.'
-  },
-  {
-    question: 'How do I start?',
-    answer: 'Create a listing to offer a skill or ask for help, browse what others are offering, and connect with members near you.'
-  },
-  {
-    question: 'How do I send credits to someone?',
-    answer: 'Open your wallet, search for the member, choose an amount and send. Credits move immediately.'
-  },
-  {
-    question: 'Is my information private?',
-    answer: 'You control what other members can see in your privacy settings, and you can export or delete your data at any time.'
-  }
-];
+const FEATURE_KEYS = Object.freeze(['find_help', 'wallet', 'events', 'volunteering', 'groups', 'recognition']);
 
 function communityName(res) {
   return res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible';
@@ -102,6 +35,11 @@ function aboutContributorsByType() {
   });
 }
 
+function catalogArray(res, key) {
+  const value = valueInCatalog(catalogFor(res.locals.locale), key);
+  return Array.isArray(value) ? value : [];
+}
+
 router.get('/about', (req, res) => {
   const name = communityName(res);
   const contributorGroups = aboutContributorsByType();
@@ -110,13 +48,13 @@ router.get('/about', (req, res) => {
   ));
 
   res.render('public-info/about', {
-    title: `About ${name}`,
+    title: res.locals.t('about.title', { name }),
     titleKey: 'about.title',
     titleReplacements: { name },
     activeNav: 'about',
     communityName: name,
-    steps: ABOUT_STEPS,
-    values: ABOUT_VALUES,
+    steps: catalogArray(res, 'about.how_it_works.steps'),
+    values: catalogArray(res, 'about.values.items'),
     contributorGroups,
     hasResearchNote,
     isAuthenticated: res.locals.isAuthenticated
@@ -125,7 +63,7 @@ router.get('/about', (req, res) => {
 
 router.get('/guide', (req, res) => {
   res.render('public-info/guide', {
-    title: 'How timebanking works',
+    title: res.locals.t('guide.title'),
     titleKey: 'guide.title',
     activeNav: 'guide',
     communityName: communityName(res),
@@ -135,20 +73,23 @@ router.get('/guide', (req, res) => {
 
 router.get('/features', (req, res) => {
   res.render('public-info/features', {
-    title: 'Features',
+    title: res.locals.t('features.title'),
     activeNav: 'features',
     communityName: communityName(res),
-    features: FEATURES
+    features: FEATURE_KEYS.map((key) => res.locals.t(`features.items.${key}`))
   });
 });
 
 router.get('/faq', (req, res) => {
   res.render('public-info/faq', {
-    title: 'Frequently asked questions',
+    title: res.locals.t('faq.title'),
     titleKey: 'faq.title',
     activeNav: 'faq',
     communityName: communityName(res),
-    faqs: FAQS
+    faqs: ['1', '2', '3', '4', '5'].map((key) => ({
+      question: res.locals.t(`faq.q${key}`),
+      answer: res.locals.t(`faq.a${key}`)
+    }))
   });
 });
 
