@@ -26,11 +26,17 @@
 
       <div class="govuk-button-group govuk-!-margin-top-4">
         {% if isAuthenticated %}
-          <a class="govuk-button" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.browse_listings") }}</a>
-          <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/wallet') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.go_to_wallet") }}</a>
+          {% if listingsEnabled %}
+            <a class="govuk-button" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.browse_listings") }}</a>
+          {% endif %}
+          {% if walletEnabled %}
+            <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/wallet') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.go_to_wallet") }}</a>
+          {% endif %}
         {% else %}
           <a class="govuk-button" href="{{ urlFor('/register') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.create_account") }}</a>
-          <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.browse_listings") }}</a>
+          {% if listingsEnabled %}
+            <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/listings') }}" role="button" draggable="false" data-module="govuk-button">{{ t("guide.browse_listings") }}</a>
+          {% endif %}
         {% endif %}
       </div>
     </div>

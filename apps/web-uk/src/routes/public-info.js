@@ -6,6 +6,7 @@
 const express = require('express');
 const { getContributors } = require('../lib/contributors');
 const { callNewsletterApi, getPlatformStats, verifyEmail } = require('../lib/api');
+const { flagEnabled } = require('../lib/accessible-shell');
 const { catalogFor, valueInCatalog } = require('../lib/localization');
 
 const router = express.Router();
@@ -99,12 +100,18 @@ router.get('/about', async (req, res) => {
 });
 
 router.get('/guide', (req, res) => {
+  const tenant = req.accessibleRouting?.tenant && typeof req.accessibleRouting.tenant === 'object'
+    ? req.accessibleRouting.tenant
+    : {};
+
   res.render('public-info/guide', {
     title: res.locals.t('guide.title'),
     titleKey: 'guide.title',
     activeNav: 'guide',
     communityName: communityName(res),
-    isAuthenticated: res.locals.isAuthenticated
+    isAuthenticated: res.locals.isAuthenticated,
+    listingsEnabled: flagEnabled(tenant, 'listings', 'modules', true),
+    walletEnabled: flagEnabled(tenant, 'wallet', 'modules', true)
   });
 });
 

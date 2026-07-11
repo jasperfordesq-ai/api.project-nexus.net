@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,412/1,412` tests passed.
+- Jest: `45/45` suites and `1,413/1,413` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -62,9 +62,11 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `62/62` cases in
-  `13.1` minutes. The About journey now also requires the live Laravel stats
-  band to be visible in Arabic at 320 CSS pixels.
+- Latest uninterrupted automated browser accessibility pass: Chromium/axe
+  passed `62/62` cases in `13.1` minutes at checkpoint `e155375c`. The current
+  Guide source passed its focused live Arabic four-page journey, but the full
+  aggregate rerun is latency-blocked as documented below and is not claimed
+  green for the current commit.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -121,6 +123,42 @@ template audit passed; the aggregate Jest gate passed `45/45` suites and
 strengthens an existing journey. Live Guide module-gate variations,
 tenant-domain depth, manual assistive-technology review, and ASP.NET backend
 compatibility remain uncertified.
+
+## 2026-07-10 Guide Module CTA Slice
+
+Public `/guide` remains available regardless of module configuration, matching
+Laravel, but its action group now follows Blade's exact module gates. Guests
+always retain Create account; Browse listings appears only when the routed
+tenant enables the listings module; signed members see Browse listings and Go
+to wallet independently when their corresponding modules are enabled. All
+local actions remain tenant-prefixed through `urlFor()`.
+
+Focused shared-mount coverage proves guest, both-disabled, listings-only, and
+wallet-only variants. The aggregate Jest gate passed `45/45` suites and
+`1,413/1,413` tests, ESLint and the `290/0` conservative template audit passed,
+and the real Laravel-backed Arabic four-page journey required the enabled
+tenant's localized Browse listings CTA while remaining RTL/reflow/axe clean at
+320 CSS pixels.
+
+Three current-source full-browser attempts did not produce a green aggregate
+result under severe local Laravel latency. The first reached the fully rendered
+Arabic dashboard but exceeded that case's 30-second ceiling during the final
+axe/cleanup phase. An isolated retry showed login at `7.4` seconds and setup
+dashboard at `19.1` seconds before the Arabic request itself exceeded 30
+seconds. The case now has the same explicit 90-second ceiling used for measured
+slow authenticated cases and passed unchanged assertions in isolation. The
+second full run then exceeded the authenticated setup's internal 60-second
+dashboard URL wait; setup now coherently permits 180 seconds with a 120-second
+URL wait. The third full run remained active without a returned Playwright
+failure until the outer command was killed at 20 minutes. No runner/browser
+process remained afterward. Therefore the current full matrix is **not**
+claimed green; the latest uninterrupted 62/62 pass remains the immediately
+preceding `e155375c` checkpoint.
+
+A live Laravel tenant fixture with listings and/or wallet disabled is still
+unavailable, so that disabled-state runtime proof remains open alongside a
+current aggregate browser rerun under normal fixture latency, tenant-domain
+depth, manual assistive-technology review, and ASP.NET backend compatibility.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 

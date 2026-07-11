@@ -215,7 +215,11 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
         marker: translate('ar', 'about.how_it_works.title'),
         statsMarker: translate('ar', 'about.stats.title')
       },
-      { path: `${mountPath}/guide?locale=ar`, marker: translate('ar', 'guide.title') },
+      {
+        path: `${mountPath}/guide?locale=ar`,
+        marker: translate('ar', 'guide.title'),
+        actionMarker: translate('ar', 'guide.browse_listings')
+      },
       { path: `${mountPath}/features?locale=ar`, marker: translate('ar', 'features.items.find_help') },
       { path: `${mountPath}/faq?locale=ar`, marker: translate('ar', 'faq.q1') }
     ];
@@ -230,6 +234,9 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
       await expect(page.getByText(route.marker, { exact: true }).first()).toBeVisible();
       if (route.statsMarker) {
         await expect(page.getByText(route.statsMarker, { exact: true }).first()).toBeVisible();
+      }
+      if (route.actionMarker) {
+        await expect(page.getByText(route.actionMarker, { exact: true }).first()).toBeVisible();
       }
       const overflow = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -477,7 +484,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   let authenticatedMountPath;
 
   test.beforeAll(async ({ browser, baseURL }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     const smoke = accessibilitySmoke;
     authenticatedMountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
     const context = await browser.newContext({ baseURL });
@@ -487,7 +494,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     await page.locator('input[name="email"]').fill(smoke.email);
     await page.locator('input[name="password"]').fill(smoke.password);
     await Promise.all([
-      page.waitForURL((url) => url.pathname.endsWith('/dashboard'), { timeout: 60_000 }),
+      page.waitForURL((url) => url.pathname.endsWith('/dashboard'), { timeout: 120_000 }),
       page.locator('form:has(input[name="password"]) button[type="submit"]').click()
     ]);
 
@@ -577,6 +584,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   });
 
   test('Arabic dashboard localizes Laravel-owned labels and retains RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(90_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });

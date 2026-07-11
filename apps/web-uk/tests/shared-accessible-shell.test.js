@@ -1593,6 +1593,49 @@ describe('shared accessible frontend shell', () => {
     expect(features.text).not.toContain('Feature guidance will be ported');
   });
 
+  it('matches Laravel Guide CTAs for disabled listings and wallet modules', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap
+      .mockResolvedValueOnce(tenantBootstrap('acme', {
+        modules: { feed: true, listings: false, wallet: false }
+      }))
+      .mockResolvedValueOnce(tenantBootstrap('acme', {
+        modules: { feed: true, listings: false, wallet: false }
+      }))
+      .mockResolvedValueOnce(tenantBootstrap('acme', {
+        modules: { feed: true, listings: true, wallet: false }
+      }))
+      .mockResolvedValueOnce(tenantBootstrap('acme', {
+        modules: { feed: true, listings: false, wallet: true }
+      }));
+
+    const guest = await request(app).get('/acme/accessible/guide');
+    const signed = await request(app)
+      .get('/acme/accessible/guide')
+      .set('Cookie', signedCookieHeader());
+    const listingsOnly = await request(app)
+      .get('/acme/accessible/guide')
+      .set('Cookie', signedCookieHeader());
+    const walletOnly = await request(app)
+      .get('/acme/accessible/guide')
+      .set('Cookie', signedCookieHeader());
+
+    expect(guest.status).toBe(200);
+    expect(guest.text).toContain('href="/acme/accessible/register"');
+    expect(guest.text).not.toContain('href="/acme/accessible/listings"');
+    expect(guest.text).not.toContain('href="/acme/accessible/wallet"');
+    expect(signed.status).toBe(200);
+    expect(signed.text).not.toContain('href="/acme/accessible/register"');
+    expect(signed.text).not.toContain('href="/acme/accessible/listings"');
+    expect(signed.text).not.toContain('href="/acme/accessible/wallet"');
+    expect(listingsOnly.status).toBe(200);
+    expect(listingsOnly.text).toContain('href="/acme/accessible/listings"');
+    expect(listingsOnly.text).not.toContain('href="/acme/accessible/wallet"');
+    expect(walletOnly.status).toBe(200);
+    expect(walletOnly.text).not.toContain('href="/acme/accessible/listings"');
+    expect(walletOnly.text).toContain('href="/acme/accessible/wallet"');
+  });
+
   it('renders the Laravel-style FAQ page', async () => {
     const response = await request(app).get('/faq');
 
