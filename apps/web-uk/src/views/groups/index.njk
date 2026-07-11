@@ -54,18 +54,7 @@
         </div>
       </form>
 
-      {% if searchQuery and groups.length == 0 %}
-        {% set emptyState = {
-          icon: "🔍",
-          heading: "No results found",
-          message: "No groups match \"" + searchQuery + "\". Try a different search term.",
-          action: {
-            text: t("polish_members.connections_search_clear"),
-            href: urlFor("/groups")
-          }
-        } %}
-        {% include "partials/empty-state.njk" %}
-      {% elif groups.length > 0 %}
+      {% if groups.length > 0 %}
         <div class="app-card-grid">
           {% for group in groups %}
             <div class="app-card app-card--clickable">
@@ -90,16 +79,9 @@
           {% endfor %}
         </div>
       {% else %}
-        {% set emptyState = {
-          icon: "👥",
-          heading: "No groups yet",
-          message: "Be the first to create a group for your community.",
-          action: {
-            text: "Create a group",
-            href: urlFor("/groups/new")
-          }
-        } %}
-        {% include "partials/empty-state.njk" %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">{{ t("groups.empty") }}</p>
+        </div>
       {% endif %}
 
       {# Laravel returns cursor pagination rather than page totals. #}

@@ -1091,6 +1091,7 @@ router.get('/', asyncRoute(async (req, res) => {
     listings,
     pagination,
     filters: { search, type },
+    hasFilters: Boolean(search || type),
     currentUser: profileFrom(currentUserResult),
     isAuthenticated: Boolean(token),
     successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),

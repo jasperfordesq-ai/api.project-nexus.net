@@ -130,29 +130,15 @@
         {% endif %}
 
       {% else %}
-        {% if filters.search or filters.type %}
-          {% set emptyState = {
-            icon: "🔍",
-            heading: "No results found",
-            message: "No listings match your search criteria.",
-            action: {
-              text: "Clear filters",
-              href: urlFor("/listings")
-            }
-          } %}
-        {% else %}
-          {% set emptyState = {
-            icon: "📦",
-            heading: "No listings yet",
-            message: "Create your first listing to share with the community.",
-            action: {
-              text: "Create listing" if isAuthenticated else t("nav.login"),
-              href: urlFor("/listings/new") if isAuthenticated else urlFor("/login"),
-              isButton: true
-            }
-          } %}
-        {% endif %}
-        {% include "partials/empty-state.njk" %}
+        <div class="govuk-inset-text">
+          <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
+          <p class="govuk-body">{{ t("listings.empty") }}</p>
+          {% if hasFilters %}
+            <p class="govuk-body">
+              <a class="govuk-link" href="{{ urlFor('/listings') }}">{{ t("actions.clear_filters") }}</a>
+            </p>
+          {% endif %}
+        </div>
       {% endif %}
 
     </div>

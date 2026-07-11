@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,437/1,437` tests passed.
+- Jest: `45/45` suites and `1,439/1,439` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -94,6 +94,11 @@ scores must not be reused as current results.
   `No results found`, `No events match your filters`, and a Clear filters link
   only when search, group, or non-default time filters are active. The invented
   no-events/create-or-sign-in CTA was removed; focused coverage passes `2/2`.
+- Default-English Listings and Groups empty results now follow Blade rather
+  than the generic card component: Listings uses the catalog inset and only
+  offers Clear filters for active search/type filters; Groups uses its single
+  catalog inset for all empty results. Invented duplicate create/sign-in and
+  search-specific empty actions were removed; focused coverage passes `3/3`.
 - ASP.NET unchanged-frontend readiness audit is now repeatable with
   `npm run audit:aspnet:readiness`. The live process on port `5080` is healthy,
   but slug-first tenant bootstrap and platform stats both return `400` because

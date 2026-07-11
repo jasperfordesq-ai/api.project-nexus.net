@@ -19060,6 +19060,22 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
   });
 
+  it('matches the Blade group empty state without invented search or create actions', async () => {
+    const api = require('../src/lib/api');
+    api.getGroups.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups?search=missing')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('There are no groups yet.');
+    expect(response.text).not.toContain('No groups match');
+    expect(response.text).not.toContain('Be the first to create a group');
+    expect(response.text).not.toContain('>Clear filters<');
+  });
+
   it('uses Laravel viewer membership when rendering group actions', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockResolvedValueOnce({
@@ -21442,6 +21458,25 @@ describe('shared accessible frontend shell', () => {
     });
     expect(response.text).toContain('Borrow a ladder');
     expect(response.text).not.toContain('href="/listings/42/edit"');
+  });
+
+  it('matches the Blade listing empty state and only clears active filters', async () => {
+    const api = require('../src/lib/api');
+    api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+
+    const unfiltered = await request(app).get('/listings');
+
+    expect(unfiltered.status).toBe(200);
+    expect(unfiltered.text).toContain('No results found');
+    expect(unfiltered.text).toContain('No listings match your filters.');
+    expect(unfiltered.text).not.toContain('>Clear filters<');
+    expect(unfiltered.text).not.toContain('Create your first listing');
+
+    api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+    const filtered = await request(app).get('/listings?search=ladder&type=offer');
+
+    expect(filtered.status).toBe(200);
+    expect(filtered.text).toContain('href="/listings">Clear filters</a>');
   });
 
   it('allows anonymous Laravel listing browse and detail with exact cursor filters', async () => {
