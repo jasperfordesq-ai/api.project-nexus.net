@@ -46,19 +46,7 @@ function communityName(res) {
   return trimmed(tenant.name) || trimmed(tenant.slug) || 'Project NEXUS Accessible';
 }
 
-function viewLabel(count) {
-  if (count === 0) return 'No views';
-  if (count === 1) return '1 view';
-  return `${count} views`;
-}
-
-function dateLabel(value) {
-  const raw = trimmed(value);
-  if (!raw) return '';
-  return raw.split('T')[0].split(' ')[0];
-}
-
-function normalizeArticleSummary(item) {
+function normalizeArticleSummary(item, t, tc) {
   const row = item && typeof item === 'object' ? item : {};
   const views = Number.isFinite(Number(row.views_count ?? row.viewsCount))
     ? Number(row.views_count ?? row.viewsCount)
@@ -66,29 +54,29 @@ function normalizeArticleSummary(item) {
 
   return {
     id: positiveInteger(row.id),
-    title: trimmed(row.title) || 'Knowledge base article',
+    title: trimmed(row.title) || t('kb.title'),
     contentPreview: trimmed(row.content_preview ?? row.contentPreview ?? row.summary ?? row.excerpt),
     categoryName: trimmed(row.category_name ?? row.categoryName),
     viewsCount: views,
-    viewsLabel: viewLabel(views)
+    viewsLabel: tc('kb.views', views, { count: views })
   };
 }
 
-function normalizeArticle(result, fallbackId) {
+function normalizeArticle(result, fallbackId, t) {
   const row = dataFrom(result) || {};
   const author = row.author && typeof row.author === 'object' ? row.author : {};
   const children = Array.isArray(row.children) ? row.children : [];
 
   return {
     id: positiveInteger(row.id) || fallbackId,
-    title: trimmed(row.title) || 'Knowledge base article',
+    title: trimmed(row.title) || t('kb.title'),
     content: String(row.content || ''),
-    updatedLabel: dateLabel(row.updated_at ?? row.updatedAt ?? row.created_at ?? row.createdAt),
+    updatedAt: row.updated_at ?? row.updatedAt ?? row.created_at ?? row.createdAt ?? '',
     authorName: trimmed(author.name),
     children: children
       .map((child) => ({
         id: positiveInteger(child && child.id),
-        title: trimmed(child && child.title) || 'Related article'
+        title: trimmed(child && child.title) || t('kb.related_title')
       }))
       .filter((child) => child.id !== null)
   };
@@ -113,10 +101,10 @@ router.get('/', asyncRoute(async (req, res) => {
   const hasMore = Boolean(meta.has_more ?? meta.hasMore);
 
   return res.render('kb/index', {
-    title: 'Knowledge base',
+    title: res.locals.t('kb.title'),
     activeNav: 'kb',
     communityName: communityName(res),
-    articles: rowsFrom(result).map(normalizeArticleSummary).filter((article) => article.id !== null),
+    articles: rowsFrom(result).map((article) => normalizeArticleSummary(article, res.locals.t, res.locals.tc)).filter((article) => article.id !== null),
     searchQuery,
     hasMore,
     nextCursor,
@@ -131,7 +119,19 @@ router.get('/', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  const article = normalizeArticle(await getKnowledgeBaseArticle(id), id);
+  let article;
+  try {
+    article = normalizeArticle(await getKnowledgeBaseArticle(id), id, res.locals.t);
+  } catch (error) {
+    if (error && error.status === 404) {
+      return res.status(404).render('errors/404', {
+        title: res.locals.t('kb.not_found_title'),
+        errorTitle: res.locals.t('kb.not_found_title'),
+        errorMessage: res.locals.t('kb.not_found_body')
+      });
+    }
+    throw error;
+  }
 
   return res.render('kb/article', {
     title: article.title,
@@ -139,6 +139,6 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     communityName: communityName(res),
     article
   });
-}, { notFoundTitle: 'Article not found' }));
+}));
 
 module.exports = router;

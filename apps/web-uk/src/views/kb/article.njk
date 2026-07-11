@@ -13,11 +13,11 @@
       <span class="govuk-caption-l">{{ communityName }}</span>
       <h1 class="govuk-heading-xl">{{ article.title }}</h1>
 
-      {% if article.authorName or article.updatedLabel %}
+      {% if article.authorName or article.updatedAt %}
         <p class="govuk-body-s nexus-alpha-meta">
-          {% if article.authorName %}Written by {{ article.authorName }}{% endif %}
-          {% if article.authorName and article.updatedLabel %} &middot; {% endif %}
-          {% if article.updatedLabel %}Last updated: {{ article.updatedLabel }}{% endif %}
+          {% if article.authorName %}{{ t("kb.author_label") }} {{ article.authorName }}{% endif %}
+          {% if article.authorName and article.updatedAt %} &middot; {% endif %}
+          {% if article.updatedAt %}{{ t("kb.updated_label") }}: {{ article.updatedAt | formatDate }}{% endif %}
         </p>
       {% endif %}
 

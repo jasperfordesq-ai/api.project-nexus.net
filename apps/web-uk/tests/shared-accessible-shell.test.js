@@ -1384,13 +1384,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Back to the knowledge base');
     expect(response.text).toContain('Using the repair library');
     expect(response.text).toContain('Written by Morgan Lee');
-    expect(response.text).toContain('Last updated: 2026-07-06');
+    expect(response.text).toContain('Last updated:');
+    expect(response.text).not.toContain('Last updated: 2026-07-06');
     expect(response.text).toContain('<p>Keep your tools labelled.</p>');
     expect(response.text).toContain('Related articles');
     expect(response.text).toContain('href="/kb/43"');
     expect(response.text).toContain('Returning borrowed tools');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getKnowledgeBaseArticle).toHaveBeenCalledWith(42);
+  });
+
+  it('localizes a missing knowledge base article', async () => {
+    const api = require('../src/lib/api');
+    const { translate } = require('../src/lib/localization');
+    api.getKnowledgeBaseArticle.mockRejectedValueOnce(new api.ApiError('Missing', 404, {}));
+
+    const response = await request(app).get('/kb/999999?locale=ar');
+
+    expect(response.status).toBe(404);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain(translate('ar', 'kb.not_found_title'));
+    expect(response.text).toContain(translate('ar', 'kb.not_found_body'));
   });
 
   it('renders the Laravel-backed help centre and trust safety support pages', async () => {

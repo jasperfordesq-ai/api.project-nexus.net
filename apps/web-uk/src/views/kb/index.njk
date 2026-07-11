@@ -10,15 +10,15 @@
     <div class="govuk-grid-column-two-thirds">
       <span class="govuk-caption-l">{{ communityName }}</span>
       <h1 class="govuk-heading-xl">{{ t("kb.title") }}</h1>
-      <p class="govuk-body-l">Guides and articles to help you get the most out of {{ communityName }}.</p>
+      <p class="govuk-body-l">{{ t("kb.subtitle", { name: communityName }) }}</p>
 
       <form method="get" action="{{ urlFor('/kb') }}" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group">
           <label class="govuk-label" for="q">{{ t("kb.search_label") }}</label>
-          <div id="q-hint" class="govuk-hint">{{ t("blog.search_hint") }}</div>
+          <div id="q-hint" class="govuk-hint">{{ t("kb.search_hint") }}</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
         </div>
-        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">{{ t("kb.search_button") }}</button>
       </form>
 
       <h2 class="govuk-heading-m">{{ t("kb.results_title") }}</h2>
@@ -51,7 +51,7 @@
         {% endif %}
       {% else %}
         <div class="govuk-inset-text">
-          {% if searchQuery %}No articles match your search.{% else %}No articles have been published yet.{% endif %}
+          {{ t("kb.no_results") if searchQuery else t("kb.empty") }}
         </div>
       {% endif %}
     </div>

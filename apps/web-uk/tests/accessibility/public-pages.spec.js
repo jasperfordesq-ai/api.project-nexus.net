@@ -635,6 +635,36 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic knowledge base preserves Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+    try {
+      const indexPath = `${authenticatedMountPath}/kb?locale=ar`;
+      const indexResponse = await page.goto(indexPath, { waitUntil: 'domcontentloaded' });
+      expect(indexResponse).not.toBeNull();
+      expect(indexResponse.status()).toBeLessThan(400);
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'kb.title'));
+      const firstArticle = page.locator('.nexus-alpha-card a').first();
+      await expect(firstArticle).toBeVisible();
+      const href = await firstArticle.getAttribute('href');
+      expect(href).toBeTruthy();
+      const detailResponse = await page.goto(`${href}${href.includes('?') ? '&' : '?'}locale=ar`, { waitUntil: 'domcontentloaded' });
+      expect(detailResponse.status()).toBeLessThan(400);
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('.govuk-back-link')).toHaveText(translate('ar', 'kb.back_to_kb'));
+      const overflow = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-kb', { body: Buffer.from(JSON.stringify({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) }, null, 2)), contentType: 'application/json' });
+      expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic notifications preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();

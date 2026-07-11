@@ -34,8 +34,9 @@ work and must not be treated as certified compatibility.
 
 ## Current Evidence Boundary (2026-07-10)
 
-The current checkout has passed `45/45` Jest suites (`1,404/1,404` tests),
-ESLint, the brand-policy gate, CSS compilation, the `55/55` Chromium/axe gate,
+The current checkout has passed `45/45` Jest suites (`1,405/1,405` tests),
+ESLint, the brand-policy gate, CSS compilation, the `56/56` Chromium/axe gate
+in `584.2` seconds (`9.5` minutes),
 and the live `19/19` Blade marker comparison. The generated route matrix reports
 `608` Laravel declarations, `610` Web UK declarations, `608` matches, `0`
 missing, `0` extra parity routes, and `3` ignored infrastructure routes.
@@ -44,7 +45,7 @@ The browser matrix includes signed Arabic dashboard, account, structurally
 rebuilt own-profile, contextually localized profile-settings, activity,
 Reviews summary/list, notifications, messages, wallet overview/management, the
 core member directory plus discovery/nearby/insights, achievements, leaderboard,
-and NEXUS-score pages at 320
+Knowledge Base index/detail, and NEXUS-score pages at 320
 CSS pixels, with RTL/reflow and serious/critical
 axe assertions. Authenticated cases have a 90-second ceiling to accommodate the
 observed local Laravel API latency; the accessibility assertions are unchanged.
