@@ -14513,6 +14513,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed clubs directory for signed-in members', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
 
     api.getClubs.mockResolvedValue({
       data: [
@@ -14536,23 +14537,33 @@ describe('shared accessible frontend shell', () => {
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
 
     const response = await request(app)
-      .get('/clubs?q=velo')
+      .get('/clubs?q=velo&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(staticPageRoutes.pages['/clubs']).toBeUndefined();
     expect(api.getClubs).toHaveBeenCalledWith({ search: 'velo', per_page: 50 });
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Clubs');
-    expect(response.text).toContain('Clubs and associations organised within your community.');
-    expect(response.text).toContain('Find a club');
+    for (const key of [
+      'clubs.title',
+      'clubs.description',
+      'clubs.search_label',
+      'clubs.search_hint',
+      'actions.search',
+      'clubs.schedule_label',
+      'clubs.contact_label',
+      'clubs.visit_website',
+      'opens_new_tab'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).toContain(t('clubs.caption', { community: 'Project NEXUS Accessible' }));
     expect(response.text).toContain('value="velo"');
     expect(response.text).toContain('Velo Club');
-    expect(response.text).toContain('24 members');
+    expect(response.text).toContain(t('clubs.members_count', { count: 24 }));
     expect(response.text).toContain('Sunday cycling tours around the lake');
     expect(response.text).toContain('Sundays at 9am');
     expect(response.text).toContain('mailto:chair@example.test');
     expect(response.text).toContain('href="https://velo.example.test"');
-    expect(response.text).toContain('opens in new tab');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(response.text).not.toContain('Club pages will follow the Laravel accessible frontend contract.');
   });

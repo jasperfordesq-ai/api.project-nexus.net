@@ -34,7 +34,7 @@ function dataList(result) {
 }
 
 function renderNoActiveClubs(res) {
-  return res.status(404).render('errors/404', { title: 'Clubs' });
+  return res.status(404).render('errors/404', { title: res.locals.t('clubs.title') });
 }
 
 function truncate(value, length) {
@@ -49,9 +49,9 @@ function websiteHref(value) {
   return /^https?:\/\//i.test(website) ? website : `https://${website.replace(/^\/+/, '')}`;
 }
 
-function normalizeClub(rawClub) {
+function normalizeClub(rawClub, t) {
   const club = rawClub && typeof rawClub === 'object' ? rawClub : {};
-  const name = trimmed(club.name) || 'Clubs';
+  const name = trimmed(club.name) || t('clubs.title');
   return {
     id: positiveInteger(club.id),
     name,
@@ -82,7 +82,7 @@ router.get('/', asyncRoute(async (req, res) => {
   }
 
   const result = await getClubs(params);
-  const clubs = asList(dataList(result)).map(normalizeClub);
+  const clubs = asList(dataList(result)).map((club) => normalizeClub(club, res.locals.t));
 
   if (!clubs.length) {
     if (!clubsQuery) {
@@ -96,7 +96,7 @@ router.get('/', asyncRoute(async (req, res) => {
   }
 
   return res.render('clubs/index', {
-    title: 'Clubs',
+    title: res.locals.t('clubs.title'),
     activeNav: 'explore',
     clubs,
     clubsQuery

@@ -4155,6 +4155,20 @@ mutation persistence, recorded manual parity, a fresh full current-source
 browser aggregate, and ASP.NET backend compatibility remain open; the latest
 uninterrupted full browser aggregate remains 62/62 at `e155375c`.
 
+Latest focused Clubs localization slice: signed `/clubs` now uses Laravel's
+exact request-locale `clubs`, `actions`, and shared accessibility catalogs for
+the route and fallback title, tenant caption, description, search label/hint/
+action, plural member count, schedule/contact labels, website action, and
+new-tab text. Focused Arabic enabled-directory coverage passed `1/1`, including
+dynamic member count and the shared tenant caption. Complete verification
+passed 45/45 Jest suites and 1,424/1,424 tests, warning-free ESLint, the
+290-template zero-match audit, and the route matrix at 608 Laravel routes, 608
+matched, 0 missing, 0 extra, and 3 ignored infrastructure routes. The current
+live `hour-timebank` tenant intentionally returns the existing Laravel-aligned
+404 active-club gate, so an enabled live club-directory body was not invented
+or claimed. Enabled-tenant runtime body proof, broader runtime behavior,
+recorded manual parity, and ASP.NET backend compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:
