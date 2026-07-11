@@ -1902,14 +1902,10 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/premium/);
   });
 
-  it('keeps the shared pagination partial default behind urlFor()', () => {
-    const template = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'views', 'partials', 'pagination.njk'),
-      'utf8'
-    );
+  it('does not restore the unused generic pagination partial', () => {
+    const partialPath = path.join(__dirname, '..', 'src', 'views', 'partials', 'pagination.njk');
 
-    expect(template).not.toContain('baseUrl: "/members"');
-    expect(template).toContain("urlFor('/members')");
+    expect(fs.existsSync(partialPath)).toBe(false);
   });
 
   it('uses Laravel catalog labels in cursor pagination blocks', () => {

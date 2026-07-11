@@ -59,7 +59,7 @@ scores must not be reused as current results.
   completion: each non-English catalog still has roughly `3,903-3,951` values
   identical to English and `16` namespaces are wholly English in the
   authoritative read-only Laravel source.
-- Conservative template audit: `292` templates and `0` safe exact-value
+- Conservative template audit: `291` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
