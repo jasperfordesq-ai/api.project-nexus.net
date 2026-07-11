@@ -1609,6 +1609,10 @@ describe('shared accessible frontend shell', () => {
   });
 
   it('renders the Laravel-style about page', async () => {
+    const api = require('../src/lib/api');
+    api.getPlatformStats.mockResolvedValueOnce({
+      data: { members: 1234, hours_exchanged: 5678.75, listings: 90, communities: 12 }
+    });
     const response = await request(app).get('/about');
 
     expect(response.status).toBe(200);
@@ -1619,6 +1623,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Find what you need');
     expect(response.text).toContain('Our values');
     expect(response.text).toContain('Trust and safety');
+    expect(response.text).toContain('Our impact');
+    expect(response.text).toContain('<dt>Members</dt>');
+    expect(response.text).toContain('<dd>1,234</dd>');
+    expect(response.text).toContain('<dd>5,679</dd>');
+    expect(response.text).toContain('<dt>Active listings</dt>');
+    expect(api.getPlatformStats).toHaveBeenCalledWith({});
     expect(response.text).toContain('Powered by Project NEXUS');
     expect(response.text).toContain('Laravel Edition source code');
     expect(response.text).toContain('href="/register"');
@@ -1626,8 +1636,41 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('A timebanking platform for community exchange.');
   });
 
+  it('keeps About usable without optional stats and scopes mounted stats by tenant', async () => {
+    const api = require('../src/lib/api');
+    api.getPlatformStats.mockClear();
+    api.getTenantBootstrap.mockImplementation(async (options = {}) => (
+      options.host === 'acme-accessible.test'
+        ? tenantBootstrap('acme', { accessible_domain: 'acme-accessible.test' })
+        : tenantBootstrap(options.slug || 'acme')
+    ));
+    api.getPlatformStats
+      .mockRejectedValueOnce(new api.ApiOfflineError())
+      .mockResolvedValueOnce({ data: {} })
+      .mockResolvedValueOnce({ data: {} });
+
+    const unavailable = await request(app).get('/about');
+    const mounted = await request(app).get('/acme/accessible/about');
+    const customDomain = await request(app).get('/about').set('Host', 'acme-accessible.test:8443');
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('About Project NEXUS Accessible');
+    expect(unavailable.text).not.toContain('Our impact');
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).not.toContain('Our impact');
+    expect(customDomain.status).toBe(200);
+    expect(customDomain.text).not.toContain('Our impact');
+    expect(api.getPlatformStats).toHaveBeenNthCalledWith(1, {});
+    expect(api.getPlatformStats).toHaveBeenNthCalledWith(2, { slug: 'acme' });
+    expect(api.getPlatformStats).toHaveBeenNthCalledWith(3, { host: 'acme-accessible.test:8443' });
+  });
+
   it('localizes the About, Guide, Features, and FAQ family from Laravel catalogs', async () => {
-    const { translate } = require('../src/lib/localization');
+    const api = require('../src/lib/api');
+    const { formatLocaleNumber, translate } = require('../src/lib/localization');
+    api.getPlatformStats.mockResolvedValueOnce({
+      data: { members: 1234, hours_exchanged: 5678, listings: 90, communities: 12 }
+    });
     const [about, guide, features, faq] = await Promise.all([
       request(app).get('/about?locale=ar'),
       request(app).get('/guide?locale=ar'),
@@ -1644,6 +1687,9 @@ describe('shared accessible frontend shell', () => {
     expect(about.text).toContain(translate('ar', 'about.how_it_works.steps.0.title'));
     expect(about.text).toContain(translate('ar', 'about.values.items.2.title'));
     expect(about.text).toContain(translate('ar', 'about.cta.contact_us'));
+    expect(about.text).toContain(translate('ar', 'about.stats.title'));
+    expect(about.text).toContain(translate('ar', 'about.stats.hours_exchanged'));
+    expect(about.text).toContain(formatLocaleNumber(1234, 'ar', { maximumFractionDigits: 0 }));
     expect(guide.text).toContain(translate('ar', 'guide.step1_title'));
     expect(guide.text).toContain(translate('ar', 'guide.step1_body'));
     expect(features.text).toContain(translate('ar', 'features.items.find_help'));

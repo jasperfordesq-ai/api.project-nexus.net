@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { getContributors } = require('../lib/contributors');
-const { callNewsletterApi, verifyEmail } = require('../lib/api');
+const { callNewsletterApi, getPlatformStats, verifyEmail } = require('../lib/api');
 const { catalogFor, valueInCatalog } = require('../lib/localization');
 
 const router = express.Router();
@@ -18,6 +18,31 @@ function communityName(res) {
 
 function routedTenantSlug(req) {
   return String(req.accessibleRouting?.tenantSlug || '').trim();
+}
+
+function platformStatsOptions(req) {
+  const routing = req.accessibleRouting || {};
+  if (routing.mode === 'custom-domain') {
+    return { host: String(req.get('host') || routing.tenant?.accessible_domain || '').trim() };
+  }
+
+  const slug = String(routing.tenant?.slug || routing.tenantSlug || '').trim();
+  return slug ? { slug } : {};
+}
+
+function normalizeAboutStats(result, res) {
+  const stats = result?.data || result;
+  if (!stats || typeof stats !== 'object' || Array.isArray(stats) || !Object.keys(stats).length) {
+    return null;
+  }
+
+  const number = (value) => res.locals.formatLocaleNumber(value ?? 0, { maximumFractionDigits: 0 });
+  return {
+    members: number(stats.members),
+    hoursExchanged: number(stats.hours_exchanged ?? stats.hoursExchanged),
+    listings: number(stats.listings),
+    communities: number(stats.communities)
+  };
 }
 
 function translatedTitle(res, key, fallback) {
@@ -44,12 +69,19 @@ function catalogArray(res, key) {
   return Array.isArray(value) ? value : [];
 }
 
-router.get('/about', (req, res) => {
+router.get('/about', async (req, res) => {
   const name = communityName(res);
   const contributorGroups = aboutContributorsByType();
   const hasResearchNote = contributorGroups.contributor.some((person) => (
     person.note && person.note.toLowerCase().includes('study')
   ));
+  let stats = null;
+
+  try {
+    stats = normalizeAboutStats(await getPlatformStats(platformStatsOptions(req)), res);
+  } catch {
+    // Laravel deliberately hides the optional stats band on any API failure.
+  }
 
   res.render('public-info/about', {
     title: res.locals.t('about.title', { name }),
@@ -59,6 +91,7 @@ router.get('/about', (req, res) => {
     communityName: name,
     steps: catalogArray(res, 'about.how_it_works.steps'),
     values: catalogArray(res, 'about.values.items'),
+    stats,
     contributorGroups,
     hasResearchNote,
     isAuthenticated: res.locals.isAuthenticated

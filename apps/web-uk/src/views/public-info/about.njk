@@ -35,6 +35,28 @@
     </div>
   </div>
 
+  {% if stats %}
+    <h2 class="govuk-heading-l">{{ t("about.stats.title") }}</h2>
+    <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
+      <div class="nexus-alpha-stat">
+        <dt>{{ t("about.stats.members") }}</dt>
+        <dd>{{ stats.members }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>{{ t("about.stats.hours_exchanged") }}</dt>
+        <dd>{{ stats.hoursExchanged }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>{{ t("about.stats.active_listings") }}</dt>
+        <dd>{{ stats.listings }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>{{ t("about.stats.communities") }}</dt>
+        <dd>{{ stats.communities }}</dd>
+      </div>
+    </dl>
+  {% endif %}
+
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <h2 class="govuk-heading-l">{{ t("about.credits.title") }}</h2>

@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,411/1,411` tests passed.
+- Jest: `45/45` suites and `1,412/1,412` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -63,7 +63,8 @@ scores must not be reused as current results.
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Automated browser accessibility: Chromium/axe passed `62/62` cases in
-  `749.3` seconds (`12.3` minutes).
+  `13.1` minutes. The About journey now also requires the live Laravel stats
+  band to be visible in Arabic at 320 CSS pixels.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -99,6 +100,27 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 About Live Statistics Slice
+
+Public `/about` now matches Laravel's optional live-impact band. It calls the
+existing `/api/v2/platform/stats` contract with `X-Tenant-Slug` on shared
+tenant mounts and Host authority on custom-domain mounts, renders members,
+hours exchanged, active listings, and communities in Laravel's Blade order,
+and uses exact request-locale labels plus locale-aware zero-decimal number
+formatting. As in `AlphaController::platformStats()`, any API failure or empty
+payload leaves the About page usable and hides the entire band.
+
+Focused populated, Arabic, mounted-tenant, empty, and unavailable coverage
+passed `3/3`. The real Laravel-backed Arabic About/Guide/Features/FAQ journey
+proved the live stats heading at 320 CSS pixels with RTL reflow and no
+serious/critical axe findings. ESLint, catalog structure, and the conservative
+template audit passed; the aggregate Jest gate passed `45/45` suites and
+`1,412/1,412` tests in `73.0` seconds, and the full Chromium/axe gate passed
+`62/62` in `13.1` minutes. The browser count is unchanged because this
+strengthens an existing journey. Live Guide module-gate variations,
+tenant-domain depth, manual assistive-technology review, and ASP.NET backend
+compatibility remain uncertified.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 

@@ -210,7 +210,11 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 320, height: 640 });
     const routes = [
-      { path: `${mountPath}/about?locale=ar`, marker: translate('ar', 'about.how_it_works.title') },
+      {
+        path: `${mountPath}/about?locale=ar`,
+        marker: translate('ar', 'about.how_it_works.title'),
+        statsMarker: translate('ar', 'about.stats.title')
+      },
       { path: `${mountPath}/guide?locale=ar`, marker: translate('ar', 'guide.title') },
       { path: `${mountPath}/features?locale=ar`, marker: translate('ar', 'features.items.find_help') },
       { path: `${mountPath}/faq?locale=ar`, marker: translate('ar', 'faq.q1') }
@@ -224,6 +228,9 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
       expect(response.headers()['content-language']).toBe('ar');
       await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
       await expect(page.getByText(route.marker, { exact: true }).first()).toBeVisible();
+      if (route.statsMarker) {
+        await expect(page.getByText(route.statsMarker, { exact: true }).first()).toBeVisible();
+      }
       const overflow = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth
