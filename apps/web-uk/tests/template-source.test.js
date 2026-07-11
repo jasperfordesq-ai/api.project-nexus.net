@@ -806,8 +806,7 @@ describe('tenant-aware template helper conversion', () => {
     const templates = [
       path.join('groups', 'index.njk'),
       path.join('groups', 'new.njk'),
-      path.join('groups', 'edit.njk'),
-      path.join('groups', 'my.njk')
+      path.join('groups', 'edit.njk')
     ].map((templatePath) => fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', templatePath),
       'utf8'
@@ -1769,6 +1768,18 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
+  it('does not restore zero-caller loading or legacy my-groups templates', () => {
+    const legacyPaths = [
+      path.join(__dirname, '..', 'src', 'views', 'groups', 'my.njk'),
+      path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk'),
+      path.join(__dirname, '..', 'src', 'views', 'partials', 'loading.njk')
+    ];
+
+    for (const legacyPath of legacyPaths) {
+      expect(fs.existsSync(legacyPath)).toBe(false);
+    }
+  });
+
   it('keeps goals browse, detail, progress, and social controls behind urlFor()', () => {
     const templates = [
       'buddy-actions.njk',
@@ -1928,20 +1939,12 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
-  it('keeps shared empty-state links behind urlFor and retired breadcrumbs absent', () => {
-    const emptyState = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk'),
-      'utf8'
-    );
+  it('keeps retired breadcrumb and empty-state partials absent', () => {
     const breadcrumbsPath = path.join(__dirname, '..', 'src', 'views', 'partials', 'breadcrumbs.njk');
-
-    expect(emptyState).not.toContain('href: "/members"');
-    expect(emptyState).not.toContain('href="{{ emptyState.action.href }}"');
-    expect(emptyState).not.toContain('href="{{ emptyState.secondaryAction.href }}"');
-    expect(emptyState).toContain('urlFor(emptyState.action.href)');
-    expect(emptyState).toContain('urlFor(emptyState.secondaryAction.href)');
+    const emptyStatePath = path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk');
 
     expect(fs.existsSync(breadcrumbsPath)).toBe(false);
+    expect(fs.existsSync(emptyStatePath)).toBe(false);
   });
 
   it('uses Blade back links instead of invented breadcrumbs on event and group pages', () => {

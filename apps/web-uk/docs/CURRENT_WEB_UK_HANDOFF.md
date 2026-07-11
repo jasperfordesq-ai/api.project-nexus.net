@@ -4735,6 +4735,15 @@ guards preventing their restoration. Focused proof passed `3/3`; full Jest
 passed `45/45` suites and `1,443/1,443` tests, with green lint, branding, and a
 `288`-template localization audit with zero conservative matches.
 
+The next zero-caller audit removed `partials/loading.njk` and the generic
+`partials/empty-state.njk`; the latter was referenced only by the deliberately
+unmounted `groups/my.njk`, which was removed with it. The existing route gate
+still proves `/groups/my` and its legacy member-management family return 404.
+The first full run exposed one stale test inventory entry for `groups/my.njk`;
+that concrete regression was corrected and the rerun passed `45/45` suites and
+`1,444/1,444` tests. Lint and branding remain green, and the localization audit
+now covers `285` active templates with zero conservative matches.
+
 ## Documents To Trust
 
 Read these in order:
