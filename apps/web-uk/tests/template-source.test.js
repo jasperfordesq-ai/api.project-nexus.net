@@ -48,7 +48,18 @@ describe('tenant-aware template helper conversion', () => {
 
     const source = templates.join('\n');
     expect(source).toMatch(/urlFor\(["']\/events/);
-    expect(source).toMatch(/urlFor\(["']\/groups/);
+    expect(source).not.toMatch(/urlFor\(["']\/groups/);
+
+    const index = templates[0];
+    expect(index).toContain('t("events.caption", { community: tenantName or serviceName })');
+    expect(index).toContain('t("events.description")');
+    expect(index).toContain('t("events.filters_title")');
+    expect(index).toContain('name="category_id"');
+    expect(index).toContain('name="near"');
+    expect(index).toContain('tc("events.result_count"');
+    expect(index).toContain('class="nexus-alpha-card-list"');
+    expect(index).not.toContain('govukTag');
+    expect(index).not.toContain('name="group_id"');
   });
 
   it('keeps core event forms on the Laravel datetime and cancellation contracts', () => {

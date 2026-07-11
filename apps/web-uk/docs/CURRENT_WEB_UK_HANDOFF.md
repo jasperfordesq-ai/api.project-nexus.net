@@ -4827,6 +4827,18 @@ violations on the created detail and populated edit form. The strengthened run
 passed `1/1` in `2.4` minutes and retained no fixture. This is automated browser
 evidence, not a claim of manual screen-reader or assistive-technology review.
 
+The default-English index now matches Blade's community caption/description,
+browse link, signed/signed-out creation guidance, filter fieldset, category and
+stored-location radius filters, result count, card-list metadata/copy, and
+block pagination. Invented status tags, group filtering, and card chrome were
+removed. Focused Event/API/source proof passed `43/43`; full Jest passed `45/45`
+suites and `1,451/1,451` tests with green lint. A current-source signed Laravel
+smoke rendered `/events` with `200`; the current unsigned tenant-mounted page
+also renders `200` with the full Blade shell and accessible load-error state.
+Laravel's live `/api/v2/events` still returns `401` without a token even though
+the Blade controller declares Event browse public, so anonymous Event rows
+remain an upstream Laravel contract blocker rather than a Web UK claim.
+
 ## Documents To Trust
 
 Read these in order:

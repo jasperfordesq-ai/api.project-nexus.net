@@ -21018,12 +21018,39 @@ describe('shared accessible frontend shell', () => {
       per_page: 20,
       cursor: 'abc',
       q: 'repair',
-      group_id: null,
+      category_id: null,
       when: 'past'
     });
     expect(response.text).toContain('name="q"');
     expect(response.text).toContain('value="past" selected');
-    expect(response.text).toContain('href="/events?when=past&amp;q=repair&amp;cursor=next-page"');
+    expect(response.text).toContain('href="/events?when=past&amp;near=any&amp;q=repair&amp;cursor=next-page"');
+  });
+
+  it('uses Blade event category and stored-location filters', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ id: 101, latitude: 51.85, longitude: -9.3 });
+    api.getEventCategories.mockResolvedValueOnce({ data: [{ id: 4, name: 'Community' }] });
+    api.getEvents.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
+
+    const response = await request(app)
+      .get('/events?category_id=4&near=10')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getEvents).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      cursor: undefined,
+      q: '',
+      category_id: 4,
+      when: 'upcoming',
+      near_lat: 51.85,
+      near_lng: -9.3,
+      radius_km: 10
+    });
+    expect(response.text).toContain('value="4" selected');
+    expect(response.text).toContain('value="10" selected');
+    expect(response.text).toContain('>Community</option>');
+    expect(response.text).toContain('>Clear filters</a>');
   });
 
   it('matches the Blade event empty state and only clears active filters', async () => {
@@ -21045,6 +21072,22 @@ describe('shared accessible frontend shell', () => {
     expect(filtered.text).toContain('href="/events">Clear filters</a>');
   });
 
+  it('keeps the public Event shell accessible when Laravel denies the public collection', async () => {
+    const api = require('../src/lib/api');
+    api.getEvents.mockRejectedValueOnce(new api.ApiError('Authentication required', 401, {
+      errors: [{ code: 'auth_required', message: 'Authentication required' }]
+    }));
+    api.getEventCategories.mockResolvedValueOnce({ data: [{ id: 4, name: 'Community' }] });
+
+    const response = await request(app).get('/events');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.location).toBeUndefined();
+    expect(response.text).toContain('Events could not be loaded. Try again.');
+    expect(response.text).toContain('Sign in to create a new event');
+    expect(response.text).toContain('name="category_id"');
+  });
+
   it('allows anonymous Laravel event browse and detail while keeping RSVP and management authenticated', async () => {
     const api = require('../src/lib/api');
     api.getEvents.mockResolvedValueOnce({
@@ -21059,7 +21102,7 @@ describe('shared accessible frontend shell', () => {
       per_page: 20,
       cursor: undefined,
       q: '',
-      group_id: null,
+      category_id: null,
       when: 'upcoming'
     });
     expect(index.text).toContain('Public repair cafe');

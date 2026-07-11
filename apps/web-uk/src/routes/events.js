@@ -630,32 +630,69 @@ router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const limit = 20;
   const searchQuery = trimmed(req.query.q || req.query.search);
-  const groupId = req.query.group_id || null;
+  const categoryId = positiveInteger(req.query.category_id);
   const when = ['upcoming', 'past', 'all'].includes(req.query.when)
     ? req.query.when
     : (req.query.upcoming_only === 'false' ? 'all' : 'upcoming');
+  const near = ['any', '5', '10', '25', '50'].includes(String(req.query.near))
+    ? String(req.query.near)
+    : 'any';
   const upcomingOnly = when === 'upcoming';
-  const hasFilters = Boolean(searchQuery || groupId || when !== 'upcoming');
+  const hasFilters = Boolean(searchQuery || categoryId || when !== 'upcoming' || near !== 'any');
+  let nearNoLocation = false;
+  let nearFilters = {};
 
-  const result = await getEvents(token, {
-    per_page: limit,
-    cursor: trimmed(req.query.cursor) || undefined,
-    q: searchQuery,
-    group_id: groupId,
-    when
-  });
+  if (near !== 'any' && token) {
+    const profile = await getRequestProfile(req, token).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return null;
+    });
+    const latitude = Number(profile?.latitude ?? profile?.location?.latitude);
+    const longitude = Number(profile?.longitude ?? profile?.location?.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      nearFilters = { near_lat: latitude, near_lng: longitude, radius_km: Number(near) };
+    } else {
+      nearNoLocation = true;
+    }
+  }
+
+  const [result, categoriesResult] = await Promise.all([
+    getEvents(token, {
+      per_page: limit,
+      cursor: trimmed(req.query.cursor) || undefined,
+      q: searchQuery,
+      category_id: categoryId,
+      when,
+      ...nearFilters
+    }).catch((error) => {
+      if (!token && isAuthError(error)) {
+        return { data: [], meta: { has_more: false, cursor: null }, loadError: true };
+      }
+      throw error;
+    }),
+    getEventCategories(token).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
+    })
+  ]);
 
   const events = collectionFrom(result);
+  const categories = collectionFrom(categoriesResult);
   const meta = result?.meta || {};
+  const loadError = result?.loadError === true;
 
   res.render('events/index', {
     title: 'Events',
     events,
+    loadError,
+    categories,
     searchQuery,
-    groupId,
+    categoryId,
     hasFilters,
     upcomingOnly,
     when,
+    near,
+    nearNoLocation,
     pagination: {
       hasMore: Boolean(meta.has_more),
       cursor: trimmed(meta.cursor || meta.next_cursor)

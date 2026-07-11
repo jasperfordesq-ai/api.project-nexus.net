@@ -918,7 +918,7 @@ async function callEventApi(token, method, path = '', data = undefined) {
 
 async function getEventCategories(token) {
   return request('/api/v2/categories?type=event', {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 }
 
@@ -2393,6 +2393,9 @@ async function getEvents(token, params = {}) {
   if (params.user_id) query.set('user_id', params.user_id);
   if (params.category_id) query.set('category_id', params.category_id);
   if (params.category) query.set('category', params.category);
+  if (params.near_lat !== undefined && params.near_lat !== null) query.set('near_lat', params.near_lat);
+  if (params.near_lng !== undefined && params.near_lng !== null) query.set('near_lng', params.near_lng);
+  if (params.radius_km) query.set('radius_km', params.radius_km);
   if (params.when) {
     query.set('when', params.when);
   } else if (params.upcoming_only === false) {
