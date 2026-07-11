@@ -8321,6 +8321,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel goal buddy support form for signed-in buddies', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8332,27 +8333,33 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/buddy-actions');
     const signed = await request(app)
-      .get('/goals/42/buddy-actions?status=buddy-action-failed')
+      .get('/goals/42/buddy-actions?status=buddy-action-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Goal: Restore the community garden');
-    expect(signed.text).toContain('Send buddy support');
-    expect(signed.text).toContain('Send a small, visible bit of support to the goal owner. Nudges are gentle reminders, not pressure.');
-    expect(signed.text).toContain('We could not send your support. You must be the goal buddy.');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'govuk_alpha_goals.buddy.caption',
+      'govuk_alpha_goals.buddy.title',
+      'govuk_alpha_goals.buddy.intro',
+      'govuk_alpha_goals.states.buddy-action-failed',
+      'govuk_alpha_goals.buddy.type_legend',
+      'govuk_alpha_goals.buddy.message_label',
+      'govuk_alpha_goals.buddy.message_help',
+      'govuk_alpha_goals.buddy.submit'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('method="post" action="/goals/42/buddy-actions"');
-    expect(signed.text).toContain('What would you like to send?');
     expect(signed.text).toContain('id="type-nudge" name="type" type="radio" value="nudge"');
-    expect(signed.text).toContain('A gentle reminder to keep going.');
+    expect(signed.text).toContain(t('govuk_alpha_goals.buddy_type_help.nudge'));
     expect(signed.text).toContain('id="type-encouragement" name="type" type="radio" value="encouragement"');
-    expect(signed.text).toContain('A few words of support and motivation.');
+    expect(signed.text).toContain(t('govuk_alpha_goals.buddy_type_help.encouragement'));
     expect(signed.text).toContain('id="type-offer_help" name="type" type="radio" value="offer_help"');
-    expect(signed.text).toContain('Let the owner know you can help out.');
-    expect(signed.text).toContain('Add a short message (optional)');
-    expect(signed.text).toContain('Send to goal owner');
+    expect(signed.text).toContain(t('govuk_alpha_goals.buddy_type_help.offer_help'));
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');

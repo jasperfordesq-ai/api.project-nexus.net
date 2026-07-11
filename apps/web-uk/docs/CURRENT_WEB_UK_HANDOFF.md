@@ -4089,6 +4089,19 @@ axe (`1/1`, 92.5 seconds). Full verification passed 45/45 Jest suites and
 608/608 route parity. Buddy-actions, insights, history, and social remain open;
 the latest uninterrupted full browser aggregate is still 62/62 at `e155375c`.
 
+Latest focused Goals-buddy-support localization slice: signed
+`/goals/{id}/buddy-actions` now uses Laravel's exact `govuk_alpha_goals` keys
+for its document title, outcome states, goal fallback/caption, intro,
+support-type labels and hints, message guidance, and submit action. The obsolete
+English support-hint map was removed after the first full lint pass identified
+it as unused; warning-free lint then passed. Focused Arabic buddy-support
+coverage passed `1/1`. The live Arabic six-page Goals workflow passed HTTP 200,
+exact markers, no `undefined`, RTL, 320px reflow, and axe (`1/1`, 3.9 minutes
+wall time under host contention). Full verification passed 45/45 Jest suites
+and 1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit,
+and 608/608 route parity. Insights, history, and social remain open; the latest
+uninterrupted full browser aggregate is still 62/62 at `e155375c`.
+
 ## Documents To Trust
 
 Read these in order:

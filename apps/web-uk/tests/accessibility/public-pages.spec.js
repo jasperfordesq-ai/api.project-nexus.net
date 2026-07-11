@@ -980,7 +980,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic goals index detail edit check-in and reminder use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic goals workflow uses exact Laravel catalogs through buddy support', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -1147,6 +1147,38 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(reminderAxeResults.violations))).toEqual([]);
+
+      const buddyPath = `${authenticatedMountPath}/goals/162/buddy-actions?locale=ar`;
+      const buddyResponse = await page.goto(buddyPath, { waitUntil: 'domcontentloaded' });
+      expect(buddyResponse, `${buddyPath} did not return a document response`).not.toBeNull();
+      expect(buddyResponse.status(), `${buddyPath} returned HTTP ${buddyResponse.status()}`).toBeLessThan(400);
+      expect(buddyResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'govuk_alpha_goals.buddy.title'));
+      await expect(page.locator('main legend')).toHaveText(translate('ar', 'govuk_alpha_goals.buddy.type_legend'));
+      await expect(page.locator('#message-hint')).toHaveText(translate('ar', 'govuk_alpha_goals.buddy.message_help'));
+      await expect(page.locator('main form[action$="/buddy-actions"] button[type="submit"]')).toHaveText(translate('ar', 'govuk_alpha_goals.buddy.submit'));
+      expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+      const buddyOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(buddyOverflow.scrollWidth, `${buddyPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(buddyOverflow.clientWidth + 1);
+      const buddyAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-goal-buddy-actions', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: buddyOverflow,
+          violations: formatViolations(buddyAxeResults.violations),
+          incomplete: formatViolations(buddyAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(buddyAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

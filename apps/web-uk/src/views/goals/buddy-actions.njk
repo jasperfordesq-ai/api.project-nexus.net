@@ -30,16 +30,16 @@
     }) }}
   {% endif %}
 
-  <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
-  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Send buddy support</h1>
-  <p class="govuk-body-l">Send a small, visible bit of support to the goal owner. Nudges are gentle reminders, not pressure.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_goals.buddy.caption") }}: {{ goal.title }}</span>
+  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ t("govuk_alpha_goals.buddy.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_goals.buddy.intro") }}</p>
 
   <form method="post" action="{{ urlFor('/goals/' + (goal.id | string) + '/buddy-actions') }}" class="govuk-grid-row">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-grid-column-two-thirds">
       <fieldset class="govuk-fieldset govuk-form-group">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">What would you like to send?</legend>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("govuk_alpha_goals.buddy.type_legend") }}</legend>
         <div class="govuk-radios" data-module="govuk-radios">
           {% for type in buddyTypes %}
             <div class="govuk-radios__item">
@@ -52,12 +52,12 @@
       </fieldset>
 
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--m" for="message">Add a short message (optional)</label>
-        <div id="message-hint" class="govuk-hint">Leave this blank to send a friendly default message for the type you chose.</div>
+        <label class="govuk-label govuk-label--m" for="message">{{ t("govuk_alpha_goals.buddy.message_label") }}</label>
+        <div id="message-hint" class="govuk-hint">{{ t("govuk_alpha_goals.buddy.message_help") }}</div>
         <textarea class="govuk-textarea" id="message" name="message" rows="3" maxlength="1000" aria-describedby="message-hint"></textarea>
       </div>
 
-      <button class="govuk-button" data-module="govuk-button" type="submit">Send to goal owner</button>
+      <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("govuk_alpha_goals.buddy.submit") }}</button>
     </div>
   </form>
 {% endblock %}

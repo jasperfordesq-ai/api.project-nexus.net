@@ -36,11 +36,6 @@ const GOAL_BUDDY_TYPE_LABELS = {
   encouragement: 'Encouragement',
   offer_help: 'Offer to help'
 };
-const GOAL_BUDDY_TYPE_HINTS = {
-  nudge: 'A gentle reminder to keep going.',
-  encouragement: 'A few words of support and motivation.',
-  offer_help: 'Let the owner know you can help out.'
-};
 const GOAL_HISTORY_LABELS = {
   created: 'Created',
   progress_update: 'Progress update',
@@ -408,7 +403,7 @@ function normalizeBuddyNote(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const type = allowedValue(raw.type, GOAL_BUDDY_ACTION_TYPES, 'encouragement');
   return {
-    typeLabel: GOAL_BUDDY_TYPE_LABELS[type],
+    typeLabel: t ? t(`govuk_alpha_goals.buddy_type.${type}`) : GOAL_BUDDY_TYPE_LABELS[type],
     message: trimmed(raw.message || ''),
     buddyName: trimmed(raw.buddy_name || raw.buddyName || '') || (t ? t('goals.a_member') : 'A member'),
     createdAtDateLabel: dateLabel(raw.created_at || raw.createdAt),
@@ -594,13 +589,13 @@ function reminderStatus(status, t) {
   return { successMessage: '', errorMessage: '' };
 }
 
-function buddyActionStatus(status) {
+function buddyActionStatus(status, t) {
   const value = trimmed(status);
   if (value === 'buddy-action-sent') {
-    return { successMessage: 'Your support has been sent to the goal owner.', errorMessage: '' };
+    return { successMessage: t('govuk_alpha_goals.states.buddy-action-sent'), errorMessage: '' };
   }
   if (value === 'buddy-action-failed') {
-    return { successMessage: '', errorMessage: 'We could not send your support. You must be the goal buddy.' };
+    return { successMessage: '', errorMessage: t('govuk_alpha_goals.states.buddy-action-failed') };
   }
   return { successMessage: '', errorMessage: '' };
 }
@@ -881,19 +876,19 @@ router.get('/:id(\\d+)/buddy-actions', asyncRoute(async (req, res) => {
 
   const id = req.params.id;
   const result = await getGoal(token, id);
-  const goal = normalizeGoal(dataFrom(result));
+  const goal = normalizeGoal(dataFrom(result), res.locals.t);
   goal.id = goal.id || Number(id);
 
   return res.render('goals/buddy-actions', {
-    title: 'Send buddy support',
+    title: res.locals.t('govuk_alpha_goals.buddy.title'),
     activeNav: 'explore',
     goal,
     buddyTypes: GOAL_BUDDY_ACTION_TYPES.map((value) => ({
       value,
-      label: GOAL_BUDDY_TYPE_LABELS[value],
-      hint: GOAL_BUDDY_TYPE_HINTS[value]
+      label: res.locals.t(`govuk_alpha_goals.buddy_type.${value}`),
+      hint: res.locals.t(`govuk_alpha_goals.buddy_type_help.${value}`)
     })),
-    ...buddyActionStatus(req.query.status)
+    ...buddyActionStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
