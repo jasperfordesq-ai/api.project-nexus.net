@@ -6,17 +6,13 @@
 {% from "govuk/components/radios/macro.njk" import govukRadios %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
-
 {% block beforeContent %}
   {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: t("nav.home"), href: urlFor("/") },
-      { text: "Listings", href: urlFor("/listings") },
-      { text: t("listings.edit.edit_listing") if listing else "New listing" }
-    ]
-  }) }}
+  {% if listing %}
+    <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ t("listings.edit.back") }}</a>
+  {% else %}
+    <a class="govuk-back-link" href="{{ urlFor('/listings') }}">{{ t("actions.back_to_listings") }}</a>
+  {% endif %}
 {% endblock %}
 
 {% block mainContent %}

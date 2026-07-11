@@ -4717,6 +4717,14 @@ shaped renders passed `3/3`; full Jest passed `45/45` suites and `1,441/1,441`
 tests, with green lint, branding guard, and a `291`-template localization audit
 with zero conservative matches.
 
+The follow-up removed the same invented breadcrumb treatment from Listings,
+Messages, and Notifications. Blade renders no local navigation above their
+index pages; Listing create/edit/detail and direct Conversation now use the
+single source back link with the exact request-localized label and destination.
+Focused source proof passed `1/1`; full Jest passed `45/45` suites and
+`1,442/1,442` tests, with green lint, branding guard, and the unchanged
+`291`-template zero-match localization audit.
+
 ## Documents To Trust
 
 Read these in order:

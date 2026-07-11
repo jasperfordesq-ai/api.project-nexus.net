@@ -1,20 +1,9 @@
 {% extends "layouts/base.njk" %}
 
 {% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
-
-{% block beforeContent %}
-  {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: t("nav.home"), href: urlFor("/") },
-      { text: t("messages.title") }
-    ]
-  }) }}
-{% endblock %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">

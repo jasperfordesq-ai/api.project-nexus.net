@@ -2,19 +2,12 @@
 
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 
 {% block beforeContent %}
   {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: t("nav.home"), href: urlFor("/") },
-      { text: "Listings", href: urlFor("/listings") },
-      { text: listing.title or listing.name or "Listing details" }
-    ]
-  }) }}
+  <a class="govuk-back-link" href="{{ urlFor('/listings') }}">{{ t("actions.back_to_listings") }}</a>
 {% endblock %}
 
 {% block mainContent %}

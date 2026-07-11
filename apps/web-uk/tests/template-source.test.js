@@ -1973,6 +1973,40 @@ describe('tenant-aware template helper conversion', () => {
       expect(source).not.toContain('partials/breadcrumbs.njk');
     }
   });
+
+  it('matches Blade navigation on listings, messages, and notifications', () => {
+    const read = (family, template) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', family, template),
+      'utf8'
+    );
+    const listingForm = read('listings', 'form.njk');
+    const backLinkPages = [
+      [read('listings', 'detail.njk'), "urlFor('/listings')", 't("actions.back_to_listings")'],
+      [read('messages', 'conversation.njk'), "urlFor('/messages')", 't("actions.back_to_messages")']
+    ];
+
+    expect(listingForm).toContain("urlFor('/listings/' + (listing.id | string))");
+    expect(listingForm).toContain('t("listings.edit.back")');
+    expect(listingForm).toContain("urlFor('/listings')");
+    expect(listingForm).toContain('t("actions.back_to_listings")');
+    expect(listingForm).not.toContain('govukBreadcrumbs');
+
+    for (const [source, href, label] of backLinkPages) {
+      expect(source).toContain('class="govuk-back-link"');
+      expect(source).toContain(href);
+      expect(source).toContain(label);
+      expect(source).not.toContain('govukBreadcrumbs');
+    }
+
+    for (const source of [
+      read('listings', 'index.njk'),
+      read('messages', 'index.njk'),
+      read('notifications', 'index.njk')
+    ]) {
+      expect(source).not.toContain('govukBreadcrumbs');
+      expect(source).not.toContain('govuk-back-link');
+    }
+  });
 });
 
 describe('localized progressive validation source contract', () => {
