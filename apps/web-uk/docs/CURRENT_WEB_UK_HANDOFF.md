@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,415/1,415` tests passed.
+- Jest: `45/45` suites and `1,416/1,416` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -199,6 +199,20 @@ aggregate runs exposed the resulting NUL/Babel parse failure. The file was
 restored exactly from committed `HEAD` (which already contained all intended
 changes), its diff returned empty, and the subsequent normal aggregate passed.
 No user or concurrent backend change was overwritten.
+
+## 2026-07-10 Tenant Home Workflow-Gate Slice
+
+Signed tenant Home module cards now match Blade's conjunctive workflow gates:
+Messages requires the routed tenant's `direct_messaging` feature, and Exchanges
+requires both the listings module and `exchange_workflow`. Listings also uses
+Blade's disabled fallback when bootstrap omits that module, while the other
+documented Home fallbacks remain unchanged. Disabled signed cards render as
+unlinked/unavailable rather than offering a route that Laravel would gate.
+
+Focused standard, Arabic, and signed-disabled Home coverage passed `3/3`; the
+aggregate Jest gate passed `45/45` suites and `1,416/1,416` tests in `127.1`
+seconds, and ESLint passed. A real disabled-module Laravel tenant fixture is
+still unavailable, so live disabled-state proof remains open.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 

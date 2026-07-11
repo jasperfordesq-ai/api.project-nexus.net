@@ -97,13 +97,13 @@ const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
 const HOME_MODULES = [
   { key: 'dashboard', titleKey: 'dashboard.title', descriptionKey: 'dashboard.description', href: '/dashboard', authRequired: true },
-  { key: 'feed', titleKey: 'feed.title', descriptionKey: 'feed.description', href: '/feed', moduleKey: 'feed' },
-  { key: 'listings', titleKey: 'listings.title', descriptionKey: 'listings.description', href: '/listings', moduleKey: 'listings' },
+  { key: 'feed', titleKey: 'feed.title', descriptionKey: 'feed.description', href: '/feed', moduleKey: 'feed', defaultEnabled: true },
+  { key: 'listings', titleKey: 'listings.title', descriptionKey: 'listings.description', href: '/listings', moduleKey: 'listings', defaultEnabled: false },
   { key: 'members', titleKey: 'members.title', descriptionKey: 'members.description', href: '/members', featureKey: 'connections' },
   { key: 'events', titleKey: 'events.title', descriptionKey: 'events.description', href: '/events', featureKey: 'events' },
   { key: 'volunteering', titleKey: 'volunteering.title', descriptionKey: 'volunteering.description', href: '/volunteering', featureKey: 'volunteering' },
-  { key: 'messages', titleKey: 'messages.title', descriptionKey: 'messages.description', href: '/messages', authRequired: true },
-  { key: 'exchanges', titleKey: 'exchanges.title', descriptionKey: 'exchanges.description', href: '/exchanges', authRequired: true, moduleKey: 'listings' },
+  { key: 'messages', titleKey: 'messages.title', descriptionKey: 'messages.description', href: '/messages', authRequired: true, featureKey: 'direct_messaging' },
+  { key: 'exchanges', titleKey: 'exchanges.title', descriptionKey: 'exchanges.description', href: '/exchanges', authRequired: true, moduleKey: 'listings', featureKey: 'exchange_workflow', defaultEnabled: false },
   { key: 'wallet', titleKey: 'wallet.title', descriptionKey: 'wallet.description', href: '/wallet', authRequired: true, moduleKey: 'wallet' },
   { key: 'profile', titleKey: 'nav.profile', descriptionKey: 'profile_settings.description', href: '/profile', authRequired: true }
 ];
@@ -489,9 +489,14 @@ function featureEnabled(tenant, key, fallback = true) {
 
 function buildHomeModules(tenant, isAuthenticated, t) {
   return HOME_MODULES.map((module) => {
-    const tenantEnabled = module.moduleKey || module.featureKey
-      ? featureEnabled(tenant, module.moduleKey || module.featureKey, true)
+    const fallback = module.defaultEnabled !== undefined ? module.defaultEnabled : true;
+    const moduleEnabled = module.moduleKey
+      ? featureEnabled(tenant, module.moduleKey, fallback)
       : true;
+    const featureOn = module.featureKey
+      ? featureEnabled(tenant, module.featureKey, fallback)
+      : true;
+    const tenantEnabled = moduleEnabled && featureOn;
     const needsSignIn = tenantEnabled && module.authRequired && !isAuthenticated;
     const available = tenantEnabled && (!module.authRequired || isAuthenticated);
 

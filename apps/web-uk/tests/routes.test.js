@@ -193,6 +193,39 @@ describe('Public Routes', () => {
       expect(response.text).not.toContain('Not signed in');
     });
 
+    it('matches signed Laravel Home gates for messaging and exchange workflow', async () => {
+      const api = require('../src/lib/api');
+      const cookieSignature = require('cookie-signature');
+      const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+      api.getTenantBootstrap.mockResolvedValueOnce({
+        data: {
+          id: 2,
+          name: 'Acme Timebank',
+          slug: 'acme',
+          modules: { feed: true, listings: true, wallet: true },
+          features: {
+            connections: true,
+            events: true,
+            volunteering: true,
+            direct_messaging: false,
+            exchange_workflow: false
+          }
+        }
+      });
+      api.getPlatformStats.mockResolvedValueOnce({ data: {} });
+
+      const response = await request(app)
+        .get('/acme/accessible')
+        .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+      expect(response.status).toBe(200);
+      expect(response.text).not.toContain('href="/acme/accessible/messages"');
+      expect(response.text).not.toContain('href="/acme/accessible/exchanges"');
+      expect(response.text).toContain('href="/acme/accessible/wallet"');
+      expect(response.text).toContain('href="/acme/accessible/listings"');
+      expect(response.text.match(/This module is not enabled for this community\./g)).toHaveLength(2);
+    });
+
     it('canonicalizes Laravel legacy alpha mount paths to the cleaner accessible mount', async () => {
       const response = await request(app).get('/acme/alpha/login?status=auth-required');
 
