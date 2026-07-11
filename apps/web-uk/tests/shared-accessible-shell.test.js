@@ -13222,9 +13222,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('View all reviews');
     expect(response.text).toContain('4.8 / 5');
     expect(response.text).toContain('12');
-    expect(response.text).toContain('By Anonymous');
+    expect(response.text).toContain('by Anonymous');
     expect(response.text).not.toContain('Private Reviewer');
-    expect(response.text).toContain('For Morgan Lee');
+    expect(response.text).toContain('for Morgan Lee');
     expect(response.text).toContain('Taylor Green');
     expect(response.text).toContain('Garden swap');
     expect(response.text).toContain('action="/reviews"');

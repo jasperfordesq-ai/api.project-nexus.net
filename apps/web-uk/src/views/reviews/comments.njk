@@ -113,14 +113,14 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="{{ urlFor('/reviews/list') }}">Back to all reviews</a>
+  <a class="govuk-back-link" href="{{ urlFor('/reviews/list') }}">{{ t("govuk_alpha_blogreviews.review_comments.back_to_reviews") }}</a>
 {% endblock %}
 
 {% block mainContent %}
   {% if statusMessage %}
     <div class="govuk-notification-banner{% if statusMessage.type == 'success' %} govuk-notification-banner--success{% endif %}" role="region" aria-labelledby="review-comments-status-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="review-comments-status-title">{{ "Success" if statusMessage.type == "success" else "Important" }}</h2>
+        <h2 class="govuk-notification-banner__title" id="review-comments-status-title">{{ t("govuk_alpha_blogreviews.states.success_title") if statusMessage.type == "success" else t("states.important") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p>
@@ -130,27 +130,27 @@
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-xl">Review discussion</span>
-      <h1 class="govuk-heading-xl">Comments on this review</h1>
+      <span class="govuk-caption-xl">{{ t("govuk_alpha_blogreviews.review_comments.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_blogreviews.review_comments.heading") }}</h1>
 
       <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="review-heading">
-        <h2 class="govuk-heading-m" id="review-heading">{{ review.otherLabel }} {{ review.otherName }}</h2>
-        <p class="govuk-body-s nexus-alpha-meta">Rating: {{ review.ratingLabel }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
+        <h2 class="govuk-heading-m" id="review-heading">{{ t("govuk_alpha_blogreviews.review_comments.by_label", { name: review.otherName }) }}</h2>
+        <p class="govuk-body-s nexus-alpha-meta">{{ t("govuk_alpha_blogreviews.review_comments.rating_label", { value: review.rating }) }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
         {% if review.comment %}
           <p class="govuk-body">{{ review.comment }}</p>
         {% endif %}
       </section>
 
       <section id="review-reactions" class="govuk-!-margin-bottom-6" aria-labelledby="review-reactions-heading">
-        <h2 class="govuk-heading-m" id="review-reactions-heading">Reactions</h2>
-        <p class="govuk-body-s nexus-alpha-meta">{{ reactionTotal }} reactions</p>
+        <h2 class="govuk-heading-m" id="review-reactions-heading">{{ t("govuk_alpha_blogreviews.reactions.post_legend") }}</h2>
+        <p class="govuk-body-s nexus-alpha-meta">{{ tc("govuk_alpha_blogreviews.reactions.count", reactionTotal, { count: reactionTotal }) }}</p>
         <div class="govuk-button-group">
           {% for reaction in alphaReactions %}
             <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/react') }}#review-reactions">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="emoji" value="{{ reaction.value }}">
-              <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">
-                {{ reaction.label }}{% if reaction.count %} ({{ reaction.count }}){% endif %}{% if reaction.selected %} selected{% endif %}
+              <button class="govuk-button govuk-button--secondary{% if reaction.selected %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" type="submit" aria-pressed="{{ 'true' if reaction.selected else 'false' }}">
+                {{ reaction.label }}{% if reaction.count %} ({{ reaction.count }}){% endif %}<span class="govuk-visually-hidden"> {{ t("govuk_alpha_blogreviews.reactions.for_review") }}</span>
               </button>
             </form>
           {% endfor %}
@@ -158,28 +158,28 @@
       </section>
 
       <section aria-labelledby="comments-heading">
-        <h2 class="govuk-heading-m" id="comments-heading">Comments</h2>
+        <h2 class="govuk-heading-m" id="comments-heading">{{ t("govuk_alpha_blogreviews.comments.heading") }}</h2>
         {% if comments.length %}
-          <p class="govuk-body-s nexus-alpha-meta">{{ commentsCount }} comments</p>
+          <p class="govuk-body-s nexus-alpha-meta">{{ tc("govuk_alpha_blogreviews.comments.count", commentsCount, { count: commentsCount }) }}</p>
           <ul class="govuk-list nexus-alpha-comments-list">
             {% for comment in comments %}
               {{ renderComment(comment, review.id, 0) }}
             {% endfor %}
           </ul>
         {% else %}
-          <p class="govuk-body">No comments on this review yet. Be the first to comment.</p>
+          <p class="govuk-body">{{ t("govuk_alpha_blogreviews.review_comments.empty") }}</p>
         {% endif %}
       </section>
 
       <section class="govuk-!-margin-top-6" aria-labelledby="add-comment-heading">
-        <h2 class="govuk-heading-m" id="add-comment-heading">{{ t("blog.comment_body_label") }}</h2>
+        <h2 class="govuk-heading-m" id="add-comment-heading">{{ t("govuk_alpha_blogreviews.review_comments.add_heading") }}</h2>
         <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <div class="govuk-form-group">
-            <label class="govuk-label govuk-label--s" for="body">Your comment</label>
+            <label class="govuk-label govuk-label--s" for="body">{{ t("govuk_alpha_blogreviews.review_comments.body_label") }}</label>
             <textarea class="govuk-textarea" id="body" name="body" rows="5" maxlength="5000"></textarea>
           </div>
-          <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("blog.comment_submit") }}</button>
+          <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("govuk_alpha_blogreviews.review_comments.submit") }}</button>
         </form>
       </section>
     </div>

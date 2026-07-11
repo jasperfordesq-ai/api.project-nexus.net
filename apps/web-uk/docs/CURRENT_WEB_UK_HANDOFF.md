@@ -62,8 +62,8 @@ scores must not be reused as current results.
 - Conservative template audit: `290` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
-- Automated browser accessibility: Chromium/axe passed `54/54` cases in
-  `559.6` seconds.
+- Automated browser accessibility: Chromium/axe passed `55/55` cases in
+  `548.9` seconds.
 - Live Blade marker comparison: `19/19` checks passed.
 - Current browser evidence proves `lang="ar"`, `dir="rtl"`, one `main`/H1,
   unique IDs, and no horizontal overflow at 320 CSS pixels on the Arabic login
@@ -99,6 +99,26 @@ Web UK now maps that exact API code to the tenant-safe `/federation/opt-in`
 route, matching Blade, rather than rendering `503`. The focused current-source
 federation runtime slice passed `13/13`; the default inventory now treats the
 nine affected federation-backed pages as expected signed opt-in redirects.
+
+## 2026-07-10 Reviews Contextual Localization Slice
+
+The signed `/reviews`, `/reviews/list`, and `/reviews/{id}/comments` family now
+uses Laravel's exact `reviews_page` and `govuk_alpha_blogreviews` catalogs for
+document titles, captions, descriptions, score labels, received/given/pending
+sections, member and anonymous fallbacks, rating text, empty states, delete
+controls, tabs, pagination, discussion headings, reactions, comment counts and
+forms, and all no-JS review/comment/reaction result messages. The pending form
+now mirrors Blade's five-to-one radio group and localized hint instead of the
+invented English select menu.
+
+The existing six focused Reviews regressions pass with Laravel's exact casing
+and labels. The complete Jest gate remains `45/45` suites and `1,404/1,404`
+tests. A new real Laravel-backed Arabic summary/list traversal passed RTL,
+320-pixel reflow, and axe in `94.6` seconds, and the expanded exact-current
+Chromium/axe matrix passed `55/55` in `548.9` seconds. Remaining Reviews gaps
+are the API-limited edit/listing-review workflows, safe live mutation effects,
+deletion/moderation and deeper threaded fixtures, manual assistive-technology
+review, and ASP.NET backend compatibility.
 
 ## 2026-07-10 Member Profile Payload Depth Slice
 

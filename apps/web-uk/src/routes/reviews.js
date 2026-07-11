@@ -25,14 +25,6 @@ const REVIEWS_PATH = '/reviews';
 const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
 const LARAVEL_REVIEW_REACTIONS = ['like', 'love', 'laugh', 'wow', 'sad', 'celebrate'];
 const LARAVEL_REVIEW_REACTION_SET = new Set(LARAVEL_REVIEW_REACTIONS);
-const LARAVEL_REVIEW_REACTION_LABELS = {
-  like: 'Like',
-  love: 'Love',
-  laugh: 'Laugh',
-  wow: 'Wow',
-  sad: 'Sad',
-  celebrate: 'Celebrate'
-};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -139,55 +131,55 @@ function personName(person) {
   return String(person.name || person.display_name || person.displayName || firstLast || person.email || '').trim();
 }
 
-function reviewerName(review) {
+function reviewerName(review, t) {
   return personName(review.reviewer) ||
     personName(review.author) ||
     personName(review.user) ||
     trimmed(review.reviewer_name || review.reviewerName || review.author_name || review.authorName) ||
-    'Community member';
+    t('govuk_alpha_blogreviews.reviews_list.unknown_member');
 }
 
-function receiverName(review) {
+function receiverName(review, t) {
   return personName(review.receiver) ||
     personName(review.reviewee) ||
     personName(review.subject) ||
     trimmed(review.receiver_name || review.receiverName || review.reviewee_name || review.revieweeName) ||
-    'Community member';
+    t('govuk_alpha_blogreviews.reviews_list.unknown_member');
 }
 
-function ratingLabel(value) {
+function ratingLabel(value, t, key = 'reviews_page.rating_label') {
   const rating = Number(value);
-  return Number.isFinite(rating) && rating > 0 ? `${rating} out of 5` : 'Not rated';
+  return Number.isFinite(rating) && rating > 0 ? t(key, { value: rating }) : '';
 }
 
-function normalizeReview(review = {}, direction = 'received') {
+function normalizeReview(review = {}, direction = 'received', t = (key) => key) {
   const rating = Number(review.rating || review.score || 0);
   const anonymous = direction !== 'given' && Boolean(review.is_anonymous ?? review.isAnonymous);
   const otherName = anonymous
-    ? 'Anonymous'
-    : (direction === 'given' ? receiverName(review) : reviewerName(review));
+    ? t('reviews_page.anonymous')
+    : (direction === 'given' ? receiverName(review, t) : reviewerName(review, t));
   return {
     id: review.id,
+    direction,
     rating,
-    ratingLabel: ratingLabel(rating),
+    ratingLabel: ratingLabel(rating, t),
     comment: trimmed(review.comment || review.body || review.content),
-    otherLabel: direction === 'given' ? 'For' : 'By',
     otherName,
     createdAt: review.created_at || review.createdAt || review.date || '',
     canDelete: direction === 'given'
   };
 }
 
-function normalizePendingReview(item = {}) {
+function normalizePendingReview(item = {}, t = (key) => key) {
   return {
     receiverId: item.receiver_id || item.receiverId || (item.receiver && item.receiver.id) || '',
-    receiverName: receiverName(item),
+    receiverName: receiverName(item, t),
     transactionId: item.transaction_id || item.transactionId || item.exchange_id || item.exchangeId || '',
-    title: trimmed(item.exchange_title || item.exchangeTitle || item.title || item.description || 'Completed exchange')
+    title: trimmed(item.exchange_title || item.exchangeTitle || item.title || item.description)
   };
 }
 
-function normalizeComment(comment = {}) {
+function normalizeComment(comment = {}, t = (key) => key) {
   const author = comment.author || comment.user || {};
   const reactions = comment.reactions && typeof comment.reactions === 'object' && !Array.isArray(comment.reactions)
     ? comment.reactions
@@ -202,7 +194,7 @@ function normalizeComment(comment = {}) {
   return {
     id: comment.id,
     body: trimmed(comment.content || comment.body || comment.comment),
-    authorName: personName(author) || trimmed(comment.author_name || comment.authorName || comment.user_name || comment.userName) || 'Community member',
+    authorName: personName(author) || trimmed(comment.author_name || comment.authorName || comment.user_name || comment.userName) || t('govuk_alpha_blogreviews.reviews_list.unknown_member'),
     createdAt: comment.created_at || comment.createdAt || '',
     updatedAt: comment.updated_at || comment.updatedAt || '',
     isOwner: Boolean(comment.is_owner ?? comment.is_own ?? comment.isOwner ?? comment.isOwn),
@@ -210,7 +202,7 @@ function normalizeComment(comment = {}) {
     reactions,
     userReactions,
     reactionTotal: Object.values(reactions).reduce((total, count) => total + (Number(count) || 0), 0),
-    replies: replies.map(normalizeComment)
+    replies: replies.map((reply) => normalizeComment(reply, t))
   };
 }
 
@@ -229,34 +221,23 @@ function listHref(tab, cursor = '') {
   return `${REVIEWS_PATH}/list?${params.toString()}`;
 }
 
-function reviewStatusMessage(status) {
+function reviewStatusMessage(status, t) {
   const messages = {
-    'review-submitted': { type: 'success', text: 'Thank you. Your review has been submitted.' },
-    'review-invalid': { type: 'error', text: 'Check your review and try again. A rating between 1 and 5 is required.' },
-    'review-duplicate': { type: 'error', text: 'You have already reviewed this exchange or member.' },
-    'review-failed': { type: 'error', text: 'Sorry, your review could not be submitted. Try again.' },
-    'review-deleted': { type: 'success', text: 'Your review has been deleted.' },
-    'review-delete-failed': { type: 'error', text: 'We could not delete this review. Please try again.' }
+    'review-submitted': { type: 'success', key: 'reviews_page.submit_success' },
+    'review-invalid': { type: 'error', key: 'reviews_page.submit_invalid' },
+    'review-duplicate': { type: 'error', key: 'reviews_page.submit_duplicate' },
+    'review-failed': { type: 'error', key: 'reviews_page.submit_failed' },
+    'review-deleted': { type: 'success', key: 'polish_members.review_deleted_success' },
+    'review-delete-failed': { type: 'error', key: 'polish_members.review_deleted_failed' }
   };
-  return messages[status] || null;
+  const message = messages[status];
+  return message ? { type: message.type, text: t(message.key) } : null;
 }
 
-function commentStatusMessage(status) {
-  const messages = {
-    'comment-added': { type: 'success', text: 'Your comment has been posted.' },
-    'reply-added': { type: 'success', text: 'Your reply has been posted.' },
-    'comment-updated': { type: 'success', text: 'Your comment has been updated.' },
-    'comment-deleted': { type: 'success', text: 'Your comment has been deleted.' },
-    'comment-invalid': { type: 'error', text: 'Enter a comment before posting.' },
-    'comment-empty': { type: 'error', text: 'Enter some text before saving.' },
-    'comment-failed': { type: 'error', text: 'Sorry, your comment could not be posted. Try again.' },
-    'comment-update-failed': { type: 'error', text: 'Sorry, your comment could not be updated. Try again.' },
-    'comment-delete-failed': { type: 'error', text: 'Sorry, your comment could not be deleted. Try again.' },
-    'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
-    'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
-    'reaction-failed': { type: 'error', text: 'Sorry, your reaction could not be saved. Try again.' }
-  };
-  return messages[status] || null;
+function commentStatusMessage(status, t) {
+  const success = new Set(['comment-added', 'reply-added', 'comment-updated', 'comment-deleted', 'reaction-added', 'reaction-removed']);
+  const known = new Set([...success, 'comment-invalid', 'comment-empty', 'comment-failed', 'comment-update-failed', 'comment-delete-failed', 'reaction-failed']);
+  return known.has(status) ? { type: success.has(status) ? 'success' : 'error', text: t(`govuk_alpha_blogreviews.comment_states.${status}`) } : null;
 }
 
 router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
@@ -364,11 +345,11 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const stats = oneFrom(statsResult);
 
   res.render('reviews/index', {
-    title: 'Reviews',
-    statusMessage: reviewStatusMessage(req.query.status),
-    reviewsReceived: collectionFrom(receivedResult).map((review) => normalizeReview(review, 'received')),
-    reviewsGiven: collectionFrom(givenResult).map((review) => normalizeReview(review, 'given')),
-    reviewsPending: collectionFrom(pendingResult).map(normalizePendingReview),
+    title: res.locals.t('reviews_page.title'),
+    statusMessage: reviewStatusMessage(req.query.status, res.locals.t),
+    reviewsReceived: collectionFrom(receivedResult).map((review) => normalizeReview(review, 'received', res.locals.t)),
+    reviewsGiven: collectionFrom(givenResult).map((review) => normalizeReview(review, 'given', res.locals.t)),
+    reviewsPending: collectionFrom(pendingResult).map((review) => normalizePendingReview(review, res.locals.t)),
     reviewStats: {
       average: stats.average ?? stats.average_rating ?? stats.averageRating ?? '',
       total: stats.total ?? stats.count ?? stats.reviews_count ?? stats.reviewsCount ?? 0
@@ -394,9 +375,9 @@ router.get('/list', requireAuth, asyncRoute(async (req, res) => {
   const hasMore = Boolean(meta.has_more ?? meta.hasMore ?? nextCursor);
 
   res.render('reviews/list', {
-    title: 'All reviews',
+    title: res.locals.t('govuk_alpha_blogreviews.reviews_list.title'),
     reviewsTab: tab,
-    reviewsItems: collectionFrom(result).map((review) => normalizeReview(review, tab)),
+    reviewsItems: collectionFrom(result).map((review) => normalizeReview(review, tab, res.locals.t)),
     reviewsCursor: nextCursor,
     reviewsHasMore: hasMore,
     loadMoreHref: hasMore && nextCursor ? listHref(tab, nextCursor) : '',
@@ -414,18 +395,18 @@ router.get('/:id(\\d+)/comments', requireAuth, asyncRoute(async (req, res) => {
   ]);
 
   const rawReview = oneFrom(reviewResult);
-  const comments = commentCollectionFrom(commentsResult).map(normalizeComment);
+  const comments = commentCollectionFrom(commentsResult).map((comment) => normalizeComment(comment, res.locals.t));
   const reactionData = oneFrom(reactionsResult);
 
   res.render('reviews/comments', {
-    title: 'Comments on a review',
-    statusMessage: commentStatusMessage(req.query.status),
-    review: normalizeReview(rawReview, 'received'),
+    title: res.locals.t('govuk_alpha_blogreviews.review_comments.title'),
+    statusMessage: commentStatusMessage(req.query.status, res.locals.t),
+    review: normalizeReview(rawReview, 'received', res.locals.t),
     comments,
     commentsCount: commentCountFrom(commentsResult, comments),
     alphaReactions: LARAVEL_REVIEW_REACTIONS.map((value) => ({
       value,
-      label: LARAVEL_REVIEW_REACTION_LABELS[value],
+      label: res.locals.t(`govuk_alpha_blogreviews.reactions.${value}`),
       count: Number((reactionData.counts && reactionData.counts[value]) || 0),
       selected: reactionData.user_reaction === value || reactionData.userReaction === value
     })),

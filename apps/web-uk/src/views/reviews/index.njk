@@ -7,13 +7,13 @@
 
 {% macro reviewItem(review) %}
   <li class="nexus-alpha-card">
-    <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ review.otherLabel }} {{ review.otherName }}</h3>
-    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Rating: {{ review.ratingLabel }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
+    <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("reviews_page.for_label" if review.direction == "given" else "reviews_page.by_label", { name: review.otherName }) }}</h3>
+    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ review.ratingLabel }}{% if review.createdAt %} - {{ review.createdAt | formatDate }}{% endif %}</p>
     {% if review.comment %}
       <p class="govuk-body govuk-!-margin-bottom-2">{{ review.comment }}</p>
     {% endif %}
     {% if review.id %}
-      <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}">Comment on this review</a></p>
+      <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}">{{ t("govuk_alpha_blogreviews.reviews_list.moderate_link") }}</a></p>
     {% endif %}
     {% if review.id and review.canDelete %}
       <details class="govuk-details govuk-!-margin-top-3 govuk-!-margin-bottom-0" data-module="govuk-details">
@@ -57,23 +57,23 @@
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-xl">Your reviews</span>
-      <h1 class="govuk-heading-xl">Reviews</h1>
-      <p class="govuk-body-l">Read the reviews you have received, check reviews you have given, and leave pending reviews after completed exchanges.</p>
-      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/reviews/list') }}">View all reviews</a></p>
+      <span class="govuk-caption-xl">{{ t("reviews_page.caption", { community: tenantName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("reviews_page.title") }}</h1>
+      <p class="govuk-body-l">{{ t("reviews_page.description") }}</p>
+      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/reviews/list') }}">{{ t("govuk_alpha_blogreviews.nav.all_reviews") }}</a></p>
     </div>
     <div class="govuk-grid-column-one-third">
       <div class="nexus-alpha-card">
-        <h2 class="govuk-heading-m">Review score</h2>
-        <p class="govuk-heading-l govuk-!-margin-bottom-1">{{ reviewStats.average or "Not rated" }}{% if reviewStats.average %} / 5{% endif %}</p>
-        <p class="govuk-body govuk-!-margin-bottom-0">{{ reviewStats.total }} reviews</p>
+        <h2 class="govuk-heading-m">{{ t("reviews_page.average_label") }}</h2>
+        <p class="govuk-heading-l govuk-!-margin-bottom-1">{{ reviewStats.average or t("polish_members.rating_none") }}{% if reviewStats.average %} / 5{% endif %}</p>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ t("reviews_page.total_label") }}: {{ reviewStats.total }}</p>
       </div>
     </div>
   </div>
 
   <div class="govuk-grid-row govuk-!-margin-top-6">
     <div class="govuk-grid-column-one-half">
-      <h2 class="govuk-heading-l">Received</h2>
+      <h2 class="govuk-heading-l">{{ t("reviews_page.received_tab") }}</h2>
       {% if reviewsReceived.length %}
         <ul class="nexus-alpha-card-list">
           {% for review in reviewsReceived %}
@@ -86,7 +86,7 @@
     </div>
 
     <div class="govuk-grid-column-one-half">
-      <h2 class="govuk-heading-l">Given</h2>
+      <h2 class="govuk-heading-l">{{ t("reviews_page.given_tab") }}</h2>
       {% if reviewsGiven.length %}
         <ul class="nexus-alpha-card-list">
           {% for review in reviewsGiven %}
@@ -94,45 +94,39 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">You have not given any reviews yet.</p>
+        <p class="govuk-body">{{ t("reviews_page.given_empty") }}</p>
       {% endif %}
     </div>
   </div>
 
   <div class="govuk-grid-row govuk-!-margin-top-6">
     <div class="govuk-grid-column-two-thirds">
-      <h2 class="govuk-heading-l">Pending</h2>
+      <h2 class="govuk-heading-l">{{ t("reviews_page.pending_tab") }}</h2>
       {% if reviewsPending.length %}
         <ul class="nexus-alpha-card-list">
           {% for pending in reviewsPending %}
+            {% set pendingIndex = loop.index %}
             <li class="nexus-alpha-card">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ pending.receiverName }}</h3>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("reviews_page.for_label", { name: pending.receiverName }) }}</h3>
               <p class="govuk-body-s nexus-alpha-meta">{{ pending.title }}</p>
               <form method="post" action="{{ urlFor('/reviews') }}" novalidate>
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="receiver_id" value="{{ pending.receiverId }}">
                 <input type="hidden" name="transaction_id" value="{{ pending.transactionId }}">
                 <div class="govuk-form-group">
-                  <label class="govuk-label govuk-label--s" for="rating-{{ loop.index }}">Rating</label>
-                  <select class="govuk-select" id="rating-{{ loop.index }}" name="rating">
-                    <option value="5">5 - Excellent</option>
-                    <option value="4">4 - Good</option>
-                    <option value="3">3 - OK</option>
-                    <option value="2">2 - Poor</option>
-                    <option value="1">1 - Very poor</option>
-                  </select>
+                  <fieldset class="govuk-fieldset"><legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("reviews_page.rating_legend") }}</legend><div class="govuk-radios govuk-radios--inline govuk-radios--small">{% for star in [5,4,3,2,1] %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="rating-{{ pendingIndex }}-{{ star }}" name="rating" type="radio" value="{{ star }}"{% if star == 5 %} checked{% endif %}><label class="govuk-label govuk-radios__label" for="rating-{{ pendingIndex }}-{{ star }}">{{ star }}</label></div>{% endfor %}</div></fieldset>
                 </div>
                 <div class="govuk-form-group">
-                  <label class="govuk-label govuk-label--s" for="comment-{{ loop.index }}">Your review</label>
-                  <textarea class="govuk-textarea" id="comment-{{ loop.index }}" name="comment" rows="3" maxlength="2000"></textarea>
+                  <label class="govuk-label govuk-label--s" for="comment-{{ loop.index }}">{{ t("reviews_page.comment_label") }}</label><div id="comment-hint-{{ loop.index }}" class="govuk-hint">{{ t("reviews_page.comment_hint") }}</div>
+                  <textarea class="govuk-textarea" id="comment-{{ loop.index }}" name="comment" rows="3" maxlength="2000" aria-describedby="comment-hint-{{ loop.index }}"></textarea>
                 </div>
-                <button class="govuk-button" data-module="govuk-button" type="submit">Submit review</button>
+                <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("reviews_page.write_review") }}</button>
               </form>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body">There are no pending reviews.</p>
+        <p class="govuk-body">{{ t("reviews_page.pending_empty") }}</p>
       {% endif %}
     </div>
   </div>

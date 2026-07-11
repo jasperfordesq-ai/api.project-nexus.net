@@ -606,6 +606,35 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic reviews pages preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+    try {
+      for (const route of [
+        { path: '/reviews?locale=ar', heading: translate('ar', 'reviews_page.title') },
+        { path: '/reviews/list?locale=ar', heading: translate('ar', 'govuk_alpha_blogreviews.reviews_list.title') }
+      ]) {
+        const path = `${authenticatedMountPath}${route.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response).not.toBeNull();
+        expect(response.status()).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('h1')).toHaveText(route.heading);
+        const overflow = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+        expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-reviews-${route.path.includes('list') ? 'list' : 'index'}`, { body: Buffer.from(JSON.stringify({ url: page.url(), overflow, violations: formatViolations(axeResults.violations) }, null, 2)), contentType: 'application/json' });
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic notifications preserve Laravel catalog output with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
