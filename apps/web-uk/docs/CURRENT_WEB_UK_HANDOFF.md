@@ -4169,6 +4169,25 @@ live `hour-timebank` tenant intentionally returns the existing Laravel-aligned
 or claimed. Enabled-tenant runtime body proof, broader runtime behavior,
 recorded manual parity, and ASP.NET backend compatibility remain open.
 
+Latest focused Skills localization slice: signed `/skills` now uses Laravel's
+exact request-locale `skills` catalog for document title, tenant caption,
+description, search controls, member-result heading/empty state, proficiency/
+offers/wants tags, category heading/back link/table headings/empty state, and
+the nested category browser. Proficiency labels are localized in the route
+normalizer, and the Web UK-only API failure inset now uses Laravel's shared
+localized 503 title/body instead of hard-coded English. Focused Arabic category
+drill-down/member-search coverage passed `1/1`. The first browser invocation
+used a space-containing wrapper grep and returned “No tests found” before any
+test ran; rerunning with `Arabic.*skills.*directory` passed the real Laravel-
+backed Arabic page at HTTP 200 with exact title/search markers, RTL, 320px
+reflow, and no serious/critical axe violations (`1/1`, 1.3 minutes wall time;
+11.5 seconds inside the test). Complete verification passed 45/45 Jest suites
+and 1,424/1,424 tests, warning-free ESLint, the 290-template zero-match audit,
+and the route matrix at 608 Laravel routes, 608 matched, 0 missing, 0 extra,
+and 3 ignored infrastructure routes. Category/member authorization edge cases,
+deeper runtime fixtures, recorded manual parity, and ASP.NET backend
+compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

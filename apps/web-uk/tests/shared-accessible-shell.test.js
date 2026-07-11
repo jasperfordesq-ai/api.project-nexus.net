@@ -7595,6 +7595,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed skills directory with category drill-in and member search', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.getSkillCategories.mockResolvedValueOnce({
       data: [
         { id: 7, name: 'Practical help', children: [{ id: 8, name: 'Home repairs' }] }
@@ -7618,23 +7619,39 @@ describe('shared accessible frontend shell', () => {
     });
 
     const response = await request(app)
-      .get('/skills?category=7&skill=gardening')
+      .get('/skills?category=7&skill=gardening&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(staticPageRoutes.pages['/skills']).toBeUndefined();
-    expect(response.text).toContain('Skills');
-    expect(response.text).toContain('Browse by category');
+    for (const key of [
+      'skills.title',
+      'skills.description',
+      'skills.search_label',
+      'skills.search_hint',
+      'skills.search_button',
+      'skills.offers',
+      'skills.wants',
+      'skills.back_to_categories',
+      'skills.col_skill',
+      'skills.col_members',
+      'skills.col_offering',
+      'skills.col_requesting',
+      'skills.browse_by_category'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).toContain(t('skills.caption', { community: 'Project NEXUS Accessible' }));
+    expect(response.text).toContain(t('skills.members_with', { skill: 'gardening' }));
+    expect(response.text).toContain(t('skills.skills_in', { category: 'Practical help' }));
     expect(response.text).toContain('Practical help');
     expect(response.text).toContain('Home repairs');
     expect(response.text).toContain('Gardening');
     expect(response.text).toContain('Bicycle repair');
     expect(response.text).toContain('Avery Morgan');
     expect(response.text).toContain('Sam Taylor');
-    expect(response.text).toContain('Advanced');
-    expect(response.text).toContain('Beginner');
-    expect(response.text).toContain('Offers');
-    expect(response.text).toContain('Wants');
+    expect(response.text).toContain(t('skills.proficiency.advanced'));
+    expect(response.text).toContain(t('skills.proficiency.beginner'));
     expect(response.text).toContain('name="skill"');
     expect(response.text).toContain('value="gardening"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');

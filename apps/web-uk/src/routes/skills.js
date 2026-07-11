@@ -14,12 +14,7 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
-const PROFICIENCY_LABELS = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  expert: 'Expert'
-};
+const PROFICIENCY_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -52,9 +47,9 @@ function queryText(value) {
   return String(value || '').trim().slice(0, 100);
 }
 
-function titleCaseLabel(value) {
+function proficiencyLabel(value, t) {
   const key = String(value || '').trim().toLowerCase();
-  return PROFICIENCY_LABELS[key] || '';
+  return PROFICIENCY_LEVELS.includes(key) ? t(`skills.proficiency.${key}`) : '';
 }
 
 function normalizeCategory(node) {
@@ -82,7 +77,7 @@ function normalizeSkill(item) {
   };
 }
 
-function normalizeMember(item) {
+function normalizeMember(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(raw.id || raw.user_id);
   const name = String(raw.name || `${raw.first_name || ''} ${raw.last_name || ''}`).trim();
@@ -90,7 +85,7 @@ function normalizeMember(item) {
   return {
     id,
     name,
-    proficiencyLabel: titleCaseLabel(raw.proficiency_level || raw.proficiency),
+    proficiencyLabel: proficiencyLabel(raw.proficiency_level || raw.proficiency, t),
     isOffering: Boolean(raw.is_offering),
     isRequesting: Boolean(raw.is_requesting)
   };
@@ -134,16 +129,16 @@ router.get('/', asyncRoute(async (req, res) => {
 
     if (skillQuery) {
       skillMembers = collectionFrom(await getSkillMembers(token, skillQuery, { limit: 40 }))
-        .map(normalizeMember)
+        .map((member) => normalizeMember(member, res.locals.t))
         .filter((member) => member.name);
     }
   } catch (error) {
     if (isAuthError(error)) throw error;
-    apiError = 'Skills are temporarily unavailable. Try again in a few minutes.';
+    apiError = `${res.locals.t('errors.503_title')} ${res.locals.t('errors.503_body')}`;
   }
 
   return res.render('skills/index', {
-    title: 'Skills',
+    title: res.locals.t('skills.title'),
     activeNav: 'explore',
     skillTree,
     skillQuery,
