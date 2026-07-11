@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
-const { createTranslator } = require('../src/lib/localization');
+const { createChoiceTranslator, createTranslator } = require('../src/lib/localization');
 
 jest.mock('../src/lib/api', () => ({
   ApiError: class ApiError extends Error {
@@ -13103,6 +13103,63 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain(t('polls.votes_count', { count: 10 }));
     expect(response.text).toContain(t('polls.per_option_votes', { count: 7 }));
     expect(response.text).not.toContain('This community');
+  });
+
+  it('renders poll detail from the exact Arabic Laravel gamification catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    const tc = createChoiceTranslator('ar');
+    api.getPoll.mockResolvedValue({
+      data: {
+        id: 42,
+        question: 'Which project should happen next?',
+        description: 'Choose the next community project.',
+        status: 'closed',
+        creator: { name: 'Ada Lovelace' },
+        expires_at: '2026-08-01T00:00:00Z',
+        has_voted: true,
+        voted_option_id: 7,
+        total_votes: 5,
+        results_visible: true,
+        like_count: 2,
+        has_liked: true,
+        options: [
+          { id: 7, text: 'Community garden', vote_count: 3, percentage: 60 },
+          { id: 8, text: 'Tool library', vote_count: 2, percentage: 40 }
+        ]
+      }
+    });
+    api.getComments.mockResolvedValue({ data: { comments: [], count: 0 } });
+
+    const response = await request(app)
+      .get('/polls/42?status=poll-comment-created&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-language']).toBe('ar');
+    expect(response.text).toContain('lang="ar"');
+    expect(response.text).toContain('dir="rtl"');
+    expect(response.text).not.toContain('>undefined<');
+    for (const key of [
+      'govuk_alpha_gamification.common.back_to_polls',
+      'govuk_alpha_gamification.poll_detail.closed_tag',
+      'govuk_alpha_gamification.poll_detail.results_heading',
+      'govuk_alpha_gamification.poll_detail.your_choice',
+      'govuk_alpha_gamification.poll_detail.social_heading',
+      'govuk_alpha_gamification.poll_detail.unlike_button',
+      'govuk_alpha_gamification.poll_detail.comments_heading',
+      'govuk_alpha_gamification.poll_detail.no_comments',
+      'govuk_alpha_gamification.poll_detail.comment_label',
+      'govuk_alpha_gamification.poll_detail.comment_hint',
+      'govuk_alpha_gamification.poll_detail.comment_button',
+      'govuk_alpha_gamification.poll_detail.states.poll-comment-created'
+    ]) {
+      expect(response.text).toContain(t(key));
+    }
+    expect(response.text).toContain(t('govuk_alpha_gamification.poll_detail.by_label', { name: 'Ada Lovelace' }));
+    expect(response.text).toContain(tc('govuk_alpha_gamification.poll_detail.like_summary', 2, { count: 2 }));
+    expect(response.text).toContain(tc('govuk_alpha_gamification.poll_detail.comment_summary', 0, { count: 0 }));
+    expect(response.text).not.toContain('Polls at this community');
   });
 
   it('preselects ranked poll options in their natural order before voting', async () => {

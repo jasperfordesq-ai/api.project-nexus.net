@@ -188,13 +188,13 @@ function pollStatusBanner(status, t) {
     'poll-delete-failed': { type: 'error', message: t('polls.states.delete-failed') },
     ranked: { type: 'success', message: 'Your ranking has been recorded.' },
     'rank-failed': { type: 'error', message: 'We could not record your ranking. You may have already ranked this poll.' },
-    'poll-liked': { type: 'success', message: 'You liked this poll.' },
-    'poll-unliked': { type: 'success', message: 'You removed your like.' },
-    'poll-like-failed': { type: 'error', message: 'We could not record your like. Please try again.' },
-    'poll-comment-created': { type: 'success', message: 'Your comment has been posted.' },
-    'poll-comment-empty': { type: 'error', message: 'Enter a comment before posting.' },
-    'poll-comment-too-long': { type: 'error', message: 'Your comment is too long. Please shorten it.' },
-    'poll-comment-failed': { type: 'error', message: 'We could not post your comment. Please try again.' }
+    'poll-liked': { type: 'success', message: t('govuk_alpha_gamification.poll_detail.states.poll-liked') },
+    'poll-unliked': { type: 'success', message: t('govuk_alpha_gamification.poll_detail.states.poll-unliked') },
+    'poll-like-failed': { type: 'error', message: t('govuk_alpha_gamification.poll_detail.states.poll-like-failed') },
+    'poll-comment-created': { type: 'success', message: t('govuk_alpha_gamification.poll_detail.states.poll-comment-created') },
+    'poll-comment-empty': { type: 'error', message: t('govuk_alpha_gamification.poll_detail.states.poll-comment-empty') },
+    'poll-comment-too-long': { type: 'error', message: t('govuk_alpha_gamification.poll_detail.states.poll-comment-too-long') },
+    'poll-comment-failed': { type: 'error', message: t('govuk_alpha_gamification.poll_detail.states.poll-comment-failed') }
   };
   return banners[trimmed(status)] || null;
 }

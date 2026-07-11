@@ -833,7 +833,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic poll listing uses the exact Laravel catalog', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic poll listing and detail use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -872,6 +872,42 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+
+      const detailHref = await page.locator('main a').evaluateAll((links) => (
+        links.map((link) => link.getAttribute('href') || '')
+          .find((href) => /\/polls\/\d+(?:$|\?)/.test(href) && !href.includes('/rank')) || ''
+      ));
+      expect(detailHref, 'the live poll fixture did not expose a safe detail link').not.toBe('');
+      const detailPath = `${detailHref}${detailHref.includes('?') ? '&' : '?'}locale=ar`;
+      const detailResponse = await page.goto(detailPath, { waitUntil: 'domcontentloaded' });
+      expect(detailResponse, `${detailPath} did not return a document response`).not.toBeNull();
+      expect(detailResponse.status(), `${detailPath} returned HTTP ${detailResponse.status()}`).toBeLessThan(400);
+      expect(detailResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+      await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+      await expect(page.locator('h1')).not.toBeEmpty();
+      await expect(page.locator('#poll-social')).toHaveText(translate('ar', 'govuk_alpha_gamification.poll_detail.social_heading'));
+
+      const detailOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(detailOverflow.scrollWidth, `${detailPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(detailOverflow.clientWidth + 1);
+      const detailAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-poll-detail', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: detailOverflow,
+          violations: formatViolations(detailAxeResults.violations),
+          incomplete: formatViolations(detailAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(detailAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

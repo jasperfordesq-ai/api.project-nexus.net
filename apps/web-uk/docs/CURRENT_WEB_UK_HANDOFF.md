@@ -3955,6 +3955,27 @@ gaps and remain explicitly open. The latest uninterrupted full browser
 aggregate remains 62/62 at `e155375c`; this current-source route is
 focused-green, not a replacement full aggregate.
 
+Latest focused poll-detail localization slice: signed `/polls/{id}` now uses
+Laravel's exact `govuk_alpha_gamification.poll_detail` catalog for the
+document/page title, tenant caption, status tags, metadata and plural counts,
+ranked link, no-options/vote/results states, choice markers, likes/comments
+social section, comment timestamps, form labels, hints, and actions. Like and
+comment redirects now resolve the exact Laravel outcome-state keys. The
+authoritative Arabic `govuk_alpha_gamification` namespace is wholly
+English-identical, so Web UK deliberately exposes those read-only source values
+instead of inventing translations. Focused English/Arabic list/detail coverage
+passed `2/2`; the authenticated Arabic Laravel-backed list-to-detail journey
+passed HTTP 200, exact catalog markers, non-empty captions, RTL, 320px reflow,
+and axe (`1/1`, 39.6 seconds). Full verification passed 45/45 Jest suites and
+1,422/1,422 tests, ESLint, the 290-template conservative audit with zero
+matches, and the refreshed route matrix at 608/608 matched with 0 missing,
+0 extra, and 3 ignored infrastructure routes. Rank, dedicated create, and
+manage catalog conversion remain open. The latest uninterrupted full browser
+aggregate remains 62/62 at `e155375c`; this current-source list/detail journey
+is focused-green, not a replacement full aggregate. The browser process handle
+was lost once during task compaction and the journey was rerun from scratch;
+the completed rerun above is the evidence used.
+
 ## Documents To Trust
 
 Read these in order:
