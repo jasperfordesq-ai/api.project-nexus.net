@@ -4810,6 +4810,17 @@ removal checkbox remains withheld because Laravel v2 exposes Event image upload
 but no equivalent image-removal endpoint; rendering a non-functional control
 would overstate workflow parity.
 
+The default-English detail follow-up replaces Web UK-authored Upcoming/Past,
+combined date, Group, Capacity, and "About this event" presentation with
+Blade's Event details caption, full/places-left state, Description section, and
+Event information rows for Starts, Ends, Location, safe online/attendee-only
+video links, organiser, category, Going, and Interested. Cancellation reasons
+and cover alt text now use the source catalog; external event links are limited
+to HTTP/HTTPS and rendered through auto-escaped markup. Focused render/source
+proof passed `10/10`; the strengthened Laravel lifecycle passed `1/1` in `1.1`
+minutes and proved the created detail structure before edit/delete. Full Jest
+passed `45/45` suites and `1,449/1,449` tests with green lint.
+
 ## Documents To Trust
 
 Read these in order:

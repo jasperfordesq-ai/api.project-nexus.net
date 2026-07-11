@@ -5,6 +5,7 @@
 
 const express = require('express');
 const fs = require('fs/promises');
+const { URL } = require('node:url');
 const {
   getEvents,
   getEvent,
@@ -37,6 +38,17 @@ function tokenFrom(req) {
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
+}
+
+function safeExternalHttpUrl(value) {
+  const text = trimmed(value, 2048);
+  if (!text) return '';
+  try {
+    const parsed = new URL(text);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+  } catch {
+    return '';
+  }
 }
 
 function positiveInteger(value) {
@@ -808,6 +820,10 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   ]);
 
   const event = eventFrom(eventResult);
+  event.online_link = safeExternalHttpUrl(event.online_link ?? event.onlineLink);
+  event.onlineLink = event.online_link;
+  event.video_url = safeExternalHttpUrl(event.video_url ?? event.videoUrl);
+  event.videoUrl = event.video_url;
   const ownerId = eventOwnerId(event);
   const currentUserId = idFrom(currentUserResult);
   const isCurrentUserOwner = ownerId !== null && currentUserId !== null && String(ownerId) === String(currentUserId);

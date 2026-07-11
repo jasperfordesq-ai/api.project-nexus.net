@@ -20,6 +20,14 @@ describe('tenant-aware template helper conversion', () => {
     expect(template).not.toMatch(/action=['"]\/events\//);
     expect(template).not.toContain('href: "/events/"');
     expect(template).toContain('urlFor(');
+    expect(template).toContain('t("events.detail_title")');
+    expect(template).toContain('t("events.description_title")');
+    expect(template).toContain('t("events.summary_title")');
+    expect(template).toContain('t("events.starts")');
+    expect(template).toContain('t("events.attendees_label")');
+    expect(template).toContain('t("events.interested_label")');
+    expect(template).not.toContain('About this event');
+    expect(template).not.toContain('key: { text: "Group" }');
   });
 
   it('keeps event index and form controls behind urlFor()', () => {
@@ -2076,6 +2084,9 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('const canEditFromApi = event.can_edit === true || event.canEdit === true');
     expect(route).toContain('event.can_edit = Boolean(token) && (canEditFromApi || isCurrentUserOwner)');
     expect(route).toContain('event.canEdit = event.can_edit');
+    expect(route).toContain("['http:', 'https:'].includes(parsed.protocol)");
+    expect(route).toContain('event.online_link = safeExternalHttpUrl');
+    expect(route).toContain('event.video_url = safeExternalHttpUrl');
   });
 
   it('avoids duplicate navigation on direct conversations', () => {

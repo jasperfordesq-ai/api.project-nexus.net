@@ -2,7 +2,6 @@
 
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
 {% from "govuk/components/radios/macro.njk" import govukRadios %}
 
@@ -28,13 +27,16 @@
       {% endif %}
 
       <div class="app-page-header">
-        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ event.title }}</h1>
-        {% if (event.isCancelled or event.is_cancelled) %}
-          {{ govukTag({ text: "Cancelled", classes: "govuk-tag--red" }) }}
-        {% elif event.isPast or event.is_past %}
-          {{ govukTag({ text: "Past event", classes: "govuk-tag--grey" }) }}
-        {% else %}
-          {{ govukTag({ text: "Upcoming", classes: "govuk-tag--green" }) }}
+        <span class="govuk-caption-l">{{ t("events.detail_title") }}</span>
+        <h1 class="govuk-heading-xl">{{ event.title }}</h1>
+        {% set attendeeCount = event.attendeeCount or event.attendee_count or 0 %}
+        {% set interestedCount = event.interestedCount or event.interested_count or 0 %}
+        {% set maxAttendees = event.maxAttendees or event.max_attendees %}
+        {% set spotsLeft = event.spotsLeft if event.spotsLeft is defined else event.spots_left %}
+        {% if maxAttendees and attendeeCount >= maxAttendees %}
+          <p class="govuk-!-margin-bottom-4">{{ govukTag({ text: t("events.full"), classes: "govuk-tag--red" }) }}</p>
+        {% elif spotsLeft is not none and spotsLeft is defined %}
+          <p class="govuk-!-margin-bottom-4">{{ govukTag({ text: t("events.spots_left", { count: spotsLeft }), classes: "govuk-tag--green" }) }}</p>
         {% endif %}
       </div>
 
@@ -43,61 +45,86 @@
           text: t("events.polish_events.cancelled_banner_heading"),
           iconFallbackText: "Warning"
         }) }}
+        {% if event.cancellation_reason or event.cancellationReason %}
+          <p class="govuk-body govuk-!-margin-top-1"><strong>{{ t("events.polish_events.cancelled_reason_prefix") }}</strong> {{ event.cancellation_reason or event.cancellationReason }}</p>
+        {% endif %}
       {% endif %}
 
       {% set coverImage = event.cover_image or event.coverImage %}
       {% if coverImage %}
         <figure class="nexus-alpha-detail-hero">
-          <img src="{{ coverImage }}" alt="Photo for {{ event.title }}" width="640" height="360" decoding="async">
+          <img src="{{ coverImage }}" alt="{{ t('events.image_alt', { title: event.title }) }}" width="640" height="360" decoding="async">
         </figure>
       {% endif %}
 
-      {# Event details #}
-      {% set organizer = event.createdBy or event.created_by or event.organizer %}
-      {% set eventStartTime = event.start_time or event.startTime %}
-      {% set eventEndTime = event.end_time or event.endTime %}
-      {{ govukSummaryList({
-        rows: [
-          {
-            key: { text: t("events.create_time_title") },
-            value: {
-              html: (eventStartTime | formatEventDate) +
-                    ("<br>to " + (eventEndTime | formatEventDate) if eventEndTime else "")
-            }
-          } if eventStartTime,
-          {
-            key: { text: "Location" },
-            value: { text: event.location or "Not specified" }
-          },
-          {
-            key: { text: "Group" },
-            value: {
-              html: "<a href='" + urlFor("/groups/" + (event.group.id | string)) + "' class='govuk-link'>" + event.group.name + "</a>"
-            }
-          } if event.group,
-          {
-            key: { text: "Organised by" },
-            value: {
-              html: "<a href='" + urlFor("/members/" + (organizer.id | string)) + "' class='govuk-link'>" +
-                    (organizer.firstName or organizer.first_name or "") + " " + (organizer.lastName or organizer.last_name or "") + "</a>"
-            }
-          } if organizer,
-          {
-            key: { text: t("events.create_capacity_title") },
-            value: {
-              text: (event.attendeeCount or event.attendee_count or 0) + " attending" +
-                    (" / " + (event.maxAttendees or event.max_attendees) + " max" if event.maxAttendees or event.max_attendees else "")
-            }
-          }
-        ] | selectattr("key") | list
-      }) }}
-
       {% if event.description %}
-        <h2 class="govuk-heading-m govuk-!-margin-top-6">About this event</h2>
+        <h2 class="govuk-heading-l">{{ t("events.description_title") }}</h2>
         <div class="govuk-body app-formatted-text">
           {{ event.description | nl2br | safe }}
         </div>
       {% endif %}
+
+      {# Event information #}
+      {% set organizer = event.createdBy or event.created_by or event.organizer or event.user %}
+      {% set organizerName = organizer.name or (((organizer.firstName or organizer.first_name or "") + " " + (organizer.lastName or organizer.last_name or "")) | trim) if organizer else "" %}
+      {% set eventStartTime = event.start_time or event.startTime %}
+      {% set eventEndTime = event.end_time or event.endTime %}
+      {% set onlineLink = event.online_link or event.onlineLink %}
+      {% set videoUrl = event.video_url or event.videoUrl %}
+      {% set category = event.category %}
+      {% set categoryName = category.name if category else (event.category_name or event.categoryName) %}
+      {% set canSeeVideo = (event.canEdit or event.can_edit) or (myRsvp and myRsvp.status in ["going", "interested"]) %}
+      <h2 class="govuk-heading-l">{{ t("events.summary_title") }}</h2>
+      <dl class="govuk-summary-list">
+        {% if eventStartTime %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.starts") }}</dt>
+            <dd class="govuk-summary-list__value">{{ eventStartTime | formatEventDate }}</dd>
+          </div>
+        {% endif %}
+        {% if eventEndTime %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.ends") }}</dt>
+            <dd class="govuk-summary-list__value">{{ eventEndTime | formatEventDate }}</dd>
+          </div>
+        {% endif %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ t("events.location") }}</dt>
+          <dd class="govuk-summary-list__value">{{ event.location or t("events.online") }}</dd>
+        </div>
+        {% if onlineLink %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.online_link_label") }}</dt>
+            <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ onlineLink }}" rel="noopener noreferrer">{{ t("events.online_link_text") }}</a></dd>
+          </div>
+        {% endif %}
+        {% if videoUrl and canSeeVideo %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.polish_events.video_url_summary_label") }}</dt>
+            <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ videoUrl }}" rel="noopener noreferrer">{{ t("events.polish_events.video_url_link_text") }}</a></dd>
+          </div>
+        {% endif %}
+        {% if organizer and organizer.id and organizerName %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.organiser") }}</dt>
+            <dd class="govuk-summary-list__value"><a href="{{ urlFor('/members/' + (organizer.id | string)) }}" class="govuk-link">{{ organizerName }}</a></dd>
+          </div>
+        {% endif %}
+        {% if categoryName %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ t("events.category") }}</dt>
+            <dd class="govuk-summary-list__value">{{ categoryName }}</dd>
+          </div>
+        {% endif %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ t("events.attendees_label") }}</dt>
+          <dd class="govuk-summary-list__value">{{ tc("events.attendees", attendeeCount, { count: attendeeCount }) }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">{{ t("events.interested_label") }}</dt>
+          <dd class="govuk-summary-list__value">{{ tc("events.interested", interestedCount, { count: interestedCount }) }}</dd>
+        </div>
+      </dl>
 
       {% if isAuthenticated %}
         <p class="govuk-body govuk-!-margin-top-4">

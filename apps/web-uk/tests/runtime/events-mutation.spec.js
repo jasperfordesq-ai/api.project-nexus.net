@@ -79,6 +79,13 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     expect(eventId).toBeGreaterThan(0);
     expect(new URL(page.url()).pathname).toBe(`${mountPath}/events/${eventId}`);
     await expect(page.locator('h1')).toContainText(createdTitle);
+    await expect(page.locator('.govuk-caption-l')).toHaveText('Event details');
+    await expect(page.getByRole('heading', { name: 'Description', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Event information', exact: true })).toBeVisible();
+    await expect(page.locator('dt', { hasText: 'Starts' })).toHaveCount(1);
+    await expect(page.locator('dt', { hasText: 'Going' })).toHaveCount(1);
+    await expect(page.locator('dt', { hasText: 'Interested' })).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'About this event', exact: true })).toHaveCount(0);
 
     await page.goto(`${mountPath}/events/${eventId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await page.locator('#title').fill(updatedTitle);

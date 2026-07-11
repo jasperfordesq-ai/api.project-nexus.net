@@ -21236,6 +21236,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Community garden day');
     expect(response.text).toContain('Planting and tea');
+    expect(response.text).toContain('Event details');
+    expect(response.text).toContain('Description');
+    expect(response.text).toContain('Event information');
+    expect(response.text).toContain('Starts');
+    expect(response.text).toContain('Going');
+    expect(response.text).toContain('Interested');
+    expect(response.text).not.toContain('About this event');
+    expect(response.text).not.toContain('Date and time');
+    expect(response.text).not.toContain('Capacity');
+  });
+
+  it('rejects unsafe external links from Laravel event detail payloads', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Safe community event',
+        description: 'No unsafe links should render.',
+        start_time: '2026-08-01T10:00:00',
+        online_link: 'javascript:alert(1)',
+        video_url: 'data:text/html,unsafe',
+        my_rsvp: 'going'
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('javascript:alert(1)');
+    expect(response.text).not.toContain('data:text/html,unsafe');
+    expect(response.text).not.toContain('Join online');
+    expect(response.text).not.toContain('Join the meeting online');
   });
 
   it('renders Laravel v2 group detail payloads on the group detail page', async () => {
