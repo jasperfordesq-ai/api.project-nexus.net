@@ -4204,6 +4204,22 @@ coupons-disabled and returns the existing Laravel-aligned 403 gate, so enabled-
 tenant body runtime proof, QR redemption/validation, runtime persistence,
 recorded manual parity, and ASP.NET backend compatibility remain open.
 
+Latest focused Premium localization and interval-parity slice: signed
+`/premium`, `/premium/manage`, and `/premium/return` now use Laravel's exact
+request-locale `premium`, `polish_commerce`, and
+`govuk_alpha_commerce.premium_manage` catalogs for pricing/current-plan/status
+copy, monthly/yearly labels, management summary/actions/warnings, and return
+outcomes. Tiers with both monthly and yearly prices now render Blade's radio
+choice in each form, so the selected interval works without JavaScript instead
+of silently defaulting to monthly. Focused Arabic pricing/manage/return coverage
+passed `1/1`, including both radio inputs and the success/status states.
+Complete verification passed 45/45 Jest suites and 1,424/1,424 tests,
+warning-free ESLint, the 290-template zero-match audit, and the route matrix at
+608 Laravel routes, 608 matched, 0 missing, 0 extra, and 3 ignored
+infrastructure routes. Currency-symbol parity, external Stripe checkout/portal
+behavior, enabled-tenant persistence, feature-gate depth, recorded manual
+parity, and ASP.NET backend compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

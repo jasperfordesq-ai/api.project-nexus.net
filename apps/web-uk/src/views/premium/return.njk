@@ -13,17 +13,17 @@
       <h1 class="govuk-panel__title">{{ t("polish_commerce.premium_success_title") }}</h1>
       <div class="govuk-panel__body">
         {% if tierName %}
-          Your recurring donation to {{ tierName }} is active. Thank you for your support.
+          {{ t("polish_commerce.premium_success_body", { name: tierName }) }}
         {% else %}
-          Your recurring donation has been confirmed.
+          {{ t("polish_commerce.premium_unsubscribed_body") }}
         {% endif %}
       </div>
     </div>
-    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">Manage your support</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">{{ t("govuk_alpha_commerce.premium_manage.title") }}</a></p>
   {% elif returnStatus == 'pending' %}
     <h1 class="govuk-heading-l">{{ t("polish_commerce.premium_pending_title") }}</h1>
     <div class="govuk-inset-text"><p class="govuk-body">{{ t("polish_commerce.premium_pending_body") }}</p></div>
-    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">Check your support status</a></p>
+    <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/premium/manage') }}">{{ t("govuk_alpha_commerce.premium_manage.status_label") }}</a></p>
   {% else %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">

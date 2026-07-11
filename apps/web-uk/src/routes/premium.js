@@ -102,11 +102,11 @@ function priceFromCents(value) {
   return (cents / 100).toFixed(2);
 }
 
-function normalizeTier(tier) {
+function normalizeTier(tier, t) {
   return {
     ...tier,
     id: positiveInteger(tier.id) || 0,
-    name: trimmed(tier.name) || 'Supporter',
+    name: trimmed(tier.name) || t('premium.title'),
     description: trimmed(tier.description),
     monthlyPrice: priceFromCents(tier.monthly_price_cents),
     yearlyPrice: priceFromCents(tier.yearly_price_cents),
@@ -126,23 +126,25 @@ function currentTierName(me) {
   return trimmed(tier.tier_name || tier.name || subscription.tier_name || subscription.name);
 }
 
-function normalizeSubscription(subscription) {
+function normalizeSubscription(subscription, t) {
   if (!subscription || typeof subscription !== 'object') return null;
 
   const rawStatus = trimmed(subscription.status) || 'unknown';
   const interval = trimmed(subscription.billing_interval || subscription.interval);
   return {
     ...subscription,
-    tierName: trimmed(subscription.tier_name || subscription.name) || 'Supporter',
+    tierName: trimmed(subscription.tier_name || subscription.name) || t('premium.title'),
     status: rawStatus,
     statusLabel: {
-      active: 'Active',
-      cancelled: 'Cancelled',
-      canceled: 'Cancelled',
-      past_due: 'Past due'
+      active: t('govuk_alpha_commerce.premium_manage.status_active'),
+      cancelled: t('govuk_alpha_commerce.premium_manage.status_cancelled'),
+      canceled: t('govuk_alpha_commerce.premium_manage.status_cancelled'),
+      past_due: t('govuk_alpha_commerce.premium_manage.status_past_due')
     }[rawStatus] || rawStatus,
     statusClass: rawStatus === 'active' ? 'govuk-tag--green' : 'govuk-tag--grey',
-    intervalLabel: interval === 'yearly' || interval === 'year' ? 'Yearly' : 'Monthly',
+    intervalLabel: interval === 'yearly' || interval === 'year'
+      ? t('govuk_alpha_commerce.premium_manage.interval_yearly')
+      : t('govuk_alpha_commerce.premium_manage.interval_monthly'),
     currentPeriodEnd: trimmed(subscription.current_period_end),
     canceledAt: trimmed(subscription.canceled_at),
     features: Array.isArray(subscription.features) ? subscription.features.map(trimmed).filter(Boolean) : []
@@ -150,19 +152,18 @@ function normalizeSubscription(subscription) {
 }
 
 const PRICING_STATUS_MESSAGES = {
-  'subscribe-failed': { type: 'error', message: 'Sorry, we could not start checkout. Please try again.' },
-  'no-subscription': { type: 'notice', message: 'Choose a support tier before opening subscription management.' }
+  'subscribe-failed': { type: 'error', messageKey: 'premium.states.subscribe-failed' }
 };
 
 const MANAGE_STATUS_MESSAGES = {
-  'cancel-scheduled': { type: 'success', message: 'Your cancellation has been scheduled.' },
-  'cancel-failed': { type: 'error', message: 'Sorry, we could not cancel your support plan. Please try again.' },
-  'portal-failed': { type: 'error', message: 'Sorry, we could not open billing management. Please try again.' }
+  'cancel-scheduled': { type: 'success', messageKey: 'govuk_alpha_commerce.premium_manage.status_cancel_scheduled' },
+  'cancel-failed': { type: 'error', messageKey: 'govuk_alpha_commerce.premium_manage.status_cancel_failed' },
+  'portal-failed': { type: 'error', messageKey: 'govuk_alpha_commerce.premium_manage.status_portal_failed' }
 };
 
-function routeStatus(query, map) {
+function routeStatus(query, map, t) {
   const key = typeof query.status === 'string' ? query.status : '';
-  return map[key] ? { key, ...map[key] } : null;
+  return map[key] ? { key, type: map[key].type, message: t(map[key].messageKey) } : null;
 }
 
 function externalUrlFrom(result, key) {
@@ -185,11 +186,12 @@ router.get('/', asyncRoute(async (req, res) => {
     const me = premiumMe(meResult);
 
     return res.render('premium/index', {
-      title: 'Donate',
+      title: res.locals.t('premium.title'),
       activeNav: 'explore',
-      tiers: listTiers(tiersResult).map(normalizeTier).filter((tier) => tier.id > 0),
+      tiers: listTiers(tiersResult)
+        .map((tier) => normalizeTier(tier, res.locals.t)).filter((tier) => tier.id > 0),
       currentTierName: currentTierName(me),
-      status: routeStatus(req.query, PRICING_STATUS_MESSAGES)
+      status: routeStatus(req.query, PRICING_STATUS_MESSAGES, res.locals.t)
     });
   } catch (error) {
     if (renderPremiumError(error, res)) return undefined;
@@ -203,16 +205,16 @@ router.get('/manage', asyncRoute(async (req, res) => {
 
   try {
     const me = premiumMe(await getMemberPremiumMe(token));
-    const subscription = normalizeSubscription(me.subscription);
+    const subscription = normalizeSubscription(me.subscription, res.locals.t);
     if (subscription === null) {
       return redirectTo(res, '/premium?status=no-subscription');
     }
 
     return res.render('premium/manage', {
-      title: 'Manage your support',
+      title: res.locals.t('govuk_alpha_commerce.premium_manage.title'),
       activeNav: 'explore',
       subscription,
-      status: routeStatus(req.query, MANAGE_STATUS_MESSAGES)
+      status: routeStatus(req.query, MANAGE_STATUS_MESSAGES, res.locals.t)
     });
   } catch (error) {
     if (renderPremiumError(error, res, 'Manage your support')) return undefined;
@@ -232,7 +234,7 @@ router.get('/return', asyncRoute(async (req, res) => {
   try {
     const me = returnStatus === 'success' ? premiumMe(await getMemberPremiumMe(token)) : {};
     return res.render('premium/return', {
-      title: 'Support confirmation',
+      title: res.locals.t('premium.title'),
       activeNav: 'explore',
       returnStatus,
       tierName: currentTierName(me)

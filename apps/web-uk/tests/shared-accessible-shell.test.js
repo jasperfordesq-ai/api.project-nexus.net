@@ -8982,6 +8982,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders Laravel-backed premium pricing, management, and return GET pages', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('ar');
     api.getMemberPremiumTiers.mockResolvedValue({
       data: {
         tiers: [
@@ -9019,40 +9020,51 @@ describe('shared accessible frontend shell', () => {
     expect(api.getMemberPremiumTiers).not.toHaveBeenCalled();
 
     const pricing = await request(app)
-      .get('/premium?status=subscribe-failed')
+      .get('/premium?status=subscribe-failed&locale=ar')
       .set('Cookie', signedCookieHeader());
     expect(pricing.status).toBe(200);
     expect(api.getMemberPremiumTiers).toHaveBeenCalledWith('test-token');
     expect(api.getMemberPremiumMe).toHaveBeenCalledWith('test-token');
-    expect(pricing.text).toContain('Donate');
+    expect(pricing.text).toContain(t('premium.title'));
+    expect(pricing.text).toContain(t('premium.caption', { community: 'Project NEXUS Accessible' }));
+    expect(pricing.text).toContain(t('premium.description'));
     expect(pricing.text).toContain('Community Champion');
     expect(pricing.text).toContain('Support local projects every month.');
-    expect(pricing.text).toContain('5.00 per month');
-    expect(pricing.text).toContain('50.00 per year');
+    expect(pricing.text).toContain(`5.00</strong> ${t('premium.per_month')}`);
+    expect(pricing.text).toContain(`50.00</strong> ${t('premium.per_year')}`);
     expect(pricing.text).toContain('Supporter badge');
-    expect(pricing.text).toContain('Sorry, we could not start checkout. Please try again.');
+    expect(pricing.text).toContain(t('premium.states.subscribe-failed'));
+    expect(pricing.text).toContain(t('premium.current_plan_title'));
+    expect(pricing.text).toContain(t('premium.current_plan_notice', { name: 'Community Champion' }));
+    expect(pricing.text).toContain(t('polish_commerce.premium_interval_heading'));
+    expect(pricing.text).toContain('name="interval" type="radio" value="monthly" checked');
+    expect(pricing.text).toContain('name="interval" type="radio" value="yearly"');
+    expect(pricing.text).toContain(t('premium.subscribe_button'));
     expect(pricing.text).toContain('method="post" action="/premium/subscribe"');
     expect(pricing.text).not.toContain('shared accessible frontend preparation page');
 
     const manage = await request(app)
-      .get('/premium/manage?status=cancel-scheduled')
+      .get('/premium/manage?status=cancel-scheduled&locale=ar')
       .set('Cookie', signedCookieHeader());
     expect(manage.status).toBe(200);
-    expect(manage.text).toContain('Manage your support');
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.title'));
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.description'));
     expect(manage.text).toContain('Community Champion');
-    expect(manage.text).toContain('Active');
-    expect(manage.text).toContain('Yearly');
-    expect(manage.text).toContain('Your cancellation has been scheduled.');
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.status_active'));
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.interval_yearly'));
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.status_cancel_scheduled'));
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.manage_billing'));
+    expect(manage.text).toContain(t('govuk_alpha_commerce.premium_manage.cancel_warning'));
     expect(manage.text).toContain('method="post" action="/premium/portal"');
     expect(manage.text).toContain('method="post" action="/premium/cancel"');
 
     const returned = await request(app)
-      .get('/premium/return?status=success')
+      .get('/premium/return?status=success&locale=ar')
       .set('Cookie', signedCookieHeader());
     expect(returned.status).toBe(200);
-    expect(returned.text).toContain('Donation support confirmed');
+    expect(returned.text).toContain(t('polish_commerce.premium_success_title'));
     expect(returned.text).toContain('Community Champion');
-    expect(returned.text).toContain('Thank you for your support.');
+    expect(returned.text).toContain(t('polish_commerce.premium_success_body', { name: 'Community Champion' }));
     expect(returned.text).toContain('href="/premium/manage"');
   });
 
