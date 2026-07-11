@@ -21779,6 +21779,8 @@ describe('shared accessible frontend shell', () => {
       expect(edit.text).toContain('value="Garden tool sharing"');
       expect(edit.text).toContain('value="3" selected');
       expect(edit.text).toContain('value="hybrid" checked');
+      expect(edit.text).not.toContain('src="/uploads/listings/cover.webp"');
+      expect(edit.text).toContain('/uploads/listings/cover.webp');
       expect(edit.text).not.toContain('name="status"');
       expect(edit.text).not.toContain('value="inactive"');
 

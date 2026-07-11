@@ -4744,6 +4744,26 @@ that concrete regression was corrected and the rerun passed `45/45` suites and
 `1,444/1,444` tests. Lint and branding remain green, and the localization audit
 now covers `285` active templates with zero conservative matches.
 
+## 2026-07-11 Disposable Listing Mutation Certification
+
+`npm run smoke:laravel:listings-mutation` now creates a uniquely named Listing
+through the Web UK multipart form, uploads a disposable PNG, verifies the
+Laravel API row and image URL, edits the title without selecting a replacement
+image, verifies the uploaded file returns HTTP 200 from Laravel's origin,
+deletes through the rendered warning form, and proves final API absence. A
+`finally` path deletes either title directly through Laravel if any assertion
+fails. The terminal run passed `1/1` in `80.6` seconds and retained no fixture.
+
+The first attempts exposed harness selectors before creation, then one real
+application regression: browsers submit an unnamed empty file part on the
+multipart edit form, and the shared parser rejected it before the route could
+preserve the existing image. Multipart parsing now filters only unnamed file
+placeholders while retaining real-file size/MIME validation. The live trace
+also exposed backend-relative `/uploads/...` image URLs resolving against Web
+UK and returning 404; Listing edit now resolves same-origin Laravel assets
+through the existing safe backend URL helper. Full verification passed `45/45`
+Jest suites and `1,445/1,445` tests with green lint.
+
 ## Documents To Trust
 
 Read these in order:

@@ -197,9 +197,9 @@
 
         <div class="govuk-form-group{% if fieldErrors.image %} govuk-form-group--error{% endif %}">
           <label class="govuk-label govuk-label--m" for="image">Image{% if not config.requireImage %} (optional){% endif %}</label>
-          {% if listing and listing.image_url %}
+          {% if listingImageUrl %}
             <p class="govuk-body-s govuk-!-margin-bottom-1">Current image</p>
-            <img src="{{ listing.image_url }}" alt="{{ currentTitle }}" width="160" height="120" loading="lazy" decoding="async" class="govuk-!-margin-bottom-2">
+            <img src="{{ listingImageUrl }}" alt="{{ currentTitle }}" width="160" height="120" loading="lazy" decoding="async" class="govuk-!-margin-bottom-2">
           {% endif %}
           <div id="image-hint" class="govuk-hint">JPEG, PNG, GIF or WebP, up to {{ config.maxImageSizeMb }} MB. If the upload fails after saving, the listing itself is kept and you will be told.</div>
           {% if fieldErrors.image %}

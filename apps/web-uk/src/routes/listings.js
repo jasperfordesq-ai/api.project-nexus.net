@@ -29,6 +29,7 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
+const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
@@ -368,6 +369,7 @@ async function listingFormViewData(req, options) {
   return {
     title: options.title,
     listing: options.listing || null,
+    listingImageUrl: resolveBackendAssetUrl(options.listing?.image_url || options.listing?.imageUrl),
     values: options.values || null,
     errors: options.errors || null,
     fieldErrors: options.fieldErrors || {},

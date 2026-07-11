@@ -1780,6 +1780,17 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
+  it('filters unnamed optional file placeholders before multipart size validation', () => {
+    const multipart = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'middleware', 'multipart.js'),
+      'utf8'
+    );
+
+    expect(multipart).toContain('filter: part =>');
+    expect(multipart).toContain("part.originalFilename.trim() !== ''");
+    expect(multipart).toContain('allowEmptyFiles: false');
+  });
+
   it('keeps goals browse, detail, progress, and social controls behind urlFor()', () => {
     const templates = [
       'buddy-actions.njk',

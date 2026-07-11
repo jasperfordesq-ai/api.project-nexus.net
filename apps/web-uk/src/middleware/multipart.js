@@ -35,7 +35,12 @@ function parseMultipartForm(options = {}) {
     const form = formidable({
       multiples: options.multiples === true,
       maxFileSize: options.maxFileSize || 10 * 1024 * 1024,
-      allowEmptyFiles: false
+      allowEmptyFiles: false,
+      // Browsers submit an empty file part for optional file controls on an
+      // otherwise valid multipart form. Ignore that placeholder before
+      // Formidable applies its non-empty-file rule; real named uploads retain
+      // the existing size and route-level MIME validation.
+      filter: part => typeof part.originalFilename === 'string' && part.originalFilename.trim() !== ''
     });
 
     return form.parse(req, (error, fields, files) => {
