@@ -4046,6 +4046,22 @@ verification passed 45/45 Jest suites and 1,424/1,424 tests, ESLint, the
 reminder, buddy-actions, insights, history, and social subpages remain open; the
 latest uninterrupted full browser aggregate remains 62/62 at `e155375c`.
 
+Latest focused Goals-edit localization slice: signed `/goals/{id}/edit` now
+uses Laravel's exact request-locale keys for its document title, validation
+outcome, back link, caption/title, every field label and hint, all five reminder
+frequency options, public checkbox, save action, and delete warning/action.
+Route-level editable-goal fallbacks now receive the request translator. Focused
+Arabic owner-edit coverage passed `1/1`. The live Arabic index/detail/edit
+journey first returned 200 on every page but selected the cookie-banner submit
+button in its save-action assertion; after scoping the locator to the main edit
+form, the rerun passed exact markers, no `undefined`, RTL, 320px reflow, and axe
+(`1/1`, 3.1 minutes wall time, including a 69.9-second Laravel dashboard; 1.1
+minutes inside the test). Full verification passed 45/45 Jest suites and
+1,424/1,424 tests, ESLint, the 290-template zero-match audit, and 608/608 route
+parity. Check-in, reminder, buddy-actions, insights, history, and social remain
+open; the latest uninterrupted full browser aggregate is still 62/62 at
+`e155375c`.
+
 ## Documents To Trust
 
 Read these in order:

@@ -8137,6 +8137,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel goal edit form for signed-in owners', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -8151,17 +8152,35 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42/edit');
     const signed = await request(app)
-      .get('/goals/42/edit?status=goal-invalid')
+      .get('/goals/42/edit?status=goal-invalid&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(staticPageRoutes.pages['/goals/{param}/edit']).toBeUndefined();
-    expect(signed.text).toContain('Back to goal');
-    expect(signed.text).toContain('Update the details of your goal.');
-    expect(signed.text).toContain('Edit your goal');
-    expect(signed.text).toContain('Enter a goal and a target greater than zero.');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goal',
+      'goals.edit_caption',
+      'goals.edit_title',
+      'goals.states.goal-invalid',
+      'goals.title_label',
+      'goals.target_label',
+      'goals.target_hint',
+      'goals.description_label',
+      'goals.deadline_label',
+      'goals.frequency_label',
+      'goals.frequency_hint',
+      'goals.public_label',
+      'goals.save_button',
+      'goals.delete_title',
+      'goals.delete_warning',
+      'goals.delete_button',
+      'states.warning'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('method="post" action="/goals/42/edit"');
     expect(signed.text).toContain('id="title" name="title" type="text" maxlength="255" value="Learn bicycle repair"');
     expect(signed.text).toContain('id="target_value" name="target_value" type="number"');
@@ -8169,13 +8188,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Complete the local bike maintenance course.');
     expect(signed.text).toContain('id="deadline" name="deadline" type="date" value="2026-08-01"');
     expect(signed.text).toContain('id="checkin_frequency" name="checkin_frequency"');
-    expect(signed.text).toContain('<option value="weekly" selected>Weekly</option>');
+    expect(signed.text).toContain(`<option value="weekly" selected>${t('goals.frequency_weekly')}</option>`);
     expect(signed.text).toContain('id="is_public" name="is_public" type="checkbox" value="1" checked');
-    expect(signed.text).toContain('Save changes');
-    expect(signed.text).toContain('Delete this goal');
-    expect(signed.text).toContain('Deleting a goal removes it and its progress history for good. This cannot be undone.');
     expect(signed.text).toContain('method="post" action="/goals/42/delete"');
-    expect(signed.text).toContain('Delete goal');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');

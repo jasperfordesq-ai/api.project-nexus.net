@@ -980,7 +980,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
-  test('Arabic goals index and detail use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
+  test('Arabic goals index detail and edit use their exact Laravel catalogs', async ({ browser, baseURL }, testInfo) => {
     test.setTimeout(120_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
@@ -1053,6 +1053,38 @@ test.describe('representative authenticated-page accessibility gate', () => {
         contentType: 'application/json'
       });
       expect(formatViolations(seriousOrCritical(detailAxeResults.violations))).toEqual([]);
+
+      const editPath = `${authenticatedMountPath}/goals/162/edit?locale=ar`;
+      const editResponse = await page.goto(editPath, { waitUntil: 'domcontentloaded' });
+      expect(editResponse, `${editPath} did not return a document response`).not.toBeNull();
+      expect(editResponse.status(), `${editPath} returned HTTP ${editResponse.status()}`).toBeLessThan(400);
+      expect(editResponse.headers()['content-language']).toBe('ar');
+      expect(page.url()).not.toContain('/login');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('h1')).toHaveText(translate('ar', 'goals.edit_title'));
+      await expect(page.locator('.govuk-back-link')).toHaveText(translate('ar', 'goals.back_to_goal'));
+      await expect(page.locator('#tv-hint')).toHaveText(translate('ar', 'goals.target_hint'));
+      await expect(page.locator('main form[action$="/edit"] button[type="submit"]')).toHaveText(translate('ar', 'goals.save_button'));
+      expect(await page.locator('body').innerText()).not.toContain('undefined');
+
+      const editOverflow = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+      }));
+      expect(editOverflow.scrollWidth, `${editPath} has horizontal overflow at 320px`).toBeLessThanOrEqual(editOverflow.clientWidth + 1);
+      const editAxeResults = await new AxeBuilder({ page }).analyze();
+      await testInfo.attach('authenticated-arabic-goal-edit', {
+        body: Buffer.from(JSON.stringify({
+          url: page.url(),
+          viewport: { width: 320, height: 640 },
+          overflow: editOverflow,
+          violations: formatViolations(editAxeResults.violations),
+          incomplete: formatViolations(editAxeResults.incomplete)
+        }, null, 2)),
+        contentType: 'application/json'
+      });
+      expect(formatViolations(seriousOrCritical(editAxeResults.violations))).toEqual([]);
     } finally {
       await context.close();
     }

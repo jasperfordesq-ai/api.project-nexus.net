@@ -344,8 +344,8 @@ function dateLabel(value) {
   });
 }
 
-function normalizeEditableGoal(item) {
-  const goal = normalizeGoal(item);
+function normalizeEditableGoal(item, t) {
+  const goal = normalizeGoal(item, t);
   const raw = item && typeof item === 'object' ? item : {};
   return {
     ...goal,
@@ -640,10 +640,10 @@ function socialStatus(status) {
   return { statusBanner: null };
 }
 
-function editErrorMessage(status) {
+function editErrorMessage(status, t) {
   const messages = {
-    'goal-failed': 'Something went wrong. Please try again.',
-    'goal-invalid': 'Enter a goal and a target greater than zero.'
+    'goal-failed': t('goals.states.goal-failed'),
+    'goal-invalid': t('goals.states.goal-invalid')
   };
   return messages[trimmed(status)] || '';
 }
@@ -808,21 +808,18 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
 
   const id = req.params.id;
   const result = await getGoal(token, id);
-  const goal = normalizeEditableGoal(dataFrom(result));
+  const goal = normalizeEditableGoal(dataFrom(result), res.locals.t);
   goal.id = goal.id || Number(id);
 
   return res.render('goals/edit', {
-    title: 'Edit your goal',
+    title: res.locals.t('goals.edit_title'),
     activeNav: 'explore',
     goal,
-    errorMessage: editErrorMessage(req.query.status),
-    frequencies: [
-      { value: 'none', label: 'No reminders' },
-      { value: 'daily', label: 'Daily' },
-      { value: 'weekly', label: 'Weekly' },
-      { value: 'biweekly', label: 'Every two weeks' },
-      { value: 'monthly', label: 'Monthly' }
-    ]
+    errorMessage: editErrorMessage(req.query.status, res.locals.t),
+    frequencies: GOAL_CHECKIN_FREQUENCIES.map((value) => ({
+      value,
+      label: res.locals.t(`goals.frequency_${value}`)
+    }))
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 
