@@ -7779,6 +7779,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel goal detail workflow for the owner with history and buddy updates', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
+    const t = createTranslator('ar');
     api.getGoal.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -7825,19 +7826,38 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/goals/42');
     const signed = await request(app)
-      .get('/goals/42?status=goal-edited')
+      .get('/goals/42?status=goal-edited&locale=ar')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(staticPageRoutes.pages['/goals/{param}']).toBeUndefined();
-    expect(signed.text).toContain('Back to goals');
-    expect(signed.text).toContain('Your goal has been updated.');
+    expect(signed.headers['content-language']).toBe('ar');
+    for (const key of [
+      'goals.back_to_goals',
+      'goals.states.goal-edited',
+      'goals.status_active',
+      'goals.edit_goal',
+      'govuk_alpha_goals.nav.insights',
+      'govuk_alpha_goals.nav.social',
+      'govuk_alpha_goals.nav.history',
+      'goals.update_title',
+      'goals.increment_label',
+      'goals.increment_button',
+      'goals.mark_complete',
+      'goals.buddy_section_title',
+      'goals.buddy_has_buddy',
+      'goals.buddy_notes_title',
+      'goals.history_title',
+      'goals.history_type_created',
+      'goals.history_type_buddy_action'
+    ]) {
+      expect(signed.text).toContain(t(key));
+    }
     expect(signed.text).toContain('Restore the community garden');
     expect(signed.text).toContain('Prepare the raised beds for autumn planting.');
-    expect(signed.text).toContain('In progress');
-    expect(signed.text).toContain('3 of 6');
+    expect(signed.text).toContain(t('goals.progress_label', { current: '3', target: '6' }));
     expect(signed.text).toContain('<progress max="100" value="50" aria-label="50%">50%</progress>');
     expect(signed.text).toContain('href="/goals/42/edit"');
     expect(signed.text).toContain('href="/goals/42/insights"');
@@ -7846,14 +7866,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('method="post" action="/goals/42/progress"');
     expect(signed.text).toContain('id="increment" name="increment" type="number" min="0.25" step="0.25"');
     expect(signed.text).toContain('method="post" action="/goals/42/complete"');
-    expect(signed.text).toContain('This goal has a buddy supporting it.');
-    expect(signed.text).toContain('Buddy updates');
     expect(signed.text).toContain('The first bed is looking great.');
     expect(signed.text).toContain('Alex Morgan');
-    expect(signed.text).toContain('Progress history');
-    expect(signed.text).toContain('Goal created');
     expect(signed.text).toContain('Goal created with a six-bed target.');
-    expect(signed.text).toContain('Buddy update');
     expect(signed.text).toContain('Alex sent encouragement.');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGoal).toHaveBeenCalledTimes(1);

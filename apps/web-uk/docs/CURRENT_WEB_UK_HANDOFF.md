@@ -4033,6 +4033,19 @@ matches, and the refreshed route matrix at 608/608 matched with 0 missing,
 open; the latest uninterrupted full browser aggregate remains 62/62 at
 `e155375c`, so this current-source route is focused-green only.
 
+Latest focused Goals-detail localization slice: signed `/goals/{id}` already
+used the visible Laravel catalogs; its route-level empty goal-title and
+buddy-name fallbacks now also use the request locale. The owner-detail unit
+coverage now asserts exact Arabic keys across outcomes, navigation, progress
+controls, buddy state/notes, and history types and passed `1/1`. The live Arabic
+journey now continues from `/goals` to the known public fixture `/goals/162` and
+passed HTTP 200, exact back/social/history labels, non-empty captions/titles,
+no `undefined`, RTL, 320px reflow, and axe (`1/1`, 42.9 seconds). Full
+verification passed 45/45 Jest suites and 1,424/1,424 tests, ESLint, the
+290-template zero-match audit, and 608/608 route parity. Goals edit, check-in,
+reminder, buddy-actions, insights, history, and social subpages remain open; the
+latest uninterrupted full browser aggregate remains 62/62 at `e155375c`.
+
 ## Documents To Trust
 
 Read these in order:

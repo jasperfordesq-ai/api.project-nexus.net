@@ -414,13 +414,13 @@ function normalizeMilestone(item) {
   };
 }
 
-function normalizeBuddyNote(item) {
+function normalizeBuddyNote(item, t) {
   const raw = item && typeof item === 'object' ? item : {};
   const type = allowedValue(raw.type, GOAL_BUDDY_ACTION_TYPES, 'encouragement');
   return {
     typeLabel: GOAL_BUDDY_TYPE_LABELS[type],
     message: trimmed(raw.message || ''),
-    buddyName: trimmed(raw.buddy_name || raw.buddyName || '') || 'A member',
+    buddyName: trimmed(raw.buddy_name || raw.buddyName || '') || (t ? t('goals.a_member') : 'A member'),
     createdAtDateLabel: dateLabel(raw.created_at || raw.createdAt),
     createdAtLabel: dateTimeLabel(raw.created_at || raw.createdAt)
   };
@@ -1293,7 +1293,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     optionalGoalRead(callGoal(token, 'GET', `/${id}/history?per_page=30`), { data: [] }),
     optionalGoalRead(callGoal(token, 'GET', `/${id}/insights`), { data: {} })
   ]);
-  const goal = normalizeGoal(normalizeResponse(dataFrom(goalResult)));
+  const goal = normalizeGoal(normalizeResponse(dataFrom(goalResult)), res.locals.t);
   const rawInsights = dataFrom(insightsResult) || {};
   const isOwner = checked(goal.is_owner || goal.isOwner);
   const isBuddy = checked(goal.is_buddy || goal.isBuddy);
@@ -1309,7 +1309,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     canBecomeBuddy: checked(goal.is_public || goal.isPublic) && !isOwner && !hasBuddy,
     goalHistory: collectionFrom(historyResult).map(normalizeHistoryEvent),
     buddyNotes: collectionFrom({ data: rawInsights.buddy_notes || rawInsights.buddyNotes || [] })
-      .map(normalizeBuddyNote),
+      .map((note) => normalizeBuddyNote(note, res.locals.t)),
     status: trimmed(req.query.status),
     ...goalDetailStatus(req.query.status)
   });
