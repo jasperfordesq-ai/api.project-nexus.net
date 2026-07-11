@@ -17326,6 +17326,84 @@ describe('shared accessible frontend shell', () => {
     expect(api.searchUsers).toHaveBeenCalledWith('test-token', 'morgan', { limit: 20 });
   });
 
+  it('renders the group exchange family from the exact Arabic Laravel catalog', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('ar');
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.callGroupExchangeApi
+      .mockResolvedValueOnce({
+        data: {
+          data: [{ id: 7, title: 'Community garden build', status: 'active', total_hours: 12.5 }]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 7,
+          title: 'Community garden build',
+          status: 'draft',
+          total_hours: 12.5,
+          organizer_id: 101,
+          participants: [
+            { user_id: 101, name: 'Avery Stone', role: 'provider', hours: 12.5, confirmed: true }
+          ]
+        }
+      });
+
+    const index = await request(app)
+      .get('/group-exchanges?state=active&status=cancelled&locale=ar')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/group-exchanges/7?status=participant-added&locale=ar')
+      .set('Cookie', signedCookieHeader());
+    const create = await request(app)
+      .get('/group-exchanges/new?status=create-invalid&locale=ar')
+      .set('Cookie', signedCookieHeader());
+
+    for (const response of [index, detail, create]) {
+      expect(response.status).toBe(200);
+      expect(response.headers['content-language']).toBe('ar');
+      expect(response.text).toContain('lang="ar"');
+      expect(response.text).toContain('dir="rtl"');
+      expect(response.text).toContain('class="govuk-caption-xl"');
+    }
+    for (const key of [
+      'group_exchanges.title',
+      'group_exchanges.description',
+      'group_exchanges.filter_label',
+      'group_exchanges.filter_all',
+      'group_exchanges.statuses.active',
+      'group_exchanges.states.cancelled',
+      'group_exchanges.status_label',
+      'group_exchanges.total_hours_label'
+    ]) {
+      expect(index.text).toContain(t(key));
+    }
+    for (const key of [
+      'group_exchanges.states.participant-added',
+      'group_exchanges.participants_title',
+      'group_exchanges.role_provider',
+      'group_exchanges.confirmed_yes',
+      'group_exchanges.confirm_title',
+      'group_exchanges.complete_title',
+      'group_exchanges.complete_warning',
+      'group_exchanges.remove_button'
+    ]) {
+      expect(detail.text).toContain(t(key));
+    }
+    for (const key of [
+      'group_exchanges.create_title',
+      'group_exchanges.form_description_label',
+      'group_exchanges.form_hours_label',
+      'group_exchanges.form_split_label',
+      'group_exchanges.create_submit',
+      'group_exchanges.states.failed'
+    ]) {
+      expect(create.text).toContain(t(key));
+    }
+    expect(detail.text).not.toContain('Your participation');
+    expect(create.text).not.toContain('Description (optional)');
+  });
+
   it('submits Laravel group exchange action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

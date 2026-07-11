@@ -6,9 +6,9 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
-  <h1 class="govuk-heading-xl">Group exchanges</h1>
-  <p class="govuk-body-l">Exchanges of time between several members at once - for example a group of people sharing or pooling a task.</p>
+  <span class="govuk-caption-xl">{{ t("group_exchanges.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("group_exchanges.title") }}</h1>
+  <p class="govuk-body-l">{{ t("group_exchanges.description") }}</p>
 
   {% if successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ge-list-status">
@@ -25,15 +25,15 @@
     <a class="govuk-button" href="{{ urlFor('/group-exchanges/new') }}" role="button" draggable="false" data-module="govuk-button">{{ t("group_exchanges.create_button") }}</a>
   </p>
 
-  <nav class="govuk-!-margin-bottom-4" aria-label="Filter by status">
+  <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('group_exchanges.filter_label') }}">
     <ul class="govuk-list nexus-alpha-filter-tabs">
       {% set tabs = [
-        { value: "", label: "All", path: "/group-exchanges" },
-        { value: "draft", label: "Draft", path: "/group-exchanges?state=draft" },
-        { value: "pending", label: "Awaiting approval", path: "/group-exchanges?state=pending" },
-        { value: "active", label: "Active", path: "/group-exchanges?state=active" },
-        { value: "completed", label: "Completed", path: "/group-exchanges?state=completed" },
-        { value: "cancelled", label: "Cancelled", path: "/group-exchanges?state=cancelled" }
+        { value: "", label: t("group_exchanges.filter_all"), path: "/group-exchanges" },
+        { value: "draft", label: t("group_exchanges.statuses.draft"), path: "/group-exchanges?state=draft" },
+        { value: "pending", label: t("group_exchanges.statuses.pending"), path: "/group-exchanges?state=pending" },
+        { value: "active", label: t("group_exchanges.statuses.active"), path: "/group-exchanges?state=active" },
+        { value: "completed", label: t("group_exchanges.statuses.completed"), path: "/group-exchanges?state=completed" },
+        { value: "cancelled", label: t("group_exchanges.statuses.cancelled"), path: "/group-exchanges?state=cancelled" }
       ] %}
       {% for tab in tabs %}
         <li class="govuk-!-display-inline-block govuk-!-margin-right-3">
@@ -49,12 +49,12 @@
 
   {% if exchanges and exchanges.length %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Group exchanges</caption>
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("group_exchanges.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">{{ t("group_exchanges.form_title_label") }}</th>
-          <th scope="col" class="govuk-table__header">Status</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Total hours</th>
+          <th scope="col" class="govuk-table__header">{{ t("group_exchanges.status_label") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("group_exchanges.total_hours_label") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">

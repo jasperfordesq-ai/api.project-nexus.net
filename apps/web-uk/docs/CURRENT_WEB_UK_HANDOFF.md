@@ -3889,6 +3889,30 @@ latest uninterrupted full browser aggregate remains 62/62 at `e155375c`; this
 new current-source authenticated journey is focused-green, but a fresh full
 aggregate is still not claimed under the recorded Laravel fixture latency.
 
+Latest focused group-exchange localization slice: signed
+`/group-exchanges`, `/group-exchanges/new`, and `/group-exchanges/{id}` now
+use Laravel's request-locale `group_exchanges` catalog for list/create/detail
+titles, captions, descriptions, filters, known statuses, table/summary labels,
+participant roles/states/actions, form fields/hints, warnings, and every mapped
+success/error outcome. Extended statuses absent from that namespace retain
+Laravel's headline fallback. The caption now uses the shared request
+`tenantName`; focused browser assertions exposed that both the original
+template expression and an initial home-only `communityName` correction still
+rendered `undefined`, before the routed-page shell local fixed it. The
+authoritative Arabic `filter_label` is still English-identical (`Filter by
+status`) in Laravel, so Web UK preserves it instead of inventing a translation.
+Focused English/Arabic family Jest passed `2/2`; the non-mutating authenticated
+Arabic Laravel-backed list/create journey passed exact markers, non-empty
+captions, RTL, 320px reflow, and axe on both pages (`1/1`, 37.2 seconds). Full
+verification passed 45/45 Jest suites and 1,419/1,419 tests, ESLint, and the
+290-template conservative audit with zero matches; the refreshed route matrix
+remains 608/608 matched with 0 missing, 0 extra, and 3 ignored infrastructure
+routes. The latest uninterrupted
+full browser aggregate remains 62/62 at `e155375c`; the new current-source
+group-exchange journey is focused-green, while detail-page live proof awaits a
+safe existing exchange fixture and a fresh full aggregate remains unclaimed
+under the recorded Laravel latency.
+
 ## Documents To Trust
 
 Read these in order:

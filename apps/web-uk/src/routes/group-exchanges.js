@@ -70,20 +70,16 @@ function compactQuery(params) {
   return query.toString();
 }
 
-function statusDetails(status) {
+function headline(value) {
+  return String(value || '')
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function statusDetails(status, t) {
   const normalized = trimmed(status).toLowerCase();
-  const labels = {
-    draft: 'Draft',
-    pending: 'Awaiting approval',
-    approved: 'Approved',
-    active: 'Active',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-    pending_participants: 'Pending participants',
-    pending_broker: 'Pending broker',
-    pending_confirmation: 'Pending confirmation',
-    disputed: 'Disputed'
-  };
   const classes = {
     draft: 'govuk-tag--grey',
     pending: 'govuk-tag--yellow',
@@ -96,56 +92,58 @@ function statusDetails(status) {
     pending_confirmation: 'govuk-tag--yellow',
     disputed: 'govuk-tag--orange'
   };
-  const key = labels[normalized] ? normalized : 'draft';
-  return { key, label: labels[key], className: classes[key] };
+  const localizedStatuses = new Set(['draft', 'pending', 'approved', 'active', 'completed', 'cancelled']);
+  const key = classes[normalized] ? normalized : 'draft';
+  const label = localizedStatuses.has(key) ? t(`group_exchanges.statuses.${key}`) : headline(key);
+  return { key, label, className: classes[key] };
 }
 
-function normalizeExchange(item) {
+function normalizeExchange(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
-  const status = statusDetails(row.status);
+  const status = statusDetails(row.status, t);
   return {
     ...row,
     id,
-    title: trimmed(row.title) || 'Group exchanges',
+    title: trimmed(row.title) || t('group_exchanges.title'),
     description: trimmed(row.description),
     statusKey: status.key,
     statusLabel: status.label,
     statusClass: status.className,
     totalHours: formatHours(row.total_hours ?? row.totalHours),
     organizerId: positiveInteger(row.organizer_id ?? row.organizerId),
-    participants: Array.isArray(row.participants) ? row.participants.map(normalizeParticipant) : [],
+    participants: Array.isArray(row.participants) ? row.participants.map((participant) => normalizeParticipant(participant, t)) : [],
     calculatedSplit: Array.isArray(row.calculated_split ?? row.calculatedSplit)
       ? (row.calculated_split ?? row.calculatedSplit)
       : []
   };
 }
 
-function normalizeParticipant(item) {
+function normalizeParticipant(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const userId = positiveInteger(row.user_id ?? row.userId ?? row.id);
   const role = trimmed(row.role) === 'receiver' ? 'receiver' : 'provider';
   const name = trimmed(row.name)
     || [row.first_name, row.last_name].map(trimmed).filter(Boolean).join(' ')
-    || 'Unknown member';
+    || t('members.unknown_member');
   return {
     ...row,
     userId,
     name,
     role,
-    roleLabel: role === 'receiver' ? 'Receiving time' : 'Giving time',
+    roleLabel: t(role === 'receiver' ? 'group_exchanges.role_receiver' : 'group_exchanges.role_provider'),
     hours: formatHours(row.hours),
     confirmed: row.confirmed === true,
-    confirmedLabel: row.confirmed === true ? 'Confirmed' : 'Not yet'
+    confirmedLabel: t(row.confirmed === true ? 'group_exchanges.confirmed_yes' : 'group_exchanges.confirmed_no')
   };
 }
 
-function normalizeCandidate(item) {
+function normalizeCandidate(item, t) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id ?? row.user_id ?? row.userId);
   const name = trimmed(row.name)
     || [row.first_name, row.last_name].map(trimmed).filter(Boolean).join(' ')
-    || 'Unknown member';
+    || t('members.unknown_member');
   return { id, name };
 }
 
@@ -154,27 +152,19 @@ function profileId(profileResult) {
   return positiveInteger(profile.id ?? profile.user_id ?? profile.userId);
 }
 
-function stateMessage(status) {
-  const messages = {
-    created: 'Your group exchange has been created. Add the people taking part below.',
-    'participant-added': 'Person added to the exchange.',
-    'participant-removed': 'Person removed from the exchange.',
-    confirmed: 'Thank you - your participation is confirmed.',
-    completed: 'The group exchange is complete and the time credits have moved.',
-    cancelled: 'The group exchange has been cancelled.'
-  };
-  return messages[trimmed(status)] || '';
+function stateMessage(status, t) {
+  const key = trimmed(status);
+  return ['created', 'participant-added', 'participant-removed', 'confirmed', 'completed', 'cancelled'].includes(key)
+    ? t(`group_exchanges.states.${key}`)
+    : '';
 }
 
-function errorMessage(status) {
-  const messages = {
-    'add-failed': 'We could not add that person. They may already be in the exchange, or are unable to take part.',
-    'complete-failed': 'The exchange could not be completed. Everyone must confirm first, and people receiving time need enough credits.',
-    failed: 'Something went wrong. Please try again.',
-    'create-invalid': 'Something went wrong. Please try again.',
-    'create-failed': 'Something went wrong. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
+function errorMessage(status, t) {
+  const key = trimmed(status);
+  if (['create-invalid', 'create-failed'].includes(key)) return t('group_exchanges.states.failed');
+  return ['add-failed', 'complete-failed', 'failed'].includes(key)
+    ? t(`group_exchanges.states.${key}`)
+    : '';
 }
 
 router.get('/', asyncRoute(async (req, res) => {
@@ -187,17 +177,18 @@ router.get('/', asyncRoute(async (req, res) => {
   const query = compactQuery({ limit: 50, status: state });
   const result = await callGroupExchangeApi(token, 'GET', `?${query}`);
   const exchanges = collectionFrom(result)
-    .map(normalizeExchange)
+    .map((exchange) => normalizeExchange(exchange, res.locals.t))
     .filter((exchange) => exchange.id !== null);
   const status = trimmed(req.query.status);
 
   return res.render('group-exchanges/index', {
     title: 'Group exchanges',
+    titleKey: 'group_exchanges.title',
     activeNav: 'group_exchanges',
     exchanges,
     exchangeState: state,
     status,
-    successMessage: stateMessage(status)
+    successMessage: stateMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -208,9 +199,10 @@ router.get('/new', asyncRoute(async (req, res) => {
   const status = trimmed(req.query.status);
   return res.render('group-exchanges/create', {
     title: 'Start a group exchange',
+    titleKey: 'group_exchanges.create_title',
     activeNav: 'group_exchanges',
     status,
-    errorMessage: errorMessage(status)
+    errorMessage: errorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -224,7 +216,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     callGroupExchangeApi(token, 'GET', `/${id}`)
   ]);
   const viewerId = profileId(profileResult);
-  const exchange = normalizeExchange({ id, ...itemFrom(exchangeResult) });
+  const exchange = normalizeExchange({ id, ...itemFrom(exchangeResult) }, res.locals.t);
   const splitByUser = new Map(exchange.calculatedSplit.map((row) => [
     positiveInteger(row.user_id ?? row.userId),
     formatHours(row.hours)
@@ -245,7 +237,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   if (editable && participantQuery !== '') {
     const existingIds = new Set(participants.map((participant) => participant.userId));
     participantResults = collectionFrom(await searchUsers(token, participantQuery, { limit: 20 }))
-      .map(normalizeCandidate)
+      .map((candidate) => normalizeCandidate(candidate, res.locals.t))
       .filter((candidate) => candidate.id !== null && !existingIds.has(candidate.id));
   }
 
@@ -264,8 +256,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     participantQuery,
     participantResults,
     status,
-    successMessage: stateMessage(status),
-    errorMessage: errorMessage(status)
+    successMessage: stateMessage(status, res.locals.t),
+    errorMessage: errorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group exchange not found' }));
 

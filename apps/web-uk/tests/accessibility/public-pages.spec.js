@@ -703,6 +703,78 @@ test.describe('representative authenticated-page accessibility gate', () => {
     }
   });
 
+  test('Arabic group exchange list and create pages use the Laravel catalog', async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(180_000);
+    const context = await browser.newContext({ baseURL, storageState });
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    try {
+      const routes = [
+        {
+          path: '/group-exchanges?locale=ar',
+          heading: 'group_exchanges.title',
+          markers: [
+            'group_exchanges.description',
+            'group_exchanges.create_button'
+          ]
+        },
+        {
+          path: '/group-exchanges/new?locale=ar',
+          heading: 'group_exchanges.create_title',
+          markers: [
+            'group_exchanges.form_title_label',
+            'group_exchanges.form_description_label',
+            'group_exchanges.form_hours_label',
+            'group_exchanges.form_split_label',
+            'group_exchanges.create_submit'
+          ]
+        }
+      ];
+
+      for (const route of routes) {
+        const path = `${authenticatedMountPath}${route.path}`;
+        const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+        expect(response, `${path} did not return a document response`).not.toBeNull();
+        expect(response.status(), `${path} returned HTTP ${response.status()}`).toBeLessThan(400);
+        expect(response.headers()['content-language']).toBe('ar');
+        expect(page.url()).not.toContain('/login');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        await expect(page.locator('main .govuk-caption-xl')).not.toBeEmpty();
+        await expect(page.locator('main .govuk-caption-xl')).not.toHaveText('undefined');
+        await expect(page.locator('h1')).toHaveText(translate('ar', route.heading));
+        for (const marker of route.markers) {
+          await expect(page.locator('main')).toContainText(translate('ar', marker));
+        }
+        if (route.heading === 'group_exchanges.title') {
+          await expect(page.locator('main nav')).toHaveAttribute('aria-label', translate('ar', 'group_exchanges.filter_label'));
+        }
+
+        const overflow = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflow.scrollWidth, `${path} has horizontal overflow at 320px`).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        await testInfo.attach(`authenticated-arabic-${route.heading}`, {
+          body: Buffer.from(JSON.stringify({
+            url: page.url(),
+            viewport: { width: 320, height: 640 },
+            overflow,
+            violations: formatViolations(axeResults.violations),
+            incomplete: formatViolations(axeResults.incomplete)
+          }, null, 2)),
+          contentType: 'application/json'
+        });
+        expect(formatViolations(seriousOrCritical(axeResults.violations))).toEqual([]);
+      }
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Arabic account hub localizes its Laravel-owned actions with RTL reflow', async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
