@@ -170,6 +170,11 @@ test.describe('Arabic RTL and narrow reflow gate', () => {
     await page.setViewportSize({ width: 320, height: 640 });
     const routes = [
       {
+        path: '/?locale=ar',
+        title: translate('ar', 'tenant_chooser.title'),
+        marker: translate('ar', 'tenant_chooser.title')
+      },
+      {
         path: `${mountPath}/help?locale=ar`,
         title: translate('ar', 'help.title'),
         marker: translate('ar', 'help.search_button')

@@ -93,6 +93,30 @@ describe('Public Routes', () => {
       expect(response.status).toBe(200);
       expect(response.text.indexOf('Acme Timebank')).toBeLessThan(response.text.indexOf('Zebra Timebank'));
     });
+
+    it('localizes populated and empty tenant chooser states from Laravel catalogs', async () => {
+      const api = require('../src/lib/api');
+      const { translate } = require('../src/lib/localization');
+      api.getTenants
+        .mockResolvedValueOnce({
+          data: [{ id: 2, name: 'Acme Timebank', slug: 'acme', tagline: 'Neighbours helping neighbours' }]
+        })
+        .mockResolvedValueOnce({ data: [] });
+
+      const populated = await request(app).get('/?locale=ar');
+      const empty = await request(app).get('/?locale=ar');
+
+      expect(populated.status).toBe(200);
+      expect(populated.headers['content-language']).toBe('ar');
+      expect(populated.text).toContain('dir="rtl"');
+      expect(populated.text).toContain(translate('ar', 'tenant_chooser.title'));
+      expect(populated.text).toContain(translate('ar', 'tenant_chooser.community_slug', { slug: 'acme' }));
+      expect(populated.text).not.toContain('Community link: acme');
+      expect(empty.status).toBe(200);
+      expect(empty.text).toContain(translate('ar', 'states.empty_title'));
+      expect(empty.text).toContain(translate('ar', 'tenant_chooser.empty'));
+      expect(empty.text).not.toContain('Nothing to show yet');
+    });
   });
 
   describe('shared tenant accessible mount', () => {

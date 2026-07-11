@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,416/1,416` tests passed.
+- Jest: `45/45` suites and `1,417/1,417` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -213,6 +213,18 @@ Focused standard, Arabic, and signed-disabled Home coverage passed `3/3`; the
 aggregate Jest gate passed `45/45` suites and `1,416/1,416` tests in `127.1`
 seconds, and ESLint passed. A real disabled-module Laravel tenant fixture is
 still unavailable, so live disabled-state proof remains open.
+
+## 2026-07-10 Tenant Chooser Localization Slice
+
+The shared-root tenant chooser now uses Laravel's exact request-locale catalog
+for each community slug label and the empty-state heading. The existing
+Web UK-only API load-error sentence remains local because Laravel has no
+corresponding key. Focused populated/empty Arabic coverage passed within the
+`3/3` chooser slice. A real shared-root Arabic chooser plus tenant Help/Trust
+journey passed in `38.6` seconds with RTL, 320-pixel reflow, and no
+serious/critical axe findings. The aggregate Jest gate passed `45/45` suites
+and `1,417/1,417` tests in `185.8` seconds; ESLint and the `290/0` conservative
+template audit passed.
 
 ## 2026-07-10 Cookie And Email Utility Localization Slice
 
