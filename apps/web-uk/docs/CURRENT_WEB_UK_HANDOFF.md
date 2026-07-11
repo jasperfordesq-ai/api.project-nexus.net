@@ -4894,6 +4894,18 @@ detail controls and 320 CSS pixel checks, and retained no fixture; lint is
 green. Pinned announcements, subgroups, and the embedded group-feed composer/
 timeline remain separate detail-depth gaps.
 
+## 2026-07-11 Saved Search Mutation Blocker
+
+A disposable Web UK saved-search create/delete gate was attempted and removed
+before publication because Laravel rejected the create boundary before any row
+was inserted. Both the browser POST and a direct authenticated
+`POST /api/v2/search/saved` returned `500`; the current Laravel log identifies
+`SearchController::saveSearch()` calling nonexistent method `getJsonInput()` at
+line 206. No fixture or side effect remained. Web UK's request shape matches the
+declared v2 contract, so live saved-search mutation certification is blocked
+until the read-only Laravel endpoint parses JSON through an available request
+helper; do not misreport the current mock coverage as persistence proof.
+
 ## Documents To Trust
 
 Read these in order:
