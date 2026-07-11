@@ -1757,21 +1757,16 @@ describe('tenant-aware template helper conversion', () => {
     expect(templates.join('\n')).toMatch(/urlFor\(["']\/kb/);
   });
 
-  it('keeps legacy knowledge-base compatibility templates behind urlFor()', () => {
-    const templates = [
-      path.join('knowledge-base', 'index.njk'),
-      path.join('knowledge-base', 'detail.njk')
-    ].map((templatePath) => fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'views', templatePath),
-      'utf8'
-    ));
+  it('does not restore the unmounted legacy knowledge-base implementation', () => {
+    const legacyPaths = [
+      path.join(__dirname, '..', 'src', 'routes', 'knowledge-base.js'),
+      path.join(__dirname, '..', 'src', 'views', 'knowledge-base', 'index.njk'),
+      path.join(__dirname, '..', 'src', 'views', 'knowledge-base', 'detail.njk')
+    ];
 
-    for (const template of templates) {
-      expect(template).not.toMatch(/href="\/knowledge-base/);
-      expect(template).not.toContain('href: "/knowledge-base');
+    for (const legacyPath of legacyPaths) {
+      expect(fs.existsSync(legacyPath)).toBe(false);
     }
-
-    expect(templates.join('\n')).toMatch(/urlFor\(["']\/knowledge-base/);
   });
 
   it('keeps goals browse, detail, progress, and social controls behind urlFor()', () => {
@@ -1933,15 +1928,12 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
-  it('keeps shared empty-state and breadcrumb partial links behind urlFor()', () => {
+  it('keeps shared empty-state links behind urlFor and retired breadcrumbs absent', () => {
     const emptyState = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'views', 'partials', 'empty-state.njk'),
       'utf8'
     );
-    const breadcrumbs = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'views', 'partials', 'breadcrumbs.njk'),
-      'utf8'
-    );
+    const breadcrumbsPath = path.join(__dirname, '..', 'src', 'views', 'partials', 'breadcrumbs.njk');
 
     expect(emptyState).not.toContain('href: "/members"');
     expect(emptyState).not.toContain('href="{{ emptyState.action.href }}"');
@@ -1949,9 +1941,7 @@ describe('tenant-aware template helper conversion', () => {
     expect(emptyState).toContain('urlFor(emptyState.action.href)');
     expect(emptyState).toContain('urlFor(emptyState.secondaryAction.href)');
 
-    expect(breadcrumbs).not.toContain('href: "/groups"');
-    expect(breadcrumbs).not.toContain('href: "/groups/123"');
-    expect(breadcrumbs).toContain("urlFor('/groups')");
+    expect(fs.existsSync(breadcrumbsPath)).toBe(false);
   });
 
   it('uses Blade back links instead of invented breadcrumbs on event and group pages', () => {
@@ -2006,6 +1996,18 @@ describe('tenant-aware template helper conversion', () => {
       expect(source).not.toContain('govukBreadcrumbs');
       expect(source).not.toContain('govuk-back-link');
     }
+  });
+
+  it('avoids duplicate navigation on direct conversations', () => {
+    const directConversation = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'messages', 'direct-conversation.njk'),
+      'utf8'
+    );
+
+    expect(directConversation.match(/class="govuk-back-link"/g)).toHaveLength(1);
+    expect(directConversation).toContain("urlFor('/messages')");
+    expect(directConversation).toContain('t("actions.back_to_messages")');
+    expect(directConversation).not.toContain('govukBreadcrumbs');
   });
 });
 

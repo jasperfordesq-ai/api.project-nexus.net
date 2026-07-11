@@ -5,22 +5,10 @@
 
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
-
-{% block beforeContent %}
-  {{ super() }}
-  {{ govukBreadcrumbs({
-    items: [
-      { text: t("nav.home"), href: urlFor("/") },
-      { text: t("messages.title"), href: urlFor("/messages") },
-      { text: conversation.otherUser.name }
-    ]
-  }) }}
-{% endblock %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">

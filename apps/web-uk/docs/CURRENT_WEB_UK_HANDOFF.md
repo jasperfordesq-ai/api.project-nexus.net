@@ -4725,6 +4725,16 @@ Focused source proof passed `1/1`; full Jest passed `45/45` suites and
 `1,442/1,442` tests, with green lint, branding guard, and the unchanged
 `291`-template zero-match localization audit.
 
+The final breadcrumb inventory found one duplicate trail above the direct-
+conversation page and no valid active caller for the generic breadcrumb
+partial. The active Laravel-backed KB is `/kb` via `src/routes/kb.js`; the
+unmounted `knowledge-base.js` router and its two stale templates referenced
+nonexistent helper names and legacy `/knowledge-base` paths. Those three dead
+files and the now-zero-caller breadcrumb partial were removed, with source
+guards preventing their restoration. Focused proof passed `3/3`; full Jest
+passed `45/45` suites and `1,443/1,443` tests, with green lint, branding, and a
+`288`-template localization audit with zero conservative matches.
+
 ## Documents To Trust
 
 Read these in order:
