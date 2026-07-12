@@ -77,6 +77,7 @@ test('certifies a disposable private group and its owner-managed content through
   const pollComment = `Disposable poll comment ${runId}`;
   const podcastTitle = `Disposable podcast ${runId}`;
   const updatedPodcastTitle = `${podcastTitle} updated`;
+  const episodeTitle = `Disposable episode ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -364,6 +365,30 @@ test('certifies a disposable private group and its owner-managed content through
     await expect(page.locator('#title')).toHaveValue(updatedPodcastTitle);
     const ownedShows = rowsFrom(await callPodcastApi(token, 'GET', '/mine'));
     expect(ownedShows.some(show => Number(show?.id) === podcastId && show?.title === updatedPodcastTitle)).toBe(true);
+
+    await page.locator('#episode_title').fill(episodeTitle);
+    await page.locator('#episode_number').fill('1');
+    await page.locator('#episode_summary').fill('Disposable hosted-audio episode.');
+    await page.locator('#audio').setInputFiles({
+      name: 'disposable-episode.wav',
+      mimeType: 'audio/wav',
+      buffer: Buffer.from('UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==', 'base64')
+    });
+    const episodeCreateResponse = await submit(page, `/podcasts/studio/${podcastId}/episodes`, page.locator('form:has(#episode_title) button'));
+    expect(episodeCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const episodeCard = page.locator('li.nexus-alpha-card', { hasText: episodeTitle });
+    await expect(episodeCard).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    const episodeDeleteAction = await episodeCard.locator('form[action$="/delete"]').getAttribute('action');
+    expect(episodeDeleteAction).toBeTruthy();
+    const episodeId = Number(episodeDeleteAction.match(/\/episodes\/(\d+)\/delete$/)?.[1]);
+    expect(episodeId).toBeGreaterThan(0);
+    const episodeDeleteResponse = await submit(page, `/podcasts/studio/${podcastId}/episodes/${episodeId}/delete`, episodeCard.locator('form[action$="/delete"] button'));
+    expect(episodeDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(episodeTitle, { exact: true })).toHaveCount(0);
 
     const podcastDeleteResponse = await submit(page, `/podcasts/studio/${podcastId}/delete`, page.locator('form[action$="/delete"] button'));
     expect(podcastDeleteResponse.status()).toBe(302);
