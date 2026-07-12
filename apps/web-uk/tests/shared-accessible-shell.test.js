@@ -26591,6 +26591,7 @@ describe('shared accessible frontend shell', () => {
     expect(recommended.text).toContain('91% match');
     expect(recommended.text).toContain('Food Share');
     expect(recommended.text).toContain('Town kitchen');
+    expect(recommended.text).toContain('20 July 2026, 10:00am');
     expect(recommended.text).toContain('3');
 
     const projects = await request(app)

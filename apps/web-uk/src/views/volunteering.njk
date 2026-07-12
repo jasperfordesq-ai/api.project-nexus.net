@@ -183,7 +183,7 @@
             <dl class="govuk-summary-list govuk-!-margin-top-4 govuk-!-margin-bottom-0">
               {% if shift.organization_name %}<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ t("volunteering.organization") }}</dt><dd class="govuk-summary-list__value">{{ shift.organization_name }}</dd></div>{% endif %}
               {% if shift.location %}<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ t("volunteering.location") }}</dt><dd class="govuk-summary-list__value">{{ shift.location }}</dd></div>{% endif %}
-              {% if shift.start_time %}<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ t("volunteering.shift_label") }}</dt><dd class="govuk-summary-list__value">{{ shift.start_time | formatEventDate }}</dd></div>{% endif %}
+              {% if shift.startTimeLabel %}<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ t("volunteering.shift_label") }}</dt><dd class="govuk-summary-list__value">{{ shift.startTimeLabel }}</dd></div>{% endif %}
               <div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ t("volunteering.spots_remaining_label") }}</dt><dd class="govuk-summary-list__value">{{ shift.spots_remaining or 0 }}</dd></div>
             </dl>
           </article>

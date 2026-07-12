@@ -77,7 +77,7 @@ const { ApiError, getExchangeConfig } = require('./lib/api');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { handleApiError } = require('./lib/routeHelpers');
 const { buildShellLocals } = require('./lib/accessible-shell');
-const { formatLocaleDate, translate, translateChoice } = require('./lib/localization');
+const { formatLocaleDate, localeForIntl, translate, translateChoice } = require('./lib/localization');
 const { getRequestLocale } = require('./lib/request-locale-context');
 const { parseMultipartForm } = require('./middleware/multipart');
 const { buildAccountLinks } = require('./lib/account-links');
@@ -832,7 +832,33 @@ app.get('/volunteering', (req, res) => {
       };
       const organisations = Array.isArray(organisationsResult?.data) ? organisationsResult.data : [];
       const categories = Array.isArray(categoriesResult?.data) ? categoriesResult.data : [];
-      const recommendedShifts = Array.isArray(recommendedResult?.data) ? recommendedResult.data : [];
+      const recommendedShifts = (Array.isArray(recommendedResult?.data) ? recommendedResult.data : []).map((shift) => {
+        const startText = String(shift?.start_time || '');
+        const startParts = startText.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+        const locale = getRequestLocale() || 'en';
+        const year = startParts ? Number(startParts[1]) : 0;
+        const monthIndex = startParts ? Number(startParts[2]) - 1 : -1;
+        const day = startParts ? Number(startParts[3]) : 0;
+        const hours = startParts ? Number(startParts[4]) : -1;
+        const minutes = startParts ? Number(startParts[5]) : -1;
+        const validStart = startParts
+          && monthIndex >= 0 && monthIndex <= 11
+          && day >= 1 && day <= 31
+          && hours >= 0 && hours <= 23
+          && minutes >= 0 && minutes <= 59;
+        const month = validStart
+          ? new Intl.DateTimeFormat(localeForIntl(locale), { month: 'long', timeZone: 'UTC' })
+            .format(new Date(Date.UTC(year, monthIndex, day)))
+          : '';
+        const hour = hours % 12 || 12;
+        const startTimeLabel = validStart
+          ? `${day} ${month} ${year}, ${hour}:${String(minutes).padStart(2, '0')}${hours < 12 ? 'am' : 'pm'}`
+          : '';
+        return {
+          ...shift,
+          startTimeLabel
+        };
+      });
       const communityProjects = Array.isArray(communityProjectsResult?.data) ? communityProjectsResult.data : [];
       const manageableOrganisations = organisations.filter((organisation) => (
         ['owner', 'admin'].includes(String(organisation?.member_role || 'member'))
