@@ -38,6 +38,18 @@ public class Group : ITenantEntity
     /// Optional image URL for the group.
     /// </summary>
     public string? ImageUrl { get; set; }
+    public string? CoverImageUrl { get; set; }
+    public string Visibility { get; set; } = "public";
+    public string? Location { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public int? TypeId { get; set; }
+    public int? ParentId { get; set; }
+    public string? PrimaryColor { get; set; }
+    public string? AccentColor { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string Status { get; set; } = "active";
+    public bool HasChildren { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

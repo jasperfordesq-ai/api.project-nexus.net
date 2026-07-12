@@ -119,6 +119,7 @@ public static class ServiceExtensions
         services.AddScoped<TotpService>();
         services.AddScoped<AuthenticationConfigurationService>();
         services.AddScoped<GroupQaMutationService>();
+        services.AddScoped<GroupFormService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
 

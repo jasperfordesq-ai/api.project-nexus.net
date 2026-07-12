@@ -27,13 +27,61 @@ public class GroupsController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly ILogger<GroupsController> _logger;
     private readonly GamificationService _gamification;
+    private readonly GroupFormService _groupForms;
 
-    public GroupsController(NexusDbContext db, ILogger<GroupsController> logger, GamificationService gamification)
+    public GroupsController(
+        NexusDbContext db,
+        ILogger<GroupsController> logger,
+        GamificationService gamification,
+        GroupFormService groupForms)
     {
         _db = db;
         _logger = logger;
         _gamification = gamification;
+        _groupForms = groupForms;
     }
+
+    [HttpGet("form-capabilities")]
+    [HttpGet("/api/v2/groups/form-capabilities")]
+    public async Task<IActionResult> FormCapabilities(CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId is null || tenantId is null) return Unauthorized();
+        return Ok(new { data = await _groupForms.GetCapabilitiesAsync(tenantId.Value, userId.Value, cancellationToken) });
+    }
+
+    [HttpPost("/api/v2/groups/{id:int}/settings")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateGroupSettings(int id, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId is null || tenantId is null) return Unauthorized();
+        if (!Request.HasFormContentType)
+            return GroupFormResponse(new(null, new("VALIDATION_ERROR", "Multipart form data is required", 422)));
+        var form = await Request.ReadFormAsync(cancellationToken);
+        return GroupFormResponse(await _groupForms.UpdateAsync(
+            tenantId.Value, id, userId.Value, form, cancellationToken));
+    }
+
+    [HttpDelete("/api/v2/groups/{id:int}/image")]
+    public async Task<IActionResult> RemoveGroupImage(int id, [FromQuery] string type = "avatar", CancellationToken cancellationToken = default)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId is null || tenantId is null) return Unauthorized();
+        return GroupFormResponse(await _groupForms.RemoveImageAsync(
+            tenantId.Value, id, userId.Value, type, cancellationToken));
+    }
+
+    private IActionResult GroupFormResponse(GroupFormResult result) => result.Succeeded
+        ? Ok(new { data = result.Data })
+        : StatusCode(result.Error!.Status, new
+        {
+            success = false,
+            errors = new[] { new { code = result.Error.Code, message = result.Error.Message, field = result.Error.Field } }
+        });
 
     /// <summary>
     /// GET /api/groups - List all groups (paginated).
@@ -212,6 +260,7 @@ public class GroupsController : ControllerBase
             Name = request.Name.Trim(),
             Description = request.Description?.Trim(),
             IsPrivate = request.IsPrivate,
+            Visibility = request.IsPrivate ? "private" : "public",
             ImageUrl = request.ImageUrl?.Trim()
         };
 
@@ -316,6 +365,7 @@ public class GroupsController : ControllerBase
         if (request.IsPrivate.HasValue)
         {
             group.IsPrivate = request.IsPrivate.Value;
+            group.Visibility = request.IsPrivate.Value ? "private" : "public";
         }
 
         if (request.ImageUrl != null)

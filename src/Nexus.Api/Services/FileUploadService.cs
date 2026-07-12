@@ -282,6 +282,35 @@ public class FileUploadService
             : new string(sanitized.Take(255).ToArray());
     }
 
+    public async Task<bool> DeleteEntityFileAsync(
+        int fileId,
+        int tenantId,
+        string entityType,
+        int entityId,
+        CancellationToken cancellationToken = default)
+    {
+        var file = await _db.Set<FileUpload>().IgnoreQueryFilters().FirstOrDefaultAsync(candidate =>
+            candidate.Id == fileId
+            && candidate.TenantId == tenantId
+            && candidate.EntityType == entityType
+            && candidate.EntityId == entityId,
+            cancellationToken);
+        if (file is null) return false;
+        var fullPath = GetFullPath(file);
+        if (File.Exists(fullPath))
+        {
+            try { File.Delete(fullPath); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(exception, "Failed to delete entity file from disk: {Path}", fullPath);
+                return false;
+            }
+        }
+        _db.Set<FileUpload>().Remove(file);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     /// <summary>
     /// Stores a voice-message recording without widening the ordinary message
     /// attachment allow-list. MIME is derived from file signatures; the client

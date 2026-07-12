@@ -132,6 +132,8 @@ public class NexusDbContext : DbContext
     public DbSet<GroupQuestion> GroupQuestions => Set<GroupQuestion>();
     public DbSet<GroupAnswer> GroupAnswers => Set<GroupAnswer>();
     public DbSet<GroupQaVote> GroupQaVotes => Set<GroupQaVote>();
+    public DbSet<GroupType> GroupTypes => Set<GroupType>();
+    public DbSet<GroupTemplate> GroupTemplates => Set<GroupTemplate>();
     public DbSet<GroupChallenge> GroupChallenges => Set<GroupChallenge>();
     public DbSet<GroupScheduledPost> GroupScheduledPosts => Set<GroupScheduledPost>();
     public DbSet<GroupWebhook> GroupWebhooks => Set<GroupWebhook>();
@@ -865,6 +867,27 @@ public class NexusDbContext : DbContext
             entity.HasIndex(row => new { row.QuestionId, row.VoteCount });
         });
         modelBuilder.Entity<GroupQaVote>(entity => { entity.ToTable("group_qa_votes"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.TargetType, e.TargetId }).IsUnique(); });
+        modelBuilder.Entity<GroupType>(entity =>
+        {
+            entity.ToTable("group_types");
+            entity.Property(row => row.Name).HasMaxLength(100);
+            entity.Property(row => row.Slug).HasMaxLength(100);
+            entity.Property(row => row.Icon).HasMaxLength(100);
+            entity.Property(row => row.Color).HasMaxLength(20);
+            entity.Property(row => row.ImageUrl).HasMaxLength(500);
+            entity.HasIndex(row => new { row.TenantId, row.Slug }).IsUnique();
+            entity.HasIndex(row => new { row.TenantId, row.IsActive, row.SortOrder });
+        });
+        modelBuilder.Entity<GroupTemplate>(entity =>
+        {
+            entity.ToTable("group_templates");
+            entity.Property(row => row.Name).HasMaxLength(255);
+            entity.Property(row => row.Icon).HasMaxLength(50);
+            entity.Property(row => row.DefaultVisibility).HasMaxLength(20);
+            entity.Property(row => row.DefaultTagsJson).HasColumnType("jsonb");
+            entity.Property(row => row.FeaturesJson).HasColumnType("jsonb");
+            entity.HasIndex(row => new { row.TenantId, row.IsActive, row.SortOrder });
+        });
         modelBuilder.Entity<GroupChallenge>().ToTable("group_challenges");
         modelBuilder.Entity<GroupScheduledPost>().ToTable("group_scheduled_posts");
         modelBuilder.Entity<GroupWebhook>().ToTable("group_webhooks");

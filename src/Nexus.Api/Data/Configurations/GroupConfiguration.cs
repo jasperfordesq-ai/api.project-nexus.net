@@ -27,11 +27,21 @@ public class GroupConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
+            entity.Property(e => e.Visibility).HasMaxLength(20).HasDefaultValue("public");
+            entity.Property(e => e.Location).HasMaxLength(255);
+            entity.Property(e => e.Latitude).HasPrecision(10, 8);
+            entity.Property(e => e.Longitude).HasPrecision(11, 8);
+            entity.Property(e => e.PrimaryColor).HasMaxLength(7);
+            entity.Property(e => e.AccentColor).HasMaxLength(7);
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("active");
 
             // Indexes
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.CreatedById);
             entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => new { e.TenantId, e.ParentId });
+            entity.HasIndex(e => new { e.TenantId, e.IsActive });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -47,6 +57,11 @@ public class GroupConfiguration : TenantScopedConfiguration
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
+
+        modelBuilder.Entity<GroupType>().HasQueryFilter(e =>
+            !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        modelBuilder.Entity<GroupTemplate>().HasQueryFilter(e =>
+            !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
 
         // GroupMember configuration with tenant filter
         modelBuilder.Entity<GroupMember>(entity =>
