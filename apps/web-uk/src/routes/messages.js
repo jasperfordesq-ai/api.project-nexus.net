@@ -132,6 +132,30 @@ function groupRedirect(conversationId, status, fragment = '') {
   return statusRedirect(`/messages/groups/${conversationId}`, status, fragment);
 }
 
+async function messageRestriction(req) {
+  try {
+    return dataFrom(await callMessage(req.token, 'GET', '/restriction-status')) || {};
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    return {};
+  }
+}
+
+function messageAccess(req, restriction) {
+  const directMessagingEnabled = tenantFeatureEnabled(
+    req,
+    'direct_messaging',
+    restriction.direct_messaging_enabled !== false && restriction.messaging_enabled !== false
+  );
+  const restricted = Boolean(
+    restriction.restricted
+    || restriction.is_restricted
+    || restriction.broker_messaging_only
+    || restriction.messaging_disabled
+  );
+  return { directMessagingEnabled, restricted, canSend: directMessagingEnabled && !restricted };
+}
+
 function tenantFeatureEnabled(req, key, fallback = true) {
   const tenant = req.accessibleRouting?.tenant;
   if (!tenant || typeof tenant !== 'object') return fallback;
@@ -695,6 +719,8 @@ router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute
 router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
   let groups = [];
   let error = '';
+  const restriction = await messageRestriction(req);
+  const access = messageAccess(req, restriction);
   try {
     const result = await callConversation(req.token, 'GET', '/groups');
     groups = listFrom(dataFrom(result));
@@ -709,11 +735,15 @@ router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
       displayName: groupName(group, res.locals.t)
     })),
     groupStatus: groupStatus(req.query.status, res.locals.t),
+    ...access,
+    canStart: access.canSend && tenantFeatureEnabled(req, 'connections', true),
     error
   });
 }));
 
 router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
+  const restriction = await messageRestriction(req);
+  const access = messageAccess(req, restriction);
   const query = trimmed(req.query.q);
   const selectedIds = selectedGroupMemberIds(req.query);
   const selected = new Set(selectedIds);
@@ -740,6 +770,8 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
     selectedMembers: selectedIds.map(id => ({ id, displayName: namedSelected.get(id) || res.locals.t('govuk_alpha.members.unknown_member') })),
     searchResults,
     canCreate: selectedIds.length >= 2,
+    ...access,
+    canStart: access.canSend && tenantFeatureEnabled(req, 'connections', true),
     groupStatus: groupStatus(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -747,10 +779,11 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
 
 router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const conversationId = Number(req.params.conversationId);
-  const [messagesResult, participantsResult, profileResult] = await Promise.all([
+  const [messagesResult, participantsResult, profileResult, restriction] = await Promise.all([
     callConversation(req.token, 'GET', conversationApiPath(conversationId, req.query)),
     callConversation(req.token, 'GET', `/${conversationId}/participants`),
-    getRequestProfile(req, req.token).catch(() => null)
+    getRequestProfile(req, req.token).catch(() => null),
+    messageRestriction(req)
   ]);
 
   const profile = dataFrom(profileResult);
@@ -773,6 +806,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
+  const access = messageAccess(req, restriction);
   res.render('messages/group-conversation', {
     title: groupName(conversation, res.locals.t),
     conversation: {
@@ -785,7 +819,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
     currentUserId,
     viewerRole,
     isAdmin: viewerRole === 'admin',
-    canSend: true,
+    ...access,
     searchQuery,
     meta: {
       hasMore: Boolean(meta.has_more),

@@ -22980,6 +22980,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Create group conversation');
   });
 
+  it('suppresses group-message mutations when Laravel restricts messaging', async () => {
+    const api = require('../src/lib/api');
+    api.callConversationApi.mockResolvedValueOnce({ data: [] });
+    api.callMessageApi.mockResolvedValue({ data: { messaging_disabled: true } });
+
+    const list = await request(app)
+      .get('/messages/groups')
+      .set('Cookie', signedCookieHeader());
+    const create = await request(app)
+      .get('/messages/groups/new?members[]=44&members[]=55')
+      .set('Cookie', signedCookieHeader());
+
+    expect(list.status).toBe(200);
+    expect(list.text).not.toContain('href="/messages/groups/new"');
+    expect(create.status).toBe(200);
+    expect(create.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(create.text).toMatch(/<button class="govuk-button" disabled aria-disabled="true">Create group conversation<\/button>/);
+  });
+
   it('renders Laravel group-message failures as error summaries', async () => {
     const api = require('../src/lib/api');
     api.callConversationApi.mockResolvedValueOnce({ data: [] });

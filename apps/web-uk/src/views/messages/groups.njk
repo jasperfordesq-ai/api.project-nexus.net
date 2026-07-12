@@ -42,9 +42,11 @@
         </ul>
       </nav>
 
-      <p class="govuk-body">
-        <a class="govuk-button" href="{{ urlFor('/messages/groups/new') }}">{{ t("govuk_alpha_messages.groups.new_button") }}</a>
-      </p>
+      {% if canStart %}
+        <p class="govuk-body">
+          <a class="govuk-button" href="{{ urlFor('/messages/groups/new') }}">{{ t("govuk_alpha_messages.groups.new_button") }}</a>
+        </p>
+      {% endif %}
 
       {% if error %}
         <div class="govuk-inset-text">

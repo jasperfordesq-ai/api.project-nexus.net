@@ -5564,6 +5564,19 @@ binary delivery.
 stats both return `400` requiring `X-Tenant-ID`. This is runtime evidence only;
 the concurrent ASP.NET source work was not changed or committed in this slice.
 
+## 2026-07-12 Group Message Restriction Gates
+
+Group list, create, and conversation GET surfaces now consume Laravel's existing
+message restriction contract. Restricted members no longer see the create CTA;
+the create action is disabled with Blade warning copy; and conversation reply,
+reaction, and member-management controls follow the same `canSend` state rather
+than being unconditionally exposed.
+
+Focused group coverage passed 6/6. Full Jest passed `45/45` suites and
+`1,461/1,461` tests with green lint and the 285-template zero-match audit.
+Action-level authorization remains enforced by Laravel and still needs safe
+runtime depth where residue-free fixtures exist.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
