@@ -6,49 +6,45 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/jobs/mine') }}">Back to my opportunities</a>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_jobs.onboarding.caption") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_jobs.onboarding.title") }}</h1>
 
-  <span class="govuk-caption-xl">Get started as an employer</span>
-  <h1 class="govuk-heading-xl">{% if hasPosted %}Post another opportunity{% else %}Welcome to posting opportunities{% endif %}</h1>
-
-  {% if loadError %}
-    <div class="govuk-warning-text">
-      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-      <strong class="govuk-warning-text__text">
-        <span class="govuk-visually-hidden">Warning</span>
-        We could not check your existing opportunities just now.
-      </strong>
-    </div>
-  {% endif %}
+  {% set jobsActiveTab = "mine" %}
+  {% include "jobs/_nav.njk" %}
 
   {% if hasPosted %}
-    <p class="govuk-body-l">You already post opportunities here. Create another one whenever you are ready.</p>
+    <h2 class="govuk-heading-m">{{ t("govuk_alpha_jobs.onboarding.returning_heading") }}</h2>
+    <p class="govuk-body-l">{{ t("govuk_alpha_jobs.onboarding.returning_body") }}</p>
   {% else %}
-    <p class="govuk-body-l">Post opportunities to find the right people in your community. Whether you need paid staff, volunteers or timebank helpers, it is easy to connect with members.</p>
+    <h2 class="govuk-heading-m">{{ t("govuk_alpha_jobs.onboarding.welcome_heading") }}</h2>
+    <p class="govuk-body-l">{{ t("govuk_alpha_jobs.onboarding.welcome_body") }}</p>
   {% endif %}
 
-  <h2 class="govuk-heading-m">{{ t("about.how_it_works.title") }}</h2>
-  <ol class="govuk-list govuk-list--number">
-    <li>Describe the opportunity - title, what is involved and the kind of help you need.</li>
-    <li>Choose the type: paid, volunteer or timebank, and the time commitment.</li>
-    <li>Publish it. Members can then view and apply, and you manage applicants from your opportunities.</li>
+  <h2 class="govuk-heading-m">{{ t("govuk_alpha_jobs.onboarding.how_heading") }}</h2>
+  <ol class="govuk-list govuk-list--number govuk-!-margin-bottom-6">
+    <li>{{ t("govuk_alpha_jobs.onboarding.step_1") }}</li>
+    <li>{{ t("govuk_alpha_jobs.onboarding.step_2") }}</li>
+    <li>{{ t("govuk_alpha_jobs.onboarding.step_3") }}</li>
   </ol>
 
-  <h2 class="govuk-heading-m">Tips for more applicants</h2>
-  <ul class="govuk-list govuk-list--bullet">
-    <li>Add a detailed description with clear responsibilities.</li>
-    <li>Include salary or time-credit information for transparency.</li>
-    <li>List specific skills to attract qualified candidates.</li>
-    <li>Share your opportunity on community channels.</li>
-  </ul>
-
   <div class="govuk-inset-text">
-    <p class="govuk-body">Including a pay or time-credit range improves candidate quality and supports pay transparency.</p>
+    <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_jobs.onboarding.transparency_note") }}</p>
   </div>
 
-  <p class="govuk-button-group">
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.create_title") }}</a>
-    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/mine') }}">View my opportunities</a>
-    <a class="govuk-link" href="{{ urlFor('/jobs') }}">Browse opportunities</a>
+  <h2 class="govuk-heading-m">{{ t("govuk_alpha_jobs.onboarding.tips_heading") }}</h2>
+  <ul class="govuk-list govuk-list--bullet govuk-!-margin-bottom-6">
+    <li>{{ t("govuk_alpha_jobs.onboarding.tip_1") }}</li>
+    <li>{{ t("govuk_alpha_jobs.onboarding.tip_2") }}</li>
+    <li>{{ t("govuk_alpha_jobs.onboarding.tip_3") }}</li>
+    <li>{{ t("govuk_alpha_jobs.onboarding.tip_4") }}</li>
+  </ul>
+
+  <div class="nexus-alpha-actions govuk-!-margin-bottom-4">
+    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/jobs/create') }}">{{ t("govuk_alpha_jobs.onboarding.start_button") }}</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/jobs/mine') }}">{{ t("govuk_alpha_jobs.onboarding.view_mine_button") }}</a>
+  </div>
+
+  <p class="govuk-body">
+    <a class="govuk-link" href="{{ urlFor('/jobs') }}">{{ t("govuk_alpha_jobs.onboarding.browse_link") }}</a>
   </p>
 {% endblock %}

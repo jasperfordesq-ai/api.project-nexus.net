@@ -2220,3 +2220,56 @@ describe('localized progressive validation source contract', () => {
     expect(validation).not.toContain('firstErrorField.focus()');
   });
 });
+
+describe('Laravel-first Jobs sub-navigation source contract', () => {
+  it('uses one exact catalog-backed partial on every Laravel Jobs tab surface', () => {
+    const viewsRoot = path.join(__dirname, '..', 'src', 'views', 'jobs');
+    const nav = fs.readFileSync(path.join(viewsRoot, '_nav.njk'), 'utf8');
+    const activePages = {
+      'index.njk': 'browse',
+      'saved.njk': 'saved',
+      'applications.njk': 'applications',
+      'responses.njk': 'responses',
+      'alerts.njk': 'alerts',
+      'mine.njk': 'mine',
+      'onboarding.njk': 'mine'
+    };
+
+    expect(nav).toContain('t("govuk_alpha.jobs.title")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t2.nav_browse")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t2.nav_saved")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t2.nav_applications")');
+    expect(nav).toContain('t("govuk_alpha_jobs.responses.title")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t4.nav_alerts")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t3.nav_mine")');
+    expect(nav).toContain('t("govuk_alpha.jobs_t3.nav_create")');
+    expect(nav).toContain('aria-current="page"');
+
+    for (const [file, activeTab] of Object.entries(activePages)) {
+      const source = fs.readFileSync(path.join(viewsRoot, file), 'utf8');
+      expect(source).toContain(`{% set jobsActiveTab = "${activeTab}" %}`);
+      expect(source).toContain('{% include "jobs/_nav.njk" %}');
+      expect(source).not.toContain('<ul class="govuk-tabs__list">');
+    }
+  });
+
+  it('keeps employer onboarding on the exact default-English Blade catalog', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'jobs', 'onboarding.njk'),
+      'utf8'
+    );
+
+    for (const key of [
+      'caption', 'title', 'returning_heading', 'returning_body', 'welcome_heading',
+      'welcome_body', 'how_heading', 'step_1', 'step_2', 'step_3',
+      'transparency_note', 'tips_heading', 'tip_1', 'tip_2', 'tip_3', 'tip_4',
+      'start_button', 'view_mine_button', 'browse_link'
+    ]) {
+      expect(source).toContain(`t("govuk_alpha_jobs.onboarding.${key}")`);
+    }
+
+    expect(source).not.toContain('Get started as an employer');
+    expect(source).not.toContain('Tips for more applicants');
+    expect(source).not.toContain('about.how_it_works.title');
+  });
+});

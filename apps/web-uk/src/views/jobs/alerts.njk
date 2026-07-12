@@ -10,32 +10,8 @@
   <h1 class="govuk-heading-xl">{{ t("govuk_alpha.jobs_t4.title") }}</h1>
   <p class="govuk-body-l">{{ t("govuk_alpha.jobs_t4.description") }}</p>
 
-  <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
-    <h2 class="govuk-tabs__title">{{ t("govuk_alpha.jobs.title") }}</h2>
-    <ul class="govuk-tabs__list">
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs') }}">{{ t("govuk_alpha.jobs_t2.nav_browse") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/saved') }}">{{ t("govuk_alpha.jobs_t2.nav_saved") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/applications') }}">{{ t("jobs_t2.applications_title") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/responses') }}">{{ t("govuk_alpha_jobs.responses.title") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/alerts') }}" aria-current="page">{{ t("jobs_t4.title") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/mine') }}">{{ t("jobs_t3.mine_title") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/jobs/create') }}">{{ t("jobs_t3.nav_create") }}</a>
-      </li>
-    </ul>
-  </div>
+  {% set jobsActiveTab = "alerts" %}
+  {% include "jobs/_nav.njk" %}
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
