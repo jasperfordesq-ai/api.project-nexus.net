@@ -943,7 +943,23 @@ app.get('/volunteering/opportunities/:id(\\d+)', (req, res) => {
       : {};
     const organisationId = opportunity.organization_id || opportunity.organisation_id || organization.id || 0;
     const organisationName = opportunity.org_name || opportunity.organisation_name || organization.name || '';
-    const shifts = Array.isArray(opportunity.shifts) ? opportunity.shifts : [];
+    const shifts = (Array.isArray(opportunity.shifts) ? opportunity.shifts : []).map((shift) => {
+      const startTime = Date.parse(shift?.start_time || '');
+      return {
+        ...shift,
+        isPast: Number.isFinite(startTime) && startTime < Date.now(),
+        spacesAvailable: shift?.spots_available === undefined || shift?.spots_available === null
+          ? shift?.capacity
+          : shift.spots_available,
+        hasSpace: shift?.spots_available === undefined
+          || shift?.spots_available === null
+          || Number(shift.spots_available) > 0
+      };
+    });
+    const application = opportunity.application && typeof opportunity.application === 'object'
+      ? opportunity.application
+      : null;
+    const isApprovedApplicant = application?.status === 'approved';
 
     return {
       ...opportunity,
@@ -951,20 +967,57 @@ app.get('/volunteering/opportunities/:id(\\d+)', (req, res) => {
       organisationName,
       categoryName: category.name || (typeof opportunity.category === 'string' ? opportunity.category : ''),
       shifts,
-      hasApplied: !!opportunity.has_applied
+      hasApplied: Boolean(opportunity.has_applied),
+      application,
+      isApprovedApplicant,
+      signedUpShiftId: isApprovedApplicant ? Number(application.shift_id) || 0 : 0
     };
   };
 
   return getVolunteerOpportunity(req.params.id, token)
     .then((result) => {
       const opportunity = normalizeOpportunity(result);
+      const status = typeof req.query.status === 'string' ? req.query.status : '';
+      const safeguardingMessage = (key, fallback) => {
+        const translated = res.locals.t(key);
+        return translated !== key ? translated : fallback;
+      };
+      const statusPresentation = {
+        'apply-created': ['success', res.locals.t('govuk_alpha.volunteering.apply_created')],
+        'apply-failed': ['error', res.locals.t('govuk_alpha.volunteering.apply_failed')],
+        'apply-safeguarding-restricted': ['error', safeguardingMessage(
+          'safeguarding.errors.interaction_not_allowed',
+          'The recipient\u2019s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
+        )],
+        'apply-safeguarding-unavailable': ['error', safeguardingMessage(
+          'safeguarding.errors.policy_unavailable',
+          'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
+        )],
+        'shift-signed-up': ['success', res.locals.t('govuk_alpha.volunteering.shift_signed_up_detail')],
+        'shift-cancelled': ['success', res.locals.t('govuk_alpha.volunteering.shift_cancelled_detail')],
+        'shift-signup-failed': ['error', res.locals.t('govuk_alpha.volunteering.shift_signup_failed')],
+        'shift-cancel-failed': ['error', res.locals.t('govuk_alpha.volunteering.shift_cancel_failed')],
+        'shift-safeguarding-restricted': ['error', safeguardingMessage(
+          'safeguarding.errors.interaction_not_allowed',
+          'The recipient\u2019s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
+        )],
+        'shift-safeguarding-unavailable': ['error', safeguardingMessage(
+          'safeguarding.errors.policy_unavailable',
+          'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
+        )]
+      }[status] || null;
 
       res.render('volunteer-opportunity', {
-        title: opportunity.title || 'Volunteering opportunity',
+        title: opportunity.title || res.locals.t('govuk_alpha.volunteering.detail_title'),
         activeNav: 'volunteering',
         opportunity,
         opportunityId: req.params.id,
-        authRequired: !token
+        authRequired: !token,
+        status: statusPresentation ? {
+          type: statusPresentation[0],
+          message: statusPresentation[1]
+        } : null,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     })
     .catch((error) => {

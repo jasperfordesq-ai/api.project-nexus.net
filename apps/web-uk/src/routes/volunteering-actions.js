@@ -339,6 +339,26 @@ function opportunityRedirect(id, status) {
   return `/volunteering/opportunities/${id}?status=${encodeURIComponent(status)}`;
 }
 
+async function runOpportunityAction(req, res, options) {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+
+  try {
+    await callApi(token, options.method, options.path, options.data);
+    return redirectTo(res, opportunityRedirect(options.opportunityId, options.successStatus));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, opportunityRedirect(options.opportunityId, options.unavailableStatus));
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'SAFEGUARDING_INTERACTION_NOT_ALLOWED', 'VETTING_REQUIRED'].includes(code)) {
+      return redirectTo(res, opportunityRedirect(options.opportunityId, options.restrictedStatus));
+    }
+    return redirectTo(res, opportunityRedirect(options.opportunityId, options.failureStatus));
+  }
+}
+
 function accessibilityStatus(status, t = null) {
   if (status === 'accessibility-saved') {
     return {
@@ -2529,45 +2549,46 @@ router.post('/opportunities/:id(\\d+)/apply', asyncRoute(async (req, res) => {
     shift_id: positiveInteger(req.body.shift_id)
   };
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/opportunities/${id}/apply`,
-    payload,
-    opportunityRedirect(id, 'apply-created'),
-    opportunityRedirect(id, 'apply-failed')
-  );
+  return runOpportunityAction(req, res, {
+    method: 'POST',
+    path: `/opportunities/${id}/apply`,
+    data: payload,
+    opportunityId: id,
+    successStatus: 'apply-created',
+    failureStatus: 'apply-failed',
+    restrictedStatus: 'apply-safeguarding-restricted',
+    unavailableStatus: 'apply-safeguarding-unavailable'
+  });
 }));
 
 router.post('/opportunities/:id(\\d+)/shifts/:shiftId(\\d+)/signup', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const shiftId = Number(req.params.shiftId);
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/shifts/${shiftId}/signup`,
-    undefined,
-    opportunityRedirect(id, 'shift-signed-up'),
-    opportunityRedirect(id, 'shift-signup-failed')
-  );
+  return runOpportunityAction(req, res, {
+    method: 'POST',
+    path: `/shifts/${shiftId}/signup`,
+    opportunityId: id,
+    successStatus: 'shift-signed-up',
+    failureStatus: 'shift-signup-failed',
+    restrictedStatus: 'shift-safeguarding-restricted',
+    unavailableStatus: 'shift-safeguarding-unavailable'
+  });
 }));
 
 router.post('/opportunities/:id(\\d+)/shifts/:shiftId(\\d+)/cancel', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const shiftId = Number(req.params.shiftId);
 
-  return runAction(
-    req,
-    res,
-    'DELETE',
-    `/shifts/${shiftId}/signup`,
-    undefined,
-    opportunityRedirect(id, 'shift-cancelled'),
-    opportunityRedirect(id, 'shift-cancel-failed')
-  );
+  return runOpportunityAction(req, res, {
+    method: 'DELETE',
+    path: `/shifts/${shiftId}/signup`,
+    opportunityId: id,
+    successStatus: 'shift-cancelled',
+    failureStatus: 'shift-cancel-failed',
+    restrictedStatus: 'shift-safeguarding-restricted',
+    unavailableStatus: 'shift-safeguarding-unavailable'
+  });
 }));
 
 router.post('/applications/:id(\\d+)/withdraw', asyncRoute(async (req, res) => {

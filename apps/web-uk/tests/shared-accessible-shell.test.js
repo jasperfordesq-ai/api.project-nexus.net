@@ -17151,7 +17151,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Remote');
     expect(response.text).toContain('Help prepare meals and welcome visitors');
     expect(response.text).toContain('Community Club');
-    expect(response.text).toContain('href="/organisations/42"');
+    expect(response.text).not.toContain('href="/organisations/42"');
     expect(response.text).toContain('About this opportunity');
     expect(response.text).toContain('Organisation');
     expect(response.text).toContain('Location');
@@ -17164,9 +17164,61 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('10 places');
     expect(response.text).toContain('3 places left');
     expect(response.text).toContain('Sign in to apply for opportunities and track your volunteering.');
-    expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
-    expect(response.text).toContain('Apply for this opportunity');
+    expect(response.text).toContain('href="/login"');
+    expect(response.text).toContain('href="/register"');
     expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
+  it('renders Blade inline apply and approved-applicant shift controls on opportunity detail', async () => {
+    const api = require('../src/lib/api');
+    const opportunity = {
+      id: 77,
+      title: 'Community Kitchen Helper',
+      description: 'Help prepare meals.',
+      organization: { id: 42, name: 'Community Club' },
+      shifts: [
+        { id: 501, start_time: '2027-08-03T09:00:00Z', capacity: 10, spots_available: 3 },
+        { id: 502, start_time: '2027-08-04T09:00:00Z', capacity: 10, spots_available: 2 }
+      ],
+      has_applied: false
+    };
+    api.getVolunteerOpportunity.mockResolvedValueOnce({ data: opportunity });
+
+    const applyPage = await request(app)
+      .get('/volunteering/opportunities/77')
+      .set('Cookie', signedAuthCookieHeader());
+
+    expect(api.getVolunteerOpportunity).toHaveBeenLastCalledWith('77', 'test-token');
+    expect(applyPage.status).toBe(200);
+    expect(applyPage.text).toContain('method="post" action="/volunteering/opportunities/77/apply"');
+    expect(applyPage.text).toContain('id="shift_id" name="shift_id"');
+    expect(applyPage.text).toContain('id="message" name="message"');
+    expect(applyPage.text).toContain('>Apply</button>');
+
+    api.getVolunteerOpportunity.mockResolvedValueOnce({
+      data: {
+        ...opportunity,
+        has_applied: true,
+        application: { status: 'approved', shift_id: 501 }
+      }
+    });
+    const approvedPage = await request(app)
+      .get('/volunteering/opportunities/77?status=shift-signed-up')
+      .set('Cookie', signedAuthCookieHeader());
+
+    expect(approvedPage.status).toBe(200);
+    expect(approvedPage.text).toContain('You are signed up for this shift.');
+    expect(approvedPage.text).toContain('method="post" action="/volunteering/opportunities/77/shifts/501/cancel"');
+    expect(approvedPage.text).toContain('method="post" action="/volunteering/opportunities/77/shifts/502/signup"');
+    expect(approvedPage.text).toContain('You have already applied for this opportunity.');
+    expect(approvedPage.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+
+    api.getVolunteerOpportunity.mockResolvedValueOnce({ data: opportunity });
+    const safeguardingPage = await request(app)
+      .get('/volunteering/opportunities/77?status=apply-safeguarding-unavailable')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(safeguardingPage.status).toBe(200);
+    expect(safeguardingPage.text).toContain('We cannot confirm the community safeguarding policy right now.');
   });
 
   it('returns the shared 404 page when a Laravel volunteering opportunity is missing', async () => {
@@ -28113,6 +28165,29 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1] });
     expect(certificateResponse.headers.location).toBe('/volunteering/certificates?status=certificate-generated');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/certificates');
+  });
+
+  it('preserves Laravel safeguarding failures for opportunity and shift actions', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedAuthCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+    const cases = [
+      ['/volunteering/opportunities/77/apply', 'SAFEGUARDING_POLICY_UNAVAILABLE', 'apply-safeguarding-unavailable'],
+      ['/volunteering/opportunities/77/apply', 'SAFEGUARDING_CONTACT_RESTRICTED', 'apply-safeguarding-restricted'],
+      ['/volunteering/opportunities/77/shifts/501/signup', 'VETTING_REQUIRED', 'shift-safeguarding-restricted']
+    ];
+
+    for (const [pathValue, code, status] of cases) {
+      api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError('Safeguarding denied', 422, { code }));
+      const response = await agent
+        .post(pathValue)
+        .set('Cookie', cookie)
+        .type('form')
+        .send({ _csrf: csrfToken, message: 'Ready to help' });
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(`/volunteering/opportunities/77?status=${status}`);
+    }
   });
 
   it('submits Laravel volunteering depth aliases for wellbeing, donations, groups, expenses, and safeguarding', async () => {
