@@ -14511,6 +14511,29 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Love');
   });
 
+  it('renders review comment validation as the Blade error summary and field error', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callReviewApi.mockResolvedValueOnce({
+      data: { id: 91, rating: 5, comment: 'Thoughtful exchange', reviewer: { name: 'Avery Stone' } }
+    });
+    api.getComments.mockResolvedValueOnce({ data: { comments: [], count: 0 } });
+    api.getReactionSummary.mockResolvedValueOnce({ data: { counts: {}, total: 0, user_reaction: null } });
+
+    const response = await request(app)
+      .get('/reviews/91/comments?status=comment-invalid')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('govuk-error-summary');
+    expect(response.text).toContain('href="#body"');
+    expect(response.text).toContain('id="body-error"');
+    expect(response.text).toContain('aria-describedby="body-error"');
+    expect(response.text).not.toContain('states.important');
+  });
+
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

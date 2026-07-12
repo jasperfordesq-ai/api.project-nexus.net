@@ -25,6 +25,14 @@ const REVIEWS_PATH = '/reviews';
 const LOGIN_AUTH_REQUIRED_PATH = '/login?status=auth-required';
 const LARAVEL_REVIEW_REACTIONS = ['like', 'love', 'laugh', 'wow', 'sad', 'celebrate'];
 const LARAVEL_REVIEW_REACTION_SET = new Set(LARAVEL_REVIEW_REACTIONS);
+const LARAVEL_REVIEW_REACTION_EMOJI = {
+  like: '\u{1F44D}',
+  love: '\u2764\uFE0F',
+  laugh: '\u{1F602}',
+  wow: '\u{1F62E}',
+  sad: '\u{1F622}',
+  celebrate: '\u{1F389}'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -237,7 +245,11 @@ function reviewStatusMessage(status, t) {
 function commentStatusMessage(status, t) {
   const success = new Set(['comment-added', 'reply-added', 'comment-updated', 'comment-deleted', 'reaction-added', 'reaction-removed']);
   const known = new Set([...success, 'comment-invalid', 'comment-empty', 'comment-failed', 'comment-update-failed', 'comment-delete-failed', 'reaction-failed']);
-  return known.has(status) ? { type: success.has(status) ? 'success' : 'error', text: t(`govuk_alpha_blogreviews.comment_states.${status}`) } : null;
+  return known.has(status) ? {
+    type: success.has(status) ? 'success' : 'error',
+    status,
+    text: t(`govuk_alpha_blogreviews.comment_states.${status}`)
+  } : null;
 }
 
 router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
@@ -406,6 +418,7 @@ router.get('/:id(\\d+)/comments', requireAuth, asyncRoute(async (req, res) => {
     commentsCount: commentCountFrom(commentsResult, comments),
     alphaReactions: LARAVEL_REVIEW_REACTIONS.map((value) => ({
       value,
+      emoji: LARAVEL_REVIEW_REACTION_EMOJI[value],
       label: res.locals.t(`govuk_alpha_blogreviews.reactions.${value}`),
       count: Number((reactionData.counts && reactionData.counts[value]) || 0),
       selected: reactionData.user_reaction === value || reactionData.userReaction === value

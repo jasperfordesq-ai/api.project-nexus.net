@@ -49,7 +49,7 @@ This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,464/1,464` tests passed.
+- Jest: `45/45` suites and `1,465/1,465` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -5648,6 +5648,25 @@ Full Jest remains `45/45` suites and `1,464/1,464` tests; lint and the
 285-template zero-match audit are green. Feature-gate depth, non-owner live
 variants, exact rich-text/RSS depth, manual assistive-technology review, and
 ASP.NET compatibility remain open.
+
+## 2026-07-12 Reversible Review Discussion Lifecycle
+
+Review discussions now match Blade's emoji-bearing review/comment reaction
+controls and render mutation failures as a field-linked GOV.UK error summary
+rather than an “Important” notification. Focused validation coverage guards
+the summary and `#body` field error.
+
+`npm run smoke:laravel:reviews-mutation` passed `1/1` in `225.4` seconds
+against clean review 18. It created an owned comment, reacted, edited, added a
+reply, toggled the review reaction on and back off, warning-deleted the parent
+and cascade reply, passed 320px structure/reflow and serious/critical axe
+checks, and proved final API absence. Independent inspection found zero
+comments and the review reaction restored to null.
+
+Full Jest passed `45/45` suites and `1,465/1,465` tests; lint and the
+285-template zero-match audit are green. Non-owner live variants, review
+creation/deletion policy depth, manual assistive-technology review, and ASP.NET
+compatibility remain open.
 
 ## Final Handoff Checklist
 

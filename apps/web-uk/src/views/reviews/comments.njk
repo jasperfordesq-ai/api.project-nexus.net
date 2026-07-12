@@ -35,7 +35,7 @@
                 <input type="hidden" name="review_id" value="{{ reviewId }}">
                 <input type="hidden" name="emoji" value="{{ reaction.value }}">
                 <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0{% if selected %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" type="submit" aria-pressed="{% if selected %}true{% else %}false{% endif %}">
-                  {{ t("govuk_alpha_blogreviews.reactions." + reaction.value) }}{% if comment.reactions[reaction.value] %} ({{ comment.reactions[reaction.value] }}){% endif %}
+                  <span aria-hidden="true">{{ reaction.emoji }}</span> {{ t("govuk_alpha_blogreviews.reactions." + reaction.value) }}{% if comment.reactions[reaction.value] %} ({{ comment.reactions[reaction.value] }}){% endif %}
                   <span class="govuk-visually-hidden"> {{ t("govuk_alpha_blogreviews.reactions.for_comment") }}</span>
                 </button>
               </form>
@@ -118,14 +118,19 @@
 
 {% block mainContent %}
   {% if statusMessage %}
-    <div class="govuk-notification-banner{% if statusMessage.type == 'success' %} govuk-notification-banner--success{% endif %}" role="region" aria-labelledby="review-comments-status-title">
-      <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="review-comments-status-title">{{ t("govuk_alpha_blogreviews.states.success_title") if statusMessage.type == "success" else t("states.important") }}</h2>
+    {% if statusMessage.type == 'success' %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="review-comments-status-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="review-comments-status-title">{{ t("govuk_alpha_blogreviews.states.success_title") }}</h2></div>
+        <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p></div>
       </div>
-      <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">{{ statusMessage.text }}</p>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_blogreviews.states.error_title") }}</h2>
+          <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li><a href="#body">{{ statusMessage.text }}</a></li></ul></div>
+        </div>
       </div>
-    </div>
+    {% endif %}
   {% endif %}
 
   <div class="govuk-grid-row">
@@ -150,7 +155,7 @@
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <input type="hidden" name="emoji" value="{{ reaction.value }}">
               <button class="govuk-button govuk-button--secondary{% if reaction.selected %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" type="submit" aria-pressed="{{ 'true' if reaction.selected else 'false' }}">
-                {{ reaction.label }}{% if reaction.count %} ({{ reaction.count }}){% endif %}<span class="govuk-visually-hidden"> {{ t("govuk_alpha_blogreviews.reactions.for_review") }}</span>
+                <span aria-hidden="true">{{ reaction.emoji }}</span> {{ reaction.label }}{% if reaction.count %} ({{ reaction.count }}){% endif %}<span class="govuk-visually-hidden"> {{ t("govuk_alpha_blogreviews.reactions.for_review") }}</span>
               </button>
             </form>
           {% endfor %}
@@ -175,9 +180,10 @@
         <h2 class="govuk-heading-m" id="add-comment-heading">{{ t("govuk_alpha_blogreviews.review_comments.add_heading") }}</h2>
         <form method="post" action="{{ urlFor('/reviews/' + (review.id | string) + '/comments') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          <div class="govuk-form-group">
+          <div class="govuk-form-group{% if statusMessage and statusMessage.status == 'comment-invalid' %} govuk-form-group--error{% endif %}">
             <label class="govuk-label govuk-label--s" for="body">{{ t("govuk_alpha_blogreviews.review_comments.body_label") }}</label>
-            <textarea class="govuk-textarea" id="body" name="body" rows="5" maxlength="5000"></textarea>
+            {% if statusMessage and statusMessage.status == 'comment-invalid' %}<p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("govuk_alpha_blogreviews.states.error_prefix") }}</span> {{ statusMessage.text }}</p>{% endif %}
+            <textarea class="govuk-textarea" id="body" name="body" rows="5" maxlength="5000"{% if statusMessage and statusMessage.status == 'comment-invalid' %} aria-describedby="body-error"{% endif %}></textarea>
           </div>
           <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("govuk_alpha_blogreviews.review_comments.submit") }}</button>
         </form>
