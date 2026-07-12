@@ -301,19 +301,20 @@ function normalizeOutcomeForm(item) {
   };
 }
 
-function outcomeEditStatusMessage(status) {
-  const messages = {
-    'outcome-saved': 'The outcome has been saved.'
-  };
-  return messages[trimmed(status)] || '';
+function ideationStateMessage(status, t, aliases = {}) {
+  const value = trimmed(status);
+  if (!value || typeof t !== 'function') return '';
+  return t(`govuk_alpha_ideation.states.${aliases[value] || value}`);
 }
 
-function outcomeEditErrorMessage(status) {
-  const messages = {
-    'outcome-failed': 'Sorry, the outcome could not be saved. Please try again.',
-    'outcome-save-failed': 'Sorry, the outcome could not be saved. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
+function outcomeEditStatusMessage(status, t) {
+  return trimmed(status) === 'outcome-saved' ? ideationStateMessage(status, t) : '';
+}
+
+function outcomeEditErrorMessage(status, t) {
+  return ['outcome-failed', 'outcome-save-failed'].includes(trimmed(status))
+    ? ideationStateMessage(status, t, { 'outcome-save-failed': 'outcome-failed' })
+    : '';
 }
 
 function normalizeIdea(item) {
@@ -411,79 +412,41 @@ function normalizeMedia(item) {
   };
 }
 
-function statusMessage(status) {
-  const messages = {
-    'idea-submitted': 'Thank you - your idea has been submitted.',
-    'idea-voted': 'Your vote has been recorded.'
-  };
-  return messages[trimmed(status)] || '';
+function statusMessage(status, t) {
+  return ['idea-submitted', 'idea-voted'].includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
-function errorMessage(status) {
-  const messages = {
-    'idea-invalid': 'Enter your idea.',
-    'idea-failed': 'Something went wrong. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
+function errorMessage(status, t) {
+  if (trimmed(status) === 'idea-invalid') return t('ideation.states.idea-invalid');
+  return trimmed(status) === 'idea-failed' ? t('ideation.states.idea-failed') : '';
 }
 
-function ideaDetailStatusMessage(status) {
-  const messages = {
-    'idea-voted': 'Your vote has been recorded.',
-    'idea-status-updated': 'The idea status has been updated.',
-    'idea-deleted': 'The idea has been deleted.',
-    'comment-added': 'Your comment has been posted.',
-    'comment-deleted': 'The comment has been deleted.',
-    'media-added': 'The attachment has been added.',
-    converted: 'A group has been created from this idea.'
-  };
-  return messages[trimmed(status)] || '';
+function ideaDetailStatusMessage(status, t) {
+  const allowed = ['idea-voted', 'idea-status-updated', 'idea-deleted', 'comment-added', 'comment-deleted', 'media-added', 'converted'];
+  return allowed.includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
-function ideaDetailErrorMessage(status) {
-  const messages = {
-    'idea-failed': 'Sorry, that action could not be completed. Please try again.',
-    'comment-invalid': 'Enter a comment before posting.',
-    'comment-failed': 'Sorry, your comment could not be posted. Please try again.',
-    'media-invalid': 'Enter a web address for the attachment.',
-    'media-failed': 'Sorry, the attachment could not be added. Please try again.',
-    'convert-failed': 'Sorry, the idea could not be turned into a group. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
+function ideaDetailErrorMessage(status, t) {
+  const allowed = ['idea-failed', 'comment-invalid', 'comment-failed', 'media-invalid', 'media-failed', 'convert-failed'];
+  return allowed.includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
-function draftStatusMessage(status) {
-  const messages = {
-    'draft-saved': 'Your draft has been saved.'
-  };
-  return messages[trimmed(status)] || '';
+function draftStatusMessage(status, t) {
+  return trimmed(status) === 'draft-saved' ? ideationStateMessage(status, t) : '';
 }
 
-function draftErrorMessage(status) {
-  const messages = {
-    'draft-invalid': 'Enter a title for your draft.',
-    'draft-failed': 'Sorry, your draft could not be saved. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
+function draftErrorMessage(status, t) {
+  return ['draft-invalid', 'draft-failed'].includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
-function manageStatusMessage(status) {
-  const messages = {
-    'challenge-status-updated': 'The challenge status has been updated.',
-    'campaign-linked': 'The challenge has been linked to the campaign.',
-    favorited: 'The challenge has been added to your favourites.',
-    unfavorited: 'The challenge has been removed from your favourites.'
-  };
-  return messages[trimmed(status)] || '';
+function manageStatusMessage(status, t) {
+  const allowed = ['challenge-status-updated', 'campaign-linked', 'favorited', 'unfavorited'];
+  return allowed.includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
-function manageErrorMessage(status) {
-  const messages = {
-    'challenge-status-failed': 'The challenge status could not be updated.',
-    'challenge-failed': 'Sorry, the challenge action could not be completed.',
-    'campaign-link-failed': 'The challenge could not be linked to the campaign.'
-  };
-  return messages[trimmed(status)] || '';
+function manageErrorMessage(status, t) {
+  const allowed = ['challenge-status-failed', 'challenge-failed', 'campaign-link-failed'];
+  return allowed.includes(trimmed(status)) ? ideationStateMessage(status, t) : '';
 }
 
 router.get('/', asyncRoute(async (req, res) => {
@@ -537,7 +500,7 @@ router.get('/new', asyncRoute(async (req, res) => {
     categories,
     templates,
     status,
-    errorMessage: status === 'challenge-failed' ? 'Sorry, the challenge could not be saved. Please try again.' : ''
+    errorMessage: status === 'challenge-failed' ? ideationStateMessage(status, res.locals.t) : ''
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -658,8 +621,8 @@ router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
     transitions: challengeTransitions(challenge.status),
     isFavorited: Boolean(challenge.is_favorited || challenge.isFavorited || challenge.has_favorited || challenge.hasFavorited),
     status,
-    successMessage: manageStatusMessage(status),
-    errorMessage: manageErrorMessage(status)
+    successMessage: manageStatusMessage(status, res.locals.t),
+    errorMessage: manageErrorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
@@ -685,8 +648,8 @@ router.get('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
     ideas,
     outcome,
     status,
-    successMessage: outcomeEditStatusMessage(status),
-    errorMessage: outcomeEditErrorMessage(status)
+    successMessage: outcomeEditStatusMessage(status, res.locals.t),
+    errorMessage: outcomeEditErrorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
@@ -709,8 +672,8 @@ router.get('/:id(\\d+)/drafts', asyncRoute(async (req, res) => {
     challenge,
     drafts,
     status,
-    successMessage: draftStatusMessage(status),
-    errorMessage: draftErrorMessage(status)
+    successMessage: draftStatusMessage(status, res.locals.t),
+    errorMessage: draftErrorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
@@ -747,8 +710,8 @@ router.get('/:id(\\d+)/ideas/:ideaId(\\d+)', asyncRoute(async (req, res) => {
     comments,
     media,
     status,
-    successMessage: ideaDetailStatusMessage(status),
-    errorMessage: ideaDetailErrorMessage(status)
+    successMessage: ideaDetailStatusMessage(status, res.locals.t),
+    errorMessage: ideaDetailErrorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation idea not found' }));
 
@@ -771,7 +734,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     categories,
     templates: [],
     status,
-    errorMessage: status === 'challenge-failed' ? 'Sorry, the challenge could not be saved. Please try again.' : ''
+    errorMessage: status === 'challenge-failed' ? ideationStateMessage(status, res.locals.t) : ''
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 
@@ -794,8 +757,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     challenge,
     ideas,
     status,
-    successMessage: statusMessage(status),
-    errorMessage: errorMessage(status)
+    successMessage: statusMessage(status, res.locals.t),
+    errorMessage: errorMessage(status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 

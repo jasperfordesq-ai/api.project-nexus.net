@@ -17757,7 +17757,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('Back to challenges');
-    expect(detail.text).toContain('your idea has been submitted');
+    expect(detail.text).toContain('Your idea has been published.');
     expect(detail.text).toContain('Better local parks');
     expect(detail.text).toContain('Environment');
     expect(detail.text).toContain('parks');
@@ -18450,7 +18450,7 @@ describe('shared accessible frontend shell', () => {
       description: ' Updated description ',
       status: 'draft'
     });
-    expect(updateResponse.headers.location).toBe('/ideation/7/manage?status=challenge-saved');
+    expect(updateResponse.headers.location).toBe('/ideation/7/manage?status=challenge-updated');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7', {
       title: 'Updated parks',
       description: 'Updated description',
@@ -18458,13 +18458,14 @@ describe('shared accessible frontend shell', () => {
     });
 
     const statusResponse = await post('/ideation/7/status', { status: 'voting' });
-    expect(statusResponse.headers.location).toBe('/ideation/7/manage?status=status-updated');
+    expect(statusResponse.headers.location).toBe('/ideation/7/manage?status=challenge-status-updated');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7/status', {
       status: 'voting'
     });
 
+    api.callIdeationApi.mockResolvedValueOnce({ data: { favorited: false } });
     const favoriteResponse = await post('/ideation/7/favorite');
-    expect(favoriteResponse.headers.location).toBe('/ideation/7?status=favorite-updated');
+    expect(favoriteResponse.headers.location).toBe('/ideation/7?status=unfavorited');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges/7/favorite');
 
     const duplicateResponse = await post('/ideation/7/duplicate');
@@ -18577,7 +18578,7 @@ describe('shared accessible frontend shell', () => {
       group_name: ' Parks delivery team ',
       group_description: ' Coordinate delivery. '
     });
-    expect(convertResponse.headers.location).toBe('/ideation/7/ideas/12?status=converted-to-group');
+    expect(convertResponse.headers.location).toBe('/ideation/7/ideas/12?status=converted');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/convert-to-group', {
       group_name: 'Parks delivery team',
       description: 'Coordinate delivery.'

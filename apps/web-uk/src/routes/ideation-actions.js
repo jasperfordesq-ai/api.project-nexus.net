@@ -98,6 +98,11 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
   }
 }
 
+function favoriteStatus(result) {
+  const data = dataFrom(result);
+  return data && typeof data === 'object' && data.favorited === false ? 'unfavorited' : 'favorited';
+}
+
 function ideationAdministrator(profileResult) {
   const profile = dataFrom(profileResult) || {};
   const role = trimmed(profile.role || profile.user_role || profile.userRole).toLowerCase();
@@ -315,7 +320,7 @@ router.post('/new', asyncRoute(async (req, res) => runAction(
   '/ideation-challenges',
   challengePayload(req.body),
   (result) => challengeRedirect(resultId(result) || 'new', 'challenge-created'),
-  ideationSubpageRedirect('new', 'challenge-create-failed')
+  ideationSubpageRedirect('new', 'challenge-failed')
 )));
 
 router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
@@ -326,8 +331,8 @@ router.post('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     'PUT',
     `/ideation-challenges/${id}`,
     challengePayload(req.body),
-    challengeManageRedirect(id, 'challenge-saved'),
-    challengeManageRedirect(id, 'challenge-save-failed')
+    challengeManageRedirect(id, 'challenge-updated'),
+    challengeManageRedirect(id, 'challenge-failed')
   );
 }));
 
@@ -339,8 +344,8 @@ router.post('/:id(\\d+)/status', asyncRoute(async (req, res) => {
     'PUT',
     `/ideation-challenges/${id}/status`,
     { status: trimmed(req.body.status, 64) },
-    challengeManageRedirect(id, 'status-updated'),
-    challengeManageRedirect(id, 'status-update-failed')
+    challengeManageRedirect(id, 'challenge-status-updated'),
+    challengeManageRedirect(id, 'challenge-status-failed')
   );
 }));
 
@@ -352,8 +357,8 @@ router.post('/:id(\\d+)/favorite', asyncRoute(async (req, res) => {
     'POST',
     `/ideation-challenges/${id}/favorite`,
     undefined,
-    challengeRedirect(id, 'favorite-updated'),
-    challengeRedirect(id, 'favorite-failed')
+    (result) => challengeRedirect(id, favoriteStatus(result)),
+    challengeRedirect(id, 'challenge-failed')
   );
 }));
 
@@ -366,7 +371,7 @@ router.post('/:id(\\d+)/duplicate', asyncRoute(async (req, res) => {
     `/ideation-challenges/${id}/duplicate`,
     undefined,
     (result) => challengeRedirect(resultId(result) || id, 'challenge-duplicated'),
-    challengeManageRedirect(id, 'challenge-duplicate-failed')
+    challengeManageRedirect(id, 'challenge-failed')
   );
 }));
 
@@ -379,7 +384,7 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     `/ideation-challenges/${id}`,
     undefined,
     ideationRedirect('challenge-deleted'),
-    challengeManageRedirect(id, 'challenge-delete-failed')
+    challengeManageRedirect(id, 'challenge-failed')
   );
 }));
 
@@ -426,7 +431,7 @@ router.post('/:id(\\d+)/drafts/:ideaId(\\d+)', asyncRoute(async (req, res) => {
     `/ideation-ideas/${ideaId}/draft`,
     ideaPayload(req.body),
     challengeSubpageRedirect(id, 'drafts', 'draft-saved'),
-    challengeSubpageRedirect(id, 'drafts', 'draft-save-failed')
+    challengeSubpageRedirect(id, 'drafts', 'draft-failed')
   );
 }));
 
@@ -439,7 +444,7 @@ router.post('/:id(\\d+)/ideas', asyncRoute(async (req, res) => {
     `/ideation-challenges/${id}/ideas`,
     ideaPayload(req.body),
     challengeRedirect(id, 'idea-submitted') + '#ideas',
-    challengeRedirect(id, 'idea-submit-failed') + '#ideas'
+    challengeRedirect(id, 'idea-failed') + '#ideas'
   );
 }));
 
@@ -453,7 +458,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/comments', asyncRoute(async (req, re
     `/ideation-ideas/${ideaId}/comments`,
     { body: trimmed(req.body.comment_body || req.body.body, 5000) },
     ideaRedirect(id, ideaId, 'comment-added', '#comments'),
-    ideaRedirect(id, ideaId, 'comment-add-failed', '#comments')
+    ideaRedirect(id, ideaId, 'comment-failed', '#comments')
   );
 }));
 
@@ -468,7 +473,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/comments/:commentId(\\d+)/delete', a
     `/ideation-comments/${commentId}`,
     undefined,
     ideaRedirect(id, ideaId, 'comment-deleted', '#comments'),
-    ideaRedirect(id, ideaId, 'comment-delete-failed', '#comments')
+    ideaRedirect(id, ideaId, 'comment-failed', '#comments')
   );
 }));
 
@@ -482,7 +487,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/toggle-vote', asyncRoute(async (req,
     `/ideation-ideas/${ideaId}/vote`,
     undefined,
     ideaRedirect(id, ideaId, 'idea-voted'),
-    ideaRedirect(id, ideaId, 'idea-vote-failed')
+    ideaRedirect(id, ideaId, 'idea-failed')
   );
 }));
 
@@ -496,7 +501,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/vote', asyncRoute(async (req, res) =
     `/ideation-ideas/${ideaId}/vote`,
     undefined,
     challengeRedirect(id, 'idea-voted') + '#ideas',
-    challengeRedirect(id, 'idea-vote-failed') + '#ideas'
+    challengeRedirect(id, 'idea-failed') + '#ideas'
   );
 }));
 
@@ -510,7 +515,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/status', asyncRoute(async (req, res)
     `/ideation-ideas/${ideaId}/status`,
     { status: trimmed(req.body.idea_status || req.body.status, 64) },
     ideaRedirect(id, ideaId, 'idea-status-updated'),
-    ideaRedirect(id, ideaId, 'idea-status-failed')
+    ideaRedirect(id, ideaId, 'idea-failed')
   );
 }));
 
@@ -524,7 +529,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/delete', asyncRoute(async (req, res)
     `/ideation-ideas/${ideaId}`,
     undefined,
     challengeRedirect(id, 'idea-deleted') + '#ideas',
-    challengeRedirect(id, 'idea-delete-failed') + '#ideas'
+    challengeRedirect(id, 'idea-failed') + '#ideas'
   );
 }));
 
@@ -538,7 +543,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/media', asyncRoute(async (req, res) 
     `/ideation-ideas/${ideaId}/media`,
     mediaPayload(req.body),
     ideaRedirect(id, ideaId, 'media-added'),
-    ideaRedirect(id, ideaId, 'media-add-failed')
+    ideaRedirect(id, ideaId, 'media-failed')
   );
 }));
 
@@ -551,7 +556,7 @@ router.post('/:id(\\d+)/ideas/:ideaId(\\d+)/convert', asyncRoute(async (req, res
     'POST',
     `/ideation-ideas/${ideaId}/convert-to-group`,
     convertPayload(req.body),
-    ideaRedirect(id, ideaId, 'converted-to-group'),
+    ideaRedirect(id, ideaId, 'converted'),
     ideaRedirect(id, ideaId, 'convert-failed')
   );
 }));
