@@ -5288,6 +5288,20 @@ a newly created test organisation cannot currently be cleaned up through the
 product contract. No shared managed organisation was mutated merely to claim
 runtime proof.
 
+## 2026-07-12 Default-English Organisation Wallet Parity
+
+The organisation wallet now matches Blade's catalog-backed balance,
+automatic-credit explanation, deposit warning/form, and recent-transaction
+presentation. The ASP.NET-specific auto-pay toggle has been removed. Its
+legacy compatibility POST now performs only an owner-scoped stats read and
+returns Laravel's informational “crediting is always on” status; it no longer
+calls a mutable auto-pay API.
+
+Focused owner-page/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. A
+live deposit remains open because it irreversibly moves real wallet value and
+there is no residue-free wallet fixture.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

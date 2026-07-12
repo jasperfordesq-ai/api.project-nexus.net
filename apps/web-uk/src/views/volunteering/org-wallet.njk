@@ -5,7 +5,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">Back to dashboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">{{ t("govuk_alpha_volunteering.shared.back_to_dashboard") }}</a>
 
   {% if status and status.type == "success" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="org-wallet-success-title">
@@ -26,8 +26,8 @@
   {% endif %}
 
   <span class="govuk-caption-l">{{ orgName }}</span>
-  <h1 class="govuk-heading-xl">Organisation wallet</h1>
-  <p class="govuk-body-l">Manage the time-credit float used for volunteer hours and organisation payouts.</p>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_volunteering.org_wallet.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_volunteering.org_wallet.description") }}</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -40,76 +40,62 @@
 
   <dl class="nexus-alpha-stat-grid">
     <div class="nexus-alpha-stat">
-      <dt>Balance</dt>
+      <dt>{{ t("govuk_alpha_volunteering.org_wallet.balance") }}</dt>
       <dd>{{ summary.balanceLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Total deposited</dt>
+      <dt>{{ t("govuk_alpha_volunteering.org_wallet.total_deposited") }}</dt>
       <dd>{{ summary.totalDepositedLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Total paid out</dt>
+      <dt>{{ t("govuk_alpha_volunteering.org_wallet.total_paid_out") }}</dt>
       <dd>{{ summary.totalPaidOutLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Pending hours value</dt>
+      <dt>{{ t("govuk_alpha_volunteering.org_wallet.pending_hours_value") }}</dt>
       <dd>{{ summary.pendingHoursValueLabel }}</dd>
     </div>
   </dl>
 
-  <h2 class="govuk-heading-l">Auto-pay</h2>
-  <p class="govuk-body">Automatically credit approved volunteer hours from this organisation's wallet when possible.</p>
-  <p class="govuk-body">
-    <strong class="govuk-tag {% if autoPayEnabled %}govuk-tag--green{% else %}govuk-tag--grey{% endif %}">
-      {% if autoPayEnabled %}Auto-pay is on{% else %}Auto-pay is off{% endif %}
-    </strong>
-  </p>
-  <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/wallet/auto-pay') }}" class="govuk-!-margin-bottom-8">
-    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <input type="hidden" name="enabled" value="{% if autoPayEnabled %}0{% else %}1{% endif %}">
-    <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">
-      {% if autoPayEnabled %}Disable auto-pay{% else %}Enable auto-pay{% endif %}
-    </button>
-  </form>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.org_wallet.auto_credit_title") }}</h2>
+  <p class="govuk-body">{{ t("govuk_alpha_volunteering.org_wallet.auto_credit_hint") }}</p>
 
-  <h2 class="govuk-heading-l">Add credits</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.org_wallet.deposit_title") }}</h2>
   <div class="govuk-warning-text">
     <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
     <strong class="govuk-warning-text__text">
-      <span class="govuk-visually-hidden">Warning</span>
-      Deposits move credits from your wallet into this organisation's wallet.
+      <span class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.shared.error_title") }}</span>
+      {{ t("govuk_alpha_volunteering.org_wallet.deposit_warning") }}
     </strong>
   </div>
   <form method="post" action="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/wallet/deposit') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <div class="govuk-form-group{% if status and status.field == 'amount' %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label" for="amount">Amount</label>
-      <div id="amount-hint" class="govuk-hint">Enter the number of time credits to add.</div>
-      {% if status and status.field == 'amount' %}
-        <p id="amount-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
-      {% endif %}
-      <input class="govuk-input govuk-input--width-5" id="amount" name="amount" type="text" inputmode="decimal" aria-describedby="amount-hint{% if status and status.field == 'amount' %} amount-error{% endif %}" required>
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="amount">{{ t("govuk_alpha_volunteering.org_wallet.deposit_amount_label") }}</label>
+      <div id="amount-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.org_wallet.deposit_amount_hint") }}</div>
+      <input class="govuk-input govuk-input--width-5" id="amount" name="amount" type="text" inputmode="numeric" pattern="[0-9]*" aria-describedby="amount-hint" required>
     </div>
     <div class="govuk-form-group">
-      <label class="govuk-label" for="note">Note <span class="govuk-hint govuk-!-display-inline">{{ t("listings.create.optional") }}</span></label>
-      <input class="govuk-input" id="note" name="note" type="text" maxlength="255">
+      <label class="govuk-label" for="note">{{ t("govuk_alpha_volunteering.org_wallet.deposit_note_label") }} {{ t("govuk_alpha_volunteering.shared.optional") }}</label>
+      <div id="note-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.org_wallet.deposit_note_hint") }}</div>
+      <input class="govuk-input" id="note" name="note" type="text" maxlength="255" aria-describedby="note-hint">
     </div>
-    <button class="govuk-button" data-module="govuk-button">Add credits</button>
+    <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_volunteering.org_wallet.deposit_button") }}</button>
   </form>
 
-  <h2 class="govuk-heading-l">Transactions</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.org_wallet.transactions_title") }}</h2>
   {% if not transactions.length %}
-    <div class="govuk-inset-text">There are no wallet transactions for this organisation yet.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.org_wallet.transactions_empty") }}</div>
   {% else %}
     <table class="govuk-table">
-      <caption class="govuk-visually-hidden">Organisation wallet transactions</caption>
+      <caption class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.org_wallet.transactions_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">When</th>
-          <th scope="col" class="govuk-table__header">Type</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Amount</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Balance after</th>
-          <th scope="col" class="govuk-table__header">Description</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_wallet.transaction_when") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_wallet.transaction_type") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_volunteering.org_wallet.transaction_amount") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_volunteering.org_wallet.transaction_balance_after") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_wallet.transaction_description") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">

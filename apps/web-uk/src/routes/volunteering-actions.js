@@ -656,16 +656,19 @@ function orgSettingsStatus(status, t = null) {
   };
 }
 
-function orgWalletStatus(status) {
+function orgWalletStatus(status, t = null) {
   const messages = {
-    'deposit-made': { type: 'success', message: 'Deposit recorded.' },
-    'autopay-enabled': { type: 'success', message: 'Auto-pay enabled.' },
-    'autopay-disabled': { type: 'success', message: 'Auto-pay disabled.' },
-    'deposit-failed': { type: 'error', message: 'The deposit could not be recorded.' },
-    'deposit-amount-invalid': { type: 'error', message: 'Enter an amount greater than zero', field: 'amount' },
-    'autopay-failed': { type: 'error', message: 'Auto-pay could not be updated.' }
+    'deposit-made': { type: 'success', key: 'govuk_alpha_volunteering.org_wallet.deposit_made' },
+    'auto-credit-always-on': { type: 'success', key: 'govuk_alpha_volunteering.org_wallet.auto_credit_always_on' },
+    'deposit-failed': { type: 'error', key: 'govuk_alpha_volunteering.org_wallet.deposit_failed' },
+    'deposit-amount-invalid': { type: 'error', key: 'govuk_alpha_volunteering.org_wallet.deposit_amount_invalid' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  return {
+    ...config,
+    message: typeof t === 'function' ? t(config.key) : config.key
+  };
 }
 
 function expenseStatus(status) {
@@ -1418,7 +1421,7 @@ function normalizeOrgWalletTransaction(row) {
   const transaction = row && typeof row === 'object' ? row : {};
   return {
     id: positiveInteger(transaction.id),
-    createdAtLabel: dateTimeLabel(transaction.created_at ?? transaction.createdAt),
+    createdAtLabel: dateTimeLabel(transaction.created_at ?? transaction.createdAt) || '—',
     typeLabel: headline(transaction.type) || 'Transaction',
     amountLabel: hoursLabel(transaction.amount),
     balanceAfterLabel: hoursLabel(transaction.balance_after ?? transaction.balanceAfter),
@@ -2170,11 +2173,10 @@ router.get('/organisations/:id(\\d+)/wallet', asyncRoute(async (req, res) => {
     activeNav: 'volunteering',
     orgId: id,
     orgName: dashboard.orgName,
-    autoPayEnabled: dashboard.autoPayEnabled,
     summary,
     transactions,
     loadError,
-    status: orgWalletStatus(trimmed(req.query.status)),
+    status: orgWalletStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2919,17 +2921,13 @@ router.post('/organisations/:id(\\d+)/wallet/deposit', asyncRoute(async (req, re
 
 router.post('/organisations/:id(\\d+)/wallet/auto-pay', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  const enabled = checked(req.body.enabled);
+  const token = tokenFrom(req);
+  if (!token) {
+    return redirectTo(res, loginRedirect());
+  }
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/organisations/${id}/wallet/auto-pay`,
-    { enabled },
-    orgWalletRedirect(id, enabled ? 'autopay-enabled' : 'autopay-disabled'),
-    orgWalletRedirect(id, 'autopay-failed')
-  );
+  await callApi(token, 'GET', `/organisations/${id}/stats`);
+  return redirectTo(res, orgWalletRedirect(id, 'auto-credit-always-on'));
 }));
 
 module.exports = router;

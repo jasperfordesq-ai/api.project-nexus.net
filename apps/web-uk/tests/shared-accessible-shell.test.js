@@ -27631,14 +27631,21 @@ describe('shared accessible frontend shell', () => {
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(8, 'test-token', 'GET', '/organisations/42/stats');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(9, 'test-token', 'GET', '/organisations/42/wallet');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(10, 'test-token', 'GET', '/organisations/42/wallet/transactions?per_page=20');
-    expect(walletResponse.text).toContain('Deposit recorded.');
+    expect(walletResponse.text).toContain('Your deposit was successful.');
     expect(walletResponse.text).toContain('Organisation wallet');
+    expect(walletResponse.text).toContain('Your organisation time-credit balance, deposits and payments to volunteers.');
     expect(walletResponse.text).toContain('18.3');
     expect(walletResponse.text).toContain('30.0');
     expect(walletResponse.text).toContain('11.8');
     expect(walletResponse.text).toContain('4.5');
-    expect(walletResponse.text).toContain('Auto-pay is on');
-    expect(walletResponse.text).toContain('method="post" action="/volunteering/organisations/42/wallet/auto-pay"');
+    expect(walletResponse.text).toContain('Automatic volunteer crediting');
+    expect(walletResponse.text).toContain('Approving volunteer hours automatically credits the volunteer for each whole hour.');
+    expect(walletResponse.text).toContain('Deposit time credits');
+    expect(walletResponse.text).toContain('This moves time credits from your personal wallet into the organisation wallet. It cannot be undone here.');
+    expect(walletResponse.text).toContain('Whole time credits, between 1 and 1000.');
+    expect(walletResponse.text).toContain('Recent transactions');
+    expect(walletResponse.text).not.toContain('Auto-pay is on');
+    expect(walletResponse.text).not.toContain('/wallet/auto-pay');
     expect(walletResponse.text).toContain('method="post" action="/volunteering/organisations/42/wallet/deposit"');
     expect(walletResponse.text).toContain('Deposit');
     expect(walletResponse.text).toContain('Initial float');
@@ -28028,10 +28035,8 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
       .type('form')
       .send({ _csrf: csrfMatch[1], enabled: '1' });
-    expect(autoPayResponse.headers.location).toBe('/volunteering/organisations/42/wallet?status=autopay-enabled');
-    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/organisations/42/wallet/auto-pay', {
-      enabled: true
-    });
+    expect(autoPayResponse.headers.location).toBe('/volunteering/organisations/42/wallet?status=auto-credit-always-on');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'GET', '/organisations/42/stats');
 
     api.callVolunteeringApi.mockResolvedValueOnce({ data: { id: 88 } });
     const createOpportunityResponse = await agent
