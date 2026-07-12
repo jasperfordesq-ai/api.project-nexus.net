@@ -29,6 +29,7 @@
     "smoke:laravel:events-mutation": "npm run build:css && node scripts/events-mutation-local-server.js",
     "smoke:laravel:goals-mutation": "npm run build:css && node scripts/goals-mutation-local-server.js",
     "smoke:laravel:groups-mutation": "npm run build:css && node scripts/groups-mutation-local-server.js",
+    "smoke:laravel:availability-mutation": "npm run build:css && node scripts/availability-mutation-local-server.js",
     "smoke:laravel:jobs-mutation": "npm run build:css && node scripts/jobs-mutation-local-server.js",
     "smoke:laravel:courses-mutation": "npm run build:css && node scripts/courses-mutation-local-server.js",
     "smoke:laravel:blog-mutation": "npm run build:css && node scripts/blog-mutation-local-server.js",
