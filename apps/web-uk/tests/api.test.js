@@ -2579,6 +2579,36 @@ describe('API Request Functions', () => {
       expect(result.data[0].name).toBe('Gardening');
     });
 
+    it('should merge current and legacy Laravel volunteering category types', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [{ id: 7, name: 'Community' }, { id: 8, name: 'Food' }] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { items: [{ id: 8, name: 'Food legacy' }, { id: 9, name: 'Driving' }] } })
+        });
+
+      const result = await api.getVolunteeringCategories('test-token');
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/categories?type=volunteering',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/categories?type=volunteer',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(result.data.map(({ id, name }) => ({ id, name }))).toEqual([
+        { id: 7, name: 'Community' },
+        { id: 8, name: 'Food' },
+        { id: 9, name: 'Driving' }
+      ]);
+    });
+
     it('should upload event cover images through Laravel multipart data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

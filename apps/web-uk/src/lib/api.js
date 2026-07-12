@@ -937,9 +937,32 @@ async function downloadVolunteerCredential(token, id) {
 }
 
 async function getVolunteeringCategories(token = '') {
-  return request('/api/v2/categories?type=volunteering', token ? {
-    headers: { Authorization: `Bearer ${token}` }
-  } : {});
+  const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  const results = await Promise.all([
+    request('/api/v2/categories?type=volunteering', options),
+    request('/api/v2/categories?type=volunteer', options)
+  ]);
+  const categories = [];
+  const seen = new Set();
+
+  const rowsFrom = (result) => {
+    const data = result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
+
+  for (const result of results) {
+    for (const category of rowsFrom(result)) {
+      const id = Number(category?.id);
+      if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      categories.push(category);
+    }
+  }
+
+  return { data: categories };
 }
 
 async function getGoals(token, params = {}) {

@@ -28539,8 +28539,43 @@ describe('shared accessible frontend shell', () => {
       start_date: '2026-08-01',
       end_date: '2026-09-01',
       category_id: 3,
-      federated_visibility: 'network'
+      federated_visibility: 'listed'
     });
+
+    api.callVolunteeringApi.mockResolvedValueOnce({ data: { id: 89 } });
+    const localOpportunityResponse = await agent
+      .post('/volunteering/opportunities/create')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        organization_id: '42',
+        title: 'Local helper',
+        description: 'Help locally'
+      });
+    expect(localOpportunityResponse.headers.location).toBe('/volunteering/opportunities/89?status=opp-created');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/opportunities', expect.objectContaining({
+      federated_visibility: 'none'
+    }));
+
+    for (const [code, status] of [
+      ['FORBIDDEN', 'opp-forbidden'],
+      ['NOT_FOUND', 'opp-org-not-found'],
+      ['VALIDATION_ERROR', 'opp-validation']
+    ]) {
+      api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError('Create failed', 422, { code }));
+      const failedResponse = await agent
+        .post('/volunteering/opportunities/create')
+        .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          organization_id: '42',
+          title: 'Kitchen helper',
+          description: 'Help prep food'
+        });
+      expect(failedResponse.headers.location).toBe(`/volunteering/opportunities/create?status=${status}`);
+    }
   });
 
   it('submits the Laravel volunteering credential upload route with multipart file data', async () => {

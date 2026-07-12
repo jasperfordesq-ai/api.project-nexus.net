@@ -2510,7 +2510,7 @@ router.get('/opportunities/create', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/create-opportunity', {
-    title: 'Post a volunteer opportunity',
+    title: res.locals.t('govuk_alpha_volunteering.create_opp.title'),
     activeNav: 'volunteering',
     organizations,
     categories,
@@ -2521,6 +2521,9 @@ router.get('/opportunities/create', asyncRoute(async (req, res) => {
 }, { redirectOn401: loginRedirect() }));
 
 router.post('/opportunities/create', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+
   const organizationId = positiveInteger(req.body.organization_id);
   const title = trimmed(req.body.title);
   const description = trimmed(req.body.description);
@@ -2539,18 +2542,21 @@ router.post('/opportunities/create', asyncRoute(async (req, res) => {
     start_date: trimmed(req.body.start_date) || null,
     end_date: trimmed(req.body.end_date) || null,
     category_id: categoryId,
-    federated_visibility: checked(req.body.federated_visibility) ? 'network' : 'local'
+    federated_visibility: checked(req.body.federated_visibility) ? 'listed' : 'none'
   };
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/opportunities',
-    payload,
-    (result) => opportunityRedirect(resultId(result) || 'create', 'opp-created'),
-    '/volunteering/opportunities/create?status=opp-create-failed'
-  );
+  try {
+    const result = await callApi(token, 'POST', '/opportunities', payload);
+    return redirectTo(res, opportunityRedirect(resultId(result) || 'create', 'opp-created'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const status = {
+      FORBIDDEN: 'opp-forbidden',
+      NOT_FOUND: 'opp-org-not-found',
+      VALIDATION_ERROR: 'opp-validation'
+    }[apiErrorCode(error)] || 'opp-create-failed';
+    return redirectTo(res, `/volunteering/opportunities/create?status=${status}`);
+  }
 }));
 
 router.post('/opportunities/:id(\\d+)/apply', asyncRoute(async (req, res) => {
