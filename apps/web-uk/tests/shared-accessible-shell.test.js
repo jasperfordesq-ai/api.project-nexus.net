@@ -6324,6 +6324,23 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain(translate('ar', 'govuk_alpha_messages.groups.tab_groups'));
   });
 
+  it('renders Laravel member search in the direct-message inbox', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
+    api.searchUsers.mockResolvedValueOnce({ data: { items: [{ id: 77, name: 'Avery Stone' }] } });
+
+    const response = await request(app)
+      .get('/messages?q=avery')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.searchUsers).toHaveBeenCalledWith('test-token', 'avery', { limit: 10 });
+    expect(response.text).toContain('Message a member');
+    expect(response.text).toContain('href="/messages/new/77">Avery Stone</a>');
+    expect(response.text).toContain('Browse the full member directory');
+  });
+
   it('renders nested Laravel conversation summaries, unread counts, archive state, and cursor links', async () => {
     const api = require('../src/lib/api');
     api.getConversations.mockResolvedValueOnce({

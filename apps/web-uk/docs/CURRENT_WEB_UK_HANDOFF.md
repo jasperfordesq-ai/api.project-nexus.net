@@ -5577,6 +5577,17 @@ Focused group coverage passed 6/6. Full Jest passed `45/45` suites and
 Action-level authorization remains enforced by Laravel and still needs safe
 runtime depth where residue-free fixtures exist.
 
+## 2026-07-12 Direct Message Member Search
+
+The inbox now includes Blade's no-JavaScript member search card, backed by
+Laravel user search, with exact catalog heading, label, hint, empty state,
+member links, and directory fallback. It is suppressed whenever direct
+messaging, connections, or the member's restriction state prevents starting a
+conversation.
+
+Focused inbox coverage passed 4/4. Full Jest passed `45/45` suites and
+`1,462/1,462` tests with green lint and the 285-template zero-match audit.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

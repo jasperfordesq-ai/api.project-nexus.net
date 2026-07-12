@@ -836,13 +836,20 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const showArchived = checked(req.query.archived);
   const cursor = trimmed(req.query.cursor);
   const filter = trimmed(req.query.filter);
-  const [conversationsData, unreadData] = await Promise.all([
+  const searchQuery = trimmed(req.query.q);
+  const restriction = await messageRestriction(req);
+  const access = messageAccess(req, restriction);
+  const canStart = access.canSend && tenantFeatureEnabled(req, 'connections', true);
+  const [conversationsData, unreadData, searchData] = await Promise.all([
     getConversations(req.token, {
       per_page: 20,
       archived: showArchived,
       ...(cursor ? { cursor } : {})
     }),
-    getUnreadCount(req.token).catch(() => ({ data: { count: 0 } }))
+    getUnreadCount(req.token).catch(() => ({ data: { count: 0 } })),
+    canStart && searchQuery
+      ? searchUsers(req.token, searchQuery, { limit: 10 }).catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] })
   ]);
   const conversations = listFrom(dataFrom(conversationsData))
     .map((conversation) => normalizeInboxConversation(conversation, res.locals.t));
@@ -860,6 +867,14 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     communityName: res.locals.tenantName || res.locals.serviceName || '',
     conversations: visibleConversations,
     unreadCount: unread.unread_count ?? unread.unreadCount ?? unread.count ?? 0,
+    ...access,
+    canStart,
+    searchQuery,
+    searchResults: listFrom(dataFrom(searchData)).map(member => ({
+      ...member,
+      id: positiveInteger(member.id),
+      displayName: memberName(member, res.locals.t)
+    })).filter(member => member.id !== null),
     showArchived,
     filter,
     meta: {
