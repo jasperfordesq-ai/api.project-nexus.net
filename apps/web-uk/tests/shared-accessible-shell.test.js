@@ -26222,6 +26222,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('id="expiry_date" name="expiry_date" type="date"');
     expect(response.text).toContain('Upload credential');
     expect(response.text).toContain('Your credentials');
+    expect(response.text).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="Your credentials table" tabindex="0"');
     expect(response.text).toContain('Type');
     expect(response.text).toContain('Status');
     expect(response.text).toContain('Expires');

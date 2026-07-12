@@ -318,6 +318,19 @@
   word-break: break-word;
 }
 
+.nexus-alpha-table-scroll {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.nexus-alpha-table-scroll .govuk-table {
+  min-width: 36rem;
+}
+
 .nexus-alpha-linkform {
   display: inline;
 }
