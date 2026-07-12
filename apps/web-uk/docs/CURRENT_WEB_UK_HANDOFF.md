@@ -4966,6 +4966,17 @@ serious/critical axe assertions and retained no fixture. Email delivery,
 non-owner role behavior, tenant gates, manual assistive-technology depth, and
 ASP.NET compatibility remain open.
 
+## 2026-07-12 Group Avatar Upload Lifecycle
+
+The disposable owner-group gate already created a persisted PNG cover and now
+also uploads a separate PNG avatar through the dedicated Group images page,
+proves the rendered current-avatar image, and confirms Laravel's persisted
+group-detail field. The expanded `1/1` run passed in `230.1` seconds at 320 CSS
+pixels with structural, reflow, and serious/critical axe assertions, then
+deleted the group with no retained fixture. Group-admin/platform-admin live
+uploads, tenant gates, manual assistive-technology depth, and ASP.NET
+compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

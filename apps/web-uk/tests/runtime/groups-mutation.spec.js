@@ -119,6 +119,21 @@ test('certifies a disposable private group and its owner-managed content through
     expect(createdDetail.description).toContain('Tags (optional): disposable, accessibility');
     expect(createdDetail.cover_image_url || createdDetail.coverImageUrl || createdDetail.cover_image || createdDetail.cover_url).toBeTruthy();
 
+    await page.goto(`${mountPath}/groups/${groupId}/image`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Group images');
+    await page.locator('#avatar-image').setInputFiles({
+      name: 'disposable-group-avatar.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2ZQAAAABJRU5ErkJggg==', 'base64')
+    });
+    const avatarResponse = await submit(page, `/groups/${groupId}/image`, page.locator('form:has(#avatar-image) button'));
+    expect(avatarResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('img[alt="Current group avatar"]')).toHaveCount(1);
+    const imageDetail = objectFrom(await getGroup(token, groupId));
+    expect(imageDetail.image_url || imageDetail.imageUrl || imageDetail.avatar_url || imageDetail.avatarUrl).toBeTruthy();
+    await expectAccessibleReflow(page);
+
     await page.goto(`${mountPath}/groups?q=${encodeURIComponent(createdName)}&filter=joined`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expect(page.locator('h1')).toHaveText('Groups');
     await expect(page.locator(`a[href$="/groups/${groupId}"]`)).toContainText(createdName);
