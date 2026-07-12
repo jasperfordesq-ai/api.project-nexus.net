@@ -17538,6 +17538,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Winter support');
     expect(response.text).toContain('Completed');
     expect(response.text).toContain('1 challenge');
+    expect(response.text).not.toContain('href="/ideation/new"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns?per_page=50');
   });
@@ -17585,6 +17586,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed ideation challenge create form', async () => {
     const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'tenant_admin' } });
     api.callIdeationApi
       .mockResolvedValueOnce({
         data: {
@@ -17631,6 +17633,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-categories');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-templates');
+  });
+
+  it('fails the ideation challenge create page closed for a signed non-admin', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'member' } });
+
+    const response = await request(app)
+      .get('/ideation/new')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain(englishForbiddenTitle);
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel-backed ideation challenge edit form', async () => {

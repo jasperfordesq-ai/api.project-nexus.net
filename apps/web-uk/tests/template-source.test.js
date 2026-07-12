@@ -2318,6 +2318,8 @@ describe('Laravel-first Commerce and Ideation sub-navigation source contract', (
     for (const key of ['heading', 'challenges', 'campaigns', 'outcomes']) {
       expect(source).toContain(`t("govuk_alpha_ideation.nav.${key}")`);
     }
+    expect(source).toContain('t("govuk_alpha_ideation.nav.create")');
+    expect(source).toContain('{% if ideationIsAdmin %}');
     expect(source).toContain("{% set active = activeTab or 'challenges' %}");
     expect(source).not.toContain('feed.types.challenges');
     expect(source).not.toMatch(/>Ideation<|>Campaigns<|>Outcomes</);

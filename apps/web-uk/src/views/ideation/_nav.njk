@@ -15,5 +15,10 @@
     <li class="govuk-tabs__list-item{% if active == 'outcomes' %} govuk-tabs__list-item--selected{% endif %}">
       <a class="govuk-tabs__tab" href="{{ urlFor('/ideation/outcomes') }}"{% if active == 'outcomes' %} aria-current="page"{% endif %}>{{ t("govuk_alpha_ideation.nav.outcomes") }}</a>
     </li>
+    {% if ideationIsAdmin %}
+      <li class="govuk-tabs__list-item{% if active == 'create' %} govuk-tabs__list-item--selected{% endif %}">
+        <a class="govuk-tabs__tab" href="{{ urlFor('/ideation/new') }}"{% if active == 'create' %} aria-current="page"{% endif %}>{{ t("govuk_alpha_ideation.nav.create") }}</a>
+      </li>
+    {% endif %}
   </ul>
 </div>

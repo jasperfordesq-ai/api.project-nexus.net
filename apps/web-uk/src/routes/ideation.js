@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { callIdeationApi } = require('../lib/api');
+const { getRequestProfile } = require('../lib/request-profile');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -62,6 +63,12 @@ function itemFrom(result) {
     return data;
   }
   return {};
+}
+
+function ideationAdministrator(profileResult) {
+  const profile = itemFrom(profileResult);
+  const role = trimmed(profile.role || profile.user_role || profile.account_role);
+  return ['admin', 'tenant_admin', 'tenant_super_admin', 'super_admin'].includes(role);
 }
 
 function compactQuery(params) {
@@ -522,6 +529,11 @@ router.get('/new', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
+  const isAdmin = ideationAdministrator(await getRequestProfile(req, token));
+  if (!isAdmin) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
+
   const categoriesResult = await callIdeationApi(token, 'GET', '/ideation-categories');
   const templatesResult = await callIdeationApi(token, 'GET', '/ideation-templates');
   const categories = compact(collectionFrom(categoriesResult).map(normalizeCategory));
@@ -547,7 +559,10 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const result = await callIdeationApi(token, 'GET', '/ideation-campaigns?per_page=50');
+  const [result, profileResult] = await Promise.all([
+    callIdeationApi(token, 'GET', '/ideation-campaigns?per_page=50'),
+    getRequestProfile(req, token)
+  ]);
   const campaigns = collectionFrom(result)
     .map(normalizeCampaign)
     .filter((campaign) => campaign.id !== null);
@@ -557,6 +572,7 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
     title: 'Campaigns',
     activeNav: 'explore',
     campaigns,
+    ideationIsAdmin: ideationAdministrator(profileResult),
     status,
     successMessage: campaignStatusMessage(status),
     errorMessage: campaignErrorMessage(status)
@@ -586,7 +602,10 @@ router.get('/outcomes', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const result = await callIdeationApi(token, 'GET', '/ideation-outcomes/dashboard');
+  const [result, profileResult] = await Promise.all([
+    callIdeationApi(token, 'GET', '/ideation-outcomes/dashboard'),
+    getRequestProfile(req, token)
+  ]);
   const dashboard = dashboardFrom(result);
   const outcomes = collectionFrom(dashboard.outcomes)
     .map(normalizeOutcome)
@@ -596,7 +615,8 @@ router.get('/outcomes', asyncRoute(async (req, res) => {
     title: 'Outcomes',
     activeNav: 'explore',
     stats: normalizeStats(dashboard.stats),
-    outcomes
+    outcomes,
+    ideationIsAdmin: ideationAdministrator(profileResult)
   });
 }, { redirectOn401: loginRedirect() }));
 
