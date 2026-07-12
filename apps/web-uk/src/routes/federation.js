@@ -141,14 +141,20 @@ function memberHref(member) {
 }
 
 function normalizeMember(member, options = {}) {
+  const hasTranslator = typeof options.t === 'function';
+  const t = hasTranslator ? options.t : (key) => key;
   const timebank = asObject(member && member.timebank);
   const tenantId = member && member.tenant_id !== undefined ? member.tenant_id : timebank.id;
-  const name = trimmed(member && member.name) || trimmed(`${trimmed(member && member.first_name)} ${trimmed(member && member.last_name)}`) || 'Federation member';
-  const bioLimit = Object.prototype.hasOwnProperty.call(options, 'bioLimit') ? options.bioLimit : 220;
+  const name = trimmed(member && member.name)
+    || trimmed(`${trimmed(member && member.first_name)} ${trimmed(member && member.last_name)}`)
+    || (hasTranslator ? t('members.unknown_member') : 'Federation member');
+  const bioLimit = Object.prototype.hasOwnProperty.call(options, 'bioLimit') ? options.bioLimit : 160;
   const skills = Array.isArray(member && member.skills)
     ? member.skills.map((skill) => trimmed(skill)).filter(Boolean)
     : [];
   const connectionStatus = asObject(member && member.connection_status);
+  const serviceReach = trimmed(member && member.service_reach);
+  const reachKeys = new Set(['local_only', 'remote_ok', 'travel_ok']);
 
   return {
     id: member && member.id !== undefined ? member.id : '',
@@ -157,8 +163,13 @@ function normalizeMember(member, options = {}) {
     avatar: trimmed(member && member.avatar),
     bio: trimmed(member && member.bio, bioLimit),
     location: trimmed(member && member.location),
-    serviceReach: trimmed(member && member.service_reach),
+    serviceReach,
+    serviceReachLabel: reachKeys.has(serviceReach) ? t(`federation.settings.reach_${serviceReach}`) : '',
     skills,
+    visibleSkills: skills.slice(0, 5),
+    moreSkillsLabel: skills.length > 5
+      ? t('federation.members_browse.more_skills', { count: skills.length - 5 })
+      : '',
     tenantId,
     tenantName: trimmed((member && member.tenant_name) || timebank.name),
     messagingEnabled: bool(member && member.messaging_enabled),
@@ -1169,13 +1180,15 @@ router.get('/members', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const members = asList(dataFrom(membersResult)).map(normalizeMember);
+  const members = asList(dataFrom(membersResult)).map((member) => normalizeMember(member, { t: res.locals.t }));
   const meta = metaFrom(membersResult);
-  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const partnerOptions = asList(dataFrom(partnersResult))
+    .map((partner) => normalizePartner(partner, { t: res.locals.t }))
+    .filter(isInternalPartner);
   const nextCursor = trimmed(meta.cursor);
 
   return res.render('federation/members', {
-    title: 'Federation members',
+    title: res.locals.t('federation.members_browse.title'),
     activeNav: 'explore',
     federationActiveTab: 'members',
     members,

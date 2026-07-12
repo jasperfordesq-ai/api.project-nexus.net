@@ -4320,7 +4320,7 @@ describe('shared accessible frontend shell', () => {
               bio: 'Can repair household textiles and small appliances',
               location: 'Derry',
               service_reach: 'remote_ok',
-              skills: ['sewing', 'repairs'],
+              skills: ['sewing', 'repairs', 'gardening', 'cooking', 'driving', 'painting', 'plumbing'],
               tenant_id: 12,
               tenant_name: 'North Timebank',
               messaging_enabled: true
@@ -4351,6 +4351,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members?q=repair&skills=sewing&partner_id=12&service_reach=remote_ok&cursor=abc');
     expect(response.text).toContain('href="/federation"');
     expect(response.text).toContain('Federated members');
+    expect(response.text).toContain('Members across the community network who have chosen to appear in federated search.');
+    expect(response.text).toContain('Filter members');
     expect(response.text).toContain('value="repair"');
     expect(response.text).toContain('value="sewing"');
     expect(response.text).toContain('value="12" selected');
@@ -4361,9 +4363,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Can repair household textiles and small appliances');
     expect(response.text).toContain('Community: North Timebank');
     expect(response.text).toContain('Location: Derry');
-    expect(response.text).toContain('Reach: Remote help possible');
+    expect(response.text).toContain('Service reach: Remote is fine');
     expect(response.text).toContain('sewing');
     expect(response.text).toContain('repairs');
+    expect(response.text).toContain('+2 more');
+    expect(response.text).not.toContain('>painting<');
+    expect(response.text).not.toContain('>plumbing<');
     expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
     expect(response.text).toContain('cursor=next-cursor');
     expect(response.text).not.toContain('Laravel Blade route');
