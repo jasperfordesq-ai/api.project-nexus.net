@@ -27,7 +27,7 @@ public class TokenService
         _config = config;
     }
 
-    public string GenerateJwt(User user)
+    public string GenerateJwt(User user, params string[] authenticationMethods)
     {
         var secret = _config["Jwt:Secret"]
             ?? throw new InvalidOperationException("JWT secret not configured");
@@ -39,7 +39,7 @@ public class TokenService
         var expires = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
         // Claims must match PHP structure for interoperability
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("tenant_id", user.TenantId.ToString()),
@@ -51,6 +51,10 @@ public class TokenService
             BooleanClaim(NexusPrivilegeClaimTypes.IsGod, user.IsGod),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
+        claims.AddRange(authenticationMethods
+            .Where(method => !string.IsNullOrWhiteSpace(method))
+            .Distinct(StringComparer.Ordinal)
+            .Select(method => new Claim("amr", method)));
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],
@@ -61,6 +65,56 @@ public class TokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateSecurityConfirmationToken(int userId, int tenantId, string method)
+    {
+        var secret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("JWT secret not configured");
+        var now = DateTime.UtcNow;
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims:
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim("tenant_id", tenantId.ToString()),
+                new Claim("type", "security_confirmation"),
+                new Claim("method", method),
+                new Claim(JwtRegisteredClaimNames.Jti, Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant()),
+                new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            ],
+            notBefore: now,
+            expires: now.AddMinutes(5),
+            signingCredentials: new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+                SecurityAlgorithms.HmacSha256));
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public bool ValidateSecurityConfirmationToken(string? token, int userId, int tenantId)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        try
+        {
+            var principal = new JwtSecurityTokenHandler().ValidateToken(token, ValidationParameters(), out _);
+            var subject = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return subject == userId.ToString()
+                && principal.FindFirst("tenant_id")?.Value == tenantId.ToString()
+                && principal.FindFirst("type")?.Value == "security_confirmation"
+                && !string.IsNullOrWhiteSpace(principal.FindFirst("method")?.Value);
+        }
+        catch (SecurityTokenException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     public int AccessTokenExpirySeconds =>
@@ -86,4 +140,18 @@ public class TokenService
     {
         return new Claim(claimType, value ? "true" : "false", ClaimValueTypes.Boolean);
     }
+
+    private TokenValidationParameters ValidationParameters() => new()
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            _config["Jwt:Secret"] ?? throw new InvalidOperationException("JWT secret not configured"))),
+        ValidateIssuer = !string.IsNullOrWhiteSpace(_config["Jwt:Issuer"]),
+        ValidIssuer = _config["Jwt:Issuer"],
+        ValidateAudience = !string.IsNullOrWhiteSpace(_config["Jwt:Audience"]),
+        ValidAudience = _config["Jwt:Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromSeconds(30),
+        NameClaimType = JwtRegisteredClaimNames.Sub
+    };
 }

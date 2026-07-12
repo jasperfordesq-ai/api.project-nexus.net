@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 944/1000 | 2,437 of 2,583 current Laravel operations matched, with 146 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
+| ASP.NET static API method/path inventory | 944/1000 | 2,438 of 2,583 current Laravel operations matched, with 145 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,9 +452,9 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,314 |
+| ASP.NET static operations | 4,316 |
 | Laravel source operations | 2,583 |
-| Static method/path matches | 2,437 matched, 146 missing |
+| Static method/path matches | 2,438 matched, 145 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | Live: 333 Laravel migration files, 117 ASP.NET migration source files, 115 runtime migrations, 368 Laravel source tables, 336 ASP.NET tables, 142 exact matches, 226 missing names, and 194 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
@@ -937,6 +937,16 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 Admin and WebAuthn route-owner collisions found in the 2026-07-10 slice were
 removed and are now guarded by live endpoint-table ownership tests. Ownership
 is not evidence that every remaining handler has workflow parity.
+
+The 2026-07-12 security-confirmation slice adds the canonical React-used
+`POST /api/webauthn/security-confirm` workflow and closes one expanded route
+gap. Password, TOTP, backup-code, and recent UV-passkey proof issue a signed
+five-minute token bound to user, tenant, method, type, and unique id; enrollment
+challenge/verification plus remove/rename/remove-all require that proof. The
+dedicated authenticated bucket is 10 attempts per 600 seconds. Focused
+disposable-PostgreSQL workflows passed 2/2, signed-token binding/claim tests
+passed 2/2, route/policy ownership passed 1/1, and the Release solution build
+completed with zero errors and the same four pre-existing warnings.
 
 ### Backend 1000/1000 gate
 

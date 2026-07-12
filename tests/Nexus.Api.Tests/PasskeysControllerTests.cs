@@ -100,9 +100,25 @@ public class PasskeysControllerTests : IntegrationTestBase
         }
 
         SetAuthToken(await GetAuthTokenAsync());
-        using var challengeResponse = await Client.PostAsync(
+        using (var unconfirmed = await Client.PostAsync("/api/webauthn/register-challenge", content: null))
+        {
+            unconfirmed.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            var error = await unconfirmed.Content.ReadFromJsonAsync<JsonElement>();
+            error.GetProperty("errors")[0].GetProperty("code").GetString()
+                .Should().Be("SECURITY_CONFIRMATION_REQUIRED");
+        }
+        using (var rejected = await Client.PostAsJsonAsync("/api/webauthn/security-confirm", new
+               {
+                   current_password = "not-the-password"
+               }))
+        {
+            rejected.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            rejected.Headers.CacheControl?.NoStore.Should().BeTrue();
+        }
+        var securityToken = await ConfirmSecurityAsync();
+        using var challengeResponse = await Client.PostAsJsonAsync(
             "/api/webauthn/register-challenge",
-            content: null);
+            new { security_confirmation_token = securityToken });
 
         challengeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var payload = await challengeResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -127,7 +143,8 @@ public class PasskeysControllerTests : IntegrationTestBase
                 attestationObject = "ZmFrZQ",
                 transports = Array.Empty<string>()
             },
-            device_name = "Test device"
+            device_name = "Test device",
+            security_confirmation_token = securityToken
         };
 
         using var firstVerify = await Client.PostAsJsonAsync(
@@ -363,6 +380,7 @@ public class PasskeysControllerTests : IntegrationTestBase
             }
 
             SetAuthToken(await GetAccessTokenAsync(actor.Email, TestData.Tenant1.Slug));
+            var securityToken = await ConfirmSecurityAsync();
 
             using var credentialsResponse = await Client.GetAsync("/api/webauthn/credentials");
             credentialsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -377,24 +395,30 @@ public class PasskeysControllerTests : IntegrationTestBase
 
             using var numericIdAttempt = await Client.PostAsJsonAsync("/api/webauthn/remove", new
             {
-                credential_id = foreignCredential.Id.ToString()
+                credential_id = foreignCredential.Id.ToString(),
+                security_confirmation_token = securityToken
             });
             numericIdAttempt.StatusCode.Should().Be(HttpStatusCode.OK);
 
             using var opaqueIdAttempt = await Client.PostAsJsonAsync("/api/webauthn/remove", new
             {
-                credential_id = Base64UrlEncoder.Encode(foreignCredential.CredentialId)
+                credential_id = Base64UrlEncoder.Encode(foreignCredential.CredentialId),
+                security_confirmation_token = securityToken
             });
             opaqueIdAttempt.StatusCode.Should().Be(HttpStatusCode.OK);
 
             using var renameAttempt = await Client.PostAsJsonAsync("/api/webauthn/rename", new
             {
                 credential_id = Base64UrlEncoder.Encode(foreignCredential.CredentialId),
-                device_name = "Stolen"
+                device_name = "Stolen",
+                security_confirmation_token = securityToken
             });
             renameAttempt.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-            using var removeAll = await Client.PostAsJsonAsync("/api/webauthn/remove-all", new { });
+            using var removeAll = await Client.PostAsJsonAsync("/api/webauthn/remove-all", new
+            {
+                security_confirmation_token = securityToken
+            });
             removeAll.StatusCode.Should().Be(HttpStatusCode.OK);
             var removeAllPayload = await removeAll.Content.ReadFromJsonAsync<JsonElement>();
             removeAllPayload.GetProperty("data").GetProperty("removed_count").GetInt32().Should().Be(1);
@@ -622,6 +646,19 @@ public class PasskeysControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         return content.GetProperty("access_token").GetString()!;
+    }
+
+    private async Task<string> ConfirmSecurityAsync()
+    {
+        using var response = await Client.PostAsJsonAsync("/api/webauthn/security-confirm", new
+        {
+            current_password = TestDataSeeder.TestPassword
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        response.Headers.CacheControl?.NoStore.Should().BeTrue();
+        payload.GetProperty("data").GetProperty("expires_in").GetInt32().Should().Be(300);
+        return payload.GetProperty("data").GetProperty("security_confirmation_token").GetString()!;
     }
 
     private static UserPasskey NewStoredPasskey(User user, int tenantId, string displayName)

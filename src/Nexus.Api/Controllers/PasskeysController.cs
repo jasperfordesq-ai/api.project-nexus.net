@@ -10,6 +10,7 @@ using Asp.Versioning;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -33,6 +34,7 @@ public class PasskeysController : ControllerBase
     private readonly PasskeyService _passkeyService;
     private readonly NexusDbContext _db;
     private readonly TokenService _tokenService;
+    private readonly TotpService _totpService;
     private readonly PasskeyChallengeStore _challengeStore;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<PasskeysController> _logger;
@@ -50,6 +52,7 @@ public class PasskeysController : ControllerBase
         PasskeyService passkeyService,
         NexusDbContext db,
         TokenService tokenService,
+        TotpService totpService,
         PasskeyChallengeStore challengeStore,
         TenantContext tenantContext,
         ILogger<PasskeysController> logger)
@@ -57,6 +60,7 @@ public class PasskeysController : ControllerBase
         _passkeyService = passkeyService;
         _db = db;
         _tokenService = tokenService;
+        _totpService = totpService;
         _challengeStore = challengeStore;
         _tenantContext = tenantContext;
         _logger = logger;
@@ -149,7 +153,8 @@ public class PasskeysController : ControllerBase
     [HttpPost("/api/webauthn/register-challenge")]
     [Authorize]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
-    public async Task<IActionResult> BeginCanonicalRegistration()
+    public async Task<IActionResult> BeginCanonicalRegistration(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement? body)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -159,6 +164,9 @@ public class PasskeysController : ControllerBase
                 "Authentication required",
                 StatusCodes.Status401Unauthorized);
         }
+
+        if (!HasSecurityConfirmation(body, user.Id, user.TenantId))
+            return SecurityConfirmationRequired();
 
         try
         {
@@ -205,6 +213,12 @@ public class PasskeysController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> FinishCanonicalRegistration([FromBody] JsonElement body)
     {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
+        if (!HasSecurityConfirmation(body, user.Id, user.TenantId))
+            return SecurityConfirmationRequired();
+
         var challengeId = ReadJsonString(body, "challenge_id");
         if (string.IsNullOrWhiteSpace(challengeId))
         {
@@ -222,9 +236,7 @@ public class PasskeysController : ControllerBase
                 "Registration challenge expired",
                 StatusCodes.Status401Unauthorized);
         }
-        var user = await GetCurrentUserAsync();
-        if (user is null
-            || user.Id != challenge.UserId
+        if (user.Id != challenge.UserId
             || user.TenantId != challenge.TenantId)
         {
             return CanonicalWebAuthnError(
@@ -382,7 +394,7 @@ public class PasskeysController : ControllerBase
                 challenge.Options,
                 assertion,
                 challenge.TenantId);
-            var accessToken = _tokenService.GenerateJwt(user);
+            var accessToken = _tokenService.GenerateJwt(user, "passkey", "user_verification");
             var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
             _db.RefreshTokens.Add(new Entities.RefreshToken
             {
@@ -410,6 +422,8 @@ public class PasskeysController : ControllerBase
                 refresh_token = refreshToken,
                 token_type = "Bearer",
                 expires_in = _tokenService.AccessTokenExpirySeconds,
+                security_confirmation_token = _tokenService.GenerateSecurityConfirmationToken(user.Id, user.TenantId, "passkey_uv"),
+                security_confirmation_expires_in = 300,
                 is_mobile = false
             });
         }
@@ -706,6 +720,8 @@ public class PasskeysController : ControllerBase
         {
             return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
         }
+        if (!HasSecurityConfirmation(body, user.Id, user.TenantId))
+            return SecurityConfirmationRequired();
 
         var credentialId = ReadJsonString(body, "credential_id");
         if (string.IsNullOrWhiteSpace(credentialId))
@@ -735,6 +751,8 @@ public class PasskeysController : ControllerBase
         {
             return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
         }
+        if (!HasSecurityConfirmation(body, user.Id, user.TenantId))
+            return SecurityConfirmationRequired();
 
         var credentialId = ReadJsonString(body, "credential_id");
         var deviceName = ReadJsonString(body, "device_name")?.Trim();
@@ -766,19 +784,80 @@ public class PasskeysController : ControllerBase
     [HttpPost("/api/webauthn/remove-all")]
     [Authorize]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
-    public async Task<IActionResult> CanonicalRemoveAll()
+    public async Task<IActionResult> CanonicalRemoveAll(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement? body)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
         {
             return CanonicalWebAuthnError("AUTH_REQUIRED", "Authentication required", StatusCodes.Status401Unauthorized);
         }
+        if (!HasSecurityConfirmation(body, user.Id, user.TenantId))
+            return SecurityConfirmationRequired();
 
         var removedCount = await _passkeyService.RemoveAllUserPasskeysAsync(user.Id, user.TenantId);
         return CanonicalWebAuthnData(new
         {
             message = $"Removed {removedCount} passkey(s). You can now re-register on any device.",
             removed_count = removedCount
+        });
+    }
+
+    [HttpPost("/api/webauthn/security-confirm")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.WebAuthnSecurityConfirmPolicy)]
+    public async Task<IActionResult> ConfirmCanonicalSecurityAction(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement? body)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return CanonicalWebAuthnError("AUTH_ACCOUNT_SUSPENDED", "Account suspended", StatusCodes.Status403Forbidden);
+
+        string? method = null;
+        var password = ReadJsonString(body, "current_password");
+        var totpCode = ReadJsonString(body, "totp_code");
+        var backupCode = ReadJsonString(body, "backup_code");
+
+        if (!string.IsNullOrEmpty(password))
+        {
+            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+                return SecurityConfirmationRequired();
+            method = "password";
+        }
+        else if (!string.IsNullOrEmpty(totpCode))
+        {
+            var result = await _totpService.ValidateLoginCodeAsync(user.Id, string.Concat(totpCode.Where(c => !char.IsWhiteSpace(c))));
+            if (!result.Valid)
+                return SecurityConfirmationRequired();
+            method = "totp";
+        }
+        else if (!string.IsNullOrEmpty(backupCode))
+        {
+            var result = await _totpService.ValidateBackupCodeAsync(user.Id, user.TenantId, backupCode);
+            if (!result.Valid)
+                return SecurityConfirmationRequired();
+            method = "backup_code";
+        }
+        else if (HasRecentPasskeyUserVerification())
+        {
+            method = "passkey_uv";
+        }
+        else
+        {
+            return SecurityConfirmationRequired();
+        }
+
+        Response.Headers.CacheControl = "no-store, private";
+        Response.Headers.Pragma = "no-cache";
+        _logger.LogInformation(
+            "WebAuthn security action confirmed for tenant {TenantId}, user {UserId}, method {Method}",
+            user.TenantId,
+            user.Id,
+            method);
+        return CanonicalWebAuthnData(new
+        {
+            security_confirmation_token = _tokenService.GenerateSecurityConfirmationToken(user.Id, user.TenantId, method),
+            expires_in = 300
         });
     }
 
@@ -822,6 +901,37 @@ public class PasskeysController : ControllerBase
 
         return (0, 0);
     }
+
+    private bool HasSecurityConfirmation(JsonElement? body, int userId, int tenantId)
+    {
+        var token = ReadJsonString(body, "security_confirmation_token")
+            ?? Request.Headers["X-Security-Confirmation"].FirstOrDefault();
+        return _tokenService.ValidateSecurityConfirmationToken(token, userId, tenantId);
+    }
+
+    private bool HasRecentPasskeyUserVerification()
+    {
+        var methods = User.FindAll("amr").Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal);
+        var issuedAtText = User.FindFirst("iat")?.Value;
+        return methods.Contains("passkey")
+            && methods.Contains("user_verification")
+            && long.TryParse(issuedAtText, out var issuedAt)
+            && issuedAt >= DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds()
+            && issuedAt <= DateTimeOffset.UtcNow.AddSeconds(30).ToUnixTimeSeconds();
+    }
+
+    private IActionResult SecurityConfirmationRequired()
+    {
+        Response.Headers.CacheControl = "no-store, private";
+        Response.Headers.Pragma = "no-cache";
+        return CanonicalWebAuthnError(
+            "SECURITY_CONFIRMATION_REQUIRED",
+            "Validation failed",
+            StatusCodes.Status403Forbidden);
+    }
+
+    private static string? ReadJsonString(JsonElement? body, string name)
+        => body.HasValue ? ReadJsonString(body.Value, name) : null;
 
     private IActionResult CanonicalWebAuthnError(string code, string message, int status)
     {
