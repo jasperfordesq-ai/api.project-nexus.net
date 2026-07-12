@@ -5329,6 +5329,20 @@ WSL/container runtime and fails public slug discovery despite the July 11 source
 fix; two scoped integration attempts timed out silently, so current ASP.NET
 runtime switching remains uncertified.
 
+## 2026-07-12 Volunteer Opportunity Approval Gate
+
+The opportunity-create page now matches Blade's complete catalog-backed
+default-English form, validation, and no-approved-organisation copy. The local
+test account has no approved owner/admin organisation on any available tenant,
+so Web UK correctly renders no form and explains the approval requirement. No
+privileged state was fabricated and no mutation was attempted.
+
+Focused render proof, full Jest (`45/45`, `1,456/1,456`), lint, localization,
+and a Laravel-backed authenticated 320px structure/reflow/axe gate (`1/1`)
+pass. Disposable create/delete proof remains open until a legitimately approved
+fixture exists; the first attempted harness failed safely before mutation and
+was removed rather than committed as a red gate.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

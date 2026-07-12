@@ -65,6 +65,7 @@ const AUTHENTICATED_ROUTES = [
   { name: 'organisation settings', path: '/volunteering/organisations/636/settings' },
   { name: 'organisation wallet', path: '/volunteering/organisations/636/wallet' },
   { name: 'organisation volunteer roster', path: '/volunteering/organisations/636/volunteers' },
+  { name: 'volunteer opportunity approval gate', path: '/volunteering/opportunities/create' },
   { name: 'search empty state', path: '/search?q=missing&type=events' },
   { name: 'appreciation wall', path: '/users/77/appreciations' }
 ];
@@ -665,6 +666,12 @@ test.describe('representative authenticated-page accessibility gate', () => {
         }
         if (route.name === 'public collections') {
           await expect(page.locator('h1')).toContainText(translate('en', 'govuk_alpha_saved.public.heading', { name: '' }).trim());
+        }
+        if (route.name === 'volunteer opportunity approval gate') {
+          await expect(page.locator('h1')).toHaveText(translate('en', 'govuk_alpha_volunteering.create_opp.title'));
+          await expect(page.locator('form:has(#organization_id)')).toHaveCount(0);
+          await expect(page.getByText(translate('en', 'govuk_alpha_volunteering.create_opp.no_orgs'), { exact: true })).toBeVisible();
+          await expect(page.getByText(translate('en', 'govuk_alpha_volunteering.create_opp.no_orgs_cta'), { exact: true })).toBeVisible();
         }
 
         const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {

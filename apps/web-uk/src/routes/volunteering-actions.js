@@ -1669,26 +1669,26 @@ function normalizeCategory(row) {
   };
 }
 
-function createOpportunityStatus(status) {
+function createOpportunityStatus(status, t = null) {
   if (status === 'opp-validation') {
     return {
       type: 'validation',
       errors: [
-        { href: '#organization_id', text: 'Select an organisation.' },
-        { href: '#title', text: 'Enter an opportunity title.' },
-        { href: '#description', text: 'Enter an opportunity description.' }
+        { href: '#organization_id', text: t ? t('govuk_alpha_volunteering.create_opp.error_org_required') : 'Select an organisation' },
+        { href: '#title', text: t ? t('govuk_alpha_volunteering.create_opp.error_title_required') : 'Enter an opportunity title' },
+        { href: '#description', text: t ? t('govuk_alpha_volunteering.create_opp.error_description_required') : 'Enter a description' }
       ]
     };
   }
 
   const messages = {
-    'opp-forbidden': 'You do not have permission to create an opportunity for that organisation.',
-    'opp-org-not-found': 'We could not find that organisation.',
-    'opp-create-failed': 'We could not create the opportunity. Try again.'
+    'opp-forbidden': 'govuk_alpha_volunteering.create_opp.forbidden',
+    'opp-org-not-found': 'govuk_alpha_volunteering.create_opp.org_not_found',
+    'opp-create-failed': 'govuk_alpha_volunteering.create_opp.create_failed'
   };
 
   return messages[status]
-    ? { type: 'error', message: messages[status] }
+    ? { type: 'error', message: t ? t(messages[status]) : messages[status] }
     : null;
 }
 
@@ -2375,7 +2375,7 @@ router.get('/opportunities/create', asyncRoute(async (req, res) => {
     organizations,
     categories,
     loadError,
-    status: createOpportunityStatus(trimmed(req.query.status)),
+    status: createOpportunityStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
