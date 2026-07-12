@@ -215,6 +215,19 @@ test('certifies a disposable private group and its owner-managed content through
     await expect(discussionCard).toContainText('2 replies');
     await expectAccessibleReflow(page);
 
+    await page.goto(`${mountPath}/groups/${groupId}/notifications`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Notification preferences');
+    await page.locator('#frequency-digest').check();
+    await page.locator('#email_enabled').uncheck();
+    await page.locator('#push_enabled').check();
+    const notificationResponse = await submit(page, `/groups/${groupId}/notifications`, page.locator('form:has(#frequency-instant) button'));
+    expect(notificationResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('#frequency-digest')).toBeChecked();
+    await expect(page.locator('#email_enabled')).not.toBeChecked();
+    await expect(page.locator('#push_enabled')).toBeChecked();
+    await expectAccessibleReflow(page);
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);

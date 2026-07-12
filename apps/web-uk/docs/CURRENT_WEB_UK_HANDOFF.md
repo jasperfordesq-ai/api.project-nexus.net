@@ -4943,6 +4943,17 @@ and deleting the parent group with no retained fixture. Non-owner active-member
 behavior, tenant gates, manual assistive-technology depth, and ASP.NET
 compatibility remain open.
 
+## 2026-07-12 Group Notification Preference Lifecycle
+
+The disposable active-owner group gate now selects digest frequency, disables
+email, retains push, submits the real Laravel preference update through Web
+UK, and proves all three values from the redirected Laravel-backed read. The
+expanded `1/1` run passed in `178.2` seconds at 320 CSS pixels with structural,
+reflow, and serious/critical axe assertions; parent-group deletion retained no
+fixture. This certifies the active-owner path only. Non-owner active-member
+authorization, tenant gates, manual assistive-technology depth, and ASP.NET
+compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:
