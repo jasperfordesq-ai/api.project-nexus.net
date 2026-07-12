@@ -1,14 +1,14 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-12T04:18:48.204Z
+Generated: 2026-07-12T07:54:19.887Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 610 |
-| web-uk routes | 612 |
+| web-uk routes | 613 |
 | Matched routes | 610 |
 | Missing routes | 0 |
-| Extra web-uk routes | 0 |
+| Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
 ## Family Counts
@@ -81,7 +81,7 @@ Generated: 2026-07-12T04:18:48.204Z
 | trust-and-safety | 1 | 0 | 0 | 0 |
 | users | 3 | 0 | 0 | 0 |
 | verify-email | 1 | 0 | 0 | 0 |
-| volunteering | 52 | 0 | 0 | 0 |
+| volunteering | 52 | 0 | 1 | 0 |
 | wallet | 6 | 0 | 0 | 0 |
 
 ## Missing Laravel Routes
@@ -94,7 +94,7 @@ Generated: 2026-07-12T04:18:48.204Z
 
 | Method | Path | Family | Web UK view | Web UK file |
 | --- | --- | --- | --- | --- |
-| - | - | - | - | - |
+| GET | `/volunteering/credentials/{param}/download` | volunteering | streamed-download | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\volunteering-actions.js |
 
 ## Ignored Web UK Infrastructure Routes
 

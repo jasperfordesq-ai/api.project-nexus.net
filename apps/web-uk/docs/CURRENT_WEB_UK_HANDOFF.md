@@ -5552,6 +5552,18 @@ participant. Restriction/feature-gate depth, exact relative dates, safe live
 mutation depth, manual assistive-technology review, and ASP.NET compatibility
 remain open.
 
+## 2026-07-12 ASP.NET Readiness and Route-Matrix Refresh
+
+The generated matrix matches all `610/610` Laravel routes with zero missing and
+zero preparation pages. Web UK has one intentional extra route: the
+authenticated volunteering-credential download proxy needed for bearer-safe
+binary delivery.
+
+`npm run audit:aspnet:readiness` remains red against the live service on port
+`5080`: health is `200`, while slug-authoritative tenant bootstrap and platform
+stats both return `400` requiring `X-Tenant-ID`. This is runtime evidence only;
+the concurrent ASP.NET source work was not changed or committed in this slice.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

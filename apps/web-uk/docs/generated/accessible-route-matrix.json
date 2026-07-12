@@ -1,15 +1,21 @@
 {
   "summary": {
-    "generatedAt": "2026-07-12T04:18:48.204Z",
+    "generatedAt": "2026-07-12T07:54:19.887Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 610,
-    "webUkRoutes": 612,
+    "webUkRoutes": 613,
     "matchedRoutes": 610,
     "missingRoutes": 0,
-    "extraWebUkRoutes": 0,
+    "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
+      "volunteering": {
+        "matched": 52,
+        "missing": 0,
+        "extraWebUk": 1,
+        "ignoredInfrastructure": 0
+      },
       "health": {
         "matched": 0,
         "missing": 0,
@@ -406,12 +412,6 @@
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
-      "volunteering": {
-        "matched": 52,
-        "missing": 0,
-        "extraWebUk": 0,
-        "ignoredInfrastructure": 0
-      },
       "wallet": {
         "matched": 6,
         "missing": 0,
@@ -421,6 +421,27 @@
     }
   },
   "matrix": [
+    {
+      "method": "GET",
+      "path": "/volunteering/credentials/{param}/download",
+      "family": "volunteering",
+      "status": "extra-web-uk",
+      "laravelRouteName": "",
+      "laravelHandler": "",
+      "laravelView": "",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "",
+      "laravelControllerFile": "",
+      "laravelMiddleware": "",
+      "auth": "",
+      "tenantScoped": "",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/volunteering/credentials/{param}/download",
+      "webUkView": "streamed-download",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\volunteering-actions.js",
+      "webUkRouteKind": ""
+    },
     {
       "method": "GET",
       "path": "/health",
