@@ -11,7 +11,7 @@
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="accessibility-saved-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="accessibility-saved-title">{{ t("states.success_title") }}</h2>
+          <h2 class="govuk-notification-banner__title" id="accessibility-saved-title">{{ t("govuk_alpha.states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+          <h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <p>{{ status.message }}</p>
           </div>

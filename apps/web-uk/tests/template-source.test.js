@@ -606,10 +606,10 @@ describe('tenant-aware template helper conversion', () => {
       'utf8'
     );
 
-    expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">{{ t\("states\.warning_prefix"\) }}<\/span>\r?\n\s+{{ t\("govuk_alpha_volunteering\.emergency\.accept_warning"\) }}/);
+    expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">{{ t\("govuk_alpha\.states\.warning_prefix"\) }}<\/span>\r?\n\s+{{ t\("govuk_alpha_volunteering\.emergency\.accept_warning"\) }}/);
     expect(groupSignups).toMatch(/<span class="govuk-visually-hidden">{{ t\("govuk_alpha\.states\.warning_prefix"\) }}<\/span>\r?\n\s+{{ t\("govuk_alpha_volunteering\.group_signups\.cancel_warning"\) }}/);
-    expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');
-    expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');
+    expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">{{ t("govuk_alpha_volunteering.shared.error_title") }}</h2>');
+    expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">{{ t("govuk_alpha_volunteering.shared.error_title") }}</h2>');
     expect(emergencyAlerts).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
     expect(groupSignups).not.toContain('<span class="govuk-visually-hidden">There is a problem</span>');
   });

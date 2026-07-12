@@ -11,7 +11,7 @@
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="emergency-success-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="emergency-success-title">{{ t("states.success_title") }}</h2>
+          <h2 class="govuk-notification-banner__title" id="emergency-success-title">{{ t("govuk_alpha_volunteering.shared.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+          <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_volunteering.shared.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <p>{{ status.message }}</p>
           </div>
@@ -36,7 +36,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_volunteering.shared.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
@@ -107,7 +107,7 @@
             <div class="govuk-warning-text">
               <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
               <strong class="govuk-warning-text__text">
-                <span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>
+                <span class="govuk-visually-hidden">{{ t("govuk_alpha.states.warning_prefix") }}</span>
                 {{ t("govuk_alpha_volunteering.emergency.accept_warning") }}
               </strong>
             </div>

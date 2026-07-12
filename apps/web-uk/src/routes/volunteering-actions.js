@@ -2039,7 +2039,7 @@ router.get('/waitlist', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/waitlist', {
-    title: 'Shift waitlist',
+    title: res.locals.t('govuk_alpha.vol_depth.waitlist_title'),
     activeNav: 'volunteering',
     entries,
     loadError,
@@ -2070,7 +2070,7 @@ router.get('/swaps', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/swaps', {
-    title: 'Shift swaps',
+    title: res.locals.t('govuk_alpha.vol_depth.swaps_title'),
     activeNav: 'volunteering',
     swaps,
     myShifts,
@@ -2160,7 +2160,7 @@ router.get('/organisations/:id(\\d+)/dashboard', asyncRoute(async (req, res) => 
   }
 
   return res.render('volunteering/org-dashboard', {
-    title: 'Organisation dashboard',
+    title: res.locals.t('govuk_alpha_volunteering.org_dashboard.title'),
     activeNav: 'volunteering',
     orgId: id,
     dashboard,
@@ -2193,7 +2193,7 @@ router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/org-manage', {
-    title: 'Manage your organisation',
+    title: res.locals.t('govuk_alpha.vol_org.manage_title'),
     activeNav: 'volunteering',
     orgId: id,
     orgName: dashboard.orgName,
@@ -2222,7 +2222,7 @@ router.get('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/org-settings', {
-    title: 'Organisation settings',
+    title: res.locals.t('govuk_alpha_volunteering.org_settings.title'),
     activeNav: 'volunteering',
     orgId: id,
     organization,
@@ -2293,7 +2293,7 @@ router.get('/organisations/:id(\\d+)/wallet', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/org-wallet', {
-    title: 'Organisation wallet',
+    title: res.locals.t('govuk_alpha_volunteering.org_wallet.title'),
     activeNav: 'volunteering',
     orgId: id,
     orgName: dashboard.orgName,

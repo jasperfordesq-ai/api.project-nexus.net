@@ -11,7 +11,7 @@
     {% if status.type == "success" %}
       <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="swap-success-title">
         <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="swap-success-title">{{ t("states.success_title") }}</h2>
+          <h2 class="govuk-notification-banner__title" id="swap-success-title">{{ t("govuk_alpha.states.success_title") }}</h2>
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">{{ status.message }}</p>
@@ -20,7 +20,7 @@
     {% else %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+          <h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2>
           <div class="govuk-error-summary__body">
             <p>{{ status.message }}</p>
           </div>
@@ -30,7 +30,7 @@
   {% endif %}
 
   <span class="govuk-caption-l">{{ t("volunteering.title") }}</span>
-  <h1 class="govuk-heading-xl">{{ t("vol_depth.swaps_title") }}</h1>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha.vol_depth.swaps_title") }}</h1>
   <p class="govuk-body-l">{{ t("vol_depth.swaps_description") }}</p>
 
   <h2 class="govuk-heading-l">{{ t("vol_depth.swap_request_title") }}</h2>
@@ -72,7 +72,7 @@
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <p>{{ loadError }}</p>
         </div>
