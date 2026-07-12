@@ -13,6 +13,7 @@ const {
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { isValidEmail } = require('../lib/inputValidator');
 
 const router = express.Router();
 const ACCESSIBILITY_NEED_TYPES = [
@@ -640,14 +641,19 @@ function orgManageStatus(status) {
   return messages[status] || null;
 }
 
-function orgSettingsStatus(status) {
+function orgSettingsStatus(status, t = null) {
   const messages = {
-    'settings-saved': { type: 'success', message: 'Organisation details saved.' },
-    'name-required': { type: 'error', message: 'Enter the organisation name', field: 'name' },
-    'email-invalid': { type: 'error', message: 'Enter an email address in the correct format', field: 'contact_email' },
-    'settings-failed': { type: 'error', message: 'The organisation details could not be saved.' }
+    'settings-saved': { type: 'success', key: 'govuk_alpha_volunteering.org_settings.saved' },
+    'name-required': { type: 'error', key: 'govuk_alpha_volunteering.org_settings.error_name_required', field: 'name' },
+    'email-invalid': { type: 'error', key: 'govuk_alpha_volunteering.org_settings.error_email_invalid', field: 'contact_email' },
+    'settings-failed': { type: 'error', key: 'govuk_alpha_volunteering.org_settings.save_failed' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  return {
+    ...config,
+    message: typeof t === 'function' ? t(config.key) : config.key
+  };
 }
 
 function orgWalletStatus(status) {
@@ -2094,7 +2100,7 @@ router.get('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
     orgId: id,
     organization,
     loadError,
-    status: orgSettingsStatus(trimmed(req.query.status)),
+    status: orgSettingsStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2866,8 +2872,12 @@ router.post('/organisations/:id(\\d+)/hours/:logId(\\d+)', asyncRoute(async (req
 router.post('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const name = trimmed(req.body.name);
+  const contactEmail = trimmed(req.body.contact_email);
   if (name === '') {
     return redirectTo(res, orgSettingsRedirect(id, 'name-required'));
+  }
+  if (contactEmail !== '' && !isValidEmail(contactEmail)) {
+    return redirectTo(res, orgSettingsRedirect(id, 'email-invalid'));
   }
 
   return runAction(
@@ -2878,7 +2888,7 @@ router.post('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => 
     {
       name,
       description: trimmed(req.body.description),
-      contact_email: trimmed(req.body.contact_email),
+      contact_email: contactEmail,
       website: trimmed(req.body.website)
     },
     orgSettingsRedirect(id, 'settings-saved'),

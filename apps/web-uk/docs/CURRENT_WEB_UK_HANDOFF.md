@@ -5274,6 +5274,20 @@ Full Jest remains `45/45` suites and `1,456/1,456` tests; lint and the
 285-template zero-match localization audit passed. Live owner-role variations,
 manual assistive-technology review, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Default-English Organisation Settings Parity
+
+Organisation settings now matches Blade's catalog-backed form, hint, action,
+success, failure, and field-error copy. Empty names and malformed non-empty
+contact emails fail before Laravel; valid values are trimmed and forwarded to
+the existing organisation update API. Focused owner-page and mutation proof
+passed, and full Jest remains `45/45` suites and `1,456/1,456` tests with green
+lint and the 285-template zero-match localization audit.
+
+Live persistence is still open: Laravel exposes no organisation-delete API, so
+a newly created test organisation cannot currently be cleaned up through the
+product contract. No shared managed organisation was mutated merely to claim
+runtime proof.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

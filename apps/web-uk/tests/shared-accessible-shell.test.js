@@ -27586,7 +27586,13 @@ describe('shared accessible frontend shell', () => {
     expect(settingsResponse.status).toBe(200);
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(5, 'test-token', 'GET', '/organisations/42');
     expect(settingsResponse.text).toContain('Organisation settings');
-    expect(settingsResponse.text).toContain('Organisation details saved.');
+    expect(settingsResponse.text).toContain('Update your organisation details. Volunteers see this information on your opportunities.');
+    expect(settingsResponse.text).toContain('Your organisation settings have been saved.');
+    expect(settingsResponse.text).toContain('The name volunteers will see.');
+    expect(settingsResponse.text).toContain('Tell volunteers what your organisation does.');
+    expect(settingsResponse.text).toContain('For example, contact@example.org');
+    expect(settingsResponse.text).toContain('For example, https://example.org');
+    expect(settingsResponse.text).toContain('Save settings');
     expect(settingsResponse.text).toContain('method="post" action="/volunteering/organisations/42/settings"');
     expect(settingsResponse.text).toContain('id="name" name="name" type="text" value="Food Share"');
     expect(settingsResponse.text).toContain('Community food support and welcoming kitchen shifts.');
@@ -27977,6 +27983,15 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1], action: 'approve' });
     expect(hoursVerifyResponse.headers.location).toBe('/volunteering/organisations/42/manage?status=hours-approved');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/hours/19/verify', { action: 'approve' });
+
+    const callsBeforeInvalidEmail = api.callVolunteeringApi.mock.calls.length;
+    const invalidEmailResponse = await agent
+      .post('/volunteering/organisations/42/settings')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], name: 'Community Club', contact_email: 'not-an-email' });
+    expect(invalidEmailResponse.headers.location).toBe('/volunteering/organisations/42/settings?status=email-invalid');
+    expect(api.callVolunteeringApi).toHaveBeenCalledTimes(callsBeforeInvalidEmail);
 
     const settingsResponse = await agent
       .post('/volunteering/organisations/42/settings')
