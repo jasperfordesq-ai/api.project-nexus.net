@@ -1679,18 +1679,29 @@ function normalizeCertificate(row, t = null) {
   const organizations = Array.isArray(certificate.organizations)
     ? certificate.organizations
     : (Array.isArray(certificate.organisations) ? certificate.organisations : []);
+  const totalHoursLabel = hoursLabel(certificate.total_hours ?? certificate.totalHours);
 
   return {
     verificationCode: code,
-    totalHoursLabel: hoursLabel(certificate.total_hours ?? certificate.totalHours),
+    totalHoursLabel,
+    heading: t
+      ? t('govuk_alpha.vol_depth.certificate_hours', { hours: totalHoursLabel })
+      : `${totalHoursLabel} hours of approved volunteering`,
     rangeStartLabel: dateLabel(dateRange.start ?? certificate.start_date ?? certificate.startDate),
     rangeEndLabel: dateLabel(dateRange.end ?? certificate.end_date ?? certificate.endDate),
     generatedAtLabel: dateLabel(certificate.generated_at ?? certificate.generatedAt),
-    organizations: organizations.map((organization) => ({
-      name: trimmed(organization?.name)
-        || (t ? t('govuk_alpha.vol_depth.certificate_independent') : 'Independent volunteering'),
-      hoursLabel: hoursLabel(organization?.hours)
-    })),
+    organizations: organizations.map((organization) => {
+      const name = trimmed(organization?.name)
+        || (t ? t('govuk_alpha.vol_depth.certificate_independent') : 'Independent volunteering');
+      const organizationHoursLabel = hoursLabel(organization?.hours);
+      return {
+        name,
+        hoursLabel: organizationHoursLabel,
+        label: t
+          ? t('govuk_alpha.vol_depth.certificate_org_hours', { name, hours: organizationHoursLabel })
+          : `${name} (${organizationHoursLabel} hours)`
+      };
+    }),
     downloadPath: code ? `/volunteering/certificates/${encodeURIComponent(code)}/download` : ''
   };
 }
@@ -1848,7 +1859,7 @@ router.get('/certificates', asyncRoute(async (req, res) => {
       .map((certificate) => normalizeCertificate(certificate, res.locals.t));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = 'We could not load your certificates. Please try again.';
+    loadError = res.locals.t('govuk_alpha.vol_depth.certificates_error');
   }
 
   return res.render('volunteering/certificates', {
