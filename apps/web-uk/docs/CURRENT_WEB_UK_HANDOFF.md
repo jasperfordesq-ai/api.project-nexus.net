@@ -4977,6 +4977,17 @@ deleted the group with no retained fixture. Group-admin/platform-admin live
 uploads, tenant gates, manual assistive-technology depth, and ASP.NET
 compatibility remain open.
 
+## 2026-07-12 Appearance Persistence And Restoration
+
+The live gate now captures the E2E user's current theme, selects a different
+theme through Web UK, proves the success state and Laravel-backed redirected
+read, then restores the original theme through Web UK. An API-level restoration
+fallback runs in `finally` before the independent group-fixture cleanup. The
+aggregate `1/1` run passed in `256.2` seconds at 320 CSS pixels with structural,
+reflow, and serious/critical axe assertions; the shared user finished unchanged.
+Tenant-domain routing, localization, manual assistive-technology depth, and
+ASP.NET compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

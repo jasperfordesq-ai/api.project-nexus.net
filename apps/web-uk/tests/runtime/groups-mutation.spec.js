@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { deleteGroup, getGroup, getGroups, login } = require('../../src/lib/api');
+const { callUserSettingsApi, deleteGroup, getGroup, getGroups, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -77,6 +77,8 @@ test('certifies a disposable private group and its owner-managed content through
   const token = auth.access_token;
   let groupId = null;
   let deleted = false;
+  let initialTheme = null;
+  let themeChanged = false;
 
   expect(token).toBeTruthy();
   console.log(`Disposable group fixture: ${createdName}`);
@@ -262,6 +264,27 @@ test('certifies a disposable private group and its owner-managed content through
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.locator('tr', { hasText: 'Invite link' })).toHaveCount(0);
 
+    await page.goto(`${mountPath}/settings/appearance`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Appearance');
+    initialTheme = await page.locator('input[name="theme"]:checked').getAttribute('value');
+    expect(['light', 'dark', 'system']).toContain(initialTheme);
+    const changedTheme = ['light', 'dark', 'system'].find(theme => theme !== initialTheme);
+    await page.locator(`input[name="theme"][value="${changedTheme}"]`).check();
+    themeChanged = true;
+    const appearanceResponse = await submit(page, '/settings/appearance', page.locator('form:has(input[name="theme"]) button'));
+    expect(appearanceResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator(`input[name="theme"][value="${changedTheme}"]`)).toBeChecked();
+    await expect(page.getByText('Your appearance settings have been saved.', { exact: true })).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    await page.locator(`input[name="theme"][value="${initialTheme}"]`).check();
+    const appearanceRestoreResponse = await submit(page, '/settings/appearance', page.locator('form:has(input[name="theme"]) button'));
+    expect(appearanceRestoreResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator(`input[name="theme"][value="${initialTheme}"]`)).toBeChecked();
+    themeChanged = false;
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);
@@ -283,9 +306,15 @@ test('certifies a disposable private group and its owner-managed content through
     expect(await findByName(token, updatedName)).toBeNull();
     deleted = true;
   } finally {
-    if (!deleted) {
-      const existing = await findByName(token, updatedName) || await findByName(token, createdName);
-      if (existing) await deleteGroup(token, existing.id);
+    try {
+      if (themeChanged && initialTheme) {
+        await callUserSettingsApi(token, 'PUT', '/theme', { theme: initialTheme });
+      }
+    } finally {
+      if (!deleted) {
+        const existing = await findByName(token, updatedName) || await findByName(token, createdName);
+        if (existing) await deleteGroup(token, existing.id);
+      }
     }
   }
 });
