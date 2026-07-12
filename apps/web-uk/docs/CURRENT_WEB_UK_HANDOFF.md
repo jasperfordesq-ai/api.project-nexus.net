@@ -5504,9 +5504,23 @@ API absence (`1/1`, `271.7` seconds). Failed/interrupted attempts were cleaned,
 including one explicit residue audit and deletion.
 
 Full Jest remains `45/45` suites and `1,458/1,458` tests with green lint and the
-285-template zero-match audit. Publish/moderation, subscribe behavior, tenant
-author gates, remaining browse/detail localization, manual assistive-technology
-depth, and ASP.NET compatibility remain open.
+285-template zero-match audit. Publish/moderation, live subscribe behavior,
+tenant author gates, browse/playback catalog alignment, manual
+assistive-technology depth, and ASP.NET compatibility remain open.
+
+## 2026-07-12 Default-English Podcast Browse and Playback Parity
+
+Podcast browse, detail, and episode playback now use Laravel's catalogs for
+default-English page copy, search and sort controls, owner and episode counts,
+subscription states, accessible audio/download labels, transcript states, and
+back links. This completes the fixed-copy catalog alignment across the browse,
+playback, studio, create, and manage surfaces without expanding Arabic-specific
+coverage.
+
+Focused render/source proof passed. Full Jest remains `45/45` suites and
+`1,458/1,458` tests with green lint and the 285-template zero-match audit.
+Publish/moderation, live subscribe behavior, tenant author gates, manual
+assistive-technology depth, and ASP.NET compatibility remain open.
 
 ## Final Handoff Checklist
 

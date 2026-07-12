@@ -53,10 +53,10 @@ const STUDIO_ERROR_KEYS = {
   'episode-publish-failed': 'status_episode_publish_failed',
   'episode-delete-failed': 'status_episode_delete_failed'
 };
-const PODCAST_STATUS_MESSAGES = {
-  subscribed: { type: 'success', message: 'You have subscribed to this podcast.' },
-  unsubscribed: { type: 'success', message: 'You have unsubscribed from this podcast.' },
-  'subscribe-failed': { type: 'error', message: 'We could not update your subscription. Please try again.' }
+const PODCAST_STATUS_KEYS = {
+  subscribed: { type: 'success', key: 'podcast_subscribe_success' },
+  unsubscribed: { type: 'success', key: 'podcast_unsubscribe_success' },
+  'subscribe-failed': { type: 'error', key: 'podcast_subscribe_failed' }
 };
 
 function tokenFrom(req) {
@@ -183,7 +183,7 @@ function episodeCountLabel(count) {
 function decorateShow(show, t = null) {
   const row = show && typeof show === 'object' ? show : {};
   const id = positiveInteger(row.id);
-  const title = trimmed(row.title) || 'Podcasts';
+  const title = trimmed(row.title) || (t ? t('govuk_alpha.podcasts.title') : 'Podcasts');
   const ownerName = trimmed(row.owner && row.owner.name);
   const approvedCount = row.approved_episode_count !== undefined ? row.approved_episode_count : row.episodes_count;
   const episodeCount = approvedCount !== undefined ? approvedCount : row.episode_count;
@@ -196,7 +196,9 @@ function decorateShow(show, t = null) {
     description: stripHtml(row.description || ''),
     summary: stripHtml(row.summary || ''),
     ownerName,
-    byLabel: ownerName ? `By ${ownerName}` : '',
+    byLabel: ownerName
+      ? (t ? t('govuk_alpha.podcasts.by_label', { name: ownerName }) : `By ${ownerName}`)
+      : '',
     artworkUrl: safeRelativeOrAbsoluteUrl(row.artwork_url),
     rssUrl: safeRelativeOrAbsoluteUrl(row.rss_url),
     rssEnabled: Boolean(row.rss_enabled) && safeRelativeOrAbsoluteUrl(row.rss_url),
@@ -222,7 +224,7 @@ function decorateEpisode(episode, showId = null, t = null) {
     ...row,
     id,
     showId: positiveInteger(row.show_id) || showId,
-    title: trimmed(row.title) || 'Episodes',
+    title: trimmed(row.title) || (t ? t('govuk_alpha.podcasts.episodes_title') : 'Episodes'),
     description: stripHtml(row.description || row.summary || ''),
     audioUrl: safeRelativeOrAbsoluteUrl(row.audio_url),
     transcript: String(row.transcript || '').trim(),
@@ -291,7 +293,7 @@ router.get('/', asyncRoute(async (req, res) => {
       .filter((show) => show.id !== null);
 
     return res.render('podcasts/index', {
-      title: 'Podcasts',
+      title: res.locals.t('govuk_alpha.podcasts.title'),
       activeNav: 'explore',
       shows,
       query: trimmed(req.query.q),
@@ -412,14 +414,18 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
       return undefined;
     }
 
-    const show = decorateShow({ id: showId, ...showData });
-    const episodes = showEpisodes(show);
+    const show = decorateShow({ id: showId, ...showData }, res.locals.t);
+    const episodes = showEpisodes(show).map((episode) => decorateEpisode(episode, show.id, res.locals.t));
+    const statusConfig = PODCAST_STATUS_KEYS[trimmed(req.query.status)];
     return res.render('podcasts/detail', {
       title: show.title,
       activeNav: 'explore',
       show,
       episodes,
-      status: PODCAST_STATUS_MESSAGES[trimmed(req.query.status)] || null,
+      status: statusConfig ? {
+        type: statusConfig.type,
+        message: res.locals.t(`govuk_alpha.polish_commerce.${statusConfig.key}`)
+      } : null,
       isSubscribed: Boolean(showData.is_subscribed || showData.subscribed)
     });
   } catch (error) {

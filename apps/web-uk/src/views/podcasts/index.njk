@@ -6,49 +6,49 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">Project NEXUS Accessible</span>
-  <h1 class="govuk-heading-xl">{{ t("podcasts.title") }}</h1>
-  <p class="govuk-body-l">{{ t("podcasts.description") }}</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha.podcasts.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha.podcasts.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha.podcasts.description") }}</p>
 
   <p class="govuk-body">
-    <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">Podcast studio</a>
+    <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">{{ t("govuk_alpha_commerce.podcast_studio.title") }}</a>
   </p>
 
   <form method="get" action="{{ urlFor('/podcasts') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">{{ t("polish_commerce.podcast_search_label") }}</label>
-          <div id="podcast-q-hint" class="govuk-hint">Search by title or description.</div>
+          <label class="govuk-label" for="q">{{ t("govuk_alpha.polish_commerce.podcast_search_label") }}</label>
+          <div id="podcast-q-hint" class="govuk-hint">{{ t("govuk_alpha.polish_commerce.podcast_search_hint") }}</div>
           <input class="govuk-input" id="q" name="q" type="search" value="{{ query }}" aria-describedby="podcast-q-hint">
         </div>
       </div>
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="sort">Sort by</label>
+          <label class="govuk-label" for="sort">{{ t("govuk_alpha.polish_commerce.podcast_sort_label") }}</label>
           <select class="govuk-select" id="sort" name="sort">
-            <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_newest") }}</option>
-            <option value="title" {% if sort == "title" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_title") }}</option>
-            <option value="episodes" {% if sort == "episodes" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_episodes") }}</option>
-            <option value="followers" {% if sort == "followers" %}selected{% endif %}>{{ t("polish_commerce.podcast_sort_followers") }}</option>
+            <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ t("govuk_alpha.polish_commerce.podcast_sort_newest") }}</option>
+            <option value="title" {% if sort == "title" %}selected{% endif %}>{{ t("govuk_alpha.polish_commerce.podcast_sort_title") }}</option>
+            <option value="episodes" {% if sort == "episodes" %}selected{% endif %}>{{ t("govuk_alpha.polish_commerce.podcast_sort_episodes") }}</option>
+            <option value="followers" {% if sort == "followers" %}selected{% endif %}>{{ t("govuk_alpha.polish_commerce.podcast_sort_followers") }}</option>
           </select>
         </div>
       </div>
       {% if category %}
         <div class="govuk-grid-column-one-third">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="category">Category</label>
+            <label class="govuk-label" for="category">{{ t("govuk_alpha.polish_commerce.podcast_category_label") }}</label>
             <input class="govuk-input" id="category" name="category" type="text" value="{{ category }}">
           </div>
         </div>
       {% endif %}
     </div>
-    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha.polish_commerce.podcast_search_submit") }}</button>
   </form>
 
   {% if not shows.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">{{ t("podcasts.empty") }}</p>
+      <p class="govuk-body">{{ t("govuk_alpha.podcasts.empty") }}</p>
     </div>
   {% else %}
     <div class="nexus-alpha-card-list">
@@ -66,7 +66,7 @@
             <p class="govuk-body govuk-!-margin-bottom-1">{{ show.summary }}</p>
           {% endif %}
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
-            {% if show.byLabel %}{{ show.byLabel }} - {% endif %}{{ show.episodeCount }} episodes
+            {% if show.byLabel %}{{ show.byLabel }} - {% endif %}{{ t("govuk_alpha.podcasts.episodes_count", { count: show.episodeCount }) }}
           </p>
         </article>
       {% endfor %}
