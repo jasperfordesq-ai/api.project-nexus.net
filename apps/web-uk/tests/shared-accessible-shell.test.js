@@ -16860,6 +16860,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Job alerts');
     expect(response.text).toContain('Get notified when new opportunities match your interests.');
+    expect(response.text).toContain('<span class="govuk-caption-xl">Project NEXUS Accessible</span>');
     expect(response.text).toContain('The alert has been paused.');
     expect(response.text).toContain('Create an alert');
     expect(response.text).toContain('name="keywords"');
@@ -16874,6 +16875,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Active');
     expect(response.text).toContain('action="/jobs/alerts/12/pause"');
     expect(response.text).toContain('action="/jobs/alerts/12/delete"');
+    expect(response.text).toContain('Delete this alert?');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 

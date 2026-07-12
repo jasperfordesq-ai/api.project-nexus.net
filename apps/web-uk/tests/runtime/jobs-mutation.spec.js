@@ -46,6 +46,11 @@ async function findByTitle(token, title) {
   return rowsFrom(result).find(job => job?.title === title) || null;
 }
 
+async function findAlert(token, keywords) {
+  const result = await callJobApi(token, 'GET', '/alerts');
+  return rowsFrom(result).find(alert => alert?.keywords === keywords) || null;
+}
+
 async function expectAccessibleReflow(page) {
   await expect(page.locator('main')).toHaveCount(1);
   await expect(page.locator('h1')).toHaveCount(1);
@@ -123,5 +128,68 @@ test('certifies a disposable job owner lifecycle through Web UK', async ({ page 
     deleted = true;
   } finally {
     if (!deleted && jobId) await callJobApi(token, 'DELETE', `/${jobId}`);
+  }
+});
+
+test('certifies a disposable job alert lifecycle through Web UK', async ({ page }) => {
+  const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  const keywords = `Codex disposable alert ${runId}`;
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  let alertId = null;
+  let deleted = false;
+
+  expect(token).toBeTruthy();
+  console.log(`Disposable job alert fixture: ${keywords}`);
+
+  try {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await authenticate(page);
+    await page.goto(`${mountPath}/jobs/alerts`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Job alerts');
+    await expect(page.locator('.govuk-caption-xl')).toContainText('Hour Timebank');
+    await page.locator('#keywords').fill(keywords);
+    await page.locator('#categories').fill('Community support');
+    await page.locator('#type').selectOption('timebank');
+    await page.locator('#commitment').selectOption('flexible');
+    await page.locator('#location').fill('Disposable test location');
+    await page.locator('#is_remote_only').check();
+    const createResponse = await submit(page, '/jobs/alerts', page.locator('form:has(#keywords) button[type="submit"]'));
+    expect(createResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+
+    let alert = await findAlert(token, keywords);
+    expect(alert).toBeTruthy();
+    alertId = Number(alert.id);
+    expect(alertId).toBeGreaterThan(0);
+    let card = page.locator('article', { hasText: keywords });
+    await expect(card).toHaveCount(1);
+    await expect(card.locator('.govuk-tag')).toHaveText('Active');
+    await expectAccessibleReflow(page);
+
+    const pauseResponse = await submit(page, `/jobs/alerts/${alertId}/pause`, card.locator('form[action$="/pause"] button'));
+    expect(pauseResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    alert = await findAlert(token, keywords);
+    expect(Boolean(alert.is_active ?? alert.isActive)).toBe(false);
+    card = page.locator('article', { hasText: keywords });
+    await expect(card.locator('.govuk-tag')).toHaveText('Paused');
+
+    const resumeResponse = await submit(page, `/jobs/alerts/${alertId}/resume`, card.locator('form[action$="/resume"] button'));
+    expect(resumeResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    alert = await findAlert(token, keywords);
+    expect(Boolean(alert.is_active ?? alert.isActive)).toBe(true);
+    card = page.locator('article', { hasText: keywords });
+    const details = card.locator('details');
+    await details.locator('summary').click();
+    await expect(details).toContainText('Delete this alert?');
+    const deleteResponse = await submit(page, `/jobs/alerts/${alertId}/delete`, details.locator('form[action$="/delete"] button'));
+    expect(deleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    expect(await findAlert(token, keywords)).toBeNull();
+    deleted = true;
+  } finally {
+    if (!deleted && alertId) await callJobApi(token, 'DELETE', `/alerts/${alertId}`);
   }
 });

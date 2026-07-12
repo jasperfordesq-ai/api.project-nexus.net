@@ -5602,6 +5602,13 @@ Full Jest passed `45/45` suites and `1,463/1,463` tests with green lint and the
 285-template zero-match audit. Application, CV, interview, and offer mutation
 depth remain open.
 
+The Jobs alert surface now also uses Blade's catalog caption/navigation,
+labels, status tags, remote-only copy, and warning-confirmed delete control.
+The expanded mutation gate passed `2/2` in `102.1` seconds: the alert case
+created a unique multi-criteria alert, proved active state, paused and resumed
+it through Laravel, deleted it through the visible confirmation, and proved
+final absence. Both Jobs cases retained no fixture.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
