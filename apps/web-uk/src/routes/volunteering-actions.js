@@ -26,25 +26,27 @@ const ACCESSIBILITY_NEED_TYPES = [
   { value: 'other', label: 'Other' }
 ];
 const CREDENTIAL_TYPES = [
-  { value: 'police_check', label: 'Police / background check' },
   { value: 'first_aid', label: 'First aid' },
   { value: 'safeguarding', label: 'Safeguarding' },
-  { value: 'dbs', label: 'DBS check' },
+  { value: 'manual_handling', label: 'Manual handling' },
+  { value: 'food_hygiene', label: 'Food hygiene' },
   { value: 'driving_licence', label: 'Driving licence' },
+  { value: 'professional_registration', label: 'Professional registration' },
   { value: 'other', label: 'Other' }
 ];
-const CREDENTIAL_TYPE_LABELS = Object.fromEntries(CREDENTIAL_TYPES.map((type) => [type.value, type.label]));
 const CREDENTIAL_STATUS_LABELS = {
   pending: 'Awaiting review',
   verified: 'Verified',
   rejected: 'Rejected',
-  expired: 'Expired'
+  expired: 'Expired',
+  retired: 'Removal required'
 };
 const CREDENTIAL_STATUS_CLASSES = {
   pending: 'govuk-tag--yellow',
   verified: 'govuk-tag--green',
   rejected: 'govuk-tag--red',
-  expired: 'govuk-tag--grey'
+  expired: 'govuk-tag--grey',
+  retired: 'govuk-tag--red'
 };
 const EXPENSE_TYPES = [
   { value: 'travel', label: 'Travel' },
@@ -688,44 +690,22 @@ function expenseStatus(status, t = null) {
     : null;
 }
 
-function credentialStatus(status) {
+function credentialStatus(status, t = null) {
   const messages = {
-    'credential-uploaded': { type: 'success', message: 'Your credential has been uploaded and is awaiting review.' },
-    'credential-deleted': { type: 'success', message: 'The credential has been deleted.' },
-    'credential-type-required': {
-      type: 'error',
-      message: 'Select a credential type.',
-      field: 'credential_type',
-      linkText: 'Select a credential type'
-    },
-    'credential-file-required': {
-      type: 'error',
-      message: 'Choose a file to upload.',
-      field: 'document',
-      linkText: 'Choose a file to upload'
-    },
-    'credential-file-type': {
-      type: 'error',
-      message: 'The file must be a PDF, JPG, PNG or WEBP.',
-      field: 'document',
-      linkText: 'Choose a PDF, JPG, PNG or WEBP file'
-    },
-    'credential-file-size': {
-      type: 'error',
-      message: 'The file must be smaller than 10MB.',
-      field: 'document',
-      linkText: 'Choose a smaller file'
-    },
-    'credential-upload-failed': {
-      type: 'error',
-      message: 'The credential could not be uploaded. Please try again.'
-    },
-    'credential-delete-failed': {
-      type: 'error',
-      message: 'The credential could not be deleted. Please try again.'
-    }
+    'credential-uploaded': { type: 'success', key: 'uploaded' },
+    'credential-deleted': { type: 'success', key: 'deleted' },
+    'credential-type-required': { type: 'error', key: 'type_required', field: 'credential_type' },
+    'credential-vetting-prohibited': { type: 'error', key: 'vetting_prohibited' },
+    'credential-file-required': { type: 'error', key: 'file_required', field: 'document' },
+    'credential-file-type': { type: 'error', key: 'file_type', field: 'document' },
+    'credential-file-size': { type: 'error', key: 'file_size', field: 'document' },
+    'credential-upload-failed': { type: 'error', key: 'upload_failed' },
+    'credential-delete-failed': { type: 'error', key: 'delete_failed' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  const message = t ? t(`govuk_alpha_volunteering.credentials.${config.key}`) : config.key;
+  return { ...config, message, linkText: message.replace(/[.]$/, '') };
 }
 
 function headline(value) {
@@ -744,11 +724,15 @@ function credentialRowsFrom(result) {
   return [];
 }
 
-function credentialStatusPresentation(status) {
+function credentialStatusPresentation(status, t = null) {
   const value = trimmed(status) || 'pending';
+  const key = `govuk_alpha_volunteering.credentials.status_${value}`;
+  const translated = t ? t(key) : key;
   return {
     value,
-    label: CREDENTIAL_STATUS_LABELS[value] || headline(value) || 'Awaiting review',
+    label: translated !== key
+      ? translated
+      : (CREDENTIAL_STATUS_LABELS[value] || headline(value) || 'Awaiting review'),
     className: CREDENTIAL_STATUS_CLASSES[value] || 'govuk-tag--grey'
   };
 }
@@ -1724,28 +1708,52 @@ function createOpportunityStatus(status, t = null) {
     : null;
 }
 
-function normalizeCredential(row) {
+function normalizeCredential(row, t = null) {
   const credential = row && typeof row === 'object' ? row : {};
   const type = trimmed(credential.credential_type ?? credential.type);
-  const status = credentialStatusPresentation(credential.status);
-  const typeLabel = CREDENTIAL_TYPE_LABELS[type]
-    || trimmed(credential.type_label ?? credential.typeLabel)
-    || headline(type)
-    || 'Credential';
+  const isLegacyVettingEvidence = checked(credential.legacy_vetting_evidence ?? credential.legacyVettingEvidence);
+  const manualReviewRequired = checked(credential.manual_review_required ?? credential.manualReviewRequired);
+  const status = manualReviewRequired
+    ? { value: 'manual_review', label: t ? t('govuk_alpha_volunteering.credentials.status_manual_review') : 'Manual review required', className: 'govuk-tag--yellow' }
+    : credentialStatusPresentation(credential.status, t);
+  const typeKey = `govuk_alpha_volunteering.credentials.type_${type}`;
+  const translatedType = t ? t(typeKey) : typeKey;
+  const normalTypeLabel = translatedType !== typeKey
+    ? translatedType
+    : (trimmed(credential.type_label ?? credential.typeLabel) || headline(type) || 'Credential');
+  const typeLabel = isLegacyVettingEvidence && t
+    ? t('govuk_alpha_volunteering.credentials.retired_vetting_label')
+    : normalTypeLabel;
+  const expiry = dateLabel(credential.expires_at ?? credential.expiry_date ?? credential.expiryDate);
 
   return {
     id: positiveInteger(credential.id),
     type,
     typeLabel,
-    fileName: trimmed(credential.file_name ?? credential.document_name ?? credential.fileName ?? credential.documentName),
+    fileName: isLegacyVettingEvidence || manualReviewRequired
+      ? ''
+      : trimmed(credential.file_name ?? credential.document_name ?? credential.fileName ?? credential.documentName),
     status,
-    expiryLabel: dateLabel(credential.expires_at ?? credential.expiry_date ?? credential.expiryDate) || 'No expiry',
+    isLegacyVettingEvidence,
+    manualReviewRequired,
+    warning: isLegacyVettingEvidence
+      ? (t ? t('govuk_alpha_volunteering.credentials.retired_vetting_warning') : '')
+      : (manualReviewRequired ? (t ? t('govuk_alpha_volunteering.credentials.manual_review_warning') : '') : ''),
+    expiryLabel: isLegacyVettingEvidence || manualReviewRequired
+      ? (t ? t('govuk_alpha_volunteering.credentials.not_applicable') : 'Not applicable')
+      : (expiry || (t ? t('govuk_alpha_volunteering.credentials.no_expiry') : 'No expiry')),
     uploadedLabel: dateLabel(
       credential.created_at
       ?? credential.upload_date
       ?? credential.uploadDate
       ?? credential.createdAt
-    ) || '-'
+    ) || '—',
+    deleteLabel: isLegacyVettingEvidence
+      ? (t ? t('govuk_alpha_volunteering.credentials.delete_vetting_evidence_button') : 'Delete historical document')
+      : (t ? t('govuk_alpha_volunteering.credentials.delete_button') : 'Delete'),
+    deleteAriaLabel: t
+      ? t('govuk_alpha_volunteering.credentials.delete_for', { type: typeLabel })
+      : `Delete the ${typeLabel} credential`
   };
 }
 
@@ -2250,19 +2258,23 @@ router.get('/credentials', asyncRoute(async (req, res) => {
   let credentials = [];
   let loadError = null;
   try {
-    credentials = credentialRowsFrom(await callApi(token, 'GET', '/credentials')).map(normalizeCredential);
+    credentials = credentialRowsFrom(await callApi(token, 'GET', '/credentials'))
+      .map((credential) => normalizeCredential(credential, res.locals.t));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your credentials. Please try again.';
   }
 
   return res.render('volunteering/credentials', {
-    title: 'My credentials',
+    title: res.locals.t('govuk_alpha_volunteering.credentials.title'),
     activeNav: 'volunteering',
-    credentialTypes: CREDENTIAL_TYPES,
+    credentialTypes: CREDENTIAL_TYPES.map((type) => ({
+      ...type,
+      label: res.locals.t(`govuk_alpha_volunteering.credentials.type_${type.value}`)
+    })),
     credentials,
     loadError,
-    status: credentialStatus(trimmed(req.query.status)),
+    status: credentialStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

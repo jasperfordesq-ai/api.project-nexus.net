@@ -5472,6 +5472,17 @@ and `1,456/1,456` tests with green lint and the 285-template zero-match audit.
 No live log was submitted because Laravel exposes no residue-free hours-record
 deletion path.
 
+## 2026-07-12 Credential Allowlist and Vetting Safety Parity
+
+Credentials now matches Blade's current catalog and allowed types: retired
+police/DBS options are absent, while manual handling, food hygiene, and
+professional registration are available. Legacy vetting evidence is hidden and
+removal-only; unsupported historical types remain manual-review-only. The prior
+disposable PDF upload/render/delete gate remains valid (`1/1`, `44.2` seconds).
+
+Focused security/render proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

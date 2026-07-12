@@ -26318,7 +26318,8 @@ describe('shared accessible frontend shell', () => {
             id: 45,
             credential_type: 'dbs',
             file_name: 'dbs-check.pdf',
-            status: 'rejected',
+            status: 'retired',
+            legacy_vetting_evidence: true,
             created_at: '2026-06-15T09:30:00Z'
           }
         ]
@@ -26335,18 +26336,24 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Back to volunteering');
     expect(response.text).toContain('Your credential has been uploaded and is awaiting review.');
     expect(response.text).toContain('My credentials');
-    expect(response.text).toContain('Upload checks and certificates so organisations can verify you.');
+    expect(response.text).toContain('Upload role credentials such as first aid or food hygiene certificates so organisations can review them.');
+    expect(response.text).toContain('Do not upload or send a DBS, Garda vetting, AccessNI, PVG, police-check or equivalent document');
     expect(response.text).toContain('Upload a credential');
     expect(response.text).toContain('method="post" action="/volunteering/credentials" enctype="multipart/form-data"');
     expect(response.text).toContain('id="credential_type" name="credential_type"');
     expect(response.text).toContain('value="first_aid"');
+    expect(response.text).toContain('value="manual_handling"');
+    expect(response.text).toContain('value="food_hygiene"');
+    expect(response.text).toContain('value="professional_registration"');
+    expect(response.text).not.toContain('<option value="police_check"');
+    expect(response.text).not.toContain('<option value="dbs"');
     expect(response.text).toContain('First aid');
     expect(response.text).toContain('id="document" name="document" type="file"');
     expect(response.text).toContain('PDF, JPG, PNG or WEBP. Maximum size 10MB.');
     expect(response.text).toContain('id="expiry_date" name="expiry_date" type="date"');
     expect(response.text).toContain('Upload credential');
     expect(response.text).toContain('Your credentials');
-    expect(response.text).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="Your credentials table" tabindex="0"');
+    expect(response.text).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="Your credentials" tabindex="0"');
     expect(response.text).toContain('Type');
     expect(response.text).toContain('Status');
     expect(response.text).toContain('Expires');
@@ -26354,9 +26361,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Verified');
     expect(response.text).toContain('31 January 2027');
     expect(response.text).toContain('1 July 2026');
-    expect(response.text).toContain('DBS check');
-    expect(response.text).toContain('Rejected');
-    expect(response.text).toContain('No expiry');
+    expect(response.text).toContain('Retired vetting document');
+    expect(response.text).toContain('Removal required');
+    expect(response.text).toContain('The document details are hidden. Delete this historical upload');
+    expect(response.text).toContain('Not applicable');
+    expect(response.text).not.toContain('dbs-check.pdf');
+    expect(response.text).toContain('Delete historical document');
     expect(response.text).toContain('15 June 2026');
     expect(response.text).toContain('method="post" action="/volunteering/credentials/44/delete"');
     expect(response.text).toContain('Delete the First aid credential');
