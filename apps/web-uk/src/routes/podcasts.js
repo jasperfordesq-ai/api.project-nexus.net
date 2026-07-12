@@ -30,28 +30,28 @@ const EPISODE_STATUS_TAGS = {
   draft: 'govuk-tag--grey',
   archived: 'govuk-tag--red'
 };
-const STUDIO_SUCCESS_MESSAGES = {
-  'show-deleted': 'Your show was deleted.',
-  'show-created': 'Your show was created. Add episodes and publish when you are ready.',
-  'show-saved': 'Your changes were saved.',
-  'show-published': 'Your show is published and listeners can find it.',
-  'show-pending-review': 'Your show was submitted and is awaiting review before it goes live.',
-  'episode-added': 'Your episode was added.',
-  'episode-published': 'Your episode is published.',
-  'episode-deleted': 'Your episode was deleted.'
+const STUDIO_SUCCESS_KEYS = {
+  'show-deleted': 'status_show_deleted',
+  'show-created': 'status_show_created',
+  'show-saved': 'status_show_saved',
+  'show-published': 'status_show_published',
+  'show-pending-review': 'status_show_pending_review',
+  'episode-added': 'status_episode_added',
+  'episode-published': 'status_episode_published',
+  'episode-deleted': 'status_episode_deleted'
 };
-const STUDIO_ERROR_MESSAGES = {
-  'show-delete-failed': 'Sorry, your show could not be deleted. Please try again.',
-  'show-save-failed': 'Sorry, your changes could not be saved. Please try again.',
-  'show-publish-failed': 'Sorry, your show could not be published. Please try again.',
-  'show-title-missing': 'Enter a show title',
-  'show-create-failed': 'Sorry, your show could not be created. Please try again.',
-  'episode-failed': 'Sorry, your episode could not be added. Please try again.',
-  'episode-title-missing': 'Enter a title for the episode.',
-  'episode-audio-missing': 'Upload an audio file or enter an audio link for the episode.',
-  'episode-invalid-audio': 'Sorry, that audio could not be accepted. Check the file or link and try again.',
-  'episode-publish-failed': 'Sorry, your episode could not be published. Please try again.',
-  'episode-delete-failed': 'Sorry, your episode could not be deleted. Please try again.'
+const STUDIO_ERROR_KEYS = {
+  'show-delete-failed': 'status_show_delete_failed',
+  'show-save-failed': 'status_show_save_failed',
+  'show-publish-failed': 'status_show_publish_failed',
+  'show-title-missing': 'error_title',
+  'show-create-failed': 'error_create',
+  'episode-failed': 'status_episode_failed',
+  'episode-title-missing': 'status_episode_title_missing',
+  'episode-audio-missing': 'status_episode_audio_missing',
+  'episode-invalid-audio': 'status_episode_invalid_audio',
+  'episode-publish-failed': 'status_episode_publish_failed',
+  'episode-delete-failed': 'status_episode_delete_failed'
 };
 const PODCAST_STATUS_MESSAGES = {
   subscribed: { type: 'success', message: 'You have subscribed to this podcast.' },
@@ -180,7 +180,7 @@ function episodeCountLabel(count) {
   return `${number} episodes`;
 }
 
-function decorateShow(show) {
+function decorateShow(show, t = null) {
   const row = show && typeof show === 'object' ? show : {};
   const id = positiveInteger(row.id);
   const title = trimmed(row.title) || 'Podcasts';
@@ -203,14 +203,16 @@ function decorateShow(show) {
     episodeCount: Number.isFinite(Number(episodeCount)) ? Number(episodeCount) : 0,
     episodeCountLabel: episodeCountLabel(episodeCount),
     status,
-    statusLabel: SHOW_STATUS_LABELS[status] || status,
+    statusLabel: t && Object.hasOwn(SHOW_STATUS_LABELS, status)
+      ? t(`govuk_alpha_commerce.podcast_studio.status_${status}`)
+      : (SHOW_STATUS_LABELS[status] || status),
     statusTag: SHOW_STATUS_TAGS[status] || 'govuk-tag--grey',
     visibility: ['public', 'members', 'private'].includes(trimmed(row.visibility)) ? trimmed(row.visibility) : 'public',
     moderationStatus: trimmed(row.moderation_status) || 'approved'
   };
 }
 
-function decorateEpisode(episode, showId = null) {
+function decorateEpisode(episode, showId = null, t = null) {
   const row = episode && typeof episode === 'object' ? episode : {};
   const id = positiveInteger(row.id);
   const status = trimmed(row.status) || 'draft';
@@ -225,10 +227,14 @@ function decorateEpisode(episode, showId = null) {
     audioUrl: safeRelativeOrAbsoluteUrl(row.audio_url),
     transcript: String(row.transcript || '').trim(),
     status,
-    statusLabel: EPISODE_STATUS_LABELS[status] || status,
+    statusLabel: t && Object.hasOwn(EPISODE_STATUS_LABELS, status)
+      ? t(`govuk_alpha_commerce.podcast_studio.episode_status_${status}`)
+      : (EPISODE_STATUS_LABELS[status] || status),
     statusTag: EPISODE_STATUS_TAGS[status] || 'govuk-tag--grey',
     episodeNumber: number,
-    episodeNumberLabel: number !== null ? `Episode ${number}` : ''
+    episodeNumberLabel: number !== null
+      ? (t ? t('govuk_alpha_commerce.podcast_studio.episode_number_short', { number }) : `Episode ${number}`)
+      : ''
   };
 }
 
@@ -240,20 +246,26 @@ function showEpisodes(show) {
     .filter((episode) => episode.id !== null);
 }
 
-function studioEpisodes(show) {
+function studioEpisodes(show, t = null) {
   const rows = Array.isArray(show.episodes) ? show.episodes : [];
   return rows
-    .map((episode) => decorateEpisode(episode, show.id))
+    .map((episode) => decorateEpisode(episode, show.id, t))
     .filter((episode) => episode.id !== null);
 }
 
-function statusEntry(status) {
+function statusEntry(status, t = null) {
   const key = trimmed(status);
-  if (STUDIO_SUCCESS_MESSAGES[key]) {
-    return { type: 'success', message: STUDIO_SUCCESS_MESSAGES[key] };
+  if (STUDIO_SUCCESS_KEYS[key]) {
+    return {
+      type: 'success',
+      message: t ? t(`govuk_alpha_commerce.podcast_studio.${STUDIO_SUCCESS_KEYS[key]}`) : STUDIO_SUCCESS_KEYS[key]
+    };
   }
-  if (STUDIO_ERROR_MESSAGES[key]) {
-    return { type: 'error', message: STUDIO_ERROR_MESSAGES[key] };
+  if (STUDIO_ERROR_KEYS[key]) {
+    return {
+      type: 'error',
+      message: t ? t(`govuk_alpha_commerce.podcast_studio.${STUDIO_ERROR_KEYS[key]}`) : STUDIO_ERROR_KEYS[key]
+    };
   }
   return null;
 }
@@ -275,7 +287,7 @@ router.get('/', asyncRoute(async (req, res) => {
   try {
     const result = await callPodcast(token, 'GET', path);
     const shows = rowsFrom(result)
-      .map(decorateShow)
+      .map((show) => decorateShow(show, res.locals.t))
       .filter((show) => show.id !== null);
 
     return res.render('podcasts/index', {
@@ -298,14 +310,14 @@ router.get('/studio', asyncRoute(async (req, res) => {
   try {
     const result = await callPodcast(token, 'GET', '/mine');
     const shows = rowsFrom(result)
-      .map(decorateShow)
+      .map((show) => decorateShow(show, res.locals.t))
       .filter((show) => show.id !== null);
 
     return res.render('podcasts/studio', {
-      title: 'Podcast studio',
+      title: res.locals.t('govuk_alpha_commerce.podcast_studio.title'),
       activeNav: 'explore',
       shows,
-      status: statusEntry(req.query.status)
+      status: statusEntry(req.query.status, res.locals.t)
     });
   } catch (error) {
     return renderPodcastError(error, res, 'Podcast studio');
@@ -317,7 +329,7 @@ router.get('/studio/new', (req, res) => {
   if (!token) return undefined;
 
   return res.render('podcasts/form', {
-    title: 'Create a podcast',
+    title: res.locals.t('govuk_alpha_commerce.podcast_studio.title_create'),
     activeNav: 'explore',
     mode: 'create',
     action: '/podcasts/studio/new',
@@ -328,7 +340,7 @@ router.get('/studio/new', (req, res) => {
       category: '',
       visibility: 'public'
     },
-    status: statusEntry(req.query.status)
+    status: statusEntry(req.query.status, res.locals.t)
   });
 });
 
@@ -339,20 +351,20 @@ router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
   const showId = positiveInteger(req.params.id);
   try {
     const result = await callPodcast(token, 'GET', '/mine');
-    const shows = rowsFrom(result).map(decorateShow);
+    const shows = rowsFrom(result).map((show) => decorateShow(show, res.locals.t));
     const show = shows.find((row) => row.id === showId);
     if (!show) {
       res.status(404).render('errors/404', { title: 'Page not found' });
       return undefined;
     }
 
-    const episodes = studioEpisodes(show);
+    const episodes = studioEpisodes(show, res.locals.t);
     return res.render('podcasts/manage', {
-      title: 'Edit your podcast',
+      title: res.locals.t('govuk_alpha_commerce.podcast_studio.title_edit'),
       activeNav: 'explore',
       show,
       episodes,
-      status: statusEntry(req.query.status),
+      status: statusEntry(req.query.status, res.locals.t),
       episodeStoreAction: `/podcasts/studio/${show.id}/episodes`
     });
   } catch (error) {

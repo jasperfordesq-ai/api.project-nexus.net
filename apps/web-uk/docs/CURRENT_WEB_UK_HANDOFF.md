@@ -5492,6 +5492,22 @@ Focused render/action proof passed. Full Jest remains `45/45` suites and
 `1,456/1,456` tests with green lint and the 285-template zero-match audit. No
 live donation was created because Laravel exposes no residue-free deletion path.
 
+## 2026-07-12 Podcast Studio and Disposable Audio Lifecycle
+
+Podcast studio, create, and manage now use Laravel's `govuk_alpha_commerce`
+catalog for default-English copy, statuses, plurals, visibility choices,
+episode controls, and destructive warnings. A real Laravel owner lifecycle
+created and edited a uniquely named show, uploaded a valid WAV episode, proved
+the returned authenticated media bytes exactly, passed 320px structure/reflow
+and serious/critical axe checks, deleted the episode and show, and proved final
+API absence (`1/1`, `271.7` seconds). Failed/interrupted attempts were cleaned,
+including one explicit residue audit and deletion.
+
+Full Jest remains `45/45` suites and `1,458/1,458` tests with green lint and the
+285-template zero-match audit. Publish/moderation, subscribe behavior, tenant
+author gates, remaining browse/detail localization, manual assistive-technology
+depth, and ASP.NET compatibility remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
