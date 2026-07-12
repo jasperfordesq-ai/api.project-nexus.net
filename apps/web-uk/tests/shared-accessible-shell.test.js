@@ -1381,7 +1381,7 @@ describe('shared accessible frontend shell', () => {
     }
   });
 
-  it('renders the Laravel-backed public knowledge base index and search pages', async () => {
+  it('renders the Laravel-backed member knowledge base index and search pages', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');
     api.getKnowledgeBaseArticles
@@ -1410,10 +1410,13 @@ describe('shared accessible frontend shell', () => {
         meta: { has_more: false, per_page: 20 }
       });
 
-    const index = await request(app).get('/kb?cursor=abc');
-    const search = await request(app).get('/kb?q=repair');
+    const unsigned = await request(app).get('/kb?cursor=abc');
+    const index = await request(app).get('/kb?cursor=abc').set('Cookie', signedCookieHeader());
+    const search = await request(app).get('/kb?q=repair').set('Cookie', signedCookieHeader());
 
     expect(staticPageRoutes.pages['/kb']).toBeUndefined();
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(index.status).toBe(200);
     expect(index.text).toContain('Knowledge base');
     expect(index.text).toContain('Guides and articles to help you get the most out of Project NEXUS Accessible.');
@@ -1432,11 +1435,11 @@ describe('shared accessible frontend shell', () => {
     expect(search.text).toContain('Repair cafe checklist');
     expect(search.text).toContain('No views');
     expect(search.text).not.toContain('href="/kb?cursor=');
-    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(1, { per_page: 12, cursor: 'abc' });
-    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(2, { q: 'repair', limit: 20 });
+    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(1, 'test-token', { per_page: 12, cursor: 'abc' });
+    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(2, 'test-token', { q: 'repair', limit: 20 });
   });
 
-  it('renders the Laravel-backed public knowledge base article page', async () => {
+  it('renders the Laravel-backed member knowledge base article page', async () => {
     const api = require('../src/lib/api');
     api.getKnowledgeBaseArticle.mockResolvedValue({
       data: {
@@ -1451,8 +1454,11 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/kb/42');
+    const unsigned = await request(app).get('/kb/42');
+    const response = await request(app).get('/kb/42').set('Cookie', signedCookieHeader());
 
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/kb"');
     expect(response.text).toContain('Back to the knowledge base');
@@ -1465,7 +1471,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/kb/43"');
     expect(response.text).toContain('Returning borrowed tools');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
-    expect(api.getKnowledgeBaseArticle).toHaveBeenCalledWith(42);
+    expect(api.getKnowledgeBaseArticle).toHaveBeenCalledWith('test-token', 42);
   });
 
   it('localizes a missing knowledge base article', async () => {
@@ -1473,7 +1479,9 @@ describe('shared accessible frontend shell', () => {
     const { translate } = require('../src/lib/localization');
     api.getKnowledgeBaseArticle.mockRejectedValueOnce(new api.ApiError('Missing', 404, {}));
 
-    const response = await request(app).get('/kb/999999?locale=ar');
+    const response = await request(app)
+      .get('/kb/999999?locale=ar')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(404);
     expect(response.headers['content-language']).toBe('ar');

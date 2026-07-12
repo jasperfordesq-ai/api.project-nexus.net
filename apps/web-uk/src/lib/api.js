@@ -709,13 +709,16 @@ async function getOrganisationReviews(organisationId) {
   return request(`/api/v2/volunteering/reviews/organization/${encodeURIComponent(organisationId)}`);
 }
 
-async function getKnowledgeBaseArticles(params = {}) {
+async function getKnowledgeBaseArticles(token = '', params = {}) {
   const query = new URLSearchParams();
+  const options = token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {};
 
   if (params.q) {
     query.set('q', params.q);
     if (params.limit) query.set('limit', params.limit);
-    return request(`/api/v2/kb/search?${query.toString()}`);
+    return request(`/api/v2/kb/search?${query.toString()}`, options);
   }
 
   if (params.per_page) query.set('per_page', params.per_page);
@@ -723,11 +726,14 @@ async function getKnowledgeBaseArticles(params = {}) {
   if (params.category_id) query.set('category_id', params.category_id);
 
   const queryString = query.toString();
-  return request(`/api/v2/kb${queryString ? `?${queryString}` : ''}`);
+  return request(`/api/v2/kb${queryString ? `?${queryString}` : ''}`, options);
 }
 
-async function getKnowledgeBaseArticle(id) {
-  return request(`/api/v2/kb/${encodeURIComponent(id)}`);
+async function getKnowledgeBaseArticle(token = '', id) {
+  const options = token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {};
+  return request(`/api/v2/kb/${encodeURIComponent(id)}`, options);
 }
 
 async function getHelpFaqs(params = {}) {

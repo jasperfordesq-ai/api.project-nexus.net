@@ -12,6 +12,15 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || '';
+}
+
+function redirectTo(res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return res.redirect(urlFor(pathname));
+}
+
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -93,8 +102,13 @@ function listParams(query) {
 }
 
 router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return redirectTo(res, '/login?status=auth-required');
+  }
+
   const params = listParams(req.query);
-  const result = await getKnowledgeBaseArticles(params);
+  const result = await getKnowledgeBaseArticles(token, params);
   const meta = metaFrom(result);
   const searchQuery = trimmed(req.query.q);
   const nextCursor = trimmed(meta.cursor);
@@ -118,10 +132,15 @@ router.get('/', asyncRoute(async (req, res) => {
 }));
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return redirectTo(res, '/login?status=auth-required');
+  }
+
   const id = Number(req.params.id);
   let article;
   try {
-    article = normalizeArticle(await getKnowledgeBaseArticle(id), id, res.locals.t);
+    article = normalizeArticle(await getKnowledgeBaseArticle(token, id), id, res.locals.t);
   } catch (error) {
     if (error && error.status === 404) {
       return res.status(404).render('errors/404', {

@@ -22,14 +22,23 @@ $env:ACCESSIBILITY_TENANT_SLUG = 'alpha'
 npm run test:accessibility
 ```
 
-Latest verified run on 2026-07-10: all 9 Chromium checks passed against a
-fresh current-checkout listener at `http://127.0.0.1:56223` and Laravel at
-`http://127.0.0.1:8088`. Generated JSON/HTML and per-test axe artifacts were
-written below the ignored `artifacts/accessibility/` directory.
+Latest verification on 2026-07-12 exercised the current 87-case Chromium
+scope against fresh current-checkout listeners and Laravel at
+`http://127.0.0.1:8088`. The first serial run reached `79/87` before exposing a
+missing bearer token on the member-only Knowledge Base API calls; that case
+failed and seven later serial cases did not run. After the contract fix, focused
+route checks passed `3/3`, the corrected Knowledge Base browser journey passed
+`1/1`, and the complete eight-case serial tail passed `8/8`. Every case now has
+a passing current-source result, but this is not represented as a new
+uninterrupted `87/87` run. Generated evidence remains below the ignored
+`artifacts/accessibility/` directory.
 
 ## Current automated scope
 
-Chromium checks the tenant home, about, guide, FAQ, sign-in, registration, contact, legal hub, and accessibility-statement pages under the shared `/{tenantSlug}/accessible` mount. Every route must:
+Chromium checks representative public and signed-in pages under the shared
+`/{tenantSlug}/accessible` mount, plus focused keyboard/error recovery,
+forced-colour, narrow-reflow, and representative RTL journeys. Every
+structure/axe case must:
 
 - return a successful document response;
 - contain exactly one `main` landmark and one `#main-content` target;
@@ -43,6 +52,12 @@ A separate Jest source regression inspects every Nunjucks template and requires
 each `govuk-error-summary` opening tag to include `tabindex="-1"`. The
 2026-07-10 audit covered 135 summaries; six missing focus targets were fixed
 and the remaining violation count is zero.
+
+Directed browser and assistive-technology observations are recorded in
+[`MANUAL_ACCESSIBILITY_EVIDENCE.md`](./MANUAL_ACCESSIBILITY_EVIDENCE.md). The
+register states the exact input method and limitations for each check so that
+browser-assisted inspection is not mistaken for keyboard-only or screen-reader
+certification.
 
 ## What a passing gate does not prove
 
