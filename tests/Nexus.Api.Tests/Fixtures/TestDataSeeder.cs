@@ -455,6 +455,8 @@ public static class TestDataSeeder
                 event_status_history,
                 event_reminders,
                 event_attendance,
+                event_waitlist_entry_history,
+                event_registration_history,
                 event_waitlist_entries,
                 event_registrations,
                 event_rsvps,

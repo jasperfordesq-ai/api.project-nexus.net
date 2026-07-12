@@ -189,16 +189,29 @@ public class EventConfiguration : TenantScopedConfiguration
 
         modelBuilder.Entity<EventRegistration>(entity =>
         {
-            entity.ToTable("event_registrations"); entity.Property(e => e.RegistrationState).HasMaxLength(24);
-            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_registration_user");
-            entity.HasIndex(e => new { e.TenantId, e.EventId, e.RegistrationState, e.UserId }).HasDatabaseName("idx_event_registration_audience");
+            entity.ToTable("event_registrations"); entity.Property(e => e.RegistrationState).HasMaxLength(32); entity.Property(e => e.CapacityPoolKey).HasMaxLength(100); entity.Property(e => e.AllocationKey).HasMaxLength(191);
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId, e.CapacityPoolKey }).IsUnique().HasDatabaseName("uq_event_registration_subject");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.CapacityPoolKey, e.RegistrationState, e.Id }).HasDatabaseName("idx_event_registration_capacity");
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.RegistrationState, e.EventId }).HasDatabaseName("idx_event_registration_user");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventRegistrationHistory>(entity =>
+        {
+            entity.ToTable("event_registration_history"); entity.Property(e => e.CapacityPoolKey).HasMaxLength(100); entity.Property(e => e.AllocationKey).HasMaxLength(191); entity.Property(e => e.Action).HasMaxLength(64); entity.Property(e => e.FromState).HasMaxLength(32); entity.Property(e => e.ToState).HasMaxLength(32); entity.Property(e => e.IdempotencyKey).HasMaxLength(191); entity.Property(e => e.Reason).HasColumnType("text"); entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.RegistrationId, e.RegistrationVersion }).IsUnique().HasDatabaseName("uq_event_registration_history_version"); entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique().HasDatabaseName("uq_event_registration_history_key"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.CapacityPoolKey, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_registration_history_event"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_registration_history_user");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
         modelBuilder.Entity<EventWaitlistEntry>(entity =>
         {
-            entity.ToTable("event_waitlist_entries"); entity.Property(e => e.QueueState).HasMaxLength(24);
-            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_waitlist_user");
-            entity.HasIndex(e => new { e.TenantId, e.EventId, e.QueueState, e.OfferExpiresAt, e.UserId }).HasDatabaseName("idx_event_waitlist_audience");
+            entity.ToTable("event_waitlist_entries"); entity.Property(e => e.QueueState).HasMaxLength(32); entity.Property(e => e.CapacityPoolKey).HasMaxLength(100); entity.Property(e => e.AllocationKey).HasMaxLength(191); entity.Property(e => e.OfferTokenHash).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId, e.CapacityPoolKey }).IsUnique().HasDatabaseName("uq_event_waitlist_entry_subject"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.CapacityPoolKey, e.QueueSequence }).IsUnique().HasDatabaseName("uq_event_waitlist_entry_sequence"); entity.HasIndex(e => e.OfferTokenHash).IsUnique().HasDatabaseName("uq_event_waitlist_offer_token");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.CapacityPoolKey, e.QueueState, e.QueueSequence, e.Id }).HasDatabaseName("idx_event_waitlist_queue"); entity.HasIndex(e => new { e.QueueState, e.OfferExpiresAt, e.Id }).HasDatabaseName("idx_event_waitlist_expiry"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.QueueState, e.EventId }).HasDatabaseName("idx_event_waitlist_user");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventWaitlistEntryHistory>(entity =>
+        {
+            entity.ToTable("event_waitlist_entry_history"); entity.Property(e => e.CapacityPoolKey).HasMaxLength(100); entity.Property(e => e.AllocationKey).HasMaxLength(191); entity.Property(e => e.Action).HasMaxLength(64); entity.Property(e => e.FromState).HasMaxLength(32); entity.Property(e => e.ToState).HasMaxLength(32); entity.Property(e => e.IdempotencyKey).HasMaxLength(191); entity.Property(e => e.Reason).HasColumnType("text"); entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.WaitlistEntryId, e.QueueVersion }).IsUnique().HasDatabaseName("uq_event_waitlist_history_version"); entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique().HasDatabaseName("uq_event_waitlist_history_key"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.CapacityPoolKey, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_waitlist_history_event"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_waitlist_history_user");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
         modelBuilder.Entity<EventAttendance>(entity =>

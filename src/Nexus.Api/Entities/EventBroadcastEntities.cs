@@ -9,7 +9,17 @@ public sealed class EventRegistration : ITenantEntity
     public int TenantId { get; set; }
     public int EventId { get; set; }
     public int UserId { get; set; }
+    public string CapacityPoolKey { get; set; } = "event";
+    public string? AllocationKey { get; set; }
     public string RegistrationState { get; set; } = "confirmed";
+    public long RegistrationVersion { get; set; } = 1;
+    public DateTime StateChangedAt { get; set; } = DateTime.UtcNow;
+    public int? StateChangedBy { get; set; }
+    public DateTime? InvitedAt { get; set; }
+    public DateTime? PendingAt { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+    public DateTime? DeclinedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -20,10 +30,64 @@ public sealed class EventWaitlistEntry : ITenantEntity
     public int TenantId { get; set; }
     public int EventId { get; set; }
     public int UserId { get; set; }
+    public string CapacityPoolKey { get; set; } = "event";
+    public string? AllocationKey { get; set; }
     public string QueueState { get; set; } = "waiting";
+    public long QueueVersion { get; set; } = 1;
+    public long QueueSequence { get; set; }
+    public DateTime StateChangedAt { get; set; } = DateTime.UtcNow;
+    public int? StateChangedBy { get; set; }
+    public DateTime? OfferedAt { get; set; }
     public DateTime? OfferExpiresAt { get; set; }
+    public string? OfferTokenHash { get; set; }
+    public DateTime? OfferTokenUsedAt { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public long? AcceptedRegistrationId { get; set; }
+    public DateTime? ExpiredAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class EventRegistrationHistory : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int EventId { get; set; }
+    public long RegistrationId { get; set; }
+    public int UserId { get; set; }
+    public int? ActorUserId { get; set; }
+    public string CapacityPoolKey { get; set; } = "event";
+    public string? AllocationKey { get; set; }
+    public long RegistrationVersion { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string? FromState { get; set; }
+    public string ToState { get; set; } = string.Empty;
+    public string IdempotencyKey { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public string Metadata { get; set; } = "{}";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class EventWaitlistEntryHistory : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int EventId { get; set; }
+    public long WaitlistEntryId { get; set; }
+    public int UserId { get; set; }
+    public int? ActorUserId { get; set; }
+    public string CapacityPoolKey { get; set; } = "event";
+    public string? AllocationKey { get; set; }
+    public long QueueVersion { get; set; }
+    public long QueueSequence { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string? FromState { get; set; }
+    public string ToState { get; set; } = string.Empty;
+    public string IdempotencyKey { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public string Metadata { get; set; } = "{}";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class EventAttendance : ITenantEntity
