@@ -126,11 +126,21 @@ message/file/notification/XP side effects; a valid WebM returns duration at
 least one and runs the normal message effects. Provider transcription remains
 open.
 
+Coordinator help is now a runtime-backed P1 workflow. ASP.NET re-evaluates the
+tenant safeguarding policy, returns Laravel-style HTTP 422 `errors[]` for
+invalid, missing/cross-tenant, unrestricted, and unavailable requests, and only
+accepts `VETTING_REQUIRED` or `SAFEGUARDING_CONTACT_RESTRICTED`. Active tenant
+admin, tenant-admin, broker, and super-admin users receive in-app and email
+alerts. A transaction advisory lock plus persisted signature suppresses
+successful delivery for ten minutes without suppressing failed/no-staff
+retries; every accepted request is audited and the route uses Laravel's
+independent 5-per-300-second bucket. Focused PostgreSQL coverage passed 16/16
+and route ownership passed 1/1.
+
 This checkpoint is not direct-message completion. P1 remains on durable
 allow-listed reactions and batch aggregation, full typing preflight plus the
-canonical Pusher channel/event, and server-authoritative coordinator help with
-`SAFEGUARDING_NOT_RESTRICTED`, staff delivery, dedupe, and audit. Exact
-read/unread envelopes and rate-limit behavior also remain open.
+canonical Pusher channel/event, and exact read/unread envelopes and rate-limit
+behavior.
 
 The final deterministic direct-message state gate passed 39/39 with zero
 failed or skipped, covering migration/model contracts, edit/delete,

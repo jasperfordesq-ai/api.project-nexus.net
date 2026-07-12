@@ -103,6 +103,16 @@ visibility instead of hard deletion; and partner-ID conversation archive/
 restore persists per-user state, separates active/archived inbox reads, filters
 hidden unread rows, and restores without deleting history.
 
+Coordinator assistance now replaces the former synthetic success stub with a
+server-authoritative policy recheck. It returns Laravel-style HTTP 422 errors
+for self/nonpositive, missing/cross-tenant, unrestricted, and unavailable
+requests; only genuine vetting/contact restrictions alert active tenant staff.
+In-app plus email delivery is transactionally serialized and suppressed for
+ten minutes after success, while failed or no-staff delivery remains retryable.
+Every accepted request is audited and uses an independent authenticated
+5-per-300-second bucket. Focused PostgreSQL coverage passed 16/16 and route
+ownership passed 1/1.
+
 Group exchange create/add/start/confirm/complete/cancel now follows Laravel's
 caller and role order, dual-role/participant semantics, caller-visible status,
 lifecycle guards, deterministic locking with caller-order policy evaluation,
@@ -118,9 +128,7 @@ residual in this order:
    aggregation.
 2. **P1 typing:** full message preflight and a proven canonical Pusher
    pair-channel `typing` event, including first-conversation behavior.
-3. **P1 coordinator help:** restricted-only gate, unrestricted 422, staff
-   delivery, successful-delivery dedupe/retry, and activity audit.
-4. **P1 read/unread:** reconcile exact envelopes and rate-limit behavior for
+3. **P1 read/unread:** reconcile exact envelopes and rate-limit behavior for
    mark-read, unread counts, and related list projections.
 
 Replace route-only and false-oracle tests for those handlers with two-user,
@@ -734,9 +742,9 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 
 1. **P0 completed 2026-07-12:** sender-only 24-hour edit, scoped participant
    delete, and partner-ID per-user archive/restore now persist durable state.
+   Restricted-only coordinator-help delivery/dedupe/email/audit is also complete.
    Continue with P1 durable reactions/batch, full typing preflight plus Pusher
-   delivery, restricted-only coordinator help with delivery/dedupe/audit, and
-   exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
+   delivery, and exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
    cleanup, and side-effect tests; remove false oracles.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member, organisation, administrator, and Caring runtime smoke. The focused

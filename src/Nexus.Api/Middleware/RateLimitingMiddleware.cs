@@ -85,6 +85,7 @@ public static class RateLimitingExtensions
     public const string MessagesDeletePolicy = "messages-delete";
     public const string MessagesArchivePolicy = "messages-archive";
     public const string MessagesRestorePolicy = "messages-restore";
+    public const string MessagesRequestCoordinatorPolicy = "messages-request-coordinator";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -226,6 +227,15 @@ public static class RateLimitingExtensions
                         TimeSpan.FromSeconds(config.GetValue(
                             "RateLimiting:Messages:RestoreWindowSeconds",
                             60)))));
+
+            options.AddPolicy(MessagesRequestCoordinatorPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:RequestCoordinatorPermitLimit", 5),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:RequestCoordinatorWindowSeconds",
+                            300)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
             options.AddPolicy(AiPolicy, context =>

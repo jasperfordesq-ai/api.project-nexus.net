@@ -84,9 +84,12 @@ public sealed class LaravelReactUtilityCompatibilityTests : IntegrationTestBase
         dismiss.GetProperty("source_type").GetString().Should().Be("listing");
         dismiss.GetProperty("source_id").GetInt32().Should().Be(TestData.Listing1.Id);
 
-        var coordinator = await ReadDataAsync(await Client.PostAsJsonAsync($"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { }));
-        coordinator.GetProperty("requested").GetBoolean().Should().BeTrue();
-        coordinator.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        var coordinator = await ReadJsonAsync(
+            await Client.PostAsJsonAsync($"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { }),
+            HttpStatusCode.UnprocessableEntity);
+        coordinator.GetProperty("success").GetBoolean().Should().BeFalse();
+        coordinator.GetProperty("errors").EnumerateArray().Single()
+            .GetProperty("code").GetString().Should().Be("SAFEGUARDING_NOT_RESTRICTED");
     }
 
     [Fact]

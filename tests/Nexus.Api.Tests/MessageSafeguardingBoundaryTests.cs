@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Services;
@@ -25,6 +26,83 @@ public sealed class MessageSafeguardingBoundaryTests : IntegrationTestBase
 {
     public MessageSafeguardingBoundaryTests(NexusWebApplicationFactory factory)
         : base(factory) { }
+
+    [Fact]
+    public async Task RequestCoordinator_RestrictedRecipient_DeliversOnceAuditsEveryRequest()
+    {
+        await ConfigureRecipientOptionAsync("requires_coordinator_contact");
+        var token = await GetAccessTokenAsync("member@test.com", TestData.Tenant1.Slug);
+        var transport = new RecordingEmailService();
+        using var factory = Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IEmailService>();
+            services.AddSingleton<IEmailService>(transport);
+        }));
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var first = await client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { });
+        using var second = await client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { });
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data")
+            .GetProperty("code").GetString().Should().Be("SAFEGUARDING_CONTACT_RESTRICTED");
+        transport.Messages.Should().ContainSingle("a successful delivery is suppressed for ten minutes");
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.Notifications.IgnoreQueryFilters().CountAsync(row =>
+            row.TenantId == TestData.Tenant1.Id
+            && row.Type == "safeguarding_coordination_requested")).Should().Be(1);
+        (await db.AuditLogs.IgnoreQueryFilters().CountAsync(row =>
+            row.TenantId == TestData.Tenant1.Id
+            && row.UserId == TestData.MemberUser.Id
+            && row.EntityId == TestData.AdminUser.Id
+            && row.Action == "safeguarding_coordination_requested")).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RequestCoordinator_UnrestrictedOrCrossTenant_ReturnsLaravel422WithoutDelivery()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using var unrestricted = await Client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { });
+        unrestricted.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadSingleErrorAsync(unrestricted)).GetProperty("code").GetString()
+            .Should().Be("SAFEGUARDING_NOT_RESTRICTED");
+
+        using var crossTenant = await Client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.OtherTenantUser.Id}/request-coordinator", new { });
+        crossTenant.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadSingleErrorAsync(crossTenant)).GetProperty("code").GetString().Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task RequestCoordinator_UsesIndependentLaravelFivePerFiveMinuteBucket()
+    {
+        var token = await GetAccessTokenAsync("member@test.com", TestData.Tenant1.Slug);
+        using var limitedFactory = Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["RateLimiting:Messages:RequestCoordinatorPermitLimit"] = "1",
+                    ["RateLimiting:Messages:RequestCoordinatorWindowSeconds"] = "300"
+                }));
+        });
+        using var client = limitedFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var accepted = await client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { });
+        accepted.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using var rejected = await client.PostAsJsonAsync(
+            $"/api/v2/messages/{TestData.AdminUser.Id}/request-coordinator", new { });
+        rejected.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
 
     [Fact]
     public async Task V2Send_LegacyVerifiedVettingCannotAuthorize_ReturnsExactVettingErrorWithoutWrites()
@@ -599,5 +677,36 @@ public sealed class MessageSafeguardingBoundaryTests : IntegrationTestBase
                 .OrderBy(path => path, StringComparer.Ordinal)
                 .ToArray()
             : [];
+    }
+
+    private sealed class RecordingEmailService : IEmailService
+    {
+        public List<string> Messages { get; } = [];
+
+        public Task<bool> SendEmailAsync(
+            string to,
+            string subject,
+            string htmlBody,
+            string? textBody = null,
+            CancellationToken ct = default)
+        {
+            Messages.Add(to);
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> SendPasswordResetEmailAsync(
+            string to,
+            string resetToken,
+            string userName,
+            string resetUrl,
+            CancellationToken ct = default) => Task.FromResult(true);
+
+        public Task<bool> SendWelcomeEmailAsync(
+            string to,
+            string userName,
+            string tenantName,
+            CancellationToken ct = default) => Task.FromResult(true);
+
+        public Task<bool> IsHealthyAsync(CancellationToken ct = default) => Task.FromResult(true);
     }
 }

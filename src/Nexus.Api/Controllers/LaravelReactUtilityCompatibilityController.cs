@@ -9,10 +9,13 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -23,17 +26,20 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
     private readonly TenantContext _tenant;
     private readonly IConfiguration _config;
     private readonly IHostEnvironment _environment;
+    private readonly SafeguardingCoordinationService _safeguardingCoordination;
 
     public LaravelReactUtilityCompatibilityController(
         NexusDbContext db,
         TenantContext tenant,
         IConfiguration config,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        SafeguardingCoordinationService safeguardingCoordination)
     {
         _db = db;
         _tenant = tenant;
         _config = config;
         _environment = environment;
+        _safeguardingCoordination = safeguardingCoordination;
     }
 
     [AllowAnonymous]
@@ -585,22 +591,29 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
     [Authorize]
     [HttpPost("/api/messages/{id:int}/request-coordinator")]
     [HttpPost("/api/v2/messages/{id:int}/request-coordinator")]
-    public async Task<IActionResult> RequestCoordinator(int id)
+    [EnableRateLimiting(RateLimitingExtensions.MessagesRequestCoordinatorPolicy)]
+    public async Task<IActionResult> RequestCoordinator(int id, CancellationToken cancellationToken)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { success = false, error = "Invalid token" });
         var tenantId = _tenant.GetTenantIdOrThrow();
-        var targetExists = await _db.Users.IgnoreQueryFilters().AnyAsync(u => u.TenantId == tenantId && u.Id == id);
-        if (!targetExists) return NotFound(new { success = false, code = "RESOURCE_NOT_FOUND", error = "User not found." });
-
-        return Data(new
+        var result = await _safeguardingCoordination.RequestAsync(
+            tenantId,
+            userId.Value,
+            id,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers.UserAgent.ToString(),
+            cancellationToken);
+        if (!result.Succeeded)
         {
-            requested = true,
-            recipient_id = id,
-            requester_id = userId.Value,
-            status = "queued",
-            message = "Coordinator assistance requested."
-        });
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = result.Code, message = result.Message } }
+            });
+        }
+
+        return Data(new { success = true, code = result.Code });
     }
 
     private async Task<Page?> LoadPublishedPageAsync(string pageKey)
