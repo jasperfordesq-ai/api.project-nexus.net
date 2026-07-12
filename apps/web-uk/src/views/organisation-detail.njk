@@ -5,15 +5,15 @@
 
 {% extends "layouts/base.njk" %}
 
-{% set organisationName = organisation.name or "Organisations" %}
+{% set organisationName = organisation.name or t("govuk_alpha.organisations.title") %}
 {% set organisationDescription = organisation.description or organisation.excerpt or "" %}
 {% set opportunities = orgOpportunities or [] %}
 {% set reviews = orgReviews or [] %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/organisations') }}">Organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/organisations') }}">{{ t("govuk_alpha.organisations.title") }}</a>
 
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha.organisations.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ organisationName }}</h1>
 
   {% if organisationDescription %}
@@ -24,7 +24,7 @@
     <dl class="govuk-summary-list">
       {% if contactEmail %}
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Contact email (optional)</dt>
+          <dt class="govuk-summary-list__key">{{ t("govuk_alpha.organisations.email_label") }}</dt>
           <dd class="govuk-summary-list__value">
             <a class="govuk-link" href="mailto:{{ contactEmail }}">{{ contactEmail }}</a>
           </dd>
@@ -32,10 +32,10 @@
       {% endif %}
       {% if website %}
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">{{ t("organisations.website_label") }}</dt>
+          <dt class="govuk-summary-list__key">{{ t("govuk_alpha.organisations.website_label") }}</dt>
           <dd class="govuk-summary-list__value">
             <a class="govuk-link" href="{{ websiteHref }}" rel="nofollow noopener noreferrer" target="_blank">
-              {{ website }}<span class="govuk-visually-hidden"> opens in a new tab</span>
+              {{ website }}<span class="govuk-visually-hidden"> {{ t("govuk_alpha.opens_new_tab") }}</span>
             </a>
           </dd>
         </div>
@@ -43,56 +43,58 @@
     </dl>
   {% endif %}
 
-  {% if organisation.id %}
+  {% if organisation.id and jobVacanciesEnabled %}
     <p class="govuk-body">
-      <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string) + '/jobs') }}">View job openings</a>
+      <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string) + '/jobs') }}">{{ t("govuk_alpha_organisations.nav.jobs") }}</a>
     </p>
   {% endif %}
 
-  <h2 class="govuk-heading-l">{{ t("org_depth.stats_heading") }}</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha.org_depth.stats_heading") }}</h2>
   <dl class="nexus-alpha-inline-list">
     <div>
-      <dt>{{ t("org_depth.stat_opportunities") }}</dt>
-      <dd>{{ orgStats.opportunity_count or 0 }}</dd>
+      <dt>{{ t("govuk_alpha.org_depth.stat_opportunities") }}</dt>
+      <dd>{{ formatLocaleNumber(orgStats.opportunityCount) }}</dd>
     </div>
-    <div>
-      <dt>{{ t("org_depth.stat_volunteers") }}</dt>
-      <dd>{{ orgStats.volunteer_count or 0 }}</dd>
-    </div>
-    <div>
-      <dt>{{ t("org_depth.stat_hours") }}</dt>
-      <dd>{{ orgStats.total_hours or 0 }}</dd>
-    </div>
-    <div>
-      <dt>Reviews</dt>
-      <dd>{{ orgStats.review_count or 0 }}</dd>
-    </div>
-    {% if orgStats.review_count and orgStats.average_rating %}
+    {% if orgStats.volunteerCount !== null %}
       <div>
-        <dt>Average rating</dt>
+        <dt>{{ t("govuk_alpha.org_depth.stat_volunteers") }}</dt>
+        <dd>{{ formatLocaleNumber(orgStats.volunteerCount) }}</dd>
+      </div>
+    {% endif %}
+    <div>
+      <dt>{{ t("govuk_alpha.org_depth.stat_hours") }}</dt>
+      <dd>{{ orgStats.totalHoursLabel }}</dd>
+    </div>
+    <div>
+      <dt>{{ t("govuk_alpha.org_depth.stat_reviews") }}</dt>
+      <dd>{{ formatLocaleNumber(orgStats.reviewCount) }}</dd>
+    </div>
+    {% if orgStats.reviewCount > 0 %}
+      <div>
+        <dt>{{ t("govuk_alpha.org_depth.stat_rating") }}</dt>
         <dd>
-          <progress max="5" value="{{ orgStats.average_rating }}" aria-label="{{ orgStats.average_rating }} out of 5">
-            {{ orgStats.average_rating }} out of 5
+          <progress max="5" value="{{ orgStats.averageRating }}" aria-label="{{ t('govuk_alpha.org_depth.stat_rating_value', { rating: orgStats.averageRatingLabel }) }}">
+            {{ t("govuk_alpha.org_depth.stat_rating_value", { rating: orgStats.averageRatingLabel }) }}
           </progress>
-          <span class="govuk-!-margin-left-2">{{ orgStats.average_rating }} out of 5</span>
+          <span class="govuk-!-margin-left-2">{{ t("govuk_alpha.org_depth.stat_rating_value", { rating: orgStats.averageRatingLabel }) }}</span>
         </dd>
       </div>
     {% endif %}
   </dl>
 
-  <h2 class="govuk-heading-l">{{ t("org_depth.opportunities_heading") }}</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha.org_depth.opportunities_heading") }}</h2>
   {% if opportunities and opportunities.length %}
-    <p class="govuk-body">Open volunteering opportunities posted by {{ organisationName }}.</p>
+    <p class="govuk-body">{{ t("govuk_alpha.org_depth.opportunities_summary", { name: organisationName }) }}</p>
     <div class="nexus-alpha-card-list">
       {% for opportunity in opportunities %}
         {% if opportunity.id %}
           <article class="nexus-alpha-card">
             <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
-              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">{{ opportunity.title or "Organisations" }}</a>
+              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">{{ opportunity.title or t("govuk_alpha.organisations.title") }}</a>
             </h3>
 
             {% if opportunity.is_remote %}
-              <p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--turquoise">Remote</strong></p>
+              <p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--turquoise">{{ t("govuk_alpha.org_depth.opportunity_remote") }}</strong></p>
             {% endif %}
 
             {% if opportunity.summary %}
@@ -100,37 +102,34 @@
             {% endif %}
 
             <div class="nexus-alpha-actions">
-              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">View opportunity</a>
-              <a class="govuk-link" href="{{ urlFor('/organisations/opportunities/' + (opportunity.id | string) + '/apply') }}">Apply to volunteer</a>
+              <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' + (opportunity.id | string)) }}">{{ t("govuk_alpha.org_depth.opportunity_view") }}</a>
+              <a class="govuk-link" href="{{ urlFor('/organisations/opportunities/' + (opportunity.id | string) + '/apply') }}">{{ t("govuk_alpha_organisations.nav.apply") }}</a>
             </div>
           </article>
         {% endif %}
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">{{ t("org_depth.opportunities_empty") }}</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha.org_depth.opportunities_empty") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">{{ t("org_depth.reviews_heading") }}</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha.org_depth.reviews_heading") }}</h2>
   {% if reviews and reviews.length %}
     <div class="nexus-alpha-card-list">
       {% for review in reviews %}
-        {% set author = review.author or {} %}
-        {% set authorName = author.name or "Someone" %}
-        {% set rating = review.rating or 0 %}
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-card-head">
-            {% if author.avatar %}
-              <img class="nexus-alpha-avatar" src="{{ author.avatar }}" alt="" width="48" height="48" loading="lazy" decoding="async">
+            {% if review.authorAvatar %}
+              <img class="nexus-alpha-avatar" src="{{ review.authorAvatar }}" alt="" width="48" height="48" loading="lazy" decoding="async">
             {% else %}
-              <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ authorName | first | upper }}</span>
+              <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ review.authorName | first | upper }}</span>
             {% endif %}
-            <span class="govuk-body govuk-!-margin-bottom-0 govuk-!-font-weight-bold">{{ authorName }}</span>
+            <span class="govuk-body govuk-!-margin-bottom-0 govuk-!-font-weight-bold">{{ review.authorName }}</span>
           </div>
 
           <p class="govuk-!-margin-bottom-2">
-            <progress max="5" value="{{ rating }}" aria-label="{{ rating }} out of 5">{{ rating }} out of 5</progress>
-            <span class="govuk-!-margin-left-2">{{ rating }} out of 5</span>
+            <progress max="5" value="{{ review.rating }}" aria-label="{{ t('govuk_alpha.org_depth.review_rating_label', { rating: review.rating }) }}">{{ t("govuk_alpha.org_depth.review_rating_label", { rating: review.rating }) }}</progress>
+            <span class="govuk-!-margin-left-2">{{ t("govuk_alpha.org_depth.review_rating_label", { rating: review.rating }) }}</span>
           </p>
 
           {% if review.comment %}
@@ -140,6 +139,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">{{ t("org_depth.reviews_empty") }}</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha.org_depth.reviews_empty") }}</div>
   {% endif %}
 {% endblock %}

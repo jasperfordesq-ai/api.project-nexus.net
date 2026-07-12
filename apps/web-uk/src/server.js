@@ -1473,12 +1473,33 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
       const reviews = Array.isArray(reviewsData.reviews)
         ? reviewsData.reviews
         : (Array.isArray(reviewsPayload?.reviews) ? reviewsPayload.reviews : []);
+      const opportunityCount = Number(stats.opportunity_count ?? opportunities.length);
+      const rawVolunteerCount = organisation.volunteer_count ?? stats.volunteer_count;
+      const volunteerCount = rawVolunteerCount === null || rawVolunteerCount === undefined
+        ? null
+        : Number(rawVolunteerCount);
+      const totalHours = Number(stats.total_hours || 0);
+      const reviewCount = Number(stats.review_count ?? reviews.length);
+      const averageRating = Number(stats.average_rating || 0);
 
       res.render('organisation-detail', {
-        title: organisation.name || 'Organisations',
+        title: organisation.name || res.locals.t('govuk_alpha.organisations.title'),
         activeNav: 'explore',
         organisation,
-        orgStats: stats,
+        orgStats: {
+          opportunityCount: Number.isFinite(opportunityCount) ? opportunityCount : opportunities.length,
+          volunteerCount: Number.isFinite(volunteerCount) ? volunteerCount : null,
+          totalHoursLabel: res.locals.formatLocaleNumber(Number.isFinite(totalHours) ? totalHours : 0, {
+            minimumFractionDigits: Number.isInteger(totalHours) ? 0 : 1,
+            maximumFractionDigits: 1
+          }),
+          reviewCount: Number.isFinite(reviewCount) ? reviewCount : reviews.length,
+          averageRating: Number.isFinite(averageRating) ? Math.max(0, Math.min(5, averageRating)) : 0,
+          averageRatingLabel: res.locals.formatLocaleNumber(
+            Number.isFinite(averageRating) ? Math.max(0, Math.min(5, averageRating)) : 0,
+            { minimumFractionDigits: 1, maximumFractionDigits: 1 }
+          )
+        },
         orgOpportunities: opportunities.map((opportunity) => {
           const description = opportunity.description || '';
           return {
@@ -1486,10 +1507,20 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
             summary: description.length > 180 ? `${description.slice(0, 177)}...` : description
           };
         }),
-        orgReviews: reviews,
+        orgReviews: reviews.map((review) => {
+          const author = review?.author && typeof review.author === 'object' ? review.author : {};
+          const rating = Number(review?.rating || 0);
+          return {
+            ...review,
+            authorName: String(author.name || '').trim() || res.locals.t('emails.common.fallback_someone'),
+            authorAvatar: author.avatar || '',
+            rating: Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.trunc(rating))) : 0
+          };
+        }),
         contactEmail: organisation.contact_email || organisation.email || '',
         website,
-        websiteHref
+        websiteHref,
+        jobVacanciesEnabled: featureEnabled(req.accessibleRouting?.tenant || {}, 'job_vacancies', true)
       });
     })
     .catch((error) => {

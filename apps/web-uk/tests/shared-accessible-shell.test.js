@@ -15642,7 +15642,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community Club');
     expect(response.text).toContain('A volunteer organisation supporting local residents');
     expect(response.text).toContain('href="mailto:hello@example.test"');
+    expect(response.text).toContain('Contact email (optional)');
     expect(response.text).toContain('href="https://example.test"');
+    expect(response.text).toContain('(opens in new tab)');
     expect(response.text).toContain('href="/organisations/42/jobs"');
     expect(response.text).toContain('View job openings');
     expect(response.text).toContain('About this organisation');
@@ -15652,19 +15654,45 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('5');
     expect(response.text).toContain('Hours contributed');
     expect(response.text).toContain('17.5');
+    expect(response.text).toContain('4.5 out of 5');
     expect(response.text).toContain('Volunteer reviews');
-    expect(response.text).toContain('Open volunteering opportunities posted by Community Club.');
+    expect(response.text).toContain('Current opportunities at Community Club.');
     expect(response.text).toContain('href="/volunteering/opportunities/77"');
     expect(response.text).toContain('Community Kitchen Helper');
     expect(response.text).toContain('Remote');
-    expect(response.text).toContain('View opportunity');
+    expect(response.text).toContain('View and apply');
     expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
     expect(response.text).toContain('Apply to volunteer');
     expect(response.text).toContain('Aisha Khan');
-    expect(response.text).toContain('5 out of 5');
+    expect(response.text).toContain('Rated 5 out of 5');
     expect(response.text).toContain('Helpful and welcoming.');
     expect(response.text).not.toContain('There are no current volunteering opportunities at this organisation.');
     expect(response.text).not.toContain('This organisation has no reviews yet.');
+  });
+
+  it('hides the organisation jobs link when the tenant jobs feature is disabled', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        features: { volunteering: true, job_vacancies: false }
+      }
+    });
+    api.getVolunteerOrganisation.mockResolvedValueOnce({
+      data: { id: 42, name: 'Community Club', public_contract: { id: 42, name: 'Community Club' } }
+    });
+    api.getOrganisationOpportunities.mockResolvedValueOnce({ data: [] });
+    api.getOrganisationReviews.mockResolvedValueOnce({ data: { reviews: [] } });
+
+    const response = await request(app)
+      .get('/acme/accessible/organisations/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('/acme/accessible/organisations/42/jobs');
+    expect(response.text).not.toContain('View job openings');
   });
 
   it('keeps volunteer organisation jobs empty rather than crossing into the separate jobs organisation IDs', async () => {
