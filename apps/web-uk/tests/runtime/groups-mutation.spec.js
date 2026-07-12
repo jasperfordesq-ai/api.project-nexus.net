@@ -74,6 +74,7 @@ test('certifies a disposable private group and its owner-managed content through
   const discussionTitle = `Disposable discussion ${runId}`;
   const discussionReply = `Disposable discussion reply ${runId}`;
   const pollQuestion = `Disposable poll ${runId}?`;
+  const pollComment = `Disposable poll comment ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -302,6 +303,27 @@ test('certifies a disposable private group and its owner-managed content through
     expect(createdPoll).toBeTruthy();
     pollId = Number(createdPoll.id);
     expect(pollId).toBeGreaterThan(0);
+
+    await page.goto(`${mountPath}/polls/${pollId}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText(pollQuestion);
+    await page.locator('input[name="option_id"]').first().check();
+    const pollVoteResponse = await submit(page, `/polls/${pollId}/vote`, page.locator('form[action$="/vote"] button'));
+    expect(pollVoteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await page.goto(`${mountPath}/polls/${pollId}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.getByText('Your choice', { exact: true })).toHaveCount(1);
+
+    const pollLikeResponse = await submit(page, `/polls/${pollId}/like`, page.locator('form[action$="/like"] button'));
+    expect(pollLikeResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('form[action$="/like"] button')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator(`#poll-comment-${pollId}`).fill(pollComment);
+    const pollCommentResponse = await submit(page, `/polls/${pollId}/comment`, page.locator('form[action$="/comment"] button'));
+    expect(pollCommentResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(pollComment, { exact: true })).toHaveCount(1);
+    await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/polls/parity/manage`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     const pollCard = page.locator(`#poll-${pollId}`);

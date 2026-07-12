@@ -10,6 +10,7 @@ const {
   getPollCategories,
   getPollRankedResults,
   getPollExport,
+  getFeedItemV2,
   getComments,
   createPoll,
   deletePoll,
@@ -410,7 +411,19 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   const id = Number(req.params.id);
-  const poll = normalizePoll(dataFrom(await getPoll(token, id)), res.locals.t);
+  const [pollResult, feedItemResult] = await Promise.all([
+    getPoll(token, id),
+    Promise.resolve(getFeedItemV2(token, 'poll', id)).catch(() => null)
+  ]);
+  const pollData = asObject(dataFrom(pollResult));
+  const feedItem = asObject(dataFrom(feedItemResult));
+  const poll = normalizePoll({
+    ...pollData,
+    like_count: feedItem.likes_count ?? pollData.like_count ?? pollData.likes_count,
+    has_liked: feedItem.is_liked === undefined
+      ? pollData.has_liked ?? pollData.hasLiked
+      : booleanFrom(feedItem.is_liked)
+  }, res.locals.t);
   let comments = [];
   let commentsTotal = 0;
   if (poll.id !== null) {

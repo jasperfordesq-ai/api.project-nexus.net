@@ -13298,8 +13298,6 @@ describe('shared accessible frontend shell', () => {
       total_votes: 5,
       results_visible: false,
       is_creator: true,
-      like_count: 2,
-      has_liked: true,
       options: [
         { id: 7, text: 'Community garden', vote_count: 3, percentage: 60 },
         { id: 8, text: 'Tool library', vote_count: 2, percentage: 40 }
@@ -13343,6 +13341,7 @@ describe('shared accessible frontend shell', () => {
     api.getPolls.mockResolvedValue({ data: [openPoll, rankedPoll, closedPoll], meta: { has_more: false } });
     api.getPollCategories.mockResolvedValue({ data: ['community', 'skills'] });
     api.getPoll.mockResolvedValue({ data: openPoll });
+    api.getFeedItemV2.mockResolvedValue({ data: { id: 42, type: 'poll', likes_count: 2, is_liked: 1 } });
     api.getComments.mockResolvedValue({
       data: {
         comments: [
@@ -13414,6 +13413,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(api.getPoll).toHaveBeenCalledWith('test-token', 42);
+    expect(api.getFeedItemV2).toHaveBeenCalledWith('test-token', 'poll', 42);
     expect(api.getComments).toHaveBeenCalledWith('test-token', {
       target_type: 'poll',
       target_id: 42
@@ -13422,6 +13422,7 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Which project should happen next?');
     expect(detail.text).toContain('Likes and comments');
     expect(detail.text).toContain('2 likes');
+    expect(detail.text).toContain('aria-pressed="true"');
     expect(detail.text).toContain('1 comment');
     expect(detail.text).toContain('The garden would be brilliant.');
     expect(detail.text).toContain('Your comment has been posted.');
