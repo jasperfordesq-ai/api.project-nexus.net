@@ -23180,7 +23180,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed direct conversation alias for a recipient', async () => {
     const api = require('../src/lib/api');
-    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Signed in member' } });
     api.callListingApi.mockResolvedValueOnce({
       data: { id: 42, title: 'Bike repair kit' }
     });
@@ -23253,6 +23253,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/messages/77/archive"');
     expect(response.text).toContain('Back to messages');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    const errorResponse = await request(app)
+      .get('/messages/new/77?cursor=older-page&status=attachment-too-many')
+      .set('Cookie', signedCookieHeader());
+
+    expect(errorResponse.status).toBe(200);
+    expect(errorResponse.text).toContain('class="govuk-error-summary"');
+    expect(errorResponse.text).toContain('You can attach up to 5 files.');
+    expect(errorResponse.text).not.toContain('govuk-notification-banner--success');
   });
 
   it('keeps both direct conversation URLs on the Laravel view contract and blocks restricted composers', async () => {

@@ -5536,6 +5536,22 @@ Restriction/feature-gate depth, live group mutation effects, exact relative
 dates, direct-conversation contextual localization, manual assistive-technology
 review, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Default-English Direct Message Parity
+
+Direct conversation titles, controls, warnings, member/sender fallbacks, and
+whitelisted success/error outcomes now use Laravel's exact catalogs. This adds
+the source attachment, voice, translation, edit/delete, and safeguarding
+states that the former hard-coded map omitted; attachment-limit failures are
+regression-tested as error summaries rather than success banners.
+
+Focused coverage passed 10/10. Full Jest passed `45/45` suites and
+`1,460/1,460` tests with green lint and the 285-template zero-match audit. A
+safe live group lifecycle was not added because Laravel exposes no group-delete
+endpoint: self-leave retains the conversation/messages and can promote another
+participant. Restriction/feature-gate depth, exact relative dates, safe live
+mutation depth, manual assistive-technology review, and ASP.NET compatibility
+remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

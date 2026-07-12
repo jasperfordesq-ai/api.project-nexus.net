@@ -199,33 +199,40 @@ function groupStatus(status, t) {
   };
 }
 
-function directStatusMessage(status) {
-  const messages = {
-    'message-sent': 'Your message has been sent.',
-    'message-edited': 'Your message has been updated.',
-    'message-deleted': 'Your message has been deleted.',
-    'translate-done': 'The message has been translated.'
-  };
-  return messages[trimmed(status)] || '';
-}
+const DIRECT_SUCCESS_STATUS_KEYS = {
+  'message-sent': 'govuk_alpha.messages.sent',
+  'message-edited': 'govuk_alpha.messages.edited_success',
+  'message-deleted': 'govuk_alpha.messages.deleted_success',
+  'translate-done': 'govuk_alpha_messages.translate.done'
+};
 
-function directErrorMessage(status) {
-  const messages = {
-    'message-empty': 'Enter a message before sending.',
-    'message-disabled': 'Direct messaging is currently turned off.',
-    'message-failed': 'We could not send your message.',
-    'message-edit-failed': 'We could not update your message.',
-    'message-edit-forbidden': 'You cannot update that message.',
-    'message-edit-expired': 'That message can no longer be edited.',
-    'message-delete-failed': 'We could not delete your message.',
-    'translate-unavailable': 'Translation is not available for this message.',
-    'translate-empty': 'There is no text to translate.',
-    'translate-failed': 'We could not translate the message.',
-    'attachment-failed': 'We could not upload the attachment.',
-    'voice-required': 'Choose a voice note before sending.',
-    'voice-failed': 'We could not upload the voice note.'
-  };
-  return messages[trimmed(status)] || '';
+const DIRECT_ERROR_STATUS_KEYS = {
+  'message-empty': 'govuk_alpha.messages.empty_message',
+  'message-disabled': 'govuk_alpha.messages.disabled_detail',
+  'message-failed': 'govuk_alpha.messages.failed',
+  'message-edit-forbidden': 'govuk_alpha.messages.edit_forbidden',
+  'message-edit-expired': 'govuk_alpha.messages.edit_expired',
+  'message-edit-failed': 'govuk_alpha.messages.edit_failed',
+  'message-delete-failed': 'govuk_alpha.messages.delete_failed',
+  'translate-failed': 'govuk_alpha_messages.translate.failed',
+  'translate-unavailable': 'govuk_alpha_messages.translate.unavailable',
+  'translate-empty': 'govuk_alpha_messages.translate.empty',
+  'attachment-too-many': 'govuk_alpha_messages.attachments.error_too_many',
+  'attachment-failed': 'govuk_alpha_messages.attachments.error_failed',
+  'attachment-invalid': 'govuk_alpha_messages.attachments.error_invalid',
+  'voice-required': 'govuk_alpha_messages.voice.error_required',
+  'voice-failed': 'govuk_alpha_messages.voice.error_failed',
+  'message-vetting-required': 'safeguarding.errors.vetting_required_title',
+  'message-contact-restricted': 'safeguarding.errors.contact_restricted_title',
+  'message-policy-unavailable': 'safeguarding.errors.policy_unavailable_title'
+};
+
+function directStatus(status, t) {
+  const value = trimmed(status);
+  const successKey = DIRECT_SUCCESS_STATUS_KEYS[value];
+  if (successKey) return { type: 'success', message: t(successKey) };
+  const errorKey = DIRECT_ERROR_STATUS_KEYS[value];
+  return errorKey ? { type: 'error', message: t(errorKey) } : null;
 }
 
 function groupName(group, t = null) {
@@ -249,7 +256,7 @@ function senderName(message, currentUserId, t = null) {
     || (t ? t('govuk_alpha.members.unknown_member') : 'Unknown member');
 }
 
-function conversationOtherUser(conversation, fallbackId) {
+function conversationOtherUser(conversation, fallbackId, t = null) {
   const otherUser = conversation && typeof conversation.other_user === 'object'
     ? conversation.other_user
     : (conversation && typeof conversation.otherUser === 'object' ? conversation.otherUser : {});
@@ -257,7 +264,7 @@ function conversationOtherUser(conversation, fallbackId) {
     id: positiveInteger(otherUser.id) || positiveInteger(conversation && conversation.other_user_id) || fallbackId,
     name: trimmed(otherUser.name || otherUser.full_name || otherUser.fullName)
       || trimmed(conversation && (conversation.other_user_name || conversation.otherUserName))
-      || `Member ${fallbackId}`
+      || (t ? t('govuk_alpha.members.unknown_member') : `Member ${fallbackId}`)
   };
 }
 
@@ -277,11 +284,11 @@ function directConversationApiPath(userId, query) {
   return `/${userId}?${search.toString()}`;
 }
 
-function directConversationFrom(result, userId, currentUserId) {
+function directConversationFrom(result, userId, currentUserId, t = null) {
   const data = dataFrom(result);
   const meta = (result && result.meta) || (data && data.meta) || {};
   const rawConversation = meta.conversation || (data && data.conversation) || {};
-  const otherUser = conversationOtherUser(rawConversation, userId);
+  const otherUser = conversationOtherUser(rawConversation, userId, t);
   const editCutoff = Date.now() - (24 * 60 * 60 * 1000);
   const messages = listFrom(data).map(message => {
     const messageId = positiveInteger(message && message.id);
@@ -295,7 +302,7 @@ function directConversationFrom(result, userId, currentUserId) {
       ...message,
       id: messageId || message.id,
       body: String(message.body || message.content || '').slice(0, 10000),
-      displaySenderName: senderName(message, currentUserId),
+      displaySenderName: senderName(message, currentUserId, t),
       isOwn,
       isDeleted,
       canManage,
@@ -374,7 +381,7 @@ async function renderDirectConversation(req, res, userId) {
 
   const profile = dataFrom(profileResult);
   const currentUserId = positiveInteger(profile && profile.id);
-  const normalized = directConversationFrom(messagesResult, userId, currentUserId);
+  const normalized = directConversationFrom(messagesResult, userId, currentUserId, res.locals.t);
   const restriction = dataFrom(restrictionResult) || {};
   const listing = listingResult ? dataFrom(listingResult) : null;
   const query = trimmed(req.query.q);
@@ -398,7 +405,7 @@ async function renderDirectConversation(req, res, userId) {
   );
 
   return res.render('messages/direct-conversation', {
-    title: `Conversation with ${normalized.conversation.otherUser.name}`,
+    title: res.locals.t('govuk_alpha.messages.conversation_title', { name: normalized.conversation.otherUser.name }),
     conversation: normalized.conversation,
     messages: normalized.messages,
     meta: normalized.meta,
@@ -406,8 +413,7 @@ async function renderDirectConversation(req, res, userId) {
     listing,
     listingId,
     query,
-    statusMessage: directStatusMessage(req.query.status),
-    errorMessage: directErrorMessage(req.query.status),
+    directStatus: directStatus(req.query.status, res.locals.t),
     currentUser: profile,
     currentUserId,
     directMessagingEnabled,

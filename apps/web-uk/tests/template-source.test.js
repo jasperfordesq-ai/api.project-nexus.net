@@ -2141,7 +2141,7 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(directConversation.match(/class="govuk-back-link"/g)).toHaveLength(1);
     expect(directConversation).toContain("urlFor('/messages')");
-    expect(directConversation).toContain('t("actions.back_to_messages")');
+    expect(directConversation).toContain('t("govuk_alpha.actions.back_to_messages")');
     expect(directConversation).not.toContain('govukBreadcrumbs');
   });
 });
