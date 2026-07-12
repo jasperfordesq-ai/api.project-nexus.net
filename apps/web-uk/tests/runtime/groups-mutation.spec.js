@@ -63,12 +63,14 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('creates, updates, and deletes a disposable private group through Web UK', async ({ page }) => {
+test('certifies a disposable private group and its owner-managed content through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdName = `Codex disposable group ${runId}`;
   const updatedName = `${createdName} updated`;
   const fileName = `codex-disposable-${runId}.txt`;
   const fileBody = `Disposable group file ${runId}\n`;
+  const announcementTitle = `Disposable announcement ${runId}`;
+  const updatedAnnouncementTitle = `${announcementTitle} updated`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -146,6 +148,43 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     expect(fileDeleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.getByText(fileName, { exact: true })).toHaveCount(0);
+
+    await page.goto(`${mountPath}/groups/${groupId}/announcements`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Announcements');
+    await page.locator('#ann-title').fill(announcementTitle);
+    await page.locator('#ann-content').fill('Disposable announcement content created through the Web UK owner workflow.');
+    const announcementCreateResponse = await submit(page, `/groups/${groupId}/announcements`, page.locator('form:has(#ann-title) button[type="submit"]'));
+    expect(announcementCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    let announcementCard = page.locator('.govuk-summary-card', { hasText: announcementTitle });
+    await expect(announcementCard).toHaveCount(1);
+    await expect(announcementCard).toContainText('Disposable announcement content created through the Web UK owner workflow.');
+    await expectAccessibleReflow(page);
+
+    const announcementEditHref = await announcementCard.locator('a[href$="/edit"]').getAttribute('href');
+    expect(announcementEditHref).toBeTruthy();
+    const announcementId = Number(announcementEditHref.match(/\/announcements\/(\d+)\/edit$/)?.[1]);
+    expect(announcementId).toBeGreaterThan(0);
+    await page.goto(new URL(announcementEditHref, page.url()).toString(), { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('#edit-ann-title')).toHaveValue(announcementTitle);
+    await page.locator('#edit-ann-title').fill(updatedAnnouncementTitle);
+    await page.locator('#edit-ann-content').fill('Updated disposable announcement content.');
+    const announcementUpdateResponse = await submit(page, `/groups/${groupId}/announcements/${announcementId}/edit`, page.locator('form:has(#edit-ann-title) button[type="submit"]'));
+    expect(announcementUpdateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    announcementCard = page.locator('.govuk-summary-card', { hasText: updatedAnnouncementTitle });
+    await expect(announcementCard).toContainText('Updated disposable announcement content.');
+
+    const announcementPinResponse = await submit(page, `/groups/${groupId}/announcements/${announcementId}/pin`, announcementCard.locator('form[action$="/pin"] button[type="submit"]'));
+    expect(announcementPinResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    announcementCard = page.locator('.govuk-summary-card', { hasText: updatedAnnouncementTitle });
+    await expect(announcementCard.locator('.govuk-tag')).toHaveText('Pinned');
+
+    const announcementDeleteResponse = await submit(page, `/groups/${groupId}/announcements/${announcementId}/delete`, announcementCard.locator('form[action$="/delete"] button[type="submit"]'));
+    expect(announcementDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(updatedAnnouncementTitle, { exact: true })).toHaveCount(0);
 
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);

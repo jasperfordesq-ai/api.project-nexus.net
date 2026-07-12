@@ -4918,6 +4918,17 @@ keyboard-focusable horizontal scroll region, with source regression coverage.
 This certifies one real member/uploader path, not every role, tenant gate,
 manual assistive-technology behavior, or ASP.NET compatibility.
 
+## 2026-07-12 Group Announcement Lifecycle Certification
+
+The same disposable owner-group gate now creates an announcement, proves its
+persisted content, loads and submits the populated edit form, proves the
+updated content, pins it, proves the pinned state, deletes it, and proves final
+absence before deleting the parent group. The expanded `1/1` Laravel-backed
+run passed in `159.8` seconds at 320 CSS pixels with structural, reflow, and
+serious/critical axe assertions and retained no fixture. This certifies the
+owner path only; active-member/non-admin behavior, tenant gates, manual
+assistive-technology depth, and ASP.NET compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:
