@@ -13014,6 +13014,46 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain(ar('govuk_alpha_feed.item.no_comments'));
   });
 
+  it('renders recursive polymorphic comments with reply, reaction, and owner controls', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ id: 101, name: 'Current member' });
+    api.getFeedItemV2.mockResolvedValueOnce({
+      data: { id: 42, type: 'listing', content: 'A shared cargo bike.', author: { id: 77, name: 'Grace Hopper' } }
+    });
+    api.getComments.mockResolvedValueOnce({ data: { comments: [{
+      id: 12,
+      content: 'I can help with repairs.',
+      created_at: '2026-07-12T10:00:00Z',
+      author: { id: 101, name: 'Current member', avatar: '/avatars/current.jpg' },
+      reactions: { celebrate: 2 },
+      user_reactions: ['celebrate'],
+      replies: [{
+        id: 13,
+        content: 'Thank you.',
+        author: { id: 77, name: 'Grace Hopper' },
+        replies: []
+      }]
+    }] } });
+
+    const response = await request(app)
+      .get('/feed/item/listing/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('nexus-alpha-comments-list--nested');
+    expect(response.text).toContain('I can help with repairs.');
+    expect(response.text).toContain('Thank you.');
+    expect(response.text).toContain('src="/avatars/current.jpg"');
+    expect(response.text).toContain('action="/feed/comments/12/react"');
+    expect(response.text).toContain('Celebrate (2)');
+    expect(response.text).toContain('nexus-alpha-reaction--active');
+    expect(response.text).toContain('action="/feed/items/listing/42/comments"');
+    expect(response.text).toContain('name="parent_id" value="12"');
+    expect(response.text).toContain('action="/feed/comments/12/update"');
+    expect(response.text).toContain('action="/feed/comments/12/delete"');
+    expect(response.text).not.toContain('action="/feed/comments/13/update"');
+  });
+
   it('keeps public feed permalink documents available when Laravel protects the v2 payload APIs', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
@@ -13066,7 +13106,7 @@ describe('shared accessible frontend shell', () => {
       target_type: 'post',
       target_id: 42
     });
-    expect(response.text).toContain('Posted by Grace Hopper');
+    expect(response.text).toContain('<strong>Grace Hopper</strong>');
     expect(response.text).toContain('I can bring a repair stand.');
     expect(response.text).not.toContain('No comments yet.');
   });

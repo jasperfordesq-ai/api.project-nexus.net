@@ -4,6 +4,7 @@
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
+{% from "feed/_comments.njk" import commentList %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
@@ -130,16 +131,7 @@
         {% if item.isCommentable %}
           <h2 class="govuk-heading-m govuk-!-margin-top-4">{{ t("govuk_alpha_feed.item.comments_heading") }}</h2>
           {% if comments and comments.length %}
-            <ul class="govuk-list nexus-alpha-card-list">
-              {% for comment in comments %}
-                <li class="nexus-alpha-card">
-                  <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-                    {{ t("govuk_alpha_feed.item.posted_by", { name: comment.author.name or comment.author_name or t("govuk_alpha_feed.item.unknown_author") }) }}
-                  </p>
-                  <p class="govuk-body">{{ comment.content or comment.body }}</p>
-                </li>
-              {% endfor %}
-            </ul>
+            {{ commentList(comments, 0, item, requiresAuth, currentUserId, csrfToken, urlFor, t) }}
           {% else %}
             <p class="govuk-body">{{ t("govuk_alpha_feed.item.no_comments") }}</p>
           {% endif %}

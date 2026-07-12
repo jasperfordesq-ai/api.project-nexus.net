@@ -415,6 +415,9 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (r
   const comments = token && item.isCommentable
     ? feedCommentRows(await getComments(token, { target_type: item.type, target_id: item.id }).catch(() => ({ data: { comments: [] } })))
     : [];
+  const currentUserId = token
+    ? profileId(await getRequestProfile(req, token).catch(() => null))
+    : null;
 
   res.render('feed/item', {
     title: item.title || item.typeLabel,
@@ -424,6 +427,7 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (r
     item,
     itemUnavailable,
     comments,
+    currentUserId,
     requiresAuth: !token,
     statusMessage: feedItemStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
