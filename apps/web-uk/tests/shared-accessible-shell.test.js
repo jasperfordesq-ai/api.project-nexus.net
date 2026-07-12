@@ -5179,7 +5179,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed Federation connections page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
-      if (pathValue === '/connections?status=pending_received&limit=100&offset=0') {
+      if (pathValue === '/connections?status=pending_received&limit=51&offset=0') {
         return {
           data: [
             {
@@ -5210,7 +5210,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/connections?status=pending_received&limit=100&offset=0');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/connections?status=pending_received&limit=51&offset=0');
     expect(response.text).toContain('href="/federation"');
     expect(response.text).toContain('Federated connections');
     expect(response.text).toContain('People you are connected with across the community network.');
@@ -5225,6 +5225,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('Community: North Timebank');
     expect(response.text).toContain('Requested');
+    expect(response.text).toContain('1 July 2026');
     expect(response.text).toContain('Could we connect before the workshop?');
     expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
     expect(response.text).toContain('action="/federation/connections/91/accept"');
@@ -16409,6 +16410,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Save as draft');
     expect(response.text).toContain('Post opportunity');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Blade Federation connection permission and load-failure states', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403));
+
+    const forbidden = await request(app)
+      .get('/federation/connections')
+      .set('Cookie', signedCookieHeader());
+
+    expect(forbidden.status).toBe(200);
+    expect(forbidden.text).toContain('Federated connections are not available for this community right now.');
+    expect(forbidden.text).not.toContain('class="govuk-tabs"');
+
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiError('Unavailable', 503));
+    const unavailable = await request(app)
+      .get('/federation/connections?tab=sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('We could not load your connections. Please try again.');
+    expect(unavailable.text).toContain('href="/federation/connections?tab=sent"');
+  });
+
+  it('paginates Federation connections with Blade-compatible 50-row pages', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockResolvedValue({
+      data: Array.from({ length: 51 }, (_, index) => ({
+        id: 100 + index,
+        user_id: 200 + index,
+        name: `Member ${index + 1}`,
+        tenant_id: 12,
+        tenant_name: 'North Timebank',
+        status: 'accepted'
+      }))
+    });
+
+    const response = await request(app)
+      .get('/federation/connections?tab=accepted&page=2')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/connections?status=accepted&limit=51&offset=50');
+    expect(response.text).toContain('Member 50');
+    expect(response.text).not.toContain('Member 51');
+    expect(response.text).toContain('href="/federation/connections?tab=accepted&amp;page=1#connections-list"');
+    expect(response.text).toContain('href="/federation/connections?tab=accepted&amp;page=3#connections-list"');
   });
 
   it('replays safe create-job input after title validation', async () => {

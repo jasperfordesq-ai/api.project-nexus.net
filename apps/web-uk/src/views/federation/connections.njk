@@ -6,15 +6,15 @@
 {% extends "layouts/base.njk" %}
 
 {% set tabs = [
-  { id: "accepted", label: "Connections", empty: "You have no federated connections yet." },
-  { id: "received", label: "Requests received", empty: "You have no incoming connection requests." },
-  { id: "sent", label: "Requests sent", empty: "You have no outgoing connection requests." }
+  { id: "accepted", labelKey: "fed2.connections.tab_accepted", emptyKey: "fed2.connections.empty_accepted" },
+  { id: "received", labelKey: "fed2.connections.tab_received", emptyKey: "fed2.connections.empty_received" },
+  { id: "sent", labelKey: "fed2.connections.tab_sent", emptyKey: "fed2.connections.empty_sent" }
 ] %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("fed2.connections.back") }}</a>
 
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <span class="govuk-caption-xl">{{ t("fed2.connections.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("fed2.connections.title") }}</h1>
   <p class="govuk-body-l">{{ t("fed2.connections.description") }}</p>
 
@@ -45,12 +45,15 @@
     {% endif %}
   {% endif %}
 
+  {% if not allowed %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("fed2.connections.not_available") }}</p></div>
+  {% else %}
   <div class="govuk-tabs" data-module="govuk-tabs">
     <h2 class="govuk-tabs__title">{{ t("polish_federation.connections_tabs_label") }}</h2>
     <ul class="govuk-tabs__list">
       {% for tab in tabs %}
         <li class="govuk-tabs__list-item{% if activeTab == tab.id %} govuk-tabs__list-item--selected{% endif %}">
-          <a class="govuk-tabs__tab" href="{{ urlFor('/federation/connections?tab=' + tab.id) }}" id="tab-{{ tab.id }}"{% if activeTab == tab.id %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+          <a class="govuk-tabs__tab" href="{{ urlFor('/federation/connections?tab=' + tab.id) }}" id="tab-{{ tab.id }}"{% if activeTab == tab.id %} aria-current="page"{% endif %}>{{ t(tab.labelKey) }}</a>
         </li>
       {% endfor %}
     </ul>
@@ -58,10 +61,20 @@
     {% for tab in tabs %}
       <div class="govuk-tabs__panel{% if activeTab != tab.id %} govuk-tabs__panel--hidden{% endif %}" id="panel-{{ tab.id }}">
         {% if activeTab == tab.id %}
-          {% if connections.length == 0 %}
-            <div class="govuk-inset-text"><p class="govuk-body">{{ tab.empty }}</p></div>
+          {% if loadError %}
+            <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+              <div role="alert">
+                <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+                <div class="govuk-error-summary__body">
+                  <p class="govuk-body">{{ t("fed2.connections.load_error") }}</p>
+                  <ul class="govuk-list govuk-error-summary__list"><li><a href="{{ urlFor('/federation/connections?tab=' + tab.id) }}">{{ t("fed2.connections.try_again") }}</a></li></ul>
+                </div>
+              </div>
+            </div>
+          {% elif connections.length == 0 %}
+            <div class="govuk-inset-text"><p class="govuk-body">{{ t(tab.emptyKey) }}</p></div>
             {% if tab.id == "accepted" %}
-              <a href="{{ urlFor('/federation/members') }}" role="button" draggable="false" class="govuk-button" data-module="govuk-button">Browse members</a>
+              <a href="{{ urlFor('/federation/members') }}" role="button" draggable="false" class="govuk-button" data-module="govuk-button">{{ t("fed2.connections.browse_members") }}</a>
             {% endif %}
           {% else %}
             <div class="nexus-alpha-card-list" id="connections-list">
@@ -69,21 +82,21 @@
                 <article class="nexus-alpha-card">
                   <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(connection.href) }}">{{ connection.name }}</a></h2>
                   <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-                    <strong class="govuk-tag govuk-tag--grey">Community: {{ connection.tenantName }}</strong>
+                    <strong class="govuk-tag govuk-tag--grey">{{ t("fed2.connections.community_label") }}: {{ connection.tenantName }}</strong>
                   </p>
 
-                  {% if connection.createdAt %}
-                    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Requested: {{ connection.createdAt | date }}</p>
+                  {% if connection.createdAtLabel %}
+                    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("fed2.connections.created_label") }}: {{ connection.createdAtLabel }}</p>
                   {% endif %}
 
                   {% if connection.isSent %}
-                    <p class="govuk-body-s govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">Pending</strong></p>
+                    <p class="govuk-body-s govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">{{ t("fed2.connections.pending_label") }}</strong></p>
                   {% endif %}
 
                   {% if connection.isReceived and connection.message %}
                     <div class="govuk-inset-text govuk-!-margin-top-2 govuk-!-margin-bottom-2">
                       <p class="govuk-body govuk-!-margin-bottom-0">
-                        <span class="govuk-visually-hidden">Their message: </span>{{ connection.message }}
+                        <span class="govuk-visually-hidden">{{ t("fed2.connections.request_message_label") }}: </span>{{ connection.message }}
                       </p>
                     </div>
                   {% endif %}
@@ -92,28 +105,35 @@
                     <div class="govuk-button-group">
                       <form method="post" action="{{ urlFor('/federation/connections/' + (connection.id | string) + '/accept') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        <button type="submit" class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Accept</button>
+                        <button type="submit" class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("fed2.connections.accept") }}</button>
                       </form>
                       <form method="post" action="{{ urlFor('/federation/connections/' + (connection.id | string) + '/reject') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Decline</button>
+                        <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("fed2.connections.reject") }}</button>
                       </form>
                     </div>
                   {% elif connection.isAccepted %}
                     <div class="govuk-button-group">
-                      <a class="govuk-link" href="{{ urlFor(connection.href) }}">Send a message</a>
+                      <a class="govuk-link" href="{{ urlFor(connection.href) }}">{{ t("fed2.connections.message") }}</a>
                       <form method="post" action="{{ urlFor('/federation/connections/' + (connection.id | string) + '/remove') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                        <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Remove connection</button>
+                        <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("fed2.connections.remove") }}</button>
                       </form>
                     </div>
                   {% endif %}
                 </article>
               {% endfor %}
             </div>
+            {% if page > 1 or hasMore %}
+              <nav class="govuk-pagination" aria-label="{{ t('fed2.connections.title') }}">
+                {% if page > 1 %}<div class="govuk-pagination__prev"><a class="govuk-link govuk-pagination__link" href="{{ urlFor('/federation/connections?tab=' + tab.id + '&page=' + ((page - 1) | string)) }}#connections-list" rel="prev"><span class="govuk-pagination__link-title">{{ t("fed2.connections.pagination_previous") }}</span></a></div>{% endif %}
+                {% if hasMore %}<div class="govuk-pagination__next"><a class="govuk-link govuk-pagination__link" href="{{ urlFor('/federation/connections?tab=' + tab.id + '&page=' + ((page + 1) | string)) }}#connections-list" rel="next"><span class="govuk-pagination__link-title">{{ t("fed2.connections.pagination_next") }}</span></a></div>{% endif %}
+              </nav>
+            {% endif %}
           {% endif %}
         {% endif %}
       </div>
     {% endfor %}
   </div>
+  {% endif %}
 {% endblock %}

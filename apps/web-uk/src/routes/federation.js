@@ -219,17 +219,21 @@ function connectionHref(connection) {
   return id ? `/federation/members/${encodeURIComponent(id)}${query}` : '/federation/members';
 }
 
-function normalizeConnection(connection) {
+function normalizeConnection(connection, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
+  const createdAt = connection && connection.created_at ? connection.created_at : '';
   const normalized = {
     id: connection && connection.id,
     userId: connection && (connection.user_id || connection.userId),
-    name: trimmed(connection && connection.name) || 'Unknown member',
+    name: trimmed(connection && connection.name) || t('members.unknown_member'),
     tenantId: connection && (connection.tenant_id || connection.tenantId),
     tenantName: trimmed(connection && (connection.tenant_name || connection.tenantName)),
     status: trimmed(connection && connection.status),
     direction: trimmed(connection && connection.direction),
     message: trimmed(connection && connection.message, 500),
-    createdAt: connection && connection.created_at ? connection.created_at : ''
+    createdAt,
+    createdAtLabel: createdAt ? formatDate(createdAt, { day: 'numeric', month: 'long', year: 'numeric' }) : ''
   };
 
   normalized.href = connectionHref(normalized);
@@ -710,15 +714,13 @@ function onboardingStatusBanner(status, t = (key) => key) {
   return message ? { type: 'error', message } : null;
 }
 
-function connectionStatusBanner(status) {
-  const banners = {
-    'connection-accepted': { type: 'success', message: 'Connection request accepted.' },
-    'connection-rejected': { type: 'success', message: 'Connection request declined.' },
-    'connection-removed': { type: 'success', message: 'Connection removed.' },
-    'connection-action-failed': { type: 'error', message: 'We could not complete that action. Please try again.' }
-  };
-
-  return banners[trimmed(status)] || null;
+function connectionStatusBanner(status, t = (key) => key) {
+  const normalized = trimmed(status);
+  const allowed = new Set(['connection-accepted', 'connection-rejected', 'connection-removed', 'connection-action-failed']);
+  return allowed.has(normalized) ? {
+    type: normalized === 'connection-action-failed' ? 'error' : 'success',
+    message: t(`fed2.connections.status.${normalized}`)
+  } : null;
 }
 
 function messagesStatusBanner(status) {
@@ -1280,24 +1282,53 @@ router.get('/connections', asyncRoute(async (req, res) => {
     received: 'pending_received',
     sent: 'pending_sent'
   }[activeTab];
+  const page = Math.max(1, numberOrZero(req.query.page) || 1);
+  const perPage = 50;
 
   let connectionsResult;
+  let allowed = true;
+  let loadError = false;
   try {
-    connectionsResult = await callFederationApi(token, 'GET', `/connections?status=${statusFilter}&limit=100&offset=0`);
+    connectionsResult = await callFederationApi(token, 'GET', `/connections?status=${statusFilter}&limit=${perPage + 1}&offset=${(page - 1) * perPage}`);
   } catch (error) {
-    if (renderFederationError(error, res)) return undefined;
-    throw error;
+    const errorCodes = error instanceof ApiError && Array.isArray(error.data && error.data.errors)
+      ? error.data.errors.map((item) => trimmed(item && item.code)).filter(Boolean)
+      : [];
+    if (error instanceof ApiError && error.status === 403 && errorCodes.includes('FEDERATION_NOT_ENABLED')) {
+      return redirectTo(res, '/federation/opt-in');
+    }
+    if (error instanceof ApiError && error.status === 401) {
+      return redirectTo(res, '/login?status=auth-required');
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      allowed = false;
+      connectionsResult = { data: [] };
+    } else if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      loadError = true;
+      connectionsResult = { data: [] };
+    } else {
+      throw error;
+    }
   }
 
-  const connections = asList(dataFrom(connectionsResult)).map(normalizeConnection);
+  const rows = asList(dataFrom(connectionsResult));
+  const hasMore = rows.length > perPage;
+  const connections = rows.slice(0, perPage).map((connection) => normalizeConnection(connection, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate
+  }));
 
   return res.render('federation/connections', {
-    title: 'Federated connections',
+    title: res.locals.t('fed2.connections.title'),
     activeNav: 'explore',
     federationActiveTab: 'connections',
     activeTab,
+    allowed,
+    loadError,
+    page,
+    hasMore,
     connections,
-    statusBanner: connectionStatusBanner(req.query.status)
+    statusBanner: connectionStatusBanner(req.query.status, res.locals.t)
   });
 }));
 
