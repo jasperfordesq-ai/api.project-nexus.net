@@ -27,6 +27,9 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.Location).HasMaxLength(500);
             entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.PublicationStatus).HasMaxLength(32);
+            entity.Property(e => e.OperationalStatus).HasMaxLength(32);
 
             // Indexes
             entity.HasIndex(e => e.TenantId);
@@ -34,6 +37,8 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.GroupId);
             entity.HasIndex(e => e.StartsAt);
             entity.HasIndex(e => e.IsCancelled);
+            entity.HasIndex(e => new { e.TenantId, e.PublicationStatus, e.OperationalStatus, e.StartsAt, e.Id })
+                .HasDatabaseName("idx_events_tenant_lifecycle_start");
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -97,10 +102,50 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.ToTable("event_reminders");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ReminderType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(32).IsRequired();
             entity.HasIndex(e => new { e.EventId, e.UserId }).IsUnique();
             entity.HasOne(e => e.Event).WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventStatusHistory>(entity =>
+        {
+            entity.ToTable("event_status_history");
+            entity.Property(e => e.FromPublicationStatus).HasMaxLength(32);
+            entity.Property(e => e.ToPublicationStatus).HasMaxLength(32);
+            entity.Property(e => e.FromOperationalStatus).HasMaxLength(32);
+            entity.Property(e => e.ToOperationalStatus).HasMaxLength(32);
+            entity.Property(e => e.FromLegacyStatus).HasMaxLength(32);
+            entity.Property(e => e.ToLegacyStatus).HasMaxLength(32);
+            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.LifecycleVersion })
+                .IsUnique().HasDatabaseName("uq_event_status_history_version");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.CreatedAt, e.Id })
+                .HasDatabaseName("idx_event_status_history_event");
+            entity.HasIndex(e => new { e.TenantId, e.ActorUserId, e.CreatedAt })
+                .HasDatabaseName("idx_event_status_history_actor");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventDomainOutbox>(entity =>
+        {
+            entity.ToTable("event_domain_outbox");
+            entity.Property(e => e.AggregateStream).HasMaxLength(191);
+            entity.Property(e => e.Action).HasMaxLength(80);
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(191);
+            entity.Property(e => e.ProductionMode).HasMaxLength(32);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.Payload).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique()
+                .HasDatabaseName("uq_event_outbox_tenant_key");
+            entity.HasIndex(e => new { e.Status, e.AvailableAt, e.NextAttemptAt, e.Id })
+                .HasDatabaseName("idx_event_outbox_claim");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.AggregateVersion })
+                .HasDatabaseName("idx_event_outbox_aggregate");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.AggregateStream, e.AggregateVersion, e.Id })
+                .HasDatabaseName("idx_event_outbox_stream");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
     }

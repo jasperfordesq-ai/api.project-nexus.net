@@ -46,6 +46,8 @@ public class NexusDbContext : DbContext
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventRsvp> EventRsvps => Set<EventRsvp>();
+    public DbSet<EventStatusHistory> EventStatusHistories => Set<EventStatusHistory>();
+    public DbSet<EventDomainOutbox> EventDomainOutbox => Set<EventDomainOutbox>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();

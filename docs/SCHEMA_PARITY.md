@@ -15,15 +15,15 @@ blank PostgreSQL replay.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 373 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 121 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 119 | Blank replay applied every recorded EF migration through `20260712163203_GroupInviteAndExportLifecycleParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 122 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 120 | Blank replay applied every recorded EF migration through `20260712175611_EventLifecycleParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 340 | Static table union after adding `group_data_exports`. |
-| Exact matched tables | 149 | Current exact table-name matches. |
-| Missing Laravel tables | 306 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 342 | Static table union after adding event history and outbox. |
+| Exact matched tables | 151 | Current exact table-name matches. |
+| Missing Laravel tables | 304 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -33,8 +33,18 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260712163203_GroupInviteAndExportLifecycleParity` is the current latest
-migration and runtime ID 119. It adds durable invite type, acceptance identity
+`20260712175611_EventLifecycleParity` is the current latest migration and
+runtime ID 120. It safely projects existing `IsCancelled` rows into Laravel's
+publication/operational axes, adds lifecycle moderation/cancellation metadata,
+adds close state to reminders, and creates the exact Laravel table names
+`event_status_history` and `event_domain_outbox`. PostgreSQL triggers reject
+history updates and deletes. All 120 migrations applied to a blank disposable
+PostgreSQL 16 database, EF reports no pending model changes, focused lifecycle
+proof passed 4/4, and the combined admin-event gate passed 10/10. No production
+resource was touched.
+
+`20260712163203_GroupInviteAndExportLifecycleParity` is the preceding migration
+and remains runtime ID 119. It adds durable invite type, acceptance identity
 and timestamps, active membership status, cached group member counts, and the
 Laravel-named `group_data_exports` queue with requester and expiry indexes.
 Existing memberships are preserved as active, invite type is derived from the

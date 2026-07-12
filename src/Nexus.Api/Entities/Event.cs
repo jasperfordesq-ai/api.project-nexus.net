@@ -63,6 +63,23 @@ public class Event : ITenantEntity
     /// Whether the event has been cancelled.
     /// </summary>
     public bool IsCancelled { get; set; } = false;
+    public string Status { get; set; } = "active";
+    public string PublicationStatus { get; set; } = "published";
+    public string OperationalStatus { get; set; } = "scheduled";
+    public long LifecycleVersion { get; set; }
+    public string? LifecycleReason { get; set; }
+    public DateTime? PublicationStatusChangedAt { get; set; }
+    public int? PublicationStatusChangedBy { get; set; }
+    public DateTime? OperationalStatusChangedAt { get; set; }
+    public int? OperationalStatusChangedBy { get; set; }
+    public DateTime? ModerationSubmittedAt { get; set; }
+    public int? ModerationSubmittedBy { get; set; }
+    public DateTime? ModeratedAt { get; set; }
+    public int? ModeratedBy { get; set; }
+    public string? ModerationReason { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public int? CancelledBy { get; set; }
+    public string? CancellationReason { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

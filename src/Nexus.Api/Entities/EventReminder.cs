@@ -14,8 +14,11 @@ public class EventReminder : ITenantEntity
     public int MinutesBefore { get; set; } = 60;
     public string ReminderType { get; set; } = "notification";
     public bool IsSent { get; set; }
+    public string Status { get; set; } = "pending";
+    public string? ClosedReason { get; set; }
     public DateTime? SentAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
     public Tenant? Tenant { get; set; }
     public Event? Event { get; set; }
     public User? User { get; set; }
