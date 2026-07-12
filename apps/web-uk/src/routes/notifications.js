@@ -74,7 +74,7 @@ function categoryFromType(value) {
   return 'other';
 }
 
-function normalizeNotifications(rows, t) {
+function normalizeNotifications(rows, t, formatRelativeTime) {
   return rows.map((notification) => {
     const grouped = boolFrom(notification.is_grouped) && Number(notification.group_count || 0) > 1;
     const read = grouped
@@ -91,7 +91,7 @@ function normalizeNotifications(rows, t) {
       categoryLabel: t(`notifications.types.${category}`),
       categoryColour: CATEGORY_COLOURS[category] || CATEGORY_COLOURS.other,
       displayText: notification.message || notification.body || notification.title || '',
-      displayWhen: notification.latest_at || notification.created_at || null
+      displayWhen: notification.created_at ? formatRelativeTime(notification.created_at) : ''
     };
   });
 }
@@ -118,7 +118,11 @@ router.get('/', asyncRoute(async (req, res) => {
   ]);
 
   const notificationRows = Array.isArray(dataFrom(result)) ? dataFrom(result) : [];
-  const notifications = normalizeNotifications(notificationRows, res.locals.t);
+  const notifications = normalizeNotifications(
+    notificationRows,
+    res.locals.t,
+    res.locals.formatLocaleRelativeTime
+  );
   const counts = dataFrom(countResult) || {};
   const unreadCount = Number(counts.total ?? counts.count ?? 0) || 0;
   const meta = result?.meta || {};

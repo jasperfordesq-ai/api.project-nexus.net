@@ -14973,6 +14973,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel grouped notification inbox with actors, exact links, counts, and cursor navigation', async () => {
     const api = require('../src/lib/api');
+    const createdAt = new Date(Date.now() - (2 * 24 * 60 * 60 * 1000)).toISOString();
+    const latestAt = new Date(Date.now() - (60 * 60 * 1000)).toISOString();
     api.getGroupedNotifications.mockResolvedValueOnce({
       data: [{
         id: 7,
@@ -14988,8 +14990,8 @@ describe('shared accessible frontend shell', () => {
           { id: 42, name: 'Morgan', avatar_url: null }
         ],
         remaining_count: 1,
-        latest_at: '2026-07-09T10:00:00Z',
-        created_at: '2026-07-08T10:00:00Z'
+        latest_at: latestAt,
+        created_at: createdAt
       }],
       meta: { cursor: 'next-page', has_more: true, per_page: 30 }
     });
@@ -15011,6 +15013,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('From Avery, Morgan and 1 others');
     expect(response.text).toContain('href="/feed/posts/7"');
     expect(response.text).toContain('3 grouped');
+    expect(response.text).toContain('2 days ago');
+    expect(response.text).not.toContain('1 hour ago');
     expect(response.text).toContain('name="group_key" value="post_like:/feed/posts/7"');
     expect(response.text).not.toContain('action="/notifications/7/delete"');
     expect(response.text).toContain('href="/notifications?cursor=next-page"');
