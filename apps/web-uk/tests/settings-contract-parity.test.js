@@ -171,6 +171,23 @@ describe('Laravel account and settings contract parity', () => {
     expect(hrefs).not.toContain('/messages');
   });
 
+  it('renders appearance settings from the exact Laravel catalog and ignores unknown statuses', async () => {
+    const response = await request(settingsApp()).get('/settings/appearance?status=appearance-saved');
+    const unknownStatusResponse = await request(settingsApp()).get('/settings/appearance?status=untrusted');
+    const t = createTranslator('en');
+
+    expect(response.status).toBe(200);
+    expect(response.body.locals.title).toBe(t('govuk_alpha_settings.appearance.title'));
+    expect(response.body.locals.statusMessage).toBe(t('govuk_alpha_settings.states.appearance-saved'));
+    expect(response.body.locals.themes).toEqual(['light', 'dark', 'system'].map((theme) => ({
+      value: theme,
+      label: t(`govuk_alpha_settings.appearance.themes.${theme}`),
+      hint: t(`govuk_alpha_settings.appearance.theme_hints.${theme}`),
+      checked: theme === 'system'
+    })));
+    expect(unknownStatusResponse.body.locals.statusMessage).toBe('');
+  });
+
   it('uses exact session, safeguarding, and consent reads and normalizes their v2 envelopes', async () => {
     const response = await request(profileApp({ insuranceEnabled: false })).get('/profile/settings');
 

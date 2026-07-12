@@ -7,12 +7,12 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to settings</a>
+      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">{{ t("govuk_alpha_settings.common.back_to_settings") }}</a>
 
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="appearance-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="appearance-status-title">{{ t("states.success_title") }}</h2>
+            <h2 class="govuk-notification-banner__title" id="appearance-status-title">{{ t("govuk_alpha_settings.common.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -21,7 +21,7 @@
       {% elif statusMessage and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+            <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_settings.common.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#theme">{{ statusMessage }}</a></li>
@@ -31,9 +31,9 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
-      <h1 class="govuk-heading-xl">Appearance</h1>
-      <p class="govuk-body-l">Choose how this service looks for you. Your choice is saved to your account and applied wherever you sign in.</p>
+      <span class="govuk-caption-xl">{{ t("govuk_alpha_settings.appearance.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_settings.appearance.title") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_settings.appearance.description") }}</p>
 
       <form method="post" action="{{ urlFor('/settings/appearance') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -41,7 +41,7 @@
         <div class="govuk-form-group">
           <fieldset class="govuk-fieldset">
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-              <h2 class="govuk-fieldset__heading">Theme</h2>
+              <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha_settings.appearance.theme_legend") }}</h2>
             </legend>
             <div class="govuk-radios" data-module="govuk-radios">
               {% for theme in themes %}
@@ -56,7 +56,7 @@
           </fieldset>
         </div>
 
-        <button class="govuk-button" data-module="govuk-button">Save appearance</button>
+        <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_settings.appearance.save") }}</button>
       </form>
     </div>
   </div>

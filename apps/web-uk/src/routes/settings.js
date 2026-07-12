@@ -63,16 +63,6 @@ const SETTINGS_STATUS_MESSAGES = {
   'insurance-file-large': 'The certificate file must be smaller than 10MB.',
   'insurance-failed': 'Sorry, we could not upload your certificate. Please try again.'
 };
-const SETTINGS_THEME_LABELS = {
-  light: 'Light',
-  dark: 'Dark',
-  system: 'Match my device'
-};
-const SETTINGS_THEME_HINTS = {
-  light: 'Dark text on a light background.',
-  dark: 'Light text on a dark background.',
-  system: 'Follow the light or dark setting on your device.'
-};
 const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
 const SETTINGS_LINK_TYPE_LABELS = {
@@ -506,17 +496,19 @@ router.get('/appearance', asyncRoute(async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
   return res.render('settings/appearance', {
-    title: 'Appearance',
+    title: res.locals.t('govuk_alpha_settings.appearance.title'),
     activeNav: 'account',
     status,
-    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    statusMessage: SETTINGS_STATUS_MESSAGES[status]
+      ? res.locals.t(`govuk_alpha_settings.states.${status}`)
+      : '',
     successStatus: status === 'appearance-saved',
     errorStatus: ['appearance-invalid', 'appearance-failed'].includes(status),
     currentTheme,
     themes: SETTINGS_THEMES.map((theme) => ({
       value: theme,
-      label: SETTINGS_THEME_LABELS[theme],
-      hint: SETTINGS_THEME_HINTS[theme],
+      label: res.locals.t(`govuk_alpha_settings.appearance.themes.${theme}`),
+      hint: res.locals.t(`govuk_alpha_settings.appearance.theme_hints.${theme}`),
       checked: currentTheme === theme
     }))
   });
