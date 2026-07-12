@@ -5065,6 +5065,17 @@ A route family is not complete until all of these are true:
 - ASP.NET switching gaps are documented in `BACKEND_SWITCHING_CONTRACT.md`.
 - The generated route matrix and port audit are refreshed.
 
+## 2026-07-12 Disposable Goal Lifecycle
+
+The dedicated default-English Laravel gate creates a unique private goal,
+proves it through the API-backed index, edits its title and check-in cadence,
+records and renders a 40% check-in with mood and note, sets and removes a weekly
+reminder, then deletes the goal and proves API absence. Independent `finally`
+cleanup protects failed runs. The corrected `1/1` run passed in `92.3` seconds
+at 320 CSS pixels with structural, reflow, and serious/critical axe assertions.
+Buddy/social side effects, tenant feature-gate depth, manual assistive-technology
+review, and ASP.NET compatibility remain open.
+
 ## Known Remaining Work
 
 Prioritize visual/manual Blade parity, page-level feature-disabled behavior, and
