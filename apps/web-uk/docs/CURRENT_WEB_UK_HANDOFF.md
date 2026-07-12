@@ -5072,13 +5072,14 @@ A route family is not complete until all of these are true:
 The dedicated default-English Laravel gate creates a unique private goal,
 proves it through the API-backed index, edits its title and check-in cadence,
 records and renders a 40% check-in with mood and note, sets and removes a weekly
-reminder, persists a like, creates and warning-deletes an own comment, then
-deletes the goal and proves API absence. The run exposed that Laravel creates
+reminder, persists a like, creates an own comment and nested reply, warning-
+deletes the reply then parent, then deletes the goal and proves API absence.
+The run exposed that Laravel creates
 goals without feed-activity rows, so the single feed-item read is 404; Web UK
 now falls back to Laravel's authenticated liker IDs/count instead of a
 nonexistent Goal social API. Independent `finally` cleanup protects failed
-runs. The expanded `1/1` run passed in `135.8` seconds at 320 CSS pixels with
-structural, reflow, and serious/critical axe assertions. Buddy/reply effects,
+runs. The expanded `1/1` run passed in `200.5` seconds at 320 CSS pixels with
+structural, reflow, and serious/critical axe assertions. Buddy effects,
 tenant feature-gate depth, manual assistive-technology review, and ASP.NET
 compatibility remain open.
 

@@ -64,6 +64,7 @@ test('certifies a disposable goal, check-in, and reminder lifecycle through Web 
   const updatedTitle = `${createdTitle} updated`;
   const checkinNote = `Disposable goal check-in ${runId}`;
   const socialComment = `Disposable goal comment ${runId}`;
+  const socialReply = `Disposable goal reply ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let goalId = null;
@@ -142,8 +143,30 @@ test('certifies a disposable goal, check-in, and reminder lifecycle through Web 
     expect(commentDeleteAction).toBeTruthy();
     const commentId = Number(commentDeleteAction.match(/\/comments\/(\d+)\/delete$/)?.[1]);
     expect(commentId).toBeGreaterThan(0);
-    await commentDeleteForm.locator('xpath=ancestor::details').locator('summary').click();
-    const commentDeleteResponse = await submit(page, `/goals/${goalId}/comments/${commentId}/delete`, commentDeleteForm.locator('button'));
+
+    const replyDetails = commentRow.locator('details', { has: page.locator(`textarea#reply-${commentId}`) });
+    await replyDetails.locator('summary').click();
+    await replyDetails.locator(`#reply-${commentId}`).fill(socialReply);
+    const replyResponse = await submit(page, `/goals/${goalId}/comments`, replyDetails.locator('form button'));
+    expect(replyResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const replyRow = page.getByText(socialReply, { exact: true })
+      .locator('xpath=ancestor::li[contains(@class,"nexus-alpha-comment")][1]');
+    await expect(replyRow).toHaveCount(1);
+    const replyDeleteForm = replyRow.locator('form[action$="/delete"]');
+    const replyDeleteAction = await replyDeleteForm.getAttribute('action');
+    const replyId = Number(replyDeleteAction?.match(/\/comments\/(\d+)\/delete$/)?.[1]);
+    expect(replyId).toBeGreaterThan(0);
+    await replyDeleteForm.locator('xpath=ancestor::details').locator('summary').click();
+    const replyDeleteResponse = await submit(page, `/goals/${goalId}/comments/${replyId}/delete`, replyDeleteForm.locator('button'));
+    expect(replyDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(socialReply, { exact: true })).toHaveCount(0);
+
+    const refreshedCommentRow = page.locator('li.nexus-alpha-comment', { hasText: socialComment });
+    const refreshedDeleteForm = refreshedCommentRow.locator(`form[action$="/comments/${commentId}/delete"]`);
+    await refreshedDeleteForm.locator('xpath=ancestor::details').locator('summary').click();
+    const commentDeleteResponse = await submit(page, `/goals/${goalId}/comments/${commentId}/delete`, refreshedDeleteForm.locator('button'));
     expect(commentDeleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.getByText(socialComment, { exact: true })).toHaveCount(0);
