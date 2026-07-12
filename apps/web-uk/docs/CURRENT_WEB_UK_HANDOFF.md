@@ -4993,14 +4993,16 @@ ASP.NET compatibility remain open.
 The guarded live gate creates a uniquely named standard poll, proves it through
 Laravel's mine collection, votes and proves the selected option, likes and
 proves pressed state, comments and proves the rendered content, then deletes it
-through the warning action and proves API absence. The run exposed that
+through the warning action and proves API absence. It then creates a ranked
+poll, submits a ranking, proves the persisted success and results state, and
+deletes it with a second API-absence check. The run exposed that
 Laravel's Poll detail omits likes even though `/feed/like` mutates them; Web UK
 now non-fatally enriches detail from Laravel's feed-item `likes_count` and
-`is_liked` fields. The corrected `1/1` run passed in `282.5` seconds at 320 CSS
+`is_liked` fields. The expanded `1/1` run passed in `366.6` seconds at 320 CSS
 pixels with structural, reflow, and serious/critical axe assertions. Theme
-restoration completed and no poll or group fixture remained. Ranked-vote
-persistence, broader owner authorization, feature gates, manual
-assistive-technology depth, and ASP.NET compatibility remain open.
+restoration completed and no poll or group fixture remained. Broader owner
+authorization, feature gates, manual assistive-technology depth, and ASP.NET
+compatibility remain open.
 
 ## 2026-07-12 Disposable Podcast Draft Lifecycle
 

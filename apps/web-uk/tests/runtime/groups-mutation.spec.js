@@ -75,6 +75,7 @@ test('certifies a disposable private group and its owner-managed content through
   const discussionReply = `Disposable discussion reply ${runId}`;
   const pollQuestion = `Disposable poll ${runId}?`;
   const pollComment = `Disposable poll comment ${runId}`;
+  const rankedPollQuestion = `Rank disposable ideas ${runId}`;
   const podcastTitle = `Disposable podcast ${runId}`;
   const updatedPodcastTitle = `${podcastTitle} updated`;
   const episodeTitle = `Disposable episode ${runId}`;
@@ -340,6 +341,39 @@ test('certifies a disposable private group and its owner-managed content through
     expect(pollDeleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.locator(`#poll-${pollId}`)).toHaveCount(0);
+    expect(rowsFrom(await getPolls(token, { mine: true, per_page: 100 })).some(poll => Number(poll?.id) === pollId)).toBe(false);
+    pollDeleted = true;
+
+    await page.goto(`${mountPath}/polls/parity/create`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await page.locator('#poll-question').fill(rankedPollQuestion);
+    await page.locator('#poll-option-1').fill('Disposable library');
+    await page.locator('#poll-option-2').fill('Disposable market');
+    await page.locator('#poll-type-ranked').check();
+    const rankedCreateResponse = await submit(page, '/polls/parity/create', page.locator('form:has(#poll-question) button'));
+    expect(rankedCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const rankedPoll = rowsFrom(await getPolls(token, { mine: true, per_page: 100 }))
+      .find(poll => poll?.question === rankedPollQuestion);
+    expect(rankedPoll).toBeTruthy();
+    pollId = Number(rankedPoll.id);
+    pollDeleted = false;
+
+    await page.goto(`${mountPath}/polls/${pollId}/rank`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText(rankedPollQuestion);
+    const rankedVoteResponse = await submit(page, `/polls/${pollId}/rank`, page.locator('form:has(select[name^="rank["]) button'));
+    expect(rankedVoteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('form:has(select[name^="rank["])')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2, name: 'Results', exact: true })).toBeVisible();
+    await expectAccessibleReflow(page);
+
+    await page.goto(`${mountPath}/polls/parity/manage`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const rankedPollCard = page.locator(`#poll-${pollId}`);
+    await expect(rankedPollCard).toContainText(rankedPollQuestion);
+    await rankedPollCard.locator('summary').click();
+    const rankedDeleteResponse = await submit(page, `/polls/${pollId}/delete`, rankedPollCard.locator('form[action$="/delete"] button'));
+    expect(rankedDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     expect(rowsFrom(await getPolls(token, { mine: true, per_page: 100 })).some(poll => Number(poll?.id) === pollId)).toBe(false);
     pollDeleted = true;
 
