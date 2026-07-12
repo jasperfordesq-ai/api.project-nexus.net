@@ -15216,7 +15216,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Organisations');
-    expect(response.text).toContain('Organisation listings are temporarily unavailable.');
+    expect(response.text).not.toContain('Organisation listings are temporarily unavailable.');
     expect(response.text).toContain('There are no organisations listed yet.');
   });
 
@@ -15514,12 +15514,24 @@ describe('shared accessible frontend shell', () => {
         name: 'Community Helpers',
         description: 'We coordinate local volunteering projects.',
         contact_email: 'not-an-email',
+        website: 'https://example.org',
         agreed_terms: '1'
       });
 
     expect(invalid.status).toBe(302);
     expect(invalid.headers.location).toBe('/organisations?status=org-invalid');
     expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
+
+    api.getVolunteerOrganisations.mockResolvedValueOnce({ data: [] });
+    const replay = await agent
+      .get(invalid.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(replay.text).toContain('Enter the organisation name, a 20+ character description, a valid email, and confirm you agree to the terms.');
+    expect(replay.text).toContain('value="Community Helpers"');
+    expect(replay.text).toContain('>We coordinate local volunteering projects.</textarea>');
+    expect(replay.text).toContain('value="not-an-email"');
+    expect(replay.text).toContain('value="https://example.org"');
+    expect(replay.text).toContain('id="agreed_terms" name="agreed_terms" type="checkbox" value="1" checked');
   });
 
   it('redirects signed-out visitors from the manage-organisations page before API access', async () => {

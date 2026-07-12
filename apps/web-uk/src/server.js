@@ -1039,6 +1039,8 @@ function requireOrganisationAuth(req, res, next) {
 app.get('/organisations', requireOrganisationAuth, (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const values = req.session?.organisationEmbeddedValues || {};
+  if (req.session) delete req.session.organisationEmbeddedValues;
 
   const { getVolunteerOrganisations } = require('./lib/api');
   const filters = { per_page: 30 };
@@ -1048,25 +1050,31 @@ app.get('/organisations', requireOrganisationAuth, (req, res) => {
 
   getVolunteerOrganisations(filters)
     .then((result) => {
-      const organisations = Array.isArray(result?.data) ? result.data : [];
+      const organisations = (Array.isArray(result?.data) ? result.data : []).map((organisation) => {
+        const description = String(organisation?.description || '').trim();
+        return {
+          ...organisation,
+          summary: description.length > 160 ? `${description.slice(0, 157)}...` : description
+        };
+      });
 
       res.render('organisations', {
-        title: 'Organisations',
+        title: res.locals.t('govuk_alpha.organisations.title'),
         activeNav: 'explore',
         organisations,
         organisationsQuery,
         status,
-        organisationsLoadFailed: false
+        values
       });
     })
     .catch(() => {
       res.render('organisations', {
-        title: 'Organisations',
+        title: res.locals.t('govuk_alpha.organisations.title'),
         activeNav: 'explore',
         organisations: [],
         organisationsQuery,
         status,
-        organisationsLoadFailed: true
+        values
       });
     });
 });
@@ -1255,8 +1263,8 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
   );
 
   if (invalidStatus) {
-    if (!options.coarseInvalid && req.session) {
-      req.session.organisationRegistrationValues = {
+    if (req.session) {
+      req.session[options.coarseInvalid ? 'organisationEmbeddedValues' : 'organisationRegistrationValues'] = {
         name: payload.name,
         description: payload.description,
         email: payload.contact_email,
@@ -1283,8 +1291,8 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
-    if (!options.coarseInvalid && req.session) {
-      req.session.organisationRegistrationValues = {
+    if (req.session) {
+      req.session[options.coarseInvalid ? 'organisationEmbeddedValues' : 'organisationRegistrationValues'] = {
         name: payload.name,
         description: payload.description,
         email: payload.contact_email,
@@ -1298,6 +1306,9 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
     return redirectTo(res, failedRedirect);
   }
 
+  if (req.session) {
+    delete req.session[options.coarseInvalid ? 'organisationEmbeddedValues' : 'organisationRegistrationValues'];
+  }
   return redirectTo(res, '/organisations?status=org-submitted');
 }
 
