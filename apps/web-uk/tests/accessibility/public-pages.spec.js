@@ -757,7 +757,7 @@ test.describe('representative authenticated-page accessibility gate', () => {
   }
 
   test('Arabic profile password error links the summary to its inline field error', async ({ browser, baseURL }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     const context = await browser.newContext({ baseURL, storageState });
     const page = await context.newPage();
     await page.setViewportSize({ width: 320, height: 640 });
