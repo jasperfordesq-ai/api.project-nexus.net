@@ -415,15 +415,26 @@ function hoursStatus(status) {
   return null;
 }
 
-function wellbeingStatus(status) {
+function wellbeingStatus(status, t = null) {
   if (status === 'checkin-saved') {
-    return { type: 'success', message: 'Your check-in has been saved.' };
+    return {
+      type: 'success',
+      message: t ? t('govuk_alpha_volunteering.wellbeing.checkin_saved') : 'Your check-in has been saved.'
+    };
   }
   if (status === 'mood-invalid') {
-    return { type: 'error', message: 'Choose a mood between 1 and 5.' };
+    return {
+      type: 'error',
+      message: t ? t('govuk_alpha_volunteering.wellbeing.mood_invalid') : 'Choose a mood between 1 and 5.'
+    };
   }
   if (status === 'checkin-failed') {
-    return { type: 'error', message: 'Your check-in could not be saved. Please try again.' };
+    return {
+      type: 'error',
+      message: t
+        ? t('govuk_alpha_volunteering.wellbeing.checkin_failed')
+        : 'Your check-in could not be saved. Please try again.'
+    };
   }
   return null;
 }
@@ -794,7 +805,7 @@ function normalizeHourSummary(result) {
   };
 }
 
-function riskPresentation(value) {
+function riskPresentation(value, t = null) {
   const risk = ['low', 'moderate', 'high'].includes(trimmed(value)) ? trimmed(value) : 'low';
   const labels = {
     low: 'Low',
@@ -808,12 +819,12 @@ function riskPresentation(value) {
   };
   return {
     value: risk,
-    label: labels[risk],
+    label: t ? t(`govuk_alpha_volunteering.wellbeing.risk_${risk}`) : labels[risk],
     className: classNames[risk]
   };
 }
 
-function warningLabel(value) {
+function warningLabel(value, t = null) {
   const text = trimmed(value?.message ?? value?.type ?? value);
   const labels = {
     frequency: 'Your shift frequency is declining.',
@@ -821,39 +832,63 @@ function warningLabel(value) {
     hours: 'Your logged hours are dropping significantly.',
     engagement: 'It has been a while since your last activity.'
   };
-  return labels[text] || text;
+  if (!Object.hasOwn(labels, text)) return '';
+  return t ? t(`govuk_alpha_volunteering.wellbeing.warning_${text}`) : labels[text];
 }
 
-function moodLabel(value) {
+function moodLabel(value, t = null) {
   const mood = Number(value);
   const labels = {
-    1: '1 - Struggling',
-    2: '2 - Low',
-    3: '3 - Okay',
-    4: '4 - Good',
-    5: '5 - Great'
+    1: '1 — Struggling',
+    2: '2 — Low',
+    3: '3 — Okay',
+    4: '4 — Good',
+    5: '5 — Great'
   };
-  return labels[mood] || trimmed(value);
+  return Object.hasOwn(labels, mood) && t
+    ? t(`govuk_alpha_volunteering.wellbeing.mood_${mood}`)
+    : (labels[mood] || trimmed(value));
 }
 
-function normalizeCheckin(row) {
+function wellbeingDateTimeLabel(value) {
+  if (!value) return '';
+  const text = String(value);
+  const isoParts = text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = isoParts ? Number(isoParts[1]) : date.getFullYear();
+  const monthIndex = isoParts ? Number(isoParts[2]) - 1 : date.getMonth();
+  const day = isoParts ? Number(isoParts[3]) : date.getDate();
+  const hours = isoParts ? Number(isoParts[4]) : date.getHours();
+  const minutes = isoParts ? Number(isoParts[5]) : date.getMinutes();
+  const month = new Intl.DateTimeFormat(getRequestIntlLocale(), {
+    month: 'long',
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(year, monthIndex, day)));
+  const hour = hours % 12 || 12;
+  const minute = String(minutes).padStart(2, '0');
+  const period = hours < 12 ? 'am' : 'pm';
+  return `${day} ${month} ${year}, ${hour}:${minute}${period}`;
+}
+
+function normalizeCheckin(row, t = null) {
   const checkin = row && typeof row === 'object' ? row : {};
   const mood = Number(checkin.mood);
   return {
     id: positiveInteger(checkin.id),
-    createdAtLabel: dateLabel(checkin.created_at ?? checkin.createdAt),
-    moodLabel: moodLabel(mood),
+    createdAtLabel: wellbeingDateTimeLabel(checkin.created_at ?? checkin.createdAt),
+    moodLabel: moodLabel(mood, t),
     note: trimmed(checkin.note)
   };
 }
 
-function normalizeWellbeingDashboard(result) {
+function normalizeWellbeingDashboard(result, t = null) {
   const dashboard = dataFrom(result);
   const data = dashboard && typeof dashboard === 'object' ? dashboard : {};
   const rawScore = Number(data.score);
   const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : 100;
   const warnings = Array.isArray(data.warnings)
-    ? data.warnings.map(warningLabel).filter(Boolean)
+    ? data.warnings.map((warning) => warningLabel(warning, t)).filter(Boolean)
     : [];
   const checkins = Array.isArray(data.recent_checkins)
     ? data.recent_checkins
@@ -861,7 +896,7 @@ function normalizeWellbeingDashboard(result) {
 
   return {
     score,
-    risk: riskPresentation(data.burnout_risk ?? data.burnoutRisk),
+    risk: riskPresentation(data.burnout_risk ?? data.burnoutRisk, t),
     hoursThisWeekLabel: hoursLabel(data.hours_this_week ?? data.hoursThisWeek),
     hoursThisMonthLabel: hoursLabel(data.hours_this_month ?? data.hoursThisMonth),
     streakDays: Number.isFinite(Number(data.streak_days ?? data.streakDays))
@@ -870,10 +905,10 @@ function normalizeWellbeingDashboard(result) {
     warnings,
     moodOptions: [1, 2, 3, 4, 5].map((value) => ({
       value,
-      label: moodLabel(value),
+      label: moodLabel(value, t),
       checked: value === 3
     })),
-    recentCheckins: checkins.map(normalizeCheckin)
+    recentCheckins: checkins.map((checkin) => normalizeCheckin(checkin, t))
   };
 }
 
@@ -2276,21 +2311,21 @@ router.get('/wellbeing', asyncRoute(async (req, res) => {
     return redirectTo(res, loginRedirect());
   }
 
-  let wellbeing = normalizeWellbeingDashboard({});
+  let wellbeing = normalizeWellbeingDashboard({}, res.locals.t);
   let loadError = null;
   try {
-    wellbeing = normalizeWellbeingDashboard(await callApi(token, 'GET', '/wellbeing'));
+    wellbeing = normalizeWellbeingDashboard(await callApi(token, 'GET', '/wellbeing'), res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your wellbeing dashboard. Please try again.';
   }
 
   return res.render('volunteering/wellbeing', {
-    title: 'My wellbeing',
+    title: res.locals.t('govuk_alpha_volunteering.wellbeing.title'),
     activeNav: 'volunteering',
     wellbeing,
     loadError,
-    status: wellbeingStatus(trimmed(req.query.status)),
+    status: wellbeingStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

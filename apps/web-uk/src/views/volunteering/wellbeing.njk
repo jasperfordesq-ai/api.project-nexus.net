@@ -29,9 +29,9 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">My wellbeing</h1>
-  <p class="govuk-body-l">A private summary of your volunteering balance, to help you avoid burnout. Only you can see this.</p>
+  <span class="govuk-caption-l">{{ t("govuk_alpha.volunteering.title") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_volunteering.wellbeing.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_volunteering.wellbeing.description") }}</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -45,32 +45,32 @@
   {% endif %}
 
   <div class="govuk-form-group">
-    <label class="govuk-label govuk-label--m" for="wellbeing-score">Wellbeing score</label>
-    <p class="govuk-body govuk-!-margin-bottom-1">{{ wellbeing.score }} out of 100</p>
-    <progress id="wellbeing-score" max="100" value="{{ wellbeing.score }}" aria-label="Wellbeing score">{{ wellbeing.score }}%</progress>
+    <label class="govuk-label govuk-label--m" for="wellbeing-score">{{ t("govuk_alpha_volunteering.wellbeing.score_label") }}</label>
+    <p class="govuk-body govuk-!-margin-bottom-1">{{ wellbeing.score }} {{ t("govuk_alpha_volunteering.wellbeing.score_out_of") }}</p>
+    <progress id="wellbeing-score" max="100" value="{{ wellbeing.score }}" aria-label="{{ t('govuk_alpha_volunteering.wellbeing.score_label') }}">{{ wellbeing.score }}%</progress>
   </div>
 
   <p class="govuk-body">
-    Burnout risk:
+    {{ t("govuk_alpha_volunteering.wellbeing.risk_label") }}:
     <strong class="govuk-tag {{ wellbeing.risk.className }}">{{ wellbeing.risk.label }}</strong>
   </p>
 
   <dl class="nexus-alpha-stat-grid">
     <div class="nexus-alpha-stat">
-      <dt>Hours this week</dt>
+      <dt>{{ t("govuk_alpha_volunteering.wellbeing.hours_week") }}</dt>
       <dd>{{ wellbeing.hoursThisWeekLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Hours this month</dt>
+      <dt>{{ t("govuk_alpha_volunteering.wellbeing.hours_month") }}</dt>
       <dd>{{ wellbeing.hoursThisMonthLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Day streak</dt>
+      <dt>{{ t("govuk_alpha_volunteering.wellbeing.streak_days") }}</dt>
       <dd>{{ wellbeing.streakDays }}</dd>
     </div>
   </dl>
 
-  <h2 class="govuk-heading-l">Things to be aware of</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.wellbeing.warnings_title") }}</h2>
   {% if wellbeing.warnings.length %}
     <ul class="govuk-list govuk-list--bullet">
       {% for warning in wellbeing.warnings %}
@@ -78,15 +78,15 @@
       {% endfor %}
     </ul>
   {% else %}
-    <div class="govuk-inset-text">No wellbeing warnings right now. Keep up the good balance.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.wellbeing.no_warnings") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">How are you feeling?</h2>
-  <p class="govuk-body">Record a quick mood check-in. This helps you track how volunteering is going.</p>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.wellbeing.checkin_title") }}</h2>
+  <p class="govuk-body">{{ t("govuk_alpha_volunteering.wellbeing.checkin_hint") }}</p>
   <form method="post" action="{{ urlFor('/volunteering/wellbeing/checkin') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
     <fieldset class="govuk-fieldset">
-      <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Your mood</legend>
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_volunteering.wellbeing.mood_label") }}</legend>
       <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
         {% for mood in wellbeing.moodOptions %}
           <div class="govuk-radios__item">
@@ -97,28 +97,28 @@
       </div>
     </fieldset>
     <div class="govuk-form-group govuk-!-margin-top-4">
-      <label class="govuk-label" for="note">Note optional</label>
-      <div id="note-hint" class="govuk-hint">Anything you want to remember about today.</div>
+      <label class="govuk-label" for="note">{{ t("govuk_alpha_volunteering.wellbeing.note_label") }} {{ t("govuk_alpha_volunteering.shared.optional") }}</label>
+      <div id="note-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.wellbeing.note_hint") }}</div>
       <textarea class="govuk-textarea" id="note" name="note" rows="3" maxlength="500" aria-describedby="note-hint"></textarea>
     </div>
-    <button class="govuk-button" data-module="govuk-button">Save check-in</button>
+    <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_volunteering.wellbeing.checkin_button") }}</button>
   </form>
 
-  <h2 class="govuk-heading-l">Recent check-ins</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.wellbeing.recent_title") }}</h2>
   {% if wellbeing.recentCheckins.length %}
     <table class="govuk-table">
-      <caption class="govuk-visually-hidden">Recent check-ins</caption>
+      <caption class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.wellbeing.recent_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Date</th>
-          <th scope="col" class="govuk-table__header">Mood</th>
-          <th scope="col" class="govuk-table__header">Note</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.wellbeing.recent_when") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.wellbeing.recent_mood") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.wellbeing.note_label") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
         {% for checkin in wellbeing.recentCheckins %}
           <tr class="govuk-table__row">
-            <td class="govuk-table__cell">{{ checkin.createdAtLabel or "-" }}</td>
+            <td class="govuk-table__cell">{{ checkin.createdAtLabel or "—" }}</td>
             <td class="govuk-table__cell">{{ checkin.moodLabel }}</td>
             <td class="govuk-table__cell">{{ checkin.note }}</td>
           </tr>
@@ -126,6 +126,6 @@
       </tbody>
     </table>
   {% else %}
-    <div class="govuk-inset-text">No check-ins yet.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.wellbeing.recent_empty") }}</div>
   {% endif %}
 {% endblock %}

@@ -5380,6 +5380,18 @@ Focused render/action proof passed. Full Jest remains `45/45` suites and
 live add/remove/cancel was submitted because there is no residue-free group
 reservation fixture; shared reservations were not mutated.
 
+## 2026-07-12 Default-English Wellbeing Parity
+
+Wellbeing now uses Laravel's catalog for the score/risk summary, warnings, mood
+form, status states, and recent-check-in table. Mood labels use the source em
+dash, timestamps preserve the API timezone and match Blade's `j F Y, g:ia`
+format, and unknown warning payloads are omitted like Blade.
+
+Focused render/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live check-in was submitted because Laravel exposes no residue-free deletion
+path for that personal record.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

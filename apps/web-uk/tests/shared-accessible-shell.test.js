@@ -26523,20 +26523,20 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('3');
     expect(response.text).toContain('Things to be aware of');
     expect(response.text).toContain('Your logged hours are dropping significantly.');
-    expect(response.text).toContain('Your cancellation rate is higher than usual. Consider taking on fewer commitments.');
+    expect(response.text).not.toContain('Your cancellation rate is higher than usual. Consider taking on fewer commitments.');
     expect(response.text).toContain('How are you feeling?');
     expect(response.text).toContain('method="post" action="/volunteering/wellbeing/checkin"');
     expect(response.text).toContain('id="mood-1" name="mood" type="radio" value="1"');
-    expect(response.text).toContain('1 - Struggling');
+    expect(response.text).toContain('1 — Struggling');
     expect(response.text).toContain('id="mood-3" name="mood" type="radio" value="3" checked');
     expect(response.text).toContain('id="note" name="note" rows="3" maxlength="500"');
     expect(response.text).toContain('Save check-in');
     expect(response.text).toContain('Recent check-ins');
-    expect(response.text).toContain('6 July 2026');
-    expect(response.text).toContain('5 - Great');
+    expect(response.text).toContain('6 July 2026, 4:15pm');
+    expect(response.text).toContain('5 — Great');
     expect(response.text).toContain('Feeling steady after a quieter week');
     expect(response.text).toContain('1 July 2026');
-    expect(response.text).toContain('2 - Low');
+    expect(response.text).toContain('2 — Low');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
