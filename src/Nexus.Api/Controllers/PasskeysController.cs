@@ -98,6 +98,10 @@ public class PasskeysController : ControllerBase
         {
             return Conflict(new { error = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+        }
     }
 
     /// <summary>
@@ -197,10 +201,11 @@ public class PasskeysController : ControllerBase
                 "Canonical passkey registration challenge denied for user {UserId}: {Error}",
                 user.Id,
                 ex.Message);
+            var disabled = ex.Message.Contains("disabled", StringComparison.OrdinalIgnoreCase);
             return CanonicalWebAuthnError(
-                "AUTH_WEBAUTHN_FAILED",
-                "Passkey registration is unavailable",
-                StatusCodes.Status409Conflict);
+                disabled ? "FEATURE_DISABLED" : "WEBAUTHN_CREDENTIAL_LIMIT",
+                disabled ? "This feature is disabled" : "Passkey registration is unavailable",
+                disabled ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict);
         }
     }
 

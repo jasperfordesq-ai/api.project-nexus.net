@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 945/1000 | 2,440 of 2,583 current Laravel operations matched, with 143 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
+| ASP.NET static API method/path inventory | 946/1000 | 2,442 of 2,583 current Laravel operations matched, with 141 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,9 +452,9 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,319 |
+| ASP.NET static operations | 4,321 |
 | Laravel source operations | 2,583 |
-| Static method/path matches | 2,440 matched, 143 missing |
+| Static method/path matches | 2,442 matched, 141 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | Live: 333 Laravel migration files, 117 ASP.NET migration source files, 115 runtime migrations, 368 Laravel source tables, 336 ASP.NET tables, 142 exact matches, 226 missing names, and 194 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |

@@ -23,14 +23,19 @@ public class TotpService
 
     private const int TotpStep = 30; // 30-second window
     private const int TotpDigits = 6;
-    private const int BackupCodeCount = 10;
     private const int BackupCodeLength = 8; // 8-digit numeric codes
+    private readonly AuthenticationConfigurationService _authenticationConfiguration;
 
-    public TotpService(NexusDbContext db, IConfiguration config, ILogger<TotpService> logger)
+    public TotpService(
+        NexusDbContext db,
+        IConfiguration config,
+        ILogger<TotpService> logger,
+        AuthenticationConfigurationService authenticationConfiguration)
     {
         _db = db;
         _config = config;
         _logger = logger;
+        _authenticationConfiguration = authenticationConfiguration;
     }
 
     /// <summary>
@@ -233,9 +238,13 @@ public class TotpService
             .ToListAsync();
         _db.TotpBackupCodes.RemoveRange(existing);
 
+        var backupCodeCount = await _authenticationConfiguration.GetIntegerAsync(
+            AuthenticationConfigurationService.TwoFactorBackupCodeCount,
+            tenantId);
+
         // Generate new codes
         var plaintextCodes = new List<string>();
-        for (int i = 0; i < BackupCodeCount; i++)
+        for (int i = 0; i < backupCodeCount; i++)
         {
             var code = GenerateNumericCode(BackupCodeLength);
             plaintextCodes.Add(code);
@@ -251,7 +260,7 @@ public class TotpService
         }
 
         await _db.SaveChangesAsync();
-        _logger.LogInformation("Generated {Count} backup codes for user {UserId}", BackupCodeCount, userId);
+        _logger.LogInformation("Generated {Count} backup codes for user {UserId}", backupCodeCount, userId);
 
         return (plaintextCodes, null);
     }

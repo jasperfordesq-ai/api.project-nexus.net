@@ -22,15 +22,18 @@ public class PasskeyService
     private readonly IFido2 _fido2;
     private readonly NexusDbContext _db;
     private readonly ILogger<PasskeyService> _logger;
+    private readonly AuthenticationConfigurationService _authenticationConfiguration;
 
-    // Maximum passkeys per user to prevent unbounded credential storage
-    private const int MaxPasskeysPerUser = 10;
-
-    public PasskeyService(IFido2 fido2, NexusDbContext db, ILogger<PasskeyService> logger)
+    public PasskeyService(
+        IFido2 fido2,
+        NexusDbContext db,
+        ILogger<PasskeyService> logger,
+        AuthenticationConfigurationService authenticationConfiguration)
     {
         _fido2 = fido2;
         _db = db;
         _logger = logger;
+        _authenticationConfiguration = authenticationConfiguration;
     }
 
     /// <summary>
@@ -39,6 +42,13 @@ public class PasskeyService
     /// </summary>
     public async Task<CredentialCreateOptions> BeginRegistrationAsync(User user)
     {
+        if (!await _authenticationConfiguration.GetBooleanAsync(
+                AuthenticationConfigurationService.PasskeysEnrollmentEnabled,
+                user.TenantId))
+        {
+            throw new InvalidOperationException("Passkey enrollment is disabled for this community");
+        }
+
         if (!await IsEligibleUserAsync(user.Id, user.TenantId))
         {
             throw new InvalidOperationException("User account is not eligible for passkey registration");
@@ -49,10 +59,13 @@ public class PasskeyService
             .IgnoreQueryFilters()
             .CountAsync(p => p.UserId == user.Id && p.TenantId == user.TenantId);
 
-        if (existingCount >= MaxPasskeysPerUser)
+        var maxPasskeysPerUser = await _authenticationConfiguration.GetIntegerAsync(
+            AuthenticationConfigurationService.PasskeysMaxCredentials,
+            user.TenantId);
+        if (existingCount >= maxPasskeysPerUser)
         {
             throw new InvalidOperationException(
-                $"Maximum of {MaxPasskeysPerUser} passkeys per user reached. Remove an existing passkey first.");
+                $"Maximum of {maxPasskeysPerUser} passkeys per user reached. Remove an existing passkey first.");
         }
 
         // Build the Fido2User from our domain user

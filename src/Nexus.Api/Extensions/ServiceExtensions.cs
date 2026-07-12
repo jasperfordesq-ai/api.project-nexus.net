@@ -117,6 +117,7 @@ public static class ServiceExtensions
         services.AddSingleton<PasskeyChallengeStore>();
         services.AddSingleton<TokenService>();
         services.AddScoped<TotpService>();
+        services.AddScoped<AuthenticationConfigurationService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
 

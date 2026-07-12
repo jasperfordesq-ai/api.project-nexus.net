@@ -12,7 +12,7 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
 | Migrations | 333 | 117 main EF migration source files; 115 EF-discovered/applicable runtime IDs |
-| OpenAPI operations | 891 | 4,319 static controller operations from parity script |
+| OpenAPI operations | 891 | 4,321 static controller operations from parity script |
 | Schema tables | 368 Laravel source tables | 336 .NET static table names after the five exact safeguarding tables |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -23,8 +23,8 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-12 after its fixture passed,
-with 4,319 ASP.NET controller operations, 2,583 Laravel source operations after
-supplemental API route parsing and de-duplication, 2,440 static matches, and 143
+with 4,321 ASP.NET controller operations, 2,583 Laravel source operations after
+supplemental API route parsing and de-duplication, 2,442 static matches, and 141
 missing operations. The expanded remainder is dominated by event-product
 routes and also includes the seven document-era admin vetting writes plus
 prerender reset/invalidate. Guardian-consent token lookup and grant now have
