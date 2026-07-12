@@ -166,4 +166,22 @@ test('renders the signed Laravel-backed volunteering applications tab', async ({
   await expect(page.locator('#app_status')).toHaveCount(1);
   await expect(page.getByText('You have not applied for any opportunities yet.', { exact: true })).toBeVisible();
   await expectAccessibleReflow(page);
+
+  await page.goto(`${mountPath}/volunteering?tab=recommended`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 300_000
+  });
+  await expect(page.getByRole('heading', { level: 2, name: 'Recommended for you', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'For you', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('No recommended shifts right now. Check the opportunities tab.', { exact: true })).toBeVisible();
+  await expectAccessibleReflow(page);
+
+  await page.goto(`${mountPath}/volunteering?tab=community_projects`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 300_000
+  });
+  await expect(page.getByRole('heading', { level: 2, name: 'Community projects', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Community projects', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('There are no community projects to show yet.', { exact: true })).toBeVisible();
+  await expectAccessibleReflow(page);
 });

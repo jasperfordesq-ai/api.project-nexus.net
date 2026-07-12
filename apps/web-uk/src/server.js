@@ -710,7 +710,10 @@ app.use('/explore', exploreRoutes);
 app.get('/volunteering', (req, res) => {
   const { callVolunteeringApi, getVolunteeringCategories, getVolunteeringOpportunities } = require('./lib/api');
   const token = req.signedCookies.token || '';
-  const selectedTab = token && req.query.tab === 'applications' ? 'applications' : 'opportunities';
+  const requestedTab = ['applications', 'recommended', 'community_projects'].includes(req.query.tab)
+    ? req.query.tab
+    : 'opportunities';
+  const selectedTab = token ? requestedTab : 'opportunities';
   const applicationStatus = ['pending', 'approved', 'declined', 'withdrawn'].includes(req.query.app_status)
     ? req.query.app_status
     : '';
@@ -781,9 +784,15 @@ app.get('/volunteering', (req, res) => {
     ? callVolunteeringApi(token, 'GET', '/my-organisations?per_page=5').catch(() => ({ data: [] }))
     : Promise.resolve({ data: [] });
   const categoriesPromise = getVolunteeringCategories(token).catch(() => ({ data: [] }));
+  const recommendedPromise = selectedTab === 'recommended'
+    ? callVolunteeringApi(token, 'GET', '/recommended-shifts?limit=10').catch(() => ({ data: [] }))
+    : Promise.resolve({ data: [] });
+  const communityProjectsPromise = selectedTab === 'community_projects'
+    ? callVolunteeringApi(token, 'GET', '/community-projects?public=true&limit=12').catch(() => ({ data: [] }))
+    : Promise.resolve({ data: [] });
 
-  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise, hoursSummaryPromise, organisationsPromise, categoriesPromise])
-    .then(([result, applicationsResult, hoursSummaryResult, organisationsResult, categoriesResult]) => {
+  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise, hoursSummaryPromise, organisationsPromise, categoriesPromise, recommendedPromise, communityProjectsPromise])
+    .then(([result, applicationsResult, hoursSummaryResult, organisationsResult, categoriesResult, recommendedResult, communityProjectsResult]) => {
       const opportunities = Array.isArray(result?.data)
         ? result.data
         : (Array.isArray(result?.items) ? result.items : []);
@@ -815,6 +824,8 @@ app.get('/volunteering', (req, res) => {
       };
       const organisations = Array.isArray(organisationsResult?.data) ? organisationsResult.data : [];
       const categories = Array.isArray(categoriesResult?.data) ? categoriesResult.data : [];
+      const recommendedShifts = Array.isArray(recommendedResult?.data) ? recommendedResult.data : [];
+      const communityProjects = Array.isArray(communityProjectsResult?.data) ? communityProjectsResult.data : [];
       const manageableOrganisations = organisations.filter((organisation) => (
         ['owner', 'admin'].includes(String(organisation?.member_role || 'member'))
         && ['approved', 'active'].includes(String(organisation?.status || 'pending'))
@@ -840,6 +851,8 @@ app.get('/volunteering', (req, res) => {
         manageableOrganisations,
         pendingOwnedOrganisations,
         categories,
+        recommendedShifts,
+        communityProjects,
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,
@@ -866,6 +879,8 @@ app.get('/volunteering', (req, res) => {
         manageableOrganisations: [],
         pendingOwnedOrganisations: [],
         categories: [],
+        recommendedShifts: [],
+        communityProjects: [],
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,

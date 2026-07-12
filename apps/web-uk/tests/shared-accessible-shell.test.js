@@ -26541,6 +26541,62 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/volunteering?tab=applications&amp;app_status=pending&amp;app_cursor=next-application"');
   });
 
+  it('renders the signed Blade-style recommended and community-project sections inline', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteeringOpportunities.mockResolvedValue({ data: [], meta: {} });
+    api.getVolunteeringCategories.mockResolvedValue({ data: [] });
+    api.callVolunteeringApi.mockImplementation(async (_token, _method, path) => {
+      if (path === '/recommended-shifts?limit=10') {
+        return { data: [{
+          id: 501,
+          opportunity_id: 77,
+          title: 'Community meal prep',
+          match_score: 91,
+          organization_name: 'Food Share',
+          location: 'Town kitchen',
+          start_time: '2026-07-20T10:00:00Z',
+          spots_remaining: 3
+        }] };
+      }
+      if (path === '/community-projects?public=true&limit=12') {
+        return { data: [{
+          id: 12,
+          title: 'Neighbourhood garden',
+          status: 'active',
+          description: 'Create a shared growing space.',
+          proposer_name: 'Avery Stone',
+          supporter_count: 4
+        }] };
+      }
+      if (path === '/hours/summary') return { data: {} };
+      if (path === '/my-organisations?per_page=5') return { data: [] };
+      return { data: [] };
+    });
+
+    const recommended = await request(app)
+      .get('/volunteering?tab=recommended')
+      .set('Cookie', signedCookieHeader());
+    expect(recommended.status).toBe(200);
+    expect(recommended.text).toContain('aria-current="page">For you</a>');
+    expect(recommended.text).toContain('Shifts matched to your skills and availability.');
+    expect(recommended.text).toContain('Community meal prep');
+    expect(recommended.text).toContain('91% match');
+    expect(recommended.text).toContain('Food Share');
+    expect(recommended.text).toContain('Town kitchen');
+    expect(recommended.text).toContain('3');
+
+    const projects = await request(app)
+      .get('/volunteering?tab=community_projects')
+      .set('Cookie', signedCookieHeader());
+    expect(projects.status).toBe(200);
+    expect(projects.text).toContain('aria-current="page">Community projects</a>');
+    expect(projects.text).toContain('Neighbourhood garden');
+    expect(projects.text).toContain('Active');
+    expect(projects.text).toContain('Create a shared growing space.');
+    expect(projects.text).toContain('Proposed by Avery Stone');
+    expect(projects.text).toContain('4 supporters');
+  });
+
   it('streams an owned Laravel credential download and preserves safe response headers', async () => {
     const api = require('../src/lib/api');
     const body = Buffer.from('%PDF-1.4\ncredential fixture\n', 'utf8');
