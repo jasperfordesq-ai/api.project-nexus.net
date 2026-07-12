@@ -100,7 +100,7 @@ describe('ASP.NET readiness audit', () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
       .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank","compliance":{"insurance_enabled":false}}}' })
-      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1}}' });
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1,"hours_exchanged":2,"listings":3,"skills":4,"communities":1,"scope":"tenant"}}' });
     const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
 
     const report = await runAspNetReadinessAudit({
@@ -143,7 +143,7 @@ describe('ASP.NET readiness audit', () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
       .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank"}}' })
-      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1}}' });
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1,"hours_exchanged":2,"listings":3,"skills":4,"communities":1,"scope":"tenant"}}' });
     const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
 
     const report = await runAspNetReadinessAudit({ fetchImpl, baseUrl: 'http://aspnet.example.test' });
@@ -152,6 +152,26 @@ describe('ASP.NET readiness audit', () => {
     expect(report.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         name: 'tenant-bootstrap-by-slug',
+        ok: false,
+        actualStatus: 200,
+        bodyOk: false
+      })
+    ]));
+  });
+
+  it('rejects platform stats that cannot drive the Laravel-shaped Home metrics', async () => {
+    const fetchImpl = jest.fn()
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank","compliance":{"insurance_enabled":false}}}' })
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1}}' });
+    const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
+
+    const report = await runAspNetReadinessAudit({ fetchImpl, baseUrl: 'http://aspnet.example.test' });
+
+    expect(report.ready).toBe(false);
+    expect(report.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'platform-stats-by-slug',
         ok: false,
         actualStatus: 200,
         bodyOk: false

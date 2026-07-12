@@ -61,7 +61,17 @@ async function runAspNetReadinessAudit(options = {}) {
     }),
     check(fetchImpl, baseUrl, 'platform-stats-by-slug', '/api/v2/platform/stats', {
       expectedStatus: 200,
-      headers: tenantHeaders
+      headers: tenantHeaders,
+      validateBody: (body) => {
+        try {
+          const stats = JSON.parse(body)?.data;
+          return ['members', 'hours_exchanged', 'listings', 'skills', 'communities']
+            .every((key) => typeof stats?.[key] === 'number')
+            && ['tenant', 'platform'].includes(stats?.scope);
+        } catch {
+          return false;
+        }
+      }
     })
   ]);
 
