@@ -11,23 +11,9 @@
   <h1 class="govuk-heading-xl">{{ t("govuk_alpha_gamification.competitive.title") }}</h1>
   <p class="govuk-body-l">{{ t("govuk_alpha_gamification.competitive.description") }}</p>
 
-  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="{{ t("leaderboard.title") }}">
-    <h2 class="govuk-tabs__title">{{ t("leaderboard.title") }}</h2>
-    <ul class="govuk-tabs__list">
-      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/competitive') }}" aria-current="page">{{ t("govuk_alpha_gamification.nav.competitive") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/seasons') }}">{{ t("govuk_alpha_gamification.nav.seasons") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/journey') }}">{{ t("govuk_alpha_gamification.nav.journey") }}</a>
-      </li>
-      <li class="govuk-tabs__list-item">
-        <a class="govuk-tabs__tab" href="{{ urlFor('/leaderboard/spotlight') }}">{{ t("govuk_alpha_gamification.nav.spotlight") }}</a>
-      </li>
-    </ul>
-  </nav>
+  {% set gamificationNavGroup = "leaderboard" %}
+  {% set gamificationActiveTab = "competitive" %}
+  {% include "partials/gamification-nav.njk" %}
 
   {% if competitive.season.hasSeason %}
     <div class="nexus-alpha-card govuk-!-margin-bottom-6">

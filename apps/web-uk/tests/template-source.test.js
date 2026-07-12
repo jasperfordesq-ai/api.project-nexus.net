@@ -2353,3 +2353,38 @@ describe('Laravel-first Federation sub-navigation source contract', () => {
     }
   });
 });
+
+describe('Laravel-first Gamification sub-navigation source contract', () => {
+  it('shares the exact achievements and leaderboard tab groups', () => {
+    const viewsRoot = path.join(__dirname, '..', 'src', 'views');
+    const nav = fs.readFileSync(path.join(viewsRoot, 'partials', 'gamification-nav.njk'), 'utf8');
+    const surfaces = {
+      'achievements/index.njk': ['achievements', ''],
+      'achievements/shop.njk': ['achievements', 'shop'],
+      'achievements/collections.njk': ['achievements', 'collections'],
+      'achievements/showcase.njk': ['achievements', 'showcase'],
+      'achievements/engagement.njk': ['achievements', 'engagement'],
+      'leaderboard/index.njk': ['leaderboard', ''],
+      'leaderboard/competitive.njk': ['leaderboard', 'competitive'],
+      'leaderboard/seasons.njk': ['leaderboard', 'seasons'],
+      'leaderboard/journey.njk': ['leaderboard', 'journey'],
+      'leaderboard/spotlight.njk': ['leaderboard', 'spotlight']
+    };
+
+    for (const key of [
+      'leaderboard_heading', 'competitive', 'seasons', 'journey', 'spotlight',
+      'heading', 'shop', 'collections', 'showcase', 'engagement'
+    ]) {
+      expect(nav).toContain(`t("govuk_alpha_gamification.nav.${key}")`);
+    }
+    expect(nav).toContain('aria-current="page"');
+
+    for (const [file, [group, active]] of Object.entries(surfaces)) {
+      const source = fs.readFileSync(path.join(viewsRoot, file), 'utf8');
+      expect(source).toContain(`{% set gamificationNavGroup = "${group}" %}`);
+      expect(source).toContain(`{% set gamificationActiveTab = "${active}" %}`);
+      expect(source).toContain('{% include "partials/gamification-nav.njk" %}');
+      expect(source).not.toContain('<ul class="govuk-tabs__list">');
+    }
+  });
+});
